@@ -22,6 +22,22 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def minor_to_eur_csv(amount_minor: int) -> str:
+    return f"{from_minor(amount_minor):.2f}".replace(".", ",")
+
+
+def build_audit_event(action: str, actor_id: str, note: str = "", **extra) -> dict[str, Any]:
+    event = {
+        "action": action,
+        "actor_id": actor_id,
+        "note": note,
+        "created_at": now_iso(),
+    }
+    if extra:
+        event["extra"] = extra
+    return event
+
+
 def short_id(prefix: str, size: int = 10) -> str:
     return f"{prefix}-{secrets.token_hex(max(2, size // 2)).upper()}"
 
@@ -512,8 +528,11 @@ async def finalise_settlement(merchant: dict, settlement_id: str, idempotency_ke
             {"entry_id": {"$in": entry_ids}, "merchant_id": merchant["merchant_id"], "status": "pending"},
             {"$set": {"status": "available", "settlement_id": settlement_id, "posted_at": now_iso()}},
         )
+    reserve_rule = await db.merchant_reserves.find_one({"merchant_id": merchant["merchant_id"], "mode": "rule", "active": True}, {"_id": 0})
     if int(settlement.get("reserve_held_minor") or 0) > 0:
-        expected_release_date = (datetime.now(timezone.utc) + timedelta(days=DEFAULT_RESERVE_HOLD_DAYS)).date().isoformat()
+        hold_days = int((reserve_rule or {}).get("hold_days") or DEFAULT_RESERVE_HOLD_DAYS)
+        reserve_reason = (reserve_rule or {}).get("reason") or "Rolling reserve"
+        expected_release_date = (datetime.now(timezone.utc) + timedelta(days=hold_days)).date().isoformat()
         await db.merchant_reserves.insert_one({
             "reserve_id": short_id("RSV", 12),
             "merchant_id": merchant["merchant_id"],
@@ -522,11 +541,13 @@ async def finalise_settlement(merchant: dict, settlement_id: str, idempotency_ke
             "status": "active",
             "amount_minor": int(settlement.get("reserve_held_minor") or 0),
             "currency": "EUR",
-            "reason": "Rolling reserve",
+            "reason": reserve_reason,
+            "hold_days": hold_days,
             "hold_date": now_iso(),
             "expected_release_date": expected_release_date,
             "released_amount_minor": 0,
             "created_by": actor_user_id,
+            "history": [build_audit_event("hold_created", actor_user_id, reserve_reason, settlement_id=settlement_id, hold_days=hold_days)],
         })
         await _create_balance_entry({
             "entry_id": short_id("MBE", 12),
@@ -541,10 +562,10 @@ async def finalise_settlement(merchant: dict, settlement_id: str, idempotency_ke
             "currency": "EUR",
             "status": "reserved",
             "reference": settlement_id,
-            "description": "Rolling reserve hold",
+            "description": reserve_reason,
             "posted_at": now_iso(),
             "reversed_by": None,
-            "metadata": {"reason": "Rolling reserve"},
+            "metadata": {"reason": reserve_reason, "hold_days": hold_days, "rule_id": (reserve_rule or {}).get("reserve_id")},
         })
     await release_due_reserves(merchant["merchant_id"], settlement.get("branch_id", ""), settlement_id)
     finalised = {
@@ -565,7 +586,9 @@ async def release_due_reserves(merchant_id: str, branch_id: str, settlement_id: 
     for hold in due:
         amount_minor = int(hold.get("amount_minor") or 0)
         total_released += amount_minor
-        await db.merchant_reserves.update_one({"reserve_id": hold["reserve_id"]}, {"$set": {"status": "released", "released_at": now_iso(), "released_amount_minor": amount_minor}})
+        history = list(hold.get("history") or [])
+        history.append(build_audit_event("released", "system", hold.get("reason", "Reserve release"), amount_minor=amount_minor))
+        await db.merchant_reserves.update_one({"reserve_id": hold["reserve_id"]}, {"$set": {"status": "released", "released_at": now_iso(), "released_amount_minor": amount_minor, "history": history}})
         await _create_balance_entry({
             "entry_id": short_id("MBE", 12),
             "merchant_id": merchant_id,
@@ -750,10 +773,234 @@ async def apply_reserve_rule(*, merchant_id: str, percentage_basis_points: int =
         "hold_days": hold_days,
         "created_at": now_iso(),
         "created_by": actor_id,
+        "history": [build_audit_event("rule_created", actor_id, reason, percentage_basis_points=percentage_basis_points, fixed_minor=fixed_minor, hold_days=hold_days)],
     }
     await db.merchant_reserves.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+
+async def list_reserve_activity(merchant_id: str) -> dict[str, Any]:
+    rules = await db.merchant_reserves.find({"merchant_id": merchant_id, "mode": "rule"}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    holds = await db.merchant_reserves.find({"merchant_id": merchant_id, "mode": "hold"}, {"_id": 0}).sort("hold_date", -1).to_list(100)
+    return {
+        "rules": rules,
+        "holds": holds,
+        "active_rule": next((rule for rule in rules if rule.get("active")), None),
+        "active_hold_count": len([row for row in holds if row.get("status") == "active"]),
+    }
+
+
+async def create_adjustment_request(*, merchant_id: str, amount_minor: int, direction: str, reason: str, evidence: str, requested_by: str, idempotency_key: str, adjustment_type: str, second_admin_id: str | None = None) -> dict[str, Any]:
+    if direction not in {"credit", "debit"}:
+        raise ValueError("Ungültige Richtung")
+    existing = await db.merchant_adjustments.find_one({"merchant_id": merchant_id, "idempotency_key": idempotency_key}, {"_id": 0})
+    if existing:
+        return existing
+    request_doc = {
+        "adjustment_id": short_id("ADJ", 12),
+        "merchant_id": merchant_id,
+        "amount_minor": abs(int(amount_minor)),
+        "direction": direction,
+        "reason": reason,
+        "evidence": evidence,
+        "adjustment_type": adjustment_type,
+        "idempotency_key": idempotency_key,
+        "status": "pending_approval",
+        "requested_by": requested_by,
+        "second_admin_id": second_admin_id,
+        "approval_required": abs(int(amount_minor)) >= 100000,
+        "created_at": now_iso(),
+        "approved_at": None,
+        "rejected_at": None,
+        "applied_entry_id": None,
+        "history": [build_audit_event("requested", requested_by, reason, evidence=evidence, adjustment_type=adjustment_type)],
+    }
+    await db.merchant_adjustments.insert_one(request_doc)
+    request_doc.pop("_id", None)
+    return request_doc
+
+
+async def review_adjustment_request(*, adjustment_id: str, action: str, actor_id: str, note: str = "", second_admin_id: str | None = None) -> dict[str, Any]:
+    request_doc = await db.merchant_adjustments.find_one({"adjustment_id": adjustment_id}, {"_id": 0})
+    if not request_doc:
+        raise ValueError("Adjustment nicht gefunden")
+    if request_doc.get("status") in {"applied", "rejected"}:
+        return request_doc
+    history = list(request_doc.get("history") or [])
+    if action == "reject":
+        history.append(build_audit_event("rejected", actor_id, note))
+        await db.merchant_adjustments.update_one({"adjustment_id": adjustment_id}, {"$set": {"status": "rejected", "rejected_at": now_iso(), "reviewed_by": actor_id, "review_note": note, "history": history}})
+        return await db.merchant_adjustments.find_one({"adjustment_id": adjustment_id}, {"_id": 0})
+    if request_doc.get("approval_required") and not (second_admin_id or request_doc.get("second_admin_id")):
+        raise ValueError("Zweite Freigabe ab 1.000,00 € erforderlich")
+    if request_doc.get("approval_required") and (second_admin_id or request_doc.get("second_admin_id")) == request_doc.get("requested_by"):
+        raise ValueError("Zweite Freigabe muss von einem anderen Admin stammen")
+    applied_entry = await create_manual_adjustment(
+        merchant_id=request_doc["merchant_id"],
+        amount_minor=int(request_doc.get("amount_minor") or 0),
+        direction=request_doc["direction"],
+        reason=request_doc["reason"],
+        evidence=request_doc.get("evidence", ""),
+        approving_admin=actor_id,
+        idempotency_key=request_doc["idempotency_key"],
+        adjustment_type=request_doc["adjustment_type"],
+    )
+    history.append(build_audit_event("approved", actor_id, note, second_admin_id=second_admin_id or request_doc.get("second_admin_id"), applied_entry_id=applied_entry.get("entry_id")))
+    await db.merchant_adjustments.update_one(
+        {"adjustment_id": adjustment_id},
+        {"$set": {
+            "status": "applied",
+            "approved_at": now_iso(),
+            "reviewed_by": actor_id,
+            "review_note": note,
+            "second_admin_id": second_admin_id or request_doc.get("second_admin_id"),
+            "applied_entry_id": applied_entry.get("entry_id"),
+            "history": history,
+        }}
+    )
+    return await db.merchant_adjustments.find_one({"adjustment_id": adjustment_id}, {"_id": 0})
+
+
+async def list_adjustments(merchant_id: str) -> list[dict[str, Any]]:
+    return await db.merchant_adjustments.find({"merchant_id": merchant_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+async def create_chargeback_dispute(*, merchant_id: str, amount_minor: int, reason: str, evidence: str, actor_id: str, idempotency_key: str, sale_id: str = "") -> dict[str, Any]:
+    existing = await db.merchant_disputes.find_one({"merchant_id": merchant_id, "idempotency_key": idempotency_key}, {"_id": 0})
+    if existing:
+        return existing
+    sale = await db.pos_sales.find_one({"sale_id": sale_id}, {"_id": 0}) if sale_id else None
+    sale_entry = await db.merchant_balance_entries.find_one({"merchant_id": merchant_id, "transaction_id": sale_id, "type": "sale"}, {"_id": 0}) if sale_id else None
+    settlement = await db.merchant_settlements.find_one({"settlement_id": (sale_entry or {}).get("settlement_id")}, {"_id": 0}) if (sale_entry or {}).get("settlement_id") else None
+    payout = await db.merchant_payouts.find_one({"payout_id": (settlement or {}).get("payout_id")}, {"_id": 0}) if (settlement or {}).get("payout_id") else None
+    lifecycle_stage = "post_payout" if (payout or {}).get("status") == "paid" else "pre_payout"
+    entry_status = "available" if lifecycle_stage == "post_payout" or (settlement or {}).get("status") in {"finalised", "payout_pending", "paid", "partially_paid"} else "pending"
+    chargeback_entry = await _create_balance_entry({
+        "entry_id": short_id("MBE", 12),
+        "merchant_id": merchant_id,
+        "branch_id": (sale or {}).get("store_id", ""),
+        "settlement_id": (sale_entry or {}).get("settlement_id"),
+        "payout_id": (settlement or {}).get("payout_id"),
+        "transaction_id": sale_id or short_id("DSP", 10),
+        "type": "chargeback",
+        "direction": "debit",
+        "amount_minor": abs(int(amount_minor)),
+        "currency": "EUR",
+        "status": entry_status,
+        "reference": sale_id or idempotency_key,
+        "description": reason,
+        "posted_at": now_iso() if entry_status == "available" else None,
+        "reversed_by": None,
+        "metadata": {"evidence": evidence, "sale_id": sale_id, "lifecycle_stage": lifecycle_stage, "idempotency_key": idempotency_key},
+    })
+    dispute = {
+        "dispute_id": short_id("DSP", 12),
+        "merchant_id": merchant_id,
+        "sale_id": sale_id,
+        "settlement_id": (sale_entry or {}).get("settlement_id"),
+        "payout_id": (settlement or {}).get("payout_id"),
+        "chargeback_entry_id": chargeback_entry["entry_id"],
+        "amount_minor": abs(int(amount_minor)),
+        "currency": "EUR",
+        "reason": reason,
+        "evidence": evidence,
+        "status": "open",
+        "lifecycle_stage": lifecycle_stage,
+        "created_by": actor_id,
+        "idempotency_key": idempotency_key,
+        "created_at": now_iso(),
+        "resolved_at": None,
+        "history": [build_audit_event("opened", actor_id, reason, evidence=evidence, lifecycle_stage=lifecycle_stage, chargeback_entry_id=chargeback_entry["entry_id"])],
+    }
+    await db.merchant_disputes.insert_one(dispute)
+    await recompute_balance_snapshot(merchant_id)
+    dispute.pop("_id", None)
+    return dispute
+
+
+async def review_chargeback_dispute(*, dispute_id: str, action: str, actor_id: str, note: str = "") -> dict[str, Any]:
+    dispute = await db.merchant_disputes.find_one({"dispute_id": dispute_id}, {"_id": 0})
+    if not dispute:
+        raise ValueError("Dispute nicht gefunden")
+    if dispute.get("status") in {"merchant_won", "merchant_lost", "closed"} and action in {"merchant_won", "merchant_lost", "close"}:
+        return dispute
+    history = list(dispute.get("history") or [])
+    new_status = action
+    chargeback_entry = await db.merchant_balance_entries.find_one({"entry_id": dispute.get("chargeback_entry_id")}, {"_id": 0})
+    if action == "merchant_won" and chargeback_entry:
+        await db.merchant_balance_entries.update_one({"entry_id": chargeback_entry["entry_id"]}, {"$set": {"status": "reversed", "reversed_by": dispute_id, "metadata.resolution": "merchant_won", "metadata.resolution_note": note}})
+    if action == "merchant_lost" and chargeback_entry and chargeback_entry.get("status") == "pending":
+        await db.merchant_balance_entries.update_one({"entry_id": chargeback_entry["entry_id"]}, {"$set": {"status": "available", "posted_at": now_iso(), "metadata.resolution": "merchant_lost", "metadata.resolution_note": note}})
+    history.append(build_audit_event(action, actor_id, note))
+    updates = {"status": new_status, "history": history}
+    if action in {"merchant_won", "merchant_lost", "closed"}:
+        updates["resolved_at"] = now_iso()
+    await db.merchant_disputes.update_one({"dispute_id": dispute_id}, {"$set": updates})
+    await recompute_balance_snapshot(dispute["merchant_id"])
+    return await db.merchant_disputes.find_one({"dispute_id": dispute_id}, {"_id": 0})
+
+
+async def list_disputes(merchant_id: str) -> list[dict[str, Any]]:
+    return await db.merchant_disputes.find({"merchant_id": merchant_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+def _apply_date_range_to_query(query: dict[str, Any], field: str, date_from: str = "", date_to: str = "") -> dict[str, Any]:
+    if date_from or date_to:
+        query[field] = {}
+        if date_from:
+            query[field]["$gte"] = date_from
+        if date_to:
+            query[field]["$lte"] = date_to
+    return query
+
+
+async def export_finance_csv(*, kind: str, merchant_id: str = "", status: str = "", date_from: str = "", date_to: str = "") -> str:
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+    if kind == "settlements":
+        query: dict[str, Any] = {"merchant_id": merchant_id} if merchant_id else {}
+        if status:
+            query["status"] = status
+        rows = await db.merchant_settlements.find(_apply_date_range_to_query(query, "created_at", date_from, date_to), {"_id": 0}).sort("created_at", -1).to_list(5000)
+        writer.writerow(["Settlement-ID", "Händler", "Status", "Zeitraum von", "Zeitraum bis", "Brutto Minor", "Brutto EUR", "Reserve Minor", "Reserve EUR", "Netto Minor", "Netto EUR"])
+        for row in rows:
+            writer.writerow([row.get("settlement_id"), row.get("merchant_id"), row.get("status"), row.get("period_start"), row.get("period_end"), row.get("gross_sales_minor", 0), minor_to_eur_csv(int(row.get("gross_sales_minor") or 0)), row.get("reserve_held_minor", 0), minor_to_eur_csv(int(row.get("reserve_held_minor") or 0)), row.get("net_amount_minor", 0), minor_to_eur_csv(int(row.get("net_amount_minor") or 0))])
+    elif kind == "payouts":
+        query = {"merchant_id": merchant_id} if merchant_id else {}
+        if status:
+            query["status"] = status
+        rows = await db.merchant_payouts.find(_apply_date_range_to_query(query, "created_at", date_from, date_to), {"_id": 0}).sort("created_at", -1).to_list(5000)
+        writer.writerow(["Payout-ID", "Händler", "Status", "Betrag Minor", "Betrag EUR", "Ziel", "Beantragt am", "Bezahlt am"])
+        for row in rows:
+            writer.writerow([row.get("payout_id"), row.get("merchant_id"), row.get("status"), row.get("amount_minor", 0), minor_to_eur_csv(int(row.get("amount_minor") or 0)), row.get("destination_reference_masked"), row.get("created_at"), row.get("paid_at")])
+    elif kind == "adjustments":
+        query = {"merchant_id": merchant_id} if merchant_id else {}
+        if status:
+            query["status"] = status
+        rows = await db.merchant_adjustments.find(_apply_date_range_to_query(query, "created_at", date_from, date_to), {"_id": 0}).sort("created_at", -1).to_list(5000)
+        writer.writerow(["Adjustment-ID", "Händler", "Status", "Typ", "Richtung", "Betrag Minor", "Betrag EUR", "Grund", "Evidence", "Freigabe benötigt", "Erstellt am"])
+        for row in rows:
+            writer.writerow([row.get("adjustment_id"), row.get("merchant_id"), row.get("status"), row.get("adjustment_type"), row.get("direction"), row.get("amount_minor", 0), minor_to_eur_csv(int(row.get("amount_minor") or 0)), row.get("reason"), row.get("evidence"), "ja" if row.get("approval_required") else "nein", row.get("created_at")])
+    elif kind == "reserves":
+        query = {"merchant_id": merchant_id} if merchant_id else {}
+        if status:
+            query["status"] = status
+        rows = await db.merchant_reserves.find(_apply_date_range_to_query(query, "created_at", date_from, date_to), {"_id": 0}).sort([("hold_date", -1), ("created_at", -1)]).to_list(5000)
+        writer.writerow(["Reserve-ID", "Händler", "Modus", "Status", "Betrag Minor", "Betrag EUR", "Grund", "Hold Days", "Expected Release", "Settlement-ID"])
+        for row in rows:
+            writer.writerow([row.get("reserve_id"), row.get("merchant_id"), row.get("mode"), row.get("status"), row.get("amount_minor", 0), minor_to_eur_csv(int(row.get("amount_minor") or 0)), row.get("reason"), row.get("hold_days"), row.get("expected_release_date"), row.get("settlement_id")])
+    elif kind == "disputes":
+        query = {"merchant_id": merchant_id} if merchant_id else {}
+        if status:
+            query["status"] = status
+        rows = await db.merchant_disputes.find(_apply_date_range_to_query(query, "created_at", date_from, date_to), {"_id": 0}).sort("created_at", -1).to_list(5000)
+        writer.writerow(["Dispute-ID", "Händler", "Status", "Stage", "Sale-ID", "Settlement-ID", "Payout-ID", "Betrag Minor", "Betrag EUR", "Grund", "Erstellt am"])
+        for row in rows:
+            writer.writerow([row.get("dispute_id"), row.get("merchant_id"), row.get("status"), row.get("lifecycle_stage"), row.get("sale_id"), row.get("settlement_id"), row.get("payout_id"), row.get("amount_minor", 0), minor_to_eur_csv(int(row.get("amount_minor") or 0)), row.get("reason"), row.get("created_at")])
+    else:
+        raise ValueError("Unbekannter Exporttyp")
+    return output.getvalue()
 
 
 async def create_manual_adjustment(*, merchant_id: str, amount_minor: int, direction: str, reason: str, evidence: str, approving_admin: str, idempotency_key: str, adjustment_type: str) -> dict[str, Any]:
@@ -880,6 +1127,9 @@ async def build_command_center_summary(merchant: dict) -> dict[str, Any]:
     products = await db.pos_products.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).to_list(5000)
     payouts = await db.merchant_payouts.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
     settlements = await db.merchant_settlements.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    reserve_activity = await list_reserve_activity(merchant["merchant_id"])
+    adjustment_requests = await list_adjustments(merchant["merchant_id"])
+    disputes = await list_disputes(merchant["merchant_id"])
     devices = await db.pos_hardware_registry.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).to_list(500)
     branch_totals: dict[str, int] = defaultdict(int)
     payment_methods: dict[str, int] = defaultdict(int)
@@ -909,6 +1159,10 @@ async def build_command_center_summary(merchant: dict) -> dict[str, Any]:
         tasks.append({"priority": "warning", "title": "Auszahlung fehlgeschlagen", "description": "Bitte Auszahlung prüfen und erneut anstoßen"})
     if any(settlement.get("status") == "open" for settlement in settlements):
         tasks.append({"priority": "info", "title": "Settlement offen", "description": "Ein Settlement wartet noch auf Finalisierung"})
+    if any(item.get("status") == "pending_approval" for item in adjustment_requests):
+        tasks.append({"priority": "warning", "title": "Adjustment offen", "description": "Mindestens ein Adjustment wartet auf Freigabe"})
+    if any(item.get("status") in {"open", "under_review", "evidence_required"} for item in disputes):
+        tasks.append({"priority": "warning", "title": "Dispute aktiv", "description": "Chargeback oder Dispute benötigt Aufmerksamkeit"})
     today_revenue_minor = sum(to_minor(sale.get("total", 0)) for sale in sales)
     today_profit_minor = sum(to_minor((sale.get("merchant_received") or (sale.get("total", 0) - sale.get("fee", 0)))) for sale in sales) - sum(to_minor(refund.get("amount", 0)) for refund in refunds)
     status_badges = {
@@ -931,6 +1185,7 @@ async def build_command_center_summary(merchant: dict) -> dict[str, Any]:
             "low_stock": len(low_stock),
             "offline_devices": len(offline_devices),
             "open_tasks": len(tasks),
+            "open_disputes": len([row for row in disputes if row.get("status") in {"open", "under_review", "evidence_required"}]),
         },
         "live_status": status_badges,
         "sales_graph": [{"bucket": key, "amount_minor": value} for key, value in sorted(graph.items())][-12:],
@@ -948,7 +1203,11 @@ async def build_command_center_summary(merchant: dict) -> dict[str, Any]:
         },
         "payouts": payouts,
         "settlements": settlements,
-        "reserves": await db.merchant_reserves.find({"merchant_id": merchant["merchant_id"], "mode": "hold"}, {"_id": 0}).sort("hold_date", -1).limit(20).to_list(20),
+        "reserves": reserve_activity.get("holds", [])[:20],
+        "reserve_rules": reserve_activity.get("rules", [])[:10],
+        "active_reserve_rule": reserve_activity.get("active_rule"),
+        "adjustments": adjustment_requests[:20],
+        "disputes": disputes[:20],
         "refunds": refunds[:20],
         "devices": sanitize_doc(devices[:30]),
     }

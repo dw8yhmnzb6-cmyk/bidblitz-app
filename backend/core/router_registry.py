@@ -64,6 +64,8 @@ def register_all_routers(app):
         ("routes.kids", "router"),
         ("routes.kids_controls", "router"),
         ("routes.kids_app", "router"),
+        ("routes.kids_gps", "router"),
+        ("routes.kids_gps_websocket", "router"),
         ("routes.support", "router"),
         ("routes.feedback", "router"),
         ("routes.auctions", "router"),

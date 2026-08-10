@@ -14,9 +14,11 @@ from services.merchant_settlement import (
     build_command_center_summary,
     build_daily_closing_report,
     calculate_settlement_preview,
-    create_manual_adjustment,
+    create_adjustment_request,
+    create_chargeback_dispute,
     create_or_get_settlement,
     create_payout_request,
+    export_finance_csv,
     export_settlement_csv,
     finalise_daily_closing,
     finalise_settlement,
@@ -24,9 +26,14 @@ from services.merchant_settlement import (
     get_pos_merchant_for_user,
     get_pos_role_for_user,
     get_settlement_detail,
+    list_adjustments,
+    list_disputes,
+    list_reserve_activity,
     list_payouts,
     now_iso,
     recompute_balance_snapshot,
+    review_adjustment_request,
+    review_chargeback_dispute,
     update_payout_status,
 )
 
@@ -81,6 +88,26 @@ class ManualAdjustmentRequest(BaseModel):
     second_admin_id: Optional[str] = None
 
 
+class AdjustmentActionRequest(BaseModel):
+    action: str = Field(..., pattern="^(approve|reject)$")
+    note: str = ""
+    second_admin_id: Optional[str] = None
+
+
+class MerchantDisputeRequest(BaseModel):
+    merchant_id: str
+    amount_minor: int = Field(..., gt=0)
+    sale_id: str = ""
+    reason: str = Field(..., min_length=3)
+    evidence: str = Field(..., min_length=3)
+    idempotency_key: str = Field(..., min_length=6)
+
+
+class MerchantDisputeActionRequest(BaseModel):
+    action: str = Field(..., pattern="^(evidence_required|under_review|merchant_won|merchant_lost|closed)$")
+    note: str = ""
+
+
 class DailyClosingCreateRequest(BaseModel):
     date: Optional[str] = None
     branch_id: str = ""
@@ -130,7 +157,14 @@ async def merchant_settlement_overview(request: Request):
     balances = await get_balance_view(merchant)
     settlements = await db.merchant_settlements.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
     payouts = await db.merchant_payouts.find({"merchant_id": merchant["merchant_id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
-    return {"balances": balances, "settlements": settlements, "payouts": payouts}
+    return {
+        "balances": balances,
+        "settlements": settlements,
+        "payouts": payouts,
+        "reserves": await list_reserve_activity(merchant["merchant_id"]),
+        "adjustments": await list_adjustments(merchant["merchant_id"]),
+        "disputes": await list_disputes(merchant["merchant_id"]),
+    }
 
 
 @router.post("/api/merchant-settlements/calculate")
@@ -182,10 +216,38 @@ async def merchant_settlement_export_csv(settlement_id: str, request: Request):
     return PlainTextResponse(await export_settlement_csv(detail), media_type="text/csv")
 
 
+@router.get("/api/merchant-settlements/exports/{kind}.csv")
+async def merchant_finance_export_csv(kind: str, request: Request, status: str = "", date_from: str = "", date_to: str = ""):
+    _, merchant, _ = await _require_financial_merchant(request)
+    try:
+        csv_text = await export_finance_csv(kind=kind, merchant_id=merchant["merchant_id"], status=status, date_from=date_from, date_to=date_to)
+        return PlainTextResponse(csv_text, media_type="text/csv")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/api/merchant/payouts")
 async def merchant_payout_history(request: Request, status: str = "", branch: str = ""):
     _, merchant, _ = await _require_financial_merchant(request, owner_only=True)
     return {"rows": await list_payouts(merchant["merchant_id"], status=status, branch_id=branch)}
+
+
+@router.get("/api/merchant/reserves")
+async def merchant_reserve_history(request: Request):
+    _, merchant, _ = await _require_financial_merchant(request)
+    return await list_reserve_activity(merchant["merchant_id"])
+
+
+@router.get("/api/merchant/adjustments")
+async def merchant_adjustment_history(request: Request):
+    _, merchant, _ = await _require_financial_merchant(request)
+    return {"rows": await list_adjustments(merchant["merchant_id"])}
+
+
+@router.get("/api/merchant/disputes")
+async def merchant_dispute_history(request: Request):
+    _, merchant, _ = await _require_financial_merchant(request)
+    return {"rows": await list_disputes(merchant["merchant_id"])}
 
 
 @router.post("/api/merchant/payouts")
@@ -232,7 +294,20 @@ async def admin_merchant_settlements(request: Request, merchant_id: str = ""):
     settlements = await db.merchant_settlements.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     payouts = await db.merchant_payouts.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000) if merchant_id else await db.merchant_payouts.find({}, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
     balances = await db.merchant_balance_state.find(q, {"_id": 0}).to_list(1000) if merchant_id else await db.merchant_balance_state.find({}, {"_id": 0}).limit(1000).to_list(1000)
-    return {"settlements": settlements, "payouts": payouts, "balances": balances}
+    adjustments = await db.merchant_adjustments.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000) if merchant_id else await db.merchant_adjustments.find({}, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
+    reserves = await db.merchant_reserves.find(q, {"_id": 0}).sort([("hold_date", -1), ("created_at", -1)]).to_list(1000) if merchant_id else await db.merchant_reserves.find({}, {"_id": 0}).sort([("hold_date", -1), ("created_at", -1)]).limit(1000).to_list(1000)
+    disputes = await db.merchant_disputes.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000) if merchant_id else await db.merchant_disputes.find({}, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
+    return {"settlements": settlements, "payouts": payouts, "balances": balances, "adjustments": adjustments, "reserves": reserves, "disputes": disputes}
+
+
+@router.get("/api/admin/merchant-settlements/exports/{kind}.csv")
+async def admin_merchant_finance_export_csv(kind: str, request: Request, merchant_id: str = "", status: str = "", date_from: str = "", date_to: str = ""):
+    await _require_admin(request)
+    try:
+        csv_text = await export_finance_csv(kind=kind, merchant_id=merchant_id, status=status, date_from=date_from, date_to=date_to)
+        return PlainTextResponse(csv_text, media_type="text/csv")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/api/admin/merchant-settlements/payouts/{payout_id}/action")
@@ -255,19 +330,62 @@ async def admin_apply_merchant_reserve(req: ReserveRuleRequest, request: Request
 @router.post("/api/admin/merchant-settlements/adjustments")
 async def admin_create_adjustment(req: ManualAdjustmentRequest, request: Request):
     user = await _require_admin(request)
-    if abs(req.amount_minor) >= 100000 and not req.second_admin_id:
-        raise HTTPException(status_code=400, detail="Zweite Freigabe ab 1.000,00 € erforderlich")
     try:
-        adjustment = await create_manual_adjustment(
+        adjustment = await create_adjustment_request(
             merchant_id=req.merchant_id,
             amount_minor=req.amount_minor,
             direction=req.direction,
             reason=req.reason,
             evidence=req.evidence,
-            approving_admin=str(user["_id"]),
+            requested_by=str(user["_id"]),
             idempotency_key=req.idempotency_key,
             adjustment_type=req.adjustment_type,
+            second_admin_id=req.second_admin_id,
         )
         return {"adjustment": adjustment}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/api/admin/merchant-settlements/adjustments/{adjustment_id}/action")
+async def admin_review_adjustment(adjustment_id: str, req: AdjustmentActionRequest, request: Request):
+    user = await _require_admin(request)
+    try:
+        adjustment = await review_adjustment_request(
+            adjustment_id=adjustment_id,
+            action=req.action,
+            actor_id=str(user["_id"]),
+            note=req.note,
+            second_admin_id=req.second_admin_id,
+        )
+        return {"adjustment": adjustment}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/api/admin/merchant-settlements/disputes")
+async def admin_create_dispute(req: MerchantDisputeRequest, request: Request):
+    user = await _require_admin(request)
+    try:
+        dispute = await create_chargeback_dispute(
+            merchant_id=req.merchant_id,
+            amount_minor=req.amount_minor,
+            sale_id=req.sale_id,
+            reason=req.reason,
+            evidence=req.evidence,
+            actor_id=str(user["_id"]),
+            idempotency_key=req.idempotency_key,
+        )
+        return {"dispute": dispute}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/api/admin/merchant-settlements/disputes/{dispute_id}/action")
+async def admin_review_dispute(dispute_id: str, req: MerchantDisputeActionRequest, request: Request):
+    user = await _require_admin(request)
+    try:
+        dispute = await review_chargeback_dispute(dispute_id=dispute_id, action=req.action, actor_id=str(user["_id"]), note=req.note)
+        return {"dispute": dispute}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -190,6 +190,16 @@ function buildExportQuery(params = {}) {
   return qs ? `?${qs}` : "";
 }
 
+function buildFinanceExportQuery(params = {}) {
+  const q = new URLSearchParams();
+  if (params.status) q.set("status", params.status);
+  if (params.date_from) q.set("date_from", params.date_from);
+  if (params.date_to) q.set("date_to", params.date_to);
+  if (params.merchant_id) q.set("merchant_id", params.merchant_id);
+  const qs = q.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export const api = {
   // Auth
   register: (body) => request("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
@@ -748,22 +758,31 @@ export const api = {
   finaliseMerchantSettlement: (settlementId, body) => request(`/api/merchant-settlements/${encodeURIComponent(settlementId)}/finalise`, { method: "POST", body: JSON.stringify(body) }),
   getMerchantSettlementDetail: (settlementId) => request(`/api/merchant-settlements/${encodeURIComponent(settlementId)}`),
   exportMerchantSettlementCsv: async (settlementId) => {
-    const blob = await requestBlob(`/api/merchant-settlements/${encodeURIComponent(settlementId)}/export.csv`);
+    const file = await requestBlob(`/api/merchant-settlements/${encodeURIComponent(settlementId)}/export.csv`);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = URL.createObjectURL(file.blob);
     link.download = `${settlementId}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
   },
   getMerchantPayoutHistory: (status = "") => request(`/api/merchant/payouts${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   createMerchantPayout: (body) => request("/api/merchant/payouts", { method: "POST", body: JSON.stringify(body) }),
   getMerchantDailyClosing: (date = "") => request(`/api/merchant/pos/daily-closing${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   createMerchantDailyClosing: (body) => request("/api/merchant/pos/daily-closing", { method: "POST", body: JSON.stringify(body) }),
+  getMerchantReserveHistory: () => request("/api/merchant/reserves"),
+  getMerchantAdjustmentHistory: () => request("/api/merchant/adjustments"),
+  getMerchantDisputeHistory: () => request("/api/merchant/disputes"),
+  exportMerchantFinanceCsv: (kind, params = {}) => downloadCSV(`/api/merchant-settlements/exports/${encodeURIComponent(kind)}.csv${buildFinanceExportQuery(params)}`, `merchant_${kind}.csv`),
   getAdminMerchantSettlements: () => request("/api/admin/merchant-settlements"),
   adminMerchantPayoutAction: (payoutId, body) => request(`/api/admin/merchant-settlements/payouts/${encodeURIComponent(payoutId)}/action`, { method: "POST", body: JSON.stringify(body) }),
   adminApplyMerchantReserve: (body) => request("/api/admin/merchant-settlements/reserves", { method: "POST", body: JSON.stringify(body) }),
   adminCreateMerchantAdjustment: (body) => request("/api/admin/merchant-settlements/adjustments", { method: "POST", body: JSON.stringify(body) }),
+  adminReviewMerchantAdjustment: (adjustmentId, body) => request(`/api/admin/merchant-settlements/adjustments/${encodeURIComponent(adjustmentId)}/action`, { method: "POST", body: JSON.stringify(body) }),
+  adminCreateMerchantDispute: (body) => request("/api/admin/merchant-settlements/disputes", { method: "POST", body: JSON.stringify(body) }),
+  adminReviewMerchantDispute: (disputeId, body) => request(`/api/admin/merchant-settlements/disputes/${encodeURIComponent(disputeId)}/action`, { method: "POST", body: JSON.stringify(body) }),
+  exportAdminMerchantFinanceCsv: (kind, params = {}) => downloadCSV(`/api/admin/merchant-settlements/exports/${encodeURIComponent(kind)}.csv${buildFinanceExportQuery(params)}`, `admin_${kind}.csv`),
   getRegisterTransactions: (deviceId = "", branchId = "", period = "today") => {
     let q = [`period=${period}`];
     if (deviceId) q.push(`device_id=${deviceId}`);

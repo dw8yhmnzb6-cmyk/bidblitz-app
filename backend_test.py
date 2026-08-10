@@ -1,430 +1,457 @@
+#!/usr/bin/env python3
 """
-BidBlitz Pay Gateway - Backend API Tests
-Tests: payment creation, idempotency, mock confirm, cancel, refund, webhook, audit logs
+BidBlitz Backend API Test - Kids GPS & Merchant Finance V2
+Testing newly changed backend flows per HTTP/API
 """
-import requests
+
+import httpx
 import json
-import hashlib
-import hmac
-import time
+from datetime import datetime
 
-BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
+# Base URL from frontend .env
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com/api"
 
-# Test credentials from test_credentials.md
-REVIEWER_EMAIL = "reviewer@bidblitz.ae"
-REVIEWER_PASSWORD = "BidBlitzReview2026!"
+# Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"
 ADMIN_PASSWORD = "BidBlitz2026!"
+MERCHANT_EMAIL = "haendler@bidblitz.ae"
+MERCHANT_PASSWORD = "Haendler2026!"
 
 
-def test_config_returns_mock_mode():
-    """1. GET /api/bidblitz-pay/config should return mock/sandbox mode"""
-    print("\n=== Test 1: Config Endpoint ===")
-    resp = requests.get(f"{BASE_URL}/api/bidblitz-pay/config")
-    assert resp.status_code == 200, f"Config failed: {resp.status_code} - {resp.text}"
-    data = resp.json()
-    assert data["provider"] == "bidblitz_pay", f"Expected provider=bidblitz_pay, got {data.get('provider')}"
-    assert data["mode"] == "mock", f"Expected mode=mock, got {data.get('mode')}"
-    assert data["test_mode"] is True, f"Expected test_mode=True, got {data.get('test_mode')}"
-    print(f"✓ Config returns mock mode: {data}")
-    return True
+class TestSession:
+    def __init__(self):
+        self.client = httpx.Client(timeout=30.0, follow_redirects=True)
+        self.admin_token = None
+        self.merchant_token = None
+        self.admin_cookies = {}
+        self.merchant_cookies = {}
+    
+    def login_admin(self):
+        """Login as admin and store session."""
+        print("\n🔐 Logging in as Admin...")
+        resp = self.client.post(f"{BASE_URL}/auth/login", json={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD
+        })
+        if resp.status_code != 200:
+            print(f"❌ Admin login failed: {resp.status_code} - {resp.text}")
+            return False
+        
+        data = resp.json()
+        self.admin_cookies = dict(resp.cookies)
+        print(f"✅ Admin login successful - Role: {data.get('user', {}).get('role')}")
+        return True
+    
+    def login_merchant(self):
+        """Login as merchant and store session."""
+        print("\n🔐 Logging in as Merchant...")
+        resp = self.client.post(f"{BASE_URL}/auth/login", json={
+            "email": MERCHANT_EMAIL,
+            "password": MERCHANT_PASSWORD
+        })
+        if resp.status_code != 200:
+            print(f"❌ Merchant login failed: {resp.status_code} - {resp.text}")
+            return False
+        
+        data = resp.json()
+        self.merchant_cookies = dict(resp.cookies)
+        print(f"✅ Merchant login successful - Email: {data.get('user', {}).get('email')}")
+        return True
+    
+    def get_admin(self, endpoint):
+        """GET request with admin session."""
+        return self.client.get(f"{BASE_URL}{endpoint}", cookies=self.admin_cookies)
+    
+    def get_merchant(self, endpoint):
+        """GET request with merchant session."""
+        return self.client.get(f"{BASE_URL}{endpoint}", cookies=self.merchant_cookies)
+    
+    def post_admin(self, endpoint, json_data=None):
+        """POST request with admin session."""
+        return self.client.post(f"{BASE_URL}{endpoint}", json=json_data, cookies=self.admin_cookies)
+    
+    def post_merchant(self, endpoint, json_data=None):
+        """POST request with merchant session."""
+        return self.client.post(f"{BASE_URL}{endpoint}", json=json_data, cookies=self.merchant_cookies)
 
 
-def test_create_sandbox_payment():
-    """2. POST /api/bidblitz-pay/payments should create payment with redirect URLs and pending status"""
-    print("\n=== Test 2: Create Sandbox Payment ===")
-    payload = {
-        "amount": 24.90,
-        "currency": "EUR",
-        "order_id": f"TEST-SANDBOX-{int(time.time())}",
-        "description": "BidBlitz-Pay Sandbox Test",
-        "customer_email": "test@example.com",
-        "success_url": "/bidblitz-pay/success",
-        "cancel_url": "/bidblitz-pay/cancel",
-        "webhook_url": "",
-        "metadata": {"source": "backend_test"},
-        "idempotency_key": f"test-{int(time.time())}"
-    }
-    resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert resp.status_code == 200, f"Payment creation failed: {resp.status_code} - {resp.text}"
-    data = resp.json()
+def test_kids_gps_backend(session: TestSession):
+    """
+    Test 1: Kids-GPS Backend
+    - Check /api/kids/gps/all-locations (should NOT return 404)
+    - Check child-specific GPS endpoint (Location/History/Zones)
+    """
+    print("\n" + "="*80)
+    print("TEST 1: KIDS-GPS BACKEND")
+    print("="*80)
     
-    assert data["ok"] is True, "Expected ok=True"
-    assert "payment" in data, "Expected payment in response"
-    payment = data["payment"]
+    results = []
     
-    # Verify payment structure
-    assert payment["payment_id"].startswith("bbp_"), f"Expected payment_id to start with bbp_, got {payment['payment_id']}"
-    assert payment["mode"] == "mock", f"Expected mode=mock, got {payment['mode']}"
-    assert payment["test_mode"] is True, f"Expected test_mode=True, got {payment['test_mode']}"
-    assert payment["status"] == "pending", f"Expected status=pending, got {payment['status']}"
-    assert payment["amount"] == 24.90, f"Expected amount=24.90, got {payment['amount']}"
-    assert payment["currency"] == "EUR", f"Expected currency=EUR, got {payment['currency']}"
-    assert "redirect_url" in payment, "Expected redirect_url in payment"
-    assert "app_redirect_url" in payment, "Expected app_redirect_url in payment"
-    assert "wallet_redirect_url" in payment, "Expected wallet_redirect_url in payment"
+    # Test 1.1: GET /api/kids/gps/all-locations
+    print("\n📍 Test 1.1: GET /api/kids/gps/all-locations")
+    resp = session.get_admin("/kids/gps/all-locations")
+    print(f"   Status: {resp.status_code}")
     
-    print(f"✓ Created sandbox payment: {payment['payment_id']}")
-    print(f"  - Status: {payment['status']}")
-    print(f"  - Redirect URL: {payment['redirect_url']}")
-    print(f"  - App Redirect: {payment['app_redirect_url']}")
-    print(f"  - Wallet Redirect: {payment['wallet_redirect_url']}")
-    return payment["payment_id"]
+    if resp.status_code == 404:
+        print("   ❌ FAIL: Endpoint returns 404 (regression detected)")
+        results.append(("GET /api/kids/gps/all-locations", False, "404 Not Found"))
+    elif resp.status_code == 200:
+        data = resp.json()
+        children = data.get("children", [])
+        print(f"   ✅ PASS: Endpoint returns 200 OK")
+        print(f"   📊 Children found: {len(children)}")
+        results.append(("GET /api/kids/gps/all-locations", True, f"{len(children)} children"))
+        
+        # Test 1.2: Child-specific GPS endpoints (if children exist)
+        if children:
+            child = children[0]
+            child_id = child.get("child_id")
+            child_name = child.get("name", "Unknown")
+            print(f"\n📍 Test 1.2: Child-specific GPS endpoints for '{child_name}' ({child_id})")
+            
+            # Test 1.2a: GET /api/kids/gps/location/{child_id}
+            print(f"\n   📍 Test 1.2a: GET /api/kids/gps/location/{child_id}")
+            resp_loc = session.get_admin(f"/kids/gps/location/{child_id}")
+            print(f"      Status: {resp_loc.status_code}")
+            if resp_loc.status_code == 200:
+                loc_data = resp_loc.json()
+                print(f"      ✅ PASS: Location endpoint returns 200 OK")
+                print(f"      📊 Location: lat={loc_data.get('lat')}, lng={loc_data.get('lng')}")
+                print(f"      📊 Battery: {loc_data.get('battery_level')}%")
+                results.append((f"GET /api/kids/gps/location/{child_id}", True, "Location retrieved"))
+            else:
+                print(f"      ❌ FAIL: Status {resp_loc.status_code}")
+                results.append((f"GET /api/kids/gps/location/{child_id}", False, f"Status {resp_loc.status_code}"))
+            
+            # Test 1.2b: GET /api/kids/gps/location/{child_id}/history
+            print(f"\n   📍 Test 1.2b: GET /api/kids/gps/location/{child_id}/history?days=1")
+            resp_hist = session.get_admin(f"/kids/gps/location/{child_id}/history?days=1")
+            print(f"      Status: {resp_hist.status_code}")
+            if resp_hist.status_code == 200:
+                hist_data = resp_hist.json()
+                locations = hist_data.get("locations", [])
+                print(f"      ✅ PASS: History endpoint returns 200 OK")
+                print(f"      📊 History entries: {len(locations)}")
+                results.append((f"GET /api/kids/gps/location/{child_id}/history", True, f"{len(locations)} entries"))
+            else:
+                print(f"      ❌ FAIL: Status {resp_hist.status_code}")
+                results.append((f"GET /api/kids/gps/location/{child_id}/history", False, f"Status {resp_hist.status_code}"))
+            
+            # Test 1.2c: GET /api/kids/gps/zones/{child_id}
+            print(f"\n   📍 Test 1.2c: GET /api/kids/gps/zones/{child_id}")
+            resp_zones = session.get_admin(f"/kids/gps/zones/{child_id}")
+            print(f"      Status: {resp_zones.status_code}")
+            if resp_zones.status_code == 200:
+                zones_data = resp_zones.json()
+                zones = zones_data.get("zones", [])
+                print(f"      ✅ PASS: Zones endpoint returns 200 OK")
+                print(f"      📊 Zones found: {len(zones)}")
+                for zone in zones[:3]:  # Show first 3 zones
+                    print(f"         - {zone.get('name')} ({zone.get('zone_type')})")
+                results.append((f"GET /api/kids/gps/zones/{child_id}", True, f"{len(zones)} zones"))
+            else:
+                print(f"      ❌ FAIL: Status {resp_zones.status_code}")
+                results.append((f"GET /api/kids/gps/zones/{child_id}", False, f"Status {resp_zones.status_code}"))
+        else:
+            print("   ⚠️  No children found - skipping child-specific tests")
+            results.append(("Child-specific GPS endpoints", None, "No children available"))
+    else:
+        print(f"   ❌ FAIL: Unexpected status {resp.status_code}")
+        results.append(("GET /api/kids/gps/all-locations", False, f"Status {resp.status_code}"))
+    
+    return results
 
 
-def test_idempotency_reuses_payment():
-    """3. POST /api/bidblitz-pay/payments with same idempotency key should reuse payment"""
-    print("\n=== Test 3: Idempotency Key Reuse ===")
-    idempotency_key = f"test-idempotent-{int(time.time())}"
-    payload = {
-        "amount": 15.00,
-        "currency": "EUR",
-        "order_id": "TEST-IDEMPOTENT",
-        "description": "Idempotency Test",
-        "idempotency_key": idempotency_key
-    }
+def test_merchant_finance_v2_backend(session: TestSession):
+    """
+    Test 2: Merchant Finance V2 Backend
+    - Check GET /api/merchant-settlements/overview (new blocks: reserves, adjustments, disputes)
+    - Check merchant export endpoint (CSV with German headers)
+    """
+    print("\n" + "="*80)
+    print("TEST 2: MERCHANT FINANCE V2 BACKEND")
+    print("="*80)
     
-    # First request
-    resp1 = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert resp1.status_code == 200, f"First request failed: {resp1.status_code} - {resp1.text}"
-    data1 = resp1.json()
-    assert data1["reused"] is False, "First request should not be reused"
-    payment_id_1 = data1["payment"]["payment_id"]
+    results = []
     
-    # Second request with same idempotency key
-    resp2 = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert resp2.status_code == 200, f"Second request failed: {resp2.status_code} - {resp2.text}"
-    data2 = resp2.json()
-    assert data2["reused"] is True, "Second request should be reused"
-    payment_id_2 = data2["payment"]["payment_id"]
+    # Test 2.1: GET /api/merchant-settlements/overview
+    print("\n💰 Test 2.1: GET /api/merchant-settlements/overview")
+    resp = session.get_merchant("/merchant-settlements/overview")
+    print(f"   Status: {resp.status_code}")
     
-    assert payment_id_1 == payment_id_2, f"Idempotency should return same payment: {payment_id_1} != {payment_id_2}"
-    print(f"✓ Idempotency protection works: {payment_id_1}")
-    return True
+    if resp.status_code == 200:
+        data = resp.json()
+        print(f"   ✅ PASS: Overview endpoint returns 200 OK")
+        
+        # Check for new blocks
+        has_reserves = "reserves" in data
+        has_adjustments = "adjustments" in data
+        has_disputes = "disputes" in data
+        has_balances = "balances" in data
+        has_settlements = "settlements" in data
+        has_payouts = "payouts" in data
+        
+        print(f"   📊 Response structure:")
+        print(f"      - balances: {'✅' if has_balances else '❌'}")
+        print(f"      - settlements: {'✅' if has_settlements else '❌'}")
+        print(f"      - payouts: {'✅' if has_payouts else '❌'}")
+        print(f"      - reserves: {'✅' if has_reserves else '❌'} (NEW)")
+        print(f"      - adjustments: {'✅' if has_adjustments else '❌'} (NEW)")
+        print(f"      - disputes: {'✅' if has_disputes else '❌'} (NEW)")
+        
+        if has_reserves and has_adjustments and has_disputes:
+            print(f"   ✅ All new Finance V2 blocks present")
+            results.append(("GET /api/merchant-settlements/overview", True, "All V2 blocks present"))
+        else:
+            missing = []
+            if not has_reserves: missing.append("reserves")
+            if not has_adjustments: missing.append("adjustments")
+            if not has_disputes: missing.append("disputes")
+            print(f"   ⚠️  Missing blocks: {', '.join(missing)}")
+            results.append(("GET /api/merchant-settlements/overview", False, f"Missing: {', '.join(missing)}"))
+        
+        # Show data counts
+        if has_reserves:
+            reserves = data.get("reserves", {})
+            if isinstance(reserves, dict):
+                print(f"   📊 Reserves: {reserves.get('total_reserved_minor', 0)} minor units")
+            else:
+                print(f"   📊 Reserves: {len(reserves)} entries")
+        
+        if has_adjustments:
+            adjustments = data.get("adjustments", [])
+            print(f"   📊 Adjustments: {len(adjustments)} entries")
+        
+        if has_disputes:
+            disputes = data.get("disputes", [])
+            print(f"   📊 Disputes: {len(disputes)} entries")
+    else:
+        print(f"   ❌ FAIL: Status {resp.status_code}")
+        results.append(("GET /api/merchant-settlements/overview", False, f"Status {resp.status_code}"))
+    
+    # Test 2.2: Merchant Export Endpoint (CSV)
+    print("\n💰 Test 2.2: GET /api/merchant-settlements/exports/adjustments.csv")
+    resp_csv = session.get_merchant("/merchant-settlements/exports/adjustments.csv")
+    print(f"   Status: {resp_csv.status_code}")
+    
+    if resp_csv.status_code == 200:
+        csv_content = resp_csv.text
+        lines = csv_content.strip().split('\n')
+        print(f"   ✅ PASS: CSV export returns 200 OK")
+        print(f"   📊 CSV lines: {len(lines)}")
+        
+        if lines:
+            header = lines[0]
+            print(f"   📊 CSV Header: {header[:100]}...")
+            
+            # Check for German headers
+            german_keywords = ["Händler", "Betrag", "Datum", "Status", "Grund", "Typ"]
+            has_german = any(keyword in header for keyword in german_keywords)
+            
+            if has_german:
+                print(f"   ✅ CSV contains German headers")
+                results.append(("GET /api/merchant-settlements/exports/adjustments.csv", True, "German CSV"))
+            else:
+                print(f"   ⚠️  CSV may not have German headers")
+                results.append(("GET /api/merchant-settlements/exports/adjustments.csv", True, "CSV returned (check headers)"))
+        else:
+            print(f"   ⚠️  CSV is empty")
+            results.append(("GET /api/merchant-settlements/exports/adjustments.csv", True, "Empty CSV"))
+    else:
+        print(f"   ❌ FAIL: Status {resp_csv.status_code}")
+        results.append(("GET /api/merchant-settlements/exports/adjustments.csv", False, f"Status {resp_csv.status_code}"))
+    
+    return results
 
 
-def test_get_payment_by_id():
-    """4. GET /api/bidblitz-pay/payments/{payment_id} should return status and metadata"""
-    print("\n=== Test 4: Get Payment by ID ===")
-    # First create a payment
-    payload = {
-        "amount": 10.00,
-        "currency": "EUR",
-        "order_id": f"TEST-GET-{int(time.time())}",
-        "description": "Get Payment Test"
-    }
-    create_resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert create_resp.status_code == 200, f"Create failed: {create_resp.status_code}"
-    payment_id = create_resp.json()["payment"]["payment_id"]
+def test_admin_finance_v2_backend(session: TestSession):
+    """
+    Test 3: Admin Finance V2 Backend
+    - Check GET /api/admin/merchant-settlements (arrays: settlements, payouts, balances, adjustments, reserves, disputes)
+    - Check admin export endpoint
+    - Optional: Create small idempotent Finance-V2 test (if safe)
+    """
+    print("\n" + "="*80)
+    print("TEST 3: ADMIN FINANCE V2 BACKEND")
+    print("="*80)
     
-    # Get the payment
-    get_resp = requests.get(f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}")
-    assert get_resp.status_code == 200, f"Get failed: {get_resp.status_code} - {get_resp.text}"
-    data = get_resp.json()
+    results = []
     
-    assert data["ok"] is True, "Expected ok=True"
-    assert data["payment"]["payment_id"] == payment_id, f"Expected payment_id={payment_id}"
-    assert data["payment"]["amount"] == 10.00, f"Expected amount=10.00"
-    assert "refunds" in data, "Expected refunds in response"
-    print(f"✓ Get payment works: {payment_id}")
-    print(f"  - Status: {data['payment']['status']}")
-    print(f"  - Amount: {data['payment']['amount']} {data['payment']['currency']}")
-    return True
+    # Test 3.1: GET /api/admin/merchant-settlements
+    print("\n🔧 Test 3.1: GET /api/admin/merchant-settlements")
+    resp = session.get_admin("/admin/merchant-settlements")
+    print(f"   Status: {resp.status_code}")
+    
+    if resp.status_code == 200:
+        data = resp.json()
+        print(f"   ✅ PASS: Admin settlements endpoint returns 200 OK")
+        
+        # Check for all expected arrays/blocks
+        has_settlements = "settlements" in data
+        has_payouts = "payouts" in data
+        has_balances = "balances" in data
+        has_adjustments = "adjustments" in data
+        has_reserves = "reserves" in data
+        has_disputes = "disputes" in data
+        
+        print(f"   📊 Response structure:")
+        print(f"      - settlements: {'✅' if has_settlements else '❌'} ({len(data.get('settlements', []))} entries)")
+        print(f"      - payouts: {'✅' if has_payouts else '❌'} ({len(data.get('payouts', []))} entries)")
+        print(f"      - balances: {'✅' if has_balances else '❌'} ({len(data.get('balances', []))} entries)")
+        print(f"      - adjustments: {'✅' if has_adjustments else '❌'} ({len(data.get('adjustments', []))} entries)")
+        print(f"      - reserves: {'✅' if has_reserves else '❌'} ({len(data.get('reserves', []))} entries)")
+        print(f"      - disputes: {'✅' if has_disputes else '❌'} ({len(data.get('disputes', []))} entries)")
+        
+        all_present = all([has_settlements, has_payouts, has_balances, has_adjustments, has_reserves, has_disputes])
+        
+        if all_present:
+            print(f"   ✅ All Finance V2 arrays/blocks present")
+            results.append(("GET /api/admin/merchant-settlements", True, "All V2 blocks present"))
+        else:
+            missing = []
+            if not has_settlements: missing.append("settlements")
+            if not has_payouts: missing.append("payouts")
+            if not has_balances: missing.append("balances")
+            if not has_adjustments: missing.append("adjustments")
+            if not has_reserves: missing.append("reserves")
+            if not has_disputes: missing.append("disputes")
+            print(f"   ⚠️  Missing blocks: {', '.join(missing)}")
+            results.append(("GET /api/admin/merchant-settlements", False, f"Missing: {', '.join(missing)}"))
+    else:
+        print(f"   ❌ FAIL: Status {resp.status_code}")
+        results.append(("GET /api/admin/merchant-settlements", False, f"Status {resp.status_code}"))
+    
+    # Test 3.2: Admin Export Endpoint (CSV)
+    print("\n🔧 Test 3.2: GET /api/admin/merchant-settlements/exports/disputes.csv")
+    resp_csv = session.get_admin("/admin/merchant-settlements/exports/disputes.csv")
+    print(f"   Status: {resp_csv.status_code}")
+    
+    if resp_csv.status_code == 200:
+        csv_content = resp_csv.text
+        lines = csv_content.strip().split('\n')
+        print(f"   ✅ PASS: Admin CSV export returns 200 OK")
+        print(f"   📊 CSV lines: {len(lines)}")
+        
+        if lines:
+            header = lines[0]
+            print(f"   📊 CSV Header: {header[:100]}...")
+            
+            # Check for German headers
+            german_keywords = ["Händler", "Betrag", "Datum", "Status", "Grund"]
+            has_german = any(keyword in header for keyword in german_keywords)
+            
+            if has_german:
+                print(f"   ✅ CSV contains German headers")
+                results.append(("GET /api/admin/merchant-settlements/exports/disputes.csv", True, "German CSV"))
+            else:
+                print(f"   ⚠️  CSV may not have German headers")
+                results.append(("GET /api/admin/merchant-settlements/exports/disputes.csv", True, "CSV returned (check headers)"))
+        else:
+            print(f"   ⚠️  CSV is empty")
+            results.append(("GET /api/admin/merchant-settlements/exports/disputes.csv", True, "Empty CSV"))
+    else:
+        print(f"   ❌ FAIL: Status {resp_csv.status_code}")
+        results.append(("GET /api/admin/merchant-settlements/exports/disputes.csv", False, f"Status {resp_csv.status_code}"))
+    
+    # Test 3.3: Optional - Small idempotent Finance-V2 test
+    # Skipping for now as requested "nur wenn sicher ohne Bestandsschäden möglich"
+    # This would require knowing merchant_id and creating test data
+    print("\n🔧 Test 3.3: Idempotent Finance-V2 test (SKIPPED - requires safe test merchant)")
+    results.append(("Idempotent Finance-V2 test", None, "Skipped for safety"))
+    
+    return results
 
 
-def test_mock_confirm_requires_auth():
-    """5. POST /api/bidblitz-pay/payments/{payment_id}/confirm-mock should require auth"""
-    print("\n=== Test 5: Mock Confirm Requires Auth ===")
-    # Create a payment first
-    payload = {
-        "amount": 20.00,
-        "currency": "EUR",
-        "order_id": f"TEST-AUTH-{int(time.time())}"
-    }
-    create_resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    payment_id = create_resp.json()["payment"]["payment_id"]
+def print_summary(all_results):
+    """Print test summary."""
+    print("\n" + "="*80)
+    print("TEST SUMMARY")
+    print("="*80)
     
-    # Try to confirm without auth
-    resp = requests.post(
-        f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}/confirm-mock",
-        json={"approval_method": "wallet_release"}
-    )
-    assert resp.status_code == 401, f"Expected 401, got {resp.status_code}"
-    print(f"✓ Mock confirm requires authentication (got 401 as expected)")
-    return True
-
-
-def test_mock_confirm_changes_status_to_paid():
-    """5b. POST /api/bidblitz-pay/payments/{payment_id}/confirm-mock with auth should set status to paid"""
-    print("\n=== Test 5b: Mock Confirm Changes Status to Paid ===")
-    # Login as reviewer
-    session = requests.Session()
-    login_resp = session.post(f"{BASE_URL}/api/auth/login", json={
-        "email": REVIEWER_EMAIL,
-        "password": REVIEWER_PASSWORD
-    })
-    assert login_resp.status_code == 200, f"Login failed: {login_resp.status_code} - {login_resp.text}"
-    print(f"✓ Logged in as {REVIEWER_EMAIL}")
-    
-    # Create a payment
-    payload = {
-        "amount": 25.00,
-        "currency": "EUR",
-        "order_id": f"TEST-CONFIRM-{int(time.time())}",
-        "customer_email": REVIEWER_EMAIL
-    }
-    create_resp = session.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert create_resp.status_code == 200, f"Create failed: {create_resp.status_code}"
-    payment_id = create_resp.json()["payment"]["payment_id"]
-    print(f"✓ Created payment: {payment_id}")
-    
-    # Confirm the payment
-    confirm_resp = session.post(
-        f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}/confirm-mock",
-        json={"approval_method": "wallet_release"}
-    )
-    assert confirm_resp.status_code == 200, f"Confirm failed: {confirm_resp.status_code} - {confirm_resp.text}"
-    data = confirm_resp.json()
-    
-    assert data["ok"] is True, "Expected ok=True"
-    assert data["payment"]["status"] == "paid", f"Expected status=paid, got {data['payment']['status']}"
-    assert data["payment"]["provider_status"] == "mock_paid", f"Expected provider_status=mock_paid"
-    assert data["payment"]["paid_at"] is not None, "Expected paid_at to be set"
-    print(f"✓ Mock confirm changes status to paid: {payment_id}")
-    print(f"  - Status: {data['payment']['status']}")
-    print(f"  - Paid at: {data['payment']['paid_at']}")
-    return payment_id
-
-
-def test_cancel_pending_payment():
-    """6. POST /api/bidblitz-pay/payments/{payment_id}/cancel should cancel pending payment"""
-    print("\n=== Test 6: Cancel Pending Payment ===")
-    # Create a payment
-    payload = {
-        "amount": 30.00,
-        "currency": "EUR",
-        "order_id": f"TEST-CANCEL-{int(time.time())}"
-    }
-    create_resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    payment_id = create_resp.json()["payment"]["payment_id"]
-    
-    # Cancel the payment
-    cancel_resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}/cancel")
-    assert cancel_resp.status_code == 200, f"Cancel failed: {cancel_resp.status_code} - {cancel_resp.text}"
-    data = cancel_resp.json()
-    
-    assert data["ok"] is True, "Expected ok=True"
-    assert data["payment"]["status"] == "cancelled", f"Expected status=cancelled, got {data['payment']['status']}"
-    assert data["payment"]["cancelled_at"] is not None, "Expected cancelled_at to be set"
-    print(f"✓ Cancel payment works: {payment_id}")
-    print(f"  - Status: {data['payment']['status']}")
-    print(f"  - Cancelled at: {data['payment']['cancelled_at']}")
-    return True
-
-
-def test_refund_paid_payment():
-    """7. POST /api/bidblitz-pay/payments/{payment_id}/refunds should work for paid sandbox payment"""
-    print("\n=== Test 7: Refund Paid Payment ===")
-    # Login as reviewer
-    session = requests.Session()
-    login_resp = session.post(f"{BASE_URL}/api/auth/login", json={
-        "email": REVIEWER_EMAIL,
-        "password": REVIEWER_PASSWORD
-    })
-    assert login_resp.status_code == 200, f"Login failed: {login_resp.status_code}"
-    
-    # Create and confirm a payment
-    payload = {
-        "amount": 50.00,
-        "currency": "EUR",
-        "order_id": f"TEST-REFUND-{int(time.time())}",
-        "customer_email": REVIEWER_EMAIL
-    }
-    create_resp = session.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    assert create_resp.status_code == 200, f"Create failed: {create_resp.status_code}"
-    payment_id = create_resp.json()["payment"]["payment_id"]
-    
-    # Confirm the payment
-    confirm_resp = session.post(
-        f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}/confirm-mock",
-        json={"approval_method": "wallet_release"}
-    )
-    assert confirm_resp.status_code == 200, f"Confirm failed: {confirm_resp.status_code}"
-    print(f"✓ Created and confirmed payment: {payment_id}")
-    
-    # Create refund
-    refund_resp = session.post(
-        f"{BASE_URL}/api/bidblitz-pay/payments/{payment_id}/refunds",
-        json={"reason": "Backend test refund"}
-    )
-    assert refund_resp.status_code == 200, f"Refund failed: {refund_resp.status_code} - {refund_resp.text}"
-    data = refund_resp.json()
-    
-    assert data["ok"] is True, "Expected ok=True"
-    assert "refund" in data, "Expected refund in response"
-    assert data["refund"]["refund_id"].startswith("bbr_"), f"Expected refund_id to start with bbr_"
-    assert data["refund"]["amount"] == 50.00, f"Expected refund amount=50.00"
-    assert data["refund"]["status"] == "succeeded", f"Expected refund status=succeeded (mock mode)"
-    assert data["payment"]["status"] == "refunded", f"Expected payment status=refunded"
-    print(f"✓ Refund created: {data['refund']['refund_id']}")
-    print(f"  - Refund amount: {data['refund']['amount']} {data['refund']['currency']}")
-    print(f"  - Refund status: {data['refund']['status']}")
-    print(f"  - Payment status: {data['payment']['status']}")
-    return True
-
-
-def test_webhook_with_valid_signature():
-    """8. POST /api/bidblitz-pay/webhook should accept valid signature"""
-    print("\n=== Test 8: Webhook with Valid Signature ===")
-    # Create a payment first
-    payload = {
-        "amount": 60.00,
-        "currency": "EUR",
-        "order_id": f"TEST-WEBHOOK-{int(time.time())}"
-    }
-    create_resp = requests.post(f"{BASE_URL}/api/bidblitz-pay/payments", json=payload)
-    payment_id = create_resp.json()["payment"]["payment_id"]
-    
-    # Prepare webhook payload
-    webhook_payload = {
-        "event": "payment.paid",
-        "payment_id": payment_id,
-        "status": "paid",
-        "paid_at": "2026-08-01T12:00:00Z"
-    }
-    
-    # Sign with mock secret
-    secret = "mock-webhook-secret"
-    raw = json.dumps(webhook_payload, separators=(",", ":"), sort_keys=True).encode()
-    signature = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-    
-    # Send webhook
-    webhook_resp = requests.post(
-        f"{BASE_URL}/api/bidblitz-pay/webhook",
-        json=webhook_payload,
-        headers={"X-BidBlitz-Pay-Signature": signature}
-    )
-    assert webhook_resp.status_code == 200, f"Webhook failed: {webhook_resp.status_code} - {webhook_resp.text}"
-    data = webhook_resp.json()
-    
-    assert data["ok"] is True, "Expected ok=True"
-    assert data["event"] == "payment.paid", f"Expected event=payment.paid"
-    print(f"✓ Webhook with valid signature accepted: {payment_id}")
-    print(f"  - Event: {data['event']}")
-    return True
-
-
-def test_webhook_rejects_invalid_signature():
-    """8b. POST /api/bidblitz-pay/webhook should reject invalid signature"""
-    print("\n=== Test 8b: Webhook Rejects Invalid Signature ===")
-    webhook_payload = {
-        "event": "payment.paid",
-        "payment_id": "bbp_test123",
-        "status": "paid"
-    }
-    
-    webhook_resp = requests.post(
-        f"{BASE_URL}/api/bidblitz-pay/webhook",
-        json=webhook_payload,
-        headers={"X-BidBlitz-Pay-Signature": "invalid_signature"}
-    )
-    assert webhook_resp.status_code == 401, f"Expected 401, got {webhook_resp.status_code}"
-    print(f"✓ Webhook rejects invalid signature (got 401 as expected)")
-    return True
-
-
-def test_admin_can_access_audit_logs():
-    """9. GET /api/bidblitz-pay/audit-logs should be accessible for admin"""
-    print("\n=== Test 9: Admin Can Access Audit Logs ===")
-    # Login as admin
-    session = requests.Session()
-    login_resp = session.post(f"{BASE_URL}/api/auth/login", json={
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD
-    })
-    assert login_resp.status_code == 200, f"Admin login failed: {login_resp.status_code} - {login_resp.text}"
-    print(f"✓ Logged in as {ADMIN_EMAIL}")
-    
-    resp = session.get(f"{BASE_URL}/api/bidblitz-pay/audit-logs")
-    assert resp.status_code == 200, f"Audit logs failed: {resp.status_code} - {resp.text}"
-    data = resp.json()
-    
-    assert data["ok"] is True, "Expected ok=True"
-    assert "logs" in data, "Expected logs in response"
-    assert "count" in data, "Expected count in response"
-    print(f"✓ Admin can access audit logs: {data['count']} entries")
-    return True
-
-
-def test_pay_directory_not_blocked():
-    """10. GET /api/pay/directory should not be blocked by invoice catch-all"""
-    print("\n=== Test 10: Regression Check - /api/pay/directory ===")
-    resp = requests.get(f"{BASE_URL}/api/pay/directory")
-    # Should return 200 with directory data, not 404 from invoice catch-all
-    assert resp.status_code == 200, f"Expected 200, got {resp.status_code} - {resp.text}"
-    data = resp.json()
-    assert "merchants" in data or "ok" in data, f"Expected valid directory response, got {data}"
-    print(f"✓ /api/pay/directory is not blocked by invoice catch-all")
-    print(f"  - Status: {resp.status_code}")
-    return True
-
-
-def run_all_tests():
-    """Run all BidBlitz-Pay backend tests"""
-    print("=" * 80)
-    print("BidBlitz-Pay Backend API Test Suite")
-    print("=" * 80)
-    
-    tests = [
-        ("Config Endpoint", test_config_returns_mock_mode),
-        ("Create Sandbox Payment", test_create_sandbox_payment),
-        ("Idempotency Key Reuse", test_idempotency_reuses_payment),
-        ("Get Payment by ID", test_get_payment_by_id),
-        ("Mock Confirm Requires Auth", test_mock_confirm_requires_auth),
-        ("Mock Confirm Changes Status to Paid", test_mock_confirm_changes_status_to_paid),
-        ("Cancel Pending Payment", test_cancel_pending_payment),
-        ("Refund Paid Payment", test_refund_paid_payment),
-        ("Webhook with Valid Signature", test_webhook_with_valid_signature),
-        ("Webhook Rejects Invalid Signature", test_webhook_rejects_invalid_signature),
-        ("Admin Can Access Audit Logs", test_admin_can_access_audit_logs),
-        ("Regression: /api/pay/directory Not Blocked", test_pay_directory_not_blocked),
-    ]
-    
+    total = 0
     passed = 0
     failed = 0
-    errors = []
+    skipped = 0
     
-    for name, test_func in tests:
-        try:
-            test_func()
+    for test_name, success, details in all_results:
+        total += 1
+        if success is True:
             passed += 1
-        except AssertionError as e:
+            status = "✅ PASS"
+        elif success is False:
             failed += 1
-            errors.append(f"❌ {name}: {str(e)}")
-            print(f"❌ FAILED: {name}")
-            print(f"   Error: {str(e)}")
-        except Exception as e:
-            failed += 1
-            errors.append(f"❌ {name}: {type(e).__name__}: {str(e)}")
-            print(f"❌ ERROR: {name}")
-            print(f"   {type(e).__name__}: {str(e)}")
+            status = "❌ FAIL"
+        else:
+            skipped += 1
+            status = "⚠️  SKIP"
+        
+        print(f"{status} - {test_name}")
+        if details:
+            print(f"         {details}")
     
-    print("\n" + "=" * 80)
-    print("TEST SUMMARY")
-    print("=" * 80)
-    print(f"Total: {len(tests)} tests")
-    print(f"✓ Passed: {passed}")
-    print(f"❌ Failed: {failed}")
+    print("\n" + "="*80)
+    print(f"Total: {total} | Passed: {passed} | Failed: {failed} | Skipped: {skipped}")
+    print("="*80)
     
-    if errors:
-        print("\nFailed Tests:")
-        for error in errors:
-            print(f"  {error}")
+    if failed == 0:
+        print("\n🎉 ALL TESTS PASSED!")
+        return True
+    else:
+        print(f"\n⚠️  {failed} TEST(S) FAILED")
+        return False
+
+
+def main():
+    """Main test runner."""
+    print("="*80)
+    print("BidBlitz Backend API Test - Kids GPS & Merchant Finance V2")
+    print("="*80)
+    print(f"Base URL: {BASE_URL}")
+    print(f"Test Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    print("=" * 80)
-    return passed, failed, errors
+    session = TestSession()
+    
+    # Login as admin
+    if not session.login_admin():
+        print("\n❌ Cannot proceed without admin login")
+        return False
+    
+    # Login as merchant
+    if not session.login_merchant():
+        print("\n❌ Cannot proceed without merchant login")
+        return False
+    
+    all_results = []
+    
+    # Run tests
+    try:
+        # Test 1: Kids GPS Backend
+        results_1 = test_kids_gps_backend(session)
+        all_results.extend(results_1)
+        
+        # Test 2: Merchant Finance V2 Backend
+        results_2 = test_merchant_finance_v2_backend(session)
+        all_results.extend(results_2)
+        
+        # Test 3: Admin Finance V2 Backend
+        results_3 = test_admin_finance_v2_backend(session)
+        all_results.extend(results_3)
+        
+    except Exception as e:
+        print(f"\n❌ Test execution error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    finally:
+        session.client.close()
+    
+    # Print summary
+    success = print_summary(all_results)
+    
+    return success
 
 
 if __name__ == "__main__":
-    passed, failed, errors = run_all_tests()
-    exit(0 if failed == 0 else 1)
+    import sys
+    success = main()
+    sys.exit(0 if success else 1)

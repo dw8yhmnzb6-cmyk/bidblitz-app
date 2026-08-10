@@ -61,6 +61,15 @@ export default function MerchantCommandCenterPage({ onBack, onNavigate }) {
     }
   };
 
+  const exportFinance = async (kind) => {
+    try {
+      await api.exportMerchantFinanceCsv(kind);
+      toast.success(`${kind} exportiert.`);
+    } catch (error) {
+      toast.error(error.message || "Export konnte nicht erstellt werden.");
+    }
+  };
+
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q || !data) return [];
@@ -103,6 +112,7 @@ export default function MerchantCommandCenterPage({ onBack, onNavigate }) {
           <MetricCard label="Niedriger Lagerbestand" value={`${data.top_cards.low_stock}`} tone={data.top_cards.low_stock ? "warning" : "default"} testId="merchant-command-center-card-low-stock" />
           <MetricCard label="Offline Geräte" value={`${data.top_cards.offline_devices}`} tone={data.top_cards.offline_devices ? "danger" : "default"} testId="merchant-command-center-card-offline-devices" />
           <MetricCard label="Offene Aufgaben" value={`${data.top_cards.open_tasks}`} tone={data.top_cards.open_tasks ? "warning" : "default"} testId="merchant-command-center-card-open-tasks" />
+          <MetricCard label="Offene Disputes" value={`${data.top_cards.open_disputes || 0}`} tone={(data.top_cards.open_disputes || 0) ? "warning" : "default"} testId="merchant-command-center-card-open-disputes" />
         </div>
 
         <div className={`rounded-[28px] border p-4 ${data.live_status.all_systems_operational ? "border-emerald-400/20 bg-emerald-400/10" : "border-rose-400/20 bg-rose-400/10"}`} data-testid="merchant-command-center-live-status">
@@ -190,6 +200,31 @@ export default function MerchantCommandCenterPage({ onBack, onNavigate }) {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={() => onNavigate?.("/merchant/pos/daily-closing")} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-daily-report-button"><Download size={16} />Tagesabschluss</button>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Reserve & Risiko" subtitle="Rolling Reserve, Freigaben und Chargebacks sichtbar getrennt" testId="merchant-command-center-risk-section">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <MiniList title="Aktive Reserve-Regel" icon={Wallet} rows={data.active_reserve_rule ? [{ label: data.active_reserve_rule.reason || "Rolling Reserve", value: data.active_reserve_rule.percentage_basis_points ? `${(Number(data.active_reserve_rule.percentage_basis_points || 0) / 100).toFixed(2)} %` : `${money(data.active_reserve_rule.fixed_minor || 0)}` }, { label: "Hold Days", value: `${data.active_reserve_rule.hold_days || 30}` }] : []} testId="merchant-command-center-active-reserve-rule" />
+                <MiniList title="Letzte Reserve-Holds" icon={AlertTriangle} rows={(data.reserves || []).slice(0, 4).map((item) => ({ label: item.reason || "Reserve Hold", value: `${money(item.amount_minor)} · ${item.status}` }))} testId="merchant-command-center-reserve-holds" />
+              </div>
+              <div className="mt-4 grid gap-3">
+                {(data.disputes || []).slice(0, 3).map((item, index) => <div key={item.dispute_id} className="rounded-[20px] border border-white/10 bg-[#071019] p-4 text-white" data-testid={`merchant-command-center-dispute-row-${index + 1}`}><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-black">{item.dispute_id}</div><div className="mt-1 text-sm text-white/60">{item.reason} · {item.lifecycle_stage}</div></div><div className="text-right"><div className="text-lg font-black">{money(item.amount_minor)}</div><div className="mt-1 text-xs text-white/52">{item.status}</div></div></div></div>)}
+                {!data.disputes?.length ? <div className="rounded-[20px] border border-dashed border-white/10 bg-[#071019] p-4 text-sm text-white/60" data-testid="merchant-command-center-disputes-empty">Keine aktiven Disputes.</div> : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Adjustments & Exporte" subtitle="Freigaben, Korrekturen und saubere Finanz-Exporte" testId="merchant-command-center-adjustments-section">
+              <div className="grid gap-3">
+                {(data.adjustments || []).slice(0, 4).map((item, index) => <div key={item.adjustment_id} className="rounded-[20px] border border-white/10 bg-[#071019] p-4 text-white" data-testid={`merchant-command-center-adjustment-row-${index + 1}`}><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-black">{item.adjustment_id}</div><div className="mt-1 text-sm text-white/60">{item.reason} · {item.adjustment_type}</div></div><div className="text-right"><div className="text-lg font-black">{item.direction === "debit" ? "-" : "+"}{money(item.amount_minor)}</div><div className="mt-1 text-xs text-white/52">{item.status}</div></div></div></div>)}
+                {!data.adjustments?.length ? <div className="rounded-[20px] border border-dashed border-white/10 bg-[#071019] p-4 text-sm text-white/60" data-testid="merchant-command-center-adjustments-empty">Noch keine Adjustments vorhanden.</div> : null}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={() => exportFinance("settlements")} className="min-h-12 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-export-settlements">Settlements exportieren</button>
+                <button onClick={() => exportFinance("payouts")} className="min-h-12 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-export-payouts">Payouts exportieren</button>
+                <button onClick={() => exportFinance("reserves")} className="min-h-12 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-export-reserves">Reserven exportieren</button>
+                <button onClick={() => exportFinance("adjustments")} className="min-h-12 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-export-adjustments">Adjustments exportieren</button>
+                <button onClick={() => exportFinance("disputes")} className="min-h-12 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white" data-testid="merchant-command-center-export-disputes">Disputes exportieren</button>
               </div>
             </SectionCard>
           </div>

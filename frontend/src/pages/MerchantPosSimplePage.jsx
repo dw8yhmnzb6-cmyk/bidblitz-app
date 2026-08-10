@@ -504,20 +504,22 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
           </aside>
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-[120] px-3 md:hidden" data-testid="merchant-pos-mobile-sticky-bar">
-          <div className="rounded-[24px] border border-white/10 bg-[#071019]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-white/72">{cartCount} Artikel</div>
-                <div className="truncate text-xl font-black text-white" data-testid="merchant-pos-mobile-total">{totals.total.toFixed(2)} €</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={() => setCartSheetOpen(true)} variant="outline" className="min-h-14 border-white/10 bg-white/5 px-4 text-white" data-testid="merchant-pos-mobile-cart-button">{copy.viewCart}</Button>
-                <Button onClick={startCheckout} disabled={!cart.length || lockCart} className="min-h-14 bg-[#06B6D4] px-5 text-black" data-testid="merchant-pos-mobile-pay-button">{copy.pay}</Button>
+        {!cartSheetOpen && !paymentOpen ? (
+          <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-[70] px-3 md:hidden" data-testid="merchant-pos-mobile-sticky-bar">
+            <div className="rounded-[24px] border border-white/10 bg-[#071019]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-white/72">{cartCount} Artikel</div>
+                  <div className="truncate text-xl font-black text-white" data-testid="merchant-pos-mobile-total">{totals.total.toFixed(2)} €</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setCartSheetOpen(true)} variant="outline" className="min-h-14 border-white/10 bg-white/5 px-4 text-white" data-testid="merchant-pos-mobile-cart-button">{copy.viewCart}</Button>
+                  <Button onClick={startCheckout} disabled={!cart.length || lockCart} className="min-h-14 bg-[#06B6D4] px-5 text-black" data-testid="merchant-pos-mobile-pay-button">{copy.pay}</Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {cartSheetOpen ? <div className="fixed inset-0 z-[75] bg-black/70 p-4 md:hidden" data-testid="merchant-pos-cart-mobile-sheet"><div className="mx-auto flex min-h-full max-w-xl items-end"><PosCartPanel copy={copy} cart={cart} totals={totals} locked={lockCart} onDecrease={(id) => changeQuantity(id, -1)} onIncrease={(id) => changeQuantity(id, 1)} onRemove={removeItem} onPay={startCheckout} onClose={() => setCartSheetOpen(false)} mobile testId="merchant-pos-cart-mobile-panel" /></div></div> : null}
 

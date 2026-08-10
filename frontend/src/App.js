@@ -1478,7 +1478,7 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && (
+      {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && !currentPath.startsWith('/merchant/pos') && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}

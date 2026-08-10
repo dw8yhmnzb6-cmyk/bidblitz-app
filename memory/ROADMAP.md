@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach Finance V2 Ausbau + Kids-GPS-Fix — 10.08.2026
+- ✅ Finance V2 steht jetzt deutlich breiter: **Reserve-Regeln**, **Adjustment-Freigaben**, **Dispute-/Chargeback-Sicht** und **deutschsprachige CSV-Exporte** sind live.
+- ✅ Merchant Command Center und Admin Merchant Settlements wurden um Risiko-, Reserve-, Adjustment- und Dispute-Steuerung erweitert.
+- ✅ Verifiziert mit **`backend/tests/test_merchant_finance_v2_iter316.py` PASS (7/7)**, API-Smokes **PASS** und Frontend-Smoke **PASS**.
+- ✅ Kids-GPS-Fehler aus dem Nutzer-Screenshot ist behoben: **`/api/kids/gps/*`** war wegen fehlender Router-Registrierung nicht erreichbar und antwortet jetzt wieder korrekt.
+- 🔴 Nächster sinnvoller Schritt: die restlichen **harten POS-Acceptance-Gates aus Iteration 314** weiter schließen und die noch fehlenden Mess-/A11y-/Retry-Nachweise sauber finalisieren.
+- 🟡 Danach: **Telegram-Alarm als Monitoring-Backup** umsetzen, sobald **Bot-Token + Chat-ID** vorliegen.
+- 🟡 Parallel bleibt möglich: Finance V2 weiter auf **Evidence-Uploads / Storage-Anbindung** und feinere Reconciliation-Ansichten ausbauen.
+
 ## Status nach Merchant Settlement / Payout / Daily Closing / POS Leitstand — 02.08.2026
 - ✅ Merchant-Finanzkern ist live: **`/api/merchant/balance`**, **`/api/merchant/command-center`**, Settlement-Liste/Overview/Detail, Payout-Historie und Daily Closing.
 - ✅ Neue Owner-/Admin-Oberflächen sind live: **`/merchant/dashboard`**, **`/merchant/payouts`**, **`/merchant/pos/daily-closing`**, **`/merchant/settlements/:id`**, **`/admin/merchant-settlements`**.

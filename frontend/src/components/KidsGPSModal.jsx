@@ -210,7 +210,7 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2" data-testid="kids-gps-tab-bar">
             {[
               { key: "live", label: "Live", icon: MapPin },
               { key: "history", label: "Verlauf", icon: History },
@@ -219,15 +219,16 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
               <motion.button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-2 text-[12px] font-semibold ${
+                data-testid={`kids-gps-tab-${tab.key}`}
+                className={`min-w-0 min-h-12 px-2 py-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] sm:text-[12px] font-semibold leading-none ${
                   activeTab === tab.key
                     ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                     : "bg-white/5 text-white/50"
                 }`}
                 whileTap={{ scale: 0.97 }}
               >
-                <tab.icon size={14} />
-                {tab.label}
+                <tab.icon size={14} className="shrink-0" />
+                <span className="truncate">{tab.label}</span>
               </motion.button>
             ))}
           </div>

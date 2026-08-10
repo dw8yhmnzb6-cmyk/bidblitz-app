@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 10.08.2026 — Finance V2 erweitert + Kids-GPS-Not-Found behoben
+- Merchant Finance V2 erweitert: `backend/services/merchant_settlement.py` und `backend/routes/merchant_settlements.py` unterstützen jetzt **Reserve-Regeln mit History**, **Adjustment-Requests inkl. Freigabe/Ablehnung**, **Dispute-/Chargeback-Workflows** sowie **deutschsprachige CSV-Exporte** für Settlements, Payouts, Adjustments, Reserves und Disputes.
+- Admin-/Merchant-Frontend erweitert: `MerchantCommandCenterPage.jsx` zeigt jetzt Risiko-/Reserve-/Dispute-/Adjustment-Blöcke und Export-Aktionen; `AdminMerchantSettlementsPage.jsx` bietet neue Admin-Formulare und Listen für Reserve-Regeln, Adjustments, Disputes und Finanz-Exporte; `frontend/src/services/api.js` enthält die neuen API-Wrapper.
+- Verifiziert: `pytest /app/backend/tests/test_merchant_finance_v2_iter316.py -q` **PASS (7/7)**, Live-API-Smokes **PASS**, Frontend-Smoke **PASS**.
+- Kids-GPS-Fehler beseitigt: `backend/core/router_registry.py` registriert jetzt wieder `routes.kids_gps` und `routes.kids_gps_websocket`, sodass **`/api/kids/gps/*`** nicht mehr mit **Not Found** ausfallen. Verifiziert mit Live-Check auf **`/api/kids/gps/all-locations` = 200** und Browser-Smoke ohne sichtbaren Not-Found-Fehler.
+
 ## 02.08.2026 — Merchant Settlement / Payout / Daily Closing / POS Leitstand V1
 - Neue Merchant-Finanzstrecke live: `backend/routes/merchant_settlements.py` liefert jetzt **`/api/merchant/balance`**, **`/api/merchant/command-center`**, **`/api/merchant-settlements*`**, **`/api/merchant/payouts*`**, **`/api/merchant/pos/daily-closing`** und **`/api/admin/merchant-settlements`**.
 - Neues Settlement-Backend `backend/services/merchant_settlement.py`: Ledger-basierte Balance-Entries, Minor-Units-/Basis-Points-Fee-Logik, idempotente Settlement-Berechnung/-Finalisierung, Reserve-Holds/Releases, Payout-State-Handling, Daily Closing mit immutablem Report sowie Admin-Audit-Einsicht.
