@@ -25,11 +25,29 @@ export default function MerchantPosCustomerDisplayPage() {
 
   const themeClass = useMemo(() => THEMES[theme] || THEMES.dark, [theme]);
 
+  const sanitizeDisplayState = (raw) => ({
+    merchant_name: raw?.merchant_name || "BidBlitz Merchant",
+    logo: raw?.logo || "",
+    items: Array.isArray(raw?.items) ? raw.items.map((item) => ({
+      name: item?.name || "Artikel",
+      quantity: Number(item?.quantity || 0),
+      total: Number(item?.total || 0),
+    })) : [],
+    subtotal: Number(raw?.subtotal || 0),
+    discount: Number(raw?.discount || 0),
+    tax: Number(raw?.tax || 0),
+    total: Number(raw?.total || 0),
+    payment_instruction: raw?.payment_instruction || "Bitte Zahlungsmittel auswählen",
+    payment_method: raw?.payment_method || "-",
+    receipt_id: raw?.receipt_id || "-",
+    status: raw?.status || "idle",
+  });
+
   useEffect(() => {
     const apply = () => {
       try {
         const raw = localStorage.getItem("bidblitz-pos-customer-display");
-        if (raw) setState(JSON.parse(raw));
+        if (raw) setState(sanitizeDisplayState(JSON.parse(raw)));
       } catch {
         /* ignore */
       }
@@ -86,6 +104,8 @@ export default function MerchantPosCustomerDisplayPage() {
           <div className="mt-5 flex flex-wrap items-center gap-3">
             {state.status === "success" ? <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/12 px-4 py-2 text-emerald-100" data-testid="merchant-pos-customer-success"><CheckCircle2 size={18} /> Zahlung erfolgreich. Vielen Dank!</div> : null}
             {state.status === "failed" ? <div className="flex items-center gap-2 rounded-full border border-rose-400/30 bg-rose-400/12 px-4 py-2 text-rose-100" data-testid="merchant-pos-customer-failure"><XCircle size={18} /> Zahlung wurde abgelehnt.</div> : null}
+            {state.status === "pending" ? <div className="flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/12 px-4 py-2 text-cyan-100" data-testid="merchant-pos-customer-pending"><ReceiptText size={18} /> Zahlung wird vorbereitet.</div> : null}
+            {state.status === "unknown" ? <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/12 px-4 py-2 text-amber-100" data-testid="merchant-pos-customer-unknown"><ReceiptText size={18} /> Status wird geprüft. Bitte nicht erneut bezahlen.</div> : null}
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
             <ReceiptOption icon={QrCode} label="QR-Code" testId="merchant-pos-customer-receipt-qr" />
@@ -104,7 +124,7 @@ function ReceiptOption({ icon: Icon, label, testId }) {
 }
 
 function ThemeButton({ icon: Icon, label, active, onClick, testId }) {
-  return <button onClick={onClick} className={`inline-flex min-h-12 items-center gap-2 rounded-full border px-4 py-3 text-sm font-bold transition ${active ? "border-cyan-400/30 bg-cyan-400/12 text-cyan-100" : "border-white/10 bg-white/5 text-white/72"}`} data-testid={testId}><Icon size={16} aria-hidden="true" />{label}</button>;
+  return <button onClick={onClick} aria-pressed={active} className={`inline-flex min-h-12 items-center gap-2 rounded-full border px-4 py-3 text-sm font-bold transition ${active ? "border-cyan-400/30 bg-cyan-400/12 text-cyan-100" : "border-white/10 bg-white/5 text-white/72"}`} data-testid={testId}><Icon size={16} aria-hidden="true" />{label}</button>;
 }
 
 function SummaryValue({ label, value, prominent, testId }) {

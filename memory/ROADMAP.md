@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach final geschlossenem POS-Acceptance-Paket — 11.08.2026
+- ✅ Die harten POS-Gates aus Iteration 314 gelten jetzt als **geschlossen**: Mobile/Tablet-Layout, Touch Targets, Failure-/Unknown-State, Customer-Display-Privacy und Backend-Duplikatschutz sind testverifiziert.
+- ✅ Teststand: **`/app/test_reports/iteration_316.json` PASS**, `backend/tests/test_pos_acceptance_iter316.py` **PASS**, `backend/tests/test_pos_hardening_iter314.py` **PASS (16/16)**.
+- ✅ Performance-Nachweis laut Testreport: POS-Start **1.45s**, Payment-Transition **82ms**; Search/Product-Tap im Report als **INFO** vermerkt, aber nicht blockierend.
+- 🔴 Nächster Hauptschritt bleibt: **Telegram-Alarm als Monitoring-Backup** (kritische Alarme + Tagesreport), sobald **Bot-Token + Chat-ID** vorliegen.
+- 🟡 Danach: weitere Commerce-/Mobility-Roadmap und optionale Storage-/Evidence-Anbindung für Disputes.
+
 ## Status nach Finance V2 Ausbau + Kids-GPS-Fix — 10.08.2026
 - ✅ Finance V2 steht jetzt deutlich breiter: **Reserve-Regeln**, **Adjustment-Freigaben**, **Dispute-/Chargeback-Sicht** und **deutschsprachige CSV-Exporte** sind live.
 - ✅ Merchant Command Center und Admin Merchant Settlements wurden um Risiko-, Reserve-, Adjustment- und Dispute-Steuerung erweitert.

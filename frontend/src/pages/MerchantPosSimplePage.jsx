@@ -30,7 +30,7 @@ const PAYMENT_KEYS = ["cash", "card", "wallet", "qr", "voucher", "invoice", "tap
 
 const STATUS_MAP = {
   idle: "ready",
-  pending: "review",
+  pending: "unknown",
   paid: "success",
   cancelled: "failure",
   expired: "failure",
@@ -87,6 +87,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const [submitting, setSubmitting] = useState(false);
   const [paymentState, setPaymentState] = useState({ stage: "ready", headline: copy.choosePayment, description: copy.holdCard });
   const [activePayment, setActivePayment] = useState(null);
+  const [lastAttemptedMethodKey, setLastAttemptedMethodKey] = useState(null);
   const [cartSession, setCartSession] = useState(null);
   const [favourites, setFavourites] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bidblitz-pos-favourites") || "[]"); } catch { return []; }
@@ -158,7 +159,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       payment_instruction: paymentState.description || copy.customerReady,
       payment_method: activePayment?.methodLabel || "-",
       receipt_id: paymentState.receiptId || "-",
-      status: paymentState.stage === "success" ? "success" : paymentState.stage === "failure" ? "failed" : "idle",
+      status: paymentState.stage === "success" ? "success" : paymentState.stage === "failure" ? "failed" : paymentState.stage === "unknown" ? "unknown" : ["awaiting", "processing", "review"].includes(paymentState.stage) ? "pending" : "idle",
     };
     localStorage.setItem("bidblitz-pos-customer-display", JSON.stringify(payload));
   }, [activePayment?.methodLabel, cart, copy.customerReady, paymentState.description, paymentState.receiptId, paymentState.stage, setup]);
@@ -250,7 +251,8 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       { label: copy.actionViewReport, path: "/merchant/pos/sales", icon: "report" },
     ], [copy, role]);
 
-  const lockCart = ["processing", "awaiting", "review"].includes(paymentState.stage);
+  const lockCart = ["processing", "awaiting", "review", "unknown"].includes(paymentState.stage);
+  const canDismissPaymentSheet = !["awaiting", "processing"].includes(paymentState.stage);
   const cartCount = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
   const updateRecent = (productId) => setRecentItems((current) => [productId, ...current.filter((item) => item !== productId)].slice(0, 12));
@@ -307,8 +309,9 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   };
 
   const handleMethodSelect = async (method) => {
-    if (!method.enabled || submitting || !cart.length) return;
+    if (!method?.enabled || submitting || !cart.length || paymentState.stage === "unknown") return;
     setSubmitting(true);
+    setLastAttemptedMethodKey(method.key);
     tracker.ctaClick(`payment_method_${method.key}`, "merchant_pos");
     try {
       const cartId = await ensureCartSession();
@@ -322,10 +325,21 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
         setActivePayment({ paymentId: response.payment.payment_id, methodKey: method.key, methodLabel: method.label });
       }
 
+      if (response.status === "already_paid") {
+        broadcastState("success", copy.success, copy.thankYou, { amount: totals.total, methodLabel: method.label, receiptId: response.sale?.receipt_id || "-" });
+        return;
+      }
+
       if (response.sale || response.payment?.status === "paid") {
         tracker.ctaClick("payment_succeeded", "merchant_pos");
         broadcastState("success", copy.success, copy.thankYou, { amount: totals.total, methodLabel: method.label, receiptId: response.sale?.receipt_id || "-" });
         setActivePayment((current) => ({ ...current, methodLabel: method.label, paymentId: response.payment?.payment_id, receiptId: response.sale?.receipt_id }));
+        return;
+      }
+
+      if (response.status === "pending_existing") {
+        broadcastState("unknown", copy.unknownTitle, response.message || copy.unknownText, { paymentId: response.payment?.payment_id, methodLabel: method.label });
+        setActivePayment((current) => ({ ...(current || {}), methodLabel: method.label, methodKey: method.key, paymentId: response.payment?.payment_id || current?.paymentId }));
         return;
       }
 
@@ -335,14 +349,15 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       }
 
       if (response.status === "approval_required") {
-        broadcastState("review", copy.reviewing, response.message || copy.doNotRepay, { paymentId: response.approval?.approval_id });
+        broadcastState("review", copy.approvalTitle, response.message || copy.approvalText, { paymentId: response.approval?.approval_id });
         return;
       }
 
-      broadcastState("review", copy.reviewing, copy.doNotRepay);
+      broadcastState("unknown", copy.unknownTitle, copy.unknownText);
     } catch (error) {
       tracker.ctaClick("payment_failed", "merchant_pos");
-      broadcastState(error.code === "timeout" || error.code === "network" ? "review" : "failure", error.code === "timeout" || error.code === "network" ? copy.reviewing : copy.failedTitle, error.code === "timeout" || error.code === "network" ? copy.doNotRepay : copy.failedText);
+      const uncertainState = ["timeout", "network", "server", "unknown"].includes(error.code);
+      broadcastState(uncertainState ? "unknown" : "failure", uncertainState ? copy.unknownTitle : copy.failedTitle, uncertainState ? copy.unknownText : copy.failedText);
       toast.error(error.message || "Checkout fehlgeschlagen.");
     } finally {
       setSubmitting(false);
@@ -362,8 +377,10 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
         broadcastState("success", copy.success, copy.thankYou, { amount: Number(result.amount || totals.total), methodLabel: activePayment.methodLabel, receiptId });
       } else if (stage === "failure") {
         broadcastState("failure", copy.failedTitle, copy.failedText);
+      } else if (stage === "review") {
+        broadcastState("review", copy.approvalTitle, copy.approvalText);
       } else {
-        broadcastState("review", copy.reviewing, copy.doNotRepay);
+        broadcastState("unknown", copy.unknownTitle, copy.unknownText);
       }
       toast.success(copy.statusRefreshed);
     } catch (error) {
@@ -374,6 +391,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const resetSale = async () => {
     setPaymentOpen(false);
     setActivePayment(null);
+    setLastAttemptedMethodKey(null);
     setPaymentState({ stage: "ready", headline: copy.choosePayment, description: copy.holdCard });
     setCart([]);
     setCartSession(null);
@@ -413,7 +431,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white" data-testid="merchant-pos-back-button"><ArrowLeft size={18} /></button>
+            <button onClick={onBack} className="flex min-h-12 min-w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300" data-testid="merchant-pos-back-button" aria-label="Zurück zur letzten Seite"><ArrowLeft size={18} /></button>
             <div className="min-w-0">
               <h1 className="truncate text-3xl font-black text-white">{role === "cashier" ? copy.cashierTitle : role === "manager" ? copy.managerTitle : copy.ownerTitle}</h1>
               <p className="text-sm text-white/62">{role === "cashier" ? copy.cashierSubtitle : role === "manager" ? copy.managerSubtitle : copy.ownerSubtitle}</p>
@@ -507,12 +525,12 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
         {!cartSheetOpen && !paymentOpen ? (
           <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-[70] px-3 md:hidden" data-testid="merchant-pos-mobile-sticky-bar">
             <div className="rounded-[24px] border border-white/10 bg-[#071019]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
                 <div className="min-w-0">
                   <div className="text-sm font-bold text-white/72">{cartCount} Artikel</div>
                   <div className="truncate text-xl font-black text-white" data-testid="merchant-pos-mobile-total">{totals.total.toFixed(2)} €</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="grid w-full grid-cols-2 gap-2 min-[380px]:w-auto" data-testid="merchant-pos-mobile-sticky-actions">
                   <Button onClick={() => setCartSheetOpen(true)} variant="outline" className="min-h-14 border-white/10 bg-white/5 px-4 text-white" data-testid="merchant-pos-mobile-cart-button">{copy.viewCart}</Button>
                   <Button onClick={startCheckout} disabled={!cart.length || lockCart} className="min-h-14 bg-[#06B6D4] px-5 text-black" data-testid="merchant-pos-mobile-pay-button">{copy.pay}</Button>
                 </div>
@@ -523,7 +541,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
 
         {cartSheetOpen ? <div className="fixed inset-0 z-[75] bg-black/70 p-4 md:hidden" data-testid="merchant-pos-cart-mobile-sheet"><div className="mx-auto flex min-h-full max-w-xl items-end"><PosCartPanel copy={copy} cart={cart} totals={totals} locked={lockCart} onDecrease={(id) => changeQuantity(id, -1)} onIncrease={(id) => changeQuantity(id, 1)} onRemove={removeItem} onPay={startCheckout} onClose={() => setCartSheetOpen(false)} mobile testId="merchant-pos-cart-mobile-panel" /></div></div> : null}
 
-        {paymentOpen ? <PosPaymentSheet copy={copy} methods={visibleMethods} paymentState={paymentState} busy={submitting} onClose={() => { if (!lockCart) setPaymentOpen(false); }} onMethodSelect={handleMethodSelect} onRetry={() => { tracker.ctaClick("payment_retried", "merchant_pos"); handleMethodSelect(visibleMethods.find((method) => method.key === activePayment?.methodKey) || visibleMethods[0]); }} onUseOtherMethod={() => broadcastState("ready", copy.choosePayment, copy.holdCard)} onCancel={() => { setPaymentOpen(false); setActivePayment(null); broadcastState("ready", copy.choosePayment, copy.holdCard); }} onCheckStatus={refreshPaymentStatus} onNewSale={resetSale} onReceiptAction={handleReceiptAction} /> : null}
+        {paymentOpen ? <PosPaymentSheet copy={copy} methods={visibleMethods} paymentState={paymentState} busy={submitting} retryEnabled={Boolean(lastAttemptedMethodKey && paymentState.stage === "failure")} onClose={() => { if (canDismissPaymentSheet) setPaymentOpen(false); }} onMethodSelect={handleMethodSelect} onRetry={() => { const retryMethod = visibleMethods.find((method) => method.key === lastAttemptedMethodKey); if (!retryMethod?.enabled) { toast.message(copy.retryBlocked); return; } tracker.ctaClick("payment_retried", "merchant_pos"); handleMethodSelect(retryMethod); }} onUseOtherMethod={() => { setActivePayment(null); broadcastState("ready", copy.choosePayment, copy.holdCard); }} onCancel={() => { setPaymentOpen(false); setActivePayment(null); setLastAttemptedMethodKey(null); broadcastState("ready", copy.choosePayment, copy.holdCard); }} onCheckStatus={refreshPaymentStatus} onNewSale={resetSale} onReceiptAction={handleReceiptAction} /> : null}
       </div>
     </div>
   );
@@ -547,8 +565,8 @@ function QuickStrip({ title, icon: Icon, items, fallback, onPrimary, onSecondary
       <div className="mt-4 flex flex-wrap gap-2">
         {items.length ? items.map((item, index) => (
           <div key={item.product_id} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#071019] px-3 py-2 text-sm text-white" data-testid={`${testId}-item-${index + 1}`}>
-            <button onClick={() => onPrimary(item)} className="font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">{item.name}</button>
-            <button onClick={() => onSecondary(item)} aria-label={secondaryLabel} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/72 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300" data-testid={`${testId}-toggle-${index + 1}`}><Star size={12} /></button>
+            <button onClick={() => onPrimary(item)} className="min-h-12 rounded-full px-3 py-2 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300" data-testid={`${testId}-primary-${index + 1}`}>{item.name}</button>
+            <button onClick={() => onSecondary(item)} aria-label={secondaryLabel} className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/72 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300" data-testid={`${testId}-toggle-${index + 1}`}><Star size={12} /></button>
           </div>
         )) : <div className="text-sm text-white/58" data-testid={`${testId}-empty`}>{fallback}</div>}
       </div>

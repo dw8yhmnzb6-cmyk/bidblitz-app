@@ -3,9 +3,15 @@ BidBlitz POS Customer & Merchant Experience Hardening Tests - Iteration 314
 Tests for: POS access, payment methods, duplicate payment guard, receipt totals, customer display
 """
 import os
+import sys
 import pytest
 import requests
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://super-app-staging-2.preview.emergentagent.com").rstrip("/")
 

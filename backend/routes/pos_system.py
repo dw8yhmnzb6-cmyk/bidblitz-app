@@ -868,6 +868,20 @@ async def create_payment(req: PaymentCreate, request: Request):
     if not cart:
         raise HTTPException(status_code=404, detail="Cart nicht gefunden")
     if cart["status"] != "open":
+        existing_paid = await db.pos_payments.find_one(
+            {"cart_id": cart["cart_id"], "status": PAYMENT_STATUS_PAID},
+            {"_id": 0},
+            sort=[("paid_at", -1), ("created_at", -1)],
+        )
+        if existing_paid:
+            sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+            return {
+                "ok": True,
+                "payment": existing_paid,
+                "sale": sale,
+                "status": "already_paid",
+                "message": "Dieser Warenkorb wurde bereits bezahlt.",
+            }
         raise HTTPException(status_code=400, detail="Cart bereits abgeschlossen")
     await _require_store_access(user, cart["store_id"])
     actor = await get_actor_context(user, cart["store_id"], cart["register_id"])
@@ -886,6 +900,20 @@ async def create_payment(req: PaymentCreate, request: Request):
         {"_id": 0},
         sort=[("created_at", -1)],
     )
+    existing_paid = await db.pos_payments.find_one(
+        {"cart_id": cart["cart_id"], "status": PAYMENT_STATUS_PAID},
+        {"_id": 0},
+        sort=[("paid_at", -1), ("created_at", -1)],
+    )
+    if existing_paid:
+        sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+        return {
+            "ok": True,
+            "payment": existing_paid,
+            "sale": sale,
+            "status": "already_paid",
+            "message": "Dieser Warenkorb wurde bereits bezahlt.",
+        }
     if existing_pending and _is_pending_payment_active(existing_pending):
         return {
             "ok": True,

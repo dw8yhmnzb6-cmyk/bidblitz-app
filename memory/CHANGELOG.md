@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 11.08.2026 — POS Acceptance Gates final geschlossen
+- POS-Checkout-Flow gehärtet: `MerchantPosSimplePage.jsx` trennt jetzt **Failure / Unknown / Review** sauber, sperrt neue Belastungen bei unklarem Status, führt Retry nur über **denselben letzten Zahlweg** aus und hält die Mobile-Sticky-Bar auf kleinen Geräten stabil.
+- Payment-/Display-A11y verbessert: `PosPaymentSheet.jsx`, `PosCartPanel.jsx` und `MerchantPosCustomerDisplayPage.jsx` erhielten größere Touch Targets, klarere Statusflächen und saubere Customer-Display-Privacy ohne interne IDs/Bestand/Margen/API-Texte.
+- Backend-Duplikatschutz ergänzt: `backend/routes/pos_system.py` liefert jetzt für offene/pending Zahlversuche **`pending_existing`** und für bereits bezahlte Warenkörbe **`already_paid`**, statt einen zweiten Belastungspfad zu erzeugen.
+- Verifiziert: `testing_agent` Report **`/app/test_reports/iteration_316.json` PASS**, `pytest /app/backend/tests/test_pos_acceptance_iter316.py -q` **PASS**, `pytest /app/backend/tests/test_pos_hardening_iter314.py -q` **PASS (16/16)**.
+
 ## 10.08.2026 — Finance V2 erweitert + Kids-GPS-Not-Found behoben
 - Merchant Finance V2 erweitert: `backend/services/merchant_settlement.py` und `backend/routes/merchant_settlements.py` unterstützen jetzt **Reserve-Regeln mit History**, **Adjustment-Requests inkl. Freigabe/Ablehnung**, **Dispute-/Chargeback-Workflows** sowie **deutschsprachige CSV-Exporte** für Settlements, Payouts, Adjustments, Reserves und Disputes.
 - Admin-/Merchant-Frontend erweitert: `MerchantCommandCenterPage.jsx` zeigt jetzt Risiko-/Reserve-/Dispute-/Adjustment-Blöcke und Export-Aktionen; `AdminMerchantSettlementsPage.jsx` bietet neue Admin-Formulare und Listen für Reserve-Regeln, Adjustments, Disputes und Finanz-Exporte; `frontend/src/services/api.js` enthält die neuen API-Wrapper.
