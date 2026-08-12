@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Telegram-Monitoring-Backup-Vorbereitung — 12.08.2026
+- ✅ Monitoring unterstützt jetzt ein Telegram-Backup-Gerüst für **kritische Alarme** und den **Tagesreport**.
+- ✅ Admin-Monitoring zeigt Status, Modus, maskierte Ziel-/Token-Infos und Test-Buttons für Telegram.
+- ✅ Verifiziert mit Backend-Smokes, Frontend-Smoke, `auto_frontend_testing_agent` und `deep_testing_backend_v2`.
+- 🟡 Für die echte Aktivierung fehlen noch **Backend-Env-Werte**: `TELEGRAM_BOT_TOKEN` und `TELEGRAM_CHAT_ID`.
+- 🔴 Nächster Aktivierungsschritt: Env-Werte setzen und dann einmal Test-Alarm + Tagesreport gegen den echten Telegram-Chat laufen lassen.
+
 ## Status nach final geschlossenem POS-Acceptance-Paket — 11.08.2026
 - ✅ Die harten POS-Gates aus Iteration 314 gelten jetzt als **geschlossen**: Mobile/Tablet-Layout, Touch Targets, Failure-/Unknown-State, Customer-Display-Privacy und Backend-Duplikatschutz sind testverifiziert.
 - ✅ Teststand: **`/app/test_reports/iteration_316.json` PASS**, `backend/tests/test_pos_acceptance_iter316.py` **PASS**, `backend/tests/test_pos_hardening_iter314.py` **PASS (16/16)**.

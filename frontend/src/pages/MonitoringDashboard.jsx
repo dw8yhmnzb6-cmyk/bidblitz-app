@@ -5,6 +5,7 @@ import {
   Wifi, WifiOff, RefreshCw,
   TrendingUp, Zap, BarChart3, ChevronLeft, Shield,
   ArrowUp, ArrowDown, Bug, LogIn, Globe, Siren, BellRing, CalendarClock,
+  Send,
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 
@@ -94,6 +95,7 @@ const MonitoringDashboard = ({ onBack }) => {
   const [errorCenter, setErrorCenter] = useState(null);
   const [runningChecks, setRunningChecks] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingTelegram, setSendingTelegram] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -166,6 +168,21 @@ const MonitoringDashboard = ({ onBack }) => {
       setError("Test-Mail konnte nicht gesendet werden");
     }
     setSendingEmail(false);
+  };
+
+  const sendTestTelegram = async (kind = "critical") => {
+    setSendingTelegram(true);
+    try {
+      await fetchApi("/api/admin/monitoring/send-test-telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind }),
+      });
+      await loadData();
+    } catch (e) {
+      setError("Telegram-Test konnte nicht gesendet werden");
+    }
+    setSendingTelegram(false);
   };
 
   return (
@@ -377,6 +394,37 @@ const MonitoringDashboard = ({ onBack }) => {
                   <button data-testid="monitor-send-daily-email-btn" onClick={() => sendTestEmail("daily")} className="rounded-xl px-3 py-2 bg-white/8 text-white text-[11px] font-bold disabled:opacity-50" disabled={sendingEmail}>{sendingEmail ? "Sende..." : "Test-Mail Tagesreport"}</button>
                 </div>
                 <p className="mt-2 text-[10px] text-white/40">Falls Test-Mails nicht ankommen, ist meistens die Resend-Domain oder der Empfänger im Resend-Testmodus noch nicht freigeschaltet.</p>
+              </div>
+            )}
+
+            {errorCenter.telegram_settings && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-telegram-settings-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[12px] font-bold text-white flex items-center gap-2"><Send size={13} className="text-[#229ED9]" /> Telegram Backup</p>
+                    <p className="text-[10px] text-white/45 mt-1">Kritische Alarme und Tagesreport können zusätzlich per Telegram verschickt werden.</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: errorCenter.telegram_settings.configured ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)", color: errorCenter.telegram_settings.configured ? "#10B981" : "#EF4444" }}>{errorCenter.telegram_settings.configured ? "aktiv" : "wartet auf Token"}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Modus</p>
+                    <p className="text-[11px] font-bold text-white break-all">{errorCenter.telegram_settings.mode || "-"}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Chat-ID</p>
+                    <p className="text-[11px] font-bold text-white break-all">{errorCenter.telegram_settings.chat_id_masked || "-"}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Bot-Token</p>
+                    <p className="text-[11px] font-bold text-white break-all">{errorCenter.telegram_settings.token_masked || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button data-testid="monitor-send-test-telegram-btn" onClick={() => sendTestTelegram("critical")} className="rounded-xl px-3 py-2 bg-[#229ED9] text-white text-[11px] font-bold disabled:opacity-50" disabled={sendingTelegram}>{sendingTelegram ? "Sende..." : "Telegram kritisch testen"}</button>
+                  <button data-testid="monitor-send-daily-telegram-btn" onClick={() => sendTestTelegram("daily")} className="rounded-xl px-3 py-2 bg-white/8 text-white text-[11px] font-bold disabled:opacity-50" disabled={sendingTelegram}>{sendingTelegram ? "Sende..." : "Telegram Tagesreport testen"}</button>
+                </div>
+                <p className="mt-2 text-[10px] text-white/40">Sobald `TELEGRAM_BOT_TOKEN` und `TELEGRAM_CHAT_ID` im Backend gesetzt sind, läuft das Backup parallel zur E-Mail-Alarmierung.</p>
               </div>
             )}
           </motion.div>

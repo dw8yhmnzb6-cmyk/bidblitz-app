@@ -325,6 +325,12 @@ async def create_indexes():
     await safe_create_index(db.merchant_settlement_idempotency, [("scope", 1), ("merchant_id", 1), ("idempotency_key", 1)], unique=True)
     await safe_create_index(db.merchant_daily_closing_reports, "report_number", unique=True)
     await safe_create_index(db.merchant_z_reports, "report_number", unique=True)
+
+    await safe_create_index(db.monitoring_probes, "key", unique=True)
+    await safe_create_index(db.monitoring_incidents, [("created_at", -1), ("type", 1)])
+    await safe_create_index(db.monitoring_alert_notifications, "alert_key", unique=True)
+    await safe_create_index(db.monitoring_daily_reports, "report_key", unique=True)
+    await safe_create_index(db.monitoring_telegram_deliveries, [("created_at", -1), ("notification_type", 1)])
     
     logger.info("Database indexes created/verified")
 

@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 12.08.2026 — Telegram Monitoring Backup vorbereitet
+- Monitoring-Backend erweitert: `backend/services/monitoring_telegram.py` übernimmt Telegram-Settings, sichere Maskierung, Alarm-/Tagesreport-Formatierung und Delivery-Logging in `monitoring_telegram_deliveries`.
+- `backend/routes/monitoring.py` unterstützt jetzt Telegram parallel zur E-Mail-Alarmierung: `error-center` liefert `telegram_settings`, kritische Alerts/Tagesreports können bei gesetzten Env-Werten an Telegram gesendet werden, und neue Test-Endpunkte unter **`POST /api/admin/monitoring/send-test-telegram`** prüfen kritische und tägliche Testnachrichten.
+- Monitoring-UI ergänzt: `frontend/src/pages/MonitoringDashboard.jsx` zeigt jetzt eine eigene Telegram-Karte mit Status, Modus, maskierter Chat-ID/Token-Anzeige und Test-Buttons für kritisch / Tagesreport.
+- Verifiziert: Backend-Smokes **PASS**, Frontend-Smoke **PASS**, `auto_frontend_testing_agent` **PASS**, `deep_testing_backend_v2` **PASS**.
+- Hinweis: **Telegram-Zustellung ist noch nicht aktiv**, solange im Backend keine echten Werte für **`TELEGRAM_BOT_TOKEN`** und **`TELEGRAM_CHAT_ID`** gesetzt sind. Die UI zeigt in diesem Fall bewusst **"WARTET AUF TOKEN"** statt Fehlern.
+
 ## 11.08.2026 — POS Acceptance Gates final geschlossen
 - POS-Checkout-Flow gehärtet: `MerchantPosSimplePage.jsx` trennt jetzt **Failure / Unknown / Review** sauber, sperrt neue Belastungen bei unklarem Status, führt Retry nur über **denselben letzten Zahlweg** aus und hält die Mobile-Sticky-Bar auf kleinen Geräten stabil.
 - Payment-/Display-A11y verbessert: `PosPaymentSheet.jsx`, `PosCartPanel.jsx` und `MerchantPosCustomerDisplayPage.jsx` erhielten größere Touch Targets, klarere Statusflächen und saubere Customer-Display-Privacy ohne interne IDs/Bestand/Margen/API-Texte.

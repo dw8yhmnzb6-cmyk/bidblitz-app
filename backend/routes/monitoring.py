@@ -10,9 +10,17 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict, deque
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
-from core.database import db
+from core.database import db, sanitize_doc
 from core.security import get_current_user
 from routes.email_service import send_email as send_email_async
+from services.monitoring_telegram import (
+    alert_should_telegram,
+    build_alert_message,
+    build_daily_report_message,
+    daily_should_telegram,
+    get_telegram_settings,
+    send_telegram_message,
+)
 
 router = APIRouter(prefix="/api/admin/monitoring", tags=["monitoring"])
 
@@ -139,6 +147,10 @@ class MonitoringTestEmailRequest(BaseModel):
     kind: str = "critical"
 
 
+class MonitoringTestTelegramRequest(BaseModel):
+    kind: str = "critical"
+
+
 async def _maybe_create_daily_report_notification() -> dict:
     now = datetime.now(timezone.utc)
     report_key = now.strftime("%Y-%m-%d")
@@ -184,6 +196,11 @@ async def _maybe_create_daily_report_notification() -> dict:
         email_result = await _send_monitoring_email(subject, html, "monitoring_daily_report")
         report["email_result"] = email_result
         await db.monitoring_daily_reports.update_one({"report_key": report_key}, {"$set": {"email_result": email_result}})
+    telegram_settings = get_telegram_settings()
+    if telegram_settings["configured"] and daily_should_telegram(telegram_settings["mode"]):
+        telegram_result = await send_telegram_message(build_daily_report_message(report), "monitoring_daily_report", {"report_key": report_key})
+        report["telegram_result"] = telegram_result
+        await db.monitoring_daily_reports.update_one({"report_key": report_key}, {"$set": {"telegram_result": telegram_result}})
     return report
 
 
@@ -194,6 +211,7 @@ async def _ensure_critical_alert_notifications(alerts: list[dict]):
     admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
     now = datetime.now(timezone.utc).isoformat()
     settings = _get_email_settings()
+    telegram_settings = get_telegram_settings()
     for alert in interesting_alerts:
         alert_key = f"{alert.get('key')}::{now[:13]}"
         exists = await db.monitoring_alert_notifications.find_one({"alert_key": alert_key}, {"_id": 0})
@@ -215,6 +233,8 @@ async def _ensure_critical_alert_notifications(alerts: list[dict]):
         if settings["configured"] and _alert_should_email(alert, settings["mode"]):
             subject, html = _alert_email_html(alert)
             doc["email_result"] = await _send_monitoring_email(subject, html, "monitoring_alert")
+        if telegram_settings["configured"] and alert_should_telegram(alert, telegram_settings["mode"]):
+            doc["telegram_result"] = await send_telegram_message(build_alert_message(alert), "monitoring_alert", {"alert_key": alert_key, "label": alert.get("label")})
         await db.monitoring_alert_notifications.insert_one(doc)
 
 
@@ -582,7 +602,7 @@ async def error_center(request: Request):
     elif alerts:
         overall_status = "warning"
 
-    return {
+    return sanitize_doc({
         "overall_status": overall_status,
         "summary": {
             "open_alerts": len(alerts),
@@ -598,8 +618,9 @@ async def error_center(request: Request):
         "incidents": incidents,
         "daily_report": daily_report,
         "email_settings": _get_email_settings(),
+        "telegram_settings": get_telegram_settings(),
         "checked_at": now.isoformat(),
-    }
+    })
 
 
 @router.post("/run-probes")
@@ -637,6 +658,27 @@ async def send_test_email(req: MonitoringTestEmailRequest, request: Request):
     subject, html = _alert_email_html(alert)
     result = await _send_monitoring_email(subject, html, "monitoring_alert_test")
     return {"ok": True, "kind": kind, "result": result}
+
+
+@router.post("/send-test-telegram")
+async def send_test_telegram(req: MonitoringTestTelegramRequest, request: Request):
+    await require_admin(request)
+    kind = (req.kind or "critical").strip().lower()
+    settings = get_telegram_settings()
+    if kind == "daily":
+        report = await _maybe_create_daily_report_notification()
+        result = await send_telegram_message(build_daily_report_message(report), "monitoring_daily_report_test", {"report_key": report.get("report_key")})
+        return {"ok": True, "kind": kind, "settings": settings, "result": result}
+
+    alert = {
+        "type": "test_alert",
+        "label": "Telegram Test-Alarm",
+        "severity": "warning" if kind == "warning" else "critical",
+        "message": "Dies ist ein Test-Alarm aus der BidBlitz Fehlerzentrale via Telegram.",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await send_telegram_message(build_alert_message(alert), "monitoring_alert_test", {"severity": alert["severity"]})
+    return {"ok": True, "kind": kind, "settings": settings, "result": result}
 
 
 def record_request(path, method, status, duration_ms):
