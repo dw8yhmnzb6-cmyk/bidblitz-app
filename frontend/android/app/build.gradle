@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+def readEnvOrProp(String key, String fallback = null) {
+    def envValue = System.getenv(key)
+    if (envValue != null && envValue.toString().trim()) {
+        return envValue.toString().trim()
+    }
+    if (project.hasProperty(key) && project.property(key)?.toString()?.trim()) {
+        return project.property(key).toString().trim()
+    }
+    return fallback
+}
+
+def releaseVersionCode = Integer.parseInt(readEnvOrProp('ANDROID_VERSION_CODE', '3'))
+def releaseVersionName = readEnvOrProp('ANDROID_VERSION_NAME', '1.0.0')
+
 android {
     namespace "com.bidblitz.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -15,6 +29,11 @@ android {
     def releaseStorePassword = keystoreProperties['storePassword'] ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
     def releaseKeyAlias = keystoreProperties['keyAlias'] ?: System.getenv("ANDROID_KEY_ALIAS")
     def releaseKeyPassword = keystoreProperties['keyPassword'] ?: System.getenv("ANDROID_KEY_PASSWORD")
+    def releaseTasksRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
+
+    if (releaseTasksRequested && !(releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword)) {
+        throw new GradleException("Release-Signing fehlt. Bitte keystore.properties oder ANDROID_KEYSTORE_* Umgebungsvariablen setzen.")
+    }
 
     signingConfigs {
         release {
@@ -31,8 +50,8 @@ android {
         applicationId "com.bidblitz.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -49,7 +68,15 @@ android {
             }
         }
     }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
+
+setProperty("archivesBaseName", "bidblitz-${releaseVersionName}-${releaseVersionCode}")
 
 repositories {
     flatDir{

@@ -14,7 +14,7 @@ npx cap sync ios
 
 # 3. Android Release AAB (auf Linux/macOS, braucht Android SDK + Java 17)
 cd android
-./gradlew bundleRelease
+./build-release-aab.sh
 # Output: app/build/outputs/bundle/release/app-release.aab
 ```
 

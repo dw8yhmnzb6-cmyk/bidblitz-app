@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Android-Release-Prep — 26.08.2026
+- ✅ Android-Release-Prep für **Google Play App Signing** ist vorbereitet.
+- ✅ Neuer Doctor-Flow vorhanden: `frontend/android/build-release-aab.sh`.
+- ✅ Release-Signing, Versionierung und Build-Doku wurden für den echten Play-Upload geschärft.
+- 🔴 Weiterer Infrastrukturblocker bleibt: **AAB-Build im ARM64-Preview-Container** scheitert weiter an **x86_64-AAPT2**.
+- 🔴 Nächster echter Build-Schritt: denselben Release-Doctor auf **x86_64 / Android Studio / CI** laufen lassen und dort das finale `.aab` erzeugen.
+
 ## Status nach Telegram-Monitoring-Backup-Vorbereitung — 12.08.2026
 - ✅ Monitoring unterstützt jetzt ein Telegram-Backup-Gerüst für **kritische Alarme** und den **Tagesreport**.
 - ✅ Admin-Monitoring zeigt Status, Modus, maskierte Ziel-/Token-Infos und Test-Buttons für Telegram.

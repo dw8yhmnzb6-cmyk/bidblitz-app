@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 26.08.2026 — Android Release Prep + Blocker-Check
+- Android-Release-Pfad für Google Play gehärtet: `frontend/android/app/build.gradle` liest jetzt `ANDROID_VERSION_CODE` / `ANDROID_VERSION_NAME`, erzwingt Release-Signing für echte Release-Tasks und setzt konsistente Bundle-Einstellungen für den Play-Upload.
+- Neuer Release-Doctor: `frontend/android/build-release-aab.sh` prüft Java 17, Android SDK, Signing, Web-Build, `npx cap sync android` und `./gradlew bundleRelease` in einem sauberen Ablauf.
+- Neue Doku: `frontend/deploy/ANDROID_GOOGLE_PLAY_RELEASE_PREP.md`; außerdem verweisen `frontend/build-mobile-final.sh` und `TESTFLIGHT_PLAY_INTERNAL_TESTING.md` jetzt auf den Doctor-Skriptpfad statt auf rohe Gradle-Kommandos.
+- Blocker-Check verifiziert: `./gradlew bundleRelease` scheitert im aktuellen **aarch64/ARM64-Preview-Container** weiter an **x86_64-AAPT2** (`:app:mergeReleaseResources`, `AAPT2 ... Syntax error: "(" unexpected`). Das ist ein Infrastruktur-/Architekturproblem, kein neuer Projektcodefehler.
+- Java 17 wurde im Container nachgezogen, sodass der Release-Check jetzt nicht mehr an fehlendem JDK scheitert, sondern den echten AAPT2-Blocker sauber meldet.
+
 ## 12.08.2026 — Telegram Monitoring Backup vorbereitet
 - Monitoring-Backend erweitert: `backend/services/monitoring_telegram.py` übernimmt Telegram-Settings, sichere Maskierung, Alarm-/Tagesreport-Formatierung und Delivery-Logging in `monitoring_telegram_deliveries`.
 - `backend/routes/monitoring.py` unterstützt jetzt Telegram parallel zur E-Mail-Alarmierung: `error-center` liefert `telegram_settings`, kritische Alerts/Tagesreports können bei gesetzten Env-Werten an Telegram gesendet werden, und neue Test-Endpunkte unter **`POST /api/admin/monitoring/send-test-telegram`** prüfen kritische und tägliche Testnachrichten.
