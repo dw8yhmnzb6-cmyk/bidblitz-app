@@ -25,14 +25,14 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Models will be imported here as they are introduced so autogenerate can see
-# their metadata.  P0-01 intentionally creates infrastructure only.
+# their metadata. P0-01 intentionally creates infrastructure only.
 target_metadata = TradeBase.metadata
 
 
 def _database_url() -> str:
-    # ConfigParser treats percent signs specially; double them when injecting a
-    # URL so percent-encoded credentials are preserved correctly.
-    return get_trade_database_url().replace("%", "%%")
+    """Return the runtime URL without writing credentials into alembic.ini."""
+
+    return get_trade_database_url()
 
 
 def run_migrations_offline() -> None:
