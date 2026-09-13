@@ -29,6 +29,7 @@ class TransactionStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REVERSED = "reversed"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
 
 
 class TransactionType(str, Enum):
