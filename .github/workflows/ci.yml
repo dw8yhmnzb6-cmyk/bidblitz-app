@@ -58,6 +58,7 @@ jobs:
           backend/tests/test_ci_smoke.py
           backend/tests/test_quick_topup_idempotency.py
           backend/tests/test_stripe_wallet_settlement.py
+          backend/tests/test_admin_financial_metrics.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
