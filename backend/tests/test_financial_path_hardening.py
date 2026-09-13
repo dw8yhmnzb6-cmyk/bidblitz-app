@@ -56,9 +56,34 @@ def test_referral_reward_uses_canonical_idempotent_wallet_credits():
 
     assert "credit_wallet(" in helper
     assert "TransactionType.REWARD" in helper
-    assert "idempotency_key" in helper
+    assert 'idempotency_key = f"referral:{reward_scope_id}:{leg}"' in helper
+    assert '"reward_scope_id": reward_scope_id' in helper
     assert "_grant_referral_wallet_reward(" in block
+    assert "reward_scope_id=user_id" in block
     assert '"$inc": {"balance"' not in block
     assert "db.transactions.insert_one" not in block
     assert '"reward_given": False' in block
-    assert "marked.modified_count == 1" in block
+    assert "db.referrals.update_many(" in block
+    assert "marked.modified_count > 0" in block
+
+
+def test_referral_apply_serializes_claim_and_uses_deterministic_document_id():
+    source = REFERRAL_ROUTE.read_text(encoding="utf-8")
+    block = _function_block(
+        source,
+        "async def apply_referral_code",
+        "async def _grant_referral_wallet_reward",
+    )
+
+    assert '"referred_by": {"$exists": False}' in block
+    assert "claim.modified_count != 1" in block
+    assert '"_id": f"referral:{user_id}"' in block
+    assert '"$unset": {"referred_by": "", "referral_code_used": ""}' in block
+
+
+def test_referral_leaderboard_deduplicates_legacy_duplicate_documents():
+    source = REFERRAL_ROUTE.read_text(encoding="utf-8")
+    block = source[source.index("async def referral_leaderboard"):]
+
+    assert '"referred_id": "$referred_id"' in block
+    assert '"reward_amount": {"$max": "$reward_amount"}' in block
