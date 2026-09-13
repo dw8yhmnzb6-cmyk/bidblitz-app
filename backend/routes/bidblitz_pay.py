@@ -88,6 +88,66 @@ def _normalized_email(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+def _payment_request_fingerprint(req: BidBlitzPayCreateRequest) -> str:
+    payload = {
+        "amount": round(float(req.amount), 2),
+        "currency": req.currency.upper(),
+        "order_id": req.order_id,
+        "description": req.description,
+        "success_url": req.success_url,
+        "cancel_url": req.cancel_url,
+        "webhook_url": req.webhook_url,
+        "customer_email": _normalized_email(req.customer_email),
+        "metadata": req.metadata or {},
+        "redirect_preference": req.redirect_preference,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _idempotency_scope(req: BidBlitzPayCreateRequest, actor: Optional[Dict[str, Any]]) -> str:
+    if actor:
+        user_id = str(actor.get("_id") or "").strip()
+        if user_id:
+            return f"user:{user_id}"
+        actor_email = _normalized_email(actor.get("email"))
+        if actor_email:
+            digest = hashlib.sha256(actor_email.encode()).hexdigest()
+            return f"user-email:{digest}"
+
+    customer_email = _normalized_email(req.customer_email)
+    if customer_email:
+        digest = hashlib.sha256(customer_email.encode()).hexdigest()
+        return f"guest-email:{digest}"
+
+    if req.order_id:
+        raw = f"{req.currency.upper()}|{req.order_id}".encode()
+        return f"guest-order:{hashlib.sha256(raw).hexdigest()}"
+
+    # Anonymous payments without an account, email or order id have no durable
+    # caller identity. Scope them by the complete request instead of allowing a
+    # globally reusable key that could expose another customer's payment record.
+    return f"guest-request:{_payment_request_fingerprint(req)}"
+
+
+def _scoped_idempotency_key(scope: str, key: str) -> str:
+    digest = hashlib.sha256(f"{scope}|{key}".encode()).hexdigest()
+    return f"bbp2_{digest[:48]}"
+
+
+def _payment_matches_request(payment: Dict[str, Any], req: BidBlitzPayCreateRequest) -> bool:
+    try:
+        existing_amount = round(float(payment.get("amount") or 0), 2)
+    except (TypeError, ValueError):
+        return False
+    return (
+        existing_amount == round(float(req.amount), 2)
+        and str(payment.get("currency") or "").upper() == req.currency.upper()
+        and str(payment.get("order_id") or "") == req.order_id
+        and _normalized_email(payment.get("customer_email")) == _normalized_email(req.customer_email)
+    )
+
+
 async def _optional_current_user(request: Request) -> Optional[Dict[str, Any]]:
     try:
         return await get_current_user(request)
@@ -113,6 +173,23 @@ def _payment_access_allowed(payment: Dict[str, Any], user: Dict[str, Any]) -> bo
         return True
     if user_email and created_by_email and user_email == created_by_email:
         return True
+    return False
+
+
+def _legacy_idempotency_owner_matches(
+    payment: Dict[str, Any],
+    actor: Optional[Dict[str, Any]],
+    req: BidBlitzPayCreateRequest,
+) -> bool:
+    if actor:
+        return _payment_access_allowed(payment, actor) and _payment_matches_request(payment, req)
+
+    customer_email = _normalized_email(req.customer_email)
+    if customer_email and customer_email == _normalized_email(payment.get("customer_email")):
+        return _payment_matches_request(payment, req)
+
+    if req.order_id and req.order_id == str(payment.get("order_id") or ""):
+        return _payment_matches_request(payment, req)
     return False
 
 
@@ -214,7 +291,28 @@ async def _send_merchant_webhook(payment: Dict[str, Any], event_type: str, extra
         **(extra or {}),
     }
     cfg = _cfg()
-    signature = _signature(cfg["webhook_secret"] or "mock-webhook-secret", payload)
+    raw_secret = cfg["webhook_secret"]
+    if not raw_secret:
+        delivery = {
+            "delivery_id": f"bbpwd_{secrets.token_hex(8)}",
+            "payment_id": payment["payment_id"],
+            "event": event_type,
+            "webhook_url": webhook_url,
+            "request_payload": payload,
+            "signature": "",
+            "attempted_at": _now(),
+            "status": "failed",
+            "error": "webhook_secret_missing",
+        }
+        await db.bidblitz_pay_webhook_deliveries.insert_one(delivery)
+        await _write_gateway_audit(
+            "merchant_webhook_delivery_blocked_missing_secret",
+            payment["payment_id"],
+            {"event": event_type},
+        )
+        return
+
+    signature = _signature(raw_secret, payload)
     delivery = {
         "delivery_id": f"bbpwd_{secrets.token_hex(8)}",
         "payment_id": payment["payment_id"],
@@ -283,10 +381,49 @@ async def create_bidblitz_pay_payment(
     _validate_merchant_webhook_url(req.webhook_url, actor)
 
     key = _build_idempotency_key(req, idempotency_key or "")
-    existing = await db.bidblitz_pay_payments.find_one({"idempotency_key": key})
+    scope = _idempotency_scope(req, actor)
+    scoped_key = _scoped_idempotency_key(scope, key)
+    request_fingerprint = _payment_request_fingerprint(req)
+
+    existing = await db.bidblitz_pay_payments.find_one({"scoped_idempotency_key": scoped_key})
     if existing:
-        await _write_gateway_audit("create_payment_idempotent_hit", existing["payment_id"], {"idempotency_key": key})
+        existing_fingerprint = str(existing.get("request_fingerprint") or "")
+        if existing_fingerprint and existing_fingerprint != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Zahlung verwendet")
+        if not existing_fingerprint and not _payment_matches_request(existing, req):
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Zahlung verwendet")
+        await _write_gateway_audit(
+            "create_payment_idempotent_hit",
+            existing["payment_id"],
+            {"idempotency_scope": scope},
+        )
         return {"ok": True, "reused": True, "payment": _serialize_payment(existing)}
+
+    # Legacy rows used a global idempotency key. Reuse/backfill them only when
+    # ownership and payment identity can be proven; never return another caller's row.
+    legacy = await db.bidblitz_pay_payments.find_one({
+        "idempotency_key": key,
+        "scoped_idempotency_key": {"$exists": False},
+    })
+    if legacy and _legacy_idempotency_owner_matches(legacy, actor, req):
+        await db.bidblitz_pay_payments.update_one(
+            {"payment_id": legacy["payment_id"], "scoped_idempotency_key": {"$exists": False}},
+            {"$set": {
+                "idempotency_scope": scope,
+                "scoped_idempotency_key": scoped_key,
+                "request_fingerprint": request_fingerprint,
+                "updated_at": _now(),
+            }},
+        )
+        legacy["idempotency_scope"] = scope
+        legacy["scoped_idempotency_key"] = scoped_key
+        legacy["request_fingerprint"] = request_fingerprint
+        await _write_gateway_audit(
+            "create_payment_legacy_idempotency_backfill",
+            legacy["payment_id"],
+            {"idempotency_scope": scope},
+        )
+        return {"ok": True, "reused": True, "payment": _serialize_payment(legacy)}
 
     now = _now()
     base_url = str(request.base_url).rstrip("/")
@@ -314,7 +451,7 @@ async def create_bidblitz_pay_payment(
         headers = {
             "Authorization": f"Bearer {cfg['api_key']}",
             "X-Merchant-Id": cfg["merchant_id"],
-            "Idempotency-Key": key,
+            "Idempotency-Key": scoped_key,
         }
         try:
             async with httpx.AsyncClient(timeout=15) as client:
@@ -370,6 +507,9 @@ async def create_bidblitz_pay_payment(
         "customer_email": req.customer_email,
         "metadata": req.metadata or {},
         "idempotency_key": key,
+        "idempotency_scope": scope,
+        "scoped_idempotency_key": scoped_key,
+        "request_fingerprint": request_fingerprint,
         "redirect_preference": req.redirect_preference,
         "redirect_url": redirect_url,
         "app_redirect_url": app_redirect_url,
@@ -383,8 +523,25 @@ async def create_bidblitz_pay_payment(
         "created_by_user_id": actor_user_id,
         "created_by_email": actor_email,
     }
-    await db.bidblitz_pay_payments.insert_one(payment)
-    await _write_gateway_audit("create_payment", payment_id, {"mode": mode, "idempotency_key": key})
+    try:
+        await db.bidblitz_pay_payments.insert_one(payment)
+    except Exception:
+        # A concurrent retry can race after the initial lookup. The unique scoped
+        # idempotency index makes one insert win; the loser safely reuses it.
+        concurrent = await db.bidblitz_pay_payments.find_one({"scoped_idempotency_key": scoped_key})
+        if concurrent:
+            concurrent_fingerprint = str(concurrent.get("request_fingerprint") or "")
+            if concurrent_fingerprint == request_fingerprint or (
+                not concurrent_fingerprint and _payment_matches_request(concurrent, req)
+            ):
+                return {"ok": True, "reused": True, "payment": _serialize_payment(concurrent)}
+        raise
+
+    await _write_gateway_audit(
+        "create_payment",
+        payment_id,
+        {"mode": mode, "idempotency_scope": scope},
+    )
     await log_audit(
         AuditEvent.PAYMENT_INITIATED,
         user_id=actor_user_id,
@@ -493,7 +650,10 @@ async def create_bidblitz_pay_refund(
         )
 
     refund_key = (idempotency_key or req.idempotency_key or f"refund_{payment_id}_{round(float(req.amount or payment.get('amount') or 0), 2)}")[:180]
-    existing = await db.bidblitz_pay_refunds.find_one({"idempotency_key": refund_key}, {"_id": 0})
+    existing = await db.bidblitz_pay_refunds.find_one(
+        {"payment_id": payment_id, "idempotency_key": refund_key},
+        {"_id": 0},
+    )
     if existing:
         return {"ok": True, "reused": True, "refund": existing}
 
@@ -524,7 +684,16 @@ async def create_bidblitz_pay_refund(
         "updated_at": _now(),
         "mocked": True,
     }
-    await db.bidblitz_pay_refunds.insert_one(refund)
+    try:
+        await db.bidblitz_pay_refunds.insert_one(refund)
+    except Exception:
+        concurrent = await db.bidblitz_pay_refunds.find_one(
+            {"payment_id": payment_id, "idempotency_key": refund_key},
+            {"_id": 0},
+        )
+        if concurrent:
+            return {"ok": True, "reused": True, "refund": concurrent}
+        raise
     refund.pop("_id", None)
     new_refunded_total = round(refunded_total + refund_amount, 2)
     payment_status = "refunded" if new_refunded_total >= total_amount else "partially_refunded"
@@ -541,11 +710,22 @@ async def bidblitz_pay_webhook(
 ):
     payload = await request.json()
     cfg = _cfg()
-    raw_secret = cfg["webhook_secret"] or "mock-webhook-secret"
-    expected = _signature(raw_secret, payload)
-    valid_signature = bool(x_bidblitz_pay_signature) and hmac.compare_digest(expected, x_bidblitz_pay_signature)
     event_type = payload.get("event") or payload.get("type") or "unknown"
     payment_id = payload.get("payment_id") or payload.get("paymentId") or ""
+    raw_secret = cfg["webhook_secret"]
+    if not raw_secret:
+        await _write_gateway_audit(
+            "provider_webhook_rejected_missing_secret",
+            payment_id,
+            {"event": event_type},
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="BidBlitz-Pay-Webhook ist ohne konfiguriertes Secret deaktiviert",
+        )
+
+    expected = _signature(raw_secret, payload)
+    valid_signature = bool(x_bidblitz_pay_signature) and hmac.compare_digest(expected, x_bidblitz_pay_signature)
     log_doc = {
         "webhook_id": f"bbpwh_{secrets.token_hex(8)}",
         "payment_id": payment_id,
