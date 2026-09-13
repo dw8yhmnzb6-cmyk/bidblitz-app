@@ -19,6 +19,7 @@ os.environ["DEMO_SEED"] = "false"
 os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
+from core import canonical_wallet_service as canonical_wallet  # noqa: E402
 from routes import payment as payment_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
@@ -113,6 +114,42 @@ def test_payment_updates_merchant_stats_after_successful_wallet_credit():
     merchant_credit = source.index("merchant_credit_result = await credit_wallet")
     merchant_stats = source.index("await db.merchants.update_one")
     assert merchant_credit < merchant_stats
+
+
+def test_canonical_wallet_nonfresh_idempotency_states_never_execute_again():
+    pending = canonical_wallet._existing_idempotency_result(
+        "pending",
+        {"status": "pending", "response": None},
+    )
+    failed = canonical_wallet._existing_idempotency_result(
+        "failed",
+        {"status": "failed", "response": {"transaction_id": "TXN-OLD", "error": "declined"}},
+    )
+    conflict = canonical_wallet._existing_idempotency_result(
+        "conflict",
+        {"status": "pending", "response": None},
+    )
+
+    assert pending is not None and pending.success is False
+    assert pending.status == "pending"
+    assert pending.idempotent_replay is True
+    assert failed is not None and failed.success is False
+    assert failed.status == "failed"
+    assert failed.transaction_id == "TXN-OLD"
+    assert conflict is not None and conflict.success is False
+    assert conflict.status == "failed"
+
+
+def test_credit_debit_and_transfer_all_use_canonical_idempotency_replay_guard():
+    for operation in (
+        canonical_wallet.credit_canonical_balance,
+        canonical_wallet.debit_canonical_balance,
+        canonical_wallet.transfer_canonical_balance,
+    ):
+        source = inspect.getsource(operation)
+        assert "replay = _existing_idempotency_result(claim_state, existing)" in source
+        assert "if replay is not None:" in source
+        assert "return replay" in source
 
 
 def _stripe_source():
