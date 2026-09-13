@@ -35,7 +35,12 @@ async def get_my_referral(request: Request):
         await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": code}})
 
     referral_count = await db.referrals.count_documents({"referrer_id": user_id})
-    rewarded_count = await db.referrals.count_documents({"referrer_id": user_id, "reward_given": True})
+    rewarded_rows = await db.referrals.aggregate([
+        {"$match": {"referrer_id": user_id, "reward_given": True}},
+        {"$group": {"_id": "$referred_id"}},
+        {"$count": "count"},
+    ]).to_list(1)
+    rewarded_count = int(rewarded_rows[0]["count"]) if rewarded_rows else 0
     total_earned = rewarded_count * REWARDS["referral_bonus"]
 
     return {
@@ -69,7 +74,29 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
     if referrer_id == user_id:
         raise HTTPException(status_code=400, detail="You cannot refer yourself")
 
-    await db.referrals.insert_one({
+    # Claim the referral on the user record first. This conditional write serializes
+    # concurrent /apply calls without requiring a new unique index on legacy data.
+    claim = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"referred_by": {"$exists": False}},
+                {"referred_by": None},
+                {"referred_by": ""},
+            ],
+        },
+        {"$set": {
+            "referred_by": referrer_id,
+            "referral_code_used": req.code.upper().strip(),
+        }},
+    )
+    if claim.modified_count != 1:
+        raise HTTPException(status_code=400, detail="You have already used a referral code")
+
+    # Deterministic _id makes this insert retry-safe and prevents a second referral
+    # document for the same referred user even if requests race after the user claim.
+    referral_doc = {
+        "_id": f"referral:{user_id}",
         "referrer_id": referrer_id,
         "referred_id": user_id,
         "referrer_email": referrer["email"],
@@ -78,12 +105,18 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
         "reward_given": False,
         "reward_amount": REWARDS["referral_bonus"],
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"referred_by": referrer_id, "referral_code_used": req.code.upper().strip()}},
-    )
+    }
+    try:
+        await db.referrals.insert_one(referral_doc)
+    except Exception:
+        stored = await db.referrals.find_one({"_id": referral_doc["_id"]})
+        if not stored:
+            # Release only our own claim so a transient DB failure can be retried.
+            await db.users.update_one(
+                {"_id": user["_id"], "referred_by": referrer_id, "referral_code_used": req.code.upper().strip()},
+                {"$unset": {"referred_by": "", "referral_code_used": ""}},
+            )
+            raise
 
     referral_promo_code = f"REF-{req.code.upper().strip()[-6:]}"
     promo_created = False
@@ -116,14 +149,17 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
 async def _grant_referral_wallet_reward(
     *,
     referral_id: str,
+    reward_scope_id: str,
     user_id: str,
     bonus: float,
     description: str,
     leg: str,
 ):
     """Credit one referral leg exactly once via the canonical wallet service."""
-    idempotency_key = f"referral:{referral_id}:{leg}"
-    reference = f"REF-{referral_id}-{leg.upper()}"
+    # Scope idempotency to the referred user, not the referral document. That also
+    # suppresses double money if legacy duplicate referral documents already exist.
+    idempotency_key = f"referral:{reward_scope_id}:{leg}"
+    reference = f"REF-{reward_scope_id}-{leg.upper()}"
     return await credit_wallet(
         user_id=user_id,
         amount=bonus,
@@ -133,6 +169,7 @@ async def _grant_referral_wallet_reward(
         source="referral",
         metadata={
             "referral_id": referral_id,
+            "reward_scope_id": reward_scope_id,
             "reward_leg": leg,
             "canonical_source": "users.balance",
         },
@@ -170,6 +207,7 @@ async def check_and_grant_rewards(request: Request):
 
     referred_result = await _grant_referral_wallet_reward(
         referral_id=referral_id,
+        reward_scope_id=user_id,
         user_id=user_id,
         bonus=bonus,
         description="Referral bonus",
@@ -180,6 +218,7 @@ async def check_and_grant_rewards(request: Request):
 
     referrer_result = await _grant_referral_wallet_reward(
         referral_id=referral_id,
+        reward_scope_id=user_id,
         user_id=referrer_id,
         bonus=bonus,
         description=f"Referral reward - {user['email']} joined",
@@ -188,19 +227,21 @@ async def check_and_grant_rewards(request: Request):
     if not referrer_result.success:
         raise HTTPException(status_code=409, detail=referrer_result.error or "Referral reward is still processing")
 
-    # Only one concurrent caller wins the state transition. The deterministic wallet
-    # idempotency keys above make retries/recovery safe if either leg was already paid.
-    marked = await db.referrals.update_one(
-        {"_id": referral["_id"], "reward_given": False},
+    # Mark every legacy duplicate for this referred user as processed so another
+    # document cannot trigger the same reward later. Wallet credits above remain
+    # exactly-once because both legs share the referred-user idempotency scope.
+    marked = await db.referrals.update_many(
+        {"referred_id": user_id, "reward_given": False},
         {"$set": {
             "reward_given": True,
             "rewarded_at": now,
             "referred_transaction_id": referred_result.transaction_id,
             "referrer_transaction_id": referrer_result.transaction_id,
+            "canonical_reward_referral_id": referral_id,
         }},
     )
 
-    if marked.modified_count == 1:
+    if marked.modified_count > 0:
         await db.notifications.insert_one({
             "user_id": user_id,
             "type": "reward",
@@ -228,12 +269,20 @@ async def check_and_grant_rewards(request: Request):
 
 @router.get("/leaderboard")
 async def referral_leaderboard(request: Request):
-    """Top referrers - public leaderboard."""
+    """Top referrers - public leaderboard, deduplicated by referred user."""
     await get_current_user(request)
 
     pipeline = [
         {"$match": {"reward_given": True}},
-        {"$group": {"_id": "$referrer_id", "count": {"$sum": 1}, "total_earned": {"$sum": "$reward_amount"}}},
+        {"$group": {
+            "_id": {"referrer_id": "$referrer_id", "referred_id": "$referred_id"},
+            "reward_amount": {"$max": "$reward_amount"},
+        }},
+        {"$group": {
+            "_id": "$_id.referrer_id",
+            "count": {"$sum": 1},
+            "total_earned": {"$sum": "$reward_amount"},
+        }},
         {"$sort": {"count": -1}},
         {"$limit": 10},
     ]
