@@ -16,9 +16,10 @@ Uses centralized Payment Engine for atomic transactions.
 Supports saved payment methods for 1-click top-up.
 """
 
+import hashlib
 import secrets
 import stripe
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -672,44 +673,146 @@ async def get_saved_method(request: Request):
 
 class QuickTopUpRequest(BaseModel):
     amount: float = Field(..., gt=0, le=500)
+    idempotency_key: str = Field(..., min_length=16, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
 
 
 @router.post("/quick-topup")
 @limiter.limit(RATE_STRIPE)
 async def quick_topup(req: QuickTopUpRequest, request: Request):
-    """1-click top-up using saved payment method."""
+    """1-click top-up using a saved payment method with retry-safe idempotency."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
-
-    cust_id = user.get("stripe_customer_id")
-    pm_id = user.get("stripe_pm_id")
-    if not cust_id or not pm_id:
-        raise HTTPException(status_code=400, detail="No saved payment method")
-
     amount = round(req.amount, 2)
 
-    # Compliance check
-    compliance = await run_compliance_check(user_id, "topup", amount)
-    if compliance["outcome"] == BLOCKED:
-        raise HTTPException(status_code=403, detail=compliance["reason"])
+    # Keep the same server-defined packages as regular Stripe Checkout.
+    if amount not in TOPUP_PACKAGES.values():
+        raise HTTPException(status_code=400, detail="Invalid top-up amount")
 
-    # Create PaymentIntent off-session
+    attempt_id = f"quick_topup:{user_id}:{req.idempotency_key}"
+    stripe_idempotency_key = f"bb-quick-{hashlib.sha256(attempt_id.encode('utf-8')).hexdigest()}"
+    attempt = await db.quick_topup_attempts.find_one({"_id": attempt_id})
+
+    if attempt:
+        if round(float(attempt.get("amount", 0) or 0), 2) != amount:
+            raise HTTPException(status_code=409, detail="Idempotency key already used for another amount")
+        if attempt.get("status") == "credited":
+            return {
+                "status": "credited",
+                "amount": amount,
+                "reference": attempt.get("reference", ""),
+                "new_balance": attempt.get("new_balance"),
+                "idempotent_replay": True,
+            }
+        if attempt.get("status") in {"failed_card", "failed_no_method"}:
+            raise HTTPException(status_code=409, detail="Previous payment attempt failed; start a new payment attempt")
+
+        # Stripe v1 idempotency keys are guaranteed for at least 24h. If an old
+        # uncertain attempt never persisted a PaymentIntent id, never create a new
+        # charge under the same stale application attempt.
+        if attempt.get("status") == "payment_uncertain" and not attempt.get("stripe_pi_id"):
+            try:
+                created_at = datetime.fromisoformat(str(attempt.get("created_at", "")))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) - created_at >= timedelta(hours=23):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Previous payment attempt requires manual verification before retry",
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+    else:
+        cust_id = user.get("stripe_customer_id")
+        pm_id = user.get("stripe_pm_id")
+        if not cust_id or not pm_id:
+            raise HTTPException(status_code=400, detail="No saved payment method")
+
+        # Compliance is evaluated before the first external charge. Retries of the
+        # same attempt continue settlement instead of blocking an already-paid charge.
+        compliance = await run_compliance_check(user_id, "topup", amount)
+        if compliance["outcome"] == BLOCKED:
+            raise HTTPException(status_code=403, detail=compliance["reason"])
+
+        now = datetime.now(timezone.utc).isoformat()
+        attempt_doc = {
+            "_id": attempt_id,
+            "user_id": user_id,
+            "amount": amount,
+            "currency": "EUR",
+            "status": "initiated",
+            "stripe_idempotency_key": stripe_idempotency_key,
+            "stripe_pi_id": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+        try:
+            await db.quick_topup_attempts.insert_one(attempt_doc)
+            attempt = attempt_doc
+        except Exception:
+            # Concurrent request: the unique Mongo _id is the application-level claim.
+            attempt = await db.quick_topup_attempts.find_one({"_id": attempt_id})
+            if not attempt:
+                raise HTTPException(status_code=500, detail="Could not initialize payment attempt")
+            if round(float(attempt.get("amount", 0) or 0), 2) != amount:
+                raise HTTPException(status_code=409, detail="Idempotency key already used for another amount")
+
+    intent = None
+    existing_pi_id = attempt.get("stripe_pi_id") if attempt else None
+
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=int(amount * 100),
-            currency="eur",
-            customer=cust_id,
-            payment_method=pm_id,
-            off_session=True,
-            confirm=True,
-            metadata={
-                "user_id": user_id,
-                "type": "quick_topup",
-                "amount": str(amount),
-            },
-        )
+        if existing_pi_id:
+            # Once the PaymentIntent id is durable, retrieve it instead of issuing
+            # another create request, even if the browser retries much later.
+            intent = stripe.PaymentIntent.retrieve(existing_pi_id)
+        else:
+            cust_id = user.get("stripe_customer_id")
+            pm_id = user.get("stripe_pm_id")
+            if not cust_id or not pm_id:
+                await db.quick_topup_attempts.update_one(
+                    {"_id": attempt_id},
+                    {"$set": {
+                        "status": "failed_no_method",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(status_code=400, detail="No saved payment method")
+
+            intent = stripe.PaymentIntent.create(
+                amount=int(amount * 100),
+                currency="eur",
+                customer=cust_id,
+                payment_method=pm_id,
+                off_session=True,
+                confirm=True,
+                metadata={
+                    "user_id": user_id,
+                    "type": "quick_topup",
+                    "amount": str(amount),
+                },
+                idempotency_key=stripe_idempotency_key,
+            )
+            await db.quick_topup_attempts.update_one(
+                {"_id": attempt_id},
+                {"$set": {
+                    "stripe_pi_id": intent.id,
+                    "status": f"payment_{intent.status}",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+    except HTTPException:
+        raise
     except stripe.error.CardError as e:
+        await db.quick_topup_attempts.update_one(
+            {"_id": attempt_id},
+            {"$set": {
+                "status": "failed_card",
+                "last_error": "card_declined",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
         # Card declined — remove saved method
         await db.users.update_one(
             {"_id": user["_id"]},
@@ -724,20 +827,77 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         )
         raise HTTPException(status_code=402, detail=f"Card declined: {e.user_message}")
     except Exception:
-        raise HTTPException(status_code=500, detail="Payment failed")
+        # A network timeout can happen after Stripe accepted the request. Keep the
+        # attempt retryable with the exact same Stripe idempotency key.
+        await db.quick_topup_attempts.update_one(
+            {"_id": attempt_id},
+            {"$set": {
+                "status": "payment_uncertain",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=502, detail="Payment verification failed. Please retry safely.")
 
     if intent.status != "succeeded":
+        await db.quick_topup_attempts.update_one(
+            {"_id": attempt_id},
+            {"$set": {
+                "stripe_pi_id": intent.id,
+                "status": f"payment_{intent.status}",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
         raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
 
-    # Credit wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": amount}},
+    await db.quick_topup_attempts.update_one(
+        {"_id": attempt_id},
+        {"$set": {
+            "stripe_pi_id": intent.id,
+            "status": "payment_succeeded",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
     )
 
-    ref = f"QUICK-{secrets.token_hex(6).upper()}"
+    # The balance increment and PaymentIntent marker live in the same user document,
+    # making this exact wallet credit atomic. A concurrent/replayed request cannot
+    # increment the balance again for the same PaymentIntent.
+    credit_time = datetime.now(timezone.utc).isoformat()
+    wallet_result = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "quick_topup_credited_intents": {"$ne": intent.id},
+        },
+        {
+            "$inc": {"balance": amount},
+            "$push": {
+                "quick_topup_credited_intents": {
+                    "$each": [intent.id],
+                    "$slice": -500,
+                }
+            },
+            "$set": {"last_balance_update": credit_time},
+        },
+    )
+
+    updated_user = await db.users.find_one(
+        {"_id": user["_id"]},
+        {"balance": 1, "quick_topup_credited_intents": 1},
+    )
+    if not updated_user:
+        raise HTTPException(status_code=500, detail="Wallet credit failed")
+
+    credited_intents = updated_user.get("quick_topup_credited_intents", []) or []
+    if wallet_result.modified_count != 1 and intent.id not in credited_intents:
+        raise HTTPException(status_code=500, detail="Wallet credit failed")
+
+    credited_now = wallet_result.modified_count == 1
+    ref_hash = hashlib.sha256(intent.id.encode("utf-8")).hexdigest().upper()
+    ref = f"QUICK-{ref_hash[:12]}"
+    transaction_id = f"QTP-{ref_hash[:16]}"
     txn = {
-        "id": secrets.token_hex(8),
+        "_id": f"quick_topup:{intent.id}",
+        "id": transaction_id,
+        "idempotency_key": attempt_id,
         "user_id": user_id,
         "type": "topup",
         "amount": amount,
@@ -748,22 +908,53 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         "payment_method": "saved_card",
         "category": "topup",
         "stripe_pi_id": intent.id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": credit_time,
     }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
+    try:
+        await db.transactions.insert_one(txn)
+    except Exception:
+        existing_txn = await db.transactions.find_one(
+            {"_id": txn["_id"], "stripe_pi_id": intent.id},
+            {"_id": 1},
+        )
+        if not existing_txn:
+            await db.quick_topup_attempts.update_one(
+                {"_id": attempt_id},
+                {"$set": {
+                    "status": "wallet_credited_audit_pending",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Wallet credited; transaction finalization pending. Retry safely.",
+            )
 
-    await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
-                    ip=ip, user_agent=ua,
-                    details={"reference": ref, "amount": amount, "method": "1-click"})
+    new_balance = round(float(updated_user.get("balance", 0) or 0), 2)
+    await db.quick_topup_attempts.update_one(
+        {"_id": attempt_id},
+        {"$set": {
+            "status": "credited",
+            "reference": ref,
+            "transaction_id": transaction_id,
+            "new_balance": new_balance,
+            "credited_at": credit_time,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
 
-    updated_user = await db.users.find_one({"_id": user["_id"]})
+    if credited_now:
+        await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"reference": ref, "amount": amount, "method": "1-click",
+                                 "stripe_pi_id": intent.id})
 
     return {
         "status": "credited",
         "amount": amount,
         "reference": ref,
-        "new_balance": updated_user["balance"],
+        "new_balance": new_balance,
+        "idempotent_replay": not credited_now,
     }
 
 
