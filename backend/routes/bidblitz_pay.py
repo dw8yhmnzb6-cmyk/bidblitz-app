@@ -279,6 +279,7 @@ def _serialize_payment(doc: Dict[str, Any]) -> Dict[str, Any]:
         "status": doc.get("status", "pending"),
         "provider_status": doc.get("provider_status", "pending"),
         "amount": round(float(doc.get("amount") or 0), 2),
+        "refunded_amount": round(float(doc.get("refunded_amount") or 0), 2),
         "currency": doc.get("currency", "EUR"),
         "order_id": doc.get("order_id", ""),
         "description": doc.get("description", ""),
@@ -391,12 +392,7 @@ async def _reserve_mock_refund(
     refund_key: str,
     requested_amount: Optional[float],
 ) -> Dict[str, Any]:
-    """Atomically reserve mock refund value on the payment document.
-
-    The payment document is the canonical refund counter. A stable reservation field
-    makes retries recoverable and the Mongo $expr guard prevents concurrent refund
-    requests with different idempotency keys from exceeding the original payment.
-    """
+    """Atomically reserve mock refund value on the payment document."""
     payment = await _get_payment_or_404(payment_id)
     total_amount = round(float(payment.get("amount") or 0), 2)
     if total_amount <= 0:
@@ -418,10 +414,6 @@ async def _reserve_mock_refund(
     )
     payment = await _get_payment_or_404(payment_id)
     current_refunded = round(float(payment.get("refunded_amount") or 0), 2)
-    remaining_amount = round(max(0.0, total_amount - current_refunded), 2)
-    refund_amount = round(float(requested_amount if requested_amount is not None else remaining_amount), 2)
-    if refund_amount <= 0:
-        raise HTTPException(status_code=400, detail="Refund-Betrag muss positiv sein")
 
     reservation_hash = hashlib.sha256(f"{payment_id}:{refund_key}".encode()).hexdigest()
     reservation_field = f"mock_refund_reservations.{reservation_hash}"
@@ -430,7 +422,7 @@ async def _reserve_mock_refund(
     existing_reservation = reservations.get(reservation_hash)
     if existing_reservation:
         saved_amount = round(float(existing_reservation.get("amount") or 0), 2)
-        if saved_amount != refund_amount:
+        if requested_amount is not None and saved_amount != round(float(requested_amount), 2):
             raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
         return {
             "payment": payment,
@@ -440,6 +432,10 @@ async def _reserve_mock_refund(
             "reused": True,
         }
 
+    remaining_amount = round(max(0.0, total_amount - current_refunded), 2)
+    refund_amount = round(float(requested_amount if requested_amount is not None else remaining_amount), 2)
+    if refund_amount <= 0:
+        raise HTTPException(status_code=400, detail="Refund-Betrag muss positiv sein")
     if refund_amount > remaining_amount:
         raise HTTPException(status_code=400, detail="Refund-Betrag überschreitet den offenen Restbetrag")
 
@@ -473,7 +469,7 @@ async def _reserve_mock_refund(
         concurrent_reservation = (fresh.get("mock_refund_reservations") or {}).get(reservation_hash)
         if concurrent_reservation:
             saved_amount = round(float(concurrent_reservation.get("amount") or 0), 2)
-            if saved_amount != refund_amount:
+            if requested_amount is not None and saved_amount != round(float(requested_amount), 2):
                 raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
             return {
                 "payment": fresh,
