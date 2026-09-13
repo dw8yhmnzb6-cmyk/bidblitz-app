@@ -19,7 +19,8 @@ def test_quick_topup_backend_is_retry_safe_by_construction():
     assert "idempotency_key=stripe_idempotency_key" in source
     assert 'db.quick_topup_attempts.find_one({"_id": attempt_id})' in source
     assert '"quick_topup_credited_intents": {"$ne": intent.id}' in source
-    assert '"$each": [intent.id]' in source
+    assert '"$addToSet": {"quick_topup_credited_intents": intent.id}' in source
+    assert '"$slice": -500' not in source
     assert '"_id": f"quick_topup:{intent.id}"' in source
     assert "if amount not in TOPUP_PACKAGES.values():" in source
 

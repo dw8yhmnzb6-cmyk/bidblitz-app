@@ -660,9 +660,9 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         }},
     )
 
-    # The balance increment and PaymentIntent marker live in the same user document,
-    # making this exact wallet credit atomic. A concurrent/replayed request cannot
-    # increment the balance again for the same PaymentIntent.
+    # The balance increment and durable PaymentIntent marker live in the same user
+    # document. The marker must never be trimmed: removing an old intent would reopen
+    # a replay window for a previously succeeded payment after a partial finalization.
     credit_time = datetime.now(timezone.utc).isoformat()
     wallet_result = await db.users.update_one(
         {
@@ -671,12 +671,7 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         },
         {
             "$inc": {"balance": amount},
-            "$push": {
-                "quick_topup_credited_intents": {
-                    "$each": [intent.id],
-                    "$slice": -500,
-                }
-            },
+            "$addToSet": {"quick_topup_credited_intents": intent.id},
             "$set": {"last_balance_update": credit_time},
         },
     )
