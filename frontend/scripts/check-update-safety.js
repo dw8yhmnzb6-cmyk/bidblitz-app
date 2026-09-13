@@ -9,6 +9,8 @@ const serviceWorker = read('frontend/public/service-worker.js');
 const frontendNginx = read('frontend/nginx.conf');
 const productionNginx = read('deploy/nginx/bidblitz.conf');
 const buildInfo = read('scripts/generate_build_info.py');
+const liveVerify = read('scripts/live_verify.py');
+const liveVerifyWorkflow = read('.github/workflows/live-deployment-verify.yml');
 
 const checks = [];
 const requireMatch = (name, condition) => checks.push({ name, condition: Boolean(condition) });
@@ -62,6 +64,20 @@ for (const [label, nginx] of [
 
 requireMatch('production nginx serves deployed build path', /root\s+\/var\/www\/bidblitz\/frontend\/build;/.test(productionNginx));
 requireMatch('build metadata cache names include build_id', /bidblitz-static-\{build_id\}/.test(buildInfo) && /bidblitz-api-\{build_id\}/.test(buildInfo));
+
+// Post-deployment verification must prove that the LIVE server actually exposes
+// the same cache policy and build identity as the repository expects.
+requireMatch('live verifier has no third-party requests dependency', !/^\s*(?:from\s+requests|import\s+requests)\b/m.test(liveVerify));
+requireMatch('live verifier checks all app-shell update files', /APP_SHELL_PATHS[\s\S]*['"]\/['"][\s\S]*['"]\/index\.html['"][\s\S]*['"]\/version\.json['"][\s\S]*['"]\/service-worker\.js['"]/.test(liveVerify));
+requireMatch('live verifier requires no-store cache policy', /is no-store/.test(liveVerify) && /['"]no-store['"]\s+in\s+cc/.test(liveVerify));
+requireMatch('live verifier validates static immutable cache', /static asset is immutable/.test(liveVerify) && /STATIC_MAX_AGE_MIN\s*=\s*31_536_000/.test(liveVerify));
+requireMatch('live verifier compares index/version/service-worker identity', /index\/version\/service-worker build ids match/.test(liveVerify) && /extract_meta_build_id/.test(liveVerify) && /extract_worker_build_id/.test(liveVerify));
+requireMatch('live verifier can require the deployed build id', /--expected-build-id/.test(liveVerify) && /live build equals deployed build/.test(liveVerify));
+requireMatch('live verifier can require the deployed commit', /--expected-commit/.test(liveVerify) && /live build belongs to expected commit/.test(liveVerify));
+requireMatch('live verifier cache-busts app-shell requests', /__bbv/.test(liveVerify) && /bust_cache=True/.test(liveVerify));
+requireMatch('post-deploy workflow only verifies successful main deploys', /workflow_run[\s\S]*Deploy to IONOS Production/.test(liveVerifyWorkflow) && /conclusion == 'success'/.test(liveVerifyWorkflow) && /head_branch == 'main'/.test(liveVerifyWorkflow));
+requireMatch('post-deploy workflow verifies expected deployed commit', /scripts\/live_verify\.py/.test(liveVerifyWorkflow) && /--expected-commit/.test(liveVerifyWorkflow) && /workflow_run\.head_sha/.test(liveVerifyWorkflow));
+requireMatch('post-deploy workflow retries transient live propagation', /for attempt in 1 2 3/.test(liveVerifyWorkflow) && /sleep 10/.test(liveVerifyWorkflow));
 
 const failed = checks.filter((check) => !check.condition);
 for (const check of checks) {
