@@ -59,6 +59,22 @@ jobs:
           test -f build/index.html
           test -f build/service-worker.js
           test -f build/version.json
+
           grep -F "meta name=\"bidblitz-build-version\" content=\"${BUILD_ID}\"" build/index.html
+          grep -F "const EMBEDDED_BUILD_ID = '${BUILD_ID}'; // BUILD_ID_INJECTED" build/service-worker.js
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          build_id = os.environ['BUILD_ID']
+          data = json.loads(Path('build/version.json').read_text())
+          assert data.get('build_id') == build_id, (data.get('build_id'), build_id)
+          assert data.get('frontend_version') == build_id, (data.get('frontend_version'), build_id)
+          assert data.get('service_worker_build_id') == build_id, (data.get('service_worker_build_id'), build_id)
+          print(f'Version metadata verified for {build_id}')
+          PY
+
           ! grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js
           ! grep -R -E "https?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)|wss?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)" build/static/js
