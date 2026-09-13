@@ -207,10 +207,12 @@ def test_bidblitz_pay_live_cancel_and_refund_fail_closed_before_local_mutation()
     assert "status_code=501" in cancel_source
 
     refund_live_guard = refund_source.index('if payment.get("mode") == "live":')
+    refund_reservation = refund_source.index("reservation = await _reserve_mock_refund")
     refund_insert = refund_source.index("await db.bidblitz_pay_refunds.insert_one")
-    refund_local_update = refund_source.index("updated = await _mark_payment_status")
+    refund_status_sync = refund_source.index("updated = await _sync_mock_refund_status")
+    assert refund_live_guard < refund_reservation
     assert refund_live_guard < refund_insert
-    assert refund_live_guard < refund_local_update
+    assert refund_live_guard < refund_status_sync
     assert "live_refund_blocked_no_provider_api" in refund_source
     assert "status_code=501" in refund_source
 
