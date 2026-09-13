@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -16,6 +17,7 @@ os.environ["DEMO_SEED"] = "false"
 os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
+from schemas.models import TopUpRequest  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -81,3 +83,16 @@ def test_invalid_login_rejected(client):
         json={"email": "admin@bidblitz.com", "password": "definitiv-falsch"},
     )
     assert response.status_code == 401
+
+
+def test_direct_wallet_topup_is_blocked_outside_test_mode(monkeypatch):
+    monkeypatch.setenv("TEST_MODE", "false")
+    with pytest.raises(ValidationError, match="Direct wallet top-up is disabled outside TEST_MODE"):
+        TopUpRequest(amount=10, payment_method="card")
+
+
+def test_direct_wallet_topup_remains_available_in_test_mode(monkeypatch):
+    monkeypatch.setenv("TEST_MODE", "true")
+    request = TopUpRequest(amount=10, payment_method="test")
+    assert request.amount == 10
+    assert request.payment_method == "test"
