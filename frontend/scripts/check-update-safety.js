@@ -28,10 +28,15 @@ requireMatch('topup/refund routes are protected', /['"]\/topup['"]/.test(indexJs
 requireMatch('no manual update button dependency remains', !indexJs.includes('Jetzt aktualisieren'));
 
 // Service worker cache safety
+requireMatch('service worker contains embedded build marker', /const EMBEDDED_BUILD_ID = ['"][^'"]+['"];\s*\/\/ BUILD_ID_INJECTED/.test(serviceWorker));
+requireMatch('service worker prefers embedded build id over query fallback', /EMBEDDED_BUILD_ID !== ['"]bidblitz-build-unset['"][\s\S]*EMBEDDED_BUILD_ID[\s\S]*queryBuildId/.test(serviceWorker));
+requireMatch('build generator injects worker build id', /inject_service_worker_build_id/.test(buildInfo) && /BUILD_ID_INJECTED/.test(buildInfo));
+requireMatch('build generator refuses an unversioned worker', /refusing to create a production build with an unversioned worker/.test(buildInfo));
 requireMatch('service worker uses build-specific static cache', /bidblitz-static-\$\{BUILD_ID\}/.test(serviceWorker));
 requireMatch('service worker uses build-specific API cache', /bidblitz-api-\$\{BUILD_ID\}/.test(serviceWorker));
 requireMatch('service worker deletes old BidBlitz cache generations', /caches\.delete/.test(serviceWorker) && /oldBidBlitzCaches/.test(serviceWorker));
 requireMatch('HTML navigations explicitly use cache no-store', /req\.mode\s*===\s*['"]navigate['"][\s\S]*handleNavigation/.test(serviceWorker) && /new Request\(req, \{ cache: ['"]no-store['"] \}\)/.test(serviceWorker));
+requireMatch('navigation handler never writes HTML to cache', !/handleNavigation\([\s\S]*cache\.put/.test(serviceWorker));
 requireMatch('root is not precached', !/cache\.addAll\([\s\S]*['"]\/['"]/.test(serviceWorker));
 requireMatch('index.html is not precached', !/cache\.addAll\([\s\S]*index\.html/.test(serviceWorker));
 requireMatch('payment APIs bypass SW cache', /\/api\/payments/.test(serviceWorker) && /\/api\/stripe/.test(serviceWorker) && /\/api\/checkout/.test(serviceWorker));
