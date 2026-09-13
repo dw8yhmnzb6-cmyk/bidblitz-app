@@ -1,3 +1,4 @@
+import inspect
 import os
 import sys
 import uuid
@@ -17,6 +18,7 @@ os.environ["DEMO_SEED"] = "false"
 os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
+from routes import payment as payment_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
 
@@ -96,3 +98,17 @@ def test_direct_wallet_topup_remains_available_in_test_mode(monkeypatch):
     request = TopUpRequest(amount=10, payment_method="test")
     assert request.amount == 10
     assert request.payment_method == "test"
+
+
+def test_payment_rejects_unknown_merchant_before_wallet_debit():
+    source = inspect.getsource(payment_routes.pay)
+    merchant_guard = source.index('raise HTTPException(status_code=404, detail="Merchant not found")')
+    wallet_debit = source.index("debit_result = await debit_wallet")
+    assert merchant_guard < wallet_debit
+
+
+def test_payment_updates_merchant_stats_after_successful_wallet_credit():
+    source = inspect.getsource(payment_routes.pay)
+    merchant_credit = source.index("merchant_credit_result = await credit_wallet")
+    merchant_stats = source.index("await db.merchants.update_one")
+    assert merchant_credit < merchant_stats
