@@ -26,4 +26,5 @@ jobs:
           PYTHONPATH: backend
           MONGO_URL: mongodb://localhost:27017
           DB_NAME: bidblitz_ci
+          JWT_SECRET: wallet-recovery-ci-only
         run: pytest -q backend/tests/test_wallet_balance_crash_recovery.py
