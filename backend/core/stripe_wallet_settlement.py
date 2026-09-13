@@ -99,12 +99,23 @@ async def settle_stripe_wallet_topup(
         await _mark_manual_review(payment, "invalid_amount")
         raise WalletSettlementNeedsReview("Stripe top-up amount is invalid")
 
-    txn_mongo_id, transaction_id, reference = _transaction_identity(session_id)
+    txn_mongo_id, generated_transaction_id, generated_reference = _transaction_identity(session_id)
     txn_selector = _transaction_selector(session_id, user_id)
     existing_txn = await db.transactions.find_one(
         txn_selector,
-        {"_id": 1, "id": 1, "amount": 1},
+        {"_id": 1, "id": 1, "amount": 1, "reference": 1},
     )
+
+    if existing_txn:
+        try:
+            existing_amount = round(float(existing_txn.get("amount", 0) or 0), 2)
+        except (TypeError, ValueError):
+            existing_amount = 0.0
+        if existing_amount != amount:
+            await _mark_manual_review(payment, "legacy_transaction_amount_mismatch")
+            raise WalletSettlementNeedsReview(
+                "Legacy Stripe transaction amount does not match the payment record"
+            )
 
     identity_selector = _user_identity_selector(user_id)
     user_doc = await db.users.find_one(
@@ -175,10 +186,13 @@ async def settle_stripe_wallet_topup(
             raise RuntimeError("Stripe wallet settlement failed: balance was not credited")
         credited_now = wallet_result.modified_count == 1
 
+    transaction_id = generated_transaction_id
+    reference = generated_reference
+
     if existing_txn is None:
         txn_doc = {
             "_id": txn_mongo_id,
-            "id": transaction_id,
+            "id": generated_transaction_id,
             "idempotency_key": f"stripe_checkout:{session_id}",
             "user_id": user_id,
             "type": "topup",
@@ -186,7 +200,7 @@ async def settle_stripe_wallet_topup(
             "description": f"Stripe top-up (EUR {amount:.2f})",
             "merchant_name": "Stripe",
             "status": "completed",
-            "reference": reference,
+            "reference": generated_reference,
             "payment_method": "stripe",
             "category": "topup",
             "stripe_session_id": session_id,
@@ -198,7 +212,7 @@ async def settle_stripe_wallet_topup(
         except Exception:
             existing_txn = await db.transactions.find_one(
                 txn_selector,
-                {"_id": 1, "id": 1, "amount": 1},
+                {"_id": 1, "id": 1, "amount": 1, "reference": 1},
             )
             if not existing_txn:
                 await db.payment_transactions.update_one(
@@ -213,6 +227,12 @@ async def settle_stripe_wallet_topup(
                 raise RuntimeError(
                     "Stripe wallet was credited but transaction finalization is pending"
                 )
+        if existing_txn:
+            transaction_id = str(existing_txn.get("id") or generated_transaction_id)
+            reference = str(existing_txn.get("reference") or generated_reference)
+    else:
+        transaction_id = str(existing_txn.get("id") or generated_transaction_id)
+        reference = str(existing_txn.get("reference") or generated_reference)
 
     final_user = await db.users.find_one(identity_selector, {"balance": 1})
     new_balance = round(float((final_user or {}).get("balance", 0) or 0), 2)
