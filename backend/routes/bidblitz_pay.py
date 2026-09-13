@@ -386,6 +386,131 @@ async def _mark_payment_status(payment_id: str, status: str, provider_status: st
     return payment
 
 
+async def _reserve_mock_refund(
+    payment_id: str,
+    refund_key: str,
+    requested_amount: Optional[float],
+) -> Dict[str, Any]:
+    """Atomically reserve mock refund value on the payment document.
+
+    The payment document is the canonical refund counter. A stable reservation field
+    makes retries recoverable and the Mongo $expr guard prevents concurrent refund
+    requests with different idempotency keys from exceeding the original payment.
+    """
+    payment = await _get_payment_or_404(payment_id)
+    total_amount = round(float(payment.get("amount") or 0), 2)
+    if total_amount <= 0:
+        raise HTTPException(status_code=400, detail="Zahlungsbetrag ist ungültig")
+
+    historical_refunded_total = 0.0
+    async for row in db.bidblitz_pay_refunds.find(
+        {"payment_id": payment_id},
+        {"_id": 0, "amount": 1, "status": 1},
+    ):
+        if row.get("status") in {"succeeded", "completed"}:
+            historical_refunded_total += round(float(row.get("amount") or 0), 2)
+    historical_refunded_total = round(historical_refunded_total, 2)
+
+    # Backfill legacy rows without ever lowering a newer concurrent reservation.
+    await db.bidblitz_pay_payments.update_one(
+        {"payment_id": payment_id},
+        {"$max": {"refunded_amount": historical_refunded_total}},
+    )
+    payment = await _get_payment_or_404(payment_id)
+    current_refunded = round(float(payment.get("refunded_amount") or 0), 2)
+    remaining_amount = round(max(0.0, total_amount - current_refunded), 2)
+    refund_amount = round(float(requested_amount if requested_amount is not None else remaining_amount), 2)
+    if refund_amount <= 0:
+        raise HTTPException(status_code=400, detail="Refund-Betrag muss positiv sein")
+
+    reservation_hash = hashlib.sha256(f"{payment_id}:{refund_key}".encode()).hexdigest()
+    reservation_field = f"mock_refund_reservations.{reservation_hash}"
+    refund_id = f"bbr_{reservation_hash[:24]}"
+    reservations = payment.get("mock_refund_reservations") or {}
+    existing_reservation = reservations.get(reservation_hash)
+    if existing_reservation:
+        saved_amount = round(float(existing_reservation.get("amount") or 0), 2)
+        if saved_amount != refund_amount:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
+        return {
+            "payment": payment,
+            "amount": saved_amount,
+            "refund_id": str(existing_reservation.get("refund_id") or refund_id),
+            "reservation_hash": reservation_hash,
+            "reused": True,
+        }
+
+    if refund_amount > remaining_amount:
+        raise HTTPException(status_code=400, detail="Refund-Betrag überschreitet den offenen Restbetrag")
+
+    reservation = {
+        "refund_id": refund_id,
+        "amount": refund_amount,
+        "idempotency_key": refund_key,
+        "created_at": _now(),
+    }
+    result = await db.bidblitz_pay_payments.update_one(
+        {
+            "payment_id": payment_id,
+            reservation_field: {"$exists": False},
+            "$expr": {
+                "$lte": [
+                    {"$add": [{"$ifNull": ["$refunded_amount", 0]}, refund_amount]},
+                    total_amount,
+                ]
+            },
+        },
+        {
+            "$inc": {"refunded_amount": refund_amount},
+            "$set": {
+                reservation_field: reservation,
+                "updated_at": _now(),
+            },
+        },
+    )
+    if result.modified_count != 1:
+        fresh = await _get_payment_or_404(payment_id)
+        concurrent_reservation = (fresh.get("mock_refund_reservations") or {}).get(reservation_hash)
+        if concurrent_reservation:
+            saved_amount = round(float(concurrent_reservation.get("amount") or 0), 2)
+            if saved_amount != refund_amount:
+                raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
+            return {
+                "payment": fresh,
+                "amount": saved_amount,
+                "refund_id": str(concurrent_reservation.get("refund_id") or refund_id),
+                "reservation_hash": reservation_hash,
+                "reused": True,
+            }
+        raise HTTPException(status_code=400, detail="Refund-Betrag überschreitet den offenen Restbetrag")
+
+    fresh = await _get_payment_or_404(payment_id)
+    return {
+        "payment": fresh,
+        "amount": refund_amount,
+        "refund_id": refund_id,
+        "reservation_hash": reservation_hash,
+        "reused": False,
+    }
+
+
+async def _sync_mock_refund_status(payment_id: str, total_amount: float) -> Dict[str, Any]:
+    # Full-refund is monotonic: a later partial-refund request can never downgrade it.
+    await db.bidblitz_pay_payments.update_one(
+        {"payment_id": payment_id, "refunded_amount": {"$gte": total_amount}},
+        {"$set": {"status": "refunded", "provider_status": "refunded", "updated_at": _now()}},
+    )
+    await db.bidblitz_pay_payments.update_one(
+        {
+            "payment_id": payment_id,
+            "refunded_amount": {"$gt": 0, "$lt": total_amount},
+            "status": {"$ne": "refunded"},
+        },
+        {"$set": {"status": "partially_refunded", "provider_status": "partially_refunded", "updated_at": _now()}},
+    )
+    return await _get_payment_or_404(payment_id)
+
+
 @router.get("/config")
 async def get_bidblitz_pay_config():
     cfg = _cfg()
@@ -695,21 +820,14 @@ async def create_bidblitz_pay_refund(
         {"_id": 0},
     )
     if existing:
+        if req.amount is not None and round(float(existing.get("amount") or 0), 2) != round(float(req.amount), 2):
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
         return {"ok": True, "reused": True, "refund": existing}
 
-    total_amount = round(float(payment.get("amount") or 0), 2)
-    refunded_total = 0.0
-    async for row in db.bidblitz_pay_refunds.find({"payment_id": payment_id}, {"_id": 0, "amount": 1, "status": 1}):
-        if row.get("status") in {"succeeded", "completed"}:
-            refunded_total += round(float(row.get("amount") or 0), 2)
-    refund_amount = round(float(req.amount or (total_amount - refunded_total)), 2)
-    if refund_amount <= 0:
-        raise HTTPException(status_code=400, detail="Refund-Betrag muss positiv sein")
-    if refund_amount > round(total_amount - refunded_total, 2):
-        raise HTTPException(status_code=400, detail="Refund-Betrag überschreitet den offenen Restbetrag")
-
+    reservation = await _reserve_mock_refund(payment_id, refund_key, req.amount)
+    refund_amount = reservation["amount"]
     refund = {
-        "refund_id": f"bbr_{secrets.token_urlsafe(8)}",
+        "refund_id": reservation["refund_id"],
         "payment_id": payment_id,
         "provider_payment_id": payment.get("provider_payment_id") or "",
         "mode": payment.get("mode", "mock"),
@@ -732,15 +850,28 @@ async def create_bidblitz_pay_refund(
             {"_id": 0},
         )
         if concurrent:
-            return {"ok": True, "reused": True, "refund": concurrent}
-        raise
+            if round(float(concurrent.get("amount") or 0), 2) != refund_amount:
+                raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Refund-Betrag verwendet")
+            updated = await _sync_mock_refund_status(payment_id, round(float(payment.get("amount") or 0), 2))
+            return {"ok": True, "reused": True, "refund": concurrent, "payment": _serialize_payment(updated)}
+        # Keep the durable payment reservation. A retry with the same key completes
+        # the audit row without reserving/refunding the amount a second time.
+        raise HTTPException(
+            status_code=500,
+            detail="Refund wurde reserviert; Finalisierung fehlgeschlagen. Mit demselben Idempotency-Key sicher erneut versuchen.",
+        )
     refund.pop("_id", None)
-    new_refunded_total = round(refunded_total + refund_amount, 2)
-    payment_status = "refunded" if new_refunded_total >= total_amount else "partially_refunded"
-    updated = await _mark_payment_status(payment_id, payment_status, payment_status, {"refunded_amount": new_refunded_total})
+
+    total_amount = round(float(payment.get("amount") or 0), 2)
+    updated = await _sync_mock_refund_status(payment_id, total_amount)
     await _write_gateway_audit("create_refund", payment_id, {"refund_id": refund["refund_id"], "amount": refund_amount})
     await _send_merchant_webhook(updated, "payment.refunded", {"refund_id": refund["refund_id"], "refund_amount": refund_amount})
-    return {"ok": True, "reused": False, "refund": refund, "payment": _serialize_payment(updated)}
+    return {
+        "ok": True,
+        "reused": bool(reservation.get("reused")),
+        "refund": refund,
+        "payment": _serialize_payment(updated),
+    }
 
 
 @router.post("/webhook")
