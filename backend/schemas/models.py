@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
+import os
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from datetime import datetime
 
@@ -23,6 +24,15 @@ class TopUpRequest(BaseModel):
     amount: float = Field(gt=0, le=50000)
     payment_method: str = "bank_transfer"
     idempotency_key: Optional[str] = None
+
+    @model_validator(mode="after")
+    def block_unverified_direct_topup_in_production(self):
+        """Direct wallet credits are test-only; production top-ups must be provider-verified."""
+        if os.environ.get("TEST_MODE", "false").lower() != "true":
+            raise ValueError(
+                "Direct wallet top-up is disabled outside TEST_MODE; use a verified payment-provider flow"
+            )
+        return self
 
 
 class PaymentRequest(BaseModel):
