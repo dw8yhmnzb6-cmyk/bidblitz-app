@@ -63,6 +63,7 @@ jobs:
           backend/tests/test_admin_financial_metrics.py
           backend/tests/test_wallet_reconciliation.py
           backend/tests/test_payment_idempotency_index.py
+          backend/tests/test_topup_production_guard.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
