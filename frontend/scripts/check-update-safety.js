@@ -46,6 +46,8 @@ requireMatch('navigation handler never writes HTML to cache', Boolean(navigation
 requireMatch('root is not precached', !/cache\.addAll\([\s\S]*['"]\/['"]/.test(serviceWorker));
 requireMatch('index.html is not precached', !/cache\.addAll\([\s\S]*index\.html/.test(serviceWorker));
 requireMatch('payment APIs bypass SW cache', /\/api\/payments/.test(serviceWorker) && /\/api\/stripe/.test(serviceWorker) && /\/api\/checkout/.test(serviceWorker));
+requireMatch('kids APIs always bypass SW cache', /['"]\/api\/kids['"]/.test(serviceWorker));
+requireMatch('kids children endpoint is not cacheable', !/CACHEABLE_API_ROUTES\s*=\s*\[[\s\S]*?\/api\/kids\/children[\s\S]*?\]/.test(serviceWorker));
 
 // HTTP cache policy
 for (const [label, nginx] of [
