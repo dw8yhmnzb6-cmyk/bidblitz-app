@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND_BUILD_INFO = ROOT / "backend" / "build_info.json"
 FRONTEND_VERSION_INFO = ROOT / "frontend" / "public" / "version.json"
+FRONTEND_SERVICE_WORKER = ROOT / "frontend" / "public" / "service-worker.js"
+SERVICE_WORKER_BUILD_MARKER = "// BUILD_ID_INJECTED"
 
 
 def git(*args: str) -> str:
@@ -16,6 +19,27 @@ def git(*args: str) -> str:
         return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
     except Exception:
         return "unknown"
+
+
+def inject_service_worker_build_id(build_id: str) -> str:
+    safe_build_id = re.sub(r"[^a-zA-Z0-9._-]", "_", build_id)[:120] or "unversioned"
+    source = FRONTEND_SERVICE_WORKER.read_text()
+    pattern = (
+        r"const EMBEDDED_BUILD_ID = '[^']*';\s*"
+        + re.escape(SERVICE_WORKER_BUILD_MARKER)
+    )
+    replacement = (
+        f"const EMBEDDED_BUILD_ID = '{safe_build_id}'; "
+        f"{SERVICE_WORKER_BUILD_MARKER}"
+    )
+    updated, count = re.subn(pattern, replacement, source, count=1)
+    if count != 1:
+        raise RuntimeError(
+            "service-worker.js is missing the BUILD_ID_INJECTED marker; "
+            "refusing to create a production build with an unversioned worker"
+        )
+    FRONTEND_SERVICE_WORKER.write_text(updated)
+    return safe_build_id
 
 
 def main() -> int:
@@ -31,6 +55,7 @@ def main() -> int:
     frontend_version = os.environ.get("BUILD_FRONTEND_VERSION", build_id)
     service_worker_version = os.environ.get("BUILD_SERVICE_WORKER_VERSION", f"bidblitz-static-{build_id}")
     api_cache_version = os.environ.get("BUILD_API_CACHE_VERSION", f"bidblitz-api-{build_id}")
+    embedded_service_worker_build_id = inject_service_worker_build_id(build_id)
 
     backend_payload = {
         "environment": environment,
@@ -44,6 +69,7 @@ def main() -> int:
         "public_base_url": public_base_url,
         "service_worker_version": service_worker_version,
         "api_cache_version": api_cache_version,
+        "service_worker_build_id": embedded_service_worker_build_id,
     }
     frontend_payload = {
         **backend_payload,
@@ -52,7 +78,7 @@ def main() -> int:
 
     BACKEND_BUILD_INFO.write_text(json.dumps(backend_payload, indent=2) + "\n")
     FRONTEND_VERSION_INFO.write_text(json.dumps(frontend_payload, indent=2) + "\n")
-    print(json.dumps({"backend": str(BACKEND_BUILD_INFO), "frontend": str(FRONTEND_VERSION_INFO), "build_id": build_id}, indent=2))
+    print(json.dumps({"backend": str(BACKEND_BUILD_INFO), "frontend": str(FRONTEND_VERSION_INFO), "build_id": build_id, "service_worker_build_id": embedded_service_worker_build_id}, indent=2))
     return 0
 
 
