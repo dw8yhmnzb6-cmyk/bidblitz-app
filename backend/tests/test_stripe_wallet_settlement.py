@@ -151,6 +151,48 @@ def test_legacy_completed_transaction_backfills_marker_without_recredit(monkeypa
     assert len(fake_db.transactions.docs) == 1
 
 
+def test_existing_completed_transaction_blocks_recredit_even_if_payment_is_initiated(monkeypatch):
+    fake_db = FakeDB(
+        payments=[{
+            "session_id": "cs_legacy_stale_status",
+            "type": "wallet_topup",
+            "user_id": "user-stale",
+            "amount": 50.0,
+            "currency": "EUR",
+            "payment_status": "paid",
+            "status": "initiated",
+        }],
+        users=[{"_id": "user-stale", "balance": 90.0}],
+        transactions=[{
+            "_id": "legacy-existing",
+            "id": "legacy-existing-tx",
+            "reference": "LEGACY-EXISTING",
+            "stripe_session_id": "cs_legacy_stale_status",
+            "user_id": "user-stale",
+            "type": "topup",
+            "status": "completed",
+            "amount": 50.0,
+        }],
+    )
+    monkeypatch.setattr(settlement, "db", fake_db)
+
+    result = _run(settlement.settle_stripe_wallet_topup(
+        "cs_legacy_stale_status",
+        expected_user_id="user-stale",
+    ))
+
+    user = fake_db.users.docs[0]
+    payment = fake_db.payment_transactions.docs[0]
+    assert result["credited"] is True
+    assert result["credited_now"] is False
+    assert result["transaction_id"] == "legacy-existing-tx"
+    assert result["reference"] == "LEGACY-EXISTING"
+    assert user["balance"] == 90.0
+    assert user["stripe_checkout_credited_sessions"] == ["cs_legacy_stale_status"]
+    assert payment["status"] == "credited"
+    assert len(fake_db.transactions.docs) == 1
+
+
 def test_legacy_transaction_amount_mismatch_requires_review(monkeypatch):
     fake_db = FakeDB(
         payments=[{
