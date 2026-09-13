@@ -128,21 +128,20 @@ async def settle_stripe_wallet_topup(
     credited_sessions = user_doc.get("stripe_checkout_credited_sessions", []) or []
     has_wallet_marker = session_id in credited_sessions
 
-    # Legacy code wrote status=credited/completed before every durable proof existed.
-    # If a matching completed transaction exists, the old flow had already applied
-    # the balance before inserting that transaction, so we can safely backfill only
-    # the marker (without another balance increment). Without either proof, the state
-    # is ambiguous and must not be auto-credited.
+    # A completed transaction for this exact Stripe session is durable evidence that
+    # the historical flow had already increased the user's balance before persisting
+    # the transaction. Backfill only the marker, regardless of a stale payment status.
+    if existing_txn and not has_wallet_marker:
+        await db.users.update_one(
+            identity_selector,
+            {"$addToSet": {"stripe_checkout_credited_sessions": session_id}},
+        )
+        has_wallet_marker = True
+
+    # Legacy terminal rows without either durable proof are ambiguous: the old code
+    # could mark the payment credited before the wallet write. Never guess here.
     if payment.get("status") in {"credited", "completed", "manual_review_required"}:
-        if has_wallet_marker:
-            pass
-        elif existing_txn:
-            await db.users.update_one(
-                identity_selector,
-                {"$addToSet": {"stripe_checkout_credited_sessions": session_id}},
-            )
-            has_wallet_marker = True
-        else:
+        if not has_wallet_marker and not existing_txn:
             await _mark_manual_review(payment, "legacy_terminal_state_without_wallet_proof")
             raise WalletSettlementNeedsReview(
                 "Legacy Stripe top-up needs manual review before wallet credit"
