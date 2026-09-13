@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import ipaddress
@@ -17,6 +18,9 @@ from core.database import db
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/bidblitz-pay", tags=["bidblitz-pay"])
+
+_bidblitz_pay_index_lock = asyncio.Lock()
+_bidblitz_pay_indexes_ready = False
 
 
 class BidBlitzPayCreateRequest(BaseModel):
@@ -146,6 +150,34 @@ def _payment_matches_request(payment: Dict[str, Any], req: BidBlitzPayCreateRequ
         and str(payment.get("order_id") or "") == req.order_id
         and _normalized_email(payment.get("customer_email")) == _normalized_email(req.customer_email)
     )
+
+
+async def _ensure_bidblitz_pay_idempotency_indexes() -> None:
+    global _bidblitz_pay_indexes_ready
+    if _bidblitz_pay_indexes_ready:
+        return
+
+    async with _bidblitz_pay_index_lock:
+        if _bidblitz_pay_indexes_ready:
+            return
+        try:
+            await db.bidblitz_pay_payments.create_index(
+                "scoped_idempotency_key",
+                unique=True,
+                sparse=True,
+                name="uniq_bbp_scoped_idempotency",
+            )
+            await db.bidblitz_pay_refunds.create_index(
+                [("payment_id", 1), ("idempotency_key", 1)],
+                unique=True,
+                name="uniq_bbp_refund_idempotency",
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="BidBlitz-Pay-Idempotency-Schutz konnte nicht initialisiert werden",
+            ) from exc
+        _bidblitz_pay_indexes_ready = True
 
 
 async def _optional_current_user(request: Request) -> Optional[Dict[str, Any]]:
@@ -379,6 +411,7 @@ async def create_bidblitz_pay_payment(
     mode = _mode(cfg)
     actor = await _optional_current_user(request)
     _validate_merchant_webhook_url(req.webhook_url, actor)
+    await _ensure_bidblitz_pay_idempotency_indexes()
 
     key = _build_idempotency_key(req, idempotency_key or "")
     scope = _idempotency_scope(req, actor)
@@ -406,15 +439,21 @@ async def create_bidblitz_pay_payment(
         "scoped_idempotency_key": {"$exists": False},
     })
     if legacy and _legacy_idempotency_owner_matches(legacy, actor, req):
-        await db.bidblitz_pay_payments.update_one(
-            {"payment_id": legacy["payment_id"], "scoped_idempotency_key": {"$exists": False}},
-            {"$set": {
-                "idempotency_scope": scope,
-                "scoped_idempotency_key": scoped_key,
-                "request_fingerprint": request_fingerprint,
-                "updated_at": _now(),
-            }},
-        )
+        try:
+            await db.bidblitz_pay_payments.update_one(
+                {"payment_id": legacy["payment_id"], "scoped_idempotency_key": {"$exists": False}},
+                {"$set": {
+                    "idempotency_scope": scope,
+                    "scoped_idempotency_key": scoped_key,
+                    "request_fingerprint": request_fingerprint,
+                    "updated_at": _now(),
+                }},
+            )
+        except Exception:
+            concurrent = await db.bidblitz_pay_payments.find_one({"scoped_idempotency_key": scoped_key})
+            if concurrent:
+                return {"ok": True, "reused": True, "payment": _serialize_payment(concurrent)}
+            raise
         legacy["idempotency_scope"] = scope
         legacy["scoped_idempotency_key"] = scoped_key
         legacy["request_fingerprint"] = request_fingerprint
@@ -649,6 +688,7 @@ async def create_bidblitz_pay_refund(
             detail="Live-Refund ist deaktiviert, bis die Provider-Refund-API technisch integriert ist",
         )
 
+    await _ensure_bidblitz_pay_idempotency_indexes()
     refund_key = (idempotency_key or req.idempotency_key or f"refund_{payment_id}_{round(float(req.amount or payment.get('amount') or 0), 2)}")[:180]
     existing = await db.bidblitz_pay_refunds.find_one(
         {"payment_id": payment_id, "idempotency_key": refund_key},
