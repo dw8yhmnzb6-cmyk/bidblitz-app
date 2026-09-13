@@ -25,6 +25,7 @@ jobs:
 
       - name: Generate production build metadata
         env:
+          BUILD_ID: ci-${{ github.sha }}
           BUILD_ENVIRONMENT: production
           BUILD_API_BASE_URL: https://bidblitz.ae
           BUILD_PUBLIC_BASE_URL: https://bidblitz.ae
@@ -42,6 +43,7 @@ jobs:
       - name: Build production frontend
         working-directory: frontend
         env:
+          BUILD_ID: ci-${{ github.sha }}
           REACT_APP_BACKEND_URL: https://bidblitz.ae
           REACT_APP_BUILD_ID: ci-${{ github.sha }}
           REACT_APP_TEST_MODE: 'false'
