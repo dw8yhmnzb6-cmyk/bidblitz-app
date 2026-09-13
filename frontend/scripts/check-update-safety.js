@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const read = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
@@ -67,6 +68,12 @@ requireMatch('build metadata cache names include build_id', /bidblitz-static-\{b
 
 // Post-deployment verification must prove that the LIVE server actually exposes
 // the same cache policy and build identity as the repository expects.
+const liveVerifyCompile = spawnSync(
+  'python3',
+  ['-m', 'py_compile', path.join(repoRoot, 'scripts/live_verify.py')],
+  { encoding: 'utf8' }
+);
+requireMatch('live verifier Python syntax compiles', liveVerifyCompile.status === 0);
 requireMatch('live verifier has no third-party requests dependency', !/^\s*(?:from\s+requests|import\s+requests)\b/m.test(liveVerify));
 requireMatch('live verifier checks all app-shell update files', /APP_SHELL_PATHS[\s\S]*['"]\/['"][\s\S]*['"]\/index\.html['"][\s\S]*['"]\/version\.json['"][\s\S]*['"]\/service-worker\.js['"]/.test(liveVerify));
 requireMatch('live verifier requires no-store cache policy', /is no-store/.test(liveVerify) && /['"]no-store['"]\s+in\s+cc/.test(liveVerify));
@@ -86,6 +93,9 @@ for (const check of checks) {
 
 if (failed.length) {
   console.error(`\n${failed.length} update/cache safety check(s) failed.`);
+  if (liveVerifyCompile.status !== 0) {
+    console.error(liveVerifyCompile.stderr || liveVerifyCompile.stdout || 'python3 -m py_compile failed');
+  }
   process.exit(1);
 }
 
