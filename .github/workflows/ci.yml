@@ -71,3 +71,6 @@ jobs:
 
       - name: Run ESLint
         run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+
+      - name: Verify frontend update and cache safety
+        run: node frontend/scripts/check-update-safety.js
