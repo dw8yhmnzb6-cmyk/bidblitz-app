@@ -690,7 +690,7 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
     amount = round(req.amount, 2)
 
     # Compliance check
-    compliance = await run_compliance_check(user, "topup", amount)
+    compliance = await run_compliance_check(user_id, "topup", amount)
     if compliance["outcome"] == BLOCKED:
         raise HTTPException(status_code=403, detail=compliance["reason"])
 
