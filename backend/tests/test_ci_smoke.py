@@ -19,6 +19,7 @@ os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
 from routes import payment as payment_routes  # noqa: E402
+from routes import stripe as stripe_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
 
@@ -112,3 +113,26 @@ def test_payment_updates_merchant_stats_after_successful_wallet_credit():
     merchant_credit = source.index("merchant_credit_result = await credit_wallet")
     merchant_stats = source.index("await db.merchants.update_one")
     assert merchant_credit < merchant_stats
+
+
+def test_stripe_registers_only_one_wallet_webhook_route():
+    webhook_routes = [
+        route
+        for route in stripe_routes.router.routes
+        if getattr(route, "path", None) == "/webhook"
+        and "POST" in (getattr(route, "methods", set()) or set())
+    ]
+    assert len(webhook_routes) == 1
+
+
+def test_stripe_paid_poll_does_not_precomplete_before_wallet_credit():
+    source = inspect.getsource(stripe_routes.checkout_status)
+    assert 'new_status = "completed" if stripe_status.payment_status == "paid"' not in source
+    assert 'if stripe_status.payment_status != "paid"' in source
+    assert '"status": "credited"' in source
+    assert '"stripe_session_id": session_id' in source
+
+
+def test_stripe_webhook_processing_failures_return_retryable_error():
+    source = inspect.getsource(stripe_routes.stripe_webhook)
+    assert 'raise HTTPException(status_code=500, detail="Webhook processing failed")' in source
