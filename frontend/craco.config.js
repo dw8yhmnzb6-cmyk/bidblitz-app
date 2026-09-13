@@ -44,10 +44,15 @@ function syncBuildMetadata() {
     }
   })();
   const shortCommit = commit === "unknown" ? "unknown" : commit.slice(0, 7);
-  const buildId = `${shortCommit}-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`;
+  const generatedBuildId = `${shortCommit}-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`;
+  const buildId = String(process.env.BUILD_ID || process.env.REACT_APP_BUILD_ID || generatedBuildId).trim();
   const backendUrl = process.env.REACT_APP_BACKEND_URL || "";
   const buildEnvironment = backendUrl.includes("bidblitz.ae") && !backendUrl.includes("preview") ? "production" : "preview";
 
+  // One immutable build identity must flow through React, version.json and the
+  // service worker. Do not replace an explicit CI/deploy build id with a new
+  // timestamp during CRACO startup.
+  process.env.BUILD_ID = buildId;
   process.env.REACT_APP_BUILD_ID = buildId;
   process.env.REACT_APP_GIT_COMMIT = commit;
 
@@ -55,6 +60,7 @@ function syncBuildMetadata() {
     cwd: repoRoot,
     env: {
       ...process.env,
+      BUILD_ID: buildId,
       BUILD_ENVIRONMENT: buildEnvironment,
       BUILD_API_BASE_URL: backendUrl,
       BUILD_PUBLIC_BASE_URL: backendUrl,
