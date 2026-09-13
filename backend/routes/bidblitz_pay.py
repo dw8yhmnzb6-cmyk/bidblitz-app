@@ -1,10 +1,12 @@
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -80,6 +82,64 @@ def _build_idempotency_key(req: BidBlitzPayCreateRequest, header_key: str = "") 
         "webhook_url": req.webhook_url,
     }
     return "bbp_" + hashlib.sha256(json.dumps(base, sort_keys=True).encode()).hexdigest()[:32]
+
+
+def _normalized_email(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+async def _optional_current_user(request: Request) -> Optional[Dict[str, Any]]:
+    try:
+        return await get_current_user(request)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
+
+
+def _payment_access_allowed(payment: Dict[str, Any], user: Dict[str, Any]) -> bool:
+    if user.get("role") == "admin":
+        return True
+
+    user_id = str(user.get("_id") or "")
+    created_by_user_id = str(payment.get("created_by_user_id") or "")
+    if user_id and created_by_user_id and user_id == created_by_user_id:
+        return True
+
+    user_email = _normalized_email(user.get("email"))
+    customer_email = _normalized_email(payment.get("customer_email"))
+    created_by_email = _normalized_email(payment.get("created_by_email"))
+    if user_email and customer_email and user_email == customer_email:
+        return True
+    if user_email and created_by_email and user_email == created_by_email:
+        return True
+    return False
+
+
+def _require_payment_access(payment: Dict[str, Any], user: Dict[str, Any]) -> None:
+    if not _payment_access_allowed(payment, user):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese BidBlitz-Pay-Zahlung")
+
+
+def _validate_merchant_webhook_url(webhook_url: str, user: Optional[Dict[str, Any]]) -> None:
+    value = (webhook_url or "").strip()
+    if not value:
+        return
+    if not user or user.get("role") not in {"admin", "merchant"}:
+        raise HTTPException(status_code=403, detail="Webhook-URLs dürfen nur Händler oder Admins setzen")
+
+    parsed = urlparse(value)
+    hostname = (parsed.hostname or "").strip().lower()
+    if parsed.scheme.lower() != "https" or not hostname:
+        raise HTTPException(status_code=400, detail="Webhook-URL muss eine gültige HTTPS-URL sein")
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        raise HTTPException(status_code=400, detail="Lokale Webhook-Ziele sind nicht erlaubt")
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise HTTPException(status_code=400, detail="Private oder lokale Webhook-IP-Adressen sind nicht erlaubt")
 
 
 async def _write_gateway_audit(action: str, payment_id: str = "", details: Optional[Dict[str, Any]] = None) -> None:
@@ -219,6 +279,9 @@ async def create_bidblitz_pay_payment(
 ):
     cfg = _cfg()
     mode = _mode(cfg)
+    actor = await _optional_current_user(request)
+    _validate_merchant_webhook_url(req.webhook_url, actor)
+
     key = _build_idempotency_key(req, idempotency_key or "")
     existing = await db.bidblitz_pay_payments.find_one({"idempotency_key": key})
     if existing:
@@ -286,6 +349,8 @@ async def create_bidblitz_pay_payment(
             "wallet_redirect_url": wallet_redirect_url,
         }
 
+    actor_user_id = str(actor.get("_id") or "") if actor else ""
+    actor_email = actor.get("email", "") if actor else ""
     payment = {
         "payment_id": payment_id,
         "provider": "bidblitz_pay",
@@ -315,23 +380,25 @@ async def create_bidblitz_pay_payment(
         "approved_at": None,
         "paid_at": None,
         "cancelled_at": None,
-        "created_by_user_id": "",
-        "created_by_email": "",
+        "created_by_user_id": actor_user_id,
+        "created_by_email": actor_email,
     }
     await db.bidblitz_pay_payments.insert_one(payment)
     await _write_gateway_audit("create_payment", payment_id, {"mode": mode, "idempotency_key": key})
     await log_audit(
         AuditEvent.PAYMENT_INITIATED,
-        user_id="",
-        email=req.customer_email,
+        user_id=actor_user_id,
+        email=actor_email or req.customer_email,
         details={"provider": "bidblitz_pay", "payment_id": payment_id, "mode": mode, "amount": req.amount},
     )
     return {"ok": True, "reused": False, "payment": _serialize_payment(payment)}
 
 
 @router.get("/payments/{payment_id}")
-async def get_bidblitz_pay_payment(payment_id: str):
+async def get_bidblitz_pay_payment(payment_id: str, request: Request):
     payment = await _get_payment_or_404(payment_id)
+    user = await get_current_user(request)
+    _require_payment_access(payment, user)
     refunds = await db.bidblitz_pay_refunds.find({"payment_id": payment_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return {"ok": True, "payment": _serialize_payment(payment), "refunds": refunds}
 
@@ -339,13 +406,12 @@ async def get_bidblitz_pay_payment(payment_id: str):
 @router.post("/payments/{payment_id}/confirm-mock")
 async def confirm_bidblitz_pay_mock(payment_id: str, req: BidBlitzPayMockDecisionRequest, request: Request):
     payment = await _get_payment_or_404(payment_id)
+    user = await get_current_user(request)
+    _require_payment_access(payment, user)
     if payment.get("mode") != "mock":
         raise HTTPException(status_code=400, detail="Mock-Freigabe ist nur im Sandbox-Modus erlaubt")
     if payment.get("status") != "pending":
         raise HTTPException(status_code=400, detail=f"Zahlung ist bereits {payment.get('status')}")
-    user = await get_current_user(request)
-    if payment.get("customer_email") and user.get("role") != "admin" and user.get("email") != payment.get("customer_email"):
-        raise HTTPException(status_code=403, detail="Diese BidBlitz-Pay-Zahlung gehört zu einem anderen Kunden")
     ip, ua = get_client_info(request)
     updated = await _mark_payment_status(
         payment_id,
@@ -375,23 +441,30 @@ async def confirm_bidblitz_pay_mock(payment_id: str, req: BidBlitzPayMockDecisio
 @router.post("/payments/{payment_id}/cancel")
 async def cancel_bidblitz_pay(payment_id: str, request: Request):
     payment = await _get_payment_or_404(payment_id)
+    user = await get_current_user(request)
+    _require_payment_access(payment, user)
     if payment.get("status") != "pending":
         raise HTTPException(status_code=400, detail=f"Zahlung ist bereits {payment.get('status')}")
-    user = None
-    try:
-        user = await get_current_user(request)
-    except Exception:
-        user = None
+    if payment.get("mode") == "live":
+        await _write_gateway_audit(
+            "live_cancel_blocked_no_provider_api",
+            payment_id,
+            {"requested_by": user.get("email", "")},
+        )
+        raise HTTPException(
+            status_code=501,
+            detail="Live-Cancel ist deaktiviert, bis die Provider-Cancel-API technisch integriert ist",
+        )
     updated = await _mark_payment_status(
         payment_id,
         "cancelled",
         "cancelled",
         {
             "cancelled_at": _now(),
-            "cancelled_by_email": user.get("email", "") if user else "",
+            "cancelled_by_email": user.get("email", ""),
         },
     )
-    await _write_gateway_audit("cancel_payment", payment_id, {"email": user.get("email", "") if user else "guest"})
+    await _write_gateway_audit("cancel_payment", payment_id, {"email": user.get("email", "")})
     await _send_merchant_webhook(updated, "payment.cancelled")
     return {"ok": True, "payment": _serialize_payment(updated)}
 
@@ -404,16 +477,26 @@ async def create_bidblitz_pay_refund(
     idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
     payment = await _get_payment_or_404(payment_id)
+    user = await get_current_user(request)
+    _require_payment_access(payment, user)
     if payment.get("status") not in {"paid", "partially_refunded", "refunded"}:
         raise HTTPException(status_code=400, detail="Refund ist nur für bezahlte Zahlungen möglich")
+    if payment.get("mode") == "live":
+        await _write_gateway_audit(
+            "live_refund_blocked_no_provider_api",
+            payment_id,
+            {"requested_by": user.get("email", "")},
+        )
+        raise HTTPException(
+            status_code=501,
+            detail="Live-Refund ist deaktiviert, bis die Provider-Refund-API technisch integriert ist",
+        )
+
     refund_key = (idempotency_key or req.idempotency_key or f"refund_{payment_id}_{round(float(req.amount or payment.get('amount') or 0), 2)}")[:180]
     existing = await db.bidblitz_pay_refunds.find_one({"idempotency_key": refund_key}, {"_id": 0})
     if existing:
         return {"ok": True, "reused": True, "refund": existing}
 
-    user = await get_current_user(request)
-    if payment.get("customer_email") and user.get("role") != "admin" and user.get("email") != payment.get("customer_email"):
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für diesen Refund")
     total_amount = round(float(payment.get("amount") or 0), 2)
     refunded_total = 0.0
     async for row in db.bidblitz_pay_refunds.find({"payment_id": payment_id}, {"_id": 0, "amount": 1, "status": 1}):
@@ -434,12 +517,12 @@ async def create_bidblitz_pay_refund(
         "currency": payment.get("currency", "EUR"),
         "reason": req.reason,
         "idempotency_key": refund_key,
-        "status": "succeeded" if payment.get("mode") == "mock" else "pending",
+        "status": "succeeded",
         "requested_by_email": user.get("email", ""),
         "requested_by_user_id": str(user.get("_id", "")),
         "created_at": _now(),
         "updated_at": _now(),
-        "mocked": payment.get("mode") == "mock",
+        "mocked": True,
     }
     await db.bidblitz_pay_refunds.insert_one(refund)
     refund.pop("_id", None)
