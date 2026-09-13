@@ -12,6 +12,7 @@ BACKEND_BUILD_INFO = ROOT / "backend" / "build_info.json"
 FRONTEND_VERSION_INFO = ROOT / "frontend" / "public" / "version.json"
 FRONTEND_SERVICE_WORKER = ROOT / "frontend" / "public" / "service-worker.js"
 SERVICE_WORKER_BUILD_MARKER = "// BUILD_ID_INJECTED"
+BUILD_ID_FILE = Path("/tmp/bidblitz_build_id.txt")
 
 
 def git(*args: str) -> str:
@@ -19,6 +20,23 @@ def git(*args: str) -> str:
         return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
     except Exception:
         return "unknown"
+
+
+def resolve_build_id(short_commit: str) -> str:
+    explicit_build_id = os.environ.get("BUILD_ID", "").strip()
+    if explicit_build_id:
+        return explicit_build_id
+
+    if BUILD_ID_FILE.exists():
+        file_build_id = BUILD_ID_FILE.read_text().strip()
+        if file_build_id:
+            return file_build_id
+
+    react_build_id = os.environ.get("REACT_APP_BUILD_ID", "").strip()
+    if react_build_id:
+        return react_build_id
+
+    return f"{short_commit}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
 
 def inject_service_worker_build_id(build_id: str) -> str:
@@ -47,7 +65,7 @@ def main() -> int:
     short_commit = commit[:7] if commit != "unknown" else "unknown"
     branch = git("branch", "--show-current")
     timestamp = datetime.now(timezone.utc).isoformat()
-    build_id = Path('/tmp/bidblitz_build_id.txt').read_text().strip() if Path('/tmp/bidblitz_build_id.txt').exists() else f"{short_commit}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    build_id = resolve_build_id(short_commit)
     environment = os.environ.get("BUILD_ENVIRONMENT", "preview")
     api_base_url = os.environ.get("BUILD_API_BASE_URL", "https://super-app-staging-2.preview.emergentagent.com")
     public_base_url = os.environ.get("BUILD_PUBLIC_BASE_URL", api_base_url)
