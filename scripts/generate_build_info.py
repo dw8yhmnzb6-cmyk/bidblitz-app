@@ -29,8 +29,8 @@ def main() -> int:
     public_base_url = os.environ.get("BUILD_PUBLIC_BASE_URL", api_base_url)
     backend_version = os.environ.get("BUILD_BACKEND_VERSION", "2.0.0")
     frontend_version = os.environ.get("BUILD_FRONTEND_VERSION", build_id)
-    service_worker_version = os.environ.get("BUILD_SERVICE_WORKER_VERSION", "bidblitz-static-v16")
-    api_cache_version = os.environ.get("BUILD_API_CACHE_VERSION", "bidblitz-api-v16")
+    service_worker_version = os.environ.get("BUILD_SERVICE_WORKER_VERSION", f"bidblitz-static-{build_id}")
+    api_cache_version = os.environ.get("BUILD_API_CACHE_VERSION", f"bidblitz-api-{build_id}")
 
     backend_payload = {
         "environment": environment,

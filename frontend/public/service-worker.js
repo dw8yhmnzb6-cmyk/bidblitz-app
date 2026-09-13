@@ -1,28 +1,21 @@
-// BidBlitz Service Worker — Hardened v16
-// - Only caches explicitly safe GET endpoints
-// - Auth, payments, admin, wallet, and all mutating requests bypass the SW entirely
-// - Prevents "object cannot be cloned" errors by never intercepting auth/mutations
+// BidBlitz Service Worker — build-aware update lifecycle
+// - HTML navigations are network-only (offline page fallback) and are never stored in Cache Storage.
+// - CRA /static/ assets rely on their content hashes + HTTP immutable caching.
+// - Only explicitly safe GET API routes use a network-first offline cache.
+// - Auth, wallet, payments, checkout and all mutations bypass the SW entirely.
 
-const CACHE_NAME = 'bidblitz-static-v16';
-const API_CACHE_NAME = 'bidblitz-api-v16';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/offline.html',
-];
+const swUrl = new URL(self.location.href);
+const rawBuildId = swUrl.searchParams.get('v') || 'unversioned';
+const BUILD_ID = rawBuildId.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+const CACHE_NAME = `bidblitz-static-${BUILD_ID}`;
+const API_CACHE_NAME = `bidblitz-api-${BUILD_ID}`;
+const OFFLINE_URL = '/offline.html';
 
-// Explicit allow-list: ONLY these GET endpoints may be cached.
-// Anything not in this list is passed straight to the network.
 const CACHEABLE_API_ROUTES = [
   '/api/food/restaurants',
   '/api/kids/children',
-  // NOTE: /api/auctions is REMOVED - must always be fresh (real-time data)
-  // NOTE: Do NOT add wallet, transactions, auth, admin, payments, stripe, p2p,
-  // notifications, flights, or hotels — they must always be fresh.
 ];
 
-// Explicit hard block-list: these NEVER go through SW cache, even on GET.
 const NEVER_CACHE_PREFIXES = [
   '/api/auth',
   '/api/admin',
@@ -40,18 +33,18 @@ const NEVER_CACHE_PREFIXES = [
   '/api/topup',
   '/api/refund',
   '/api/checkout',
-  '/api/auctions',  // ADDED: Auctions must always be fresh
+  '/api/auctions',
   '/login',
   '/logout',
   '/register',
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// LIFECYCLE
-// ═══════════════════════════════════════════════════════════════════════════════
+const isBidBlitzCache = (name) =>
+  name.startsWith('bidblitz-static-') || name.startsWith('bidblitz-api-');
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_URL))
   );
   self.skipWaiting();
 });
@@ -59,16 +52,34 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const cacheNames = await caches.keys();
-    await Promise.all(
-      cacheNames
-        .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
-        .map((name) => caches.delete(name))
+    const oldBidBlitzCaches = cacheNames.filter(
+      (name) =>
+        isBidBlitzCache(name) &&
+        name !== CACHE_NAME &&
+        name !== API_CACHE_NAME
     );
+
+    await Promise.all(oldBidBlitzCaches.map((name) => caches.delete(name)));
     await self.clients.claim();
-    // Tell all open pages to reload so they pick up the new build.
-    const clientsList = await self.clients.matchAll({ type: 'window' });
-    for (const c of clientsList) {
-      try { c.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME }); } catch (e) {}
+
+    // Do not show an update banner on a customer's very first visit. An update
+    // event is only emitted when this activation actually replaced an older
+    // BidBlitz cache generation. version.json remains the authoritative fallback.
+    if (oldBidBlitzCaches.length > 0) {
+      const clientsList = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      for (const client of clientsList) {
+        try {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            buildId: BUILD_ID,
+          });
+        } catch (error) {
+          void error;
+        }
+      }
     }
   })());
 });
@@ -79,41 +90,53 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// FETCH
-// ═══════════════════════════════════════════════════════════════════════════════
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Only handle http(s) — ignore chrome-extension, data:, ws:, etc.
   if (!req.url.startsWith('http')) return;
 
   const url = new URL(req.url);
 
-  // 1) HARD BLOCK-LIST: never intercept. Let browser do its thing.
-  if (NEVER_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
+  if (NEVER_CACHE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    return;
+  }
 
-  // 2) Skip ALL non-GET requests (POST/PUT/PATCH/DELETE/OPTIONS) — browser handles directly.
   if (req.method !== 'GET') return;
-
-  // 3) Skip requests with Authorization header or credentials=include user-triggered mutations.
-  //    (Safe-guard: cookies are already handled by browser on navigation.)
   if (req.headers.get('Authorization')) return;
 
-  // 4) Same-origin API: only cache the explicit allow-list.
   if (url.pathname.startsWith('/api/')) {
-    const isCacheable = CACHEABLE_API_ROUTES.some((route) => url.pathname.startsWith(route));
-    if (!isCacheable) return; // Let network handle it directly.
+    const isCacheable = CACHEABLE_API_ROUTES.some((route) =>
+      url.pathname.startsWith(route)
+    );
+    if (!isCacheable) return;
 
     event.respondWith(handleCacheableApi(req));
     return;
   }
 
-  // 5) Static assets (same-origin): network-first, fallback to cache, fallback to offline page.
-  if (url.origin === self.location.origin) {
-    event.respondWith(handleStaticAsset(req));
+  // Never put HTML/app-shell navigations in Cache Storage. A fresh navigation
+  // must hit the network so a new index.html can reference the new hashed assets.
+  if (url.origin === self.location.origin && req.mode === 'navigate') {
+    event.respondWith(handleNavigation(req));
   }
+
+  // All other same-origin assets are intentionally left to the browser HTTP
+  // cache. CRA fingerprints /static/ assets, so long-lived immutable caching is safe.
 });
+
+async function handleNavigation(req) {
+  try {
+    const freshRequest = new Request(req, { cache: 'no-store' });
+    return await fetch(freshRequest);
+  } catch (error) {
+    const offline = await caches.match(OFFLINE_URL);
+    if (offline) return offline;
+    return new Response('Offline', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+}
 
 async function handleCacheableApi(req) {
   try {
@@ -130,12 +153,12 @@ async function handleCacheableApi(req) {
           headers,
         });
         cache.put(req, cached).catch(() => {});
-      } catch (e) {
-        /* swallow clone errors silently */
+      } catch (error) {
+        void error;
       }
     }
     return res;
-  } catch (err) {
+  } catch (error) {
     const cached = await caches.match(req);
     if (cached) {
       const headers = new Headers(cached.headers);
@@ -153,32 +176,6 @@ async function handleCacheableApi(req) {
   }
 }
 
-async function handleStaticAsset(req) {
-  try {
-    const res = await fetch(req);
-    if (res && res.status === 200 && res.type === 'basic') {
-      try {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
-      } catch (e) {
-        /* swallow clone errors */
-      }
-    }
-    return res;
-  } catch (err) {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-    if (req.mode === 'navigate') {
-      const offline = await caches.match('/offline.html');
-      if (offline) return offline;
-    }
-    return new Response('Offline', { status: 503 });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PUSH NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
 self.addEventListener('push', (event) => {
   let data = {
     title: 'BidBlitz',
@@ -192,7 +189,7 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       data = { ...data, ...event.data.json() };
-    } catch (e) {
+    } catch (error) {
       data.body = event.data.text();
     }
   }
@@ -228,18 +225,19 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === new URL(urlToOpen, self.location.origin).href && 'focus' in client) {
+        if (
+          client.url === new URL(urlToOpen, self.location.origin).href &&
+          'focus' in client
+        ) {
           return client.focus();
         }
       }
       if (clients.openWindow) return clients.openWindow(urlToOpen);
+      return undefined;
     })
   );
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BACKGROUND SYNC (placeholder for queued offline actions)
-// ═══════════════════════════════════════════════════════════════════════════════
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-transactions') {
     event.waitUntil(Promise.resolve());
