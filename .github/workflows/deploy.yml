@@ -17,6 +17,8 @@ name: Deploy to IONOS Production
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -67,15 +69,19 @@ jobs:
           REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
           REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
           REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
-          REACT_APP_TEST_MODE: "true"
+          REACT_APP_TEST_MODE: "false"
           CI: "false"
         run: |
+          set -euo pipefail
           BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          export BUILD_ID
           echo "$BUILD_ID" > /tmp/bidblitz_build_id.txt
           BUILD_ENVIRONMENT=production \
           BUILD_API_BASE_URL="${REACT_APP_BACKEND_URL}" \
           BUILD_PUBLIC_BASE_URL="https://bidblitz.ae" \
           BUILD_FRONTEND_VERSION="$BUILD_ID" \
+          BUILD_SERVICE_WORKER_VERSION="bidblitz-static-$BUILD_ID" \
+          BUILD_API_CACHE_VERSION="bidblitz-api-$BUILD_ID" \
           python3 ../scripts/generate_build_info.py
           # Write a clean production .env (overrides whatever is committed)
           cat > .env <<EOF
@@ -87,7 +93,25 @@ jobs:
           EOF
           perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
           npm run build
-          test ! -f build/version.json || cat build/version.json
+
+          test -f build/index.html
+          test -f build/service-worker.js
+          test -f build/version.json
+          grep -F "meta name=\"bidblitz-build-version\" content=\"${BUILD_ID}\"" build/index.html
+          grep -F "const EMBEDDED_BUILD_ID = '${BUILD_ID}'; // BUILD_ID_INJECTED" build/service-worker.js
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          build_id = os.environ['BUILD_ID']
+          data = json.loads(Path('build/version.json').read_text())
+          assert data.get('build_id') == build_id, (data.get('build_id'), build_id)
+          assert data.get('frontend_version') == build_id, (data.get('frontend_version'), build_id)
+          assert data.get('service_worker_build_id') == build_id, (data.get('service_worker_build_id'), build_id)
+          print(f'Production build identity verified: {build_id}')
+          PY
+
           if grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
             echo "::error::localhost URL leaked into production build"
             exit 1
@@ -101,10 +125,11 @@ jobs:
       - name: Pre-deployment frontend smoke checks
         run: |
           npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+          node frontend/scripts/check-update-safety.js
 
       - name: Pre-deployment backend smoke checks
         run: |
-          PYTHONPATH=/app/backend DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
+          PYTHONPATH="${GITHUB_WORKSPACE}/backend" DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
 
       - name: Verify deployment secrets
         if: steps.run_mode.outputs.should_deploy == 'true'
