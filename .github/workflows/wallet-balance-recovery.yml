@@ -27,4 +27,6 @@ jobs:
           MONGO_URL: mongodb://localhost:27017
           DB_NAME: bidblitz_ci
           JWT_SECRET: wallet-recovery-ci-only
+          ADMIN_EMAIL: ci-admin@example.invalid
+          ADMIN_PASSWORD: ci-only-not-a-production-password
         run: pytest -q backend/tests/test_wallet_balance_crash_recovery.py
