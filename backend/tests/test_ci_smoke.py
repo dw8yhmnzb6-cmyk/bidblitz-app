@@ -147,3 +147,11 @@ def test_stripe_webhook_isolates_wallet_topups_and_recovers_safely():
     assert "ObjectId(webhook_user_id)" in wallet_section
     assert "wallet_result.modified_count != 1" in wallet_section
     assert '"status": previous_status' in wallet_section
+
+
+def test_quick_topup_compliance_uses_authenticated_user_id():
+    source = _stripe_source()
+    quick_topup = source.split('async def quick_topup', 1)[1].split('@router.delete("/saved-method")', 1)[0]
+    assert 'user_id = str(user["_id"])' in quick_topup
+    assert 'run_compliance_check(user_id, "topup", amount)' in quick_topup
+    assert 'run_compliance_check(user, "topup", amount)' not in quick_topup
