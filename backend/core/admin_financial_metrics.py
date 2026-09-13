@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import Iterable
 
 
-PAYMENT_ACTIVITY_TYPES = ("payment", "send", "topup")
+# Current canonical P2P rows use type="transfer". Keep legacy "send" rows readable
+# so historic admin metrics remain comparable after the wallet migration.
+PAYMENT_ACTIVITY_TYPES = ("payment", "transfer", "send", "topup")
+DEBIT_PAYMENT_TYPES = ("payment", "transfer", "send")
 AUCTION_REVENUE_TYPES = ("credit_purchase", "bid_credits_purchase")
 
 
@@ -43,9 +46,10 @@ def _topup_side_clause() -> dict:
 
 
 def payment_activity_match(created_after: str | None = None) -> dict:
-    """Match each completed payment/send/top-up exactly once.
+    """Match each completed payment/transfer/top-up exactly once.
 
-    Wallet payments and sends are represented by their initiating debit side.
+    Wallet payments and P2P transfers are represented by their initiating debit side.
+    Current transfers use type="transfer"; legacy type="send" remains supported.
     Top-ups are external wallet funding and therefore represented by their credit row.
     This excludes merchant credits, transfer receive rows, refunds and rewards.
     """
@@ -56,7 +60,7 @@ def payment_activity_match(created_after: str | None = None) -> dict:
         "$or": [
             {
                 "$and": [
-                    {"type": {"$in": ["payment", "send"]}},
+                    {"type": {"$in": list(DEBIT_PAYMENT_TYPES)}},
                     _debit_side_clause(),
                 ]
             },
