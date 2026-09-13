@@ -463,33 +463,101 @@ async def stripe_webhook(request: Request):
             except Exception:
                 pass
 
-            # 1. Wallet-Topup
-            payment = await db.payment_transactions.find_one({"session_id": event.session_id})
-            if payment and payment["status"] not in ("completed", "credited"):
-                result = await db.payment_transactions.find_one_and_update(
-                    {"session_id": event.session_id, "status": {"$nin": ["completed", "credited"]}},
-                    {"$set": {"status": "credited", "payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}},
-                )
-                if result:
-                    await db.users.update_one(
-                        {"_id": {"$eq": result["user_id"]}},
-                        {"$inc": {"balance": result["amount"]}},
-                    )
-                    txn = {
-                        "id": secrets.token_hex(8),
-                        "user_id": result["user_id"],
-                        "type": "topup",
-                        "amount": result["amount"],
-                        "description": f"Stripe top-up (EUR {result['amount']:.2f})",
-                        "merchant_name": "Stripe",
-                        "status": "completed",
-                        "reference": f"STRIPE-{event.session_id[:12].upper()}",
-                        "payment_method": "stripe",
-                        "category": "topup",
+            # 1. Wallet-Topup — never process bid-credit or other Stripe purchases as wallet money.
+            payment = await db.payment_transactions.find_one({
+                "session_id": event.session_id,
+                "type": "wallet_topup",
+            })
+            if payment and payment.get("status") != "credited":
+                existing_txn = await db.transactions.find_one(
+                    {
                         "stripe_session_id": event.session_id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                    await db.transactions.insert_one(txn)
+                        "user_id": payment.get("user_id"),
+                        "type": "topup",
+                        "status": "completed",
+                    },
+                    {"_id": 0, "id": 1},
+                )
+                if existing_txn:
+                    # Recover legacy rows that were marked completed after a real credit.
+                    await db.payment_transactions.update_one(
+                        {"session_id": event.session_id, "type": "wallet_topup"},
+                        {"$set": {
+                            "status": "credited",
+                            "payment_status": "paid",
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    )
+                else:
+                    previous_status = payment.get("status") or "initiated"
+                    result = await db.payment_transactions.find_one_and_update(
+                        {
+                            "session_id": event.session_id,
+                            "type": "wallet_topup",
+                            "status": {"$ne": "credited"},
+                        },
+                        {"$set": {
+                            "status": "credited",
+                            "payment_status": "paid",
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    )
+                    if result:
+                        from bson import ObjectId
+
+                        webhook_user_id = result.get("user_id")
+                        user_query = {"$or": [{"_id": webhook_user_id}]}
+                        try:
+                            user_query["$or"].append({"_id": ObjectId(webhook_user_id)})
+                        except Exception:
+                            pass
+
+                        wallet_result = await db.users.update_one(
+                            user_query,
+                            {"$inc": {"balance": result["amount"]}},
+                        )
+                        if wallet_result.modified_count != 1:
+                            await db.payment_transactions.update_one(
+                                {"session_id": event.session_id, "type": "wallet_topup", "status": "credited"},
+                                {"$set": {
+                                    "status": previous_status,
+                                    "payment_status": "paid",
+                                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                                }},
+                            )
+                            raise RuntimeError("Stripe webhook wallet credit failed: user not found")
+
+                        txn = {
+                            "id": secrets.token_hex(8),
+                            "user_id": result["user_id"],
+                            "type": "topup",
+                            "amount": result["amount"],
+                            "description": f"Stripe top-up (EUR {result['amount']:.2f})",
+                            "merchant_name": "Stripe",
+                            "status": "completed",
+                            "reference": f"STRIPE-{event.session_id[:12].upper()}",
+                            "payment_method": "stripe",
+                            "category": "topup",
+                            "stripe_session_id": event.session_id,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                        try:
+                            await db.transactions.insert_one(txn)
+                        except Exception:
+                            # Keep balance and audit row consistent for ordinary write failures.
+                            await db.users.update_one(
+                                user_query,
+                                {"$inc": {"balance": -result["amount"]}},
+                            )
+                            await db.payment_transactions.update_one(
+                                {"session_id": event.session_id, "type": "wallet_topup", "status": "credited"},
+                                {"$set": {
+                                    "status": previous_status,
+                                    "payment_status": "paid",
+                                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                                }},
+                            )
+                            raise
 
             # 2. POS Feature-Purchase (Add-On Buchung)
             try:
