@@ -564,6 +564,31 @@ async def serve_bidblitz_pay_sdk():
 # STARTUP & SHUTDOWN
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+def _wallet_transfer_recovery_interval_seconds() -> int:
+    try:
+        return max(30, int(os.environ.get("WALLET_TRANSFER_RECOVERY_INTERVAL_SECONDS", "60")))
+    except (TypeError, ValueError):
+        return 60
+
+
+async def _wallet_transfer_recovery_loop():
+    """Continuously recover stale canonical transfers on the startup-lock owner."""
+    from core.canonical_wallet_service import reconcile_pending_wallet_transfers
+
+    interval = _wallet_transfer_recovery_interval_seconds()
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            stats = await reconcile_pending_wallet_transfers(limit=100)
+            if stats.get("recovered") or stats.get("manual_review"):
+                logger.info(f"Wallet transfer recovery: {stats}")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error(f"Wallet transfer recovery cycle failed: {exc}", exc_info=True)
+
+
 async def _run_post_startup_initialization():
     """Heavy startup work runs after routers are loaded and health is already available."""
     try:
@@ -571,6 +596,18 @@ async def _run_post_startup_initialization():
         validate_runtime_safety()
         await create_indexes()
         logger.info("✓ Database indexes created")
+
+        try:
+            from core.canonical_wallet_service import reconcile_pending_wallet_transfers
+            recovery_stats = await reconcile_pending_wallet_transfers(limit=100)
+            if recovery_stats.get("checked"):
+                logger.info(f"Wallet transfer startup recovery: {recovery_stats}")
+            app.state.wallet_transfer_recovery_task = asyncio.create_task(_wallet_transfer_recovery_loop())
+            logger.info("✓ Wallet transfer recovery loop started")
+        except Exception as exc:
+            app.state.wallet_transfer_recovery_task = None
+            logger.warning(f"Wallet transfer recovery startup failed: {exc}")
+
         await seed_admin()
         await cleanup_legacy_admin_artifacts()
         await ensure_admin_driver_account()
@@ -655,6 +692,7 @@ async def startup_event():
     """Return health immediately; run heavy initialization in the background."""
     app.state.startup_status = "booting"
     app.state.routes_loaded = False
+    app.state.wallet_transfer_recovery_task = None
     lock_file = _acquire_post_startup_lock()
     app.state.post_startup_lock = lock_file
     if _should_use_sync_startup():
@@ -678,6 +716,13 @@ async def shutdown_event():
     task = getattr(app.state, "post_startup_task", None)
     if task and not task.done():
         task.cancel()
+    wallet_recovery_task = getattr(app.state, "wallet_transfer_recovery_task", None)
+    if wallet_recovery_task and not wallet_recovery_task.done():
+        wallet_recovery_task.cancel()
+        try:
+            await wallet_recovery_task
+        except asyncio.CancelledError:
+            pass
     lock_file = getattr(app.state, "post_startup_lock", None)
     if lock_file:
         try:
