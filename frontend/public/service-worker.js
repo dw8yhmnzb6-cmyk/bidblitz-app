@@ -18,7 +18,6 @@ const OFFLINE_URL = '/offline.html';
 
 const CACHEABLE_API_ROUTES = [
   '/api/food/restaurants',
-  '/api/kids/children',
 ];
 
 const NEVER_CACHE_PREFIXES = [
@@ -39,6 +38,7 @@ const NEVER_CACHE_PREFIXES = [
   '/api/refund',
   '/api/checkout',
   '/api/auctions',
+  '/api/kids',
   '/login',
   '/logout',
   '/register',
