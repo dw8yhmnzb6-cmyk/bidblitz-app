@@ -4,8 +4,13 @@
 // - Only explicitly safe GET API routes use a network-first offline cache.
 // - Auth, wallet, payments, checkout and all mutations bypass the SW entirely.
 
+const EMBEDDED_BUILD_ID = 'bidblitz-build-unset'; // BUILD_ID_INJECTED
 const swUrl = new URL(self.location.href);
-const rawBuildId = swUrl.searchParams.get('v') || 'unversioned';
+const queryBuildId = swUrl.searchParams.get('v') || 'unversioned';
+const rawBuildId =
+  EMBEDDED_BUILD_ID !== 'bidblitz-build-unset'
+    ? EMBEDDED_BUILD_ID
+    : queryBuildId;
 const BUILD_ID = rawBuildId.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
 const CACHE_NAME = `bidblitz-static-${BUILD_ID}`;
 const API_CACHE_NAME = `bidblitz-api-${BUILD_ID}`;
