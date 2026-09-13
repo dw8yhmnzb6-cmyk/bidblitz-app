@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -20,6 +21,7 @@ os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
 from core import canonical_wallet_service as canonical_wallet  # noqa: E402
+from routes import bidblitz_pay as bidblitz_pay_routes  # noqa: E402
 from routes import payment as payment_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
@@ -150,6 +152,67 @@ def test_credit_debit_and_transfer_all_use_canonical_idempotency_replay_guard():
         assert "replay = _existing_idempotency_result(claim_state, existing)" in source
         assert "if replay is not None:" in source
         assert "return replay" in source
+
+
+def test_bidblitz_pay_access_requires_owner_or_admin():
+    payment = {
+        "customer_email": "customer@example.com",
+        "created_by_user_id": "creator-1",
+        "created_by_email": "creator@example.com",
+    }
+    assert bidblitz_pay_routes._payment_access_allowed(payment, {"_id": "admin-1", "email": "x@example.com", "role": "admin"}) is True
+    assert bidblitz_pay_routes._payment_access_allowed(payment, {"_id": "customer-1", "email": "CUSTOMER@example.com", "role": "user"}) is True
+    assert bidblitz_pay_routes._payment_access_allowed(payment, {"_id": "creator-1", "email": "other@example.com", "role": "user"}) is True
+    assert bidblitz_pay_routes._payment_access_allowed(payment, {"_id": "stranger", "email": "stranger@example.com", "role": "user"}) is False
+    assert bidblitz_pay_routes._payment_access_allowed({}, {"_id": "stranger", "email": "stranger@example.com", "role": "user"}) is False
+
+
+def test_bidblitz_pay_webhook_url_requires_trusted_https_target():
+    merchant = {"_id": "merchant-1", "email": "merchant@example.com", "role": "merchant"}
+    with pytest.raises(HTTPException) as anonymous_error:
+        bidblitz_pay_routes._validate_merchant_webhook_url("https://merchant.example/webhook", None)
+    assert anonymous_error.value.status_code == 403
+
+    with pytest.raises(HTTPException) as insecure_error:
+        bidblitz_pay_routes._validate_merchant_webhook_url("http://merchant.example/webhook", merchant)
+    assert insecure_error.value.status_code == 400
+
+    with pytest.raises(HTTPException) as local_error:
+        bidblitz_pay_routes._validate_merchant_webhook_url("https://127.0.0.1/webhook", merchant)
+    assert local_error.value.status_code == 400
+
+    bidblitz_pay_routes._validate_merchant_webhook_url("https://merchant.example/webhook", merchant)
+
+
+def test_bidblitz_pay_sensitive_routes_require_auth_and_ownership():
+    for operation in (
+        bidblitz_pay_routes.get_bidblitz_pay_payment,
+        bidblitz_pay_routes.confirm_bidblitz_pay_mock,
+        bidblitz_pay_routes.cancel_bidblitz_pay,
+        bidblitz_pay_routes.create_bidblitz_pay_refund,
+    ):
+        source = inspect.getsource(operation)
+        assert "await get_current_user(request)" in source
+        assert "_require_payment_access(payment, user)" in source
+
+
+def test_bidblitz_pay_live_cancel_and_refund_fail_closed_before_local_mutation():
+    cancel_source = inspect.getsource(bidblitz_pay_routes.cancel_bidblitz_pay)
+    refund_source = inspect.getsource(bidblitz_pay_routes.create_bidblitz_pay_refund)
+
+    cancel_live_guard = cancel_source.index('if payment.get("mode") == "live":')
+    cancel_local_update = cancel_source.index("updated = await _mark_payment_status")
+    assert cancel_live_guard < cancel_local_update
+    assert "live_cancel_blocked_no_provider_api" in cancel_source
+    assert "status_code=501" in cancel_source
+
+    refund_live_guard = refund_source.index('if payment.get("mode") == "live":')
+    refund_insert = refund_source.index("await db.bidblitz_pay_refunds.insert_one")
+    refund_local_update = refund_source.index("updated = await _mark_payment_status")
+    assert refund_live_guard < refund_insert
+    assert refund_live_guard < refund_local_update
+    assert "live_refund_blocked_no_provider_api" in refund_source
+    assert "status_code=501" in refund_source
 
 
 def _stripe_source():
