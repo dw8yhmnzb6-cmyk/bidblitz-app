@@ -1,5 +1,6 @@
 import asyncio
 import copy
+from pathlib import Path
 from types import SimpleNamespace
 
 from core import canonical_wallet_service as wallet
@@ -514,3 +515,12 @@ def test_stale_legacy_pending_transfer_without_recovery_is_escalated(monkeypatch
     assert "no durable recovery state" in row["response"]["error"]
     assert _balance(fake_db, "legacy-sender") == 100.0
     assert _balance(fake_db, "legacy-recipient") == 20.0
+
+
+def test_transfer_recovery_is_wired_into_runtime_startup():
+    source = (Path(__file__).resolve().parents[1] / "server.py").read_text(encoding="utf-8")
+
+    assert "async def _wallet_transfer_recovery_loop()" in source
+    assert "recovery_stats = await reconcile_pending_wallet_transfers(limit=100)" in source
+    assert "app.state.wallet_transfer_recovery_task = asyncio.create_task(_wallet_transfer_recovery_loop())" in source
+    assert "wallet_recovery_task.cancel()" in source
