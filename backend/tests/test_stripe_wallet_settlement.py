@@ -126,6 +126,7 @@ def test_legacy_completed_transaction_backfills_marker_without_recredit(monkeypa
         transactions=[{
             "_id": "legacy-mongo-id",
             "id": "legacy-tx",
+            "reference": "LEGACY-REFERENCE",
             "stripe_session_id": "cs_legacy_done",
             "user_id": "user-2",
             "type": "topup",
@@ -138,10 +139,54 @@ def test_legacy_completed_transaction_backfills_marker_without_recredit(monkeypa
     result = _run(settlement.settle_stripe_wallet_topup("cs_legacy_done", expected_user_id="user-2"))
 
     user = fake_db.users.docs[0]
+    payment = fake_db.payment_transactions.docs[0]
     assert result["credited"] is True
     assert result["credited_now"] is False
+    assert result["transaction_id"] == "legacy-tx"
+    assert result["reference"] == "LEGACY-REFERENCE"
+    assert payment["transaction_id"] == "legacy-tx"
+    assert payment["reference"] == "LEGACY-REFERENCE"
     assert user["balance"] == 80.0
     assert user["stripe_checkout_credited_sessions"] == ["cs_legacy_done"]
+    assert len(fake_db.transactions.docs) == 1
+
+
+def test_legacy_transaction_amount_mismatch_requires_review(monkeypatch):
+    fake_db = FakeDB(
+        payments=[{
+            "session_id": "cs_legacy_amount_mismatch",
+            "type": "wallet_topup",
+            "user_id": "user-amount",
+            "amount": 50.0,
+            "currency": "EUR",
+            "payment_status": "paid",
+            "status": "completed",
+        }],
+        users=[{"_id": "user-amount", "balance": 125.0}],
+        transactions=[{
+            "_id": "legacy-wrong-amount",
+            "id": "legacy-wrong-tx",
+            "reference": "LEGACY-WRONG",
+            "stripe_session_id": "cs_legacy_amount_mismatch",
+            "user_id": "user-amount",
+            "type": "topup",
+            "status": "completed",
+            "amount": 25.0,
+        }],
+    )
+    monkeypatch.setattr(settlement, "db", fake_db)
+
+    with pytest.raises(settlement.WalletSettlementNeedsReview):
+        _run(settlement.settle_stripe_wallet_topup(
+            "cs_legacy_amount_mismatch",
+            expected_user_id="user-amount",
+        ))
+
+    assert fake_db.users.docs[0]["balance"] == 125.0
+    payment = fake_db.payment_transactions.docs[0]
+    assert payment["status"] == "manual_review_required"
+    assert payment["settlement_error"] == "legacy_transaction_amount_mismatch"
+    assert "stripe_checkout_credited_sessions" not in fake_db.users.docs[0]
     assert len(fake_db.transactions.docs) == 1
 
 
