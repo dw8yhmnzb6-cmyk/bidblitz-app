@@ -30,10 +30,12 @@ class TopUpRequest(BaseModel):
 
     @model_validator(mode="after")
     def block_unverified_direct_topup_in_production(self):
-        """Direct wallet credits are test-only; production top-ups must be provider-verified."""
-        if os.environ.get("TEST_MODE", "false").lower() != "true":
+        """Direct wallet credits are test-only and must never be enabled in production."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower() == "true"
+        app_env = os.environ.get("APP_ENV", "development").lower()
+        if app_env == "production" or not test_mode:
             raise ValueError(
-                "Direct wallet top-up is disabled outside TEST_MODE; use a verified payment-provider flow"
+                "Direct wallet top-up is disabled in production; use a verified payment-provider flow"
             )
         return self
 
