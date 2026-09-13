@@ -32,11 +32,16 @@ def test_payment_volume_and_fees_count_each_logical_payment_once():
              "metadata": {"fee_amount": 2.0}, "created_at": "2026-09-13T10:00:00+00:00"},
             {"status": "completed", "type": "merchant_credit", "direction": "credit", "amount": 98.0,
              "metadata": {"fee_amount": 2.0}, "created_at": "2026-09-13T10:00:00+00:00"},
-            # P2P transfer: sender and receiver share the same type; only sender counts.
-            {"status": "completed", "type": "send", "direction": "debit", "amount": -20.0,
+            # Current canonical P2P transfer: only the sender/debit side counts.
+            {"status": "completed", "type": "transfer", "direction": "debit", "amount": -20.0,
              "created_at": "2026-09-13T10:05:00+00:00"},
-            {"status": "completed", "type": "send", "direction": "credit", "amount": 20.0,
+            {"status": "completed", "type": "transfer", "direction": "credit", "amount": 20.0,
              "created_at": "2026-09-13T10:05:00+00:00"},
+            # Legacy P2P rows used type=send and must stay visible historically.
+            {"status": "completed", "type": "send", "direction": "debit", "amount": -7.0,
+             "created_at": "2026-09-13T10:06:00+00:00"},
+            {"status": "completed", "type": "send", "direction": "credit", "amount": 7.0,
+             "created_at": "2026-09-13T10:06:00+00:00"},
             # Stripe top-up is one external funding row and must count once.
             {"status": "completed", "type": "topup", "amount": 50.0,
              "created_at": "2026-09-13T10:10:00+00:00"},
@@ -55,9 +60,9 @@ def test_payment_volume_and_fees_count_each_logical_payment_once():
         volume = list(coll.aggregate(payment_volume_pipeline()))
         fees = list(coll.aggregate(platform_fee_pipeline()))
 
-        assert volume == [{"_id": None, "total": 200.0}]
+        assert volume == [{"_id": None, "total": 207.0}]
         assert fees == [{"_id": None, "total": 3.5}]
-        assert coll.count_documents(payment_activity_match()) == 4
+        assert coll.count_documents(payment_activity_match()) == 5
     finally:
         coll.drop()
         client.close()
