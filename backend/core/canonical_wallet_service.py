@@ -126,6 +126,17 @@ def _existing_idempotency_result(
             idempotent_replay=True,
         )
 
+    if claim_state == "reconciliation_required":
+        return WalletOperationResult(
+            success=False,
+            transaction_id=response.get("transaction_id"),
+            reference=response.get("reference"),
+            new_balance=response.get("new_balance"),
+            error=response.get("error") or "Operation requires wallet reconciliation",
+            status="reconciliation_required",
+            idempotent_replay=True,
+        )
+
     if claim_state == "conflict":
         return WalletOperationResult(
             success=False,
@@ -170,6 +181,124 @@ async def _append_audit(action: str, user_id: str, details: dict[str, Any], stat
         "status": status,
         "created_at": now_iso(),
     })
+
+
+async def _append_audit_best_effort(action: str, user_id: str, details: dict[str, Any], status: str = "success") -> None:
+    try:
+        await _append_audit(action, user_id, details, status=status)
+    except Exception:
+        # Audit availability must never change an already-settled wallet balance.
+        pass
+
+
+async def _ledger_entry_count(transaction_id: str) -> int | None:
+    """Return ledger rows for a transaction, or None when ledger state is unknown."""
+    try:
+        return int(await db.wallet_ledger_entries.count_documents({"transaction_id": transaction_id}))
+    except Exception:
+        return None
+
+
+async def _record_failed_operation(
+    *,
+    transaction_ids: list[str],
+    wallet_transaction_id: str | None,
+    idempotency_key: str,
+    transaction_id: str,
+    reference: str,
+    error: str,
+    audit_action: str,
+    audit_user_id: str,
+    audit_details: dict[str, Any],
+) -> WalletOperationResult:
+    for tx_id in transaction_ids:
+        try:
+            await _set_transaction_status(tx_id, "failed", {"metadata.error": error, "metadata.compensated": True})
+        except Exception:
+            pass
+    if wallet_transaction_id:
+        try:
+            await db.wallet_transactions.update_many(
+                {"transaction_id": wallet_transaction_id},
+                {"$set": {"status": "failed", "updated_at": now_iso(), "metadata.error": error, "metadata.compensated": True}},
+            )
+        except Exception:
+            pass
+    response = {"success": False, "transaction_id": transaction_id, "reference": reference, "error": error, "status": "failed"}
+    try:
+        await _fail_idempotency(idempotency_key, response)
+    except Exception:
+        pass
+    await _append_audit_best_effort(audit_action, audit_user_id, audit_details, status="failed")
+    return WalletOperationResult(success=False, transaction_id=transaction_id, reference=reference, error=error, status="failed")
+
+
+async def _record_reconciliation_required(
+    *,
+    transaction_ids: list[str],
+    wallet_transaction_id: str | None,
+    idempotency_key: str,
+    transaction_id: str,
+    reference: str,
+    error: str,
+    audit_action: str,
+    audit_user_id: str,
+    audit_details: dict[str, Any],
+) -> WalletOperationResult:
+    reconciliation_error = f"{error}; wallet reconciliation required"
+    for tx_id in transaction_ids:
+        try:
+            await _set_transaction_status(
+                tx_id,
+                "reconciliation_required",
+                {"metadata.error": error, "metadata.reconciliation_required": True},
+            )
+        except Exception:
+            pass
+    if wallet_transaction_id:
+        try:
+            await db.wallet_transactions.update_many(
+                {"transaction_id": wallet_transaction_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "updated_at": now_iso(),
+                    "metadata.error": error,
+                    "metadata.reconciliation_required": True,
+                }},
+            )
+        except Exception:
+            pass
+    response = {
+        "success": False,
+        "transaction_id": transaction_id,
+        "reference": reference,
+        "error": reconciliation_error,
+        "status": "reconciliation_required",
+    }
+    try:
+        await db.payment_idempotency.update_one(
+            {"idempotency_key": idempotency_key},
+            {"$set": {
+                "status": "reconciliation_required",
+                "response": response,
+                "reconciliation_required_at": now_iso(),
+            }},
+        )
+    except Exception:
+        pass
+    await _append_audit_best_effort(
+        audit_action,
+        audit_user_id,
+        {**audit_details, "reconciliation_required": True},
+        status="failed",
+    )
+    return WalletOperationResult(
+        success=False,
+        transaction_id=transaction_id,
+        reference=reference,
+        error=reconciliation_error,
+        status="reconciliation_required",
+    )
 
 
 async def _insert_transaction_doc(
@@ -344,25 +473,63 @@ async def credit_canonical_balance(
 
     transaction_id = generate_transaction_id()
     base_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor}
+    balance_applied = False
+    ledger_written = False
     try:
         await _insert_transaction_doc(transaction_id=transaction_id, idempotency_key=idempotency_key, user_id=user_id, tx_type=tx_type, amount_minor=amount_minor, description=description, reference=ref, direction="credit", source=source, metadata=base_meta)
         await _insert_wallet_transaction_doc(transaction_id=transaction_id, user_id=user_id, amount_minor=amount_minor, tx_type=tx_type, status="pending", direction="credit", reference=ref, idempotency_key=idempotency_key, metadata=base_meta)
         balance_ok = await _update_user_balance(user_id, amount_minor)
         if not balance_ok:
             raise ValueError("User not found")
+        balance_applied = True
         await _insert_balanced_ledger_entries(transaction_id=transaction_id, debit_wallet_id=SYSTEM_WALLET_ID, debit_user_id=SYSTEM_USER_ID, credit_wallet_id=user_id, credit_user_id=user_id, amount_minor=amount_minor, tx_type=tx_type, status="completed", reference=ref, idempotency_key=idempotency_key, metadata=base_meta)
+        ledger_written = True
         await _set_transaction_status(transaction_id, "completed")
         new_balance = await get_canonical_balance(user_id)
         response = {"success": True, "transaction_id": transaction_id, "reference": ref, "new_balance": new_balance, "status": "completed"}
         await _complete_idempotency(idempotency_key, response)
-        await _append_audit(f"credit_{tx_type}", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "new_balance": new_balance, "source": source})
+        await _append_audit_best_effort(f"credit_{tx_type}", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "new_balance": new_balance, "source": source})
         return WalletOperationResult(success=True, transaction_id=transaction_id, reference=ref, new_balance=new_balance, status="completed")
     except Exception as exc:
-        await _set_transaction_status(transaction_id, "failed", {"metadata.error": str(exc)})
-        response = {"success": False, "transaction_id": transaction_id, "reference": ref, "error": str(exc), "status": "failed"}
-        await _fail_idempotency(idempotency_key, response)
-        await _append_audit(f"credit_{tx_type}_failed", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "error": str(exc)}, status="failed")
-        return WalletOperationResult(success=False, transaction_id=transaction_id, reference=ref, error=str(exc), status="failed")
+        error = str(exc)
+        if balance_applied:
+            ledger_count = await _ledger_entry_count(transaction_id)
+            if ledger_written or ledger_count is None or ledger_count > 0:
+                return await _record_reconciliation_required(
+                    transaction_ids=[transaction_id],
+                    wallet_transaction_id=None,
+                    idempotency_key=idempotency_key,
+                    transaction_id=transaction_id,
+                    reference=ref,
+                    error=error,
+                    audit_action=f"credit_{tx_type}_reconciliation_required",
+                    audit_user_id=user_id,
+                    audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+                )
+            compensation_ok = await _update_user_balance(user_id, -amount_minor, require_minimum_minor=amount_minor)
+            if not compensation_ok:
+                return await _record_reconciliation_required(
+                    transaction_ids=[transaction_id],
+                    wallet_transaction_id=None,
+                    idempotency_key=idempotency_key,
+                    transaction_id=transaction_id,
+                    reference=ref,
+                    error=f"{error}; credit compensation failed",
+                    audit_action=f"credit_{tx_type}_reconciliation_required",
+                    audit_user_id=user_id,
+                    audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+                )
+        return await _record_failed_operation(
+            transaction_ids=[transaction_id],
+            wallet_transaction_id=None,
+            idempotency_key=idempotency_key,
+            transaction_id=transaction_id,
+            reference=ref,
+            error=error,
+            audit_action=f"credit_{tx_type}_failed",
+            audit_user_id=user_id,
+            audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+        )
 
 
 async def debit_canonical_balance(
@@ -391,6 +558,8 @@ async def debit_canonical_balance(
 
     transaction_id = generate_transaction_id()
     base_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor}
+    balance_applied = False
+    ledger_written = False
     try:
         await _insert_transaction_doc(transaction_id=transaction_id, idempotency_key=idempotency_key, user_id=user_id, tx_type=tx_type, amount_minor=amount_minor, description=description, reference=ref, direction="debit", source=source, metadata=base_meta, merchant_id=merchant_id, merchant_name=merchant_name)
         await _insert_wallet_transaction_doc(transaction_id=transaction_id, user_id=user_id, amount_minor=amount_minor, tx_type=tx_type, status="pending", direction="debit", reference=ref, idempotency_key=idempotency_key, metadata=base_meta)
@@ -400,19 +569,55 @@ async def debit_canonical_balance(
         balance_ok = await _update_user_balance(user_id, -amount_minor, require_minimum_minor=amount_minor)
         if not balance_ok:
             raise ValueError("Balance changed during transaction. Please try again.")
+        balance_applied = True
         await _insert_balanced_ledger_entries(transaction_id=transaction_id, debit_wallet_id=user_id, debit_user_id=user_id, credit_wallet_id=SYSTEM_WALLET_ID, credit_user_id=SYSTEM_USER_ID, amount_minor=amount_minor, tx_type=tx_type, status="completed", reference=ref, idempotency_key=idempotency_key, metadata=base_meta)
+        ledger_written = True
         await _set_transaction_status(transaction_id, "completed")
         new_balance = await get_canonical_balance(user_id)
         response = {"success": True, "transaction_id": transaction_id, "reference": ref, "new_balance": new_balance, "status": "completed"}
         await _complete_idempotency(idempotency_key, response)
-        await _append_audit(f"debit_{tx_type}", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "new_balance": new_balance, "merchant_id": merchant_id or ""})
+        await _append_audit_best_effort(f"debit_{tx_type}", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "new_balance": new_balance, "merchant_id": merchant_id or ""})
         return WalletOperationResult(success=True, transaction_id=transaction_id, reference=ref, new_balance=new_balance, status="completed")
     except Exception as exc:
-        await _set_transaction_status(transaction_id, "failed", {"metadata.error": str(exc)})
-        response = {"success": False, "transaction_id": transaction_id, "reference": ref, "error": str(exc), "status": "failed"}
-        await _fail_idempotency(idempotency_key, response)
-        await _append_audit(f"debit_{tx_type}_failed", user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "error": str(exc)}, status="failed")
-        return WalletOperationResult(success=False, transaction_id=transaction_id, reference=ref, error=str(exc), status="failed")
+        error = str(exc)
+        if balance_applied:
+            ledger_count = await _ledger_entry_count(transaction_id)
+            if ledger_written or ledger_count is None or ledger_count > 0:
+                return await _record_reconciliation_required(
+                    transaction_ids=[transaction_id],
+                    wallet_transaction_id=None,
+                    idempotency_key=idempotency_key,
+                    transaction_id=transaction_id,
+                    reference=ref,
+                    error=error,
+                    audit_action=f"debit_{tx_type}_reconciliation_required",
+                    audit_user_id=user_id,
+                    audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+                )
+            compensation_ok = await _update_user_balance(user_id, amount_minor)
+            if not compensation_ok:
+                return await _record_reconciliation_required(
+                    transaction_ids=[transaction_id],
+                    wallet_transaction_id=None,
+                    idempotency_key=idempotency_key,
+                    transaction_id=transaction_id,
+                    reference=ref,
+                    error=f"{error}; debit compensation failed",
+                    audit_action=f"debit_{tx_type}_reconciliation_required",
+                    audit_user_id=user_id,
+                    audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+                )
+        return await _record_failed_operation(
+            transaction_ids=[transaction_id],
+            wallet_transaction_id=None,
+            idempotency_key=idempotency_key,
+            transaction_id=transaction_id,
+            reference=ref,
+            error=error,
+            audit_action=f"debit_{tx_type}_failed",
+            audit_user_id=user_id,
+            audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "error": error},
+        )
 
 
 async def transfer_canonical_balance(
@@ -441,6 +646,9 @@ async def transfer_canonical_balance(
     recipient_tx_id = f"{transaction_id}-IN"
     base_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor, "counterparty_user_id": to_user_id}
     receiver_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor, "counterparty_user_id": from_user_id}
+    sender_debited = False
+    recipient_credited = False
+    ledger_written = False
     try:
         current_balance = await get_canonical_balance(from_user_id)
         if current_balance < minor_to_major(amount_minor):
@@ -452,27 +660,81 @@ async def transfer_canonical_balance(
         debit_ok = await _update_user_balance(from_user_id, -amount_minor, require_minimum_minor=amount_minor)
         if not debit_ok:
             raise ValueError("Balance changed during transaction. Please try again.")
+        sender_debited = True
         credit_ok = await _update_user_balance(to_user_id, amount_minor)
         if not credit_ok:
-            await _update_user_balance(from_user_id, amount_minor)
             raise ValueError("Recipient not found")
+        recipient_credited = True
         await _insert_balanced_ledger_entries(transaction_id=transaction_id, debit_wallet_id=from_user_id, debit_user_id=from_user_id, credit_wallet_id=to_user_id, credit_user_id=to_user_id, amount_minor=amount_minor, tx_type=tx_type, status="completed", reference=ref, idempotency_key=idempotency_key, metadata={**base_meta, "recipient_transaction_id": recipient_tx_id, "sender_transaction_id": sender_tx_id})
+        ledger_written = True
         await _set_transaction_status(sender_tx_id, "completed")
         await _set_transaction_status(recipient_tx_id, "completed")
         await db.wallet_transactions.update_many({"transaction_id": transaction_id}, {"$set": {"status": "completed", "updated_at": now_iso()}})
         new_balance = await get_canonical_balance(from_user_id)
         response = {"success": True, "transaction_id": transaction_id, "reference": ref, "new_balance": new_balance, "status": "completed"}
         await _complete_idempotency(idempotency_key, response)
-        await _append_audit("transfer_complete", from_user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "reference": ref})
+        await _append_audit_best_effort("transfer_complete", from_user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "reference": ref})
         return WalletOperationResult(success=True, transaction_id=transaction_id, reference=ref, new_balance=new_balance, status="completed")
     except Exception as exc:
-        await _set_transaction_status(sender_tx_id, "failed", {"metadata.error": str(exc)})
-        await _set_transaction_status(recipient_tx_id, "failed", {"metadata.error": str(exc)})
-        await db.wallet_transactions.update_many({"transaction_id": transaction_id}, {"$set": {"status": "failed", "updated_at": now_iso(), "metadata.error": str(exc)}})
-        response = {"success": False, "transaction_id": transaction_id, "reference": ref, "error": str(exc), "status": "failed"}
-        await _fail_idempotency(idempotency_key, response)
-        await _append_audit("transfer_failed", from_user_id, {"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "error": str(exc)}, status="failed")
-        return WalletOperationResult(success=False, transaction_id=transaction_id, reference=ref, error=str(exc), status="failed")
+        error = str(exc)
+        if sender_debited or recipient_credited:
+            ledger_count = await _ledger_entry_count(transaction_id)
+            if ledger_written or ledger_count is None or ledger_count > 0:
+                return await _record_reconciliation_required(
+                    transaction_ids=[sender_tx_id, recipient_tx_id],
+                    wallet_transaction_id=transaction_id,
+                    idempotency_key=idempotency_key,
+                    transaction_id=transaction_id,
+                    reference=ref,
+                    error=error,
+                    audit_action="transfer_reconciliation_required",
+                    audit_user_id=from_user_id,
+                    audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "error": error},
+                )
+
+            if recipient_credited:
+                recipient_rollback_ok = await _update_user_balance(to_user_id, -amount_minor, require_minimum_minor=amount_minor)
+                if not recipient_rollback_ok:
+                    return await _record_reconciliation_required(
+                        transaction_ids=[sender_tx_id, recipient_tx_id],
+                        wallet_transaction_id=transaction_id,
+                        idempotency_key=idempotency_key,
+                        transaction_id=transaction_id,
+                        reference=ref,
+                        error=f"{error}; recipient compensation failed",
+                        audit_action="transfer_reconciliation_required",
+                        audit_user_id=from_user_id,
+                        audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "error": error},
+                    )
+                recipient_credited = False
+
+            if sender_debited:
+                sender_refund_ok = await _update_user_balance(from_user_id, amount_minor)
+                if not sender_refund_ok:
+                    return await _record_reconciliation_required(
+                        transaction_ids=[sender_tx_id, recipient_tx_id],
+                        wallet_transaction_id=transaction_id,
+                        idempotency_key=idempotency_key,
+                        transaction_id=transaction_id,
+                        reference=ref,
+                        error=f"{error}; sender compensation failed",
+                        audit_action="transfer_reconciliation_required",
+                        audit_user_id=from_user_id,
+                        audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "error": error},
+                    )
+                sender_debited = False
+
+        return await _record_failed_operation(
+            transaction_ids=[sender_tx_id, recipient_tx_id],
+            wallet_transaction_id=transaction_id,
+            idempotency_key=idempotency_key,
+            transaction_id=transaction_id,
+            reference=ref,
+            error=error,
+            audit_action="transfer_failed",
+            audit_user_id=from_user_id,
+            audit_details={"transaction_id": transaction_id, "amount_minor": amount_minor, "to_user_id": to_user_id, "error": error},
+        )
 
 
 async def sync_canonical_balance(
