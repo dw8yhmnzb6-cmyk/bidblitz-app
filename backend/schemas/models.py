@@ -4,6 +4,9 @@ from typing import Optional
 from datetime import datetime
 
 
+IDEMPOTENCY_KEY_PATTERN = r"^[A-Za-z0-9._:-]+$"
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
@@ -39,14 +42,24 @@ class PaymentRequest(BaseModel):
     amount: float = Field(gt=0)
     merchant_id: str
     description: Optional[str] = ""
-    idempotency_key: Optional[str] = None
+    idempotency_key: str = Field(
+        ...,
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    )
 
 
 class SendRequest(BaseModel):
     amount: float = Field(gt=0)
     recipient_email: EmailStr
     description: Optional[str] = ""
-    idempotency_key: Optional[str] = None
+    idempotency_key: str = Field(
+        ...,
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    )
 
 
 class UserResponse(BaseModel):
