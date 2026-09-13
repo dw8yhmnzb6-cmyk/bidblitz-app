@@ -13,6 +13,11 @@ const buildInfo = read('scripts/generate_build_info.py');
 const checks = [];
 const requireMatch = (name, condition) => checks.push({ name, condition: Boolean(condition) });
 
+const navigationHandlerMatch = serviceWorker.match(
+  /async function handleNavigation\(req\) \{([\s\S]*?)\n\}\n\nasync function handleCacheableApi/
+);
+const navigationHandler = navigationHandlerMatch?.[1] || '';
+
 // Runtime update behavior
 requireMatch('version.json is fetched with cache: no-store', /version\.json[\s\S]*cache:\s*['"]no-store['"]/.test(indexJs));
 requireMatch('service worker registration bypasses HTTP cache', /updateViaCache:\s*['"]none['"]/.test(indexJs));
@@ -36,7 +41,8 @@ requireMatch('service worker uses build-specific static cache', /bidblitz-static
 requireMatch('service worker uses build-specific API cache', /bidblitz-api-\$\{BUILD_ID\}/.test(serviceWorker));
 requireMatch('service worker deletes old BidBlitz cache generations', /caches\.delete/.test(serviceWorker) && /oldBidBlitzCaches/.test(serviceWorker));
 requireMatch('HTML navigations explicitly use cache no-store', /req\.mode\s*===\s*['"]navigate['"][\s\S]*handleNavigation/.test(serviceWorker) && /new Request\(req, \{ cache: ['"]no-store['"] \}\)/.test(serviceWorker));
-requireMatch('navigation handler never writes HTML to cache', !/handleNavigation\([\s\S]*cache\.put/.test(serviceWorker));
+requireMatch('navigation handler is detected', Boolean(navigationHandlerMatch));
+requireMatch('navigation handler never writes HTML to cache', Boolean(navigationHandlerMatch) && !/cache\.put|caches\.open/.test(navigationHandler));
 requireMatch('root is not precached', !/cache\.addAll\([\s\S]*['"]\/['"]/.test(serviceWorker));
 requireMatch('index.html is not precached', !/cache\.addAll\([\s\S]*index\.html/.test(serviceWorker));
 requireMatch('payment APIs bypass SW cache', /\/api\/payments/.test(serviceWorker) && /\/api\/stripe/.test(serviceWorker) && /\/api\/checkout/.test(serviceWorker));
