@@ -39,15 +39,24 @@ jobs:
       - name: Decide run mode
         id: run_mode
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] || [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
             echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-            echo "deploy_reason=live_deploy_allowed" >> "$GITHUB_OUTPUT"
-            echo "✅ Live-Deploy ist für diesen Run erlaubt (${GITHUB_EVENT_NAME} / ${GITHUB_REF_NAME})."
+            echo "deploy_reason=main_branch_live_deploy" >> "$GITHUB_OUTPUT"
+            echo "✅ Live-Deploy ist erlaubt: main (${GITHUB_EVENT_NAME})."
           else
             echo "should_deploy=false" >> "$GITHUB_OUTPUT"
-            echo "deploy_reason=branch_preflight_only" >> "$GITHUB_OUTPUT"
-            echo "ℹ️ Branch-Run erkannt (${GITHUB_REF_NAME}) — es laufen Build + Tests, aber kein Live-Deploy."
+            echo "deploy_reason=non_main_preflight_only" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ ${GITHUB_REF_NAME} ist nicht main — es laufen Build + Tests, aber niemals ein Live-Deploy."
           fi
+
+      - name: Enforce production branch guard
+        if: steps.run_mode.outputs.should_deploy == 'true'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Production deployment is only allowed from refs/heads/main."
+            exit 1
+          fi
+          echo "✓ Production branch guard passed: ${GITHUB_REF}"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -484,8 +493,8 @@ jobs:
       - name: Branch run summary
         if: steps.run_mode.outputs.should_deploy != 'true'
         run: |
-          echo "::notice::Build + Smoke-Checks erfolgreich ausführbar. Live-Deploy wurde absichtlich übersprungen, weil dieser Push nicht auf main lief."
-          echo "::notice::Für echten Deploy: nach main mergen oder workflow_dispatch ausführen."
+          echo "::notice::Build + Smoke-Checks erfolgreich. Live-Deploy wurde absichtlich übersprungen, weil dieser Run nicht auf main läuft."
+          echo "::notice::Für einen echten Deploy zuerst nach main mergen und workflow_dispatch nur auf main starten."
 
       - name: Deployment summary
         if: always()
