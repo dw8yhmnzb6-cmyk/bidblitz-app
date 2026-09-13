@@ -65,6 +65,7 @@ jobs:
           backend/tests/test_payment_idempotency_index.py
           backend/tests/test_topup_production_guard.py
           backend/tests/test_admin_topup_approval.py
+          backend/tests/test_production_test_mode_guard.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
