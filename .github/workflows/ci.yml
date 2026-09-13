@@ -51,13 +51,14 @@ jobs:
 
       - name: Run backend CI smoke suite
         env:
-          PYTHONPATH: ${{ github.workspace }}/backend
+          PYTHONPATH: backend
           DEMO_SEED: "false"
         run: >-
           pytest
           backend/tests/test_ci_smoke.py
           backend/tests/test_quick_topup_idempotency.py
           backend/tests/test_stripe_wallet_settlement.py
+          backend/tests/test_bidblitz_pay_safety.py
           backend/tests/test_admin_financial_metrics.py
           backend/tests/test_wallet_reconciliation.py
           backend/tests/test_payment_idempotency_index.py
