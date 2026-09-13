@@ -60,6 +60,7 @@ jobs:
           backend/tests/test_stripe_wallet_settlement.py
           backend/tests/test_admin_financial_metrics.py
           backend/tests/test_wallet_reconciliation.py
+          backend/tests/test_payment_idempotency_index.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
