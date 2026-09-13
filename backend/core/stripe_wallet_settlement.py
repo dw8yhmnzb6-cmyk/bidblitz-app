@@ -33,6 +33,18 @@ def _transaction_identity(session_id: str) -> tuple[str, str, str]:
     )
 
 
+def _transaction_selector(session_id: str, user_id: str) -> dict[str, Any]:
+    # Deliberately do not require the deterministic _id here. Older BidBlitz
+    # transactions used Mongo-generated ObjectIds; stripe_session_id is the
+    # durable provider identity shared by legacy and current rows.
+    return {
+        "stripe_session_id": session_id,
+        "user_id": user_id,
+        "type": "topup",
+        "status": "completed",
+    }
+
+
 async def _mark_manual_review(payment: dict[str, Any], reason: str) -> None:
     await db.payment_transactions.update_one(
         {"session_id": payment["session_id"], "type": "wallet_topup"},
@@ -56,8 +68,8 @@ async def settle_stripe_wallet_topup(
     - Stripe payment must already be verified as paid by the caller.
     - The wallet balance increment and the session marker are written atomically to
       the same user document.
-    - The transaction document has a deterministic Mongo _id, so concurrent
-      polling/webhook settlement converges on one audit row.
+    - The transaction document has a deterministic Mongo _id for new settlements,
+      while legacy rows are recognized by Stripe session id.
     - payment_transactions.status becomes ``credited`` only after both wallet
       proof and transaction proof exist.
     - Ambiguous legacy rows are stopped for manual review instead of risking a
@@ -88,14 +100,9 @@ async def settle_stripe_wallet_topup(
         raise WalletSettlementNeedsReview("Stripe top-up amount is invalid")
 
     txn_mongo_id, transaction_id, reference = _transaction_identity(session_id)
+    txn_selector = _transaction_selector(session_id, user_id)
     existing_txn = await db.transactions.find_one(
-        {
-            "_id": txn_mongo_id,
-            "stripe_session_id": session_id,
-            "user_id": user_id,
-            "type": "topup",
-            "status": "completed",
-        },
+        txn_selector,
         {"_id": 1, "id": 1, "amount": 1},
     )
 
@@ -190,13 +197,7 @@ async def settle_stripe_wallet_topup(
             await db.transactions.insert_one(txn_doc)
         except Exception:
             existing_txn = await db.transactions.find_one(
-                {
-                    "_id": txn_mongo_id,
-                    "stripe_session_id": session_id,
-                    "user_id": user_id,
-                    "type": "topup",
-                    "status": "completed",
-                },
+                txn_selector,
                 {"_id": 1, "id": 1, "amount": 1},
             )
             if not existing_txn:
