@@ -34,6 +34,10 @@ if (
 const WEB_BUILD_ID = String(process.env.REACT_APP_BUILD_ID || '').trim();
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const UPDATE_RECHECK_COOLDOWN_MS = 30 * 1000;
+const AUTO_UPDATE_RETRY_INTERVAL_MS = 5 * 1000;
+const AUTO_UPDATE_DELAY_MS = 1500;
+const RELOAD_LOOP_GUARD_MS = 60 * 1000;
+const RELOAD_ATTEMPT_KEY = 'bidblitz-update-reload-attempt';
 const TRANSACTION_PATH_PREFIXES = [
   '/checkout',
   '/payment',
@@ -48,11 +52,96 @@ const TRANSACTION_PATH_PREFIXES = [
 let pendingBuildId = null;
 let lastUpdateCheckAt = 0;
 let serviceWorkerRegistration = null;
+let autoUpdateTimer = null;
+
+const formSnapshots = new WeakMap();
+const dirtyForms = new Set();
 
 const isTransactionPath = () =>
   TRANSACTION_PATH_PREFIXES.some((prefix) =>
     window.location.pathname.toLowerCase().startsWith(prefix)
   );
+
+const serializeForm = (form) => {
+  try {
+    return JSON.stringify(
+      Array.from(form.elements || []).map((element) => ({
+        name: element.name || '',
+        id: element.id || '',
+        type: element.type || element.tagName || '',
+        value: element.value ?? '',
+        checked: typeof element.checked === 'boolean' ? element.checked : null,
+      }))
+    );
+  } catch (error) {
+    return '';
+  }
+};
+
+const rememberFormSnapshot = (form) => {
+  if (!form || formSnapshots.has(form)) return;
+  formSnapshots.set(form, serializeForm(form));
+};
+
+const updateFormDirtyState = (form) => {
+  if (!form) return;
+  rememberFormSnapshot(form);
+  if (serializeForm(form) !== formSnapshots.get(form)) {
+    dirtyForms.add(form);
+  } else {
+    dirtyForms.delete(form);
+  }
+};
+
+const hasUnsavedFormChanges = () => {
+  for (const form of Array.from(dirtyForms)) {
+    if (!form.isConnected) dirtyForms.delete(form);
+  }
+  return dirtyForms.size > 0;
+};
+
+const isActivelyEditing = () => {
+  const element = document.activeElement;
+  if (!element || typeof element.matches !== 'function') return false;
+  return element.matches('input, textarea, select, [contenteditable="true"]');
+};
+
+const readReloadAttempt = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(RELOAD_ATTEMPT_KEY) || 'null');
+  } catch (error) {
+    return null;
+  }
+};
+
+const clearCompletedReloadAttempt = () => {
+  const attempt = readReloadAttempt();
+  if (attempt?.to && WEB_BUILD_ID && attempt.to === WEB_BUILD_ID) {
+    try {
+      sessionStorage.removeItem(RELOAD_ATTEMPT_KEY);
+    } catch (error) {
+      void error;
+    }
+  }
+};
+
+clearCompletedReloadAttempt();
+
+const hasRecentReloadAttempt = (buildId) => {
+  const attempt = readReloadAttempt();
+  return Boolean(
+    attempt &&
+      attempt.from === WEB_BUILD_ID &&
+      attempt.to === buildId &&
+      Number.isFinite(Number(attempt.at)) &&
+      Date.now() - Number(attempt.at) < RELOAD_LOOP_GUARD_MS
+  );
+};
+
+const canAutoApplyUpdate = () =>
+  !isTransactionPath() &&
+  !hasUnsavedFormChanges() &&
+  !isActivelyEditing();
 
 const renderUpdateBanner = () => {
   if (!pendingBuildId) return;
@@ -82,50 +171,50 @@ const renderUpdateBanner = () => {
     document.body.appendChild(banner);
   }
 
-  const protectedRoute = isTransactionPath();
-  banner.innerHTML = '';
+  const protectedState = !canAutoApplyUpdate();
+  banner.textContent = protectedState
+    ? 'Eine neue BidBlitz-Version ist verfügbar. Sie wird automatisch aktualisiert, sobald der aktuelle Vorgang sicher abgeschlossen ist.'
+    : 'Eine neue BidBlitz-Version ist verfügbar. BidBlitz aktualisiert sich automatisch …';
+};
 
-  const row = document.createElement('div');
-  Object.assign(row.style, {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '12px',
-    flexWrap: 'wrap',
-  });
+const applyPendingUpdate = () => {
+  if (!pendingBuildId) return;
 
-  const message = document.createElement('span');
-  message.textContent = protectedRoute
-    ? 'Eine neue BidBlitz-Version ist verfügbar. Die Aktualisierung wird während der Zahlung nicht erzwungen.'
-    : 'Eine neue BidBlitz-Version ist verfügbar.';
-  row.appendChild(message);
-
-  if (!protectedRoute) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = 'Jetzt aktualisieren';
-    Object.assign(button.style, {
-      border: '0',
-      borderRadius: '10px',
-      padding: '9px 14px',
-      background: '#00C2FF',
-      color: '#06121d',
-      fontWeight: '700',
-      cursor: 'pointer',
-    });
-    button.addEventListener('click', () => {
-      // Re-check at click time in case the SPA moved into a payment flow after
-      // the banner was rendered. Never force a reload during a transaction.
-      if (isTransactionPath()) {
-        renderUpdateBanner();
-        return;
-      }
-      window.location.reload();
-    });
-    row.appendChild(button);
+  if (!canAutoApplyUpdate()) {
+    renderUpdateBanner();
+    return;
   }
 
-  banner.appendChild(row);
+  if (hasRecentReloadAttempt(pendingBuildId)) {
+    renderUpdateBanner();
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(
+      RELOAD_ATTEMPT_KEY,
+      JSON.stringify({
+        from: WEB_BUILD_ID,
+        to: pendingBuildId,
+        at: Date.now(),
+      })
+    );
+  } catch (error) {
+    void error;
+  }
+
+  // The service worker serves navigations network-only with cache: no-store,
+  // so a normal reload is enough to fetch the new index.html without clearing
+  // cookies, localStorage, login/session data or customer settings.
+  window.location.reload();
+};
+
+const scheduleAutomaticUpdate = () => {
+  if (!pendingBuildId || autoUpdateTimer) return;
+  autoUpdateTimer = window.setTimeout(() => {
+    autoUpdateTimer = null;
+    applyPendingUpdate();
+  }, AUTO_UPDATE_DELAY_MS);
 };
 
 const markUpdateAvailable = (buildId) => {
@@ -133,6 +222,7 @@ const markUpdateAvailable = (buildId) => {
   if (normalized && WEB_BUILD_ID && normalized === WEB_BUILD_ID) return;
   pendingBuildId = normalized || 'new-build';
   renderUpdateBanner();
+  scheduleAutomaticUpdate();
 };
 
 const checkForNewBuild = async ({ force = false } = {}) => {
@@ -165,6 +255,47 @@ const requestServiceWorkerUpdate = () => {
   serviceWorkerRegistration.update().catch(() => {});
 };
 
+document.addEventListener(
+  'focusin',
+  (event) => {
+    const form = event.target?.form;
+    if (form) rememberFormSnapshot(form);
+  },
+  true
+);
+
+document.addEventListener(
+  'input',
+  (event) => {
+    const form = event.target?.form;
+    if (form) updateFormDirtyState(form);
+  },
+  true
+);
+
+document.addEventListener(
+  'change',
+  (event) => {
+    const form = event.target?.form;
+    if (form) updateFormDirtyState(form);
+  },
+  true
+);
+
+document.addEventListener(
+  'reset',
+  (event) => {
+    const form = event.target;
+    if (!form) return;
+    window.setTimeout(() => {
+      formSnapshots.set(form, serializeForm(form));
+      dirtyForms.delete(form);
+      if (pendingBuildId) scheduleAutomaticUpdate();
+    }, 0);
+  },
+  true
+);
+
 if (
   process.env.NODE_ENV === 'production' &&
   'serviceWorker' in navigator &&
@@ -194,13 +325,14 @@ if (
   window.addEventListener('focus', () => {
     requestServiceWorkerUpdate();
     checkForNewBuild();
+    if (pendingBuildId) scheduleAutomaticUpdate();
   });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       requestServiceWorkerUpdate();
       checkForNewBuild();
-      if (pendingBuildId) renderUpdateBanner();
+      if (pendingBuildId) scheduleAutomaticUpdate();
     }
   });
 
@@ -209,9 +341,13 @@ if (
       requestServiceWorkerUpdate();
       checkForNewBuild({ force: true });
     }
+    if (pendingBuildId) scheduleAutomaticUpdate();
   });
 
   window.setInterval(() => checkForNewBuild(), UPDATE_CHECK_INTERVAL_MS);
+  window.setInterval(() => {
+    if (pendingBuildId) applyPendingUpdate();
+  }, AUTO_UPDATE_RETRY_INTERVAL_MS);
 }
 
 // Block any auto-injected testing overlays/panels from platform scripts
