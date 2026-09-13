@@ -90,6 +90,63 @@ async def _claim_idempotency(idempotency_key: str, operation: str, request_hash:
         return (existing or {}).get("status", "pending"), existing
 
 
+def _existing_idempotency_result(
+    claim_state: str,
+    existing: dict[str, Any] | None,
+) -> WalletOperationResult | None:
+    """Return a terminal/replay result for every state that is not a fresh claim.
+
+    A retry must never execute the money movement again while the original operation
+    is still pending or after it already failed. This deliberately fails closed: an
+    interrupted operation stays pending for reconciliation instead of being replayed
+    and potentially charging/crediting a second time.
+    """
+    if claim_state == "claimed":
+        return None
+
+    response = (existing or {}).get("response") or {}
+    if claim_state == "completed":
+        return WalletOperationResult(
+            success=True,
+            transaction_id=response.get("transaction_id"),
+            reference=response.get("reference"),
+            new_balance=response.get("new_balance"),
+            status="completed",
+            idempotent_replay=True,
+        )
+
+    if claim_state == "failed":
+        return WalletOperationResult(
+            success=False,
+            transaction_id=response.get("transaction_id"),
+            reference=response.get("reference"),
+            new_balance=response.get("new_balance"),
+            error=response.get("error") or "Previous operation with this idempotency key failed",
+            status="failed",
+            idempotent_replay=True,
+        )
+
+    if claim_state == "conflict":
+        return WalletOperationResult(
+            success=False,
+            transaction_id=response.get("transaction_id"),
+            reference=response.get("reference"),
+            error="Idempotency key payload mismatch",
+            status="failed",
+            idempotent_replay=True,
+        )
+
+    return WalletOperationResult(
+        success=False,
+        transaction_id=response.get("transaction_id"),
+        reference=response.get("reference"),
+        new_balance=response.get("new_balance"),
+        error=response.get("error") or "Operation with this idempotency key is already in progress",
+        status="pending",
+        idempotent_replay=True,
+    )
+
+
 async def _complete_idempotency(idempotency_key: str, response: dict[str, Any]) -> None:
     await db.payment_idempotency.update_one(
         {"idempotency_key": idempotency_key},
@@ -256,7 +313,6 @@ async def _insert_balanced_ledger_entries(
 
 
 async def _update_user_balance(user_id: str, delta_minor: int, require_minimum_minor: int | None = None) -> bool:
-    amount_major = minor_to_major(abs(delta_minor))
     selector = wallet_owner_selector(user_id)
     if delta_minor < 0 and require_minimum_minor is not None:
         selector["balance"] = {"$gte": minor_to_major(require_minimum_minor)}
@@ -282,14 +338,9 @@ async def credit_canonical_balance(
     ref = reference or generate_reference()
     payload_hash = request_hash_for("credit", {"user_id": user_id, "amount_minor": amount_minor, "type": tx_type, "reference": ref, "source": source})
     claim_state, existing = await _claim_idempotency(idempotency_key, "credit", payload_hash, user_id)
-    if claim_state == "conflict":
-        return WalletOperationResult(success=False, error="Idempotency key payload mismatch", status="failed")
-    if claim_state == "completed" and existing and existing.get("response"):
-        response = existing["response"]
-        return WalletOperationResult(success=True, transaction_id=response.get("transaction_id"), reference=response.get("reference"), new_balance=response.get("new_balance"), status="completed", idempotent_replay=True)
-    if claim_state == "pending" and existing and existing.get("response"):
-        response = existing["response"]
-        return WalletOperationResult(success=bool(response.get("success")), transaction_id=response.get("transaction_id"), reference=response.get("reference"), new_balance=response.get("new_balance"), error=response.get("error"), status=existing.get("status", "pending"), idempotent_replay=True)
+    replay = _existing_idempotency_result(claim_state, existing)
+    if replay is not None:
+        return replay
 
     transaction_id = generate_transaction_id()
     base_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor}
@@ -334,11 +385,9 @@ async def debit_canonical_balance(
     ref = reference or generate_reference()
     payload_hash = request_hash_for("debit", {"user_id": user_id, "amount_minor": amount_minor, "type": tx_type, "reference": ref, "merchant_id": merchant_id or "", "source": source})
     claim_state, existing = await _claim_idempotency(idempotency_key, "debit", payload_hash, user_id)
-    if claim_state == "conflict":
-        return WalletOperationResult(success=False, error="Idempotency key payload mismatch", status="failed")
-    if claim_state == "completed" and existing and existing.get("response"):
-        response = existing["response"]
-        return WalletOperationResult(success=True, transaction_id=response.get("transaction_id"), reference=response.get("reference"), new_balance=response.get("new_balance"), status="completed", idempotent_replay=True)
+    replay = _existing_idempotency_result(claim_state, existing)
+    if replay is not None:
+        return replay
 
     transaction_id = generate_transaction_id()
     base_meta = {**(metadata or {}), "canonical_source": "users.balance", "amount_minor": amount_minor}
@@ -383,11 +432,9 @@ async def transfer_canonical_balance(
     ref = reference or generate_reference("TRF")
     payload_hash = request_hash_for("transfer", {"from_user_id": from_user_id, "to_user_id": to_user_id, "amount_minor": amount_minor, "type": tx_type, "reference": ref})
     claim_state, existing = await _claim_idempotency(idempotency_key, "transfer", payload_hash, from_user_id)
-    if claim_state == "conflict":
-        return WalletOperationResult(success=False, error="Idempotency key payload mismatch", status="failed")
-    if claim_state == "completed" and existing and existing.get("response"):
-        response = existing["response"]
-        return WalletOperationResult(success=True, transaction_id=response.get("transaction_id"), reference=response.get("reference"), new_balance=response.get("new_balance"), status="completed", idempotent_replay=True)
+    replay = _existing_idempotency_result(claim_state, existing)
+    if replay is not None:
+        return replay
 
     transaction_id = generate_transaction_id()
     sender_tx_id = f"{transaction_id}-OUT"
