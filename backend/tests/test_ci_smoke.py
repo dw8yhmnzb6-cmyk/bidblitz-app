@@ -126,10 +126,11 @@ def test_stripe_registers_only_one_wallet_webhook_route():
 
 def test_stripe_paid_poll_does_not_precomplete_before_wallet_credit():
     source = _stripe_source()
-    assert 'new_status = "completed" if stripe_status.payment_status == "paid"' not in source
-    assert 'if stripe_status.payment_status != "paid"' in source
-    assert '"status": "credited"' in source
-    assert '"stripe_session_id": session_id' in source
+    checkout_block = source.split("async def checkout_status", 1)[1].split("# ── Webhook ──", 1)[0]
+    assert 'new_status = "completed" if stripe_status.payment_status == "paid"' not in checkout_block
+    assert 'if stripe_status.payment_status != "paid"' in checkout_block
+    assert "settle_stripe_wallet_topup(" in checkout_block
+    assert '"$inc": {"balance": payment["amount"]}' not in checkout_block
 
 
 def test_stripe_webhook_processing_failures_return_retryable_error():
@@ -139,14 +140,12 @@ def test_stripe_webhook_processing_failures_return_retryable_error():
 
 def test_stripe_webhook_isolates_wallet_topups_and_recovers_safely():
     source = _stripe_source()
-    wallet_section = source.split("# 1. Wallet-Topup", 1)[1].split("# 2. POS Feature-Purchase", 1)[0]
-    assert '"type": "wallet_topup"' in wallet_section
-    assert 'payment.get("status") != "credited"' in wallet_section
-    assert 'payment["status"]' not in wallet_section
-    assert "existing_txn = await db.transactions.find_one" in wallet_section
-    assert "ObjectId(webhook_user_id)" in wallet_section
-    assert "wallet_result.modified_count != 1" in wallet_section
-    assert '"status": previous_status' in wallet_section
+    webhook_block = source.split("async def stripe_webhook", 1)[1].split("# ── Get available packages ──", 1)[0]
+    assert '"type": "wallet_topup"' in webhook_block
+    assert "wallet_payment = await db.payment_transactions.find_one" in webhook_block
+    assert "await settle_stripe_wallet_topup(event.session_id)" in webhook_block
+    assert "WalletSettlementNeedsReview" in webhook_block
+    assert '"$inc": {"balance": result["amount"]}' not in webhook_block
 
 
 def test_quick_topup_compliance_uses_authenticated_user_id():
