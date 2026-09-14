@@ -453,8 +453,13 @@ function AppContent() {
   }, [user.isAuthenticated, user.language, setLang]);
 
   const resolvePostAuthPath = useCallback(() => {
-    if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return "/";
-    if (user.isAuthenticated && user.kyc_status === "pending") return "/";
+    // Keep customers entering through iCharging in mobility after authentication.
+    // Only these internal routes are retained; no external redirect is accepted.
+    const mobilityPath = ["/icharging", "/mobility/icharging"].includes(currentPath.split("?")[0])
+      ? currentPath
+      : "/";
+    if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return mobilityPath;
+    if (user.isAuthenticated && user.kyc_status === "pending") return mobilityPath;
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
     if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
     if (currentPath === "/login" || currentPath === "/register") return "/";
@@ -1476,7 +1481,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/icharging", "/mobility/icharging"].includes(routeBase) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&
