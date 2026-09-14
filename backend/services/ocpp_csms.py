@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -298,19 +299,26 @@ async def handle_StopTransaction(charge_point_id: str, payload: Dict[str, Any]) 
     from routes.ev_charging import finalize_session  # local import to avoid cycle
 
     transaction_id = payload.get("transactionId")
-    meter_stop = float(payload.get("meterStop", 0))
+    meter_stop = float(payload["meterStop"])
     reason = payload.get("reason", "Local")
     timestamp = payload.get("timestamp") or _utcnow_iso()
 
-    sess = await db.ev_charging_sessions.find_one({"ocpp_transaction_id": transaction_id})
+    sess = await db.ev_charging_sessions.find_one({"charge_point_id": charge_point_id, "ocpp_transaction_id": transaction_id})
     if not sess:
         return {"idTagInfo": {"status": "Accepted"}}
 
+    if sess.get("status") == "completed" or sess.get("settlement_status") == "completed":
+        return {"idTagInfo": {"status": "Accepted"}}
+    meter_start = float(sess.get("meter_start_wh", 0))
+    if not math.isfinite(meter_stop) or not math.isfinite(meter_start) or meter_stop < meter_start:
+        raise ValueError("Invalid final meter reading")
     await db.ev_charging_sessions.update_one(
-        {"session_id": sess["session_id"]},
+        {"session_id": sess["session_id"], "settlement": {"$exists": False},
+         "status": {"$ne": "completed"}},
         {"$set": {
             "status": "stopping",
             "meter_stop_wh": meter_stop,
+            "kwh_charged": round((meter_stop - meter_start) / 1000.0, 3),
             "stop_reason": reason,
             "stopped_at": timestamp,
         }},

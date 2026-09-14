@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -423,7 +424,7 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "charge_point_id": charge_point_id,
             "ocpp_transaction_id": transaction_id,
         })
-        if sess:
+        if sess and sess.get("status") != "completed" and sess.get("settlement_status") != "completed":
             update: Dict[str, Any] = {
                 "status": "stopping",
                 "stop_reason": txn_info.get("stoppedReason", "Local"),
@@ -432,12 +433,16 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             if latest_wh is not None:
                 update["meter_stop_wh"] = latest_wh
                 # Recompute final kwh delta so finalize_session uses fresh value.
-                kwh = max(0.0, (latest_wh - float(sess.get("meter_start_wh", 0))) / 1000.0)
+                meter_start = float(sess.get("meter_start_wh", 0))
+                if not math.isfinite(latest_wh) or not math.isfinite(meter_start) or latest_wh < meter_start:
+                    raise ValueError("Invalid final meter reading")
+                kwh = (latest_wh - meter_start) / 1000.0
                 update["kwh_charged"] = round(kwh, 3)
             else:
                 update["meter_stop_wh"] = sess.get("meter_start_wh", 0)
             await db.ev_charging_sessions.update_one(
-                {"session_id": sess["session_id"]}, {"$set": update}
+                {"session_id": sess["session_id"], "settlement": {"$exists": False},
+                 "status": {"$ne": "completed"}}, {"$set": update}
             )
             await finalize_session(sess["session_id"])
         return response

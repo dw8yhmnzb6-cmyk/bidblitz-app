@@ -69,6 +69,7 @@ jobs:
           backend/tests/test_admin_grants_hardening.py
           backend/tests/test_payment_engine_reconciliation_status.py
           backend/tests/test_admin_wallet_safety.py
+          backend/tests/test_ev_settlement.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
