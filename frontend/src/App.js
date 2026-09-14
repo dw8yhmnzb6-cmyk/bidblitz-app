@@ -1043,6 +1043,11 @@ function AppContent() {
         return <HomePage {...homeProps} />;
       case "/taxi-dashboard":
         return <HomePage {...homeProps} />;
+      case "/icharging":
+      case "/mobility/icharging":
+        return (isGuest && !isDemoMode)
+          ? <IChargingEntryPage onLogin={() => setShowFullAuth("login")} onRegister={() => setShowFullAuth("register")} onNavigate={handleNavigate} />
+          : <ScooterPage onNavigate={handleNavigate} />;
       case "/scooter":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":
