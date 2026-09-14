@@ -21,6 +21,7 @@ from core.security import get_current_user
 from core.payment_engine import credit_wallet, debit_wallet, sync_wallet_balance, TransactionType
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.security import verify_password
+from core.canonical_wallet_service import request_hash_for
 
 router = APIRouter(prefix="/api/admin/wallet", tags=["admin-wallet"])
 
@@ -522,16 +523,75 @@ class SelfTopupReq(BaseModel):
     idempotency_key: Optional[str] = None
 
 
-async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
+def _required_idempotency_key(request: Request, supplied: Optional[str], operation: str) -> str:
+    key = (supplied or request.headers.get("Idempotency-Key") or "").strip()
+    if not key:
+        raise HTTPException(400, f"Idempotency-Key für {operation} erforderlich.")
+    if len(key) > 200:
+        raise HTTPException(400, "Idempotency-Key ist zu lang.")
+    return key
+
+
+async def _claim_blz_operation(key: str, operation: str, payload: dict, user_id: str):
+    request_hash = request_hash_for(operation, payload)
+    existing = await db.payment_idempotency.find_one({"idempotency_key": key}, {"_id": 0})
+    if existing:
+        if existing.get("request_hash") != request_hash:
+            raise HTTPException(409, "Idempotency-Key wurde bereits mit anderen Daten verwendet.")
+        if existing.get("status") != "completed":
+            raise HTTPException(409, "Idempotency-Key wird bereits verarbeitet oder ist fehlgeschlagen.")
+        return existing
+    doc = {
+        "idempotency_key": key,
+        "operation": operation,
+        "request_hash": request_hash,
+        "user_id": user_id,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        await db.payment_idempotency.insert_one(doc)
+        return doc
+    except Exception:
+        existing = await db.payment_idempotency.find_one({"idempotency_key": key}, {"_id": 0})
+        if existing and existing.get("request_hash") == request_hash:
+            if existing.get("status") != "completed":
+                raise HTTPException(409, "Idempotency-Key wird bereits verarbeitet oder ist fehlgeschlagen.")
+            return existing
+        raise HTTPException(409, "Idempotency-Key wird bereits verarbeitet.")
+
+
+async def _finish_blz_operation(key: str, response: dict, status: str = "completed"):
+    await db.payment_idempotency.update_one(
+        {"idempotency_key": key},
+        {"$set": {"status": status, "response": response, "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+
+async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str, idempotency_key: str):
     """BLZ uses users.balance_blz, same source as mining/rewards UI."""
     if amount <= 0:
         return
+    amount = round(float(amount), 2)
+    claim = await _claim_blz_operation(
+        idempotency_key,
+        "admin_wallet_blz_credit",
+        {"user_id": user_id, "amount": amount, "admin_id": admin_id, "reason": reason},
+        user_id,
+    )
+    if claim.get("status") == "completed":
+        return (claim.get("response") or {}).get("new_balance")
     query = {"id": user_id}
     try:
         query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
     except Exception:
         pass
-    await db.users.update_one(query, {"$inc": {"balance_blz": amount}})
+    result = await db.users.update_one(query, {"$inc": {"balance_blz": amount}})
+    if result.modified_count != 1:
+        await _finish_blz_operation(idempotency_key, {"success": False, "error": "User nicht gefunden."}, "failed")
+        raise HTTPException(404, "User nicht gefunden.")
+    user = await db.users.find_one(query, {"balance_blz": 1}) or {}
+    new_balance = round(float(user.get("balance_blz", 0) or 0), 2)
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "admin_credit_blz",
@@ -539,11 +599,16 @@ async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
         "amount_eur": 0.0,
         "description": reason,
         "admin_id": admin_id,
+        "currency": "BLZ",
+        "idempotency_key": idempotency_key,
+        "status": "completed",
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
+    await _finish_blz_operation(idempotency_key, {"success": True, "new_balance": new_balance})
+    return new_balance
 
 
-async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str):
+async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str, idempotency_key: str):
     if amount <= 0:
         return
     query = {"id": user_id}
@@ -551,10 +616,28 @@ async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str):
         query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
     except Exception:
         pass
+    amount = round(float(amount), 2)
+    claim = await _claim_blz_operation(
+        idempotency_key,
+        "admin_wallet_blz_debit",
+        {"user_id": user_id, "amount": amount, "admin_id": admin_id, "reason": reason},
+        user_id,
+    )
+    if claim.get("status") == "completed":
+        return (claim.get("response") or {}).get("new_balance")
     user = await db.users.find_one(query, {"_id": 1, "balance_blz": 1})
-    if not user or (user.get("balance_blz", 0) or 0) < amount:
+    if not user:
+        await _finish_blz_operation(idempotency_key, {"success": False, "error": "User nicht gefunden."}, "failed")
+        raise HTTPException(404, "User nicht gefunden.")
+    result = await db.users.update_one(
+        {"_id": user["_id"], "balance_blz": {"$gte": amount}},
+        {"$inc": {"balance_blz": -amount}},
+    )
+    if result.modified_count != 1:
+        await _finish_blz_operation(idempotency_key, {"success": False, "error": "Nutzer hat nicht genug BLZ."}, "failed")
         raise HTTPException(400, "Nutzer hat nicht genug BLZ.")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
+    fresh = await db.users.find_one({"_id": user["_id"]}, {"balance_blz": 1}) or {}
+    new_balance = round(float(fresh.get("balance_blz", 0) or 0), 2)
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "admin_debit_blz",
@@ -562,14 +645,20 @@ async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str):
         "amount_eur": 0.0,
         "description": reason,
         "admin_id": admin_id,
+        "currency": "BLZ",
+        "idempotency_key": idempotency_key,
+        "status": "completed",
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
+    await _finish_blz_operation(idempotency_key, {"success": True, "new_balance": new_balance})
+    return new_balance
 
 
 @router.post("/credit")
 async def credit_user(req: CreditReq, request: Request):
     admin = await _require_admin(request)
     admin_id = str(admin.get("_id") or admin.get("id"))
+    idem_key = _required_idempotency_key(request, req.idempotency_key, "Admin-Gutschrift")
 
     if req.amount_eur <= 0 and req.amount_blz <= 0:
         raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
@@ -593,13 +682,13 @@ async def credit_user(req: CreditReq, request: Request):
             tx_type=TransactionType.ADMIN_CREDIT,
             description=req.reason,
             metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.credit"}},
-            idempotency_key=req.idempotency_key,
+            idempotency_key=idem_key,
         )
         if not eur_result.success:
             raise HTTPException(400, eur_result.error or "Credit fehlgeschlagen.")
 
     if req.amount_blz > 0:
-        await _credit_blz(req.user_id, req.amount_blz, admin_id, req.reason)
+        await _credit_blz(req.user_id, req.amount_blz, admin_id, req.reason, f"{idem_key}:blz")
 
     return {
         "ok": True,
@@ -614,6 +703,7 @@ async def credit_user(req: CreditReq, request: Request):
 async def debit_user(req: DebitReq, request: Request):
     admin = await _require_admin(request)
     admin_id = str(admin.get("_id") or admin.get("id"))
+    idem_key = _required_idempotency_key(request, req.idempotency_key, "Admin-Abbuchung")
 
     if req.amount_eur <= 0 and req.amount_blz <= 0:
         raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
@@ -625,13 +715,13 @@ async def debit_user(req: DebitReq, request: Request):
             tx_type=TransactionType.ADMIN_DEBIT,
             description=f"Abzug: {req.reason}",
             metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.debit"}},
-            idempotency_key=req.idempotency_key,
+            idempotency_key=idem_key,
         )
         if not res.success:
             raise HTTPException(400, res.error or "Debit fehlgeschlagen.")
 
     if req.amount_blz > 0:
-        await _debit_blz(req.user_id, req.amount_blz, admin_id, f"Abzug: {req.reason}")
+        await _debit_blz(req.user_id, req.amount_blz, admin_id, f"Abzug: {req.reason}", f"{idem_key}:blz")
 
     return {"ok": True, "debited_eur": req.amount_eur, "debited_blz": req.amount_blz}
 
@@ -640,6 +730,7 @@ async def debit_user(req: DebitReq, request: Request):
 async def self_topup(req: SelfTopupReq, request: Request):
     admin = await _require_admin(request)
     admin_id = str(admin.get("_id") or admin.get("id"))
+    idem_key = _required_idempotency_key(request, req.idempotency_key, "Admin-Self-Topup")
 
     if req.amount_eur <= 0 and req.amount_blz <= 0:
         raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
@@ -651,11 +742,11 @@ async def self_topup(req: SelfTopupReq, request: Request):
             tx_type=TransactionType.ADMIN_CREDIT,
             description=req.reason,
             metadata={"self_topup": True, "audit_metadata": {"route": "admin_wallet.self_topup"}},
-            idempotency_key=req.idempotency_key,
+            idempotency_key=idem_key,
         )
 
     if req.amount_blz > 0:
-        await _credit_blz(admin_id, req.amount_blz, admin_id, req.reason)
+        await _credit_blz(admin_id, req.amount_blz, admin_id, req.reason, f"{idem_key}:blz")
 
     # Return new balance from canonical user wallet fields
     fresh_admin = await db.users.find_one({"_id": ObjectId(admin_id)}, {"_id": 0, "balance": 1, "balance_blz": 1}) or {}
