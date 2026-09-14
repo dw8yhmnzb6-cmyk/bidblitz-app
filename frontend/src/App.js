@@ -454,10 +454,16 @@ function AppContent() {
 
   const resolvePostAuthPath = useCallback(() => {
     // Keep customers entering through iCharging in mobility after authentication.
-    // Only these internal routes are retained; no external redirect is accepted.
-    const mobilityPath = ["/icharging", "/mobility/icharging"].includes(currentPath.split("?")[0])
+    // Only these internal routes are accepted; external redirect URLs are ignored.
+    const currentBasePath = currentPath.split("?")[0];
+    const query = currentPath.includes("?") ? currentPath.split("?")[1] : "";
+    const requestedReturnPath = new URLSearchParams(query).get("returnTo") || "";
+    const allowedReturnPath = ["/icharging", "/mobility/icharging"].includes(requestedReturnPath.split("?")[0])
+      ? requestedReturnPath
+      : "";
+    const mobilityPath = ["/icharging", "/mobility/icharging"].includes(currentBasePath)
       ? currentPath
-      : "/";
+      : allowedReturnPath || "/";
     if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return mobilityPath;
     if (user.isAuthenticated && user.kyc_status === "pending") return mobilityPath;
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
@@ -483,7 +489,7 @@ function AppContent() {
         setShowAuthGate(false);
         setShowFullAuth("");
         setIsDemoMode(false);
-        if (currentPath === "/login" || currentPath === "/register") {
+        if (currentPath.split("?")[0] === "/login" || currentPath.split("?")[0] === "/register") {
           const nextPath = KYC_DISABLED || TEST_MODE_FULL_ACCESS ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
