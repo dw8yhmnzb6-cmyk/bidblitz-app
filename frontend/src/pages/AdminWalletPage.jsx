@@ -32,6 +32,7 @@ async function api(path, opts = {}) {
 }
 
 const fmt = (n, d = 2) => Number(n || 0).toFixed(d);
+const newIdempotencyKey = (scope) => `${scope}:${crypto.randomUUID()}`;
 const fmtDateTime = (value) => value ? new Date(value).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "—";
 
 // ── Tab: Send to User ──
@@ -96,13 +97,16 @@ const SendTab = ({ onDone }) => {
     setBusy(true);
     try {
       const endpoint = mode === "credit" ? "/api/admin/wallet/credit" : "/api/admin/wallet/debit";
+      const idempotencyKey = newIdempotencyKey(`admin-wallet-${mode}`);
       const res = await api(endpoint, {
         method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           user_id: selected.user_id,
           amount_eur: eur,
           amount_blz: blz,
           reason: reason || `Admin ${mode}`,
+          idempotency_key: idempotencyKey,
         }),
       });
       toast.success(
@@ -362,9 +366,11 @@ const SelfTopupTab = () => {
     if (eur <= 0 && blz <= 0) return toast.error("Bitte Betrag eingeben");
     setBusy(true);
     try {
+      const idempotencyKey = newIdempotencyKey("admin-wallet-self-topup");
       const res = await api("/api/admin/wallet/self-topup", {
         method: "POST",
-        body: JSON.stringify({ amount_eur: eur, amount_blz: blz, reason: "Admin Self-Topup" }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ amount_eur: eur, amount_blz: blz, reason: "Admin Self-Topup", idempotency_key: idempotencyKey }),
       });
       toast.success(`✓ Wallet aufgeladen!`);
       setBalance({ eur: Number(res.balance_eur), blz: Number(res.balance_blz) });
