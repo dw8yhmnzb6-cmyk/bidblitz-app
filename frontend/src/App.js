@@ -119,7 +119,7 @@ const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const TaxiPage = lazy(() => import("./pages/TaxiPage"));
 const TaxiOperatorPage = lazy(() => import("./pages/TaxiOperatorPage"));
 const TaxiOperatorDashboard = lazy(() => import("./pages/TaxiOperatorDashboard"));
-const ScooterPage = lazy(() => import("./pages/ScooterPage"));
+const ScooterPage = lazy(() => import("./pages/ScooterPage"));\nconst IChargingEntryPage = lazy(() => import("./pages/IChargingEntryPage"));
 const FoodPage = lazy(() => import("./pages/FoodPage"));
 const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
