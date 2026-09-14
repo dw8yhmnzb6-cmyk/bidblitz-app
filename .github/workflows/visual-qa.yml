@@ -32,6 +32,9 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        env:
+          CI: "false"
+          GENERATE_SOURCEMAP: "false"
         run: npm --workspace frontend run build
 
       - name: Prepare QA output directory

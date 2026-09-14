@@ -32,21 +32,22 @@ def sanitize_doc(doc):
 
 async def create_indexes():
     """Create database indexes for optimal query performance.
-    Uses drop_duplicates to handle existing index conflicts."""
+    Critical financial uniqueness constraints fail closed instead of being ignored.
+    """
     import logging
     logger = logging.getLogger("bidblitz.db")
     
-    async def safe_create_index(collection, keys, **kwargs):
-        """Safely create index, dropping conflicting ones if needed."""
+    async def safe_create_index(collection, keys, *, critical=False, **kwargs):
+        """Create an index; critical financial indexes must never fail silently."""
         try:
             await collection.create_index(keys, **kwargs)
+            return
         except Exception as e:
             if "IndexKeySpecsConflict" in str(e) or "existing index" in str(e).lower():
-                # Drop and recreate
+                # Drop and recreate a conflicting index definition.
                 try:
                     index_name = kwargs.get("name")
                     if not index_name:
-                        # Generate name from keys
                         if isinstance(keys, str):
                             index_name = f"{keys}_1"
                         elif isinstance(keys, list):
@@ -54,10 +55,19 @@ async def create_indexes():
                             index_name = "_".join(parts)
                     await collection.drop_index(index_name)
                     await collection.create_index(keys, **kwargs)
-                except Exception:
-                    pass  # Index might not exist or other issue
-            else:
-                logger.warning(f"Index creation warning: {e}")
+                    return
+                except Exception as recreate_error:
+                    if critical:
+                        raise RuntimeError(
+                            f"Critical database index could not be created for {keys}: {recreate_error}"
+                        ) from recreate_error
+                    logger.warning(f"Index recreation warning for {keys}: {recreate_error}")
+                    return
+            if critical:
+                raise RuntimeError(
+                    f"Critical database index could not be created for {keys}: {e}"
+                ) from e
+            logger.warning(f"Index creation warning: {e}")
     
     # ═══════════════════════════════════════════════════════════════════════════
     # CORE COLLECTIONS
@@ -290,7 +300,9 @@ async def create_indexes():
     await safe_create_index(db.wallet_ledger_entries, [("wallet_id", 1), ("created_at", -1)])
     await safe_create_index(db.wallet_ledger_entries, "idempotency_key")
 
-    await safe_create_index(db.payment_idempotency, "idempotency_key", unique=True)
+    # This uniqueness guarantee is a money-safety invariant. If historical
+    # duplicates or an incompatible index prevent it, startup must not become ready.
+    await safe_create_index(db.payment_idempotency, "idempotency_key", unique=True, critical=True)
     await safe_create_index(db.payment_idempotency, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.payment_idempotency, "expires_at")
 

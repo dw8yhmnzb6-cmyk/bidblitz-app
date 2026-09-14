@@ -29,6 +29,7 @@ class TransactionStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REVERSED = "reversed"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
 
 
 class TransactionType(str, Enum):
@@ -144,6 +145,7 @@ class PaymentResult(BaseModel):
     new_balance: Optional[float] = None
     error: Optional[str] = None
     status: TransactionStatus = TransactionStatus.PENDING
+    idempotent_replay: bool = False
 
 
 def build_wallet_ledger_metadata(
@@ -197,7 +199,9 @@ async def debit_wallet(
     - Full audit logging
     """
     
-    ref = reference or generate_reference()
+    # With an explicit key, canonical recovery owns the persisted reference.
+    # Generating a fresh one here turns a valid retry into a payload conflict.
+    ref = reference if idempotency_key else (reference or generate_reference())
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
     result = await debit_canonical_balance(
@@ -219,6 +223,7 @@ async def debit_wallet(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
@@ -241,7 +246,7 @@ async def credit_wallet(
     - Full audit logging
     """
     
-    ref = reference or generate_reference()
+    ref = reference if idempotency_key else (reference or generate_reference())
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
     result = await credit_canonical_balance(
@@ -261,6 +266,7 @@ async def credit_wallet(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
@@ -272,14 +278,15 @@ async def transfer_between_wallets(
     description: str,
     reference: Optional[str] = None,
     metadata: Optional[Dict] = None,
+    idempotency_key: Optional[str] = None,
 ) -> PaymentResult:
     """
     Transfer between two wallets atomically.
     Either both succeed or both fail.
     """
     
-    ref = reference or generate_reference("TRF")
-    idem = compute_idempotency_key(from_user_id, f"{tx_type.value}_transfer", amount, ref)
+    ref = reference if idempotency_key else (reference or generate_reference("TRF"))
+    idem = idempotency_key or compute_idempotency_key(from_user_id, f"{tx_type.value}_transfer", amount, ref)
     result = await transfer_canonical_balance(
         from_user_id=from_user_id,
         to_user_id=to_user_id,
@@ -1089,23 +1096,23 @@ async def process_login_streak(user_id: str):
     for days, reward in STREAK_REWARDS.items():
         key = f"login_{days}"
         if new_streak >= days and key not in rewarded:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-                {"$inc": {"balance": reward}}
+            # Login rewards are real EUR and must use the canonical wallet path.
+            # The milestone key is stable so retries after a process interruption
+            # cannot create a second credit.
+            result = await credit_wallet(
+                user_id=user_id,
+                amount=reward,
+                tx_type=TransactionType.REWARD,
+                description=f"Login Streak: {days} Tage!",
+                reference=f"LOGIN-STREAK-{user_id}-{days}",
+                source="login_streak",
+                idempotency_key=f"login-streak:{user_id}:{days}",
             )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": user_id,
-                "type": "login_streak_reward",
-                "amount": reward,
-                "description": f"Login Streak: {days} Tage!",
-                "reference": generate_reference("LOGIN"),
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
+            if not result.success:
+                return {"success": False, "status": result.status.value, "error": result.error}
             await db.user_streaks.update_one(
-                {"user_id": user_id},
-                {"$push": {"rewarded_milestones": key}}
+                {"user_id": user_id, "rewarded_milestones": {"$ne": key}},
+                {"$addToSet": {"rewarded_milestones": key}}
             )
             await db.notifications.insert_one({
                 "id": secrets.token_hex(8),
@@ -1117,6 +1124,7 @@ async def process_login_streak(user_id: str):
                 "created_at": now.isoformat(),
             })
             break  # Only one reward per login
+    return {"success": True, "streak": new_streak}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -78,7 +78,13 @@ async def pay(req: PaymentRequest, request: Request):
         merchant = await db.merchants.find_one({"_id": ObjectId(req.merchant_id)})
     if not merchant and req.merchant_id:
         merchant = await db.merchants.find_one({"user_id": req.merchant_id})
-    merchant_name = merchant["business_name"] if merchant else "Unknown Merchant"
+    if not merchant:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "merchant_not_found", "merchant_id": req.merchant_id, "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    merchant_name = merchant["business_name"]
 
     debit_result = await debit_wallet(
         user_id=user_id,
@@ -86,7 +92,7 @@ async def pay(req: PaymentRequest, request: Request):
         tx_type=TransactionType.PAYMENT,
         description=req.description or f"Payment to {merchant_name}",
         reference=ref,
-        merchant_id=str(merchant["_id"]) if merchant else None,
+        merchant_id=str(merchant["_id"]),
         merchant_name=merchant_name,
         metadata={
             "gross_amount": req.amount,
@@ -102,59 +108,58 @@ async def pay(req: PaymentRequest, request: Request):
 
     merchant_credit_txn = None
 
-    # Credit net amount to merchant, track fees
-    if merchant:
-        await db.merchants.update_one(
-            {"_id": merchant["_id"]},
-            {
-                "$inc": {
-                    "total_earnings": net_to_merchant,
-                    "gross_earnings": req.amount,
-                    "total_fees": fee,
-                    "total_transactions": 1,
-                    "available_payout": net_to_merchant,
-                }
-            }
+    # Credit net amount to merchant, then track settlement stats.
+    merchant_user_id = str(merchant.get("user_id") or "")
+    if merchant_user_id:
+        merchant_credit_result = await credit_wallet(
+            user_id=merchant_user_id,
+            amount=net_to_merchant,
+            tx_type=TransactionType.MERCHANT_CREDIT,
+            description=f"Payment from {user['name']}",
+            reference=ref,
+            source=user_id,
+            metadata={
+                "gross_amount": req.amount,
+                "fee_amount": fee,
+                "net_amount": net_to_merchant,
+                "customer_name": user.get("name", ""),
+                "customer_email": user.get("email", ""),
+                "merchant_name": merchant_name,
+                "merchant_id": str(merchant["_id"]),
+                "audit_metadata": {"route": "payment.pay", "kind": "merchant_credit"},
+            },
+            idempotency_key=f"merchant-credit:{debit_result.transaction_id}",
         )
-
-        merchant_user_id = str(merchant.get("user_id") or "")
-        if merchant_user_id:
-            merchant_credit_result = await credit_wallet(
-                user_id=merchant_user_id,
-                amount=net_to_merchant,
-                tx_type=TransactionType.MERCHANT_CREDIT,
-                description=f"Payment from {user['name']}",
-                reference=ref,
-                source=user_id,
+        if not merchant_credit_result.success:
+            await credit_wallet(
+                user_id=user_id,
+                amount=req.amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Refund: payment to {merchant_name} failed",
+                reference=f"REF-{ref}",
+                source="payment.pay.rollback",
                 metadata={
-                    "gross_amount": req.amount,
-                    "fee_amount": fee,
-                    "net_amount": net_to_merchant,
-                    "customer_name": user.get("name", ""),
-                    "customer_email": user.get("email", ""),
-                    "merchant_name": merchant_name,
-                    "merchant_id": str(merchant["_id"]),
-                    "audit_metadata": {"route": "payment.pay", "kind": "merchant_credit"},
+                    "original_reference": ref,
+                    "reason": merchant_credit_result.error or "merchant_credit_failed",
+                    "audit_metadata": {"route": "payment.pay.rollback"},
                 },
-                idempotency_key=f"merchant-credit:{debit_result.transaction_id}",
+                idempotency_key=f"refund:{debit_result.transaction_id}",
             )
-            if not merchant_credit_result.success:
-                await credit_wallet(
-                    user_id=user_id,
-                    amount=req.amount,
-                    tx_type=TransactionType.REFUND,
-                    description=f"Refund: payment to {merchant_name} failed",
-                    reference=f"REF-{ref}",
-                    source="payment.pay.rollback",
-                    metadata={
-                        "original_reference": ref,
-                        "reason": merchant_credit_result.error or "merchant_credit_failed",
-                        "audit_metadata": {"route": "payment.pay.rollback"},
-                    },
-                    idempotency_key=f"refund:{debit_result.transaction_id}",
-                )
-                raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
-            merchant_credit_txn = await db.transactions.find_one({"id": merchant_credit_result.transaction_id}, {"_id": 0}) or {}
+            raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
+        merchant_credit_txn = await db.transactions.find_one({"id": merchant_credit_result.transaction_id}, {"_id": 0}) or {}
+
+    await db.merchants.update_one(
+        {"_id": merchant["_id"]},
+        {
+            "$inc": {
+                "total_earnings": net_to_merchant,
+                "gross_earnings": req.amount,
+                "total_fees": fee,
+                "total_transactions": 1,
+                "available_payout": net_to_merchant,
+            }
+        }
+    )
 
     txn = await db.transactions.find_one({"id": debit_result.transaction_id}, {"_id": 0}) or {}
 

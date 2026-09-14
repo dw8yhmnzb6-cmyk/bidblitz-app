@@ -17,6 +17,8 @@ name: Deploy to IONOS Production
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -37,15 +39,24 @@ jobs:
       - name: Decide run mode
         id: run_mode
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] || [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
             echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-            echo "deploy_reason=live_deploy_allowed" >> "$GITHUB_OUTPUT"
-            echo "✅ Live-Deploy ist für diesen Run erlaubt (${GITHUB_EVENT_NAME} / ${GITHUB_REF_NAME})."
+            echo "deploy_reason=main_branch_live_deploy" >> "$GITHUB_OUTPUT"
+            echo "✅ Live-Deploy ist erlaubt: main (${GITHUB_EVENT_NAME})."
           else
             echo "should_deploy=false" >> "$GITHUB_OUTPUT"
-            echo "deploy_reason=branch_preflight_only" >> "$GITHUB_OUTPUT"
-            echo "ℹ️ Branch-Run erkannt (${GITHUB_REF_NAME}) — es laufen Build + Tests, aber kein Live-Deploy."
+            echo "deploy_reason=non_main_preflight_only" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ ${GITHUB_REF_NAME} ist nicht main — es laufen Build + Tests, aber niemals ein Live-Deploy."
           fi
+
+      - name: Enforce production branch guard
+        if: steps.run_mode.outputs.should_deploy == 'true'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Production deployment is only allowed from refs/heads/main."
+            exit 1
+          fi
+          echo "✓ Production branch guard passed: ${GITHUB_REF}"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,15 +78,19 @@ jobs:
           REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
           REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
           REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
-          REACT_APP_TEST_MODE: "true"
+          REACT_APP_TEST_MODE: "false"
           CI: "false"
         run: |
+          set -euo pipefail
           BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          export BUILD_ID
           echo "$BUILD_ID" > /tmp/bidblitz_build_id.txt
           BUILD_ENVIRONMENT=production \
           BUILD_API_BASE_URL="${REACT_APP_BACKEND_URL}" \
           BUILD_PUBLIC_BASE_URL="https://bidblitz.ae" \
           BUILD_FRONTEND_VERSION="$BUILD_ID" \
+          BUILD_SERVICE_WORKER_VERSION="bidblitz-static-$BUILD_ID" \
+          BUILD_API_CACHE_VERSION="bidblitz-api-$BUILD_ID" \
           python3 ../scripts/generate_build_info.py
           # Write a clean production .env (overrides whatever is committed)
           cat > .env <<EOF
@@ -87,7 +102,25 @@ jobs:
           EOF
           perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
           npm run build
-          test ! -f build/version.json || cat build/version.json
+
+          test -f build/index.html
+          test -f build/service-worker.js
+          test -f build/version.json
+          grep -F "meta name=\"bidblitz-build-version\" content=\"${BUILD_ID}\"" build/index.html
+          grep -F "const EMBEDDED_BUILD_ID = '${BUILD_ID}'; // BUILD_ID_INJECTED" build/service-worker.js
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          build_id = os.environ['BUILD_ID']
+          data = json.loads(Path('build/version.json').read_text())
+          assert data.get('build_id') == build_id, (data.get('build_id'), build_id)
+          assert data.get('frontend_version') == build_id, (data.get('frontend_version'), build_id)
+          assert data.get('service_worker_build_id') == build_id, (data.get('service_worker_build_id'), build_id)
+          print(f'Production build identity verified: {build_id}')
+          PY
+
           if grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
             echo "::error::localhost URL leaked into production build"
             exit 1
@@ -101,10 +134,11 @@ jobs:
       - name: Pre-deployment frontend smoke checks
         run: |
           npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+          node frontend/scripts/check-update-safety.js
 
       - name: Pre-deployment backend smoke checks
         run: |
-          PYTHONPATH=/app/backend DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
+          PYTHONPATH="${GITHUB_WORKSPACE}/backend" DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
 
       - name: Verify deployment secrets
         if: steps.run_mode.outputs.should_deploy == 'true'
@@ -459,8 +493,8 @@ jobs:
       - name: Branch run summary
         if: steps.run_mode.outputs.should_deploy != 'true'
         run: |
-          echo "::notice::Build + Smoke-Checks erfolgreich ausführbar. Live-Deploy wurde absichtlich übersprungen, weil dieser Push nicht auf main lief."
-          echo "::notice::Für echten Deploy: nach main mergen oder workflow_dispatch ausführen."
+          echo "::notice::Build + Smoke-Checks erfolgreich. Live-Deploy wurde absichtlich übersprungen, weil dieser Run nicht auf main läuft."
+          echo "::notice::Für einen echten Deploy zuerst nach main mergen und workflow_dispatch nur auf main starten."
 
       - name: Deployment summary
         if: always()

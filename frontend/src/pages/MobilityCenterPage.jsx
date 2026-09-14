@@ -147,6 +147,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
   const handleBookBestRoute = async (route) => {
     setBookingBestRouteId(route.route_id);
     const result = await bookBestMobilityRoute({
+      request_id: (globalThis.crypto?.randomUUID?.() || "rebook-" + Date.now() + "-" + Math.random().toString(16).slice(2)),
       route_id: route.route_id,
       transport_type: route.transport_type || compareSummary?.best?.balance?.type || "taxi",
       payment_method: route.payment_method || "wallet",

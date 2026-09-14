@@ -1,0 +1,229 @@
+name: One-time Deploy Verified Work Branch
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - '.github/workflows/deploy-work-branch-once.yml'
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, Backup, Deploy & Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VPS_BACKEND_DIR: /var/www/bidblitz/backend
+      VPS_FRONTEND_BUILD_DIR: /var/www/bidblitz/frontend/build
+
+    steps:
+      - name: Guard exact branch
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/work/cache-update-hardening"
+          echo "Deploying verified work branch: ${GITHUB_SHA}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Build production frontend
+        working-directory: frontend
+        env:
+          BUILD_ENVIRONMENT: production
+          REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: 'false'
+          CI: 'false'
+        run: |
+          set -euo pipefail
+          BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          export BUILD_ID
+          BUILD_ENVIRONMENT=production \
+          BUILD_API_BASE_URL="${REACT_APP_BACKEND_URL}" \
+          BUILD_PUBLIC_BASE_URL="https://bidblitz.ae" \
+          BUILD_FRONTEND_VERSION="$BUILD_ID" \
+          BUILD_SERVICE_WORKER_VERSION="bidblitz-static-$BUILD_ID" \
+          BUILD_API_CACHE_VERSION="bidblitz-api-$BUILD_ID" \
+          python3 ../scripts/generate_build_info.py
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=${REACT_APP_TEST_MODE}
+          REACT_APP_BUILD_ID=${BUILD_ID}
+          EOF
+          perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
+          npm run build
+          test -f build/index.html
+          test -f build/service-worker.js
+          test -f build/version.json
+          grep -F "meta name=\"bidblitz-build-version\" content=\"${BUILD_ID}\"" build/index.html
+          grep -F "const EMBEDDED_BUILD_ID = '${BUILD_ID}'; // BUILD_ID_INJECTED" build/service-worker.js
+          if grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
+            echo "::error::localhost URL leaked into production build"
+            exit 1
+          fi
+          if grep -R -E "https?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)|wss?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)" build/static/js; then
+            echo "::error::preview origin leaked into production build"
+            exit 1
+          fi
+
+      - name: Pre-deploy smoke checks
+        run: |
+          set -euo pipefail
+          npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+          node frontend/scripts/check-update-safety.js
+          PYTHONPATH="${GITHUB_WORKSPACE}/backend" DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
+
+      - name: Verify VPS secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${VPS_HOST}"
+          test -n "${VPS_USER}"
+          if [ -z "${VPS_PASSWORD}" ] && [ -z "${VPS_SSH_KEY}" ]; then
+            echo "::error::Neither VPS_PASSWORD nor VPS_SSH_KEY is configured"
+            exit 1
+          fi
+
+      - name: Prepare SSH
+        id: ssh_auth
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${VPS_SSH_KEY}" ]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "${VPS_SSH_KEY}" > ~/.ssh/bidblitz_deploy_key
+            chmod 600 ~/.ssh/bidblitz_deploy_key
+            echo 'mode=key' >> "$GITHUB_OUTPUT"
+          else
+            echo 'mode=password' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install rsync transport
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass rsync
+
+      - name: Backup and sync application
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.ssh_auth.outputs.mode }}" = 'key' ]; then
+            SSH="ssh -i ~/.ssh/bidblitz_deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            RSYNC_RSH="ssh -i ~/.ssh/bidblitz_deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          else
+            SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            RSYNC_RSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          fi
+          $SSH "$VPS_USER@$VPS_HOST" "
+            set -e
+            TS=\$(date +%Y%m%d_%H%M%S)
+            if [ -d ${VPS_FRONTEND_BUILD_DIR} ]; then
+              cp -r ${VPS_FRONTEND_BUILD_DIR} ${VPS_FRONTEND_BUILD_DIR}.bak.\$TS
+              ls -1dt ${VPS_FRONTEND_BUILD_DIR}.bak.* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+            fi
+            mkdir -p ${VPS_FRONTEND_BUILD_DIR} ${VPS_BACKEND_DIR} /var/www/bidblitz/deploy
+          "
+          rsync -az --delete -e "$RSYNC_RSH" frontend/build/ "$VPS_USER@$VPS_HOST:${VPS_FRONTEND_BUILD_DIR}/"
+          rsync -az -e "$RSYNC_RSH" \
+            --exclude 'venv/' \
+            --exclude '__pycache__/' \
+            --exclude '*.pyc' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'logs/' \
+            --exclude 'core_backup/' \
+            --exclude '.pytest_cache/' \
+            backend/ "$VPS_USER@$VPS_HOST:${VPS_BACKEND_DIR}/"
+          rsync -az -e "$RSYNC_RSH" deploy/ "$VPS_USER@$VPS_HOST:/var/www/bidblitz/deploy/"
+
+      - name: Restart backend and verify live service (password)
+        if: steps.ssh_auth.outputs.mode == 'password'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /var/www/bidblitz/backend
+            test -f .env
+            if [ ! -d venv ]; then python3 -m venv venv; fi
+            source venv/bin/activate
+            pip install -q --upgrade pip
+            pip install --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ -r requirements.txt
+            python -c "import sys; sys.path.insert(0, '.'); from server import app; print(f'IMPORT_OK: {len(app.routes)} routes')"
+            deactivate
+            pm2 delete api 2>/dev/null || true
+            pm2 start venv/bin/uvicorn --name api --interpreter none --cwd /var/www/bidblitz/backend -- server:app --host 127.0.0.1 --port 8001 --workers 1
+            pm2 save
+            for i in $(seq 1 30); do ss -tlnp 2>/dev/null | grep -q ':8001' && break; sleep 2; done
+            ss -tlnp 2>/dev/null | grep -q ':8001'
+            nginx -t
+            systemctl reload nginx
+            curl -fsS -o /dev/null https://bidblitz.ae/
+            curl -fsS https://bidblitz.ae/api/system/version
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://bidblitz.ae/api/auctions || true)
+            test "$CODE" != '502'
+            test -n "$CODE"
+
+      - name: Restart backend and verify live service (key)
+        if: steps.ssh_auth.outputs.mode == 'key'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /var/www/bidblitz/backend
+            test -f .env
+            if [ ! -d venv ]; then python3 -m venv venv; fi
+            source venv/bin/activate
+            pip install -q --upgrade pip
+            pip install --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ -r requirements.txt
+            python -c "import sys; sys.path.insert(0, '.'); from server import app; print(f'IMPORT_OK: {len(app.routes)} routes')"
+            deactivate
+            pm2 delete api 2>/dev/null || true
+            pm2 start venv/bin/uvicorn --name api --interpreter none --cwd /var/www/bidblitz/backend -- server:app --host 127.0.0.1 --port 8001 --workers 1
+            pm2 save
+            for i in $(seq 1 30); do ss -tlnp 2>/dev/null | grep -q ':8001' && break; sleep 2; done
+            ss -tlnp 2>/dev/null | grep -q ':8001'
+            nginx -t
+            systemctl reload nginx
+            curl -fsS -o /dev/null https://bidblitz.ae/
+            curl -fsS https://bidblitz.ae/api/system/version
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://bidblitz.ae/api/auctions || true)
+            test "$CODE" != '502'
+            test -n "$CODE"
+
+      - name: Deployment complete
+        run: echo "Production deploy completed from ${GITHUB_SHA}."

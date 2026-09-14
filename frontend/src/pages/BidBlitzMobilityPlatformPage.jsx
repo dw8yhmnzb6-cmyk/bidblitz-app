@@ -33,6 +33,7 @@ function formatPrice(value) {
 
 function buildDirectBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson, paymentMethod = "wallet") {
   return {
+    request_id: (globalThis.crypto?.randomUUID?.() || "mob-" + Date.now() + "-" + Math.random().toString(16).slice(2)),
     transport_type: transportType,
     transport_label: transportLabel,
     price_eur: priceEur,
