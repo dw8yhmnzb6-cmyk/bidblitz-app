@@ -468,7 +468,7 @@ function AppContent() {
     if (user.isAuthenticated && user.kyc_status === "pending") return mobilityPath;
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
     if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
-    if (currentPath === "/login" || currentPath === "/register") return "/";
+    if (currentBasePath === "/login" || currentBasePath === "/register") return mobilityPath;
     return currentPath || "/";
   }, [currentPath, user.isAuthenticated, user.kyc_status]);
 
