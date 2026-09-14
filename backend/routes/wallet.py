@@ -380,6 +380,7 @@ class AdminSendRequest(BaseModel):
     recipient_email: str
     amount: float
     note: Optional[str] = "Geschenk vom Admin"
+    idempotency_key: Optional[str] = None
 
 @router.post("/admin/send")
 async def admin_send_money(req: AdminSendRequest, request: Request):
@@ -388,8 +389,14 @@ async def admin_send_money(req: AdminSendRequest, request: Request):
     user = await get_current_user(request)
     
     # ONLY ADMIN CAN USE THIS ENDPOINT
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Nur Admin kann diese Funktion nutzen")
+
+    idempotency_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not idempotency_key:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    if len(idempotency_key) > 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key ist zu lang")
     
     # Validate amount
     if req.amount < 0.01:
@@ -418,8 +425,10 @@ async def admin_send_money(req: AdminSendRequest, request: Request):
             "admin_email": user.get("email"),
             "note": req.note,
             "type": "admin_gift",
-            "no_fee": True
-        }
+            "no_fee": True,
+            "idempotency_key": idempotency_key,
+        },
+        idempotency_key=idempotency_key,
     )
     
     if not result.success:
