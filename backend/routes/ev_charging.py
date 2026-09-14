@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import (
+    debit_wallet,
     transfer_between_wallets,
     TransactionType,
     generate_reference,
@@ -417,14 +418,33 @@ async def finalize_session(session_id: str) -> None:
                     "created_at": _utcnow_iso(),
                 })
     else:
-        # No operator wired: deduct gross from user; platform keeps everything.
+        # No operator wired: debit through the canonical wallet service.
+        # Keep the settlement idempotent so a retry cannot charge twice.
         if gross > 0:
-            from bson import ObjectId
-            try:
-                _id = ObjectId(user_id)
-            except Exception:
-                _id = user_id
-            await db.users.update_one({"_id": _id}, {"$inc": {"balance": -gross}})
+            result = await debit_wallet(
+                user_id=user_id,
+                amount=gross,
+                tx_type=TransactionType.EV_CHARGING,
+                description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
+                reference=txn_ref,
+                metadata={
+                    "session_id": session_id,
+                    "charge_point_id": sess["charge_point_id"],
+                    "connector_id": sess.get("connector_id"),
+                    "kwh": kwh,
+                    "duration_min": round(duration_min, 1),
+                    "vat_rate": vat_rate,
+                    "net": net,
+                    "vat": vat,
+                    "gross": gross,
+                    "commission_pct": commission_pct,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                },
+                idempotency_key=f"ev:settlement:{session_id}",
+            )
+            primary_ok = result.success
+            primary_err = result.error if not primary_ok else None
 
     # Build receipt + line items
     receipt_no = await _next_receipt_no()
