@@ -441,7 +441,7 @@ export default function ScooterPage({ onNavigate }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <div><h1 className="text-xl font-bold">iCharging Mobility</h1><p className="text-[10px] text-cyan-400/80 font-medium">Powered by BidBlitz</p></div>
+            <div><h1 className="text-xl font-bold">iCharging</h1><p className="text-[10px] text-cyan-400/80 font-medium">Bezahlung mit BidBlitz</p></div>
             <div className="text-sm text-green-400 font-medium" data-testid="scooter-wallet-balance">€{userBalance.toFixed(2)}</div>
           </div>
           
