@@ -490,14 +490,14 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath.split("?")[0] === "/login" || currentPath.split("?")[0] === "/register") {
-          const nextPath = KYC_DISABLED || TEST_MODE_FULL_ACCESS ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
+          const nextPath = resolvePostAuthPath();
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentPath, syncBrowserPath, user.isAuthenticated, user.kyc_status]);
+  }, [currentPath, resolvePostAuthPath, syncBrowserPath, user.isAuthenticated]);
 
   // Notification polling - show toast for new notifications
   useEffect(() => {
