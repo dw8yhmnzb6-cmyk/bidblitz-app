@@ -7,15 +7,17 @@
  *  - Self-Topup: Admin lädt eigenes Wallet auf
  *  - Transaktions-Log (letzte Admin-Aktionen)
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   ChevronLeft, Search, Plus, Minus, Wallet, User as UserIcon,
-  Loader2, Check, History, X, Shield, Send, Zap,
+  Loader2, History, X, Shield, Send, Zap,
   AlertTriangle, ClipboardList, Eye, Lock, FileWarning,
 } from "lucide-react";
 import { LegacyRestoreCenterTab } from "../components/admin/LegacyRestoreCenterTab";
+import { useUser } from "../store";
+import { createAdminWalletAttempt } from "../utils/adminWalletAttempt.mjs";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -27,16 +29,53 @@ async function api(path, opts = {}) {
   });
   let d = {};
   try { d = await r.clone().json(); } catch (parseError) { d = {}; }
-  if (!r.ok) throw new Error(d.detail || d.message || `Error ${r.status}`);
+  if (!r.ok) {
+    const error = new Error(typeof d.detail === "string" ? d.detail : d.detail?.message || d.message || `Ungültige oder fehlgeschlagene Anfrage (${r.status})`);
+    error.status = r.status;
+    error.settlementStatus = d.detail?.settlement_status;
+    throw error;
+  }
   return d;
 }
 
 const fmt = (n, d = 2) => Number(n || 0).toFixed(d);
-const newIdempotencyKey = (scope) => `${scope}:${crypto.randomUUID()}`;
 const fmtDateTime = (value) => value ? new Date(value).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "—";
 
+async function requestAdminOtp() {
+  try {
+    const res = await api("/api/admin/wallet/reconciliation/repair/request-2fa", { method: "POST" });
+    toast.success(res.two_factor_required ? "2FA-Code gesendet." : "Für diesen Admin ist kein 2FA-Schritt erforderlich.");
+  } catch (error) { toast.error(error.message); }
+}
+
+function AdminSecurityFields({ password, setPassword, otp, setOtp }) {
+  return <div className="space-y-2">
+    <p className="text-[11px] text-white/60">Pro Buchung eine Währung. EUR-Gutschriften über 5.000 € benötigen die Freigabe eines zweiten Admins unter Reconciliation.</p>
+    <input aria-label="Admin-Passwort" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Admin-Passwort bestätigen" className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white" />
+    <div className="flex gap-2">
+      <input aria-label="2FA-Code" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="2FA-Code, falls aktiviert" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white" />
+      <button onClick={requestAdminOtp} className="rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white">2FA senden</button>
+    </div>
+  </div>;
+}
+
+function useAdminAttempt(actorId, scope) {
+  const manager = useRef(null);
+  if (!manager.current) manager.current = createAdminWalletAttempt(window.sessionStorage, `${actorId}:${scope}`);
+  const inFlight = useRef(false);
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [pending, setPending] = useState(null);
+  useEffect(() => {
+    try { setPending(manager.current.read()?.intent || null); }
+    catch (error) { toast.error(error.message); }
+  }, []);
+  return { manager: manager.current, inFlight, password, setPassword, otp, setOtp, pending, setPending };
+}
+
 // ── Tab: Send to User ──
-const SendTab = ({ onDone }) => {
+const SendTab = ({ onDone, actorId }) => {
+  const attempt = useAdminAttempt(actorId, "send");
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -48,6 +87,15 @@ const SendTab = ({ onDone }) => {
   const [busy, setBusy] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loginHistory, setLoginHistory] = useState([]);
+
+  const restorePending = useCallback((pending) => {
+    setSelected((previous) => previous?.user_id === pending.user_id ? previous : { user_id: pending.user_id, email: pending.user_id });
+    setMode(pending.operation);
+    setAmountEur(String(pending.amount_eur || ""));
+    setAmountBlz(String(pending.amount_blz || ""));
+    setReason(pending.reason);
+  }, []);
+  useEffect(() => { if (attempt.pending) restorePending(attempt.pending); }, [attempt.pending, restorePending]);
 
   const handleSelectUser = async (user) => {
     setSelected(user);
@@ -89,15 +137,21 @@ const SendTab = ({ onDone }) => {
   }, [query, search]);
 
   const submit = async () => {
+    if (attempt.inFlight.current) return;
     if (!selected) return toast.error("Bitte User auswählen");
     const eur = parseFloat(amountEur) || 0;
     const blz = parseFloat(amountBlz) || 0;
-    if (eur <= 0 && blz <= 0) return toast.error("Bitte Betrag eingeben");
+    if (![eur, blz].every(Number.isFinite) || eur < 0 || blz < 0 || Number(eur > 0) + Number(blz > 0) !== 1) return toast.error("Bitte genau einen positiven EUR- oder BLZ-Betrag eingeben");
+    if (reason.trim().length < 3) return toast.error("Bitte einen nachvollziehbaren Grund eingeben");
+    if (!attempt.password) return toast.error("Admin-Passwort erforderlich");
     if (mode === "debit" && !window.confirm(`Wirklich ${eur} EUR + ${blz} BLZ vom User ABZIEHEN?`)) return;
     setBusy(true);
+    attempt.inFlight.current = true;
+    let idempotencyKey;
     try {
       const endpoint = mode === "credit" ? "/api/admin/wallet/credit" : "/api/admin/wallet/debit";
-      const idempotencyKey = newIdempotencyKey(`admin-wallet-${mode}`);
+      idempotencyKey = attempt.manager.begin({ operation: mode, user_id: selected.user_id, amount_eur: eur, amount_blz: blz, reason: reason.trim() });
+      attempt.setPending(attempt.manager.read().intent);
       const res = await api(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
@@ -105,24 +159,34 @@ const SendTab = ({ onDone }) => {
           user_id: selected.user_id,
           amount_eur: eur,
           amount_blz: blz,
-          reason: reason || `Admin ${mode}`,
+          reason: reason.trim(),
           idempotency_key: idempotencyKey,
+          admin_password: attempt.password,
+          otp_code: attempt.otp || null,
         }),
       });
-      toast.success(
+      attempt.manager.complete(idempotencyKey);
+      attempt.setPending(null);
+      attempt.setPassword(""); attempt.setOtp("");
+      toast.success(res.pending_approval ? res.message : (
         mode === "credit"
           ? `✓ ${eur > 0 ? `${eur}€` : ""}${eur && blz ? " + " : ""}${blz > 0 ? `${blz} BLZ` : ""} an ${selected.email} gesendet`
           : `✓ Von ${selected.email} abgezogen`
-      );
+      ));
       setAmountEur(""); setAmountBlz(""); setReason("");
       search(query); // refresh balance
       onDone?.();
-    } catch (e) { toast.error(e.message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      if (idempotencyKey && (e.settlementStatus === "failed" || [401, 403, 422].includes(e.status))) {
+        attempt.manager.complete(idempotencyKey); attempt.setPending(null);
+      }
+      toast.error(e.message);
+    } finally { setBusy(false); attempt.inFlight.current = false; }
   };
 
   return (
     <div className="space-y-4">
+      {attempt.pending && <button onClick={() => restorePending(attempt.pending)} className="text-[12px] text-amber-300">Offene Buchung laden und erneut bestätigen</button>}
       {/* Mode toggle */}
       <div className="flex gap-1 p-1 rounded-xl bg-white/5">
         {[
@@ -292,6 +356,7 @@ const SendTab = ({ onDone }) => {
             className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 text-[12px] text-white outline-none focus:border-[#00C2FF]"
           />
 
+          <AdminSecurityFields {...attempt} />
           <motion.button
             data-testid="submit-btn"
             whileTap={{ scale: 0.98 }}
@@ -334,11 +399,17 @@ const SendTab = ({ onDone }) => {
 };
 
 // ── Tab: Self Topup ──
-const SelfTopupTab = () => {
+const SelfTopupTab = ({ actorId }) => {
+  const attempt = useAdminAttempt(actorId, "self");
   const [amountEur, setAmountEur] = useState("");
   const [amountBlz, setAmountBlz] = useState("");
   const [busy, setBusy] = useState(false);
   const [balance, setBalance] = useState({ eur: 0, blz: 0 });
+  const restorePending = useCallback((pending) => {
+    setAmountEur(String(pending.amount_eur || ""));
+    setAmountBlz(String(pending.amount_blz || ""));
+  }, []);
+  useEffect(() => { if (attempt.pending) restorePending(attempt.pending); }, [attempt.pending, restorePending]);
 
   useEffect(() => {
     let mounted = true;
@@ -361,26 +432,38 @@ const SelfTopupTab = () => {
   }, []);
 
   const submit = async () => {
+    if (attempt.inFlight.current) return;
     const eur = parseFloat(amountEur) || 0;
     const blz = parseFloat(amountBlz) || 0;
-    if (eur <= 0 && blz <= 0) return toast.error("Bitte Betrag eingeben");
+    if (![eur, blz].every(Number.isFinite) || eur < 0 || blz < 0 || Number(eur > 0) + Number(blz > 0) !== 1) return toast.error("Bitte genau einen positiven EUR- oder BLZ-Betrag eingeben");
+    if (!attempt.password) return toast.error("Admin-Passwort erforderlich");
     setBusy(true);
+    attempt.inFlight.current = true;
+    let idempotencyKey;
     try {
-      const idempotencyKey = newIdempotencyKey("admin-wallet-self-topup");
+      idempotencyKey = attempt.manager.begin({ operation: "self_topup", user_id: actorId, amount_eur: eur, amount_blz: blz, reason: "Admin Self-Topup" });
+      attempt.setPending(attempt.manager.read().intent);
       const res = await api("/api/admin/wallet/self-topup", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ amount_eur: eur, amount_blz: blz, reason: "Admin Self-Topup", idempotency_key: idempotencyKey }),
+        body: JSON.stringify({ amount_eur: eur, amount_blz: blz, reason: "Admin Self-Topup", idempotency_key: idempotencyKey, admin_password: attempt.password, otp_code: attempt.otp || null }),
       });
-      toast.success(`✓ Wallet aufgeladen!`);
-      setBalance({ eur: Number(res.balance_eur), blz: Number(res.balance_blz) });
+      attempt.manager.complete(idempotencyKey); attempt.setPending(null);
+      attempt.setPassword(""); attempt.setOtp("");
+      toast.success(res.pending_approval ? res.message : "✓ Wallet aufgeladen!");
+      if (!res.pending_approval) setBalance({ eur: Number(res.balance_eur), blz: Number(res.balance_blz) });
       setAmountEur(""); setAmountBlz("");
-    } catch (e) { toast.error(e.message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      if (idempotencyKey && (e.settlementStatus === "failed" || [401, 403, 422].includes(e.status))) {
+        attempt.manager.complete(idempotencyKey); attempt.setPending(null);
+      }
+      toast.error(e.message);
+    } finally { setBusy(false); attempt.inFlight.current = false; }
   };
 
   return (
     <div className="space-y-4">
+      {attempt.pending && <button onClick={() => restorePending(attempt.pending)} className="text-[12px] text-amber-300">Offene Buchung laden und erneut bestätigen</button>}
       {/* Current balance */}
       <div className="rounded-2xl p-5 text-center relative overflow-hidden"
         style={{
@@ -432,6 +515,7 @@ const SelfTopupTab = () => {
         ))}
       </div>
 
+      <AdminSecurityFields {...attempt} />
       <motion.button
         data-testid="self-submit"
         whileTap={{ scale: 0.98 }}
@@ -610,18 +694,7 @@ const ReconciliationTab = () => {
     }
   };
 
-  const requestRepairOtp = async () => {
-    try {
-      const res = await api(`/api/admin/wallet/reconciliation/repair/request-2fa`, { method: "POST" });
-      if (res.two_factor_required) {
-        toast.success(res.email_sent ? "2FA-Code gesendet." : `2FA-Testcode: ${res._test_otp}`);
-      } else {
-        toast.success("Für diesen Admin ist kein 2FA-Schritt erforderlich.");
-      }
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
+  const requestRepairOtp = requestAdminOtp;
 
   const approveRepair = async () => {
     if (!repairPreview?.repair_id) return toast.error("Keine Repair-Vorschau vorhanden");
@@ -836,6 +909,9 @@ const ReconciliationTab = () => {
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3" data-testid="repair-approval-modal">
                     <p className="text-[11px] font-bold text-white">Confirmation Required</p>
                     <p className="mt-1 text-[10px] text-white/60">Action: {repairPreview.action_type}</p>
+                    <p className="text-[10px] text-white/60">Empfänger: {repairPreview.recipient_email || repairPreview.user_id}</p>
+                    <p className="text-[10px] text-white/60">Angefordert von: {repairPreview.requested_by_email || repairPreview.requested_by || "—"}</p>
+                    <p className="text-[10px] text-white/60">Grund: {repairPreview.reason}</p>
                     <p className="text-[10px] text-white/60">Before users.balance: €{Number(repairPreview.before_users_balance || 0).toFixed(2)}</p>
                     <p className="text-[10px] text-white/60">Before wallets.balance: €{Number(repairPreview.before_wallets_balance || 0).toFixed(2)}</p>
                     <p className="text-[10px] text-white/60">After users.balance: €{Number(repairPreview.after_users_balance || 0).toFixed(2)}</p>
@@ -857,11 +933,18 @@ const ReconciliationTab = () => {
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="repair-history-page-card">
           <div className="flex items-center gap-2"><History size={14} className="text-white/70" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Repair History</p></div>
           <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto">
-            {repairHistory.slice(0, 10).map((item, idx) => (
+            {repairHistory.map((item, idx) => (
               <div key={`${item.repair_id}-${idx}`} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2" data-testid={`repair-history-item-${idx}`}>
                 <p className="text-[11px] font-semibold text-white">{item.action_type}</p>
                 <p className="text-[10px] text-white/45">{item.user_id} · {item.status}</p>
                 <p className="text-[10px] text-white/35">approved_by: {item.approved_by || '—'} · {item.approved_at ? fmtDateTime(item.approved_at) : 'pending'}</p>
+                {["pending_approval", "approval_processing"].includes(item.status) && <button className="mt-2 text-[11px] text-cyan-300" onClick={async () => {
+                  try {
+                    const history = await api(`/api/admin/wallet/reconciliation/history/${item.user_id}`);
+                    setSelectedHistory(history); setRepairPreview(item); setRepairReason(item.reason);
+                    setApprovalPassword(""); setApprovalOtp("");
+                  } catch (error) { toast.error(error.message); }
+                }}>Buchung zur Freigabe öffnen</button>}
               </div>
             ))}
             {!repairHistory.length ? <p className="text-[11px] text-white/35">Noch keine Repair-Aktionen protokolliert.</p> : null}
@@ -875,6 +958,7 @@ const ReconciliationTab = () => {
 
 // ── Main ──
 const AdminWalletPage = ({ onBack }) => {
+  const user = useUser();
   const [tab, setTab] = useState("send");
   const [refresh, setRefresh] = useState(0);
 
@@ -933,12 +1017,12 @@ const AdminWalletPage = ({ onBack }) => {
         <AnimatePresence mode="wait">
           {tab === "send" && (
             <motion.div key="send" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SendTab onDone={() => setRefresh((r) => r + 1)} />
+              {user.id && <SendTab key={user.id} actorId={user.id} onDone={() => setRefresh((r) => r + 1)} />}
             </motion.div>
           )}
           {tab === "self" && (
             <motion.div key="self" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SelfTopupTab />
+              {user.id && <SelfTopupTab key={user.id} actorId={user.id} />}
             </motion.div>
           )}
           {tab === "history" && (

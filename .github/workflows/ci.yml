@@ -67,6 +67,8 @@ jobs:
           backend/tests/test_admin_topup_approval.py
           backend/tests/test_production_test_mode_guard.py
           backend/tests/test_admin_grants_hardening.py
+          backend/tests/test_payment_engine_reconciliation_status.py
+          backend/tests/test_admin_wallet_safety.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
@@ -87,3 +89,5 @@ jobs:
 
       - name: Verify frontend update and cache safety
         run: node frontend/scripts/check-update-safety.js
+      - name: Verify admin wallet retry contract
+        run: node --test frontend/scripts/admin-wallet-attempt.test.mjs

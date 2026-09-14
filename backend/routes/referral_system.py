@@ -4,6 +4,7 @@ Multi-level referrals, daily bonuses, streaks, influencer/manager support.
 """
 
 import secrets
+from pymongo.errors import DuplicateKeyError
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -584,36 +585,37 @@ async def claim_daily_bonus(request: Request):
     today = now.strftime("%Y-%m-%d")
     
     # Check if already claimed today
-    existing = await db.daily_claims.find_one({
-        "user_id": user_id,
-        "date": today,
-    })
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Bereits heute abgeholt")
-    
     bonus_amount = config["daily_bonus"]
     
     # Record claim
-    await db.daily_claims.insert_one({
-        "user_id": user_id,
+    claim_id = f"daily-bonus:{user_id}:{today}"
+    try:
+        await db.daily_claims.insert_one({
+        "_id": claim_id, "user_id": user_id,
         "date": today,
         "amount": bonus_amount,
         "created_at": now.isoformat(),
-    })
+        })
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Bereits heute abgeholt")
     
     # Credit wallet
-    await credit_wallet(
+    result = await credit_wallet(
         user_id=user_id,
         amount=bonus_amount,
-        tx_type=TransactionType.REFUND,
+        tx_type=TransactionType.REWARD,
         description="Täglicher Login-Bonus",
         reference=f"DAILY-{today}",
         source="daily_bonus",
+        idempotency_key=f"daily-bonus:{user_id}:{today}",
     )
+    if not result.success:
+        raise HTTPException(status_code=409, detail=result.error or "Bonus konnte nicht sicher gutgeschrieben werden")
     
     # Process login streak (from payment_engine)
-    await process_login_streak(user_id)
+    streak_result = await process_login_streak(user_id)
+    if streak_result and not streak_result.get("success", True):
+        raise HTTPException(status_code=409, detail="Streak konnte nicht sicher verarbeitet werden")
     
     # Get streak info
     streak = await db.user_streaks.find_one({"user_id": user_id})
