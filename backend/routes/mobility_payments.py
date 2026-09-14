@@ -12,6 +12,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import debit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/mobility/payments", tags=["Mobility Payments"])
 
@@ -102,9 +103,49 @@ async def process_payment(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if user.get("balance", 0) < amount:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. Need €{amount:.2f}")
-    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # Use the canonical wallet service so retries cannot debit the wallet twice.
+    idempotency_key = f"mobility:payment:{payment_type}:{reference_id}:{round(amount, 2):.2f}"
+    debit_result = await debit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.PAYMENT,
+        description=description or f"Mobility payment {payment_type}",
+        reference=f"{reference_type.upper()}-{reference_id[:8].upper()}",
+        metadata={
+            "payment_type": payment_type,
+            "reference_id": reference_id,
+            "reference_type": reference_type,
+            "recipient_id": recipient_id,
+            "commission_category": commission_category,
+        },
+        idempotency_key=idempotency_key,
+    )
+    if not debit_result.success:
+        raise HTTPException(status_code=400, detail=debit_result.error or "Payment could not be debited")
+
+    # A replay must not create a second earning, revenue row, or payment record.
+    if debit_result.idempotent_replay:
+        existing = await db.mobility_payments.find_one(
+            {"user_id": user_id, "reference_id": reference_id, "payment_type": payment_type},
+            {"_id": 0},
+        )
+        return {
+            "ok": True,
+            "reused": True,
+            "payment": existing or {
+                "payment_id": debit_result.transaction_id,
+                "user_id": user_id,
+                "amount": amount,
+                "payment_type": payment_type,
+                "reference_id": reference_id,
+                "status": "completed",
+            },
+            "new_balance": debit_result.new_balance,
+        }
+
     now = datetime.now(timezone.utc)
     payment_id = secrets.token_hex(8)
     
@@ -113,11 +154,7 @@ async def process_payment(
     platform_commission = round(amount * commission_rate, 2)
     recipient_earning = round(amount - platform_commission, 2)
     
-    # Deduct from user
-    await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$inc": {"balance": -amount}}
-    )
+    # Wallet debit is already persisted by the canonical service above.
     
     # Record payment transaction
     payment_record = {
@@ -190,7 +227,7 @@ async def process_payment(
     return {
         "ok": True,
         "payment": payment_record,
-        "new_balance": user.get("balance", 0) - amount,
+        "new_balance": debit_result.new_balance,
     }
 
 
