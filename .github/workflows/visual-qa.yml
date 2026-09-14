@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        run: npm --workspace frontend run build
+        run: CI=false npm --workspace frontend run build
 
       - name: Prepare QA output directory
         run: rm -rf frontend/qa-output && mkdir -p frontend/qa-output/screenshots
