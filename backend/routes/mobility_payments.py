@@ -94,6 +94,7 @@ async def process_payment(
     description: str = "",
     recipient_id: str = None,
     commission_category: str = None,
+    idempotency_key: str = None,
 ) -> dict:
     """
     Process a payment with automatic commission split.
@@ -107,7 +108,7 @@ async def process_payment(
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     # Use the canonical wallet service so retries cannot debit the wallet twice.
-    idempotency_key = f"mobility:payment:{payment_type}:{reference_id}:{round(amount, 2):.2f}"
+    idempotency_key = idempotency_key or f"mobility:payment:{payment_type}:{reference_id}:{round(amount, 2):.2f}"
     debit_result = await debit_wallet(
         user_id=user_id,
         amount=amount,
