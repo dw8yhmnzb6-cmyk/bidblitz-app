@@ -9,6 +9,7 @@ on:
 jobs:
   visual-qa:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       QA_BASE_URL: ${{ secrets.QA_BASE_URL }}
       QA_USER_EMAIL: ${{ secrets.QA_USER_EMAIL }}
@@ -27,17 +28,20 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build frontend
+        working-directory: frontend
         env:
           CI: "false"
           GENERATE_SOURCEMAP: "false"
+          NODE_OPTIONS: --max-old-space-size=4096
           REACT_APP_BACKEND_URL: ${{ secrets.QA_API_BASE_URL || 'https://bidblitz.ae' }}
           REACT_APP_TEST_MODE: "false"
-        run: npm --workspace frontend run build
+        run: npm run build
 
       - name: Prepare QA output directory
         run: rm -rf frontend/qa-output && mkdir -p frontend/qa-output/screenshots
