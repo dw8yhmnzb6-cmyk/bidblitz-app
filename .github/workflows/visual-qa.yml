@@ -40,6 +40,20 @@ jobs:
       - name: Prepare QA output directory
         run: rm -rf frontend/qa-output && mkdir -p frontend/qa-output/screenshots
 
+      - name: Start local production build for Visual QA
+        if: ${{ env.QA_BASE_URL == '' }}
+        run: |
+          python3 frontend/scripts/visual-qa/serve-build.py --directory frontend/build --port 3000 > /tmp/bidblitz-visual-qa-server.log 2>&1 &
+          echo $! > /tmp/bidblitz-visual-qa-server.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null && curl -fsS http://127.0.0.1:3000/auctions >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/bidblitz-visual-qa-server.log
+          exit 1
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
         working-directory: frontend
