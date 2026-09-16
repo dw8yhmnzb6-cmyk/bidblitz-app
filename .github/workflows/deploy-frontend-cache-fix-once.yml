@@ -1,0 +1,93 @@
+name: One-time Frontend Cache Fix Deploy
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - .github/workflows/deploy-frontend-cache-fix-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bidblitz-production-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+        with:
+          ref: work/cache-update-hardening
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: 'false'
+          REACT_APP_API_URL: https://bidblitz.ae
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          test -s build/index.html
+          test -s build/version.json
+          test -s build/service-worker.js
+          echo "Built version: $(cat build/version.json)"
+
+      - name: Package frontend
+        run: tar -C frontend/build -czf /tmp/bidblitz-frontend.tgz .
+
+      - name: Install SSH client helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Upload release archive
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e scp -o StrictHostKeyChecking=no /tmp/bidblitz-frontend.tgz root@212.227.20.190:/tmp/bidblitz-frontend.tgz
+
+      - name: Atomically activate frontend
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 <<'REMOTE'
+          set -euo pipefail
+          APP=/var/www/bidblitz/frontend
+          NEW="$APP/build.new"
+          LIVE="$APP/build"
+          OLD="$APP/build.previous"
+          rm -rf "$NEW"
+          mkdir -p "$NEW"
+          tar -xzf /tmp/bidblitz-frontend.tgz -C "$NEW"
+          test -s "$NEW/index.html"
+          test -s "$NEW/version.json"
+          test -s "$NEW/service-worker.js"
+          rm -rf "$OLD"
+          if [ -d "$LIVE" ]; then mv "$LIVE" "$OLD"; fi
+          mv "$NEW" "$LIVE"
+          chown -R www-data:www-data "$LIVE"
+          nginx -t
+          systemctl reload nginx
+          rm -f /tmp/bidblitz-frontend.tgz
+          REMOTE
+
+      - name: Verify production freshness
+        run: |
+          set -e
+          stamp=$(date +%s)
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/version.json?deploy=$stamp" | tee /tmp/version.json
+          grep -q 'build_id' /tmp/version.json
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/service-worker.js?deploy=$stamp" | grep -q 'bidblitz-runtime-'
+          headers=$(curl -fsSI "https://bidblitz.ae/index.html?deploy=$stamp" | tr -d '\r')
+          echo "$headers"
+          echo "$headers" | grep -qi 'cache-control:.*no-store'
