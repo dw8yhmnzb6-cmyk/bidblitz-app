@@ -35,6 +35,8 @@ jobs:
         env:
           CI: "false"
           GENERATE_SOURCEMAP: "false"
+          REACT_APP_BACKEND_URL: ${{ secrets.QA_API_BASE_URL || 'https://bidblitz.ae' }}
+          REACT_APP_TEST_MODE: "false"
         run: npm --workspace frontend run build
 
       - name: Prepare QA output directory
