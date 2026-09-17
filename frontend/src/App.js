@@ -285,8 +285,8 @@ const LiveAuctionsPage = lazy(() => import("./pages/LiveAuctionsPage"));
 const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const BlitzLearnPage = lazy(() => import("./pages/BlitzLearnPage"));
 const BlitzHubPage = lazy(() => import("./pages/BlitzHubPage"));
-const GlobalSearch = lazy(() => import("./pages/ExtraFeatures"));
-const OnboardingTour = lazy(() => import("./pages/ExtraFeatures"));
+const GlobalSearch = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.GlobalSearch })));
+const OnboardingTour = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.OnboardingTour })));
 const CityServicesPage = lazy(() => import("./pages/CityServicesPage"));
 const BlitzPayPage = lazy(() => import("./pages/BlitzPayPage"));
 const CryptoEarnPage = lazy(() => import("./pages/CryptoEarnPage"));
@@ -1223,8 +1223,6 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
       case "/blitzhub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
-      case "/leaderboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MorePage {...pageProps} initialPanel="discover" />;
       case "/city":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":
