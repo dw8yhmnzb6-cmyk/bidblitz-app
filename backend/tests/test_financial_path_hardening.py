@@ -8,6 +8,7 @@ P2P_ROUTE = BACKEND_ROOT / "routes" / "p2p_transfer.py"
 REFERRAL_ROUTE = BACKEND_ROOT / "routes" / "referral.py"
 COINBASE_ROUTE = BACKEND_ROOT / "routes" / "coinbase_commerce.py"
 EXTRAS_ROUTE = BACKEND_ROOT / "routes" / "extras.py"
+PRO_FEATURES_ROUTE = BACKEND_ROOT / "routes" / "pro_features.py"
 
 
 def _function_block(source: str, start_marker: str, end_marker: str) -> str:
@@ -21,7 +22,6 @@ def test_p2p_client_idempotency_reference_is_stable():
     second = transfer_reference("sender", "recipient", 12.34, "checkout-123")
     changed_amount = transfer_reference("sender", "recipient", 12.35, "checkout-123")
     changed_recipient = transfer_reference("sender", "recipient-2", 12.34, "checkout-123")
-
     assert first == second
     assert first.startswith("P2P-")
     assert first != changed_amount
@@ -30,12 +30,7 @@ def test_p2p_client_idempotency_reference_is_stable():
 
 def test_p2p_transfer_uses_canonical_engine_not_direct_balance_writes():
     source = P2P_ROUTE.read_text(encoding="utf-8")
-    block = _function_block(
-        source,
-        "async def instant_transfer",
-        "# ══════════════════════════════════════════════════════════════════════════════\n# QR CODE TRANSFER",
-    )
-
+    block = _function_block(source, "async def instant_transfer", "# ══════════════════════════════════════════════════════════════════════════════\n# QR CODE TRANSFER")
     assert "transfer_between_wallets(" in block
     assert "TransactionType.TRANSFER" in block
     assert "Idempotency-Key" in block
@@ -45,17 +40,8 @@ def test_p2p_transfer_uses_canonical_engine_not_direct_balance_writes():
 
 def test_referral_reward_uses_canonical_idempotent_wallet_credits():
     source = REFERRAL_ROUTE.read_text(encoding="utf-8")
-    helper = _function_block(
-        source,
-        "async def _grant_referral_wallet_reward",
-        '@router.get("/check-rewards")',
-    )
-    block = _function_block(
-        source,
-        "async def check_and_grant_rewards",
-        '@router.get("/leaderboard")',
-    )
-
+    helper = _function_block(source, "async def _grant_referral_wallet_reward", '@router.get("/check-rewards")')
+    block = _function_block(source, "async def check_and_grant_rewards", '@router.get("/leaderboard")')
     assert "credit_wallet(" in helper
     assert "TransactionType.REWARD" in helper
     assert 'idempotency_key = f"referral:{reward_scope_id}:{leg}"' in helper
@@ -71,12 +57,7 @@ def test_referral_reward_uses_canonical_idempotent_wallet_credits():
 
 def test_referral_apply_serializes_claim_and_uses_deterministic_document_id():
     source = REFERRAL_ROUTE.read_text(encoding="utf-8")
-    block = _function_block(
-        source,
-        "async def apply_referral_code",
-        "async def _grant_referral_wallet_reward",
-    )
-
+    block = _function_block(source, "async def apply_referral_code", "async def _grant_referral_wallet_reward")
     assert '"referred_by": {"$exists": False}' in block
     assert "claim.modified_count != 1" in block
     assert '"_id": f"referral:{user_id}"' in block
@@ -86,19 +67,13 @@ def test_referral_apply_serializes_claim_and_uses_deterministic_document_id():
 def test_referral_leaderboard_deduplicates_legacy_duplicate_documents():
     source = REFERRAL_ROUTE.read_text(encoding="utf-8")
     block = source[source.index("async def referral_leaderboard"):]
-
     assert '"referred_id": "$referred_id"' in block
     assert '"reward_amount": {"$max": "$reward_amount"}' in block
 
 
 def test_coinbase_confirmation_uses_canonical_idempotent_wallet_credit():
     source = COINBASE_ROUTE.read_text(encoding="utf-8")
-    block = _function_block(
-        source,
-        "async def _process_event",
-        "def _oid",
-    )
-
+    block = _function_block(source, "async def _process_event", "def _oid")
     assert "credit_wallet(" in block
     assert "TransactionType.TOPUP" in block
     assert 'idempotency_key=f"coinbase_charge:{charge_id}"' in block
@@ -112,12 +87,7 @@ def test_coinbase_confirmation_uses_canonical_idempotent_wallet_credit():
 
 def test_promo_redemption_claims_once_and_uses_canonical_credit():
     source = EXTRAS_ROUTE.read_text(encoding="utf-8")
-    block = _function_block(
-        source,
-        'async def redeem_promo',
-        '@router.post("/promo/create")',
-    )
-
+    block = _function_block(source, 'async def redeem_promo', '@router.post("/promo/create")')
     assert "find_one_and_update(" in block
     assert '"redemption_markers": {"$ne": marker}' in block
     assert '"$addToSet": {"used_by": email, "redemption_markers": marker}' in block
@@ -125,3 +95,16 @@ def test_promo_redemption_claims_once_and_uses_canonical_credit():
     assert "TransactionType.REWARD" in block
     assert "idempotency_key=marker" in block
     assert '"$inc": {"balance"' not in block
+
+
+def test_pro_features_block_legacy_money_paths_and_demo_kyc_in_production():
+    source = PRO_FEATURES_ROUTE.read_text(encoding="utf-8")
+    assert "from core.config import TEST_MODE, IS_PRODUCTION" in source
+    assert "def _block_legacy_wallet_charge" in source
+    assert "if IS_PRODUCTION:" in source
+    assert '_block_legacy_wallet_charge("Express-KYC")' in source
+    assert '_block_legacy_wallet_charge("Banner-Kauf")' in source
+    assert '_block_legacy_wallet_charge("Kostenpflichtiger Steuerbericht")' in source
+    kyc_block = _function_block(source, "async def submit_kyc", '@router.get("/kyc/status")')
+    assert "if TEST_MODE:" in kyc_block
+    assert '"status": "pending"' in kyc_block
