@@ -11,6 +11,7 @@ EXTRAS_ROUTE = BACKEND_ROOT / "routes" / "extras.py"
 PRO_FEATURES_ROUTE = BACKEND_ROOT / "routes" / "pro_features.py"
 LADESAEULEN_ROUTE = BACKEND_ROOT / "routes" / "ladesaeulen.py"
 LEGACY_EV_WALLET = BACKEND_ROOT / "core" / "legacy_ev_wallet.py"
+ADVERTISING_ROUTE = BACKEND_ROOT / "routes" / "advertising.py"
 
 
 def _function_block(source: str, start_marker: str, end_marker: str) -> str:
@@ -144,3 +145,15 @@ def test_legacy_ev_route_delegates_money_mutations_to_hardened_service():
     assert "start_legacy_ev_session(req, request)" in source
     assert "stop_legacy_ev_session(req, request)" in source
     assert '"$inc": {"balance"' not in source
+
+
+def test_ad_campaign_budget_uses_canonical_idempotent_wallet_debit():
+    source = ADVERTISING_ROUTE.read_text(encoding="utf-8")
+    block = _function_block(source, 'async def create_ad_campaign', '@router.get("/campaigns")')
+    assert "debit_wallet(" in block
+    assert "TransactionType.PURCHASE" in block
+    assert 'idempotency_key=f"ads:campaign:{campaign_id}"' in block
+    assert '"wallet_transaction_id": charge.transaction_id' in block
+    assert '"$setOnInsert": campaign' in block
+    assert '"$inc": {"balance"' not in block
+    assert "db.transactions.insert_one" not in block
