@@ -7,10 +7,19 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
-from core.config import TEST_MODE
+from core.config import TEST_MODE, IS_PRODUCTION
 import secrets, random
 
 router = APIRouter(prefix="/api/pro", tags=["pro-features"])
+
+
+def _block_legacy_wallet_charge(feature: str):
+    """Never let legacy direct-balance demo charges move production money."""
+    if IS_PRODUCTION:
+        raise HTTPException(
+            status_code=503,
+            detail=f"{feature} ist vorübergehend deaktiviert, bis die Zahlung über den sicheren Wallet-Pfad läuft.",
+        )
 
 
 # ═══ KYC LIGHT VERIFICATION ═══
@@ -35,6 +44,7 @@ async def submit_kyc(req: KYCSubmit, request: Request):
         return {"ok": True, "message": "Verifizierung läuft bereits", "status": "pending"}
     
     if req.express:
+        _block_legacy_wallet_charge("Express-KYC")
         balance = user.get("balance", 0)
         if balance < EXPRESS_FEE:
             raise HTTPException(400, f"Express-Gebühr: €{EXPRESS_FEE:.2f}")
@@ -53,13 +63,27 @@ async def submit_kyc(req: KYCSubmit, request: Request):
         "estimated_completion": "24h" if req.express else "72h",
     }
     await db.kyc_submissions.insert_one(submission)
-    
-    # Auto-approve for demo
-    await db.kyc_submissions.update_one({"kyc_id": submission["kyc_id"]}, {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat()}})
-    await db.users.update_one({"email": email}, {"$set": {"verified": True, "kyc_status": "approved"}})
-    
-    return {"ok": True, "kyc_id": submission["kyc_id"], "status": "approved",
-            "message": f"Verifizierung {'Express (24h)' if req.express else 'Standard (72h)'} eingereicht! (Demo: sofort genehmigt)"}
+
+    # Demo auto-approval is explicitly limited to non-production TEST_MODE.
+    if TEST_MODE:
+        await db.kyc_submissions.update_one(
+            {"kyc_id": submission["kyc_id"]},
+            {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        await db.users.update_one({"email": email}, {"$set": {"verified": True, "kyc_status": "approved"}})
+        return {
+            "ok": True,
+            "kyc_id": submission["kyc_id"],
+            "status": "approved",
+            "message": "Verifizierung eingereicht! (Testmodus: sofort genehmigt)",
+        }
+
+    return {
+        "ok": True,
+        "kyc_id": submission["kyc_id"],
+        "status": "pending",
+        "message": f"Verifizierung {'Express (24h)' if req.express else 'Standard (72h)'} eingereicht.",
+    }
 
 @router.get("/kyc/status")
 async def kyc_status(request: Request):
@@ -83,6 +107,7 @@ async def create_ad(req: AdCreate, request: Request):
     user = await get_current_user(request)
     email = user.get("email", "")
     price = AD_PRICES.get(req.duration, 5.0)
+    _block_legacy_wallet_charge("Banner-Kauf")
     balance = user.get("balance", 0)
     if balance < price:
         raise HTTPException(400, f"Benötigt: €{price:.2f}")
@@ -116,7 +141,6 @@ async def create_ad(req: AdCreate, request: Request):
 async def get_active_ads():
     now = datetime.now(timezone.utc).isoformat()
     ads = await db.ad_banners.find({"status": "active", "expires_at": {"$gt": now}}, {"_id": 0}).sort("created_at", -1).to_list(10)
-    # Increment impressions
     for ad in ads:
         await db.ad_banners.update_one({"ad_id": ad["ad_id"]}, {"$inc": {"impressions": 1}})
     return {"ads": ads}
@@ -138,7 +162,7 @@ async def my_ads(request: Request):
 
 
 # ═══ AFFILIATE LINK SYSTEM ═══
-AFFILIATE_RATE = 0.03  # 3%
+AFFILIATE_RATE = 0.03
 
 @router.get("/affiliate/my-link")
 async def get_affiliate_link(request: Request):
@@ -178,12 +202,12 @@ async def generate_tax_report(request: Request):
     is_premium = user.get("premium_plan") in ["pro", "elite"]
     
     if not is_premium:
+        _block_legacy_wallet_charge("Kostenpflichtiger Steuerbericht")
         balance = user.get("balance", 0)
         if balance < REPORT_FEE:
             raise HTTPException(400, f"Steuerbericht: €{REPORT_FEE:.2f} (Gratis für Pro/Elite)")
         await db.users.update_one({"email": email}, {"$inc": {"balance": -REPORT_FEE}})
     
-    # Collect all earnings
     resell_sales = await db.resell_transactions.find({"seller_email": email}, {"_id": 0, "price": 1, "fee": 1, "created_at": 1}).to_list(100)
     job_earnings = await db.blitz_jobs.find({"worker_email": email, "status": "completed"}, {"_id": 0, "worker_payout": 1, "completed_at": 1}).to_list(100)
     cashback = await db.cashback_claims.find({"user_email": email}, {"_id": 0, "cashback_amount": 1, "created_at": 1}).to_list(100)
