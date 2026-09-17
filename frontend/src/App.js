@@ -41,6 +41,7 @@ import TestBuildDebugLine from "./components/TestBuildDebugLine";
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
 const HomePage = lazy(() => import("./pages/HomePage"));
+const AboutBidBlitzPage = lazy(() => import("./pages/AboutBidBlitzPage"));
 const WalletPage = lazy(() => import("./pages/WalletPage"));
 const ScannerPage = lazy(() => import("./pages/ScannerPage"));
 const MerchantPage = lazy(() => import("./pages/MerchantPage"));
@@ -664,6 +665,8 @@ function AppContent() {
     switch (basePath) {
       case "/":
         return <HomePage {...homeProps} />;
+      case "/about-bidblitz":
+        return <AboutBidBlitzPage onNavigate={handleNavigate} onRegister={homeProps.onRegister} />;
       case "/landing":
         return <LandingPage onGetStarted={() => handleNavigate("/")} />;
       case "/wallet":
@@ -1470,7 +1473,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/about-bidblitz", "/pay/directory"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&

@@ -26,6 +26,8 @@ import { HomeInvestorOpportunitySection } from "../components/home/HomeInvestorO
 import { HomeWhyBidBlitzSection } from "../components/home/HomeWhyBidBlitzSection";
 import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
 import ModeSwitcher from "../components/ModeSwitcher";
+import MobileHomeContent from "../components/home/MobileHomeContent";
+import { getMobileHomeCopy } from "../models/mobileHomeCopy";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
 import BirthdayBonusBanner from "../components/BirthdayBonusBanner";
@@ -282,6 +284,15 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { balance, currency, cryptoBalanceEur, totalBalanceEur, cryptoBreakdown } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
+  const mobileCopy = getMobileHomeCopy(lang);
+  const [isCompactHome, setIsCompactHome] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsCompactHome(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
   const miningTrustCopy = {
     de: {
@@ -428,12 +439,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <LanguageSwitcher />
             {isGuest ? (
               <div className="flex shrink-0 items-center gap-1.5">
-                <motion.button data-testid="header-login-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
+                <motion.button data-testid="header-login-btn" className="min-h-[44px] px-2.5 py-[6px] rounded-full text-[12px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
                   {t("auth.signin") || "Login"}
                 </motion.button>
+                {!isCompactHome && (
                 <motion.button data-testid="header-register-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
                   {t("auth.create") || "Register"}
                 </motion.button>
+                )}
               </div>
             ) : (
               <motion.button data-testid="notification-btn" className="w-10 h-10 shrink-0 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
@@ -481,11 +494,11 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </motion.button>
         )}
 
-        {isGuest && <P2PHeroSection gt={gt} onRegister={onRegister} />}
+        {isGuest && !isCompactHome && <P2PHeroSection gt={gt} onRegister={onRegister} />}
 
         {/* ── Onboarding Hint (guest, dismissible, show once) ── */}
         <AnimatePresence>
-          {isGuest && !hintDismissed && !isDemoMode && (
+          {isGuest && !isCompactHome && !hintDismissed && !isDemoMode && (
             <motion.div
               data-testid="onboarding-hint"
             className="rounded-[16px] px-3.5 py-2.5 mb-3.5 flex items-start gap-2.5 relative overflow-hidden"
@@ -580,7 +593,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 { id: "topup", icon: Plus, label: t("wallet.add") || "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
                 { id: "send", icon: Send, label: t("wallet.send") || "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
                 { id: "scan", icon: QrCode, label: t("nav.scan") || "Scannen", color: "#A855F7", onClick: () => onNavigate("/scan") },
-                { id: "cards", icon: CreditCard, label: t("cards.title") || "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
+                isCompactHome
+                  ? { id: "receive", icon: QrCode, label: mobileCopy.myQr, color: "#FFB800", onClick: () => onNavigate("/receive-money") }
+                  : { id: "cards", icon: CreditCard, label: t("cards.title") || "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
               ].map((a, i) => (
                 <motion.button
                   key={a.id}
@@ -596,7 +611,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   <div className="w-8 h-8 rounded-[14px] flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
                     <a.icon size={14} strokeWidth={1.8} style={{ color: a.color }} />
                   </div>
-                  <span className="text-[9px] font-semibold text-white/92 font-outfit">{a.label}</span>
+                  <span className="text-[12px] md:text-[9px] font-semibold text-white/92 font-outfit">{a.label}</span>
                 </motion.button>
               ))}
             </motion.div>
@@ -607,7 +622,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {!isGuest && !KYC_DISABLED && <KYCBanner onNavigate={onNavigate} />}
 
         {/* ── Marketing-Widgets (gäste oben; auth-User kompakt nach Wallet-Block) ── */}
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <>
             <BirthdayBonusBanner isGuest={isGuest} />
             <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
@@ -618,7 +633,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ═══════════ GUEST SECTIONS ═══════════ */}
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,400px)] xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] lg:gap-6 xl:gap-8 items-start">
             <div>
             {/* ── Key Products ── */}
@@ -705,9 +720,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </div>
         )}
 
-        {isGuest && <HomeWhyBidBlitzSection gt={gt} />}
+        {isGuest && !isCompactHome && <HomeWhyBidBlitzSection gt={gt} />}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeVisionSection
             gt={gt}
             onRegister={onRegister}
@@ -715,7 +730,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeWhyNowSection
             gt={gt}
             onInterest={() => onNavigate("/investieren")}
@@ -723,7 +738,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeInvestorOpportunitySection
             gt={gt}
             onInterest={() => onNavigate("/investieren")}
@@ -731,10 +746,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}
+        {isGuest && !isCompactHome && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}
+
+        {isCompactHome && !showKycRestrictedExperience && (
+          <MobileHomeContent isGuest={isGuest} gt={gt} onNavigate={onNavigate} onRegister={onRegister} onLogin={onLogin} balanceHidden={balanceHidden} />
+        )}
 
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}
-        {!isGuest && !showKycRestrictedExperience && (
+        {!isGuest && !isCompactHome && !showKycRestrictedExperience && (
           <>
             {/* (Hero Balance Card now rendered at the very top — banking-app feel) */}
 
