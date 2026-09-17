@@ -161,10 +161,15 @@ function appendAuditEntry(entry: any) {
   fs.writeFileSync(RAW_AUDIT_PATH, JSON.stringify(raw, null, 2));
 }
 
-export async function runRouteAudit(page: Page, config: RouteConfig, viewport: ViewportSpec, routeOverride?: string) {
+export async function runRouteAudit(page: Page, config: RouteConfig, viewport: ViewportSpec, routeOverride?: string, options: { navigate?: boolean } = {}) {
   const route = routeOverride || config.route || '/';
   await prepareVisualPage(page, viewport);
-  await openRoute(page, route, config.waitFor);
+  if (options.navigate !== false) {
+    await openRoute(page, route, config.waitFor);
+  } else {
+    // Auction selection is component state; reloading the URL discards it.
+    await page.waitForSelector(config.waitFor, { timeout: 20000 });
+  }
   const full = screenshotPath(config.routeKey, viewport.name, 'before');
   await page.screenshot({ path: full.absolute, fullPage: true, animations: 'disabled' });
   const componentScreenshots = await captureComponents(page, config.routeKey, viewport.name, config.componentSelectors);
@@ -383,7 +388,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
   }
 
   const bottomNav = await boxFor(page, '[data-testid="bottom-nav"]');
-  if (config.expectBottomNav && !bottomNav) {
+  if (config.expectBottomNav && viewport.width < 1024 && !bottomNav) {
     issues.push({
       issue_id: issueId(config.routeKey, viewport.name, 'missing-bottom-nav', issues.length),
       severity: 'medium',

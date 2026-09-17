@@ -3,7 +3,7 @@ import { AUCTION_DETAIL_CONFIG, AUCTIONS_OVERVIEW_CONFIG, VISUAL_VIEWPORTS } fro
 import { openFirstAuctionDetail, runRouteAudit } from './layout-checks';
 
 const VISUAL_AUCTION = {
-  id: 'visual-qa-auction-1',
+  auction_id: 'visual-qa-auction-1',
   title: 'Laptop Pro 14',
   description: 'Deterministic visual-QA auction fixture for responsive layout checks.',
   status: 'active',
@@ -20,16 +20,26 @@ const VISUAL_AUCTION = {
 };
 
 async function mockAuctionApi(page: Page) {
-  await page.route('**/api/auctions*', async (route) => {
+  await page.route('**/api/auctions**', async (route) => {
     if (route.request().method() !== 'GET') {
-      await route.continue();
+      await route.abort('blockedbyclient');
       return;
     }
 
+    const pathname = new URL(route.request().url()).pathname;
+    const body = pathname === '/api/auctions'
+      ? { auctions: [VISUAL_AUCTION] }
+      : pathname === `/api/auctions/${VISUAL_AUCTION.auction_id}`
+        ? { auction: VISUAL_AUCTION, bids: [], unique_bidders: VISUAL_AUCTION.unique_bidders }
+        : null;
+    if (!body) {
+      await route.continue();
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([VISUAL_AUCTION]),
+      body: JSON.stringify(body),
     });
   });
 }
@@ -44,6 +54,6 @@ for (const viewport of VISUAL_VIEWPORTS) {
     await mockAuctionApi(page);
     await runRouteAudit(page, AUCTIONS_OVERVIEW_CONFIG, viewport);
     await openFirstAuctionDetail(page);
-    await runRouteAudit(page, AUCTION_DETAIL_CONFIG, viewport, new URL(page.url()).pathname);
+    await runRouteAudit(page, AUCTION_DETAIL_CONFIG, viewport, new URL(page.url()).pathname, { navigate: false });
   });
 }
