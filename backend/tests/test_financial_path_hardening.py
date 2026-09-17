@@ -6,6 +6,7 @@ from routes.p2p_transfer import transfer_reference
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 P2P_ROUTE = BACKEND_ROOT / "routes" / "p2p_transfer.py"
 REFERRAL_ROUTE = BACKEND_ROOT / "routes" / "referral.py"
+COINBASE_ROUTE = BACKEND_ROOT / "routes" / "coinbase_commerce.py"
 
 
 def _function_block(source: str, start_marker: str, end_marker: str) -> str:
@@ -87,3 +88,22 @@ def test_referral_leaderboard_deduplicates_legacy_duplicate_documents():
 
     assert '"referred_id": "$referred_id"' in block
     assert '"reward_amount": {"$max": "$reward_amount"}' in block
+
+
+def test_coinbase_confirmation_uses_canonical_idempotent_wallet_credit():
+    source = COINBASE_ROUTE.read_text(encoding="utf-8")
+    block = _function_block(
+        source,
+        "async def _process_event",
+        "def _oid",
+    )
+
+    assert "credit_wallet(" in block
+    assert "TransactionType.TOPUP" in block
+    assert 'idempotency_key=f"coinbase_charge:{charge_id}"' in block
+    assert 'source="coinbase_commerce"' in block
+    assert '"$inc": {"balance"' not in block
+    assert "db.transactions.insert_one" not in block
+    assert '"status": "confirmed"' in block
+    assert '"wallet_transaction_id": result.transaction_id' in block
+    assert "if not result.success:" in block
