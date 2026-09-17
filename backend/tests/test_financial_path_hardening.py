@@ -9,6 +9,8 @@ REFERRAL_ROUTE = BACKEND_ROOT / "routes" / "referral.py"
 COINBASE_ROUTE = BACKEND_ROOT / "routes" / "coinbase_commerce.py"
 EXTRAS_ROUTE = BACKEND_ROOT / "routes" / "extras.py"
 PRO_FEATURES_ROUTE = BACKEND_ROOT / "routes" / "pro_features.py"
+LADESAEULEN_ROUTE = BACKEND_ROOT / "routes" / "ladesaeulen.py"
+LEGACY_EV_WALLET = BACKEND_ROOT / "core" / "legacy_ev_wallet.py"
 
 
 def _function_block(source: str, start_marker: str, end_marker: str) -> str:
@@ -108,3 +110,37 @@ def test_pro_features_block_legacy_money_paths_and_demo_kyc_in_production():
     kyc_block = _function_block(source, "async def submit_kyc", '@router.get("/kyc/status")')
     assert "if TEST_MODE:" in kyc_block
     assert '"status": "pending"' in kyc_block
+
+
+def test_legacy_ev_start_uses_canonical_retry_safe_reservation():
+    source = LEGACY_EV_WALLET.read_text(encoding="utf-8")
+    block = _function_block(source, 'async def start_legacy_ev_session', 'async def stop_legacy_ev_session')
+    assert "debit_wallet(" in block
+    assert "TransactionType.EV_CHARGING" in block
+    assert "idempotency_key=reserve_key" in block
+    assert '"active_legacy_ev_session_id": candidate' in block
+    assert '"active_session_markers": {"$ne": session_id}' in block
+    assert '"$inc": {"balance"' not in block
+    assert "db.transactions.insert_one" not in block
+
+
+def test_legacy_ev_stop_persists_terms_and_settles_canonically_once():
+    source = LEGACY_EV_WALLET.read_text(encoding="utf-8")
+    block = source[source.index('async def stop_legacy_ev_session'):]
+    assert '"status": "stopping"' in block
+    assert '"settlement_kwh": kwh' in block
+    assert '"settlement_cost": cost' in block
+    assert "debit_wallet(" in block
+    assert "credit_wallet(" in block
+    assert 'idempotency_key=f"{stop_key}:charge"' in block
+    assert 'idempotency_key=f"{stop_key}:cashback"' in block
+    assert '"completed_session_markers": {"$ne": req.session_id}' in block
+    assert '"$inc": {"balance"' not in block
+    assert "db.transactions.insert_one" not in block
+
+
+def test_legacy_ev_route_delegates_money_mutations_to_hardened_service():
+    source = LADESAEULEN_ROUTE.read_text(encoding="utf-8")
+    assert "start_legacy_ev_session(req, request)" in source
+    assert "stop_legacy_ev_session(req, request)" in source
+    assert '"$inc": {"balance"' not in source
