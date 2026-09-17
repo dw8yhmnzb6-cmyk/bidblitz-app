@@ -16,6 +16,16 @@ jobs:
     name: Build, Backup, Deploy & Verify
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       VPS_BACKEND_DIR: /var/www/bidblitz/backend
       VPS_FRONTEND_BUILD_DIR: /var/www/bidblitz/frontend/build
@@ -61,6 +71,19 @@ jobs:
           print(f'Wrote filtered deploy requirements to {dst}')
           PY
           pip install -r /tmp/backend-requirements-deploy.txt
+
+      - name: Create isolated backend smoke env
+        run: |
+          cat > backend/.env <<'EOF'
+          MONGO_URL=mongodb://localhost:27017
+          DB_NAME=bidblitz_deploy_smoke
+          JWT_SECRET=bidblitz-deploy-smoke-secret
+          APP_ENV=development
+          COOKIE_SECURE=false
+          COOKIE_SAMESITE=lax
+          ADMIN_EMAIL=admin@bidblitz.com
+          ADMIN_PASSWORD=BidBlitz2026!
+          EOF
 
       - name: Build production frontend
         working-directory: frontend
