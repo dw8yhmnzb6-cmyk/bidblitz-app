@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { expect, type Locator, type Page } from 'playwright/test';
+import { findVisibleTranslationKey } from './translation-key-check.cjs';
 import { FLOATING_AI_SELECTORS, FORBIDDEN_VISIBLE_TOKENS, GERMAN_CURRENCY_PATTERN, GERMAN_ETA_PATTERN } from './test-data';
 
 type ViewportSpec = { name: string; width: number; height: number };
@@ -11,6 +12,7 @@ type RouteConfig = {
   waitFor: string;
   fullPageTestId: string;
   primaryActionSelector: string;
+  primaryActionMayScroll?: boolean;
   priceSelectors: string[];
   timerSelectors: string[];
   imageSelectors: string[];
@@ -243,7 +245,8 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     });
   }
 
-  if (/\b[a-z0-9_-]+\.[a-z0-9_.-]+\b/.test(bodyText)) {
+  const visibleTranslationKey = findVisibleTranslationKey(bodyText);
+  if (visibleTranslationKey) {
     issues.push({
       issue_id: issueId(config.routeKey, viewport.name, 'translation-key-visible', issues.length),
       severity: 'high',
@@ -252,7 +255,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
       viewport: viewport.name,
       status: 'New',
       rule: 'translation-key-visible',
-      problem: 'An untranslated translation key appears to be visible in the UI.',
+      problem: `An untranslated translation key is visible: ${visibleTranslationKey}`,
       affected_component: config.fullPageTestId,
       confidence: 0.8,
       safe_to_auto_fix: true,
@@ -327,6 +330,14 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     }
   }
 
+  // Component screenshots may scroll the page. Reset before checking controls.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const primaryLocator = page.locator(config.primaryActionSelector).first();
+  if (config.primaryActionMayScroll && await primaryLocator.count()) {
+    await primaryLocator.scrollIntoViewIfNeeded();
+    // Trial click checks visibility, stability and obstruction without placing a bid.
+    await primaryLocator.click({ trial: true });
+  }
   const primaryAction = await boxFor(page, config.primaryActionSelector);
   if (!primaryAction) {
     issues.push({

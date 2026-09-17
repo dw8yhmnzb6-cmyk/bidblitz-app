@@ -1,6 +1,6 @@
 import { test, type Page } from 'playwright/test';
 import { AUCTION_DETAIL_CONFIG, AUCTIONS_OVERVIEW_CONFIG, VISUAL_VIEWPORTS } from './test-data';
-import { openFirstAuctionDetail, runRouteAudit } from './layout-checks';
+import { openFirstAuctionDetail, openRoute, prepareVisualPage, runRouteAudit } from './layout-checks';
 
 const VISUAL_AUCTION = {
   auction_id: 'visual-qa-auction-1',
@@ -52,7 +52,8 @@ for (const viewport of VISUAL_VIEWPORTS) {
 
   test(`visual auction detail ${viewport.name}`, async ({ page }) => {
     await mockAuctionApi(page);
-    await runRouteAudit(page, AUCTIONS_OVERVIEW_CONFIG, viewport);
+    await prepareVisualPage(page, viewport);
+    await openRoute(page, '/auctions', AUCTIONS_OVERVIEW_CONFIG.waitFor);
     await openFirstAuctionDetail(page);
     await runRouteAudit(page, AUCTION_DETAIL_CONFIG, viewport, new URL(page.url()).pathname, { navigate: false });
   });

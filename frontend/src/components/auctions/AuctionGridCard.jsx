@@ -266,6 +266,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
 
         {!isEnded && !auction.bot_only ? (
           <motion.div
+            data-testid={`auction-open-${auction.auction_id}`}
             className="flex items-center justify-center gap-2 py-3 rounded-2xl cursor-pointer min-h-[48px]"
             style={{
               background: isFinalBattle
