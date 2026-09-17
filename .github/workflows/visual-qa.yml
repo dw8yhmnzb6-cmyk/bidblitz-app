@@ -64,6 +64,10 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: frontend
 
+      - name: Run home responsive tests
+        run: npx playwright test tests/visual/home.spec.ts
+        working-directory: frontend
+
       - name: Run auction visual tests
         run: npx playwright test tests/visual/auctions.spec.ts
         working-directory: frontend
