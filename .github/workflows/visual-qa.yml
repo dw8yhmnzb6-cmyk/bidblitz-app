@@ -117,12 +117,14 @@ jobs:
             frontend/playwright-report/.artifacts/**/error-context.md
 
       - name: Upload HTML report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: bidblitz-visual-qa-html
           path: visual-qa-report.html
 
       - name: Upload JSON report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: bidblitz-visual-qa-json

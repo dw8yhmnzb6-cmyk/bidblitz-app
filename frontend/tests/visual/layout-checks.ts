@@ -461,6 +461,17 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     });
   }
 
+  // Read individual labels; body-text regexes merge unrelated numbers across lines.
+  const numericCandidates = config.priceSelectors.length
+    ? await page.locator(config.priceSelectors.join(', ')).allTextContents()
+    : [];
+  if (routePath === '/taxi') {
+    for (const label of await page.locator('[data-testid^="taxi-vehicle-card-"]').allInnerTexts()) {
+      const eta = label.match(/\d+\sMin\.?/);
+      if (eta) numericCandidates.push(eta[0]);
+    }
+  }
+
   const entry = {
     route: routePath,
     route_key: config.routeKey,
@@ -470,7 +481,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     component_screenshots: componentScreenshots,
     issues,
     text_sample: textSample,
-    numeric_candidates: (bodyText.match(/-?\d[\d.,%\s]*(?:€|EUR|Min\.|Std\.|Sek\.)?/g) || []).slice(0, 100),
+    numeric_candidates: numericCandidates,
     image_references: metrics.images || [],
     checked_at: new Date().toISOString(),
   };
