@@ -7,6 +7,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 P2P_ROUTE = BACKEND_ROOT / "routes" / "p2p_transfer.py"
 REFERRAL_ROUTE = BACKEND_ROOT / "routes" / "referral.py"
 COINBASE_ROUTE = BACKEND_ROOT / "routes" / "coinbase_commerce.py"
+EXTRAS_ROUTE = BACKEND_ROOT / "routes" / "extras.py"
 
 
 def _function_block(source: str, start_marker: str, end_marker: str) -> str:
@@ -107,3 +108,20 @@ def test_coinbase_confirmation_uses_canonical_idempotent_wallet_credit():
     assert '"status": "confirmed"' in block
     assert '"wallet_transaction_id": result.transaction_id' in block
     assert "if not result.success:" in block
+
+
+def test_promo_redemption_claims_once_and_uses_canonical_credit():
+    source = EXTRAS_ROUTE.read_text(encoding="utf-8")
+    block = _function_block(
+        source,
+        'async def redeem_promo',
+        '@router.post("/promo/create")',
+    )
+
+    assert "find_one_and_update(" in block
+    assert '"redemption_markers": {"$ne": marker}' in block
+    assert '"$addToSet": {"used_by": email, "redemption_markers": marker}' in block
+    assert "credit_wallet(" in block
+    assert "TransactionType.REWARD" in block
+    assert "idempotency_key=marker" in block
+    assert '"$inc": {"balance"' not in block
