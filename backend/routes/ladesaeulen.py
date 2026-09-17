@@ -8,7 +8,8 @@ from typing import Optional
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
-import secrets, random
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+import hashlib, secrets, random
 
 router = APIRouter(prefix="/api/ladesaeulen", tags=["ladesaeulen"])
 
@@ -58,6 +59,22 @@ class StartChargingReq(BaseModel):
     connector: str = "CCS"
     vehicle: str = ""
     unlock_code: str = ""
+    idempotency_key: str = ""
+
+
+def _idempotency_key(request: Request, supplied: str, operation: str) -> str:
+    header = (request.headers.get("Idempotency-Key") or "").strip()
+    key = (supplied or header).strip()
+    if not key or len(key) > 200:
+        raise HTTPException(400, f"Idempotency-Key für {operation} erforderlich")
+    if header and header != key:
+        raise HTTPException(400, "Idempotency-Keys stimmen nicht überein")
+    return key
+
+
+def _stable_key(prefix: str, user_id: str, key: str) -> str:
+    digest = hashlib.sha256(f"{user_id}:{key}".encode()).hexdigest()
+    return f"{prefix}:{digest}"
 
 @router.post("/unlock")
 async def unlock_station(req: StartChargingReq, request: Request):
@@ -84,150 +101,100 @@ async def unlock_station(req: StartChargingReq, request: Request):
 
 @router.post("/start")
 async def start_charging(req: StartChargingReq, request: Request):
-    """Ladesäule freischalten + Laden starten. Reserviert Mindestbetrag vom Wallet."""
+    """Start charging with a retry-safe €5 wallet reservation."""
     user = await get_current_user(request)
     email = user.get("email", "")
-    station = await db.ev_stations.find_one({"station_id":req.station_id},{"_id":0})
-    if not station: raise HTTPException(404, "Station nicht gefunden")
-    if station.get("slots_available",0) < 1: raise HTTPException(400, "Keine freien Ladepunkte")
-
-    # Check wallet balance (min 5€)
     user_doc = await db.users.find_one({"email": email})
-    balance = user_doc.get("balance", 0) if user_doc else 0
-    if balance < 5: raise HTTPException(400, f"Mindestguthaben 5€ erforderlich. Aktuell: {balance:.2f}€. Bitte Wallet aufladen.")
+    if not user_doc:
+        raise HTTPException(404, "User nicht gefunden")
+    user_id = str(user_doc["_id"])
+    key = _idempotency_key(request, req.idempotency_key, "Ladestart")
+    session_id = "evs_" + hashlib.sha256(f"{user_id}:{key}".encode()).hexdigest()[:20]
 
-    # Reserve 5€ from wallet
-    await db.users.update_one({"email": email}, {"$inc": {"balance": -5.0}})
-
-    session = {
-        "session_id": secrets.token_hex(8), "station_id": req.station_id,
-        "station_name": station["name"], "operator": station["operator"],
-        "connector": req.connector, "vehicle": req.vehicle,
-        "user_email": email, "user_name": user.get("name",""),
-        "power_kw": station["power_kw"], "price_per_kwh": station["price_per_kwh"],
-        "kwh_charged": 0, "cost": 0, "reserved": 5.0,
-        "status": "charging", "payment_method": "bidblitz_wallet",
-        "started_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.ev_sessions.insert_one(session)
-    session.pop("_id", None)
-    await db.ev_stations.update_one({"station_id":req.station_id},{"$inc":{"slots_available":-1}})
-
-    # Log reservation transaction
-    await db.transactions.insert_one({
-        "user_email": email, "type": "ev_charging_reserve",
-        "amount": -5.0, "description": f"Ladesäule Reservierung: {station['name']}",
-        "reference": session["session_id"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-
-    return {"ok": True, "session": session, "reserved": 5.0, "wallet_balance": balance - 5.0}
-
-class StopChargingReq(BaseModel):
-    session_id: str
-
-@router.post("/stop")
-async def stop_charging(req: StopChargingReq, request: Request):
-    """Laden beenden. Berechnet kWh, zieht vom Wallet ab, gibt Restbetrag zurück, bucht Cashback."""
-    user = await get_current_user(request)
-    email = user.get("email", "")
-    session = await db.ev_sessions.find_one({"session_id":req.session_id,"user_email":email})
-    if not session: raise HTTPException(404, "Session nicht gefunden")
-
-    # Simulate charging result
-    kwh = round(random.uniform(5, 60), 1)
-    cost = round(kwh * session.get("price_per_kwh", 0.45), 2)
-    reserved = session.get("reserved", 5.0)
-    cashback_rate = 0.03  # 3% Cashback
-    cashback = round(cost * cashback_rate, 2)
-
-    # Calculate wallet adjustment (cost - reserved amount already deducted)
-    additional_charge = cost - reserved
-    if additional_charge > 0:
-        # Need to charge more
-        user_doc = await db.users.find_one({"email": email})
-        balance = user_doc.get("balance", 0) if user_doc else 0
-        if balance < additional_charge:
-            # Not enough — charge what we can, mark as partial
-            additional_charge = balance
-            cost = reserved + additional_charge
-
-        await db.users.update_one({"email": email}, {"$inc": {"balance": -additional_charge}})
-    elif additional_charge < 0:
-        # Refund excess reservation
-        await db.users.update_one({"email": email}, {"$inc": {"balance": abs(additional_charge)}})
-
-    # Add cashback
-    await db.users.update_one({"email": email}, {"$inc": {"balance": cashback}})
-
-    # Update session
-    now = datetime.now(timezone.utc).isoformat()
-    await db.ev_sessions.update_one({"session_id":req.session_id},{
-        "$set": {
-            "status": "completed", "kwh_charged": kwh, "cost": cost,
-            "cashback": cashback, "ended_at": now,
-            "payment_status": "paid", "payment_method": "bidblitz_wallet",
-        }
-    })
-    await db.ev_stations.update_one({"station_id":session["station_id"]},{"$inc":{"slots_available":1,"total_sessions":1}})
-
-    # Log final payment transaction
-    await db.transactions.insert_one({
-        "user_email": email, "type": "ev_charging_payment",
-        "amount": -cost, "description": f"Ladevorgang: {kwh}kWh @ {session.get('station_name','')}",
-        "reference": req.session_id,
-        "details": {"kwh": kwh, "price_per_kwh": session.get("price_per_kwh", 0), "station": session.get("station_name","")},
-        "created_at": now,
-    })
-
-    # Log cashback
-    if cashback > 0:
-        await db.transactions.insert_one({
-            "user_email": email, "type": "ev_charging_cashback",
-            "amount": cashback, "description": f"3% Lade-Cashback: {session.get('station_name','')}",
-            "reference": req.session_id, "created_at": now,
-        })
-
-    # Remove reservation transaction (replace with final)
-    await db.transactions.delete_one({"reference": req.session_id, "type": "ev_charging_reserve"})
-
-    # Get updated balance
-    user_doc = await db.users.find_one({"email": email})
-    new_balance = user_doc.get("balance", 0) if user_doc else 0
-
-    # Build receipt
-    receipt = {
-        "receipt_id": secrets.token_hex(6),
-        "session_id": req.session_id,
-        "station": session.get("station_name", ""),
-        "operator": session.get("operator", ""),
-        "connector": session.get("connector", ""),
-        "kwh_charged": kwh,
-        "price_per_kwh": session.get("price_per_kwh", 0),
-        "subtotal": cost,
-        "cashback": cashback,
-        "total_paid": cost,
-        "payment_method": "BidBlitz Wallet",
-        "date": now,
-    }
-
-    return {
-        "ok": True, "kwh_charged": kwh, "cost": cost, "cashback": cashback,
-        "new_balance": round(new_balance, 2), "receipt": receipt,
-    }
-
-@router.get("/my-sessions")
-async def my_sessions(request: Request):
-    user = await get_current_user(request)
-    sessions = await db.ev_sessions.find({"user_email":user.get("email","")},{"_id":0}).sort("started_at",-1).to_list(50)
-    return {"sessions": sessions}
-
-@router.get("/active-session")
-async def get_active_session(request: Request):
-    """Check if user has an active charging session."""
-    user = await get_current_user(request)
-    session = await db.ev_sessions.find_one(
-        {"user_email": user.get("email",""), "status": "charging"},
-        {"_id": 0}
+    existing = await db.ev_sessions.find_one({"session_id": session_id, "user_email": email})
+    if existing and existing.get("station_id") != req.station_id:
+        raise HTTPException(409, "Idempotency-Key wurde bereits für eine andere Station verwendet")
+    if existing and existing.get("status") == "charging":
+        existing.pop("_id", None)
+        return {"ok": True, "session": existing, "reserved": 5.0,
+                "wallet_balance": float(user_doc.get("balance", 0)), "idempotent_replay": True}
+    if existing and existing.get("status") in {"failed", "completed"}:
+        raise HTTPException(409, "Dieser Ladestart ist bereits abgeschlossen. Bitte einen neuen Auftrag starten")
+    other_active = await db.ev_sessions.find_one(
+        {"user_email": email, "status": {"$in": ["charging", "starting", "stopping"]},
+         "session_id": {"$ne": session_id}}, {"session_id": 1}
     )
-    return {"session": session}
+    if other_active:
+        raise HTTPException(409, "Es läuft bereits ein anderer Ladevorgang")
+
+    station = await db.ev_stations.find_one({"station_id": req.station_id}, {"_id": 0})
+    if not station:
+        raise HTTPException(404, "Station nicht gefunden")
+
+    lock_result = await db.users.update_one(
+        {"_id": user_doc["_id"], "$or": [
+            {"active_legacy_ev_session_id": {"$exists": False}},
+            {"active_legacy_ev_session_id": None},
+            {"active_legacy_ev_session_id": session_id},
+        ]},
+        {"$set": {"active_legacy_ev_session_id": session_id}},
+    )
+    if lock_result.modified_count != 1:
+        locked = await db.users.find_one({"_id": user_doc["_id"]}, {"active_legacy_ev_session_id": 1}) or {}
+        if locked.get("active_legacy_ev_session_id") != session_id:
+            raise HTTPException(409, "Es läuft bereits ein anderer Ladevorgang")
+
+    reserve_key = _stable_key("ladesaeulen:start", user_id, key)
+    reserve = await debit_wallet(
+        user_id=user_id, amount=5.0, tx_type=TransactionType.EV_CHARGING,
+        description=f"Ladesäule Reservierung: {station['name']}", reference=session_id,
+        metadata={"station_id": req.station_id, "phase": "reservation"},
+        idempotency_key=reserve_key,
+    )
+    if not reserve.success:
+        if str(getattr(reserve.status, "value", reserve.status)) not in {"pending", "reconciliation_required"}:
+            await db.users.update_one(
+                {"_id": user_doc["_id"], "active_legacy_ev_session_id": session_id},
+                {"$set": {"active_legacy_ev_session_id": None}},
+            )
+        code = 409 if str(getattr(reserve.status, "value", reserve.status)) in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(code, reserve.error or "Mindestguthaben 5€ erforderlich. Bitte Wallet aufladen.")
+
+    session_doc = {
+        "_id": session_id, "session_id": session_id, "station_id": req.station_id,
+        "station_name": station["name"], "operator": station["operator"],
+        "connector": req.connector, "vehicle": req.vehicle, "user_email": email,
+        "user_id": user_id, "user_name": user.get("name", ""), "power_kw": station["power_kw"],
+        "price_per_kwh": station["price_per_kwh"], "kwh_charged": 0, "cost": 0,
+        "reserved": 5.0, "reserve_transaction_id": reserve.transaction_id,
+        "status": "starting", "payment_method": "bidblitz_wallet",
+        "start_idempotency_key": key, "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.ev_sessions.update_one({"_id": session_id}, {"$setOnInsert": session_doc}, upsert=True)
+
+    station_result = await db.ev_stations.update_one(
+        {"station_id": req.station_id, "slots_available": {"$gt": 0}, "active_session_markers": {"$ne": session_id}},
+        {"$inc": {"slots_available": -1}, "$addToSet": {"active_session_markers": session_id}},
+    )
+    if station_result.modified_count != 1:
+        current_station = await db.ev_stations.find_one({"station_id": req.station_id}, {"active_session_markers": 1}) or {}
+        if session_id not in (current_station.get("active_session_markers") or []):
+            refund = await credit_wallet(
+                user_id=user_id, amount=5.0, tx_type=TransactionType.REFUND,
+                description=f"Ladesäule Reservierung storniert: {station['name']}", reference=session_id,
+                metadata={"station_id": req.station_id, "phase": "reservation_refund"},
+                idempotency_key=f"{reserve_key}:refund",
+            )
+            await db.ev_sessions.update_one({"_id": session_id}, {"$set": {
+                "status": "failed", "failure_reason": "no_slot",
+                "refund_transaction_id": refund.transaction_id, "failed_at": datetime.now(timezone.utc).isoformat(),
+            }})
+            if refund.success:
+                await db.users.update_one(
+                    {"_id": user_doc["_id"], "active_legacy_ev_session_id": session_id},
+                    {"$set": {"active_legacy_ev_session_id": None}},
+                )
+            raise HTTPException(409, "Keine freien Ladepunkte")
+
+    await db.ev_sessions.update_one({"_id": session_id}, {"$set": {"status": "charging"}})
+    session = await db.ev_sessions.find_one({"
