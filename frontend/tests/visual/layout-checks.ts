@@ -19,7 +19,7 @@ type RouteConfig = {
   expectBottomNav: boolean;
 };
 
-const OUTPUT_DIR = path.resolve(process.cwd(), 'frontend/qa-output');
+const OUTPUT_DIR = path.resolve(__dirname, '../../qa-output');
 const SCREENSHOT_DIR = path.join(OUTPUT_DIR, 'screenshots');
 const RAW_AUDIT_PATH = path.join(OUTPUT_DIR, 'raw-route-audit.json');
 
@@ -37,7 +37,7 @@ function slugify(value: string) {
 function screenshotPath(routeKey: string, viewportName: string, suffix: string) {
   ensureQaOutput();
   const relative = path.join('frontend/qa-output/screenshots', `${slugify(routeKey)}-${viewportName}-${suffix}.png`);
-  return { absolute: path.resolve(process.cwd(), relative), relative };
+  return { absolute: path.join(SCREENSHOT_DIR, path.basename(relative)), relative };
 }
 
 function issueId(routeKey: string, viewportName: string, rule: string, index: number) {
