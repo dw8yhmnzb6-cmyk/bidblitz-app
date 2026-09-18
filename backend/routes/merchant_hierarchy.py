@@ -1,10 +1,11 @@
 """
 BidBlitz V2 — Merchant Hierarchy System
 Main merchant → Branches → Staff → Registers/POS with API keys.
-Commission system 0.5%–3% per merchant.
+Commission system 1.5%–3% per merchant.
 """
 import secrets
 import logging
+import math
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -12,12 +13,13 @@ from typing import Optional
 from typing import Optional
 from bson import ObjectId
 from core.database import db
+from core.merchant_commission import MIN_MERCHANT_COMMISSION_PERCENT, effective_merchant_percent
 
 router = APIRouter(prefix="/api/merchant-hierarchy", tags=["MerchantHierarchy"])
 logger = logging.getLogger("bidblitz.merchant_hierarchy")
 
 STAFF_ROLES = {"merchant_owner", "branch_admin", "cashier", "staff"}
-DEFAULT_COMMISSION = 1.5  # percent
+DEFAULT_COMMISSION = MIN_MERCHANT_COMMISSION_PERCENT  # percent
 
 
 async def get_current_user(request: Request):
@@ -54,8 +56,8 @@ async def admin_create_merchant(req: CreateMerchantBody, request: Request):
         raise HTTPException(status_code=400, detail="Merchant profile already exists")
 
     rate = req.commission_rate if req.commission_rate is not None else DEFAULT_COMMISSION
-    if rate < 0.5 or rate > 3.0:
-        raise HTTPException(status_code=400, detail="Commission rate must be 0.5%–3%")
+    if not math.isfinite(rate) or not DEFAULT_COMMISSION <= rate <= 3.0:
+        raise HTTPException(status_code=400, detail="Commission rate must be 1.5%–3%")
 
     doc = {
         "user_id": req.user_id,
@@ -83,6 +85,7 @@ async def admin_list_merchants(request: Request):
     merchants = []
     async for m in db.merchant_profiles.find({}).sort("created_at", -1):
         m["merchant_id"] = str(m.pop("_id"))
+        m["commission_rate"] = effective_merchant_percent(m.get("commission_rate"))
         merchants.append(m)
     return {"merchants": merchants, "total": len(merchants)}
 
@@ -97,8 +100,8 @@ async def admin_set_commission(req: SetCommissionBody, request: Request):
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    if req.commission_rate < 0.5 or req.commission_rate > 3.0:
-        raise HTTPException(status_code=400, detail="Rate must be 0.5%–3%")
+    if not math.isfinite(req.commission_rate) or not DEFAULT_COMMISSION <= req.commission_rate <= 3.0:
+        raise HTTPException(status_code=400, detail="Rate must be 1.5%–3%")
     result = await db.merchant_profiles.update_one(
         {"_id": ObjectId(req.merchant_id)},
         {"$set": {"commission_rate": req.commission_rate}},
@@ -126,6 +129,7 @@ async def get_merchant_profile(user):
     mp = await db.merchant_profiles.find_one({"user_id": uid})
     if not mp:
         raise HTTPException(status_code=403, detail="No merchant profile")
+    mp["commission_rate"] = effective_merchant_percent(mp.get("commission_rate"))
     return mp
 
 
@@ -377,7 +381,7 @@ async def process_pos_payment(request: Request):
         raise HTTPException(status_code=400, detail="Invalid amount")
 
     mp = await db.merchant_profiles.find_one({"_id": ObjectId(reg["merchant_id"])})
-    commission_rate = mp.get("commission_rate", DEFAULT_COMMISSION) if mp else DEFAULT_COMMISSION
+    commission_rate = effective_merchant_percent(mp.get("commission_rate", DEFAULT_COMMISSION)) if mp else DEFAULT_COMMISSION
     fee = round(amount * (commission_rate / 100), 2)
     net = round(amount - fee, 2)
 
@@ -599,7 +603,7 @@ async def get_commission_summary(request: Request):
             merchants.append({
                 "merchant_id": mid,
                 "business_name": m.get("business_name", ""),
-                "commission_rate": m.get("commission_rate", DEFAULT_COMMISSION),
+                "commission_rate": effective_merchant_percent(m.get("commission_rate", DEFAULT_COMMISSION)),
                 "total_commission": round(total_fee, 2),
                 "total_revenue": m.get("total_revenue", 0),
                 "branch_commissions": {k: round(v, 2) for k, v in branch_fees.items()},
@@ -622,7 +626,7 @@ async def get_commission_summary(request: Request):
             device_fees[dv] = device_fees.get(dv, 0) + t.get("fee", 0)
 
         return {
-            "commission_rate": mp.get("commission_rate", DEFAULT_COMMISSION),
+            "commission_rate": effective_merchant_percent(mp.get("commission_rate", DEFAULT_COMMISSION)),
             "total_commission": round(total_fee, 2),
             "total_revenue": mp.get("total_revenue", 0),
             "branch_commissions": {k: round(v, 2) for k, v in branch_fees.items()},

@@ -13,6 +13,7 @@ BidBlitz V2 — POS Payment System
 import secrets
 import hashlib
 import logging
+import math
 import io
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -22,6 +23,7 @@ from typing import Optional
 from bson import ObjectId
 from fpdf import FPDF
 from core.database import db
+from core.merchant_commission import MIN_MERCHANT_COMMISSION_RATE, effective_merchant_rate
 from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -29,9 +31,9 @@ logger = logging.getLogger("bidblitz.payments")
 
 # Default fee structure (overridable by admin via DB)
 DEFAULT_FEES = {
-    "wallet": 0.005,
-    "barcode": 0.005,
-    "nfc_wallet": 0.003,
+    "wallet": MIN_MERCHANT_COMMISSION_RATE,
+    "barcode": MIN_MERCHANT_COMMISSION_RATE,
+    "nfc_wallet": MIN_MERCHANT_COMMISSION_RATE,
     "nfc_card": 0.025,
     "apple_pay": 0.025,
     "google_pay": 0.025,
@@ -62,7 +64,7 @@ async def get_fee_rates() -> dict:
     """Get fee rates from DB or fallback to defaults."""
     cfg = await db.fee_config.find_one({"_id": "merchant_fees"})
     if cfg:
-        return {k: cfg.get(k, DEFAULT_FEES.get(k, 0.025)) for k in DEFAULT_FEES}
+        return {k: effective_merchant_rate(cfg.get(k), default) for k, default in DEFAULT_FEES.items()}
     return dict(DEFAULT_FEES)
 
 
@@ -604,9 +606,12 @@ async def set_admin_fees(request: Request):
     update = {}
     for k in DEFAULT_FEES:
         if k in fees:
-            val = float(fees[k]) / 100  # Input is percentage, store as decimal
-            if val < 0 or val > 0.5:
-                raise HTTPException(status_code=400, detail=f"Fee for {k} must be between 0% and 50%")
+            try:
+                val = float(fees[k]) / 100  # Input is percentage, store as decimal
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail=f"Invalid fee for {k}")
+            if not math.isfinite(val) or not MIN_MERCHANT_COMMISSION_RATE <= val <= 0.5:
+                raise HTTPException(status_code=400, detail=f"Fee for {k} must be between 1.5% and 50%")
             update[k] = val
     if update:
         await db.fee_config.update_one(
@@ -711,6 +716,7 @@ async def request_merchant_trial(req: OnboardingRequest, request: Request):
 
 @router.get("/pricing")
 async def get_pricing():
+    rates = await get_fee_rates()
     return {
         "plans": [
             {
@@ -720,7 +726,7 @@ async def get_pricing():
                 "price_label": "Free",
                 "description": "Perfect for small businesses getting started",
                 "features": [
-                    "BidBlitz Wallet payments (0.5% fee)",
+                    f"BidBlitz Wallet payments ({rates['wallet'] * 100:g}% fee)",
                     "Barcode/QR payments",
                     "1 branch, 2 registers",
                     "Basic daily reports",
@@ -737,8 +743,8 @@ async def get_pricing():
                 "description": "For growing businesses",
                 "features": [
                     "All Starter features",
-                    "NFC Wallet payments (0.3% fee)",
-                    "Card/contactless (2.5% fee)",
+                    f"NFC Wallet payments ({rates['nfc_wallet'] * 100:g}% fee)",
+                    f"Card/contactless ({rates['card'] * 100:g}% fee)",
                     "5 branches, 20 registers",
                     "Shift & monthly reports",
                     "Staff management",
@@ -774,12 +780,12 @@ async def get_pricing():
             {"id": "terminal_purchase", "name": "BidBlitz Terminal (Purchase)", "price": 399, "description": "Own your terminal — NFC + scanner built-in", "monthly": 0},
         ],
         "fee_structure": {
-            "wallet": {"rate": 0.5, "label": "BidBlitz Wallet"},
-            "nfc_wallet": {"rate": 0.3, "label": "NFC Wallet"},
-            "barcode": {"rate": 0.5, "label": "Barcode/QR"},
-            "card": {"rate": 2.5, "label": "Card/Contactless"},
-            "apple_pay": {"rate": 2.5, "label": "Apple Pay"},
-            "google_pay": {"rate": 2.5, "label": "Google Pay"},
+            "wallet": {"rate": round(rates["wallet"] * 100, 4), "label": "BidBlitz Wallet"},
+            "nfc_wallet": {"rate": round(rates["nfc_wallet"] * 100, 4), "label": "NFC Wallet"},
+            "barcode": {"rate": round(rates["barcode"] * 100, 4), "label": "Barcode/QR"},
+            "card": {"rate": round(rates["card"] * 100, 4), "label": "Card/Contactless"},
+            "apple_pay": {"rate": round(rates["apple_pay"] * 100, 4), "label": "Apple Pay"},
+            "google_pay": {"rate": round(rates["google_pay"] * 100, 4), "label": "Google Pay"},
         },
     }
 

@@ -6,6 +6,7 @@ and full audit logging. ALL money flows must go through this module.
 
 import secrets
 import hashlib
+import math
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from enum import Enum
@@ -13,6 +14,7 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.merchant_commission import MIN_MERCHANT_COMMISSION_RATE, effective_merchant_rate
 from core.canonical_wallet_service import (
     credit_canonical_balance,
     debit_canonical_balance,
@@ -663,8 +665,12 @@ async def get_commission_rate(payment_type: str) -> float:
     """Get commission rate from admin config or use default."""
     config = await db.platform_config.find_one({"key": "commissions"})
     if config and config.get("rates", {}).get(payment_type) is not None:
-        return config["rates"][payment_type]
-    return DEFAULT_COMMISSIONS.get(payment_type, 0.05)
+        rate = config["rates"][payment_type]
+    else:
+        rate = DEFAULT_COMMISSIONS.get(payment_type, 0.05)
+    if payment_type == "merchant":
+        return effective_merchant_rate(rate, DEFAULT_COMMISSIONS["merchant"])
+    return rate
 
 
 async def get_cashback_rate(user_id: str) -> float:
@@ -1133,6 +1139,14 @@ async def process_login_streak(user_id: str):
 
 async def admin_set_commission_rates(rates: Dict[str, float]):
     """Admin: Set commission rates for all payment types."""
+    if "merchant" in rates:
+        from fastapi import HTTPException
+        try:
+            rate = float(rates["merchant"])
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid merchant commission")
+        if not math.isfinite(rate) or rate < MIN_MERCHANT_COMMISSION_RATE:
+            raise HTTPException(status_code=400, detail="Merchant commission must be at least 1.5%")
     await db.platform_config.update_one(
         {"key": "commissions"},
         {"$set": {
@@ -1146,9 +1160,9 @@ async def admin_set_commission_rates(rates: Dict[str, float]):
 async def admin_get_commission_rates() -> Dict[str, float]:
     """Admin: Get current commission rates."""
     config = await db.platform_config.find_one({"key": "commissions"})
-    if config:
-        return config.get("rates", DEFAULT_COMMISSIONS)
-    return DEFAULT_COMMISSIONS
+    rates = {**DEFAULT_COMMISSIONS, **((config or {}).get("rates") or {})}
+    rates["merchant"] = effective_merchant_rate(rates["merchant"], DEFAULT_COMMISSIONS["merchant"])
+    return rates
 
 
 async def admin_get_revenue_stats(days: int = 30) -> Dict:
