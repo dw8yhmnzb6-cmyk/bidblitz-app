@@ -184,7 +184,7 @@ export async function fetchActiveRide() {
 }
 
 export async function fetchRide(rideId) {
-  const res = await safeFetch(`${API}/api/taxi/ride/${rideId}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/rides/${rideId}`, cred);
   if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
