@@ -1214,3 +1214,30 @@ def test_credit_bnpl_uses_funded_pool_and_exactly_once_repayments():
     assert "creditAttemptKeyRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
+
+
+def test_car_rental_money_availability_refunds_and_payouts_are_exactly_once():
+    services = (BACKEND_DIR / "modules" / "car_rental" / "services.py").read_text(encoding="utf-8")
+    repository = (BACKEND_DIR / "modules" / "car_rental" / "repository.py").read_text(encoding="utf-8")
+    schemas = (BACKEND_DIR / "modules" / "car_rental" / "schemas.py").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "modules" / "car-rental" / "api" / "index.js").read_text(encoding="utf-8")
+    detail = (BACKEND_DIR.parent / "frontend" / "src" / "modules" / "car-rental" / "pages" / "CarDetailPage.jsx").read_text(encoding="utf-8")
+
+    assert "idempotency_key: str = Field(..., min_length=8" in schemas
+    assert 'booking_id = f"BK-{key_hash.upper()}"' in services
+    assert "async def _claim_car_rental_days" in services
+    assert 'idempotency_key=f"car-rental:payment:{booking_id}"' in services
+    assert "async def _ensure_vendor_pending_payout" in services
+    assert "async def _reverse_vendor_pending_payout_once" in services
+    assert "async def _ensure_vendor_deposit_keep" in services
+    assert "async def _ensure_car_rental_completion_stats" in services
+    assert "async def _restore_failed_payout_reservation_once" in services
+    assert 'idempotency_key=f"car-rental:reject-refund:{booking_id}"' in services
+    assert 'idempotency_key=f"car-rental:cancel-refund:{booking_id}"' in services
+    assert 'idempotency_key=f"car-rental:deposit-refund:{booking_id}"' in services
+
+    assert '"payment_status": PaymentStatus.PAID.value' in repository
+    assert '"$setOnInsert": booking' in repository
+    assert '"Idempotency-Key": idempotencyKey' in api
+    assert "bookingAttemptKeyRef" in detail
+    assert "idempotency_key: idempotencyKey" in detail
