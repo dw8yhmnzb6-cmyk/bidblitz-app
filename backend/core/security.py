@@ -16,25 +16,73 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(user_id: str, email: str, login_email: str = "") -> str:
+def create_access_token(
+    user_id: str,
+    email: str,
+    login_email: str = "",
+    *,
+    session_id: str = "",
+    auth_version: int = 0,
+) -> str:
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "email": email,
         "login_email": login_email or email,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        "iat": int(now.timestamp()),
+        "exp": now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         "type": "access",
+        "auth_version": int(auth_version or 0),
     }
+    if session_id:
+        payload["session_id"] = session_id
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str, login_email: str = "") -> str:
+def create_refresh_token(
+    user_id: str,
+    login_email: str = "",
+    *,
+    session_id: str = "",
+    auth_version: int = 0,
+) -> str:
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "login_email": login_email,
-        "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        "iat": int(now.timestamp()),
+        "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
+        "auth_version": int(auth_version or 0),
     }
+    if session_id:
+        payload["session_id"] = session_id
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+async def validate_auth_state(user: dict, payload: dict) -> None:
+    """Reject revoked/disabled credentials and enforce optional session binding."""
+    if user.get("login_disabled") is True or user.get("is_disabled") is True:
+        raise HTTPException(status_code=401, detail="Account disabled")
+
+    token_version = int(payload.get("auth_version", 0) or 0)
+    current_version = int(user.get("auth_version", 0) or 0)
+    if token_version != current_version:
+        raise HTTPException(status_code=401, detail="Session revoked")
+
+    session_id = str(payload.get("session_id") or "")
+    if session_id:
+        session = await db.sessions.find_one({
+            "session_id": session_id,
+            "user_id": str(user.get("_id") or user.get("id") or ""),
+            "is_active": True,
+        }, {"_id": 0, "session_id": 1})
+        if not session:
+            raise HTTPException(status_code=401, detail="Session revoked")
+        await db.sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"last_active": datetime.now(timezone.utc).isoformat()}},
+        )
 
 
 def set_auth_cookies(response, access_token: str, refresh_token: str, remember_me: bool = True):
@@ -137,6 +185,7 @@ async def get_current_user(request: Request) -> dict:
             user = await db.users.find_one({"id": user_ref})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        await validate_auth_state(user, payload)
         # Track last_seen (non-blocking, async fire-and-forget)
         try:
             from datetime import datetime, timezone
@@ -192,6 +241,7 @@ async def get_current_user_from_token(token: str) -> dict:
             user = await db.users.find_one({"id": user_ref})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        await validate_auth_state(user, payload)
         
         return apply_test_mode_kyc(user)
     except jwt.ExpiredSignatureError:
