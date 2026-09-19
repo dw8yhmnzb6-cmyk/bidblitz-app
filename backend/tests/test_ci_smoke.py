@@ -961,3 +961,24 @@ def test_kids_subscription_wallet_gps_and_rewards_fail_safe():
     assert "async def _grant_child_blz_once" in premium
     assert "reward_new, grant_ok = await _grant_child_blz_once" in premium
     assert 'raise HTTPException(403, "Keine Berechtigung für diese Aufgabe")' in premium
+
+
+def test_admin_account_actions_preserve_sessions_ledgers_and_refund_safety():
+    source = (BACKEND_DIR / "routes" / "admin_management.py").read_text(encoding="utf-8")
+
+    assert 'target_email == "admin@bidblitz.ae"' in source
+    assert 'target_role in {"admin", "super_admin"}' in source
+    assert '"login_disabled": bool(req.banned)' in source
+    assert 'await revoke_all_sessions(str(target["_id"]))' in source
+
+    assert '"account_closure_status": "admin_closed"' in source
+    assert '"retention_review_required": True' in source
+    assert '"hard_deleted": False' in source
+    assert 'db.users.delete_one({"_id": _oid(user_id)})' not in source
+
+    assert 'refund_key = f"admin-refund:{original_identity}"' in source
+    assert 'idempotency_key=refund_key' in source
+    assert '"merchant_payment"' in source
+    assert '"p2p_send"' in source
+    assert "Bitte den modulspezifischen Refund verwenden" in source
+    assert '"replayed": result.idempotent_replay' in source
