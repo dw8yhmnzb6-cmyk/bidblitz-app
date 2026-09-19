@@ -1523,6 +1523,19 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert '"$setOnInsert": history' in store
     assert '"$inc": {"balance": amount}' not in store
 
+    rewards = (BACKEND_DIR / "routes" / "rewards.py").read_text(encoding="utf-8")
+    rewards_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RewardsPage.jsx").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    assert "def _require_random_value_rewards_test_mode" in rewards
+    assert "Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert." in rewards
+    assert rewards.count("_require_random_value_rewards_test_mode()") >= 3
+    assert '"value_random_rewards_enabled": bool(TEST_MODE)' in rewards
+    assert '"remaining": remaining' in rewards
+    assert "remaining = max(0, limit - spins_today) if TEST_MODE else 0" in rewards
+    assert "valueRandomRewardsEnabled = hub?.value_random_rewards_enabled === true" in rewards_page
+    assert "reward-value-games-unavailable" in rewards_page
+    assert 'title="Reward Plinko"' in app
+
 
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
