@@ -304,3 +304,24 @@ def test_p2p_money_sends_require_kyc_and_idempotency():
     assert "idempotency_key: idempotencyKey" in send_page
     assert "'Idempotency-Key': idempotencyKey" in handle_page
     assert "idempotency_key: idempotencyKey" in handle_page
+
+
+def test_pos_payments_fail_closed_and_retry_safely():
+    pos_source = (BACKEND_DIR / "routes" / "pos_system.py").read_text(encoding="utf-8")
+    legacy_source = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
+    pos_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MerchantPosSimplePage.jsx").read_text(encoding="utf-8")
+
+    assert 'POS_EXTERNAL_CARD_CERTIFIED' in pos_source
+    assert 'Verifizierte Provider-Referenz erforderlich' in pos_source
+    assert 'idempotency_key=f"pos-rollback:{payment[\'payment_id\']}"' in pos_source
+    assert 'PAYMENT_STATUS_RECONCILIATION = "reconciliation_required"' in pos_source
+
+    assert "def deterministic_payment_reference" in legacy_source
+    assert '"reference": reference' in legacy_source
+    assert '"$setOnInsert": merchant_tx' in legacy_source
+    assert "Aktives Händlerprofil erforderlich" in legacy_source
+    assert "Externe Karten-/NFC-Zahlung ist in diesem Endpoint nicht provider-verifiziert" in legacy_source
+
+    assert 'const correctlyWired = !["voucher", "invoice"].includes(key);' in pos_page
+    assert 'key !== "tap_to_pay" && (key !== "card" || externalCardCertified)' in pos_page
+    assert 'body.card_reference = `CARD-' not in pos_page
