@@ -1564,3 +1564,18 @@ def test_unverified_cashback_insurance_roundup_and_lottery_are_not_live_flows():
 
     for module in ["routes.cashback", "routes.insurance", "routes.roundup"]:
         assert f'("{module}", "router")' not in registry
+
+
+def test_blitzpay_nfc_requires_authenticated_merchant_and_platform_escrow():
+    source = (BACKEND_DIR / "routes" / "blitzpay.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+
+    assert "Token-only NFC-Debit ist deaktiviert" in source
+    assert "KYC-Verifizierung für Händler erforderlich" in source
+    assert "def _verify_token_pin" in source
+    assert "async def _blitzpay_platform_user_id" in source
+    assert 'idempotency_key=f"blitzpay:{tx_id}:escrow"' in source
+    assert 'idempotency_key=f"blitzpay:{tx_id}:merchant"' in source
+    assert '"type": "blitzpay_nfc"' in source
+    assert '"platform_fee": fee' in source
+    assert '"routes.blitzpay", "router"' in registry
