@@ -5,7 +5,7 @@ from bson import ObjectId
 from core.database import db
 from core.security import (
     hash_password, verify_password, create_access_token, create_refresh_token,
-    set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user
+    set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user, validate_auth_state
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
 from core.rate_limit import limiter, RATE_REGISTER
@@ -119,6 +119,10 @@ def _verify_legacy_password(plain_password: str, user: dict) -> str | None:
 
 def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _hash_otp(code: str) -> str:
+    return hashlib.sha256(f"bidblitz-otp:{code}".encode("utf-8")).hexdigest()
 
 
 def _parse_reset_expiry(value) -> datetime:
@@ -293,19 +297,18 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if not display_name:
         raise HTTPException(status_code=422, detail="Name is required")
 
-    # TEMPORARY FIX: Registration always open (soft launch disabled)
     invite_used = None
     invite_type = "user"
-    # Soft launch gate: invite code OR whitelist OR open registration
-    # if not await is_registration_open():
-    #     if req.invite_code:
-    #         valid, msg, code_type = await validate_invite_code(req.invite_code)
-    #         if not valid:
-    #             raise HTTPException(status_code=403, detail=msg)
-    #         invite_used = req.invite_code.strip().upper()
-    #         invite_type = code_type or "user"
-    #     elif not await is_email_whitelisted(email):
-    #         raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
+    # Respect the platform soft-launch configuration instead of bypassing it.
+    if not await is_registration_open():
+        if req.invite_code:
+            valid, msg, code_type = await validate_invite_code(req.invite_code)
+            if not valid:
+                raise HTTPException(status_code=403, detail=msg)
+            invite_used = req.invite_code.strip().upper()
+            invite_type = code_type or "user"
+        elif not await is_email_whitelisted(email):
+            raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
 
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -368,6 +371,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "last_login_ip": "",
         "last_login_user_agent": "",
         "login_count": 0,
+        "auth_version": 0,
     }
     # Save requested role if provided (admin approval required)
     if req.requested_role and req.requested_role in ("merchant", "influencer", "manager", "investor"):
@@ -411,8 +415,18 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception as e:
         logger.warning(f"Welcome bonus tx failed: {e}")
 
-    access_token = create_access_token(user_id, email, email)
-    refresh_token = create_refresh_token(user_id, email)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, email, ip, ua)
+    access_token = create_access_token(
+        user_id, email, email,
+        session_id=session_id,
+        auth_version=int(user_doc.get("auth_version", 0) or 0),
+    )
+    refresh_token = create_refresh_token(
+        user_id, email,
+        session_id=session_id,
+        auth_version=int(user_doc.get("auth_version", 0) or 0),
+    )
     set_auth_cookies(response, access_token, refresh_token)
 
     await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
@@ -559,7 +573,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
         await db.otp_codes.insert_one({
             "user_id": user_id,
-            "code": otp,
+            "code_hash": _hash_otp(otp),
             "purpose": "login",
             "attempts": 0,
             "created_at": now.isoformat(),
@@ -572,16 +586,23 @@ async def login(req: LoginRequest, request: Request, response: Response):
         await db.pending_2fa.insert_one({
             "token": pending_token,
             "user_id": user_id,
+            "login_email": email,
+            "remember_me": bool(req.remember_me),
             "created_at": now.isoformat(),
             "expires_at": expires.isoformat(),
         })
         
         # Send OTP email
+        email_sent = False
         try:
             from core.email import send_otp_email
-            send_otp_email(matched_email, otp, "login", user.get("name", ""))
+            email_sent = bool(send_otp_email(matched_email, otp, "login", user.get("name", "")))
         except Exception as e:
             logger.warning(f"Failed to send OTP email: {e}")
+        if not email_sent:
+            await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
+            await db.pending_2fa.delete_many({"user_id": user_id})
+            raise HTTPException(status_code=503, detail="2FA-Code konnte nicht zugestellt werden. Bitte erneut versuchen.")
         
         # Set pending session cookie
         response.set_cookie(
@@ -600,8 +621,19 @@ async def login(req: LoginRequest, request: Request, response: Response):
             "email_hint": f"{email[:3]}***{email[-10:]}",
         }
     
-    access_token = create_access_token(user_id, user.get("email", email), email)
-    refresh_token = create_refresh_token(user_id, email)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, user.get("email", email), ip, ua)
+    auth_version = int(user.get("auth_version", 0) or 0)
+    access_token = create_access_token(
+        user_id, user.get("email", email), email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    refresh_token = create_refresh_token(
+        user_id, email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
     set_auth_cookies(response, access_token, refresh_token, req.remember_me)
     user["login_email"] = email
     await _record_login_success(user_id, ip, ua)
