@@ -13,6 +13,7 @@ import random
 import hashlib
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import credit_wallet, TransactionType
 
@@ -447,7 +448,12 @@ async def earn_cashback_coins(request: Request):
 
 @router.post("/buy-coins")
 async def buy_coins_with_wallet(request: Request):
-    """Buy gaming coins from wallet exactly once."""
+    """Buy gaming coins only in test mode until value-convertible gaming is approved."""
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Gaming-Coins mit EUR kaufen ist in Production deaktiviert. Das Wallet wurde nicht belastet.",
+        )
     from core.payment_engine import debit_wallet
 
     user = await get_current_user(request)
@@ -648,8 +654,13 @@ async def legacy_client_scored_game_disabled(req: GamePlayRequest, request: Requ
 
 @router.post("/redeem")
 async def redeem_coins(req: RedeemRequest, request: Request):
-    """Convert gaming coins to EUR exactly once."""
+    """EUR conversion is test-only until value-convertible gaming is explicitly approved."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Gaming-Coins können in Production nicht in EUR umgewandelt werden.",
+        )
     user_id = str(user["_id"])
     if req.coins < MIN_REDEEM:
         raise HTTPException(status_code=400, detail=f"Mindestens {MIN_REDEEM} Coins zum Einlösen")
