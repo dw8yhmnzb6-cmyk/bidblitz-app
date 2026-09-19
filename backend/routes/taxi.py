@@ -2150,34 +2150,55 @@ async def book_ride(req: FlexBookRequest, request: Request):
     # Find nearby drivers and notify them (in real app, use push notifications).
     # Filter by ride options: vehicle must be pet-friendly if requested, and have
     # sufficient luggage capacity (combi/wagon for 'much_combi', any for 'much', etc.).
-    driver_query = {
-        "online": True,
-        "verified": True,
-        "status": "approved",
-        "car.type": car_type,
-    }
-    if req.with_pet:
-        driver_query["car.pet_friendly"] = True
-    if req.luggage == "much_combi":
-        driver_query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
-    elif req.luggage == "much":
-        driver_query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
-    if req.assistance:
-        driver_query["car.assistance"] = True
+    nearby_drivers = await db.drivers.find({
+        "$or": [
+            {"online": True, "verified": True, "status": "approved"},
+            {"is_online": True, "is_verified": True, "status": "active"},
+        ]
+    }).to_list(100)
     
-    nearby_drivers = await db.drivers.find(driver_query).to_list(50)
-    
-    # Filter by distance from pickup
     matching_drivers = []
     for d in nearby_drivers:
-        loc = d.get("location", {})
-        if loc.get("lat"):
-            dist = haversine_distance(p_lat, p_lng, loc["lat"], loc["lng"])
-            if dist <= 10:  # Within 10km
-                matching_drivers.append({
-                    "driver_id": d["driver_id"],
-                    "distance_km": round(dist, 2),
-                })
+        loc = d.get("location") or d.get("current_location") or {}
+        car = d.get("car") or d.get("vehicle") or {}
+        effective_type = car.get("type") or car.get("vehicle_type") or "standard"
+        if effective_type != car_type:
+            continue
+        if req.with_pet and not car.get("pet_friendly"):
+            continue
+        luggage_class = car.get("luggage_class")
+        if req.luggage == "much_combi" and luggage_class not in ["much_combi", "combi", "wagon", "much"]:
+            continue
+        if req.luggage == "much" and luggage_class not in ["much", "much_combi", "combi", "wagon", "large"]:
+            continue
+        if req.assistance and not car.get("assistance"):
+            continue
+        if not NumberErrorSafe(loc.get("lat"), loc.get("lng")):
+            continue
+
+        dist = haversine_distance(p_lat, p_lng, float(loc["lat"]), float(loc["lng"]))
+        if dist <= 10:
+            matching_drivers.append({
+                "driver_id": d["driver_id"],
+                "user_id": d.get("user_id"),
+                "distance_km": round(dist, 2),
+            })
+
+    matching_drivers.sort(key=lambda item: item["distance_km"])
+
+    for candidate in matching_drivers[:10]:
+        if not candidate.get("user_id"):
+            continue
+        await db.notifications.insert_one({
+            "notification_id": secrets.token_hex(8),
+            "user_id": str(candidate["user_id"]),
+            "title": "Neue Taxi-Anfrage",
+            "message": f"Abholung {p_addr or 'in deiner Nähe'} · ca. {candidate['distance_km']:.1f} km entfernt",
+            "type": "new_ride_request",
+            "data": {"ride_id": ride_id, "distance_km": candidate["distance_km"]},
+            "read": False,
+            "created_at": now.isoformat(),
+        })
     
     return {
         "ok": True,
@@ -2201,19 +2222,22 @@ async def get_driver_requests(request: Request):
     if not driver:
         raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
     
-    if not driver.get("online"):
+    if not (driver.get("online") or driver.get("is_online")):
         return {"requests": [], "message": "Du bist offline"}
     
-    loc = driver.get("location", {})
-    if not loc.get("lat"):
+    loc = driver.get("location") or driver.get("current_location") or {}
+    if not NumberErrorSafe(loc.get("lat"), loc.get("lng")):
         return {"requests": [], "message": "Standort nicht verfügbar"}
+
+    car = driver.get("car") or driver.get("vehicle") or {}
+    driver_car_type = car.get("type") or car.get("vehicle_type") or "standard"
     
     # Find requested rides for driver's car type.
     # Scheduled rides only enter dispatch shortly before pickup.
     dispatch_cutoff = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
     rides = await db.taxi_rides.find({
         "status": RideStatus.REQUESTED.value,
-        "car_type": driver.get("car", {}).get("type", "standard"),
+        "car_type": driver_car_type,
         "$or": [
             {"scheduled_at": None},
             {"scheduled_at": {"$lte": dispatch_cutoff}},
