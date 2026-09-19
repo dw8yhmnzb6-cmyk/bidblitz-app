@@ -244,8 +244,10 @@ async def request_account_deletion(req: AccountDeletionRequest, request: Request
         return {"ok": True, "status": existing.get("status"), "request_id": existing.get("request_id"), "replayed": True}
 
     now = datetime.now(timezone.utc).isoformat()
-    request_id = f"PRIV-{__import__('secrets').token_hex(8).upper()}"
+    privacy_doc_id = f"account-deletion:{user_id}"
+    request_id = f"PRIV-{__import__('hashlib').sha256(privacy_doc_id.encode('utf-8')).hexdigest()[:16].upper()}"
     privacy_request = {
+        "_id": privacy_doc_id,
         "request_id": request_id,
         "type": "account_deletion",
         "user_id": user_id,
@@ -256,20 +258,30 @@ async def request_account_deletion(req: AccountDeletionRequest, request: Request
         "requested_at": now,
         "created_at": now,
     }
-    await db.privacy_requests.insert_one(privacy_request)
+    await db.privacy_requests.update_one(
+        {"_id": privacy_doc_id},
+        {"$setOnInsert": privacy_request},
+        upsert=True,
+    )
+    persisted_request = await db.privacy_requests.find_one({"_id": privacy_doc_id}, {"_id": 0}) or privacy_request
+    request_id = persisted_request.get("request_id") or request_id
 
-    await db.users.update_one(
-        {"_id": user["_id"]},
+    closure_update = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "account_closure_status": {"$ne": "requested"},
+        },
         {
             "$set": {
                 "login_disabled": True,
                 "account_closure_status": "requested",
-                "account_closure_requested_at": now,
+                "account_closure_requested_at": persisted_request.get("requested_at") or now,
                 "account_closure_request_id": request_id,
             },
             "$inc": {"auth_version": 1},
         },
     )
+    replayed = closure_update.modified_count == 0
 
     from routes.sessions import revoke_all_sessions
     await revoke_all_sessions(user_id)
@@ -297,7 +309,7 @@ async def request_account_deletion(req: AccountDeletionRequest, request: Request
         "status": "requested",
         "request_id": request_id,
         "message": "Dein Konto wurde deaktiviert und die Lösch-/Anonymisierungsprüfung wurde gestartet.",
-        "replayed": False,
+        "replayed": replayed,
     }
 
 
