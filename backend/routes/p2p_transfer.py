@@ -20,12 +20,34 @@ from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 from core.payment_engine import transfer_between_wallets, TransactionType
 import secrets
 import hashlib
 import json
 
 router = APIRouter(prefix="/api/p2p", tags=["p2p-transfer"])
+
+
+def _ensure_wallet_write_allowed(user: dict):
+    if TEST_MODE or user.get("role") == "admin":
+        return
+    if user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um Geld zu senden.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
+
+
+def _require_idempotency_key(req_key: Optional[str], request: Request) -> str:
+    key = (req_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
 
 
 def generate_reference():
@@ -200,6 +222,7 @@ class TransferRequest(BaseModel):
 async def instant_transfer(req: TransferRequest, request: Request):
     """Execute a wallet-to-wallet transfer through the canonical payment engine."""
     user = await get_current_user(request)
+    _ensure_wallet_write_allowed(user)
     sender_id = str(user["_id"])
 
     if req.amount < 0.01:
@@ -219,7 +242,7 @@ async def instant_transfer(req: TransferRequest, request: Request):
     recipient_id = str(recipient["_id"])
     recipient_name = recipient.get("name", "BidBlitz User")
     sender_name = user.get("name", "BidBlitz User")
-    client_idempotency_key = req.idempotency_key or request.headers.get("Idempotency-Key")
+    client_idempotency_key = _require_idempotency_key(req.idempotency_key, request)
     reference = transfer_reference(sender_id, recipient_id, req.amount, client_idempotency_key)
     now = datetime.now(timezone.utc)
 
@@ -230,6 +253,7 @@ async def instant_transfer(req: TransferRequest, request: Request):
         tx_type=TransactionType.TRANSFER,
         description=f"P2P transfer to {recipient_name}",
         reference=reference,
+        idempotency_key=client_idempotency_key,
         metadata={
             "kind": "p2p",
             "sender_id": sender_id,
