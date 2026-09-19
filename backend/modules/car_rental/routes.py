@@ -156,6 +156,15 @@ async def check_car_availability(car_id: str, start_date: str, end_date: str):
 async def register_vendor(req: VendorRegisterRequest, request: Request):
     """Register as car rental vendor."""
     user = await get_current_user(request)
+    if user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "KYC-Verifizierung erforderlich, bevor ein Vermieter-Konto registriert werden kann.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
     
     vendor, error = await VendorService.register_vendor(str(user["_id"]), req.dict())
     if error:
@@ -785,7 +794,7 @@ async def request_payout(req: PayoutRequest, request: Request):
     if role not in ["owner", "manager"]:
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     
-    payout, error = await PayoutService.request_payout(vendor_id, req.amount)
+    payout, error = await PayoutService.request_payout(vendor_id, req.amount, req.idempotency_key)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
