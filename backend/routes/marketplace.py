@@ -65,6 +65,47 @@ def _require_marketplace_idempotency_key(body_key: Optional[str], request: Reque
     return f"marketplace-buy:{key}"
 
 
+def _require_marketplace_action_idempotency_key(body_key: Optional[str], request: Request, *, action: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"marketplace-{action}:{key}"
+
+
+async def _credit_marketplace_promo_revenue_once(operation_id: str, source: str, amount: float, now: datetime) -> None:
+    if amount <= 0:
+        return
+    day = now.strftime("%Y-%m-%d")
+    field = f"by_source.{source}"
+    existing = await db.platform_revenue.find_one(
+        {"date": day},
+        {"_id": 0, "marketplace_promo_ids": 1},
+    )
+    if not existing:
+        try:
+            await db.platform_revenue.insert_one({
+                "revenue_id": secrets.token_hex(8),
+                "date": day,
+                "total": amount,
+                "by_source": {source: amount},
+                "marketplace_promo_ids": [operation_id],
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            })
+            return
+        except Exception:
+            pass
+
+    await db.platform_revenue.update_one(
+        {"date": day, "marketplace_promo_ids": {"$ne": operation_id}},
+        {
+            "$inc": {"total": amount, field: amount},
+            "$addToSet": {"marketplace_promo_ids": operation_id},
+            "$set": {"updated_at": now.isoformat()},
+        },
+    )
+
+
 async def _credit_marketplace_revenue_once(order_id: str, amount: float, now: datetime) -> None:
     if amount <= 0:
         return
@@ -140,7 +181,8 @@ class ContactSellerRequest(BaseModel):
 
 class BoostListingRequest(BaseModel):
     listing_id: str
-    boost_type: str = Field(..., description="highlight, top, or premium")
+    boost_type: str = Field(..., description="24h or 7d")
+    idempotency_key: Optional[str] = None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -748,70 +790,117 @@ async def get_messages(request: Request):
 
 @router.post("/boost")
 async def boost_listing(req: BoostListingRequest, request: Request):
-    """Pay to boost listing visibility."""
+    """Pay to boost listing visibility exactly once per client attempt."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     if req.boost_type not in BOOST_PRICES:
         raise HTTPException(status_code=400, detail=f"Ungültiger Boost-Typ. Wähle aus: {', '.join(BOOST_PRICES.keys())}")
-    
+
+    idempotency_key = _require_marketplace_action_idempotency_key(
+        req.idempotency_key,
+        request,
+        action="boost",
+    )
+    operation_id = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    operation_field = f"promotion_operations.{operation_id}"
+
     listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id})
     if not listing:
         raise HTTPException(status_code=404, detail="Anzeige nicht gefunden")
-    
     if listing["seller_id"] != user_id:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
-    
     if listing["status"] != "active":
         raise HTTPException(status_code=400, detail="Nur aktive Anzeigen können geboostet werden")
-    
+
+    existing_operation = (listing.get("promotion_operations") or {}).get(operation_id)
+    if existing_operation:
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "boost_type": existing_operation.get("boost_type"),
+            "expires_at": existing_operation.get("expires_at"),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Boost bereits aktiviert.",
+            "replayed": True,
+        }
+
     boost = BOOST_PRICES[req.boost_type]
-    price = boost["price"]
-    duration = boost["duration_days"]
-    
-    # Deduct payment
+    price = float(boost["price"])
+    duration = int(boost["duration_days"])
     payment_result = await debit_wallet(
         user_id=user_id,
         amount=price,
         tx_type=TransactionType.FEE,
         description=f"Boost: {boost['label']} für '{listing['title'][:30]}'",
-        reference=f"BOOST-{secrets.token_hex(4).upper()}",
-        metadata={"listing_id": req.listing_id, "boost_type": req.boost_type}
+        reference=f"BOOST-{operation_id[:12].upper()}",
+        metadata={"listing_id": req.listing_id, "boost_type": req.boost_type, "operation_id": operation_id},
+        idempotency_key=idempotency_key,
     )
-    
     if not payment_result.success:
-        raise HTTPException(status_code=400, detail=payment_result.error)
-    
+        raise HTTPException(status_code=400, detail=payment_result.error or "Boost-Zahlung fehlgeschlagen")
+
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=duration)
-    
-    # Apply boost
-    await db.marketplace_listings.update_one(
-        {"listing_id": req.listing_id},
-        {"$set": {
-            "boost": {
-                "type": req.boost_type,
-                "label": boost["label"],
-                "started_at": now.isoformat(),
-                "expires_at": expires_at.isoformat(),
-            },
-            "updated_at": now.isoformat(),
-        }}
+    operation = {
+        "type": "boost",
+        "boost_type": req.boost_type,
+        "price": price,
+        "started_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "payment_transaction_id": payment_result.transaction_id,
+    }
+    applied = await db.marketplace_listings.update_one(
+        {
+            "listing_id": req.listing_id,
+            "seller_id": user_id,
+            "status": "active",
+            operation_field: {"$exists": False},
+        },
+        {
+            "$set": {
+                "boost": {
+                    "type": req.boost_type,
+                    "label": boost["label"],
+                    "started_at": now.isoformat(),
+                    "expires_at": expires_at.isoformat(),
+                },
+                operation_field: operation,
+                "updated_at": now.isoformat(),
+            }
+        },
     )
-    
-    # Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": price, "by_source.marketplace_boosts": price}},
-        upsert=True
+    if applied.modified_count != 1:
+        fresh_listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id}) or {}
+        existing_operation = (fresh_listing.get("promotion_operations") or {}).get(operation_id)
+        if not existing_operation:
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=price,
+                tx_type=TransactionType.REFUND,
+                description="Marketplace Boost Rollback",
+                reference=f"BOOST-ROLLBACK-{operation_id[:10].upper()}",
+                source="marketplace_boost_rollback",
+                metadata={"listing_id": req.listing_id, "operation_id": operation_id},
+                idempotency_key=f"marketplace-boost-rollback:{idempotency_key}",
+            )
+            if not refund.success:
+                raise HTTPException(status_code=500, detail="Boost-Zahlung benötigt manuelle Abstimmung")
+            raise HTTPException(status_code=409, detail="Boost konnte nicht aktiviert werden. Betrag wurde zurückgebucht.")
+        operation = existing_operation
+
+    await _credit_marketplace_promo_revenue_once(
+        operation_id,
+        "marketplace_boosts",
+        price,
+        now,
     )
-    
     return {
         "ok": True,
-        "boost_type": req.boost_type,
-        "expires_at": expires_at.isoformat(),
+        "boost_type": operation.get("boost_type", req.boost_type),
+        "expires_at": operation.get("expires_at", expires_at.isoformat()),
         "new_balance": payment_result.new_balance,
         "message": f"Boost aktiviert für {duration} Tage!",
+        "replayed": payment_result.idempotent_replay,
     }
 
 
@@ -821,70 +910,109 @@ async def boost_listing(req: BoostListingRequest, request: Request):
 
 @router.post("/vip")
 async def upgrade_to_vip(request: Request):
-    """
-    Pay to upgrade listing to VIP status.
-    VIP listings get a gold badge and priority in search.
-    Cost: €4.99
-    """
+    """Upgrade one listing to VIP exactly once."""
     body = await request.json()
     listing_id = body.get("listing_id")
-    
     if not listing_id:
         raise HTTPException(status_code=400, detail="listing_id erforderlich")
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+    idempotency_key = _require_marketplace_action_idempotency_key(
+        body.get("idempotency_key"),
+        request,
+        action="vip",
+    )
+    operation_id = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    operation_field = f"promotion_operations.{operation_id}"
+
     listing = await db.marketplace_listings.find_one({"listing_id": listing_id})
     if not listing:
         raise HTTPException(status_code=404, detail="Anzeige nicht gefunden")
-    
     if listing["seller_id"] != user_id:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
-    
     if listing["status"] != "active":
         raise HTTPException(status_code=400, detail="Nur aktive Anzeigen können VIP werden")
-    
+
+    existing_operation = (listing.get("promotion_operations") or {}).get(operation_id)
+    if existing_operation:
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "is_vip": True,
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "VIP bereits aktiviert.",
+            "replayed": True,
+        }
     if listing.get("is_vip"):
         raise HTTPException(status_code=400, detail="Anzeige ist bereits VIP")
-    
-    # Deduct payment
+
     payment_result = await debit_wallet(
         user_id=user_id,
         amount=VIP_PRICE,
         tx_type=TransactionType.FEE,
         description=f"VIP Upgrade: '{listing['title'][:30]}'",
-        reference=f"VIP-{secrets.token_hex(4).upper()}",
-        metadata={"listing_id": listing_id, "type": "vip_upgrade"}
+        reference=f"VIP-{operation_id[:12].upper()}",
+        metadata={"listing_id": listing_id, "type": "vip_upgrade", "operation_id": operation_id},
+        idempotency_key=idempotency_key,
     )
-    
     if not payment_result.success:
-        raise HTTPException(status_code=400, detail=payment_result.error)
-    
+        raise HTTPException(status_code=400, detail=payment_result.error or "VIP-Zahlung fehlgeschlagen")
+
     now = datetime.now(timezone.utc)
-    
-    # Apply VIP status
-    await db.marketplace_listings.update_one(
-        {"listing_id": listing_id},
-        {"$set": {
-            "is_vip": True,
-            "vip_since": now.isoformat(),
-            "updated_at": now.isoformat(),
-        }}
+    operation = {
+        "type": "vip",
+        "price": VIP_PRICE,
+        "started_at": now.isoformat(),
+        "payment_transaction_id": payment_result.transaction_id,
+    }
+    applied = await db.marketplace_listings.update_one(
+        {
+            "listing_id": listing_id,
+            "seller_id": user_id,
+            "status": "active",
+            "is_vip": {"$ne": True},
+            operation_field: {"$exists": False},
+        },
+        {
+            "$set": {
+                "is_vip": True,
+                "vip_since": now.isoformat(),
+                operation_field: operation,
+                "updated_at": now.isoformat(),
+            }
+        },
     )
-    
-    # Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": VIP_PRICE, "by_source.marketplace_vip": VIP_PRICE}},
-        upsert=True
+    if applied.modified_count != 1:
+        fresh_listing = await db.marketplace_listings.find_one({"listing_id": listing_id}) or {}
+        existing_operation = (fresh_listing.get("promotion_operations") or {}).get(operation_id)
+        if not existing_operation and not fresh_listing.get("is_vip"):
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=VIP_PRICE,
+                tx_type=TransactionType.REFUND,
+                description="Marketplace VIP Rollback",
+                reference=f"VIP-ROLLBACK-{operation_id[:10].upper()}",
+                source="marketplace_vip_rollback",
+                metadata={"listing_id": listing_id, "operation_id": operation_id},
+                idempotency_key=f"marketplace-vip-rollback:{idempotency_key}",
+            )
+            if not refund.success:
+                raise HTTPException(status_code=500, detail="VIP-Zahlung benötigt manuelle Abstimmung")
+            raise HTTPException(status_code=409, detail="VIP konnte nicht aktiviert werden. Betrag wurde zurückgebucht.")
+
+    await _credit_marketplace_promo_revenue_once(
+        operation_id,
+        "marketplace_vip",
+        VIP_PRICE,
+        now,
     )
-    
     return {
         "ok": True,
         "is_vip": True,
         "new_balance": payment_result.new_balance,
         "message": "VIP Status aktiviert!",
+        "replayed": payment_result.idempotent_replay,
     }
 
 
