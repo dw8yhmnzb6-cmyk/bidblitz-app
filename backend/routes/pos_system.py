@@ -785,12 +785,16 @@ async def get_cart(cart_id: str, request: Request):
 # ───────────────────────────────────────────────────────────────────────
 async def _finalise_sale(payment: dict, cart: dict, paid_by_user_id: str | None,
                          method: str, fee_amount: float, customer_paid: float):
-    """Common path after a payment is collected — records sale, updates shift, stock, audit."""
-    receipt_id = short_id("RCP", 10)
+    """Exactly-once sale finalisation keyed by payment_id."""
+    existing = await db.pos_sales.find_one({"payment_id": payment["payment_id"]}, {"_id": 0})
+    if existing:
+        return existing
+
+    payment_id = payment["payment_id"]
     sale = {
-        "sale_id": short_id("SAL", 10),
-        "receipt_id": receipt_id,
-        "payment_id": payment["payment_id"],
+        "sale_id": f"SAL-{payment_id}",
+        "receipt_id": f"RCP-{payment_id[-10:].upper()}",
+        "payment_id": payment_id,
         "cart_id": cart["cart_id"],
         "register_id": cart["register_id"],
         "store_id": cart["store_id"],
@@ -812,53 +816,79 @@ async def _finalise_sale(payment: dict, cart: dict, paid_by_user_id: str | None,
         "created_at": now_iso(),
         "status": "completed",
     }
-    await db.pos_sales.insert_one(sale)
-    sale.pop("_id", None)
 
-    # Update shift
-    await db.pos_shifts.update_one(
-        {"shift_id": cart["shift_id"]},
-        {"$inc": {
-            "sales_count": 1,
-            "sales_total": cart["total"],
-            f"by_method.{method}": cart["total"],
-        }},
+    write = await db.pos_sales.update_one(
+        {"payment_id": payment_id},
+        {"$setOnInsert": sale},
+        upsert=True,
     )
-    # Stock decrement + record movement
+    if write.upserted_id is None:
+        return await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0}) or sale
+
+    # Only the process that inserted the sale may mutate shift and stock.
+    shift_marker = f"sale_markers.{payment_id.replace('.', '_')}"
+    await db.pos_shifts.update_one(
+        {"shift_id": cart["shift_id"], shift_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "sales_count": 1,
+                "sales_total": cart["total"],
+                f"by_method.{method}": cart["total"],
+            },
+            "$set": {shift_marker: True},
+        },
+    )
+
     for it in cart["items"]:
-        if it.get("product_id"):
-            product = await db.pos_products.find_one({"product_id": it["product_id"]})
-            if not product or not product.get("track_stock"):
-                continue
-            before = float(product.get("stock", 0))
-            after = round(before - float(it["quantity"]), 3)
-            await db.pos_products.update_one(
-                {"product_id": it["product_id"]},
-                {"$set": {"stock": after, "updated_at": now_iso()}},
-            )
-            await db.pos_stock_movements.insert_one({
-                "movement_id": short_id("MOV", 10),
+        if not it.get("product_id"):
+            continue
+        qty = float(it["quantity"])
+        product_marker = f"sale_markers.{payment_id.replace('.', '_')}"
+        product = await db.pos_products.find_one({"product_id": it["product_id"]})
+        if not product or not product.get("track_stock"):
+            continue
+        before = float(product.get("stock", 0))
+        stock_update = await db.pos_products.update_one(
+            {"product_id": it["product_id"], product_marker: {"$exists": False}},
+            {
+                "$inc": {"stock": -qty},
+                "$set": {product_marker: True, "updated_at": now_iso()},
+            },
+        )
+        if stock_update.modified_count != 1:
+            continue
+        after_doc = await db.pos_products.find_one({"product_id": it["product_id"]}, {"stock": 1, "_id": 0}) or {}
+        after = float(after_doc.get("stock", before - qty))
+        movement_id = f"MOV-{payment_id}-{it['product_id']}"
+        await db.pos_stock_movements.update_one(
+            {"movement_id": movement_id},
+            {"$setOnInsert": {
+                "movement_id": movement_id,
                 "product_id": product["product_id"],
                 "product_name": product["name"],
                 "barcode": product.get("barcode"),
                 "merchant_id": cart["merchant_id"],
                 "store_id": cart["store_id"],
                 "type": "sale",
-                "quantity": -float(it["quantity"]),
+                "quantity": -qty,
                 "before_stock": before,
                 "after_stock": after,
                 "reference_id": sale["sale_id"],
                 "created_by": cart["cashier_id"],
                 "note": f"Sale {sale['receipt_id']}",
                 "created_at": now_iso(),
-            })
+            }},
+            upsert=True,
+        )
+
     try:
         await run_auto_order_for_store(cart["store_id"], cart["merchant_id"], cart["cashier_id"], trigger="sale", force=False)
     except Exception:
         pass
-    # Mark cart paid
+
     await db.pos_carts.update_one(
-        {"cart_id": cart["cart_id"]}, {"$set": {"status": "paid"}}
+        {"cart_id": cart["cart_id"]},
+        {"$set": {"status": "paid", "payment_id": payment_id}},
     )
     return sale
 
