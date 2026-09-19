@@ -76,9 +76,9 @@ function SaleCompleteCard({ sale, onClose, offline = false }) {
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1">
             <Download size={12} /> PDF
           </a>}
-          <button onClick={print} disabled={!btSupported || printing}
+          <button onClick={print} disabled={offline || !btSupported || printing}
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-30"
-            title={btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt"}
+            title={offline ? "Nach Synchronisierung drucken" : (btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt")}
             data-testid="pos-print-bt">
             {printing ? <Loader2 size={12} className="animate-spin" /> : "🖨 BT"}
           </button>
@@ -170,11 +170,23 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   };
 
   const totals = useMemo(() => {
-    const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-    const disc = sub * (discountPct / 100);
-    const voucherTotal = appliedVouchers.reduce((s, v) => s + (v.applied || 0), 0);
-    const grand = Math.max(0, sub - disc - voucherTotal);
-    return { subtotal: sub, discount: disc, voucher: voucherTotal, total: grand };
+    const grossBeforeLineDiscounts = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    const lineDiscount = cart.reduce((sum, item) => {
+      const lineGross = Number(item.price || 0) * Number(item.quantity || 0);
+      const pct = Math.min(100, Math.max(0, Number(item.discount_pct || 0)));
+      return sum + (lineGross * pct / 100);
+    }, 0);
+    const subtotal = Math.max(0, grossBeforeLineDiscounts - lineDiscount);
+    const cartDiscount = subtotal * (Number(discountPct || 0) / 100);
+    const voucherTotal = appliedVouchers.reduce((sum, voucher) => sum + Number(voucher.applied || 0), 0);
+    const grand = Math.max(0, subtotal - cartDiscount - voucherTotal);
+    return {
+      subtotal,
+      lineDiscount,
+      discount: cartDiscount,
+      voucher: voucherTotal,
+      total: grand,
+    };
   }, [cart, discountPct, appliedVouchers]);
 
   useEffect(() => { if (shift && scanRef.current) scanRef.current.focus(); }, [shift]);
