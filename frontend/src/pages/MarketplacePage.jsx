@@ -3,7 +3,7 @@
  * Like eBay Kleinanzeigen - Browse, Buy, Sell
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import KYCBanner from '../components/KYCBanner';
@@ -64,6 +64,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   // Message state
   const [messageText, setMessageText] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const purchaseAttemptKeyRef = useRef(null);
+
+  useEffect(() => {
+    purchaseAttemptKeyRef.current = null;
+  }, [selectedListing?.listing_id]);
 
   const openListingById = useCallback(async (listingId) => {
     if (!listingId) return;
@@ -218,31 +223,48 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   // Buy item
   const buyItem = async () => {
     if (!selectedListing) return;
-    
-    if (userBalance < selectedListing.price) {
-      alert(`Nicht genug Guthaben. Benötigt: €${selectedListing.price.toFixed(2)}`);
+
+    const required = Number(selectedListing.price || 0);
+    if (userBalance < required) {
+      alert(`Nicht genug Guthaben. Benötigt: €${required.toFixed(2)}`);
       return;
     }
-    
+
+    if (!purchaseAttemptKeyRef.current) {
+      purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+        ? `marketplace-buy-${crypto.randomUUID()}`
+        : `marketplace-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseAttemptKeyRef.current;
+
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/marketplace/buy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         credentials: 'include',
-        body: JSON.stringify({ listing_id: selectedListing.listing_id }),
+        body: JSON.stringify({
+          listing_id: selectedListing.listing_id,
+          idempotency_key: idempotencyKey,
+        }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        setUserBalance(data.new_balance);
+        purchaseAttemptKeyRef.current = null;
+        setUserBalance(Number(data.new_balance ?? userBalance));
         alert(data.message);
         setView('browse');
         fetchListings();
       } else {
-        const err = await res.json();
-        alert(err.detail || 'Fehler beim Kauf');
+        if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
+        alert(data.detail || 'Fehler beim Kauf');
       }
-    } catch (err) { void err; }
+    } catch (err) {
+      void err; // keep the same key for a safe retry after a network error
+    }
     setLoading(false);
   };
 
