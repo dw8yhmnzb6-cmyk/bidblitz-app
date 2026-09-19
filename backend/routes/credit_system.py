@@ -672,6 +672,227 @@ async def admin_decide_credit(req: CreditDecision, request: Request):
     }
 
 
+async def _reserve_credit_repayment(
+    credit_id: str,
+    user_id: str,
+    requested_amount: float,
+    operation_key: str,
+    kind: str,
+) -> tuple[dict, float, str, bool]:
+    """Reserve part of remaining debt exactly once before moving wallet money."""
+    marker_hash = hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"repayment_markers.{marker_hash}"
+
+    for _ in range(6):
+        credit = await db.credits.find_one({"credit_id": credit_id, "user_id": user_id})
+        if not credit:
+            raise HTTPException(status_code=404, detail="Kredit nicht gefunden")
+
+        marker = (credit.get("repayment_markers") or {}).get(marker_hash)
+        if marker:
+            if round(float(marker.get("requested_amount") or 0), 2) != round(float(requested_amount), 2):
+                raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderem Rückzahlungsbetrag verwendet")
+            return credit, round(float(marker.get("reserved_amount") or 0), 2), marker_hash, True
+
+        if credit.get("status") == "paid":
+            raise HTTPException(status_code=409, detail="Kredit bereits vollständig bezahlt")
+        if credit.get("status") != "active":
+            raise HTTPException(status_code=409, detail=f"Kredit kann aus Status {credit.get('status')} nicht zurückgezahlt werden")
+
+        remaining = round(float(credit.get("remaining_amount") or 0), 2)
+        if remaining <= 0.01:
+            raise HTTPException(status_code=409, detail="Keine offene Restschuld")
+        amount = round(min(float(requested_amount), remaining), 2)
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Ungültiger Rückzahlungsbetrag")
+
+        result = await db.credits.update_one(
+            {
+                "credit_id": credit_id,
+                "user_id": user_id,
+                "status": "active",
+                "remaining_amount": {"$gte": amount},
+                marker_field: {"$exists": False},
+            },
+            {
+                "$inc": {"remaining_amount": -amount},
+                "$set": {
+                    marker_field: {
+                        "operation_key_hash": marker_hash,
+                        "requested_amount": round(float(requested_amount), 2),
+                        "reserved_amount": amount,
+                        "kind": kind,
+                        "status": "reserved",
+                        "reserved_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
+            },
+        )
+        if result.modified_count == 1:
+            fresh = await db.credits.find_one({"credit_id": credit_id, "user_id": user_id}) or credit
+            return fresh, amount, marker_hash, False
+
+    raise HTTPException(status_code=409, detail="Restschuld wurde parallel geändert. Bitte erneut versuchen.")
+
+
+async def _rollback_credit_repayment(credit_id: str, marker_hash: str, amount: float, error: str) -> None:
+    field = f"repayment_markers.{marker_hash}"
+    await db.credits.update_one(
+        {"credit_id": credit_id, f"{field}.status": "reserved"},
+        {
+            "$inc": {"remaining_amount": round(float(amount), 2)},
+            "$set": {
+                f"{field}.status": "failed",
+                f"{field}.error": str(error)[:500],
+                f"{field}.failed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        },
+    )
+
+
+async def _complete_credit_repayment_marker(
+    credit_id: str,
+    marker_hash: str,
+    amount: float,
+    transaction_id: Optional[str],
+    payment_type: str,
+    extra_set: Optional[dict] = None,
+) -> bool:
+    field = f"repayment_markers.{marker_hash}"
+    payment_event_id = f"credit-payment:{credit_id}:{marker_hash}"
+    now = datetime.now(timezone.utc).isoformat()
+    payment_record = {
+        "payment_id": payment_event_id,
+        "amount": round(float(amount), 2),
+        "date": now,
+        "type": payment_type,
+        "wallet_transaction_id": transaction_id,
+    }
+    update_set = {
+        f"{field}.status": "completed",
+        f"{field}.transaction_id": transaction_id,
+        f"{field}.completed_at": now,
+        **(extra_set or {}),
+    }
+    result = await db.credits.update_one(
+        {"credit_id": credit_id, f"{field}.status": "reserved"},
+        {
+            "$set": update_set,
+            "$push": {"payments": payment_record},
+        },
+    )
+    await db.credit_payment_events.update_one(
+        {"_id": payment_event_id},
+        {"$setOnInsert": {
+            "_id": payment_event_id,
+            "credit_id": credit_id,
+            **payment_record,
+        }},
+        upsert=True,
+    )
+    if result.modified_count == 1:
+        return True
+    existing = await db.credits.find_one(
+        {"credit_id": credit_id, f"{field}.status": "completed"},
+        {"_id": 1},
+    )
+    return bool(existing)
+
+
+async def _record_credit_profile_repayment_once(
+    credit: dict,
+    amount: float,
+    marker_hash: str,
+) -> bool:
+    field = f"repayment_markers.{marker_hash}"
+    result = await db.credit_profiles.update_one(
+        {"user_id": credit["user_id"], field: {"$exists": False}},
+        {
+            "$inc": {"total_repaid": round(float(amount), 2)},
+            "$set": {
+                field: {
+                    "credit_id": credit["credit_id"],
+                    "amount": round(float(amount), 2),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+        upsert=True,
+    )
+    if result.modified_count == 1 or result.upserted_id is not None:
+        return True
+    profile = await db.credit_profiles.find_one(
+        {"user_id": credit["user_id"], field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(profile)
+
+
+def _credit_has_pending_repayment_markers(credit: dict) -> bool:
+    return any(
+        isinstance(marker, dict) and marker.get("status") == "reserved"
+        for marker in (credit.get("repayment_markers") or {}).values()
+    )
+
+
+async def _finalize_credit_if_paid(credit_id: str) -> tuple[dict, bool]:
+    credit = await db.credits.find_one({"credit_id": credit_id})
+    if not credit:
+        raise HTTPException(status_code=404, detail="Kredit nicht gefunden")
+    if credit.get("status") == "paid":
+        return credit, False
+    remaining = round(float(credit.get("remaining_amount") or 0), 2)
+    if remaining > 0.01 or _credit_has_pending_repayment_markers(credit):
+        return credit, False
+
+    now = datetime.now(timezone.utc)
+    transition = await db.credits.update_one(
+        {
+            "credit_id": credit_id,
+            "status": "active",
+            "remaining_amount": {"$lte": 0.01},
+        },
+        {"$set": {
+            "status": "paid",
+            "remaining_amount": 0.0,
+            "paid_at": now.isoformat(),
+        }},
+    )
+    fresh = await db.credits.find_one({"credit_id": credit_id}) or credit
+    if transition.modified_count != 1:
+        return fresh, False
+
+    payoff_marker = hashlib.sha256(f"credit-payoff:{credit_id}".encode("utf-8")).hexdigest()[:24]
+    field = f"payoff_markers.{payoff_marker}"
+    due_date = datetime.fromisoformat(str(fresh["due_date"]).replace("Z", "+00:00"))
+    if due_date.tzinfo is None:
+        due_date = due_date.replace(tzinfo=timezone.utc)
+
+    inc = {"current_debt": -round(float(fresh.get("amount") or 0), 2)}
+    if now <= due_date + timedelta(days=GRACE_PERIOD_DAYS):
+        inc["on_time_payments"] = 1
+    else:
+        inc["late_payments"] = 1
+
+    profile_update = await db.credit_profiles.update_one(
+        {"user_id": fresh["user_id"], field: {"$exists": False}},
+        {
+            "$inc": inc,
+            "$set": {
+                field: {
+                    "credit_id": credit_id,
+                    "paid_at": now.isoformat(),
+                }
+            },
+        },
+    )
+    if profile_update.modified_count == 1:
+        profile = await get_user_credit_profile(fresh["user_id"])
+        if profile.get("score") == "B" and now <= due_date + timedelta(days=GRACE_PERIOD_DAYS):
+            await update_credit_score(fresh["user_id"], "A", "Pünktliche Rückzahlung")
+    return fresh, True
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTO-PAY: Automatische Kreditraten-Einzug (Background Task)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -819,111 +1040,98 @@ async def process_auto_credit_payments():
 
 @router.post("/repay")
 async def repay_credit(req: RepaymentRequest, request: Request):
-    """Repay a credit (partially or fully)."""
+    """Repay credit through the canonical wallet ledger exactly once."""
+    _require_credit_live()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Find the credit
-    credit = await db.credits.find_one({
-        "credit_id": req.credit_id,
-        "user_id": user_id
-    })
-    
-    if not credit:
-        raise HTTPException(status_code=404, detail="Kredit nicht gefunden")
-    
-    if credit["status"] == "paid":
-        raise HTTPException(status_code=400, detail="Kredit bereits vollständig bezahlt")
-    
-    # Check user balance
-    if user.get("balance", 0) < req.amount:
-        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
-    
-    remaining = credit.get("remaining_amount", credit["amount"])
-    payment_amount = min(req.amount, remaining)
-    
-    now = datetime.now(timezone.utc)
-    
-    # Deduct from wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -payment_amount}}
+    pool_user_id = await _credit_pool_user_id()
+    if not pool_user_id:
+        raise HTTPException(status_code=503, detail="CREDIT_POOL_EMAIL ist nicht konfiguriert")
+    if pool_user_id == user_id:
+        raise HTTPException(status_code=409, detail="Credit Pool darf nicht identisch mit Kreditnehmer sein")
+
+    op_key = f"credit:manual-repay:{req.credit_id}:{user_id}:{req.idempotency_key.strip()}"
+    credit, payment_amount, marker_hash, replay_marker = await _reserve_credit_repayment(
+        req.credit_id,
+        user_id,
+        round(float(req.amount), 2),
+        op_key,
+        "manual",
     )
-    
-    # Update credit
-    new_remaining = round(remaining - payment_amount, 2)
-    is_fully_paid = new_remaining <= 0.01  # Allow small rounding errors
-    
-    update_data = {
-        "remaining_amount": max(0, new_remaining),
-    }
-    
-    if is_fully_paid:
-        update_data["status"] = "paid"
-        update_data["paid_at"] = now.isoformat()
-    
-    # Add payment to history
-    payment_record = {
-        "amount": payment_amount,
-        "date": now.isoformat(),
-        "remaining_after": max(0, new_remaining),
-    }
-    
-    await db.credits.update_one(
-        {"credit_id": req.credit_id},
-        {
-            "$set": update_data,
-            "$push": {"payments": payment_record}
+    marker = (credit.get("repayment_markers") or {}).get(marker_hash) or {}
+    if replay_marker and marker.get("status") == "completed":
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        fresh_credit = await db.credits.find_one({"credit_id": req.credit_id}, {"_id": 0}) or credit
+        return {
+            "ok": True,
+            "paid_amount": payment_amount,
+            "remaining_debt": round(float(fresh_credit.get("remaining_amount") or 0), 2),
+            "is_fully_paid": fresh_credit.get("status") == "paid",
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "replayed": True,
         }
+    if replay_marker and marker.get("status") == "failed":
+        raise HTTPException(status_code=409, detail=marker.get("error") or "Dieser Rückzahlungsversuch ist fehlgeschlagen")
+
+    payment = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=pool_user_id,
+        amount=payment_amount,
+        tx_type=TransactionType.TRANSFER,
+        description=f"Kredit-Rückzahlung {req.credit_id}",
+        reference=f"CREDIT-REPAY-{req.credit_id}-{marker_hash[:8].upper()}",
+        metadata={
+            "credit_id": req.credit_id,
+            "kind": "credit_repayment",
+            "payment_type": "manual",
+        },
+        idempotency_key=op_key,
     )
-    
-    # Update profile
-    profile_update = {"$inc": {"total_repaid": payment_amount}}
-    
-    if is_fully_paid:
-        profile_update["$inc"]["current_debt"] = -credit["amount"]
-        
-        # Check if paid on time
-        due_date = datetime.fromisoformat(credit["due_date"].replace("Z", "+00:00"))
-        
-        if now <= due_date:
-            # Paid on time - maintain or improve score
-            profile_update["$inc"]["on_time_payments"] = 1
-            
-            profile = await get_user_credit_profile(user_id)
-            if profile["score"] == "B":
-                # Can upgrade back to A after on-time payment
-                await update_credit_score(user_id, "A", "Pünktliche Rückzahlung")
-        elif now <= due_date + timedelta(days=GRACE_PERIOD_DAYS):
-            # Within grace period - still ok
-            profile_update["$inc"]["on_time_payments"] = 1
-        else:
-            # Late payment
-            profile_update["$inc"]["late_payments"] = 1
-    
-    await db.credit_profiles.update_one({"user_id": user_id}, profile_update)
-    
-    # Create transaction record
-    await db.transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "CREDIT_REPAYMENT",
-        "amount": -payment_amount,
-        "description": f"Kredit-Rückzahlung (ID: {req.credit_id[:8]})",
-        "credit_id": req.credit_id,
-        "created_at": now.isoformat(),
-    })
-    
-    # Get updated user
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-    
+    if not payment.success:
+        status_value = str(getattr(payment.status, "value", payment.status))
+        if status_value in {"pending", "reconciliation_required"}:
+            await db.credits.update_one(
+                {"credit_id": req.credit_id, f"repayment_markers.{marker_hash}.status": "reserved"},
+                {"$set": {
+                    f"repayment_markers.{marker_hash}.status": "reconciliation_required",
+                    f"repayment_markers.{marker_hash}.error": payment.error,
+                }},
+            )
+            raise HTTPException(status_code=409, detail=payment.error or "Rückzahlung benötigt Abstimmung")
+        await _rollback_credit_repayment(req.credit_id, marker_hash, payment_amount, payment.error or "Wallet transfer failed")
+        raise HTTPException(status_code=400, detail=payment.error or "Rückzahlung fehlgeschlagen")
+
+    if not await _complete_credit_repayment_marker(
+        req.credit_id,
+        marker_hash,
+        payment_amount,
+        payment.transaction_id,
+        "manual",
+    ):
+        await db.credits.update_one(
+            {"credit_id": req.credit_id},
+            {"$set": {"status": "reconciliation_required", "reconciliation_reason": "repayment_marker_finalize_failed"}},
+        )
+        raise HTTPException(status_code=500, detail="Wallet-Zahlung erfolgt; Kredit benötigt Abstimmung")
+
+    fresh_credit = await db.credits.find_one({"credit_id": req.credit_id}) or credit
+    if not await _record_credit_profile_repayment_once(fresh_credit, payment_amount, marker_hash):
+        await db.credits.update_one(
+            {"credit_id": req.credit_id},
+            {"$set": {"status": "reconciliation_required", "reconciliation_reason": "credit_profile_payment_marker_failed"}},
+        )
+        raise HTTPException(status_code=500, detail="Rückzahlung verbucht; Kreditprofil benötigt Abstimmung")
+
+    fresh_credit, _ = await _finalize_credit_if_paid(req.credit_id)
+    fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     return {
         "ok": True,
         "paid_amount": payment_amount,
-        "remaining_debt": max(0, new_remaining),
-        "is_fully_paid": is_fully_paid,
-        "new_balance": round(updated_user.get("balance", 0), 2),
-        "message": "Kredit vollständig bezahlt! 🎉" if is_fully_paid else f"€{payment_amount:.2f} bezahlt, noch €{new_remaining:.2f} offen",
+        "remaining_debt": round(float(fresh_credit.get("remaining_amount") or 0), 2),
+        "is_fully_paid": fresh_credit.get("status") == "paid",
+        "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+        "message": "Kredit vollständig bezahlt! 🎉" if fresh_credit.get("status") == "paid" else f"€{payment_amount:.2f} bezahlt",
+        "replayed": bool(payment.idempotent_replay or replay_marker),
     }
 
 
