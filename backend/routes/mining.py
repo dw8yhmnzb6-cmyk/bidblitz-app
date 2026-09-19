@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/mining", tags=["mining"])
@@ -19,6 +20,31 @@ router = APIRouter(prefix="/api/mining", tags=["mining"])
 BLZ_TO_EUR = 0.10  # 1 BLZ token = €0.10
 DAILY_BASE_RATE = 0.5  # BLZ per TH/s per day
 REFERRAL_BONUS_RATE = 0.05  # 5% of referral's mining earnings
+
+
+def _require_mining_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Mining-Wertfunktionen sind noch nicht mit einem verifizierten Mining-/Settlement-Provider verbunden. "
+                "Es werden in Production keine EUR belastet und keine konvertierbaren BLZ erzeugt."
+            ),
+        )
+
+
+def _mining_capabilities() -> dict:
+    return {
+        "live_mining_provider_connected": False,
+        "value_actions_enabled": bool(TEST_MODE),
+        "conversion_enabled": bool(TEST_MODE),
+        "marketplace_enabled": bool(TEST_MODE),
+        "launchpad_enabled": bool(TEST_MODE),
+        "production_message": (
+            None if TEST_MODE else
+            "Mining läuft als Preview. Kauf, Ertrag, Transfer und BLZ→EUR bleiben bis zur Live-Provider-Anbindung deaktiviert."
+        ),
+    }
 
 MINER_PACKAGES = [
     {"id": "starter", "name": "Starter Rig", "hashrate": 10, "base_efficiency": 0.85, "price_eur": 49, "price_monthly": 4.99, "price_yearly": 44.99, "icon": "cpu"},
@@ -114,7 +140,9 @@ async def mining_trust_public():
 
     videos = await db.mining_trust_videos.find({}, {"_id": 0}).sort("city", 1).to_list(20)
     return {
-        "proof_metrics": PUBLIC_MINING_PROOF_METRICS,
+        "proof_metrics": PUBLIC_MINING_PROOF_METRICS if TEST_MODE else {},
+        "proof_verified_live": False,
+        "capabilities": _mining_capabilities(),
         "network": {
             "active_miners": total_miners,
             "wallets": total_users,
@@ -216,8 +244,9 @@ auto_reward_logger = logging.getLogger("bidblitz.auto_reward")
 
 
 async def process_auto_rewards():
-    """Process automatic daily rewards for all users with active miners.
-    Runs as a background task. Prevents duplicates via mining_claims date check."""
+    """Process automatic daily rewards only in test mode until a live provider exists."""
+    if not TEST_MODE:
+        return 0
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # Find distinct user_ids that have active miners
@@ -316,6 +345,11 @@ async def process_auto_rewards():
 
 
 # ── Status alias (same as /dashboard) ──
+@router.get("/capabilities")
+async def mining_capabilities():
+    return _mining_capabilities()
+
+
 @router.get("/status")
 async def mining_status(request: Request):
     """Alias for /dashboard endpoint (used by frontend)."""
@@ -410,9 +444,10 @@ async def mining_dashboard(request: Request):
             break
 
     return {
+        "capabilities": _mining_capabilities(),
         "wallet": {
-            "blz_balance": wallet["blz_balance"],
-            "eur_value": round(wallet["blz_balance"] * BLZ_TO_EUR, 2),
+            "blz_balance": wallet["blz_balance"] if TEST_MODE else 0.0,
+            "eur_value": round(wallet["blz_balance"] * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
             "total_mined": wallet["total_mined"],
             "total_withdrawn": wallet["total_withdrawn"],
             "main_balance_eur": user.get("balance", 0),
@@ -486,7 +521,12 @@ async def get_packages(request: Request):
                 "yearly": {"price": pkg["price_yearly"], "original": orig_yearly, "discount": DISCOUNT_RATES["yearly"]},
             },
         })
-    return {"packages": enriched, "blz_rate": BLZ_TO_EUR, "discounts": DISCOUNT_RATES}
+    return {
+        "packages": [{**pkg, "purchase_available": bool(TEST_MODE)} for pkg in enriched],
+        "blz_rate": BLZ_TO_EUR if TEST_MODE else None,
+        "discounts": DISCOUNT_RATES,
+        "capabilities": _mining_capabilities(),
+    }
 
 
 # ── Buy Miner ──
@@ -498,6 +538,7 @@ class BuyMinerRequest(BaseModel):
 @router.post("/buy-miner")
 async def buy_miner(req: BuyMinerRequest, request: Request):
     """Buy a miner package using wallet balance - Uses Payment Engine for safety."""
+    _require_mining_value_mode()
     from core.payment_engine import debit_wallet, TransactionType
     
     user = await get_current_user(request)
@@ -588,6 +629,7 @@ class UpgradeRequest(BaseModel):
 @router.post("/upgrade")
 async def upgrade_miner(req: UpgradeRequest, request: Request):
     """Upgrade a miner's power or efficiency - Uses Payment Engine for safety."""
+    _require_mining_value_mode()
     from core.payment_engine import debit_wallet, TransactionType
     
     user = await get_current_user(request)
@@ -654,6 +696,7 @@ async def get_upgrade_costs(request: Request):
 @router.post("/claim-daily")
 async def claim_daily(request: Request):
     """Claim daily mining earnings."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -746,6 +789,7 @@ class WithdrawRequest(BaseModel):
 @router.post("/withdraw")
 async def withdraw_blz(req: WithdrawRequest, request: Request):
     """Atomically convert BLZ to EUR through the canonical wallet ledger."""
+    _require_mining_value_mode()
     from core.payment_engine import credit_wallet, TransactionType
 
     user = await get_current_user(request)
@@ -819,6 +863,7 @@ class SendBLZRequest(BaseModel):
 @router.post("/send")
 async def send_blz(req: SendBLZRequest, request: Request):
     """Transfer BLZ without allowing concurrent overspending."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -886,6 +931,7 @@ class MiningReferralRequest(BaseModel):
 
 @router.post("/apply-referral")
 async def apply_mining_referral(req: MiningReferralRequest, request: Request):
+    _require_mining_value_mode()
     """Apply one referral code exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
