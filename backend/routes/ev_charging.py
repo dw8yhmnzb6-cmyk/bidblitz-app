@@ -8,6 +8,8 @@ simulation: charging hardware must connect via OCPP-1.6J at
 from __future__ import annotations
 
 import secrets
+import hashlib
+import base64
 import math
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -17,6 +19,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.money import to_minor, from_minor
 from core.security import get_current_user
 from core.payment_engine import (
@@ -47,14 +50,58 @@ DEFAULT_VAT_RATE_PCT = 19.0  # German VAT default; per-tariff override possible
 # ══════════════════════════════════════════════════════════════════════════════
 # OCPP WebSocket entry point — manufacturer charge points connect here
 # ══════════════════════════════════════════════════════════════════════════════
+def _hash_ocpp_token(token: str) -> str:
+    return hashlib.sha256(f"bidblitz-ocpp:{token}".encode("utf-8")).hexdigest()
+
+
+def _extract_ocpp_token(websocket: WebSocket, charge_point_id: str) -> str:
+    direct = (websocket.headers.get("x-ocpp-token") or "").strip()
+    if direct:
+        return direct
+    auth = (websocket.headers.get("authorization") or "").strip()
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    if auth.lower().startswith("basic "):
+        try:
+            raw = base64.b64decode(auth[6:].strip()).decode("utf-8")
+            username, password = raw.split(":", 1)
+            if username and username != charge_point_id:
+                return ""
+            return password
+        except Exception:
+            return ""
+    return ""
+
+
+async def _authorize_ocpp_websocket(websocket: WebSocket, charge_point_id: str) -> bool:
+    cp = await db.ev_charge_points.find_one(
+        {"charge_point_id": charge_point_id, "active": True},
+        {"_id": 0, "ocpp_auth_hash": 1},
+    )
+    if not cp:
+        await websocket.close(code=1008)
+        return False
+    if TEST_MODE:
+        return True
+    expected = str(cp.get("ocpp_auth_hash") or "")
+    token = _extract_ocpp_token(websocket, charge_point_id)
+    if not expected or not token or not secrets.compare_digest(_hash_ocpp_token(token), expected):
+        await websocket.close(code=1008)
+        return False
+    return True
+
 @router.websocket("/ocpp/v16/{charge_point_id}")
 async def ocpp_v16(websocket: WebSocket, charge_point_id: str):
+    if not await _authorize_ocpp_websocket(websocket, charge_point_id):
+        return
     await ocpp_csms.serve(websocket, charge_point_id)
 
 
 @router.websocket("/ocpp/v201/{charge_point_id}")
 async def ocpp_v201_ws(websocket: WebSocket, charge_point_id: str):
     """OCPP-2.0.1 entry point. Subprotocol negotiated as 'ocpp2.0.1'."""
+    if not await _authorize_ocpp_websocket(websocket, charge_point_id):
+        return
     await ocpp_v201.serve(websocket, charge_point_id)
 
 
@@ -634,6 +681,7 @@ async def admin_create_cp(body: ChargePointBody, request: Request) -> Dict[str, 
         raise HTTPException(409, "charge_point_id existiert bereits")
     protocol = "ocpp2.0.1" if str(body.protocol or "").startswith("ocpp2") else "ocpp1.6"
     connector_count = len(body.connectors) if body.connectors else max(body.connector_count, 1)
+    ocpp_token = secrets.token_urlsafe(32)
     doc = {
         "charge_point_id": body.charge_point_id,
         "hardware_vendor_id": body.hardware_vendor_id or body.vendor_id,
@@ -642,6 +690,8 @@ async def admin_create_cp(body: ChargePointBody, request: Request) -> Dict[str, 
         "name": body.name,
         "location": body.location,
         "protocol": protocol,
+        "ocpp_auth_hash": _hash_ocpp_token(ocpp_token),
+        "ocpp_auth_rotated_at": _utcnow_iso(),
         "active": True,
         "online": False,
         "status": "Unavailable",
@@ -668,6 +718,8 @@ async def admin_create_cp(body: ChargePointBody, request: Request) -> Dict[str, 
     return {
         "charge_point_id": body.charge_point_id,
         "protocol": protocol,
+        "ocpp_token": ocpp_token,
+        "ocpp_token_warning": "Nur jetzt sichtbar. Sicher im Charger/MDM speichern.",
         "qr_urls": [
             {"connector_id": int(r.get("connector_id") or i + 1),
              "deep_link": f"bidblitz://ev/start/{body.charge_point_id}/{int(r.get('connector_id') or i + 1)}",
@@ -677,12 +729,35 @@ async def admin_create_cp(body: ChargePointBody, request: Request) -> Dict[str, 
     }
 
 
+@router.post("/admin/charge-points/{charge_point_id}/rotate-ocpp-token")
+async def admin_rotate_ocpp_token(charge_point_id: str, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    token = secrets.token_urlsafe(32)
+    result = await db.ev_charge_points.update_one(
+        {"charge_point_id": charge_point_id},
+        {"$set": {
+            "ocpp_auth_hash": _hash_ocpp_token(token),
+            "ocpp_auth_rotated_at": _utcnow_iso(),
+            "online": False,
+        }},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "CP nicht gefunden")
+    return {
+        "charge_point_id": charge_point_id,
+        "ocpp_token": token,
+        "ocpp_token_warning": "Nur jetzt sichtbar. Alter Token ist sofort ungültig.",
+    }
+
+
 @router.get("/admin/charge-points")
 async def admin_list_cp(request: Request) -> Dict[str, Any]:
     user = await get_current_user(request)
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
-    docs = await db.ev_charge_points.find({}, {"_id": 0}).to_list(500)
+    docs = await db.ev_charge_points.find({}, {"_id": 0, "ocpp_auth_hash": 0}).to_list(500)
     for d in docs:
         proto = _cp_protocol(d)
         d["protocol"] = proto
