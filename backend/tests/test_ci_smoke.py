@@ -1272,3 +1272,24 @@ def test_invoice_wallet_and_stripe_settlements_use_canonical_ledger_once():
     assert '"$inc": {"balance": -' not in source
     assert '"$inc": {"balance": amount' not in source
     assert '"balance": {"$gte": amount}' not in source
+
+
+def test_virtual_cards_fail_closed_without_live_issuer_and_never_list_pan():
+    backend = (BACKEND_DIR / "routes" / "virtual_cards.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "VirtualCardsPage.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_virtual_card_test_mode" in backend
+    assert "Es werden in Production keine selbst erzeugten PAN/CVV ausgegeben" in backend
+    assert '@router.get("/capabilities")' in backend
+    assert '"live_issuer_connected": False' in backend
+    assert '{"_id": 0, "cvv": 0, "card_number": 0}' in backend
+    assert "async def _refund_legacy_card_reservation_once" in backend
+    assert '"routes.cards_lifecycle", "router"' in registry
+
+    assert "/api/cards/capabilities" in page
+    assert "/api/cards/my-cards?include_inactive=true" in page
+    assert "/api/cards/create" in page
+    assert "vcard-live-issuer-unavailable" in page
+    assert "card_creation_available" in page
+    assert "/api/virtual-cards" not in page
