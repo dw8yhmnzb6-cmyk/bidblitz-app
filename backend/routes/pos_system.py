@@ -1109,64 +1109,101 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
         )
         raise HTTPException(status_code=400, detail=debit.error)
 
-    # Compute fee, credit merchant owner wallet (net)
+    # Compute fee, credit merchant owner wallet (net).
+    # The customer has already been debited at this point, so losing the
+    # settlement target must trigger an automatic rollback instead of a paid sale.
     fee = round(total * fee_rate, 2)
     net_to_merchant = round(total - fee, 2)
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
-    if merchant:
-        credit = await credit_wallet(
-            user_id=str(merchant["owner_id"]),
-            amount=net_to_merchant,
-            tx_type=TransactionType.MERCHANT_PAYMENT,
-            description=f"POS Merchant Settlement {payment['payment_id']}",
-            reference=f"SETTLE-{payment['payment_id']}",
-            source="pos_system",
-            metadata={"payment_id": payment["payment_id"], "merchant_id": cart["merchant_id"], "store_id": cart["store_id"], "settlement_type": "merchant_net_credit"},
-            idempotency_key=f"pos-settlement:{payment['payment_id']}",
-        )
-        if not credit.success:
-            rollback = await credit_wallet(
-                user_id=customer_id,
-                amount=total,
-                tx_type=TransactionType.REFUND,
-                description=f"POS Rollback {payment['payment_id']}",
-                reference=f"ROLLBACK-{payment['payment_id']}",
-                source="pos_system.rollback",
-                metadata={
-                    "payment_id": payment["payment_id"],
-                    "reason": "merchant_settlement_failed",
-                    "merchant_id": cart["merchant_id"],
-                },
-                idempotency_key=f"pos-rollback:{payment['payment_id']}",
-            )
-            rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
-            await db.pos_payments.update_one(
-                {"payment_id": payment["payment_id"]},
-                {"$set": {
-                    "status": rollback_status,
-                    "error": credit.error or "merchant_settlement_failed",
-                    "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
-                    "reconciliation_required": not rollback.success,
-                    "updated_at": now_iso(),
-                }},
-            )
-            if rollback.success:
-                raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
-            raise HTTPException(status_code=500, detail="Händlergutschrift und automatische Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
-        settlement_marker = f"settlement_markers.{payment['payment_id'].replace('.', '_')}"
-        await db.pos_merchants.update_one(
-            {"merchant_id": cart["merchant_id"], settlement_marker: {"$exists": False}},
-            {
-                "$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total},
-                "$set": {
-                    settlement_marker: {
-                        "amount": net_to_merchant,
-                        "gross": total,
-                        "created_at": now_iso(),
-                    }
-                },
+    if not merchant or not merchant.get("owner_id"):
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Rollback {payment['payment_id']}",
+            reference=f"ROLLBACK-{payment['payment_id']}",
+            source="pos_system.rollback",
+            metadata={
+                "payment_id": payment["payment_id"],
+                "reason": "merchant_settlement_target_missing",
+                "merchant_id": cart["merchant_id"],
             },
+            idempotency_key=f"pos-rollback:{payment['payment_id']}",
         )
+        rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
+        await db.pos_payments.update_one(
+            {"payment_id": payment["payment_id"]},
+            {"$set": {
+                "status": rollback_status,
+                "error": "merchant_settlement_target_missing",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+                "updated_at": now_iso(),
+            }},
+        )
+        if rollback.success:
+            raise HTTPException(
+                status_code=409,
+                detail="Händlerkonto nicht verfügbar. Kundenbetrag wurde automatisch zurückgebucht.",
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Händlerkonto fehlt und automatische Rückbuchung ist fehlgeschlagen. Manuelle Prüfung erforderlich.",
+        )
+
+    credit = await credit_wallet(
+        user_id=str(merchant["owner_id"]),
+        amount=net_to_merchant,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"POS Merchant Settlement {payment['payment_id']}",
+        reference=f"SETTLE-{payment['payment_id']}",
+        source="pos_system",
+        metadata={"payment_id": payment["payment_id"], "merchant_id": cart["merchant_id"], "store_id": cart["store_id"], "settlement_type": "merchant_net_credit"},
+        idempotency_key=f"pos-settlement:{payment['payment_id']}",
+    )
+    if not credit.success:
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Rollback {payment['payment_id']}",
+            reference=f"ROLLBACK-{payment['payment_id']}",
+            source="pos_system.rollback",
+            metadata={
+                "payment_id": payment["payment_id"],
+                "reason": "merchant_settlement_failed",
+                "merchant_id": cart["merchant_id"],
+            },
+            idempotency_key=f"pos-rollback:{payment['payment_id']}",
+        )
+        rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
+        await db.pos_payments.update_one(
+            {"payment_id": payment["payment_id"]},
+            {"$set": {
+                "status": rollback_status,
+                "error": credit.error or "merchant_settlement_failed",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+                "updated_at": now_iso(),
+            }},
+        )
+        if rollback.success:
+            raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
+        raise HTTPException(status_code=500, detail="Händlergutschrift und automatische Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+    settlement_marker = f"settlement_markers.{payment['payment_id'].replace('.', '_')}"
+    await db.pos_merchants.update_one(
+        {"merchant_id": cart["merchant_id"], settlement_marker: {"$exists": False}},
+        {
+            "$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total},
+            "$set": {
+                settlement_marker: {
+                    "amount": net_to_merchant,
+                    "gross": total,
+                    "created_at": now_iso(),
+                }
+            },
+        },
+    )
 
     # Mark payment paid
     paid_at = now_iso()
