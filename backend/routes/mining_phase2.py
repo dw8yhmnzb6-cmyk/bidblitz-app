@@ -10,7 +10,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
+from routes.mining import _require_mining_value_mode, _mining_capabilities
 
 router = APIRouter(prefix="/api/mining", tags=["mining-phase2"])
 
@@ -32,17 +34,20 @@ class BuyListingRequest(BaseModel):
 
 @router.get("/marketplace")
 async def get_marketplace(request: Request):
-    """Get all active marketplace listings."""
+    """Preview marketplace; real BLZ trading is test-only until provider integration."""
     await get_current_user(request)
+    if not TEST_MODE:
+        return {"listings": [], "capabilities": _mining_capabilities()}
     listings = await db.mining_marketplace.find(
         {"status": "active"}, {"_id": 0}
     ).sort("listed_at", -1).to_list(50)
-    return {"listings": listings}
+    return {"listings": listings, "capabilities": _mining_capabilities()}
 
 
 @router.post("/marketplace/list")
 async def list_miner_for_sale(req: ListMinerRequest, request: Request):
     """List a miner for sale on the marketplace."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -85,6 +90,7 @@ async def list_miner_for_sale(req: ListMinerRequest, request: Request):
 @router.post("/marketplace/buy")
 async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
     """Buy a miner from the marketplace."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -142,6 +148,7 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
 @router.post("/marketplace/cancel")
 async def cancel_listing(req: BuyListingRequest, request: Request):
     """Cancel own marketplace listing."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -170,52 +177,36 @@ CARD_TIERS = [
 
 
 @router.get("/card")
-async def get_card(request: Request):
-    """Get user's virtual card info."""
+async def get_mining_card(request: Request):
+    """Mining card is a test simulator only until a real issuer exists."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        return {
+            "has_card": False,
+            "issuer_live": False,
+            "capabilities": _mining_capabilities(),
+            "message": "Mining Card ist in Production deaktiviert, bis ein verifizierter Karten-Issuer verbunden ist.",
+        }
     user_id = str(user["_id"])
-
     card = await db.mining_cards.find_one({"user_id": user_id}, {"_id": 0})
     if not card:
-        # Auto-create standard card
+        tier = CARD_TIERS[0]
         card = {
             "user_id": user_id,
-            "card_id": f"BLZ-{secrets.token_hex(4).upper()}",
-            "card_number": f"4242 **** **** {secrets.token_hex(2).upper()[:4]}",
-            "tier": "standard",
-            "tier_name": "Standard",
-            "color": "#C0C0C0",
-            "daily_limit": 100,
-            "cashback_rate": 0.01,
-            "total_spent": 0,
-            "total_cashback": 0,
+            "tier": tier["tier"],
+            "tier_name": tier["name"],
+            "color": tier["color"],
+            "daily_limit": tier["daily_limit"],
+            "cashback_rate": tier["cashback"],
+            "total_spent": 0.0,
+            "total_cashback": 0.0,
             "frozen": False,
+            "is_demo": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        await db.mining_cards.insert_one(card)
+        await db.mining_cards.insert_one(dict(card))
         card.pop("_id", None)
-
-    # Today's spending
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    today_spent = 0
-    today_txns = await db.mining_card_txns.find(
-        {"user_id": user_id, "date": today}, {"_id": 0}
-    ).to_list(100)
-    today_spent = sum(t.get("amount_eur", 0) for t in today_txns)
-
-    # Recent card transactions
-    recent = await db.mining_card_txns.find(
-        {"user_id": user_id}, {"_id": 0}
-    ).sort("created_at", -1).to_list(20)
-
-    return {
-        "card": card,
-        "today_spent": round(today_spent, 2),
-        "remaining_limit": round(card.get("daily_limit", 100) - today_spent, 2),
-        "tiers": CARD_TIERS,
-        "recent_transactions": recent,
-    }
-
+    return {"has_card": True, "card": card, "issuer_live": False, "capabilities": _mining_capabilities()}
 
 class CardSpendRequest(BaseModel):
     amount_eur: float = Field(..., gt=0, le=10000)
@@ -225,6 +216,7 @@ class CardSpendRequest(BaseModel):
 @router.post("/card/spend")
 async def card_spend(req: CardSpendRequest, request: Request):
     """Simulate a card payment (deducts BLZ)."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -287,6 +279,7 @@ class UpgradeCardRequest(BaseModel):
 @router.post("/card/upgrade")
 async def upgrade_card(req: UpgradeCardRequest, request: Request):
     """Upgrade card tier."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -389,21 +382,19 @@ LAUNCHPAD_PROJECTS = [
 
 @router.get("/launchpad")
 async def get_launchpad(request: Request):
-    """Get launchpad projects."""
+    """Preview launchpad; purchases remain disabled without a live provider."""
     await get_current_user(request)
+    if not TEST_MODE:
+        return {"projects": [], "capabilities": _mining_capabilities()}
 
     projects = await db.mining_launchpad.find({}, {"_id": 0}).to_list(20)
-
     if not projects:
-        # Seed from defaults
         now = datetime.now(timezone.utc).isoformat()
-        for p in LAUNCHPAD_PROJECTS:
-            p_copy = {**p, "created_at": now}
+        for source in LAUNCHPAD_PROJECTS:
+            p_copy = {**source, "created_at": now, "is_demo": True}
             await db.mining_launchpad.insert_one(p_copy)
         projects = await db.mining_launchpad.find({}, {"_id": 0}).to_list(20)
-
-    return {"projects": projects}
-
+    return {"projects": projects, "capabilities": _mining_capabilities()}
 
 class LaunchpadBuyRequest(BaseModel):
     project_id: str
@@ -413,6 +404,7 @@ class LaunchpadBuyRequest(BaseModel):
 @router.post("/launchpad/buy")
 async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
     """Buy one launchpad miner with canonical wallet debit and exactly-once supply reservation."""
+    _require_mining_value_mode()
     from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
     user = await get_current_user(request)
