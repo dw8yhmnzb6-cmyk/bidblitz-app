@@ -17,24 +17,41 @@ const VirtualCardsPage = ({ onBack }) => {
   const [busyCard, setBusyCard] = useState(null);
   const [txDrawer, setTxDrawer] = useState(null); // { card_id, transactions }
   const [error, setError] = useState(null);
+  const [capabilities, setCapabilities] = useState(null);
 
   useEffect(() => { loadCards(); }, []);
 
   const loadCards = async () => {
     try {
-      const res = await fetch(`${API}/api/virtual-cards`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setCards(d.cards || []); }
+      const [capsRes, cardsRes] = await Promise.all([
+        fetch(`${API}/api/cards/capabilities`, { credentials: "include" }),
+        fetch(`${API}/api/cards/my-cards?include_inactive=true`, { credentials: "include" }),
+      ]);
+      if (capsRes.ok) setCapabilities(await capsRes.json());
+      if (cardsRes.ok) {
+        const d = await cardsRes.json();
+        setCards((d.cards || []).map((card) => ({
+          ...card,
+          label: card.name || card.label || "Virtuelle Karte",
+          number: card.card_number_masked || `•••• •••• •••• ${card.last4 || "••••"}`,
+          has_full_details: false,
+        })));
+      }
     } catch (e) { /* ignore */ }
     setLoading(false);
   };
 
   const createCard = async () => {
+    if (!capabilities?.card_creation_available) {
+      setError(capabilities?.production_message || "Live-Karten-Issuer ist noch nicht verbunden.");
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/api/virtual-cards`, {
+      const res = await fetch(`${API}/api/cards/create`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: parseFloat(form.limit), label: form.label }),
+        body: JSON.stringify({ limit: parseFloat(form.limit), name: form.label || "Virtuelle Karte", single_use: true, expires_hours: 24 }),
       });
       const d = await res.json().catch(() => ({}));
       if (res.ok) { loadCards(); setShowCreate(false); setForm({ limit: "50", label: "" }); }
@@ -84,11 +101,25 @@ const VirtualCardsPage = ({ onBack }) => {
             <p className="text-xs text-[#666]">Einmal-Karten für Online-Shopping</p>
           </div>
         </div>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B068FF] text-white text-sm font-medium" data-testid="create-vcard-btn">
-          <Plus size={16} /> Neue Karte
-        </motion.button>
+        {capabilities?.card_creation_available ? (
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B068FF] text-white text-sm font-medium" data-testid="create-vcard-btn">
+            <Plus size={16} /> Neue Karte
+          </motion.button>
+        ) : null}
       </div>
+
+      {capabilities && !capabilities.live_issuer_connected ? (
+        <div className="mx-4 mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="vcard-live-issuer-unavailable">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-400" />
+          <div>
+            <p className="text-sm font-bold text-amber-300">Live-Karten noch nicht aktiviert</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
+              {capabilities.production_message || "Ein verifizierter Karten-Issuer muss zuerst live verbunden werden."}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {showCreate && (
         <div className="p-4 space-y-4">
@@ -128,7 +159,7 @@ const VirtualCardsPage = ({ onBack }) => {
           <div className="text-center py-20">
             <CreditCard size={48} className="mx-auto text-[#333] mb-4" />
             <p className="text-white/70 font-semibold">Keine virtuellen Karten</p>
-            <p className="text-sm text-[#666] mt-2">Erstelle sichere Einmal-Karten für Online-Einkäufe.</p>
+            <p className="text-sm text-[#666] mt-2">{capabilities?.card_creation_available ? "Erstelle sichere Einmal-Karten für Online-Einkäufe." : "Live-Karten werden nach Anbindung eines verifizierten Issuers verfügbar."}</p>
           </div>
         ) : cards.map((c, i) => (
           <motion.div key={c.card_id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
@@ -150,7 +181,7 @@ const VirtualCardsPage = ({ onBack }) => {
                   ? `•••• •••• •••• ${c.last4 || "••••"}`
                   : (showNumber[c.card_id] ? c.number : maskCard(c.number))}
               </p>
-              {!c.is_stripe && (
+              {!c.is_stripe && c.has_full_details ? (
                 <>
                   <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowNumber(s => ({ ...s, [c.card_id]: !s[c.card_id] }))}>
                     {showNumber[c.card_id] ? <EyeOff size={14} className="text-white/40" /> : <Eye size={14} className="text-white/40" />}
@@ -159,7 +190,7 @@ const VirtualCardsPage = ({ onBack }) => {
                     {copied === c.number ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-white/40" />}
                   </motion.button>
                 </>
-              )}
+              ) : null}
               {c.is_stripe && (
                 <span className="text-[9px] text-white/40 italic ml-auto">Vollständige Daten in Stripe Wallet</span>
               )}
