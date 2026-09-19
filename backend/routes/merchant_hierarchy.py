@@ -6,6 +6,7 @@ Commission system 1.5%–3% per merchant.
 import secrets
 import logging
 import math
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -363,7 +364,7 @@ async def remove_staff(user_id: str, request: Request):
 
 @router.post("/api/process-payment")
 async def process_pos_payment(request: Request):
-    """Process a payment via POS register API key."""
+    """Record an externally settled POS transaction. This endpoint never creates wallet money."""
     api_key = request.headers.get("X-API-Key", "")
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
@@ -373,20 +374,25 @@ async def process_pos_payment(request: Request):
         raise HTTPException(status_code=401, detail="Invalid or inactive API key")
 
     body = await request.json()
-    amount = body.get("amount", 0)
-    description = body.get("description", "POS Payment")
-    customer_ref = body.get("customer_ref", "")
-
+    amount = round(float(body.get("amount", 0) or 0), 2)
+    description = str(body.get("description") or "POS External Record")[:300]
+    customer_ref = str(body.get("customer_ref") or "")[:200]
+    idem = str(body.get("idempotency_key") or request.headers.get("Idempotency-Key") or "").strip()
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Invalid amount")
+    if not 8 <= len(idem) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key required")
 
     mp = await db.merchant_profiles.find_one({"_id": ObjectId(reg["merchant_id"])})
     commission_rate = effective_merchant_percent(mp.get("commission_rate", DEFAULT_COMMISSION)) if mp else DEFAULT_COMMISSION
     fee = round(amount * (commission_rate / 100), 2)
     net = round(amount - fee, 2)
-
+    tx_hash = hashlib.sha256(f"{reg['merchant_id']}:{reg['device_id']}:{idem}".encode("utf-8")).hexdigest()[:20]
+    transaction_id = f"EXT-{tx_hash.upper()}"
     now = datetime.now(timezone.utc).isoformat()
+
     txn = {
+        "transaction_id": transaction_id,
         "merchant_id": reg["merchant_id"],
         "branch_id": reg["branch_id"],
         "device_id": reg["device_id"],
@@ -396,27 +402,48 @@ async def process_pos_payment(request: Request):
         "commission_rate": commission_rate,
         "description": description,
         "customer_ref": customer_ref,
-        "status": "completed",
+        "payment_method": "external_api",
+        "financially_settled": False,
+        "status": "external_recorded",
+        "idempotency_key_hash": hashlib.sha256(idem.encode("utf-8")).hexdigest()[:16],
         "created_at": now,
     }
-    result = await db.merchant_transactions.insert_one(txn)
-    txn_id = str(result.inserted_id)
+    write = await db.merchant_transactions.update_one(
+        {"transaction_id": transaction_id, "merchant_id": reg["merchant_id"]},
+        {"$setOnInsert": txn},
+        upsert=True,
+    )
+    replayed = write.upserted_id is None
 
-    # Update counters
-    await db.merchant_registers.update_one(
-        {"device_id": reg["device_id"]},
-        {"$inc": {"total_revenue": amount, "transaction_count": 1}, "$set": {"last_active": now}},
-    )
-    await db.merchant_branches.update_one(
-        {"_id": ObjectId(reg["branch_id"])},
-        {"$inc": {"total_revenue": amount}},
-    )
-    await db.merchant_profiles.update_one(
-        {"_id": ObjectId(reg["merchant_id"])},
-        {"$inc": {"total_revenue": amount, "total_fees": fee}},
-    )
+    if not replayed:
+        marker = f"external_tx_markers.{tx_hash}"
+        await db.merchant_registers.update_one(
+            {"device_id": reg["device_id"], marker: {"$exists": False}},
+            {
+                "$inc": {"total_revenue": amount, "transaction_count": 1},
+                "$set": {"last_active": now, marker: True},
+            },
+        )
+        await db.merchant_branches.update_one(
+            {"_id": ObjectId(reg["branch_id"]), marker: {"$exists": False}},
+            {"$inc": {"total_revenue": amount}, "$set": {marker: True}},
+        )
+        await db.merchant_profiles.update_one(
+            {"_id": ObjectId(reg["merchant_id"]), marker: {"$exists": False}},
+            {"$inc": {"total_revenue": amount, "total_fees": fee}, "$set": {marker: True}},
+        )
 
-    return {"ok": True, "transaction_id": txn_id, "amount": amount, "fee": fee, "net": net}
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "amount": amount,
+        "fee": fee,
+        "net": net,
+        "status": "external_recorded",
+        "financially_settled": False,
+        "replayed": replayed,
+        "message": "Extern abgewickelte Zahlung wurde nur als POS-Umsatz erfasst.",
+    }
 
 
 # ══════════════════════════════════════
@@ -923,10 +950,13 @@ class RefundRequest(BaseModel):
     transaction_id: str
     reason: str
     amount: Optional[float] = None
+    idempotency_key: Optional[str] = None
 
 @router.post("/refund")
 async def process_refund(req: RefundRequest, request: Request):
-    """Process a refund for a merchant transaction."""
+    """Refund a recorded merchant transaction without minting unverified wallet funds."""
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+
     user = await get_current_user(request)
     uid = str(user["_id"])
     mp = await get_merchant_profile(user)
@@ -935,52 +965,165 @@ async def process_refund(req: RefundRequest, request: Request):
     if not req.reason or len(req.reason.strip()) < 3:
         raise HTTPException(status_code=400, detail="Refund reason is required (min 3 chars)")
 
-    # Find original transaction
-    txn = await db.merchant_transactions.find_one({
+    txn_query = {
         "merchant_id": mid,
         "$or": [
             {"_id": ObjectId(req.transaction_id) if ObjectId.is_valid(req.transaction_id) else None},
             {"transaction_id": req.transaction_id},
         ],
-        "status": "completed",
-    })
+        "status": {"$in": ["completed", "external_recorded", "partial_refund"]},
+    }
+    txn = await db.merchant_transactions.find_one(txn_query)
     if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found or already refunded")
+        raise HTTPException(status_code=404, detail="Transaction not found or not refundable")
 
-    refund_amount = req.amount or txn.get("amount", 0)
-    if refund_amount > txn.get("amount", 0):
-        raise HTTPException(status_code=400, detail="Refund amount exceeds original")
+    original_amount = round(float(txn.get("amount") or 0), 2)
+    refunded_before = round(float(txn.get("refunded_total") or txn.get("refund_amount") or 0), 2)
+    refund_amount = round(float(req.amount if req.amount is not None else original_amount - refunded_before), 2)
+    remaining = round(max(0.0, original_amount - refunded_before), 2)
+    if refund_amount <= 0 or refund_amount > remaining:
+        raise HTTPException(status_code=400, detail=f"Refund amount exceeds remaining €{remaining:.2f}")
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    idem = str(req.idempotency_key or request.headers.get("Idempotency-Key") or f"{req.transaction_id}:{int(refunded_before*100)}:{int(refund_amount*100)}")
+    refund_hash = hashlib.sha256(idem.encode("utf-8")).hexdigest()[:20]
+    refund_reference = f"MH-RFD-{refund_hash.upper()}"
 
-    # Refund to customer if wallet payment
-    if txn.get("customer_ref") and txn.get("customer_ref") != "card":
-        customer = await db.users.find_one({"email": txn["customer_ref"]})
-        if customer:
-            await db.users.update_one({"_id": customer["_id"]}, {"$inc": {"balance": refund_amount}})
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8), "user_id": str(customer["_id"]),
-                "type": "refund", "amount": refund_amount,
-                "description": f"Refund: {req.reason}",
-                "status": "completed", "created_at": now_iso,
+    # Reserve the refund amount exactly once.
+    refunded_filter = (
+        {"$or": [{"refunded_total": refunded_before}, {"refunded_total": {"$exists": False}}]}
+        if refunded_before == 0
+        else {"refunded_total": refunded_before}
+    )
+    claim = await db.merchant_transactions.update_one(
+        {"_id": txn["_id"], **refunded_filter},
+        {"$inc": {"refunded_total": refund_amount}, "$set": {f"refund_processing.{refund_hash}": now_iso()}},
+    )
+    if claim.modified_count != 1:
+        fresh = await db.merchant_transactions.find_one({"_id": txn["_id"]}) or {}
+        if fresh.get("refund_markers", {}).get(refund_hash):
+            return {
+                "ok": True,
+                "refund_amount": refund_amount,
+                "reason": req.reason,
+                "status": fresh.get("status"),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Refund was changed concurrently")
+
+    wallet_refunded = False
+    merchant_debit = None
+    customer_credit = None
+    try:
+        # Only reverse wallet money when the original canonical customer debit can be proven.
+        customer = None
+        if txn.get("customer_id"):
+            try:
+                customer = await db.users.find_one({"_id": ObjectId(str(txn["customer_id"]))})
+            except Exception:
+                customer = None
+        elif txn.get("customer_ref") and txn.get("customer_ref") != "card":
+            customer = await db.users.find_one({"email": txn["customer_ref"]})
+
+        original_reference = txn.get("reference") or txn.get("payment_reference")
+        canonical_debit = None
+        if customer and original_reference:
+            canonical_debit = await db.transactions.find_one({
+                "user_id": str(customer["_id"]),
+                "reference": original_reference,
+                "status": "completed",
+                "$or": [
+                    {"direction": "debit"},
+                    {"type": {"$in": ["payment", "merchant_payment"]}},
+                ],
             })
 
-    # Mark transaction as refunded
-    await db.merchant_transactions.update_one({"_id": txn["_id"]}, {"$set": {
-        "status": "refunded", "refund_amount": refund_amount,
-        "refund_reason": req.reason, "refunded_at": now_iso,
-        "refunded_by": uid,
-    }})
+        if canonical_debit:
+            owner_id = str(mp.get("user_id") or "")
+            if not owner_id:
+                raise RuntimeError("merchant_owner_missing")
 
-    # Reduce merchant totals
-    await db.merchant_profiles.update_one({"_id": mp["_id"]}, {"$inc": {
-        "total_revenue": -refund_amount,
-    }})
+            merchant_debit = await debit_wallet(
+                user_id=owner_id,
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Merchant refund {req.transaction_id}",
+                reference=f"MH-MR-{refund_hash.upper()}",
+                metadata={"merchant_id": mid, "transaction_id": req.transaction_id},
+                idempotency_key=f"merchant-hierarchy-refund-merchant:{refund_reference}",
+            )
+            if not merchant_debit.success:
+                raise RuntimeError(merchant_debit.error or "merchant_reversal_failed")
 
-    return {
-        "ok": True, "refund_amount": refund_amount,
-        "reason": req.reason, "refunded_at": now_iso,
-    }
+            customer_credit = await credit_wallet(
+                user_id=str(customer["_id"]),
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Refund: {req.reason}",
+                reference=refund_reference,
+                source="merchant_hierarchy.refund",
+                metadata={"merchant_id": mid, "transaction_id": req.transaction_id, "original_reference": original_reference},
+                idempotency_key=f"merchant-hierarchy-refund-customer:{refund_reference}",
+            )
+            if not customer_credit.success:
+                rollback = await credit_wallet(
+                    user_id=owner_id,
+                    amount=refund_amount,
+                    tx_type=TransactionType.REFUND,
+                    description=f"Merchant refund rollback {req.transaction_id}",
+                    reference=f"MH-RB-{refund_hash.upper()}",
+                    source="merchant_hierarchy.refund_rollback",
+                    metadata={"transaction_id": req.transaction_id},
+                    idempotency_key=f"merchant-hierarchy-refund-rollback:{refund_reference}",
+                )
+                if not rollback.success:
+                    raise RuntimeError("merchant_refund_reconciliation_required")
+                raise RuntimeError(customer_credit.error or "customer_refund_failed")
+            wallet_refunded = True
+
+        total_after = round(refunded_before + refund_amount, 2)
+        new_status = "refunded" if total_after >= original_amount else "partial_refund"
+        marker = f"refund_markers.{refund_hash}"
+        await db.merchant_transactions.update_one(
+            {"_id": txn["_id"]},
+            {
+                "$set": {
+                    "status": new_status,
+                    marker: {
+                        "amount": refund_amount,
+                        "wallet_refunded": wallet_refunded,
+                        "merchant_transaction_id": merchant_debit.transaction_id if merchant_debit else None,
+                        "customer_transaction_id": customer_credit.transaction_id if customer_credit else None,
+                        "reason": req.reason,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                "$unset": {f"refund_processing.{refund_hash}": ""},
+            },
+        )
+
+        stats_marker = f"refund_markers.{refund_hash}"
+        await db.merchant_profiles.update_one(
+            {"_id": mp["_id"], stats_marker: {"$exists": False}},
+            {"$inc": {"total_revenue": -refund_amount}, "$set": {stats_marker: True}},
+        )
+        return {
+            "ok": True,
+            "refund_amount": refund_amount,
+            "reason": req.reason,
+            "status": new_status,
+            "wallet_refunded": wallet_refunded,
+            "replayed": False,
+        }
+    except Exception as exc:
+        await db.merchant_transactions.update_one(
+            {"_id": txn["_id"], f"refund_processing.{refund_hash}": {"$exists": True}},
+            {
+                "$inc": {"refunded_total": -refund_amount},
+                "$unset": {f"refund_processing.{refund_hash}": ""},
+                "$set": {"refund_last_error": str(exc)[:500], "refund_last_error_at": datetime.now(timezone.utc).isoformat()},
+            },
+        )
+        raise HTTPException(status_code=500, detail="Refund could not be safely completed")
 
 
 @router.get("/refunds")
