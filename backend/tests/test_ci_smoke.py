@@ -1188,7 +1188,10 @@ def test_credit_bnpl_uses_funded_pool_and_exactly_once_repayments():
     source = (BACKEND_DIR / "routes" / "credit_system.py").read_text(encoding="utf-8")
     page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "CreditScorePage.jsx").read_text(encoding="utf-8")
 
-    assert "CREDIT_LIVE_ENABLED" in source
+    assert "CREDIT_LIVE_ENABLED = bool(TEST_MODE)" in source
+    assert "No production override until a verified financing provider is integrated" in source
+    assert '"live_enabled": bool(CREDIT_LIVE_ENABLED)' in source
+    assert '"max_credit": score_info["max_amount"] if CREDIT_LIVE_ENABLED else 0' in source
     assert "CREDIT_POOL_EMAIL" in source
     assert "def _require_credit_live" in source
     assert "async def _credit_pool_user_id" in source
