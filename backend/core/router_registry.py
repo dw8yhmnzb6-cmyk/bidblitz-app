@@ -203,6 +203,7 @@ def register_all_routers(app):
         ("routes.admin_wallet_reconciliation", "router"),
         ("routes.coinbase_commerce", "router"),
         ("routes.bidblitz_pay", "router"),
+        ("routes.blitzpay", "router"),
         
         # Entertainment
         ("routes.gaming", "router"),
