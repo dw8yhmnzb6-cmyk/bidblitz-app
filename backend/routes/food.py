@@ -629,202 +629,351 @@ async def place_order(req: OrderRequest, request: Request):
     }
 
 
+async def _refund_food_order(order_id: str, *, final_status: str, reason: str) -> dict:
+    """Refund one paid food order exactly once and persist a visible refund state."""
+    from core.payment_engine import credit_wallet, TransactionType
+
+    order = await db.food_orders.find_one({"order_id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+
+    if order.get("refund_status") == "completed" and order.get("status") in {"cancelled", "rejected"}:
+        fresh_user = await db.users.find_one(
+            {"_id": ObjectId(order["user_id"])},
+            {"balance": 1, "_id": 0},
+        ) if ObjectId.is_valid(str(order.get("user_id") or "")) else None
+        return {
+            "order": order,
+            "refund_amount": round(float(order.get("total") or 0), 2),
+            "new_balance": round(float((fresh_user or {}).get("balance") or 0), 2),
+            "replayed": True,
+        }
+
+    current_status = order.get("status")
+    if current_status not in {"pending", "confirmed", "refunding"}:
+        raise HTTPException(status_code=400, detail="Bestellung kann nicht mehr storniert werden")
+
+    if current_status != "refunding":
+        claim = await db.food_orders.update_one(
+            {
+                "order_id": order_id,
+                "status": {"$in": ["pending", "confirmed"]},
+            },
+            {"$set": {
+                "status": "refunding",
+                "refund_status": "processing",
+                "refund_final_status": final_status,
+                "refund_reason": reason,
+                "refund_started_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            order = await db.food_orders.find_one({"order_id": order_id}) or order
+            if order.get("status") != "refunding":
+                raise HTTPException(status_code=409, detail="Bestellstatus wurde parallel geändert")
+
+    order = await db.food_orders.find_one({"order_id": order_id}) or order
+    final_status = str(order.get("refund_final_status") or final_status)
+
+    refund_result = await credit_wallet(
+        user_id=order["user_id"],
+        amount=round(float(order["total"]), 2),
+        tx_type=TransactionType.REFUND,
+        description=f"Erstattung: {order.get('restaurant_name', 'Restaurant')} - {reason}",
+        reference=f"FOOD-REFUND-{order_id[-12:].upper()}",
+        source="food_refund",
+        metadata={
+            "order_id": order_id,
+            "original_transaction": order.get("payment_transaction_id"),
+            "final_status": final_status,
+        },
+        idempotency_key=f"food-refund:{order_id}",
+    )
+    if not refund_result.success:
+        await db.food_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "refund_status": (
+                    "reconciliation_required"
+                    if str(getattr(refund_result.status, "value", refund_result.status)) == "reconciliation_required"
+                    else "processing"
+                ),
+                "refund_error": refund_result.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=409, detail=refund_result.error or "Erstattung wird noch verarbeitet")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.food_orders.update_one(
+        {"order_id": order_id, "status": "refunding"},
+        {"$set": {
+            "status": final_status,
+            "refund_status": "completed",
+            "refund_transaction_id": refund_result.transaction_id,
+            "refunded_at": completed_at,
+            "updated_at": completed_at,
+        }},
+    )
+    final_order = await db.food_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {
+        "order": final_order,
+        "refund_amount": round(float(order.get("total") or 0), 2),
+        "new_balance": refund_result.new_balance,
+        "replayed": bool(refund_result.idempotent_replay),
+    }
+
+
+async def _settle_food_delivery(order_id: str) -> dict:
+    """Settle restaurant, courier and platform exactly once for a delivered order."""
+    from core.payment_engine import credit_wallet, TransactionType
+
+    order = await db.food_orders.find_one({"order_id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("settlement_status") == "completed":
+        return {
+            "order": order,
+            "restaurant_share": float(order.get("restaurant_share") or 0),
+            "courier_share": float(order.get("courier_share") or 0),
+            "platform_fee": float(order.get("platform_fee") or 0),
+            "replayed": True,
+        }
+
+    delivery_type = order.get("delivery_type") or "delivery"
+    allowed_statuses = {"ready"} if delivery_type == "pickup" else {"picked_up"}
+    if order.get("status") not in allowed_statuses and order.get("status") != "delivered":
+        raise HTTPException(status_code=400, detail="Bestellung ist noch nicht lieferbereit/zugestellt")
+
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": order.get("restaurant_id")})
+    owner_id = str((restaurant or {}).get("owner_id") or (restaurant or {}).get("user_id") or "")
+    if not owner_id:
+        await db.food_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "settlement_status": "reconciliation_required",
+                "settlement_error": "restaurant_owner_missing",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Restaurant-Auszahlung benötigt manuelle Abstimmung")
+
+    subtotal = round(float(order.get("subtotal") or 0), 2)
+    promo_discount = round(float(order.get("promo_discount") or 0), 2)
+    delivery_fee = round(float(order.get("delivery_fee") or 0), 2)
+    service_fee = round(float(order.get("service_fee") or 0), 2)
+    small_order_fee = round(float(order.get("small_order_fee") or 0), 2)
+    tip = round(float(order.get("tip") or 0), 2)
+    food_net = max(0.0, round(subtotal - promo_discount, 2))
+
+    restaurant_share = round(food_net * 0.85 + (tip if delivery_type == "pickup" else 0), 2)
+    courier = order.get("courier") or {}
+    courier_id = str(courier.get("user_id") or "")
+    courier_share = round(delivery_fee * 0.90 + (tip if delivery_type != "pickup" and courier_id else 0), 2)
+    platform_fee = round(
+        food_net * 0.15
+        + delivery_fee * 0.10
+        + service_fee
+        + small_order_fee
+        + (tip if delivery_type != "pickup" and not courier_id else 0),
+        2,
+    )
+
+    restaurant_credit = await credit_wallet(
+        user_id=owner_id,
+        amount=restaurant_share,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Food Bestellung #{order_id[-8:].upper()}",
+        reference=f"FOOD-REST-{order_id[-10:].upper()}",
+        source="food_order",
+        metadata={"order_id": order_id, "restaurant_id": order.get("restaurant_id")},
+        idempotency_key=f"food-settlement:{order_id}:restaurant",
+    )
+    if not restaurant_credit.success:
+        await db.food_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "settlement_status": "reconciliation_required",
+                "settlement_error": restaurant_credit.error or "restaurant_credit_failed",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Restaurant-Auszahlung konnte nicht abgeschlossen werden")
+
+    courier_credit = None
+    if courier_id and courier_share > 0:
+        courier_credit = await credit_wallet(
+            user_id=courier_id,
+            amount=courier_share,
+            tx_type=TransactionType.DRIVER_EARNINGS,
+            description=f"Food Lieferung #{order_id[-8:].upper()}",
+            reference=f"FOOD-DRV-{order_id[-10:].upper()}",
+            source="food_delivery",
+            metadata={"order_id": order_id, "restaurant_id": order.get("restaurant_id")},
+            idempotency_key=f"food-settlement:{order_id}:courier",
+        )
+        if not courier_credit.success:
+            await db.food_orders.update_one(
+                {"order_id": order_id},
+                {"$set": {
+                    "settlement_status": "reconciliation_required",
+                    "settlement_error": courier_credit.error or "courier_credit_failed",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=500, detail="Fahrer-Auszahlung konnte nicht abgeschlossen werden")
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    await db.platform_fees.update_one(
+        {"type": "food", "order_id": order_id},
+        {"$setOnInsert": {
+            "type": "food",
+            "order_id": order_id,
+            "total": round(float(order.get("total") or 0), 2),
+            "subtotal": subtotal,
+            "promo_discount": promo_discount,
+            "delivery_fee": delivery_fee,
+            "service_fee": service_fee,
+            "small_order_fee": small_order_fee,
+            "restaurant_share": restaurant_share,
+            "courier_share": courier_share,
+            "platform_fee": platform_fee,
+            "created_at": now_iso,
+        }},
+        upsert=True,
+    )
+
+    transition = await db.food_orders.update_one(
+        {"order_id": order_id, "settlement_status": {"$ne": "completed"}},
+        {"$set": {
+            "status": "delivered",
+            "delivered_at": order.get("delivered_at") or now_iso,
+            "settlement_status": "completed",
+            "settled_at": now_iso,
+            "restaurant_share": restaurant_share,
+            "courier_share": courier_share,
+            "platform_fee": platform_fee,
+            "restaurant_payment_id": restaurant_credit.transaction_id,
+            "courier_payment_id": courier_credit.transaction_id if courier_credit else None,
+            "updated_at": now_iso,
+        }},
+    )
+
+    if transition.modified_count == 1:
+        customer_oid = ObjectId(order["user_id"]) if ObjectId.is_valid(str(order.get("user_id") or "")) else None
+        if customer_oid:
+            await db.users.update_one(
+                {"_id": customer_oid},
+                {"$inc": {
+                    "food_orders_count": 1,
+                    "food_total_spent": round(float(order.get("total") or 0), 2),
+                }},
+            )
+        if courier_id:
+            await db.drivers.update_one(
+                {"user_id": courier_id},
+                {"$inc": {"total_deliveries": 1, "total_earnings": courier_share}},
+            )
+        await db.notifications.update_one(
+            {"id": f"FOOD-DELIVERED-{order_id}"},
+            {"$setOnInsert": {
+                "id": f"FOOD-DELIVERED-{order_id}",
+                "user_id": order["user_id"],
+                "type": "order_delivered",
+                "title": "Guten Appetit!",
+                "message": "Deine Bestellung wurde geliefert.",
+                "data": {"order_id": order_id},
+                "read": False,
+                "created_at": now_iso,
+            }},
+            upsert=True,
+        )
+
+    final_order = await db.food_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {
+        "order": final_order,
+        "restaurant_share": restaurant_share,
+        "courier_share": courier_share,
+        "platform_fee": platform_fee,
+        "replayed": transition.modified_count != 1,
+    }
+
+
 # ══════════════════════════════════════
 # GET ORDER STATUS
 # ══════════════════════════════════════
 
 @router.get("/order/{order_id}")
 async def get_order_status(order_id: str, request: Request):
-    """Get order details and tracking."""
+    """Return the real persisted order state. Never simulate restaurant/courier activity."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    order = await db.food_orders.find_one({"order_id": order_id, "user_id": user_id}, {"_id": 0})
+    order = await db.food_orders.find_one(
+        {"order_id": order_id, "user_id": user_id},
+        {"_id": 0},
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    # Simulate status progression
-    if order["status"] == "confirmed":
-        created = datetime.fromisoformat(order["created_at"])
-        now = datetime.now(timezone.utc)
-        minutes_passed = (now - created).total_seconds() / 60
-        
-        if minutes_passed > 5:
-            order["status"] = "preparing"
-            await db.food_orders.update_one({"order_id": order_id}, {"$set": {"status": "preparing"}})
-        if minutes_passed > 15:
-            # Assign courier
-            courier = {
-                "name": random.choice(COURIER_NAMES),
-                "phone": f"+49 170 {random.randint(1000000, 9999999)}",
-                "vehicle": random.choice(["Fahrrad", "E-Bike", "Roller"]),
-            }
-            order["status"] = "picked_up"
-            order["courier"] = courier
-            await db.food_orders.update_one(
-                {"order_id": order_id},
-                {"$set": {"status": "picked_up", "courier": courier}}
-            )
-    
     return {"order": order}
 
 
-# ══════════════════════════════════════
-# CANCEL ORDER
-# ══════════════════════════════════════
-
 @router.post("/cancel")
 async def cancel_order(req: OrderAction, request: Request):
-    """Cancel an order (if not yet preparing) - Uses Payment Engine for safe refund."""
-    from core.payment_engine import credit_wallet, TransactionType
-    
+    """Customer cancels an unaccepted order and receives one canonical refund."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     order = await db.food_orders.find_one({"order_id": req.order_id, "user_id": user_id})
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    if order["status"] in ("preparing", "picked_up", "delivered"):
+
+    if order.get("status") in {"cancelled", "rejected"} and order.get("refund_status") == "completed":
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "refund_amount": round(float(order.get("total") or 0), 2),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Bestellung bereits erstattet.",
+            "replayed": True,
+        }
+    if order.get("status") not in {"pending", "confirmed", "refunding"}:
         raise HTTPException(status_code=400, detail="Bestellung kann nicht mehr storniert werden")
-    
-    if order["status"] == "cancelled":
-        raise HTTPException(status_code=400, detail="Bestellung bereits storniert")
-    
-    # Refund using Payment Engine
-    refund_result = await credit_wallet(
-        user_id=user_id,
-        amount=order["total"],
-        tx_type=TransactionType.REFUND,
-        description=f"Stornierung: {order['restaurant_name']}",
-        reference=f"FOOD-REFUND-{req.order_id[:8].upper()}",
-        source="food_cancellation",
-        metadata={"order_id": req.order_id, "original_transaction": order.get("payment_transaction_id")}
+
+    result = await _refund_food_order(
+        req.order_id,
+        final_status="cancelled",
+        reason="Vom Kunden storniert",
     )
-    
-    await db.food_orders.update_one(
-        {"order_id": req.order_id},
-        {"$set": {
-            "status": "cancelled",
-            "cancelled_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "refund_transaction_id": refund_result.transaction_id if refund_result.success else None,
-        }}
-    )
-    
     return {
         "ok": True,
-        "refund_amount": order["total"],
-        "new_balance": refund_result.new_balance if refund_result.success else user.get("balance", 0) + order["total"],
-        "message": f"Bestellung storniert. €{order['total']:.2f} zurückerstattet.",
+        "refund_amount": result["refund_amount"],
+        "new_balance": result["new_balance"],
+        "message": f"Bestellung storniert. €{result['refund_amount']:.2f} zurückerstattet.",
+        "replayed": result["replayed"],
     }
 
 
-# ══════════════════════════════════════
-# CONFIRM DELIVERY (User marks as received)
-# ══════════════════════════════════════
-
 @router.post("/delivered")
 async def confirm_delivery(req: OrderAction, request: Request):
-    """Confirm order was delivered."""
+    """Customer confirms a real delivery/pickup and triggers canonical settlement."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     order = await db.food_orders.find_one({"order_id": req.order_id, "user_id": user_id})
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    if order["status"] == "delivered":
-        return {"ok": True, "message": "Bereits als geliefert markiert"}
-    
-    now = datetime.now(timezone.utc)
-    
-    await db.food_orders.update_one(
-        {"order_id": req.order_id},
-        {"$set": {
-            "status": "delivered",
-            "delivered_at": now.isoformat(),
-            "updated_at": now.isoformat(),
-        }}
-    )
-    
-    # ══════════════════════════════════════════════════════════════════════════
-    # WALLET-ONLY ECOSYSTEM: Credit restaurant and delivery driver internally
-    # ══════════════════════════════════════════════════════════════════════════
-    subtotal = order.get("subtotal", 0)
-    delivery_fee = order.get("delivery_fee", 0)
-    service_fee = order.get("service_fee", 0)
-    total = order.get("total", 0)
-    
-    # Restaurant gets subtotal minus 15% platform commission
-    restaurant_share = round(subtotal * 0.85, 2)
-    restaurant_id = order.get("restaurant_id")
-    
-    if restaurant_id:
-        # Find restaurant owner
-        restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
-        if restaurant and restaurant.get("owner_id"):
-            owner_id = restaurant["owner_id"]
-            await db.users.update_one(
-                {"_id": ObjectId(owner_id)},
-                {"$inc": {"balance": restaurant_share}}
-            )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": owner_id,
-                "type": "earning",
-                "amount": restaurant_share,
-                "description": f"Bestellung #{req.order_id[:8].upper()}",
-                "status": "completed",
-                "reference": f"FOOD-{req.order_id[:8].upper()}",
-                "category": "restaurant_earning",
-                "created_at": now.isoformat(),
-            })
-    
-    # Courier gets delivery fee minus 10% platform commission
-    courier_share = round(delivery_fee * 0.90, 2)
-    courier = order.get("courier", {})
-    courier_id = courier.get("user_id")  # If we track couriers
-    
-    if courier_id:
-        await db.users.update_one(
-            {"_id": ObjectId(courier_id)},
-            {"$inc": {"balance": courier_share}}
-        )
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": courier_id,
-            "type": "earning",
-            "amount": courier_share,
-            "description": f"Lieferung #{req.order_id[:8].upper()}",
-            "status": "completed",
-            "reference": f"FOOD-{req.order_id[:8].upper()}",
-            "category": "delivery_earning",
-            "created_at": now.isoformat(),
-        })
-    
-    # Record platform fees
-    platform_fee = round(subtotal * 0.15 + delivery_fee * 0.10 + service_fee, 2)
-    await db.platform_fees.insert_one({
-        "type": "food",
-        "order_id": req.order_id,
-        "total": total,
-        "subtotal": subtotal,
-        "delivery_fee": delivery_fee,
-        "service_fee": service_fee,
-        "restaurant_share": restaurant_share,
-        "courier_share": courier_share,
-        "platform_fee": platform_fee,
-        "created_at": now.isoformat(),
-    })
-    
-    # Update user stats
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"food_orders_count": 1, "food_total_spent": order["total"]}}
-    )
-    
-    return {"ok": True, "message": "Lieferung bestätigt. Guten Appetit!"}
+
+    result = await _settle_food_delivery(req.order_id)
+    return {
+        "ok": True,
+        "message": "Lieferung bestätigt. Guten Appetit!",
+        "settlement": {
+            "restaurant_share": result["restaurant_share"],
+            "courier_share": result["courier_share"],
+            "platform_fee": result["platform_fee"],
+        },
+        "replayed": result["replayed"],
+    }
 
 
 # ══════════════════════════════════════
