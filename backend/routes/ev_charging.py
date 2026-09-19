@@ -796,6 +796,12 @@ async def finalize_session(session_id: str) -> None:
         line_items.append({"label": "Sessiongebühr", "calc": "pauschal", "amount": round(session_fee, 2)})
     if gross == minimum_fee and energy_amt + minute_amt + session_fee < minimum_fee:
         line_items.append({"label": "Mindestbetrag-Aufschlag", "calc": f"€{minimum_fee:.2f} min.", "amount": round(minimum_fee - (energy_amt + minute_amt + session_fee), 2)})
+    if preauth_overage > 0:
+        line_items.append({
+            "label": "Autorisierungslimit",
+            "calc": f"Maximal autorisiert €{reserved_amount:.2f}",
+            "amount": -round(preauth_overage, 2),
+        })
 
     receipt_doc = {
         "receipt_no": receipt_no,
