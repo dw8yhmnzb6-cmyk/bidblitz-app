@@ -1241,3 +1241,15 @@ def test_car_rental_money_availability_refunds_and_payouts_are_exactly_once():
     assert '"Idempotency-Key": idempotencyKey' in api
     assert "bookingAttemptKeyRef" in detail
     assert "idempotency_key: idempotencyKey" in detail
+
+
+def test_split_bill_participants_and_amounts_are_canonical_and_cent_exact():
+    source = (BACKEND_DIR / "routes" / "split_bill.py").read_text(encoding="utf-8")
+
+    assert "async def _resolve_split_identity" in source
+    assert "def _allocate_equal_split" in source
+    assert "total_custom_cents != total_cents" in source
+    assert "Teilnehmer wurde im Custom Split doppelt angegeben" in source
+    assert "stored_total_cents != expected_total_cents" in source
+    assert 'notification_id = f"split-invite:{split_id}:{p[\'user_id\']}"' in source
+    assert 'idempotency_key=f"split_bill:{req.split_id}:{user_id}"' in source
