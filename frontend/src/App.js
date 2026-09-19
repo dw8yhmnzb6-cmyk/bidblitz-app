@@ -1013,7 +1013,11 @@ function AppContent() {
       case "/classifieds":
         return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/quests":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Quests" description="BLZ-Quest-Belohnungen sind in Production deaktiviert. Quests mit übertragbaren Token-Rewards werden erst nach einem freigegebenen Reward-Modell aktiviert." onBack={() => handleNavigate("/more")} />;
       case "/move":
       case "/move-earn":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
