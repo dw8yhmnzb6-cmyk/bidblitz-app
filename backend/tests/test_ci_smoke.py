@@ -573,3 +573,21 @@ def test_csv_exports_neutralize_formulas_and_disable_caching():
     assert 'trimmed.startswith(("=", "+", "-", "@"))' in export_source
     assert '"Cache-Control": "no-store, private"' in export_source
     assert '"X-Content-Type-Options": "nosniff"' in export_source
+
+
+def test_account_deletion_request_disables_access_and_preserves_retention_review():
+    profile_source = (BACKEND_DIR / "routes" / "profile.py").read_text(encoding="utf-8")
+    page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "DeleteAccountPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.post("/deletion-request")' in profile_source
+    assert '"login_disabled": True' in profile_source
+    assert '"account_closure_status": "requested"' in profile_source
+    assert '"retention_review_required": True' in profile_source
+    assert '"$inc": {"auth_version": 1}' in profile_source
+    assert "revoke_all_sessions" in profile_source
+    assert "Aktuelles Passwort ist falsch" in profile_source
+
+    assert "/api/user/deletion-request" in page_source
+    assert "delete-account-password" in page_source
+    assert "delete-account-confirmation" in page_source
+    assert "Konto deaktivieren & Löschung beantragen" in page_source
