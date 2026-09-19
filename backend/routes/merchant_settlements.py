@@ -59,14 +59,18 @@ class SettlementFinaliseRequest(BaseModel):
 class MerchantPayoutRequest(BaseModel):
     amount_minor: Optional[int] = Field(None, ge=1)
     settlement_ids: list[str] = []
-    destination_type: str = "bank_account"
-    destination_reference_masked: str = "****"
-    idempotency_key: str = Field(default_factory=lambda: f"payout-{now_iso()}")
+    # Destination is resolved from the verified merchant profile server-side.
+    # Client supplied destination values are accepted only for backward compatibility
+    # and are never trusted for settlement.
+    destination_type: Optional[str] = None
+    destination_reference_masked: Optional[str] = None
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 class PayoutActionRequest(BaseModel):
     action: str = Field(..., pattern="^(approve|processing|paid|failed|returned|cancelled)$")
     failure_reason: str = ""
+    provider_reference: Optional[str] = Field(default=None, max_length=160)
 
 
 class ReserveRuleRequest(BaseModel):
@@ -137,10 +141,36 @@ async def _require_admin(request: Request):
     return user
 
 
+def _merchant_payout_capability(user: dict, merchant: dict) -> dict:
+    if user.get("kyc_status") != "approved":
+        return {"ready": False, "reason": "KYC-Verifizierung erforderlich"}
+    if merchant.get("status") != "approved":
+        return {"ready": False, "reason": "Händlerkonto ist noch nicht freigeschaltet"}
+    if not merchant.get("payout_destination_verified"):
+        return {"ready": False, "reason": "Noch kein verifiziertes Auszahlungskonto hinterlegt"}
+    destination_type = str(merchant.get("payout_destination_type") or "").strip()
+    masked = str(merchant.get("payout_destination_masked") or "").strip()
+    provider_key = str(merchant.get("payout_destination_provider_key") or "").strip()
+    if not destination_type or not masked or not provider_key:
+        return {"ready": False, "reason": "Auszahlungsziel ist unvollständig konfiguriert"}
+    return {
+        "ready": True,
+        "reason": "",
+        "destination_type": destination_type,
+        "destination_reference_masked": masked,
+    }
+
+
 @router.get("/api/merchant/balance")
 async def merchant_balance(request: Request):
-    _, merchant, _ = await _require_financial_merchant(request)
-    return await get_balance_view(merchant)
+    user, merchant, _ = await _require_financial_merchant(request)
+    balance = await get_balance_view(merchant)
+    capability = _merchant_payout_capability(user, merchant)
+    balance["payout_ready"] = capability["ready"]
+    balance["payout_block_reason"] = capability["reason"]
+    balance["payout_destination_type"] = capability.get("destination_type")
+    balance["payout_destination_masked"] = capability.get("destination_reference_masked")
+    return balance
 
 
 @router.get("/api/merchant/command-center")
@@ -253,14 +283,17 @@ async def merchant_dispute_history(request: Request):
 @router.post("/api/merchant/payouts")
 async def merchant_create_payout(req: MerchantPayoutRequest, request: Request):
     user, merchant, _ = await _require_financial_merchant(request, owner_only=True)
+    capability = _merchant_payout_capability(user, merchant)
+    if not capability["ready"]:
+        raise HTTPException(status_code=403 if user.get("kyc_status") != "approved" or merchant.get("status") != "approved" else 503, detail=capability["reason"])
     try:
         payout = await create_payout_request(
             merchant,
             amount_minor=req.amount_minor,
             settlement_ids=req.settlement_ids,
             idempotency_key=req.idempotency_key,
-            destination_type=req.destination_type,
-            destination_reference_masked=req.destination_reference_masked,
+            destination_type=capability["destination_type"],
+            destination_reference_masked=capability["destination_reference_masked"],
             requested_by=str(user["_id"]),
         )
         return {"payout": payout, "balance": await get_balance_view(merchant)}
@@ -315,7 +348,13 @@ async def admin_merchant_payout_action(payout_id: str, req: PayoutActionRequest,
     user = await _require_admin(request)
     status_map = {"approve": "processing", "processing": "processing", "paid": "paid", "failed": "failed", "returned": "returned", "cancelled": "cancelled"}
     try:
-        payout = await update_payout_status(payout_id=payout_id, status=status_map[req.action], actor_id=str(user["_id"]), failure_reason=req.failure_reason)
+        payout = await update_payout_status(
+            payout_id=payout_id,
+            status=status_map[req.action],
+            actor_id=str(user["_id"]),
+            failure_reason=req.failure_reason,
+            provider_reference=req.provider_reference,
+        )
         return {"payout": payout}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
