@@ -813,3 +813,36 @@ def test_mining_launchpad_and_loyalty_rewards_are_ledger_backed_and_exactly_once
     assert 'db.mining_launchpad_buys, [("user_id", 1), ("project_id", 1)], unique=True' in database_source
     assert 'db.loyalty_reward_claims, "claim_id", unique=True' in database_source
     assert 'db.user_loyalty, "user_id", unique=True' in database_source
+
+
+def test_pos_cart_and_external_card_paths_fail_closed():
+    pos_source = (BACKEND_DIR / "routes" / "pos_system.py").read_text(encoding="utf-8")
+    checkout_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "pos" / "POSCheckoutTab.jsx").read_text(encoding="utf-8")
+
+    assert '"store_id": store_id' in pos_source
+    assert 'quantity: float = Field(default=1, gt=0' in pos_source
+    assert 'price: Optional[float] = Field(default=None, gt=0' in pos_source
+    assert 'discount_pct: float = Field(default=0, ge=0, le=100)' in pos_source
+    assert 'require_permission(actor, "payment.collect")' in pos_source
+    assert 'POS_EXTERNAL_CARD_CERTIFIED' in pos_source
+    assert 'req.card_reference.startswith("CARD-")' in pos_source
+
+    assert 'cardRef || `CARD-${Date.now()}`' not in checkout_source
+    assert 'providerReference = cardRef.trim()' in checkout_source
+
+
+def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
+    merchant_source = (BACKEND_DIR / "routes" / "merchant_payments.py").read_text(encoding="utf-8")
+    engine_source = (BACKEND_DIR / "core" / "payment_engine.py").read_text(encoding="utf-8")
+    mobile_source = (BACKEND_DIR.parent / "mobile" / "src" / "screens" / "Merchant" / "MerchantPaymentsScreen.js").read_text(encoding="utf-8")
+
+    assert "transfer_between_wallets" in merchant_source
+    assert 'idempotency_key=f"merchant-pay:{idempotency_key}"' in merchant_source
+    assert 'user.get("kyc_status") != "approved"' in merchant_source
+    assert 'recipient.get("kyc_status") != "approved"' in merchant_source
+    assert "if not transfer_result.idempotent_replay:" in merchant_source
+    assert 'direction": "credit"' in merchant_source
+    assert "total_sent = sum(abs(float" in merchant_source
+    assert 'idempotent_replay=getattr(result, "idempotent_replay", False)' in engine_source
+    assert "paymentAttemptKeyRef" in mobile_source
+    assert "idempotency_key: paymentAttemptKeyRef.current" in mobile_source
