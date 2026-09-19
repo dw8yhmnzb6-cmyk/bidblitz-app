@@ -1012,3 +1012,18 @@ def test_totp_backup_codes_are_atomic_one_time_factors():
     assert "attempts >= 5" in source
     assert '"$inc": {"attempts": 1}' in source
     assert "Zu viele 2FA-Versuche" in source
+
+
+def test_notification_settings_match_push_backend_contract():
+    backend = (BACKEND_DIR / "routes" / "push_notifications.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "NotificationSettingsPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/subscription-status")' in backend
+    assert '"subscribed": count > 0' in backend
+    assert '@router.delete("/unsubscribe")' in backend
+    assert '"$setOnInsert": {"created_at": now}' in backend
+    assert "subscription.model_dump()" in backend
+
+    assert "/api/push/subscription-status" in page
+    assert 'method: "DELETE"' in page
+    assert "/api/push/unsubscribe" in page
