@@ -193,6 +193,7 @@ def register_all_routers(app):
         ("routes.virtual_cards", "router"),
         ("routes.cards_lifecycle", "router"),
         ("routes.gift_cards", "router"),
+        ("routes.stocks", "router"),
         ("routes.credit_system", "router"),
         ("routes.bills", "router"),
         ("routes.receipts", "router"),
