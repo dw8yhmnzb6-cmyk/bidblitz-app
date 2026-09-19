@@ -5,7 +5,7 @@ Chat mit Eltern, SOS, Aufgaben, Lernspiele, Wallet
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
 import secrets
@@ -128,70 +128,148 @@ async def initiate_call(req: KidsCall, request: Request):
     return {"ok": True, "call": call_log, "parent_phone": parent.get("phone", "") if parent else ""}
 
 
+QUIZ_BANK = [
+    {"id": "q1", "q": "Was ist 7 + 5?", "options": ["10", "11", "12", "13"], "answer": "12", "category": "mathe"},
+    {"id": "q2", "q": "Was ist 15 - 8?", "options": ["5", "6", "7", "8"], "answer": "7", "category": "mathe"},
+    {"id": "q3", "q": "Was ist 6 x 4?", "options": ["20", "22", "24", "26"], "answer": "24", "category": "mathe"},
+    {"id": "q4", "q": "Was ist 100 / 5?", "options": ["15", "20", "25", "30"], "answer": "20", "category": "mathe"},
+    {"id": "q5", "q": "Was ist 3 x 9?", "options": ["24", "27", "30", "33"], "answer": "27", "category": "mathe"},
+    {"id": "q6", "q": "Wie viele Cent sind 1 Euro?", "options": ["10", "50", "100", "1000"], "answer": "100", "category": "geld"},
+    {"id": "q7", "q": "Du sparst €2 pro Woche. Wie viel hast du nach 4 Wochen?", "options": ["€4", "€6", "€8", "€10"], "answer": "€8", "category": "geld"},
+    {"id": "q8", "q": "Ein Eis kostet €1.50. Du hast €5. Wie viel Wechselgeld?", "options": ["€2.50", "€3.00", "€3.50", "€4.00"], "answer": "€3.50", "category": "geld"},
+    {"id": "q9", "q": "Welches Tier ist das größte?", "options": ["Elefant", "Giraffe", "Blauwal", "Nashorn"], "answer": "Blauwal", "category": "wissen"},
+    {"id": "q10", "q": "Wie viele Planeten hat unser Sonnensystem?", "options": ["7", "8", "9", "10"], "answer": "8", "category": "wissen"},
+]
+
+
 # ─── Learning Games ───
 
 @router.get("/quiz")
-async def get_quiz():
-    """Simple math & knowledge quiz for kids."""
+async def get_quiz(request: Request, child_id: str):
+    """Create a short-lived server-scored quiz for one authorized child."""
     import random
-    questions = [
-        {"q": "Was ist 7 + 5?", "options": ["10", "11", "12", "13"], "answer": "12", "category": "mathe"},
-        {"q": "Was ist 15 - 8?", "options": ["5", "6", "7", "8"], "answer": "7", "category": "mathe"},
-        {"q": "Was ist 6 x 4?", "options": ["20", "22", "24", "26"], "answer": "24", "category": "mathe"},
-        {"q": "Was ist 100 / 5?", "options": ["15", "20", "25", "30"], "answer": "20", "category": "mathe"},
-        {"q": "Was ist 3 x 9?", "options": ["24", "27", "30", "33"], "answer": "27", "category": "mathe"},
-        {"q": "Wie viele Cent sind 1 Euro?", "options": ["10", "50", "100", "1000"], "answer": "100", "category": "geld"},
-        {"q": "Du sparst €2 pro Woche. Wie viel hast du nach 4 Wochen?", "options": ["€4", "€6", "€8", "€10"], "answer": "€8", "category": "geld"},
-        {"q": "Ein Eis kostet €1.50. Du hast €5. Wie viel Wechselgeld?", "options": ["€2.50", "€3.00", "€3.50", "€4.00"], "answer": "€3.50", "category": "geld"},
-        {"q": "Welches Tier ist das größte?", "options": ["Elefant", "Giraffe", "Blauwal", "Nashorn"], "answer": "Blauwal", "category": "wissen"},
-        {"q": "Wie viele Planeten hat unser Sonnensystem?", "options": ["7", "8", "9", "10"], "answer": "8", "category": "wissen"},
+
+    user = await get_current_user(request)
+    child = await _require_child_access(user, child_id)
+    selected = random.sample(QUIZ_BANK, k=min(5, len(QUIZ_BANK)))
+    now = datetime.now(timezone.utc)
+    quiz_id = f"KQ-{secrets.token_hex(10)}"
+
+    await db.kids_quiz_sessions.insert_one({
+        "quiz_id": quiz_id,
+        "child_id": child_id,
+        "parent_id": child.get("parent_id"),
+        "requested_by": str(user["_id"]),
+        "questions": [{"id": q["id"], "answer": q["answer"]} for q in selected],
+        "status": "active",
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(minutes=30)).isoformat(),
+    })
+
+    public_questions = [
+        {"id": q["id"], "q": q["q"], "options": q["options"], "category": q["category"]}
+        for q in selected
     ]
-    random.shuffle(questions)
-    return {"questions": questions[:5]}
+    return {"quiz_id": quiz_id, "questions": public_questions}
 
 
 @router.post("/quiz/submit")
 async def submit_quiz(request: Request):
+    """Score a quiz server-side and award BLZ points exactly once."""
     user = await get_current_user(request)
     body = await request.json()
     child_id = str(body.get("child_id") or "")
+    quiz_id = str(body.get("quiz_id") or "")
+    answers = body.get("answers") or []
+
     child = await _require_child_access(user, child_id)
+    if not quiz_id:
+        raise HTTPException(status_code=400, detail="Quiz-ID fehlt")
+
+    session = await db.kids_quiz_sessions.find_one(
+        {"quiz_id": quiz_id, "child_id": child_id},
+        {"_id": 0},
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Quiz nicht gefunden")
+    if session.get("status") == "submitted":
+        return session.get("result") or {"ok": True, "score": 0, "total": 0, "reward": 0, "reward_points": 0, "reward_currency": "BLZ_POINTS", "replayed": True}
 
     try:
-        score = max(0, min(int(body.get("score", 0)), 5))
-        total = max(1, min(int(body.get("total", 5)), 5))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Ungültiges Quiz-Ergebnis")
-    score = min(score, total)
+        expires_at = datetime.fromisoformat(str(session["expires_at"]).replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expires_at:
+            await db.kids_quiz_sessions.update_one({"quiz_id": quiz_id}, {"$set": {"status": "expired"}})
+            raise HTTPException(status_code=400, detail="Quiz ist abgelaufen")
+    except KeyError:
+        raise HTTPException(status_code=400, detail="Quiz-Session ungültig")
 
-    # Quiz rewards are non-cash BLZ points. Never mint EUR child wallet balance.
+    answer_map = {}
+    if isinstance(answers, list):
+        for item in answers:
+            if isinstance(item, dict):
+                qid = str(item.get("question_id") or item.get("id") or "")
+                answer_map[qid] = str(item.get("answer") or "")
+    expected = session.get("questions") or []
+    score = sum(1 for q in expected if answer_map.get(str(q.get("id"))) == str(q.get("answer")))
+    total = len(expected)
     reward_points = score * 5
-    result_id = f"KQZ-{secrets.token_hex(8)}"
-    await db.kids_children.update_one(
-        {"child_id": child_id},
-        {"$inc": {"balance_blz": reward_points, "quiz_points_total": reward_points}},
-    )
 
-    now = datetime.now(timezone.utc).isoformat()
-    await db.kids_quiz_results.insert_one({
-        "result_id": result_id,
-        "child_id": child_id,
-        "parent_id": child.get("parent_id"),
-        "score": score,
-        "total": total,
-        "reward_points": reward_points,
-        "reward_currency": "BLZ_POINTS",
-        "created_at": now,
-    })
-
-    return {
+    now = datetime.now(timezone.utc)
+    result_payload = {
         "ok": True,
         "score": score,
         "total": total,
         "reward": reward_points,
         "reward_points": reward_points,
         "reward_currency": "BLZ_POINTS",
+        "replayed": False,
     }
+
+    claim = await db.kids_quiz_sessions.update_one(
+        {"quiz_id": quiz_id, "child_id": child_id, "status": "active"},
+        {"$set": {"status": "submitted", "submitted_at": now.isoformat(), "result": result_payload}},
+    )
+    if claim.modified_count != 1:
+        fresh = await db.kids_quiz_sessions.find_one({"quiz_id": quiz_id, "child_id": child_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "submitted":
+            replay = dict(fresh.get("result") or result_payload)
+            replay["replayed"] = True
+            return replay
+        raise HTTPException(status_code=409, detail="Quiz wurde bereits verarbeitet")
+
+    if reward_points > 0:
+        reward_marker = f"quiz_reward_markers.{quiz_id.replace('-', '_')}"
+        await db.kids_children.update_one(
+            {"child_id": child_id, reward_marker: {"$exists": False}},
+            {
+                "$inc": {"balance_blz": reward_points, "quiz_points_total": reward_points},
+                "$set": {
+                    reward_marker: {
+                        "points": reward_points,
+                        "score": score,
+                        "created_at": now.isoformat(),
+                    }
+                },
+            },
+        )
+
+    await db.kids_quiz_results.update_one(
+        {"result_id": f"KQR-{quiz_id}", "child_id": child_id},
+        {"$setOnInsert": {
+            "result_id": f"KQR-{quiz_id}",
+            "quiz_id": quiz_id,
+            "child_id": child_id,
+            "parent_id": child.get("parent_id"),
+            "score": score,
+            "total": total,
+            "reward_points": reward_points,
+            "reward_currency": "BLZ_POINTS",
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
+
+    return result_payload
 
 
 # ─── Savings Goal ───
