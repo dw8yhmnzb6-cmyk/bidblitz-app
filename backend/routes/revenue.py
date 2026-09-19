@@ -354,54 +354,94 @@ class ClaimReferralRequest(BaseModel):
 
 @router.post("/affiliate/claim-signup-bonus")
 async def claim_signup_bonus_internal(req: ClaimReferralRequest, request: Request):
-    """Wird bei Signup auto-getriggert wenn ?ref= im Link war."""
+    """Claim one signup referral bonus exactly once."""
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
+    code = str(req.code or "").strip().upper()
+    if not code:
+        raise HTTPException(400, "Partner-Code fehlt")
 
-    # User must be brand new (< 10 minutes old)
-    created_at = user.get("created_at", "")
+    created_at = str(user.get("created_at") or "")
     try:
-        if datetime.fromisoformat(created_at.replace("Z", "+00:00")) < datetime.now(timezone.utc) - timedelta(minutes=30):
-            raise HTTPException(400, "Registrierung zu alt für Referral-Bonus")
+        created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        if created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
     except Exception:
-        pass
+        raise HTTPException(status_code=400, detail="Registrierungszeitpunkt fehlt oder ist ungültig")
+    if created_dt < datetime.now(timezone.utc) - timedelta(minutes=30):
+        raise HTTPException(400, "Registrierung zu alt für Referral-Bonus")
 
-    if user.get("referred_by"):
-        raise HTTPException(400, "Referral bereits genutzt")
-
-    profile = await db.affiliate_profiles.find_one({"code": req.code.upper()})
+    profile = await db.affiliate_profiles.find_one({"code": code})
     if not profile:
         raise HTTPException(404, "Partner-Code nicht gefunden")
-    if profile["user_id"] == uid:
+    referrer_id = str(profile.get("user_id") or "")
+    if not referrer_id:
+        raise HTTPException(status_code=409, detail="Partner-Profil hat keinen gültigen Nutzer")
+    if referrer_id == uid:
         raise HTTPException(400, "Du kannst dich nicht selbst referieren")
 
-    await db.users.update_one({"_id": _oid(uid)}, {"$set": {"referred_by": req.code.upper()}})
+    current = str(user.get("referred_by") or "")
+    replayed = False
+    if current:
+        if current != code:
+            raise HTTPException(400, "Referral bereits genutzt")
+        replayed = True
+    else:
+        claim = await db.users.update_one(
+            {
+                "_id": user["_id"],
+                "$or": [
+                    {"referred_by": {"$exists": False}},
+                    {"referred_by": None},
+                    {"referred_by": ""},
+                ],
+            },
+            {"$set": {
+                "referred_by": code,
+                "referred_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            fresh = await db.users.find_one({"_id": user["_id"]}, {"referred_by": 1}) or {}
+            if str(fresh.get("referred_by") or "") != code:
+                raise HTTPException(status_code=409, detail="Referral wurde parallel gesetzt")
+            replayed = True
 
-    # Credit referrer
-    tier = _tier_for(await db.users.count_documents({"referred_by": req.code.upper()}))
-    bonus = AFFILIATE_SIGNUP_BONUS * tier["bonus_mult"]
-    await db.users.update_one({"_id": _oid(profile["user_id"])}, {"$inc": {"balance": bonus}})
-    now = datetime.now(timezone.utc).isoformat()
-    await db.affiliate_earnings.insert_one({
-        "referrer_user_id": profile["user_id"],
-        "referee_user_id": uid,
-        "amount": bonus,
-        "currency": "EUR",
-        "type": "signup",
-        "tier": tier["id"],
-        "created_at": now,
-    })
-    await db.transactions.insert_one({
-        "user_id": profile["user_id"],
-        "type": "bonus",
-        "amount": bonus,
-        "currency": "EUR",
-        "status": "completed",
-        "description": f"Affiliate: Neuer Partner ({tier['label']})",
-        "merchant_name": "BidBlitz",
-        "category": "affiliate",
-        "reference": f"AFF-SIGNUP-{now.replace('-','').replace(':','').replace('.','')[:18]}",
-        "date": now,
-        "created_at": now,
-    })
-    return {"ok": True, "credited_to_referrer": bonus}
+    tier = _tier_for(await db.users.count_documents({"referred_by": code}))
+    bonus = round(float(AFFILIATE_SIGNUP_BONUS * tier["bonus_mult"]), 2)
+    reward = await credit_wallet(
+        user_id=referrer_id,
+        amount=bonus,
+        tx_type=TransactionType.REWARD,
+        description=f"Affiliate: Neuer Partner ({tier['label']})",
+        reference=f"AFF-SIGNUP-{hashlib.sha256(uid.encode('utf-8')).hexdigest()[:16].upper()}",
+        source="affiliate_signup",
+        metadata={"referee_user_id": uid, "code": code, "tier": tier["id"]},
+        idempotency_key=f"affiliate-signup:{uid}",
+    )
+    if not reward.success:
+        status_code = 409 if reward.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code=status_code, detail=reward.error or "Referral-Bonus konnte nicht gebucht werden")
+
+    earning_id = f"AFF-EARN-{hashlib.sha256(uid.encode('utf-8')).hexdigest()[:20].upper()}"
+    await db.affiliate_earnings.update_one(
+        {"_id": earning_id},
+        {"$setOnInsert": {
+            "_id": earning_id,
+            "referrer_user_id": referrer_id,
+            "referee_user_id": uid,
+            "amount": bonus,
+            "currency": "EUR",
+            "type": "signup",
+            "tier": tier["id"],
+            "transaction_id": reward.transaction_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "credited_to_referrer": bonus,
+        "transaction_id": reward.transaction_id,
+        "replayed": replayed or bool(reward.idempotent_replay),
+    }
