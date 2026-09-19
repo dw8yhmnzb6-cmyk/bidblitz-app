@@ -379,3 +379,27 @@ def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
     assert "credit_state = await _reserve_bid_credit_once" in auctions_source
     assert "processing_until" in auctions_source
     assert "processing_slot" in auctions_source
+
+
+def test_scooter_rides_subscriptions_and_location_are_financially_safe():
+    scooter_source = (BACKEND_DIR / "routes" / "scooter.py").read_text(encoding="utf-8")
+    scooter_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ScooterPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def _settle_outstanding_scooter_debts" in scooter_source
+    assert '"status": "unlocking"' in scooter_source
+    assert '"unlock_claim_key": claim_hash' in scooter_source
+    assert "idempotency_key=idempotency_key" in scooter_source
+    assert 'idempotency_key=f"scooter-end:{ride_id}"' in scooter_source
+    assert 'db.scooter_payment_due.update_one' in scooter_source
+    assert '"payment_status": "due"' in scooter_source or 'payment_status = "due"' in scooter_source
+
+    assert "async def _get_active_scooter_subscription" in scooter_source
+    assert '"free_minutes_remaining_at_start"' in scooter_source
+    assert '"subscription_id": (subscription or {}).get("sub_id")' in scooter_source
+    assert "TransactionType.SUBSCRIPTION" in scooter_source
+
+    assert "Math.random() - 0.5" not in scooter_page
+    assert "52.52, lng: 13.405" not in scooter_page
+    assert "'Idempotency-Key': idempotencyKey" in scooter_page
+    assert "data.rentals || data.rides || []" in scooter_page
+    assert "activeRental.free_minutes_remaining_at_start" in scooter_page
