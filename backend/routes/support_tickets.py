@@ -74,7 +74,7 @@ async def get_ticket_detail(ticket_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
     
     # Check permission
-    is_admin = user.get("role") == "admin"
+    is_admin = user.get("role") in ("admin", "super_admin")
     is_owner = ticket["user_id"] == user_id
     
     if not (is_admin or is_owner):
