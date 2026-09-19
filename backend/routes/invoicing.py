@@ -1470,9 +1470,15 @@ async def public_invoice(scan_code: str, request: Request):
 
 @router.post("/public/{scan_code}/pay")
 async def pay_invoice(scan_code: str, request: Request):
+    """Pay an invoice from BidBlitz Wallet through the canonical ledger exactly once."""
     user = await get_current_user(request)
+    payer_user_id = str(user["_id"])
     invoice = await db.invoices.find_one(
-        {"$or": [{"scan_code": scan_code.upper()}, {"invoice_id": scan_code}, {"invoice_number": scan_code.upper()}]},
+        {"$or": [
+            {"scan_code": scan_code.upper()},
+            {"invoice_id": scan_code},
+            {"invoice_number": scan_code.upper()},
+        ]},
         {"_id": 0},
     )
     if not invoice:
@@ -1483,67 +1489,102 @@ async def pay_invoice(scan_code: str, request: Request):
     issuer = await db.users.find_one({"email": invoice.get("user_email", "")})
     if not issuer:
         raise HTTPException(status_code=404, detail="Rechnungssteller nicht gefunden")
+    issuer_id = str(issuer["_id"])
+    if issuer_id == payer_user_id:
+        raise HTTPException(status_code=400, detail="Eigene Rechnung kann nicht an sich selbst bezahlt werden")
 
     total = round(float(invoice.get("total", 0) or 0), 2)
-    if float(user.get("balance", 0) or 0) < total:
-        raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{total:.2f})")
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Rechnungsbetrag")
+
+    invoice_id = str(invoice.get("invoice_id") or "")
+    if not invoice_id:
+        raise HTTPException(status_code=500, detail="Rechnung hat keine stabile ID")
+
+    link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
+    claim_key = f"wallet:{invoice_id}:{payer_user_id}"
+    await _claim_invoice_payment(
+        invoice_id=invoice_id,
+        claim_key=claim_key,
+        method="wallet",
+        payer_user_id=payer_user_id,
+        payer_email=user.get("email", ""),
+    )
+
+    reference = f"INV-WALLET-{invoice_id[-12:].upper()}"
+    result = await transfer_between_wallets(
+        from_user_id=payer_user_id,
+        to_user_id=issuer_id,
+        amount=total,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Rechnung bezahlt {invoice.get('invoice_number') or invoice_id}",
+        reference=reference,
+        metadata={
+            "kind": "invoice_payment",
+            "invoice_id": invoice_id,
+            "invoice_number": invoice.get("invoice_number"),
+            "payer_email": user.get("email", ""),
+            "issuer_email": invoice.get("user_email", ""),
+            "payment_link_token": link.get("token"),
+        },
+        idempotency_key=f"invoice:wallet:{invoice_id}:{payer_user_id}",
+    )
+    if not result.success:
+        status = str(getattr(result.status, "value", result.status))
+        if status == "reconciliation_required":
+            await _mark_invoice_claim_reconciliation(invoice_id, claim_key, result.error or "Wallet reconciliation required")
+        elif status not in {"pending"}:
+            await _release_invoice_payment_claim(invoice_id, claim_key, result.error or "Wallet payment failed")
+        raise HTTPException(
+            status_code=409 if status in {"pending", "reconciliation_required"} else 402,
+            detail=result.error or "Rechnungszahlung fehlgeschlagen",
+        )
 
     now_iso = _now_iso()
-    reference = invoice.get("invoice_id") or invoice.get("invoice_number") or scan_code
-
-    await db.users.update_one({"_id": user["_id"], "balance": {"$gte": total}}, {"$inc": {"balance": -total}})
-    await db.users.update_one({"_id": issuer["_id"]}, {"$inc": {"balance": total}})
-
-    await db.transactions.insert_many([
-        {
-            "id": secrets.token_hex(8),
-            "user_id": str(user["_id"]),
-            "type": "invoice_payment",
-            "amount": -total,
-            "description": f"Rechnung bezahlt {reference}",
-            "status": "completed",
-            "reference": reference,
-            "category": "invoice",
-            "counterparty_email": invoice.get("user_email", ""),
-            "created_at": now_iso,
-        },
-        {
-            "id": secrets.token_hex(8),
-            "user_id": str(issuer["_id"]),
-            "type": "invoice_payment_received",
-            "amount": total,
-            "description": f"Rechnung bezahlt {reference}",
-            "status": "completed",
-            "reference": reference,
-            "category": "invoice",
-            "counterparty_email": user.get("email", ""),
-            "created_at": now_iso,
-        },
-    ])
-
-    await db.invoices.update_one(
-        {"invoice_id": invoice.get("invoice_id")},
-        {"$set": {"status": "paid", "paid_at": now_iso, "paid_by_email": user.get("email", ""), "paid_by_user_id": str(user["_id"]), "updated_at": now_iso}},
+    paid_invoice = await _mark_invoice_paid(
+        invoice,
+        link,
+        now_iso,
+        "wallet",
+        user.get("email", ""),
+        payer_user_id,
+        result.reference or reference,
     )
-    paid_invoice = dict(invoice)
-    paid_invoice.update({"status": "paid", "paid_at": now_iso, "updated_at": now_iso})
+    await _mark_invoice_claim_paid(invoice_id, claim_key, result.reference or reference)
+
     ip, ua = get_client_info(request)
-    await log_audit(
-        "invoice_paid",
-        user_id=str(user.get("_id")),
-        email=user.get("email", ""),
-        ip=ip,
-        user_agent=ua,
-        details={
-            "invoice_id": invoice.get("invoice_id"),
-            "target": invoice.get("invoice_number"),
-            "company": invoice.get("client_name"),
-            "status": "paid",
-            "owner_user_email": invoice.get("user_email", ""),
-        },
-    )
-    return {"ok": True, "invoice": _invoice_public_payload(paid_invoice, request.headers.get("origin", "")), "message": "Rechnung erfolgreich bezahlt"}
+    if not result.idempotent_replay:
+        await log_audit(
+            "invoice_paid",
+            user_id=payer_user_id,
+            email=user.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+            details={
+                "invoice_id": invoice_id,
+                "target": invoice.get("invoice_number"),
+                "company": invoice.get("client_name"),
+                "status": "paid",
+                "owner_user_email": invoice.get("user_email", ""),
+                "wallet_transaction_id": result.transaction_id,
+            },
+        )
 
+    return {
+        "ok": True,
+        "invoice": _invoice_public_payload(
+            {
+                **paid_invoice,
+                "payment_link_token": link.get("token"),
+                "payment_link_url": link.get("public_url"),
+                "public_pay_url": link.get("public_url"),
+            },
+            request.headers.get("origin", ""),
+        ),
+        "message": "Rechnung erfolgreich bezahlt",
+        "transaction_id": result.transaction_id,
+        "replayed": bool(result.idempotent_replay),
+    }
 
 @router.post("/{invoice_id}/payment-link")
 async def create_or_refresh_payment_link(invoice_id: str, request: Request):
