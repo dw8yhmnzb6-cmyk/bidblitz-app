@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 logger = logging.getLogger("bidblitz.casino")
@@ -18,7 +19,15 @@ router = APIRouter(prefix="/api/casino", tags=["casino"])
 
 MIN_BET = 1.0   # 1 BLZ
 MAX_BET = 500.0 # 500 BLZ pro Spin
-HOUSE_EDGE = 0.04  # 4% house edge (fair)
+HOUSE_EDGE = 0.04
+
+
+def _require_value_game_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Wertbasierte Casino-Spiele sind in Production deaktiviert.",
+        )
 
 
 def _oid(s):
@@ -93,6 +102,7 @@ class SpinRequest(BaseModel):
 
 @router.post("/slots/spin")
 async def slots_spin(req: SpinRequest, request: Request):
+    _require_value_game_test_mode()
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
     if req.bet < MIN_BET or req.bet > MAX_BET:
@@ -139,6 +149,7 @@ class CrashBetRequest(BaseModel):
 
 @router.post("/crash/play")
 async def crash_play(req: CrashBetRequest, request: Request):
+    _require_value_game_test_mode()
     """Crash: User wählt Ziel-Multiplier. Wenn crashed davor, verloren. Sonst gewonnen."""
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
@@ -185,6 +196,7 @@ class PlinkoBetRequest(BaseModel):
 
 @router.post("/plinko/drop")
 async def plinko_drop(req: PlinkoBetRequest, request: Request):
+    _require_value_game_test_mode()
     """Plinko: Kugel fällt durch 9 Reihen, landet in einem von 11 Slots."""
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
@@ -224,12 +236,22 @@ async def plinko_drop(req: PlinkoBetRequest, request: Request):
 
 @router.get("/slots/symbols")
 async def slots_symbols():
-    return {"symbols": SLOT_SYMBOLS, "min_bet": MIN_BET, "max_bet": MAX_BET}
+    return {
+        "symbols": SLOT_SYMBOLS if TEST_MODE else [],
+        "min_bet": MIN_BET,
+        "max_bet": MAX_BET,
+        "wagering_enabled": bool(TEST_MODE),
+    }
 
 
 @router.get("/plinko/config")
 async def plinko_config():
-    return {"payouts": PLINKO_PAYOUTS, "min_bet": MIN_BET, "max_bet": MAX_BET}
+    return {
+        "payouts": PLINKO_PAYOUTS if TEST_MODE else [],
+        "min_bet": MIN_BET,
+        "max_bet": MAX_BET,
+        "wagering_enabled": bool(TEST_MODE),
+    }
 
 
 @router.get("/history")
