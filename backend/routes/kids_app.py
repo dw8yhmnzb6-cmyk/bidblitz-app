@@ -21,6 +21,8 @@ async def _require_child_access(user: dict, child_id: str) -> dict:
     )
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(str(child.get("parent_id") or ""))
     if child.get("parent_id") != uid and child.get("user_id") != uid and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
     return child
