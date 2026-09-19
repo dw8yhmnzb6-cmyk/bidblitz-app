@@ -664,3 +664,22 @@ def test_marketplace_and_flash_sale_money_paths_are_retry_safe():
     assert "boost_type: boostType" in dashboard_source
     assert "'Idempotency-Key': idempotencyKey" in dashboard_source
     assert "promotionAttemptKeysRef" in dashboard_source
+
+
+def test_referral_and_promotion_rewards_are_exactly_once():
+    referral_source = (BACKEND_DIR / "routes" / "referral_system.py").read_text(encoding="utf-8")
+    promotions_source = (BACKEND_DIR / "routes" / "promotions.py").read_text(encoding="utf-8")
+
+    assert 'claim_id = f"daily-bonus:{user_id}:{today}"' in referral_source
+    assert '"status": "wallet_credited"' in referral_source
+    assert '"status": "completed"' in referral_source
+    assert 'idempotency_key=claim_id' in referral_source
+    assert 'idempotency_key=f"{reward_scope}:invited"' in referral_source
+    assert 'idempotency_key=f"{reward_scope}:inviter"' in referral_source
+    assert 'idempotency_key=f"{reward_scope}:level2"' in referral_source
+    assert 'idempotency_key=f"{reward_scope}:manager"' in referral_source
+    assert 'TransactionType.REWARD' in referral_source
+
+    assert 'usage_id = f"promo:{promo_name}:{user_id}"' in promotions_source
+    assert '"current_uses": {"$lt": max_uses}' in promotions_source
+    assert 'await db.promo_usage.delete_one({"_id": usage_id})' in promotions_source
