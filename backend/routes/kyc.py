@@ -229,6 +229,14 @@ def _capability_status_for_response(actual_status: str) -> str:
     return "approved" if TEST_MODE else actual_status
 
 
+def _final_kyc_decision(ai_decision: str) -> str:
+    """AI may triage KYC, but production approval/rejection requires a certified provider or human review."""
+    certified_automation = os.environ.get("KYC_AUTOMATED_PROVIDER_CERTIFIED", "").lower() == "true"
+    if TEST_MODE or certified_automation:
+        return ai_decision
+    return "pending"
+
+
 def _snapshot_kyc_state(user: dict) -> dict:
     fields = [
         "kyc_status", "kyc_verified", "kyc_document_type", "kyc_front_path", "kyc_back_path",
@@ -449,17 +457,25 @@ async def submit_kyc(
                 },
             )
 
-        decision = auto_decision(verdict)
+        ai_decision = auto_decision(verdict)
+        decision = _final_kyc_decision(ai_decision)
         feedback = _build_feedback_from_verdict(verdict)
         previous_failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
-        failed_attempts = _next_failed_attempts(previous_failed_attempts, decision)
+        failed_attempts = _next_failed_attempts(previous_failed_attempts, ai_decision)
         manual_review_requested = bool(user.get("kyc_manual_review_requested"))
         can_request_manual_review = _can_request_manual_review(failed_attempts, manual_review_requested)
 
         update = {
             "kyc_ai_verdict": verdict,
             "kyc_ai_confidence": verdict.get("overall_confidence", 0),
-            "kyc_ai_decision": decision,
+            "kyc_ai_decision": ai_decision,
+            "kyc_final_decision_source": (
+                "certified_automation"
+                if decision == ai_decision and not TEST_MODE
+                else "test_mode"
+                if TEST_MODE
+                else "manual_review_required"
+            ),
             "kyc_extracted_name": verdict.get("full_name"),
             "kyc_extracted_dob": verdict.get("date_of_birth"),
             "kyc_extracted_doc_number": verdict.get("document_number"),
@@ -489,6 +505,9 @@ async def submit_kyc(
             update["kyc_verified"] = False
             update["kyc_rejection_reason"] = None
             update["kyc_reupload_requested"] = False
+            update["kyc_reviewed_at"] = None
+            update["kyc_reviewed_by"] = None
+            update["kyc_requires_manual_review"] = not TEST_MODE and os.environ.get("KYC_AUTOMATED_PROVIDER_CERTIFIED", "").lower() != "true"
 
         await db.users.update_one({"_id": user["_id"]}, {"$set": update})
 
@@ -505,6 +524,7 @@ async def submit_kyc(
                     "back_path": back_path,
                     "selfie_path": selfie_path,
                     "status": decision,
+                    "ai_recommendation": ai_decision,
                     "ai_verdict": verdict,
                     "failure_reasons": feedback["failure_reasons"],
                     "user_feedback": feedback["user_feedback"],
