@@ -698,3 +698,36 @@ def test_notifications_unify_legacy_and_canonical_schemas():
     assert 'normalized["message"] = normalized.get("message") or body' in source
     assert 'if not TEST_MODE:' in source
     assert 'return' in source
+
+
+def test_food_orders_are_server_priced_retry_safe_and_settle_once():
+    food_source = (BACKEND_DIR / "routes" / "food.py").read_text(encoding="utf-8")
+    tracking_source = (BACKEND_DIR / "routes" / "food_tracking.py").read_text(encoding="utf-8")
+    food_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "FoodPage.jsx").read_text(encoding="utf-8")
+    checkout = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "food" / "CheckoutView.jsx").read_text(encoding="utf-8")
+
+    assert "def _price_food_line" in food_source
+    assert "size_id" in food_source and "extra_ids" in food_source
+    assert "idempotency_key=idempotency_key" in food_source
+    assert '"status": "payment_pending"' in food_source
+    assert "async def _refund_food_order" in food_source
+    assert 'idempotency_key=f"food-refund:{order_id}"' in food_source
+    assert "async def _settle_food_delivery" in food_source
+    assert 'idempotency_key=f"food-settlement:{order_id}:restaurant"' in food_source
+    assert 'idempotency_key=f"food-settlement:{order_id}:courier"' in food_source
+    assert "random.choice(COURIER_NAMES)" not in food_source
+    assert '"$inc": {"balance": restaurant_share}' not in food_source
+    assert '"$inc": {"balance": courier_share}' not in food_source
+    assert "async def _require_food_restaurant_owner" in food_source
+    assert '"owner_id": user_id' in food_source
+    assert 'body.get("location", {"lat": 52.52, "lng": 13.405})' not in food_source
+
+    assert "from routes.food import _settle_food_delivery" in tracking_source
+    assert "transfer_between_wallets" in tracking_source
+    assert "Tipping only available for card payments" not in tracking_source
+
+    assert "'Idempotency-Key': idempotencyKey" in food_page
+    assert "size_id: i.size_id || null" in food_page
+    assert "extra_ids: i.extra_ids || []" in food_page
+    assert "promo_code: promoApplied?.code || null" in food_page
+    assert "/api/food/promo/validate" in checkout
