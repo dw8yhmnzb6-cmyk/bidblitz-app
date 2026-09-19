@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from core.security import get_current_user
 from core.database import db
+from core.config import TEST_MODE
 from datetime import datetime, timezone
 import secrets, random, httpx, asyncio, logging
 
@@ -54,6 +55,8 @@ async def fetch_coingecko_prices():
                 new_cache = {}
                 for symbol, info in CRYPTO_ASSETS.items():
                     cg_data = data.get(info["cg_id"], {})
+                    if "eur" not in cg_data and not TEST_MODE:
+                        continue
                     new_cache[symbol] = {
                         "price_eur": cg_data.get("eur", FALLBACK_PRICES.get(symbol, 1)),
                         "change_24h": round(cg_data.get("eur_24h_change", 0), 2),
@@ -68,17 +71,36 @@ async def fetch_coingecko_prices():
     except Exception as e:
         logger.warning(f"CoinGecko fetch failed: {e}")
 
-    # Fallback to cached or base prices
+    # A previously verified cache is acceptable; fabricated market prices are not.
     if _price_cache:
         return _price_cache
-    return {sym: {"price_eur": p, "change_24h": 0, "market_cap": 0} for sym, p in FALLBACK_PRICES.items()}
+    if TEST_MODE:
+        return {sym: {"price_eur": p, "change_24h": 0, "market_cap": 0} for sym, p in FALLBACK_PRICES.items()}
+    return {}
 
 
 def get_live_price(symbol: str) -> float:
-    """Get cached live price for a symbol."""
+    """Get a verified live/cache price. Test mode may use local fallback data."""
     if _price_cache and symbol in _price_cache:
-        return _price_cache[symbol]["price_eur"]
-    return FALLBACK_PRICES.get(symbol, 1.0)
+        return float(_price_cache[symbol]["price_eur"])
+    if TEST_MODE:
+        return float(FALLBACK_PRICES.get(symbol, 1.0))
+    raise HTTPException(status_code=503, detail=f"Live-Kurs für {symbol} ist momentan nicht verfügbar")
+
+
+@router.get("/capabilities")
+async def crypto_capabilities():
+    return {
+        "live_market_data": True,
+        "custody_connected": False,
+        "exchange_connected": False,
+        "trading_available": bool(TEST_MODE),
+        "portfolio_is_simulated": bool(TEST_MODE),
+        "message": (
+            None if TEST_MODE else
+            "Krypto-Kurse sind Marktinformation. Custody/Exchange sind noch nicht live verbunden; Käufe und Verkäufe sind deaktiviert."
+        ),
+    }
 
 
 @router.get("/prices")
@@ -86,24 +108,44 @@ async def get_prices():
     cache = await fetch_coingecko_prices()
     prices = []
     for symbol, info in CRYPTO_ASSETS.items():
-        cd = cache.get(symbol, {})
+        cd = cache.get(symbol)
+        if not cd:
+            continue
         prices.append({
             "symbol": symbol,
             "name": info["name"],
             "color": info["color"],
-            "price_eur": cd.get("price_eur", FALLBACK_PRICES.get(symbol, 0)),
-            "change_24h": cd.get("change_24h", 0),
-            "market_cap": cd.get("market_cap", 0),
+            "price_eur": float(cd["price_eur"]),
+            "change_24h": float(cd.get("change_24h", 0) or 0),
+            "market_cap": float(cd.get("market_cap", 0) or 0),
         })
-    source = "coingecko" if _cache_time else "fallback"
-    return {"prices": prices, "source": source, "updated_at": (_cache_time or datetime.now(timezone.utc)).isoformat()}
+    if not prices and not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Live-Krypto-Marktdaten sind momentan nicht verfügbar")
+    source = "coingecko" if _cache_time else "test_fallback"
+    return {
+        "prices": prices,
+        "source": source,
+        "trading_available": bool(TEST_MODE),
+        "custody_connected": False,
+        "exchange_connected": False,
+        "updated_at": (_cache_time or datetime.now(timezone.utc)).isoformat(),
+    }
 
 
 @router.get("/portfolio")
 async def get_portfolio(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+
+    if not TEST_MODE:
+        legacy_count = await db.crypto_holdings.count_documents({"user_id": user_id})
+        return {
+            "portfolio": [],
+            "total_value_eur": 0.0,
+            "custody_connected": False,
+            "exchange_connected": False,
+            "legacy_demo_holdings": legacy_count,
+        }
 
     holdings = await db.crypto_holdings.find(
         {"user_id": user_id}, {"_id": 0}
@@ -141,6 +183,11 @@ class TradeRequest(BaseModel):
 async def trade(req: TradeRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Krypto-Handel ist deaktiviert, bis ein verifizierter Custody-/Exchange-Provider live verbunden ist. Das EUR-Wallet wurde nicht belastet.",
+        )
     
 
     symbol = req.symbol.upper()
@@ -222,7 +269,15 @@ async def trade(req: TradeRequest, request: Request):
 async def get_crypto_transactions(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+
+    if not TEST_MODE:
+        legacy_count = await db.crypto_transactions.count_documents({"user_id": user_id})
+        return {
+            "transactions": [],
+            "custody_connected": False,
+            "exchange_connected": False,
+            "legacy_demo_transactions": legacy_count,
+        }
 
     txns = await db.crypto_transactions.find(
         {"user_id": user_id}, {"_id": 0}
