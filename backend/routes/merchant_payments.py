@@ -3,9 +3,11 @@ BidBlitz V2 - Merchant-to-Merchant (M2M) Payments
 Händler können direkt an andere Händler bezahlen.
 Use Cases: Lieferanten bezahlen, B2B Services, Geschäftspartner-Transaktionen.
 """
+import hashlib
 import secrets
 from datetime import datetime, timezone
 from typing import Optional
+from bson import ObjectId
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 
@@ -13,7 +15,7 @@ from core.database import db
 from core.security import get_current_user
 from core.rate_limit import limiter
 from core.audit import log_audit, AuditEvent, get_client_info
-from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+from core.payment_engine import transfer_between_wallets, TransactionType
 
 router = APIRouter(prefix="/api/merchant-payments", tags=["merchant-payments"])
 
@@ -24,7 +26,7 @@ class MerchantPaymentRequest(BaseModel):
     description: str = Field(..., max_length=200, description="Zahlungsgrund")
     reference: Optional[str] = Field(None, max_length=50, description="Referenznummer (optional)")
     invoice_number: Optional[str] = Field(None, max_length=50, description="Rechnungsnummer (optional)")
-    idempotency_key: Optional[str] = Field(None, max_length=120, description="Idempotency Key")
+    idempotency_key: Optional[str] = Field(None, min_length=8, max_length=120, description="Idempotency Key")
 
 
 class MerchantSearchRequest(BaseModel):
@@ -134,20 +136,30 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
             detail="Nur verifizierte Händler können M2M Zahlungen durchführen"
         )
     
+    # Verified merchants only.
+    if user.get("kyc_status") != "approved":
+        raise HTTPException(status_code=403, detail="KYC-Verifizierung erforderlich")
+
     # Validierung: Nicht an sich selbst zahlen
     if req.recipient_merchant_id == user_id:
         raise HTTPException(status_code=400, detail="Sie können nicht an sich selbst zahlen")
+    if not ObjectId.is_valid(req.recipient_merchant_id):
+        raise HTTPException(status_code=400, detail="Ungültige Händler-ID")
+
+    idempotency_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if len(idempotency_key) < 8:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
     
     # Check Empfänger existiert und ist Merchant
     recipient = await db.users.find_one(
-        {"_id": db.ObjectId(req.recipient_merchant_id)},
+        {"_id": ObjectId(req.recipient_merchant_id)},
         {"_id": 0}
     )
     
     if not recipient:
         raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
     
-    if recipient.get("role") != "merchant":
+    if recipient.get("role") != "merchant" or recipient.get("kyc_status") != "approved":
         raise HTTPException(status_code=400, detail="Empfänger ist kein verifizierter Händler")
     
     # Check Sender Balance
@@ -157,62 +169,31 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
             detail=f"Unzureichendes Guthaben. Verfügbar: €{user.get('balance', 0):.2f}"
         )
     
-    # Generiere Transaction Reference
-    tx_reference = req.reference or f"M2M-{secrets.token_hex(6).upper()}"
-    
-    # ── Atomic Transaction: Debit Sender + Credit Recipient ──
-    try:
-        # 1. Debit Sender
-        debit_result = await debit_wallet(
-            user_id=user_id,
-            amount=req.amount,
-            tx_type=TransactionType.MERCHANT_PAYMENT,
-            description=f"Zahlung an {recipient.get('business_name') or recipient.get('name')}: {req.description}",
-            reference=tx_reference,
-            metadata={
-                "recipient_id": req.recipient_merchant_id,
-                "recipient_name": recipient.get("name"),
-                "recipient_email": recipient.get("email"),
-                "invoice_number": req.invoice_number,
-                "audit_metadata": {"route": "merchant_payments.pay", "kind": "sender"},
-            },
-            idempotency_key=req.idempotency_key,
-        )
-        
-        if not debit_result.success:
-            raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
-        
-        # 2. Credit Recipient
-        credit_result = await credit_wallet(
-            user_id=req.recipient_merchant_id,
-            amount=req.amount,
-            tx_type=TransactionType.MERCHANT_PAYMENT_RECEIVED,
-            description=f"Zahlung von {user.get('business_name') or user.get('name')}: {req.description}",
-            reference=tx_reference,
-            source=user_id,
-            metadata={
-                "sender_id": user_id,
-                "sender_name": user.get("name"),
-                "sender_email": user.get("email"),
-                "invoice_number": req.invoice_number,
-                "audit_metadata": {"route": "merchant_payments.pay", "kind": "recipient"},
-            },
-            idempotency_key=f"recv:{req.idempotency_key}" if req.idempotency_key else None,
-        )
-        
-        if not credit_result.success:
-            # Rollback: Credit sender back
-            await credit_wallet(
-                user_id=user_id,
-                amount=req.amount,
-                tx_type=TransactionType.REFUND,
-                description=f"Rückerstattung: M2M Zahlung fehlgeschlagen",
-                reference=f"ROLLBACK-{tx_reference}",
-                source="merchant_payments.rollback",
-            )
-            raise HTTPException(status_code=500, detail="Zahlung fehlgeschlagen - wurde rückgängig gemacht")
-        
-    except Exception as e:
+    # Stable reference + one canonical exactly-once wallet transfer.
+    tx_reference = req.reference or (
+        "M2M-" + hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:12].upper()
+    )
+    transfer_result = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=req.recipient_merchant_id,
+        amount=req.amount,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"Händlerzahlung: {req.description}",
+        reference=tx_reference,
+        metadata={
+            "recipient_id": req.recipient_merchant_id,
+            "recipient_name": recipient.get("name"),
+            "recipient_email": recipient.get("email"),
+            "sender_id": user_id,
+            "sender_name": user.get("name"),
+            "sender_email": user.get("email"),
+            "invoice_number": req.invoice_number,
+            "kind": "merchant_to_merchant",
+            "audit_metadata": {"route": "merchant_payments.pay"},
+        },
+        idempotency_key=f"merchant-pay:{idempotency_key}",
+    )
+    if not transfer_result.success:
         await log_audit(
             AuditEvent.MERCHANT_PAYMENT_FAILED,
             user_id=user_id,
@@ -222,11 +203,13 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
             details={
                 "recipient_id": req.recipient_merchant_id,
                 "amount": req.amount,
-                "error": str(e),
+                "error": transfer_result.error,
+                "status": transfer_result.status.value,
             },
-            severity="error"
+            severity="error",
         )
-        raise HTTPException(status_code=500, detail="Zahlung fehlgeschlagen")
+        status_code = 409 if transfer_result.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code=status_code, detail=transfer_result.error or "Zahlung fehlgeschlagen")
     
     # Audit Log
     await log_audit(
@@ -244,36 +227,35 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
         }
     )
     
-    # Send notification to recipient
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": req.recipient_merchant_id,
-        "type": "merchant_payment_received",
-        "title": f"€{req.amount:.2f} erhalten!",
-        "message": f"Von {user.get('business_name') or user.get('name')}: {req.description}",
-        "data": {
-            "amount": req.amount,
-            "sender_id": user_id,
-            "sender_name": user.get("name"),
-            "reference": tx_reference,
-        },
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    # Optional: Send Push Notification
-    try:
-        from routes.web_push import send_push_to_user
-        await send_push_to_user(
-            user_id=req.recipient_merchant_id,
-            title=f"€{req.amount:.2f} erhalten!",
-            body=f"Von {user.get('business_name') or user.get('name')}",
-            icon="/logo192.png",
-            data={"type": "merchant_payment", "reference": tx_reference}
-        )
-    except Exception:
-        pass  # Non-critical
-    
+    # Send notification only once; retries reuse the canonical transfer.
+    if not transfer_result.idempotent_replay:
+        await db.notifications.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": req.recipient_merchant_id,
+            "type": "merchant_payment_received",
+            "title": f"€{req.amount:.2f} erhalten!",
+            "message": f"Von {user.get('business_name') or user.get('name')}: {req.description}",
+            "data": {
+                "amount": req.amount,
+                "sender_id": user_id,
+                "sender_name": user.get("name"),
+                "reference": tx_reference,
+            },
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        try:
+            from routes.web_push import send_push_to_user
+            await send_push_to_user(
+                user_id=req.recipient_merchant_id,
+                title=f"€{req.amount:.2f} erhalten!",
+                body=f"Von {user.get('business_name') or user.get('name')}",
+                icon="/logo192.png",
+                data={"type": "merchant_payment", "reference": tx_reference},
+            )
+        except Exception:
+            pass
+
     return {
         "success": True,
         "reference": tx_reference,
@@ -283,7 +265,8 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
             "name": recipient.get("name"),
             "business_name": recipient.get("business_name"),
         },
-        "new_balance": user.get("balance", 0) - req.amount,
+        "new_balance": round(float(transfer_result.new_balance or 0), 2),
+        "idempotent_replay": transfer_result.idempotent_replay,
     }
 
 
@@ -303,6 +286,7 @@ async def get_merchant_payment_history(request: Request):
         {
             "user_id": user_id,
             "type": "merchant_payment",
+            "direction": {"$in": ["debit", None]},
         },
         {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
@@ -311,7 +295,10 @@ async def get_merchant_payment_history(request: Request):
     received = await db.transactions.find(
         {
             "user_id": user_id,
-            "type": "merchant_payment_received",
+            "$or": [
+                {"type": "merchant_payment_received"},
+                {"type": "merchant_payment", "direction": "credit"},
+            ],
         },
         {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
@@ -337,19 +324,26 @@ async def get_merchant_payment_stats(request: Request):
     
     # Gesendete Zahlungen
     sent_txs = await db.transactions.find(
-        {"user_id": user_id, "type": "merchant_payment", "status": "completed"},
+        {"user_id": user_id, "type": "merchant_payment", "status": "completed", "direction": {"$in": ["debit", None]}},
         {"_id": 0, "amount": 1}
     ).to_list(1000)
     
-    total_sent = sum(tx.get("amount", 0) for tx in sent_txs)
+    total_sent = sum(abs(float(tx.get("amount", 0) or 0)) for tx in sent_txs)
     
     # Empfangene Zahlungen
     received_txs = await db.transactions.find(
-        {"user_id": user_id, "type": "merchant_payment_received", "status": "completed"},
+        {
+            "user_id": user_id,
+            "status": "completed",
+            "$or": [
+                {"type": "merchant_payment_received"},
+                {"type": "merchant_payment", "direction": "credit"},
+            ],
+        },
         {"_id": 0, "amount": 1}
     ).to_list(1000)
     
-    total_received = sum(tx.get("amount", 0) for tx in received_txs)
+    total_received = sum(abs(float(tx.get("amount", 0) or 0)) for tx in received_txs)
     
     return {
         "total_sent": round(total_sent, 2),
