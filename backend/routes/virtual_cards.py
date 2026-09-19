@@ -11,6 +11,7 @@ from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 import secrets
 import random
 
@@ -216,7 +217,16 @@ async def expire_card(card_id: str, user_id: str):
 # Simulated payment endpoint (in production, this would be a webhook from card processor)
 @router.post("/payment")
 async def process_card_payment(req: CardPaymentRequest, request: Request):
-    """Process a payment on a virtual card (simulation)"""
+    """Legacy simulator: never represents a real card-processor payment in production."""
+    user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Legacy-Kartensimulation ist in Production deaktiviert. Kartenumsätze müssen vom verifizierten Kartenprovider kommen.",
+        )
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin im Testmodus")
+
     card = await db.virtual_cards.find_one({"card_id": req.card_id})
     
     if not card:
