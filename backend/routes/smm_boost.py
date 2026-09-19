@@ -4,15 +4,29 @@ Buy followers, likes, views for Instagram, TikTok, YouTube, Twitter.
 Pay with wallet. Drip-feed & mass order support.
 """
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from routes import smm_provider
 
 router = APIRouter(prefix="/api/smm", tags=["smm-boost"])
+
+
+def _require_smm_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+def _smm_key_hash(key: str) -> str:
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:20]
+
 
 # ── Service Catalog ──
 SMM_SERVICES = [
@@ -147,14 +161,38 @@ class OrderRequest(BaseModel):
     drip_feed: bool = False
     drip_feed_interval_min: int = 60
     drip_feed_runs: int = 1
+    idempotency_key: Optional[str] = None
 
 @router.post("/order")
 async def place_order(req: OrderRequest, request: Request):
     user = await get_current_user(request)
+    user_id = str(user["_id"])
+    idempotency_key = _require_smm_idempotency_key(req.idempotency_key, request, prefix="smm-order")
+    key_hash = _smm_key_hash(idempotency_key)
+
+    existing = await db.smm_orders.find_one(
+        {"user_id": user_id, "idempotency_key_hash": key_hash},
+        {"_id": 0},
+    )
+    if existing:
+        return {
+            "ok": True,
+            "order_id": existing["order_id"],
+            "provider_order_id": existing.get("provider_order_id"),
+            "provider_error": existing.get("provider_error"),
+            "service": existing.get("service_name"),
+            "quantity": existing.get("total_quantity"),
+            "total_price": existing.get("total_price"),
+            "new_balance": existing.get("balance_after"),
+            "delivery_time": existing.get("delivery_time"),
+            "status": existing.get("status"),
+            "message": f"Bestellung {existing['order_id']} bereits verarbeitet.",
+            "replayed": True,
+        }
+
     svc = next((s for s in SMM_SERVICES if s["id"] == req.service_id), None)
     if not svc:
         raise HTTPException(404, "Service nicht gefunden")
-
     if req.quantity < svc["min_qty"]:
         raise HTTPException(400, f"Mindestmenge: {svc['min_qty']}")
     if req.quantity > svc["max_qty"]:
@@ -164,21 +202,30 @@ async def place_order(req: OrderRequest, request: Request):
 
     total_qty = req.quantity * (req.drip_feed_runs if req.drip_feed else 1)
     total_price = round(total_qty / 1000 * svc["price_per_1k"], 2)
-
-    balance = user.get("balance", user.get("bids_balance", 0))
-    if balance < total_price:
-        raise HTTPException(400, f"Nicht genug Guthaben. Benoetig: EUR {total_price:.2f}, Verfuegbar: EUR {balance:.2f}")
-
-    # Deduct from wallet
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -total_price}})
-
+    order_id = f"SMM-{key_hash[:8].upper()}"
     now = datetime.now(timezone.utc)
-    order_id = f"SMM-{secrets.token_hex(4).upper()}"
+
+    payment = await debit_wallet(
+        user_id=user_id,
+        amount=total_price,
+        tx_type=TransactionType.PAYMENT,
+        description=f"BlitzBoost: {total_qty:,}x {svc['name']}",
+        reference=f"SMM-{key_hash[:12].upper()}",
+        metadata={
+            "kind": "smm_boost",
+            "order_id": order_id,
+            "service_id": svc["id"],
+            "quantity": total_qty,
+        },
+        idempotency_key=idempotency_key,
+    )
+    if not payment.success:
+        raise HTTPException(status_code=400, detail=payment.error or "Wallet-Zahlung fehlgeschlagen")
 
     order = {
         "order_id": order_id,
         "user_email": user.get("email"),
-        "user_id": user.get("id") or str(user["_id"]),
+        "user_id": user_id,
         "service_id": svc["id"],
         "service_name": svc["name"],
         "platform": svc["platform"],
@@ -194,64 +241,118 @@ async def place_order(req: OrderRequest, request: Request):
         "start_count": 0,
         "remains": total_qty,
         "status": "pending",
+        "delivery_time": svc["delivery_time"],
+        "idempotency_key_hash": key_hash,
+        "wallet_transaction_id": payment.transaction_id,
+        "balance_after": payment.new_balance,
         "created_at": now.isoformat(),
     }
 
-    await db.smm_orders.insert_one(order)
+    try:
+        await db.smm_orders.update_one(
+            {"user_id": user_id, "idempotency_key_hash": key_hash},
+            {"$setOnInsert": order},
+            upsert=True,
+        )
+        stored = await db.smm_orders.find_one(
+            {"user_id": user_id, "idempotency_key_hash": key_hash},
+            {"_id": 0},
+        )
+        if not stored:
+            raise RuntimeError("smm_order_not_persisted")
+        order = stored
+    except Exception as exc:
+        refund = await credit_wallet(
+            user_id=user_id,
+            amount=total_price,
+            tx_type=TransactionType.REFUND,
+            description="BlitzBoost Rückbuchung",
+            reference=f"SMM-REF-{key_hash[:10].upper()}",
+            source="smm_order_rollback",
+            metadata={"order_id": order_id, "reason": str(exc)[:200]},
+            idempotency_key=f"smm-order-refund:{idempotency_key}",
+        )
+        if not refund.success:
+            raise HTTPException(status_code=500, detail="Auftragsspeicherung und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+        raise HTTPException(status_code=500, detail="Auftrag konnte nicht gespeichert werden. Zahlung wurde zurückgebucht.")
 
-    # 🚀 Forward to real SMM provider if configured
     provider_order_id = None
     provider_error = None
-    if smm_provider.is_configured():
+    provider_uncertain = False
+
+    if smm_provider.is_configured() and not order.get("provider_order_id") and order.get("status") == "pending":
         try:
-            result = await smm_provider.place_order(svc["id"], req.target_url, total_qty, db=db)
-            if result.get("order"):
-                provider_order_id = int(result["order"])
+            provider_result = await smm_provider.place_order(svc["id"], req.target_url, total_qty, db=db)
+            if provider_result.get("order"):
+                provider_order_id = int(provider_result["order"])
                 await db.smm_orders.update_one(
-                    {"order_id": order_id},
+                    {"order_id": order_id, "provider_order_id": {"$exists": False}},
                     {"$set": {
                         "provider_order_id": provider_order_id,
                         "status": "in_progress",
-                        "provider_raw": result,
+                        "provider_raw": provider_result,
+                        "provider_submitted_at": datetime.now(timezone.utc).isoformat(),
                     }},
                 )
-            elif result.get("error"):
-                provider_error = str(result["error"])
+            elif provider_result.get("error"):
+                provider_error = str(provider_result["error"])
+                refund = await credit_wallet(
+                    user_id=user_id,
+                    amount=total_price,
+                    tx_type=TransactionType.REFUND,
+                    description="BlitzBoost Provider-Ablehnung",
+                    reference=f"SMM-REF-{key_hash[:10].upper()}",
+                    source="smm_provider_rejected",
+                    metadata={"order_id": order_id, "provider_error": provider_error},
+                    idempotency_key=f"smm-provider-refund:{idempotency_key}",
+                )
                 await db.smm_orders.update_one(
                     {"order_id": order_id},
-                    {"$set": {"provider_error": provider_error, "status": "provider_failed"}},
+                    {"$set": {
+                        "provider_error": provider_error,
+                        "status": "refunded_provider_failed" if refund.success else "reconciliation_required",
+                        "refund_transaction_id": refund.transaction_id if refund.success else None,
+                        "refunded_at": datetime.now(timezone.utc).isoformat() if refund.success else None,
+                    }},
                 )
-        except Exception as e:
-            provider_error = str(e)
+                if not refund.success:
+                    raise HTTPException(status_code=500, detail="Provider hat abgelehnt und Rückbuchung muss manuell geprüft werden.")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            # Network/provider timeout may have occurred after the provider accepted
+            # the request. Never refund automatically in an uncertain state.
+            provider_error = str(exc)
+            provider_uncertain = True
             await db.smm_orders.update_one(
                 {"order_id": order_id},
-                {"$set": {"provider_error": provider_error, "status": "provider_failed"}},
+                {"$set": {
+                    "provider_error": provider_error[:500],
+                    "status": "provider_uncertain",
+                    "provider_uncertain_at": datetime.now(timezone.utc).isoformat(),
+                }},
             )
+    elif not smm_provider.is_configured():
+        await db.smm_orders.update_one(
+            {"order_id": order_id, "status": "pending"},
+            {"$set": {"status": "pending_manual", "provider_configured": False}},
+        )
 
-    # Transaction record
-    await db.transactions.insert_one({
-        "transaction_id": f"smm_{secrets.token_hex(6)}",
-        "user_id": user.get("id") or str(user["_id"]),
-        "user_email": user.get("email"),
-        "type": "smm_boost",
-        "amount": -total_price,
-        "description": f"BlitzBoost: {total_qty:,}x {svc['name']}",
-        "status": "completed",
-        "created_at": now.isoformat(),
-    })
-
+    final_order = await db.smm_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
     return {
         "ok": True,
         "order_id": order_id,
-        "provider_order_id": provider_order_id,
-        "provider_error": provider_error,
+        "provider_order_id": final_order.get("provider_order_id"),
+        "provider_error": final_order.get("provider_error"),
+        "provider_uncertain": provider_uncertain,
         "service": svc["name"],
         "quantity": total_qty,
         "total_price": total_price,
-        "new_balance": round(balance - total_price, 2),
+        "new_balance": payment.new_balance,
         "delivery_time": svc["delivery_time"],
-        "status": "in_progress" if provider_order_id else ("provider_failed" if provider_error else "pending"),
-        "message": f"Bestellung {order_id} aufgegeben! {total_qty:,}x {svc['name']} fuer EUR {total_price:.2f}. Lieferung: {svc['delivery_time']}.",
+        "status": final_order.get("status"),
+        "message": f"Bestellung {order_id} aufgegeben! {total_qty:,}x {svc['name']} fuer EUR {total_price:.2f}.",
+        "replayed": bool(payment.idempotent_replay),
     }
 
 
@@ -284,14 +385,37 @@ class MassOrderItem(BaseModel):
 
 class MassOrderRequest(BaseModel):
     orders: list[MassOrderItem]
+    idempotency_key: Optional[str] = None
 
 @router.post("/mass-order")
 async def mass_order(req: MassOrderRequest, request: Request):
     user = await get_current_user(request)
+    user_id = str(user["_id"])
+    if not req.orders:
+        raise HTTPException(status_code=400, detail="Keine Bestellungen")
     if len(req.orders) > 50:
         raise HTTPException(400, "Maximal 50 Bestellungen pro Mass-Order")
 
-    total_price = 0
+    idempotency_key = _require_smm_idempotency_key(req.idempotency_key, request, prefix="smm-mass")
+    key_hash = _smm_key_hash(idempotency_key)
+    batch_id = f"SMMB-{key_hash[:10].upper()}"
+
+    existing_batch = await db.smm_mass_batches.find_one(
+        {"user_id": user_id, "idempotency_key_hash": key_hash},
+        {"_id": 0},
+    )
+    if existing_batch and existing_batch.get("status") == "completed":
+        return {
+            "ok": True,
+            "order_ids": existing_batch.get("order_ids", []),
+            "total_orders": len(existing_batch.get("order_ids", [])),
+            "total_price": existing_batch.get("total_price", 0),
+            "new_balance": existing_batch.get("balance_after"),
+            "message": "Mass-Order bereits verarbeitet",
+            "replayed": True,
+        }
+
+    total_price = 0.0
     validated = []
     for item in req.orders:
         svc = next((s for s in SMM_SERVICES if s["id"] == item.service_id), None)
@@ -299,56 +423,97 @@ async def mass_order(req: MassOrderRequest, request: Request):
             raise HTTPException(400, f"Service {item.service_id} nicht gefunden")
         if item.quantity < svc["min_qty"] or item.quantity > svc["max_qty"]:
             raise HTTPException(400, f"Menge fuer {svc['name']} ungueltig ({svc['min_qty']}-{svc['max_qty']:,})")
+        if not item.target_url:
+            raise HTTPException(400, f"Ziel-URL für {svc['name']} fehlt")
         price = round(item.quantity / 1000 * svc["price_per_1k"], 2)
-        total_price += price
+        total_price = round(total_price + price, 2)
         validated.append({"svc": svc, "item": item, "price": price})
 
-    balance = user.get("balance", user.get("bids_balance", 0))
-    if balance < total_price:
-        raise HTTPException(400, f"Nicht genug Guthaben. Benoetig: EUR {total_price:.2f}")
-
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -total_price}})
+    payment = await debit_wallet(
+        user_id=user_id,
+        amount=total_price,
+        tx_type=TransactionType.PAYMENT,
+        description=f"BlitzBoost Mass-Order: {len(validated)} Bestellungen",
+        reference=f"SMMB-{key_hash[:12].upper()}",
+        metadata={"kind": "smm_boost_mass", "batch_id": batch_id, "count": len(validated)},
+        idempotency_key=idempotency_key,
+    )
+    if not payment.success:
+        raise HTTPException(status_code=400, detail=payment.error or "Wallet-Zahlung fehlgeschlagen")
 
     now = datetime.now(timezone.utc)
     order_ids = []
-    for v in validated:
-        oid = f"SMM-{secrets.token_hex(4).upper()}"
-        order_ids.append(oid)
-        await db.smm_orders.insert_one({
-            "order_id": oid,
-            "user_email": user.get("email"),
-            "user_id": user.get("id") or str(user["_id"]),
-            "service_id": v["svc"]["id"],
-            "service_name": v["svc"]["name"],
-            "platform": v["svc"]["platform"],
-            "type": v["svc"]["type"],
-            "target_url": v["item"].target_url,
-            "quantity": v["item"].quantity,
-            "total_quantity": v["item"].quantity,
-            "total_price": v["price"],
-            "status": "pending",
-            "mass_order": True,
-            "created_at": now.isoformat(),
-        })
+    try:
+        for index, v in enumerate(validated):
+            oid = f"SMM-{key_hash[:8].upper()}-{index + 1:02d}"
+            order_ids.append(oid)
+            await db.smm_orders.update_one(
+                {"order_id": oid, "user_id": user_id},
+                {"$setOnInsert": {
+                    "order_id": oid,
+                    "batch_id": batch_id,
+                    "user_email": user.get("email"),
+                    "user_id": user_id,
+                    "service_id": v["svc"]["id"],
+                    "service_name": v["svc"]["name"],
+                    "platform": v["svc"]["platform"],
+                    "type": v["svc"]["type"],
+                    "target_url": v["item"].target_url,
+                    "quantity": v["item"].quantity,
+                    "total_quantity": v["item"].quantity,
+                    "total_price": v["price"],
+                    "status": "pending_manual" if not smm_provider.is_configured() else "pending",
+                    "mass_order": True,
+                    "idempotency_key_hash": key_hash,
+                    "wallet_transaction_id": payment.transaction_id,
+                    "created_at": now.isoformat(),
+                }},
+                upsert=True,
+            )
 
-    await db.transactions.insert_one({
-        "transaction_id": f"smm_mass_{secrets.token_hex(6)}",
-        "user_id": user.get("id") or str(user["_id"]),
-        "user_email": user.get("email"),
-        "type": "smm_boost",
-        "amount": -total_price,
-        "description": f"BlitzBoost Mass-Order: {len(order_ids)} Bestellungen",
-        "status": "completed",
-        "created_at": now.isoformat(),
-    })
+        batch = {
+            "batch_id": batch_id,
+            "user_id": user_id,
+            "idempotency_key_hash": key_hash,
+            "order_ids": order_ids,
+            "total_price": total_price,
+            "wallet_transaction_id": payment.transaction_id,
+            "balance_after": payment.new_balance,
+            "status": "completed",
+            "created_at": now.isoformat(),
+        }
+        await db.smm_mass_batches.update_one(
+            {"user_id": user_id, "idempotency_key_hash": key_hash},
+            {"$setOnInsert": batch},
+            upsert=True,
+        )
+    except Exception as exc:
+        await db.smm_orders.update_many(
+            {"batch_id": batch_id, "user_id": user_id},
+            {"$set": {"status": "cancelled_rollback", "rollback_reason": str(exc)[:300]}},
+        )
+        refund = await credit_wallet(
+            user_id=user_id,
+            amount=total_price,
+            tx_type=TransactionType.REFUND,
+            description="BlitzBoost Mass-Order Rückbuchung",
+            reference=f"SMMB-REF-{key_hash[:9].upper()}",
+            source="smm_mass_rollback",
+            metadata={"batch_id": batch_id},
+            idempotency_key=f"smm-mass-refund:{idempotency_key}",
+        )
+        if not refund.success:
+            raise HTTPException(status_code=500, detail="Mass-Order und Rückbuchung benötigen manuelle Prüfung.")
+        raise HTTPException(status_code=500, detail="Mass-Order konnte nicht gespeichert werden. Zahlung wurde zurückgebucht.")
 
     return {
         "ok": True,
         "order_ids": order_ids,
         "total_orders": len(order_ids),
-        "total_price": round(total_price, 2),
-        "new_balance": round(balance - total_price, 2),
+        "total_price": total_price,
+        "new_balance": payment.new_balance,
         "message": f"{len(order_ids)} Bestellungen aufgegeben fuer EUR {total_price:.2f}",
+        "replayed": bool(payment.idempotent_replay),
     }
 
 
