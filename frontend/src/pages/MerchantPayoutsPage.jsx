@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -12,6 +12,7 @@ export default function MerchantPayoutsPage({ onBack }) {
   const [payouts, setPayouts] = useState([]);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(true);
+  const payoutAttemptKeyRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -27,10 +28,27 @@ export default function MerchantPayoutsPage({ onBack }) {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    payoutAttemptKeyRef.current = null;
+  }, [amount]);
 
   const requestPayout = async () => {
+    if (!balance?.payout_ready) {
+      toast.error(balance?.payout_block_reason || "Auszahlungsziel ist noch nicht verifiziert.");
+      return;
+    }
     try {
-      await api.createMerchantPayout({ amount_minor: Math.round(Number(amount || 0) * 100), destination_type: "bank_account", destination_reference_masked: "DE••••••1234", settlement_ids: [] });
+      if (!payoutAttemptKeyRef.current) {
+        payoutAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `merchant-payout-${crypto.randomUUID()}`
+          : `merchant-payout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      await api.createMerchantPayout({
+        amount_minor: Math.round(Number(amount || 0) * 100),
+        settlement_ids: [],
+        idempotency_key: payoutAttemptKeyRef.current,
+      });
+      payoutAttemptKeyRef.current = null;
       setAmount("");
       toast.success("Auszahlung angefragt.");
       await load();
@@ -63,7 +81,12 @@ export default function MerchantPayoutsPage({ onBack }) {
         <SectionCard title="Nächste Auszahlung" subtitle={`Geplant für ${balance.next_payout_date || "-"}`} testId="merchant-payouts-next-section">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
             <input value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Betrag in EUR" className="min-h-[52px] rounded-full border border-white/10 bg-[#071019] px-4 text-white outline-none placeholder:text-white/28" data-testid="merchant-payouts-amount-input" />
-            <button onClick={requestPayout} disabled={!Number(amount)} className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#06B6D4] px-5 text-base font-black text-black disabled:opacity-50" data-testid="merchant-payouts-request-button"><Send size={16} />Auszahlung anfragen</button>
+            <button onClick={requestPayout} disabled={!Number(amount) || !balance.payout_ready} className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#06B6D4] px-5 text-base font-black text-black disabled:opacity-50" data-testid="merchant-payouts-request-button"><Send size={16} />Auszahlung anfragen</button>
+          </div>
+          <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${balance.payout_ready ? "border-emerald-400/20 bg-emerald-400/5 text-emerald-100" : "border-amber-400/20 bg-amber-400/5 text-amber-100"}`} data-testid="merchant-payout-capability">
+            {balance.payout_ready
+              ? `Verifiziertes Auszahlungskonto: ${balance.payout_destination_masked || "hinterlegt"}`
+              : (balance.payout_block_reason || "Auszahlungskonto muss zuerst verifiziert werden.")}
           </div>
           <div className="mt-3 text-sm text-white/60">Sofortauszahlung ist für dieses Händlerkonto noch nicht verfügbar.</div>
         </SectionCard>
