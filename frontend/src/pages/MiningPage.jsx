@@ -203,7 +203,15 @@ export default function MiningPage({ onBack, onNavigate }) {
     };
   }, [fetchMiningData]);
 
+  const miningValueEnabled = !!data?.capabilities?.value_actions_enabled;
+  const requireMiningValue = () => {
+    if (miningValueEnabled) return true;
+    toast.error(data?.capabilities?.production_message || "Mining-Wertfunktionen sind noch nicht live verbunden.");
+    return false;
+  };
+
   const buyMiner = async (pkgId) => {
+    if (!requireMiningValue()) return;
     setPurchaseError(null);
     setBuying(pkgId);
     try {
@@ -226,6 +234,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const upgradeMiner = async (minerId, type) => {
+    if (!requireMiningValue()) return;
     setUpgrading(`${minerId}-${type}`);
     try {
       const r = await api("/api/mining/upgrade", { method: "POST", body: JSON.stringify({ miner_id: minerId, upgrade_type: type }) });
@@ -236,6 +245,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const withdraw = async () => {
+    if (!requireMiningValue()) return;
     const amt = parseAmountInput(withdrawAmt);
     if (!amt || amt <= 0) {
       toast.error("Bitte gültigen Betrag eingeben");
@@ -253,6 +263,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const sendBLZ = async () => {
+    if (!requireMiningValue()) return;
     const amt = parseAmountInput(sendAmt);
     if (!amt || amt <= 0 || !sendEmail) {
       toast.error("Bitte gültige Daten eingeben");
@@ -295,6 +306,7 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   // Marketplace handlers
   const listMinerForSale = async () => {
+    if (!requireMiningValue()) return;
     const price = parseFloat(listPrice);
     if (!listMiner || !price || price <= 0) return;
     setListing(true);
@@ -308,6 +320,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const buyFromMarketplace = async (listingId) => {
+    if (!requireMiningValue()) return;
     setBuyingListing(listingId);
     try {
       const r = await api("/api/mining/marketplace/buy", { method: "POST", body: JSON.stringify({ listing_id: listingId }) });
@@ -326,6 +339,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const buyLaunchpad = async (projectId) => {
+    if (!requireMiningValue()) return;
     setBuyingLaunch(projectId);
     try {
       const r = await api("/api/mining/launchpad/buy", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
@@ -355,6 +369,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const upgradeCard = async (tier) => {
+    if (!requireMiningValue()) return;
     try {
       const r = await api("/api/mining/card/upgrade", { method: "POST", body: JSON.stringify({ tier }) });
       toast.success(`Upgraded to ${r.new_tier}!`);
@@ -397,13 +412,24 @@ export default function MiningPage({ onBack, onNavigate }) {
         </motion.button>
         <div className="flex-1">
           <h1 className="text-[17px] font-bold text-white tracking-tight">{t("mining.title") || "Mining"}</h1>
-          <p className="text-[10px] text-white/30 font-medium tracking-wide">{t("mining.subtitle") || "Mine BLZ tokens with virtual rigs"}</p>
+          <p className="text-[10px] text-white/30 font-medium tracking-wide">{miningValueEnabled ? (t("mining.subtitle") || "Mining") : "Mining Preview · Live-Provider noch nicht verbunden"}</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm" style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}08`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}25` }}>
           <Star size={11} style={{ color: VIP_COLORS[vip.name] }} />
           <span className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: VIP_COLORS[vip.name] }}>{vip.name || "Bronze"}</span>
         </div>
       </div>
+
+      {!miningValueEnabled && (
+        <div className="px-5 mb-4 relative z-10" data-testid="mining-provider-unavailable">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <p className="text-[12px] font-bold text-amber-300">Mining nur als Preview</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">
+              {data?.capabilities?.production_message || "Kauf, Ertrag, Transfer und BLZ→EUR werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tab Bar */}
       <div className="px-5 mb-4 relative z-10">
@@ -452,7 +478,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="text-[13px] font-bold text-white">BlitzMine <span className="text-[9px] text-[#FFD700] font-semibold">NEU</span></p>
-                  <p className="text-[10px] text-white/60">Tippe täglich – verdiene BLZ passiv (Pi Network Style)</p>
+                  <p className="text-[10px] text-white/60">{miningValueEnabled ? "Tippe täglich – BlitzMine" : "BlitzMine Preview · keine BLZ-Erzeugung in Production"}</p>
                 </div>
                 <ChevronRight size={16} className="text-white/40" />
               </motion.button>
@@ -505,13 +531,13 @@ export default function MiningPage({ onBack, onNavigate }) {
                   </div>
                 </div>
                 <div className="flex gap-2.5 relative z-10">
-                  <motion.button data-testid="mining-withdraw-btn" onClick={() => setShowWithdraw(!showWithdraw)}
+                  <motion.button data-testid="mining-withdraw-btn" onClick={() => miningValueEnabled && setShowWithdraw(!showWithdraw)} disabled={!miningValueEnabled}
                     className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
                     style={{ background: "rgba(0,232,157,0.12)", border: "1px solid rgba(0,232,157,0.25)", color: "#00E89D" }}
                     whileTap={{ scale: 0.96 }}>
                     <ArrowUpRight size={15} /> {t("mining.withdraw") || "Auszahlen"}
                   </motion.button>
-                  <motion.button data-testid="mining-send-btn" onClick={() => setShowSend(!showSend)}
+                  <motion.button data-testid="mining-send-btn" onClick={() => miningValueEnabled && setShowSend(!showSend)} disabled={!miningValueEnabled>
                     className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
                     style={{ background: "rgba(0,194,255,0.10)", border: "1px solid rgba(0,194,255,0.22)", color: "#00C2FF" }}
                     whileTap={{ scale: 0.96 }}>
@@ -1085,8 +1111,8 @@ export default function MiningPage({ onBack, onNavigate }) {
                     <motion.button
                       data-testid="confirm-buy-btn"
                       onClick={() => buyMiner(confirmPkg.id)}
-                      disabled={buying || !canAfford}
-                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${!canAfford ? "opacity-40 cursor-not-allowed" : ""}`}
+                      disabled={buying || !canAfford || !miningValueEnabled}
+                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${(!canAfford || !miningValueEnabled) ? "opacity-40 cursor-not-allowed" : ""}`}
                       style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}
                       whileTap={canAfford ? { scale: 0.96 } : {}}>
                       {buying ? <Loader2 size={14} className="animate-spin" /> : (
