@@ -344,8 +344,93 @@ async def get_ride_requests(request: Request):
 async def accept_ride_request(request_id: str, request: Request):
     """Accept a ride request."""
     driver, _ = await get_verified_driver(request)
+
+    # Canonical customer booking path used by the current BidBlitz Taxi app.
+    canonical_ride = await db.taxi_rides.find_one({
+        "ride_id": request_id,
+        "status": "requested",
+        "rejected_driver_ids": {"$ne": driver["driver_id"]},
+    })
+    if canonical_ride:
+        if not (driver.get("is_online") or driver.get("online")):
+            raise HTTPException(status_code=400, detail="Du musst online sein")
+        if canonical_ride.get("car_type", "standard") != _driver_vehicle_type(driver):
+            raise HTTPException(status_code=400, detail="Fahrzeugklasse passt nicht zur Anfrage")
+
+        active = await db.taxi_rides.find_one({
+            "driver_id": driver["driver_id"],
+            "status": {"$in": ["accepted", "arriving", "started"]},
+        })
+        if active:
+            raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
+
+        loc = _driver_location(driver)
+        pickup = canonical_ride.get("pickup") or {}
+        try:
+            distance_to_pickup = haversine(
+                float(loc.get("lat")), float(loc.get("lng")),
+                float(pickup.get("lat")), float(pickup.get("lng")),
+            )
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Fahrer- oder Abholstandort fehlt")
+        if distance_to_pickup > 10:
+            raise HTTPException(status_code=400, detail="Anfrage liegt nicht mehr in deinem Suchradius")
+
+        scheduled_at = canonical_ride.get("scheduled_at") or (canonical_ride.get("options") or {}).get("scheduled_at")
+        if scheduled_at:
+            try:
+                scheduled_dt = datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+                if scheduled_dt.tzinfo is None:
+                    scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+                if scheduled_dt > datetime.now(timezone.utc) + timedelta(minutes=15):
+                    raise HTTPException(status_code=400, detail="Vorbestellung ist noch nicht zur Annahme freigegeben")
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+
+        now = datetime.now(timezone.utc)
+        vehicle = driver.get("vehicle") or driver.get("car") or {}
+        claim = await db.taxi_rides.update_one(
+            {
+                "ride_id": request_id,
+                "status": "requested",
+                "driver_id": None,
+            },
+            {
+                "$set": {
+                    "driver_id": driver["driver_id"],
+                    "driver_name": driver.get("name") or driver.get("user_name") or "Fahrer",
+                    "driver_phone": driver.get("phone"),
+                    "driver_car": vehicle,
+                    "driver_rating": driver.get("rating", 5.0),
+                    "driver_location": {
+                        "lat": float(loc.get("lat")),
+                        "lng": float(loc.get("lng")),
+                    },
+                    "status": "accepted",
+                    "accepted_at": now.isoformat(),
+                },
+                "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}},
+            },
+        )
+        if claim.modified_count != 1:
+            raise HTTPException(status_code=409, detail="Fahrt wurde gerade von einem anderen Fahrer angenommen")
+
+        await db.drivers.update_one(
+            {"driver_id": driver["driver_id"]},
+            {"$set": {"is_busy": True}},
+        )
+        await create_notification(
+            canonical_ride["customer_id"],
+            "Fahrer gefunden!",
+            f"Dein Fahrer ist unterwegs. Geschätzte Ankunft: {max(1, round(distance_to_pickup * 2.5))} Min.",
+            "ride_accepted",
+        )
+        updated = await db.taxi_rides.find_one({"ride_id": request_id}, {"_id": 0})
+        return {"ok": True, "ride": updated, "message": "Fahrt angenommen!"}
     
-    # Find the request
+    # Backward compatibility for legacy taxi_ride_requests.
     ride_req = await db.taxi_ride_requests.find_one({
         "request_id": request_id,
         "driver_id": driver["driver_id"],
@@ -407,6 +492,25 @@ async def accept_ride_request(request_id: str, request: Request):
 async def reject_ride_request(request_id: str, request: Request):
     """Reject a ride request."""
     driver, _ = await get_verified_driver(request)
+
+    canonical = await db.taxi_rides.find_one({
+        "ride_id": request_id,
+        "status": "requested",
+    }, {"_id": 0, "ride_id": 1})
+    if canonical:
+        now = datetime.now(timezone.utc).isoformat()
+        await db.taxi_rides.update_one(
+            {"ride_id": request_id, "status": "requested"},
+            {
+                "$addToSet": {"rejected_driver_ids": driver["driver_id"]},
+                "$push": {"dispatch_history": {
+                    "driver_id": driver["driver_id"],
+                    "action": "rejected",
+                    "at": now,
+                }},
+            },
+        )
+        return {"ok": True, "message": "Anfrage abgelehnt"}
     
     result = await db.taxi_ride_requests.update_one(
         {"request_id": request_id, "driver_id": driver["driver_id"], "status": "pending"},
