@@ -139,6 +139,24 @@ def _validate_image(uf: UploadFile, label: str):
     raise HTTPException(status_code=400, detail=f"Ungültiger Dateityp für {label} (JPG/PNG/WebP/HEIC/HEIF)")
 
 
+def _validate_saved_image_signature(path: str, label: str) -> None:
+    """Reject disguised non-image uploads even when filename/MIME look valid."""
+    try:
+        with open(path, "rb") as handle:
+            head = handle.read(32)
+    except OSError:
+        raise HTTPException(status_code=400, detail=f"{label} konnte nicht gelesen werden")
+
+    is_jpeg = len(head) >= 3 and head[:3] == b"\xff\xd8\xff"
+    is_png = head.startswith(b"\x89PNG\r\n\x1a\n")
+    is_webp = len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    is_heif = len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in {
+        b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1",
+    }
+    if not (is_jpeg or is_png or is_webp or is_heif):
+        raise HTTPException(status_code=400, detail=f"{label} ist keine gültige unterstützte Bilddatei")
+
+
 def _normalize_kyc_status(user: dict) -> tuple[str, bool]:
     raw_status = str(user.get("kyc_status") or "not_started").strip().lower()
     if raw_status == "verified":
@@ -393,7 +411,7 @@ async def submit_kyc(
             ext = "jpg"
             if fn and "." in fn:
                 ext = fn.rsplit(".", 1)[-1].lower()
-                if ext not in ("jpg", "jpeg", "png", "webp"):
+                if ext not in ("jpg", "jpeg", "png", "webp", "heic", "heif"):
                     ext = "jpg"
             return os.path.join(upload_dir, f"{prefix}_{secrets.token_hex(4)}.{ext}")
 
@@ -404,6 +422,14 @@ async def submit_kyc(
         await _save_upload(id_front, front_path)
         await _save_upload(id_back, back_path)
         await _save_upload(selfie, selfie_path)
+
+        try:
+            _validate_saved_image_signature(front_path, "Vorderseite")
+            _validate_saved_image_signature(back_path, "Rückseite")
+            _validate_saved_image_signature(selfie_path, "Selfie")
+        except HTTPException:
+            _cleanup_kyc_temp_files(front_path, back_path, selfie_path)
+            raise
 
         now = datetime.now(timezone.utc).isoformat()
 
