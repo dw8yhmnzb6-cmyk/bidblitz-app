@@ -572,71 +572,118 @@ async def get_franchise_applications(request: Request):
 
 @router.post("/claim-daily")
 async def claim_daily_bonus(request: Request):
-    """Claim daily login bonus."""
+    """Claim the daily login bonus exactly once and resume safely after retries."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     config = await get_referral_config()
-    
     if not config.get("daily_bonus_enabled", True):
         raise HTTPException(status_code=400, detail="Täglicher Bonus deaktiviert")
-    
+
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
-    
-    # Check if already claimed today
-    bonus_amount = config["daily_bonus"]
-    
-    # Record claim
+    bonus_amount = round(float(config["daily_bonus"]), 2)
     claim_id = f"daily-bonus:{user_id}:{today}"
-    try:
-        await db.daily_claims.insert_one({
-        "_id": claim_id, "user_id": user_id,
-        "date": today,
-        "amount": bonus_amount,
-        "created_at": now.isoformat(),
-        })
-    except DuplicateKeyError:
-        raise HTTPException(status_code=400, detail="Bereits heute abgeholt")
-    
-    # Credit wallet
+
+    claim = await db.daily_claims.find_one({"_id": claim_id}, {"_id": 0})
+    if claim and claim.get("status") == "completed":
+        streak = await db.user_streaks.find_one({"user_id": user_id}, {"_id": 0}) or {}
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "amount": float(claim.get("amount") or bonus_amount),
+            "streak": int(streak.get("login_streak") or 1),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Tagesbonus bereits gutgeschrieben.",
+            "replayed": True,
+        }
+
+    if not claim:
+        try:
+            await db.daily_claims.insert_one({
+                "_id": claim_id,
+                "user_id": user_id,
+                "date": today,
+                "amount": bonus_amount,
+                "status": "processing",
+                "created_at": now.isoformat(),
+            })
+        except DuplicateKeyError:
+            pass
+
     result = await credit_wallet(
         user_id=user_id,
         amount=bonus_amount,
         tx_type=TransactionType.REWARD,
         description="Täglicher Login-Bonus",
-        reference=f"DAILY-{today}",
+        reference=f"DAILY-{today}-{user_id[:8]}",
         source="daily_bonus",
-        idempotency_key=f"daily-bonus:{user_id}:{today}",
+        metadata={"claim_id": claim_id, "date": today},
+        idempotency_key=claim_id,
     )
     if not result.success:
+        await db.daily_claims.update_one(
+            {"_id": claim_id},
+            {"$set": {
+                "status": "reconciliation_required" if str(getattr(result.status, "value", result.status)) == "reconciliation_required" else "processing",
+                "wallet_error": result.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
         raise HTTPException(status_code=409, detail=result.error or "Bonus konnte nicht sicher gutgeschrieben werden")
-    
-    # Process login streak (from payment_engine)
+
+    await db.daily_claims.update_one(
+        {"_id": claim_id},
+        {"$set": {
+            "status": "wallet_credited",
+            "wallet_transaction_id": result.transaction_id,
+            "wallet_credited_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
     streak_result = await process_login_streak(user_id)
     if streak_result and not streak_result.get("success", True):
-        raise HTTPException(status_code=409, detail="Streak konnte nicht sicher verarbeitet werden")
-    
-    # Get streak info
-    streak = await db.user_streaks.find_one({"user_id": user_id})
-    current_streak = streak.get("login_streak", 1) if streak else 1
-    
-    # Notify
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "daily_bonus",
-        "title": f"€{bonus_amount:.2f} Tagesbonus!",
-        "message": f"Streak: {current_streak} Tage 🔥",
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
+        await db.daily_claims.update_one(
+            {"_id": claim_id},
+            {"$set": {
+                "status": "streak_pending",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=409, detail="Bonus ist gutgeschrieben; Streak wird beim nächsten Versuch fortgesetzt")
+
+    streak = await db.user_streaks.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    current_streak = int(streak.get("login_streak") or 1)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.daily_claims.update_one(
+        {"_id": claim_id},
+        {"$set": {
+            "status": "completed",
+            "completed_at": completed_at,
+            "streak": current_streak,
+        }},
+    )
+
+    await db.notifications.update_one(
+        {"id": f"DAILY-BONUS-{user_id}-{today}"},
+        {"$setOnInsert": {
+            "id": f"DAILY-BONUS-{user_id}-{today}",
+            "user_id": user_id,
+            "type": "daily_bonus",
+            "title": f"€{bonus_amount:.2f} Tagesbonus!",
+            "message": f"Streak: {current_streak} Tage 🔥",
+            "read": False,
+            "created_at": completed_at,
+        }},
+        upsert=True,
+    )
+
     return {
         "ok": True,
         "amount": bonus_amount,
         "streak": current_streak,
+        "new_balance": result.new_balance,
         "message": f"€{bonus_amount:.2f} gutgeschrieben!",
+        "replayed": bool(result.idempotent_replay),
     }
 
 
