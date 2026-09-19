@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart3, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent, TrendingUp, Trophy } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [buyingSaleId, setBuyingSaleId] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const flashPurchaseKeysRef = useRef({});
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -104,13 +105,29 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
       toast.error("Bitte zuerst anmelden, um einen Flash Sale zu kaufen.");
       return;
     }
+
+    if (!flashPurchaseKeysRef.current[saleId]) {
+      flashPurchaseKeysRef.current[saleId] = typeof crypto?.randomUUID === "function"
+        ? `commerce-flash-${crypto.randomUUID()}`
+        : `commerce-flash-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = flashPurchaseKeysRef.current[saleId];
+
     setBuyingSaleId(saleId);
     trackEvent("cta_click", "flash_sale_buy", saleId);
     try {
-      const result = await api.buyCommerceFlashSale(saleId, { use_shipping: false });
+      const result = await api.buyCommerceFlashSale(
+        saleId,
+        { use_shipping: false, idempotency_key: idempotencyKey },
+        idempotencyKey,
+      );
+      delete flashPurchaseKeysRef.current[saleId];
       toast.success(result.message || "Flash Sale gekauft.");
       await loadOverview();
     } catch (error) {
+      if (!error?.retryable && error?.status && error.status < 500 && error.status !== 409) {
+        delete flashPurchaseKeysRef.current[saleId];
+      }
       toast.error(error.message || "Kauf fehlgeschlagen.");
     } finally {
       setBuyingSaleId("");
