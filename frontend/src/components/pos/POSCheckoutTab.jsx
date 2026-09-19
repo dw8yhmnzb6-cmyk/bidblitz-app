@@ -320,7 +320,14 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
       const body = { cart_id, method: paymentMethod };
       if (paymentMethod === "cash") body.cash_received = parseFloat(cashReceived || totals.total);
-      if (paymentMethod === "card_external") body.card_reference = cardRef || `CARD-${Date.now()}`;
+      if (paymentMethod === "card_external") {
+        const providerReference = cardRef.trim();
+        if (!providerReference) {
+          toast.error("Bitte die echte Referenz des zertifizierten Kartenterminals eingeben.");
+          return;
+        }
+        body.card_reference = providerReference;
+      }
       if (paymentMethod === "barcode" && customerBarcode) body.customer_barcode = customerBarcode;
 
       const p = await apiCall("/api/pos/payment/create", { method: "POST", body });
