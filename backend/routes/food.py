@@ -1569,70 +1569,62 @@ async def restaurant_order_ready(request: Request):
 
 @router.post("/restaurant/order/reject")
 async def restaurant_reject_order(request: Request):
-    """Restaurant rejects an order with refund."""
-    from core.payment_engine import credit_wallet, TransactionType
-    
+    """Restaurant rejects an unaccepted order through the canonical refund flow."""
     body = await request.json()
-    order_id = body.get("order_id")
-    reason = body.get("reason", "Restaurant abgelehnt")
-    
+    order_id = str(body.get("order_id") or "")
+    reason = str(body.get("reason") or "Restaurant abgelehnt")[:300]
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     restaurant = await db.food_restaurants.find_one({
         "$or": [{"owner_id": user_id}, {"user_id": user_id}]
     })
-    
     if not restaurant:
         raise HTTPException(status_code=404, detail="Kein Restaurant gefunden")
-    
+
     order = await db.food_orders.find_one({
         "order_id": order_id,
-        "restaurant_id": restaurant.get("restaurant_id")
+        "restaurant_id": restaurant.get("restaurant_id"),
     })
-    
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    if order.get("status") not in ["pending", "confirmed"]:
+
+    if order.get("status") in {"rejected", "cancelled"} and order.get("refund_status") == "completed":
+        return {
+            "ok": True,
+            "status": order.get("status"),
+            "refunded": round(float(order.get("total") or 0), 2),
+            "replayed": True,
+        }
+    if order.get("status") not in {"pending", "confirmed", "refunding"}:
         raise HTTPException(status_code=400, detail="Bestellung kann nicht abgelehnt werden")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Refund customer
-    await credit_wallet(
-        user_id=order["user_id"],
-        amount=order["total"],
-        tx_type=TransactionType.REFUND,
-        description=f"Erstattung: {restaurant.get('name')} - {reason}",
-        reference=f"REFUND-{order_id[:8].upper()}",
-        source="food_refund",
+
+    result = await _refund_food_order(
+        order_id,
+        final_status="rejected",
+        reason=reason,
     )
-    
-    await db.food_orders.update_one(
-        {"order_id": order_id},
-        {"$set": {
-            "status": "rejected",
-            "rejection_reason": reason,
-            "rejected_at": now.isoformat(),
-            "refunded": True,
-            "updated_at": now.isoformat(),
-        }}
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.notifications.update_one(
+        {"id": f"FOOD-REJECTED-{order_id}"},
+        {"$setOnInsert": {
+            "id": f"FOOD-REJECTED-{order_id}",
+            "user_id": order["user_id"],
+            "type": "order_rejected",
+            "title": "Bestellung abgelehnt",
+            "message": f"{restaurant.get('name')}: {reason}. Betrag wurde erstattet.",
+            "data": {"order_id": order_id},
+            "read": False,
+            "created_at": now_iso,
+        }},
+        upsert=True,
     )
-    
-    # Notify customer
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": order["user_id"],
-        "type": "order_rejected",
-        "title": "Bestellung abgelehnt",
-        "message": f"{restaurant.get('name')}: {reason}. Betrag wurde erstattet.",
-        "data": {"order_id": order_id},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    return {"ok": True, "status": "rejected", "refunded": order["total"]}
+    return {
+        "ok": True,
+        "status": "rejected",
+        "refunded": result["refund_amount"],
+        "replayed": result["replayed"],
+    }
 
 
 # ══════════════════════════════════════
@@ -1692,8 +1684,12 @@ async def delivery_accept_order(request: Request):
         "vehicle": driver.get("car", {}).get("type", "bike"),
     }
     
-    await db.food_orders.update_one(
-        {"order_id": order_id, "courier": None},  # Atomic check
+    claim = await db.food_orders.update_one(
+        {
+            "order_id": order_id,
+            "status": "ready",
+            "$or": [{"courier": None}, {"courier": {"$exists": False}}],
+        },
         {"$set": {
             "status": "picked_up",
             "courier": courier,
@@ -1701,6 +1697,11 @@ async def delivery_accept_order(request: Request):
             "updated_at": now.isoformat(),
         }}
     )
+    if claim.modified_count != 1:
+        current = await db.food_orders.find_one({"order_id": order_id}, {"_id": 0}) or {}
+        if current.get("courier", {}).get("user_id") == user_id and current.get("status") == "picked_up":
+            return {"ok": True, "status": "picked_up", "order_id": order_id, "replayed": True}
+        raise HTTPException(status_code=409, detail="Bestellung wurde gerade von einem anderen Fahrer übernommen")
     
     # Notify customer
     await db.notifications.insert_one({
@@ -1719,91 +1720,40 @@ async def delivery_accept_order(request: Request):
 
 @router.post("/delivery/complete")
 async def delivery_complete_order(request: Request):
-    """Delivery driver completes delivery and receives payment."""
-    from core.payment_engine import credit_wallet, TransactionType
-    
+    """Driver completes an assigned delivery through the canonical settlement flow."""
     body = await request.json()
-    order_id = body.get("order_id")
-    
+    order_id = str(body.get("order_id") or "")
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     driver = await db.drivers.find_one({"user_id": user_id, "verified": True})
     if not driver:
         raise HTTPException(status_code=403, detail="Nicht als Fahrer registriert")
-    
+
     order = await db.food_orders.find_one({"order_id": order_id})
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    if order.get("status") != "picked_up":
-        raise HTTPException(status_code=400, detail="Bestellung nicht unterwegs")
-    
+
     if order.get("courier", {}).get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Nicht deine Lieferung")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Calculate driver payment (delivery fee)
-    delivery_fee = order.get("delivery_fee", DELIVERY_FEE_BASE)
-    driver_payment = delivery_fee * 0.80  # Driver gets 80% of delivery fee
-    
-    # Pay driver
-    await credit_wallet(
-        user_id=user_id,
-        amount=driver_payment,
-        tx_type=TransactionType.DRIVER_EARNINGS,
-        description=f"Lieferung: {order.get('restaurant_name', 'Restaurant')}",
-        reference=f"DELIV-{order_id[:8].upper()}",
-        source="food_delivery",
-    )
-    
-    # Pay restaurant (subtotal minus platform fee)
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": order.get("restaurant_id")})
-    if restaurant and restaurant.get("owner_id"):
-        restaurant_payment = order.get("subtotal", 0) * 0.90  # Restaurant gets 90%
-        await credit_wallet(
-            user_id=restaurant["owner_id"],
-            amount=restaurant_payment,
-            tx_type=TransactionType.MERCHANT_CREDIT,
-            description=f"Bestellung #{order_id[:8]}",
-            reference=f"REST-{order_id[:8].upper()}",
-            source="food_order",
-        )
-    
-    await db.food_orders.update_one(
-        {"order_id": order_id},
-        {"$set": {
+    if order.get("status") == "delivered" and order.get("settlement_status") == "completed":
+        return {
+            "ok": True,
             "status": "delivered",
-            "delivered_at": now.isoformat(),
-            "driver_payment": driver_payment,
-            "updated_at": now.isoformat(),
-        }}
-    )
-    
-    # Notify customer
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": order["user_id"],
-        "type": "order_delivered",
-        "title": "Guten Appetit!",
-        "message": "Deine Bestellung wurde geliefert.",
-        "data": {"order_id": order_id},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    # Update driver stats
-    await db.drivers.update_one(
-        {"user_id": user_id},
-        {"$inc": {"total_deliveries": 1, "total_earnings": driver_payment}}
-    )
-    
+            "driver_payment": round(float(order.get("courier_share") or 0), 2),
+            "message": "Lieferung war bereits abgeschlossen.",
+            "replayed": True,
+        }
+    if order.get("status") != "picked_up":
+        raise HTTPException(status_code=400, detail="Bestellung nicht unterwegs")
+
+    result = await _settle_food_delivery(order_id)
     return {
         "ok": True,
         "status": "delivered",
-        "driver_payment": round(driver_payment, 2),
-        "message": f"Lieferung abgeschlossen! €{driver_payment:.2f} verdient.",
+        "driver_payment": round(float(result.get("courier_share") or 0), 2),
+        "message": f"Lieferung abgeschlossen! €{float(result.get('courier_share') or 0):.2f} verdient.",
+        "replayed": result["replayed"],
     }
 
 
