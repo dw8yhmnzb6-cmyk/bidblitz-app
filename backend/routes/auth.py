@@ -31,7 +31,7 @@ def _canonical_admin_identity(user: dict) -> dict:
         for a in (user.get("email_aliases") or [])
         if a
     ]
-    if (user.get("role") == "admin") or email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
+    if email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
         user["email"] = "admin@bidblitz.ae"
         user["canonical_email"] = "admin@bidblitz.ae"
         user["name"] = "BidBlitz Admin"
@@ -46,20 +46,24 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
     if not email:
         return [""]
-    if email == "admin@bidblitz.ae":
-        return [email, "admin@bitblitz.ae"]
-    if email == "admin@bidblitz.com":
-        return [email, "admin@bitblitz.com"]
-    candidates = [email]
-    if email.endswith("@bidblitz.ae"):
-        candidates.append(email[:-2] + "com")
-    elif email.endswith("@bidblitz.com"):
-        candidates.append(email[:-3] + "ae")
-    if email.endswith("@bidblitz.ae"):
-        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
-    elif email.endswith("@bidblitz.com"):
-        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
-    return list(dict.fromkeys(candidates))
+
+    canonical_admin_aliases = {
+        "admin@bidblitz.ae",
+        "admin@bitblitz.ae",
+        "admin@bid-blitz.ae",
+    }
+    legacy_disabled_admin_aliases = {
+        "admin@bidblitz.com",
+        "admin@bitblitz.com",
+        "admin@bid-blitz.com",
+    }
+    if email in canonical_admin_aliases:
+        return ["admin@bidblitz.ae", "admin@bitblitz.ae"]
+    if email in legacy_disabled_admin_aliases:
+        return ["admin@bidblitz.com", "admin@bitblitz.com"]
+
+    # Never cross-map ordinary user addresses between .ae/.com or typo domains.
+    return [email]
 
 
 def _auth_email_query(email_candidates: list[str]) -> dict:
@@ -119,6 +123,10 @@ def _verify_legacy_password(plain_password: str, user: dict) -> str | None:
 
 def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _hash_pending_2fa_token(token: str) -> str:
+    return hashlib.sha256(f"2fa:{token}".encode("utf-8")).hexdigest()
 
 
 def _hash_otp(code: str) -> str:
@@ -585,7 +593,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         pending_token = secrets.token_urlsafe(32)
         await db.pending_2fa.delete_many({"user_id": user_id})
         await db.pending_2fa.insert_one({
-            "token": pending_token,
+            "token_hash": _hash_pending_2fa_token(pending_token),
             "user_id": user_id,
             "login_email": email,
             "remember_me": bool(req.remember_me),
@@ -653,17 +661,43 @@ async def get_me(request: Request):
 
 @router.get("/ws-token")
 async def ws_token(request: Request):
-    """Liefert kurzlebiges JWT für WebSocket-Auth (5 Min). Browser können httpOnly-Cookies nicht in WS-URL einbauen."""
+    """Issue a short-lived WebSocket JWT bound to the current concrete session."""
     user = await get_current_user(request)
     import jwt as _jwt
     from core.config import JWT_SECRET, JWT_ALGORITHM
     from datetime import datetime, timedelta, timezone
+
+    raw_access = request.cookies.get("access_token")
+    if not raw_access:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            raw_access = auth_header[7:]
+    if not raw_access:
+        raise HTTPException(status_code=401, detail="Aktive Session erforderlich")
+
+    try:
+        access_payload = _jwt.decode(raw_access, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Aktive Session ungültig")
+
+    session_id = str(access_payload.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Sessiongebundenes Login erforderlich")
+
+    session = await db.sessions.find_one(
+        {"session_id": session_id, "user_id": str(user["_id"]), "is_active": True},
+        {"_id": 0, "session_id": 1},
+    )
+    if not session:
+        raise HTTPException(status_code=401, detail="Session widerrufen")
+
     payload = {
         "sub": str(user["_id"]),
         "email": user.get("email", ""),
         "exp": datetime.now(timezone.utc) + timedelta(seconds=300),
         "type": "access",
         "auth_version": int(user.get("auth_version", 0) or 0),
+        "session_id": session_id,
     }
     token = _jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return {"token": token, "expires_in": 300}
@@ -905,7 +939,13 @@ async def verify_2fa_login(request: Request, response: Response):
     if not pending_token:
         raise HTTPException(status_code=400, detail="Keine ausstehende Anmeldung")
     
-    pending = await db.pending_2fa.find_one({"token": pending_token})
+    pending_hash = _hash_pending_2fa_token(pending_token)
+    pending = await db.pending_2fa.find_one({
+        "$or": [
+            {"token_hash": pending_hash},
+            {"token": pending_token},
+        ]
+    })
     if not pending:
         raise HTTPException(status_code=400, detail="Session abgelaufen. Bitte erneut einloggen.")
     
@@ -914,7 +954,7 @@ async def verify_2fa_login(request: Request, response: Response):
     
     # Check expiry
     if pending.get("expires_at") and now > datetime.fromisoformat(pending["expires_at"]):
-        await db.pending_2fa.delete_one({"token": pending_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Session abgelaufen")
     
     # Find OTP
@@ -929,7 +969,7 @@ async def verify_2fa_login(request: Request, response: Response):
     
     if otp_doc.get("attempts", 0) >= 3:
         await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
-        await db.pending_2fa.delete_one({"token": pending_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Zu viele Versuche. Bitte erneut einloggen.")
     
     # Verify code without storing OTP plaintext.
