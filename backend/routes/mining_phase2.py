@@ -3,6 +3,8 @@ BidBlitz V2 — Mining Phase 2: Marketplace, Card, Launchpad
 """
 
 import secrets
+import hashlib
+from typing import Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -405,40 +407,115 @@ async def get_launchpad(request: Request):
 
 class LaunchpadBuyRequest(BaseModel):
     project_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/launchpad/buy")
 async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
-    """Buy a launchpad miner."""
+    """Buy one launchpad miner with canonical wallet debit and exactly-once supply reservation."""
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    idempotency_key = f"mining-launchpad:{raw_key}"
+    purchase_hash = hashlib.sha256(f"{user_id}:{req.project_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    purchase_id = f"MLP-{purchase_hash.upper()}"
 
     project = await db.mining_launchpad.find_one({"project_id": req.project_id})
     if not project:
-        return JSONResponse(status_code=404, content={"detail": "Project not found"})
+        raise HTTPException(status_code=404, detail="Project not found")
     if project.get("launch_status") != "active":
-        return JSONResponse(status_code=400, content={"detail": "Launch not active"})
-    if project.get("sold", 0) >= project.get("total_supply", 0):
-        return JSONResponse(status_code=400, content={"detail": "Sold out"})
-
-    # Check existing purchase
-    existing = await db.mining_launchpad_buys.find_one({"user_id": user_id, "project_id": req.project_id})
-    if existing:
-        return JSONResponse(status_code=400, content={"detail": "Already purchased this launch"})
-
-    # Check balance (use EUR wallet)
-    balance = user.get("balance", 0)
-    if balance < project["price_eur"]:
-        return JSONResponse(status_code=400, content={"detail": "Insufficient wallet balance"})
+        raise HTTPException(status_code=400, detail="Launch not active")
 
     now = datetime.now(timezone.utc).isoformat()
+    await db.mining_launchpad_buys.update_one(
+        {"user_id": user_id, "project_id": req.project_id},
+        {"$setOnInsert": {
+            "purchase_id": purchase_id,
+            "user_id": user_id,
+            "project_id": req.project_id,
+            "idempotency_key": idempotency_key,
+            "status": "processing",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    purchase = await db.mining_launchpad_buys.find_one(
+        {"user_id": user_id, "project_id": req.project_id},
+        {"_id": 0},
+    ) or {}
+    if purchase.get("purchase_id") != purchase_id:
+        raise HTTPException(status_code=409, detail="Dieses Launchpad-Angebot wurde bereits mit einer anderen Kaufanfrage verwendet")
 
-    # Deduct EUR
-    from bson import ObjectId
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -project["price_eur"]}})
+    if purchase.get("status") == "completed":
+        miner = await db.mining_miners.find_one({"miner_id": purchase.get("miner_id")}, {"_id": 0}) or {}
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "miner_name": miner.get("name"),
+            "hashrate": miner.get("hashrate"),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "replayed": True,
+        }
 
-    # Create miner with bonus
-    miner_id = secrets.token_hex(6)
+    price = round(float(project.get("price_eur") or 0), 2)
+    debit = await debit_wallet(
+        user_id=user_id,
+        amount=price,
+        tx_type=TransactionType.MINING_PAYMENT,
+        description=f"Launchpad: {project['name']} (Launch Edition)",
+        reference=f"MIN-LAUNCH-{purchase_hash[:12].upper()}",
+        metadata={"project_id": req.project_id, "purchase_id": purchase_id, "kind": "mining_launchpad"},
+        idempotency_key=idempotency_key,
+    )
+    if not debit.success:
+        raise HTTPException(status_code=400, detail=debit.error or "Wallet-Zahlung fehlgeschlagen")
+
+    marker_field = f"purchase_markers.{purchase_hash}"
+    latest_project = await db.mining_launchpad.find_one({"project_id": req.project_id}) or project
+    marker_exists = bool((latest_project.get("purchase_markers") or {}).get(purchase_hash))
+    if not marker_exists:
+        reserve = await db.mining_launchpad.update_one(
+            {
+                "project_id": req.project_id,
+                "launch_status": "active",
+                "sold": {"$lt": int(project.get("total_supply") or 0)},
+                marker_field: {"$exists": False},
+            },
+            {
+                "$inc": {"sold": 1},
+                "$set": {
+                    marker_field: {
+                        "purchase_id": purchase_id,
+                        "user_id": user_id,
+                        "reserved_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
+            },
+        )
+        if reserve.modified_count != 1:
+            latest_project = await db.mining_launchpad.find_one({"project_id": req.project_id}) or {}
+            if not (latest_project.get("purchase_markers") or {}).get(purchase_hash):
+                refund = await credit_wallet(
+                    user_id=user_id,
+                    amount=price,
+                    tx_type=TransactionType.REFUND,
+                    description="Mining Launchpad Rückerstattung",
+                    reference=f"MIN-LAUNCH-REF-{purchase_hash[:10].upper()}",
+                    source="mining_launchpad_sold_out",
+                    metadata={"project_id": req.project_id, "purchase_id": purchase_id},
+                    idempotency_key=f"mining-launchpad-refund:{purchase_id}",
+                )
+                await db.mining_launchpad_buys.update_one(
+                    {"purchase_id": purchase_id},
+                    {"$set": {"status": "refunded", "refund_transaction_id": refund.transaction_id if refund.success else None}},
+                )
+                raise HTTPException(status_code=409, detail="Launchpad ist ausverkauft. Zahlung wurde zurückgebucht.")
+
+    miner_id = f"launch_{purchase_hash[:12]}"
     miner = {
         "miner_id": miner_id,
         "user_id": user_id,
@@ -452,34 +529,41 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         "purchased_at": now,
         "icon": project.get("icon", "atom"),
         "is_launch_edition": True,
+        "purchase_id": purchase_id,
     }
-    await db.mining_miners.insert_one(miner)
-
-    # Record purchase
-    await db.mining_launchpad_buys.insert_one({
-        "user_id": user_id, "project_id": req.project_id, "purchased_at": now,
-    })
-
-    # Increment sold count
-    await db.mining_launchpad.update_one(
-        {"project_id": req.project_id}, {"$inc": {"sold": 1}},
+    await db.mining_miners.update_one(
+        {"miner_id": miner_id},
+        {"$setOnInsert": miner},
+        upsert=True,
     )
 
-    # Transaction
-    await db.mining_transactions.insert_one({
-        "txn_id": secrets.token_hex(6),
-        "user_id": user_id,
-        "type": "launchpad",
-        "amount_eur": -project["price_eur"],
-        "description": f"Launchpad: {project['name']} (Launch Edition)",
-        "created_at": now,
-    })
-
-    updated_user = await db.users.find_one({"_id": user["_id"]})
+    await db.mining_launchpad_buys.update_one(
+        {"purchase_id": purchase_id},
+        {"$set": {
+            "status": "completed",
+            "miner_id": miner_id,
+            "payment_transaction_id": debit.transaction_id,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    await db.mining_transactions.update_one(
+        {"txn_id": purchase_id},
+        {"$setOnInsert": {
+            "txn_id": purchase_id,
+            "user_id": user_id,
+            "type": "launchpad",
+            "amount_eur": -price,
+            "description": f"Launchpad: {project['name']} (Launch Edition)",
+            "wallet_transaction_id": debit.transaction_id,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
 
     return {
         "ok": True,
         "miner_name": miner["name"],
         "hashrate": miner["hashrate"],
-        "new_balance": updated_user.get("balance", 0),
+        "new_balance": debit.new_balance,
+        "replayed": debit.idempotent_replay,
     }
