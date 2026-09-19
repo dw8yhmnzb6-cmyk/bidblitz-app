@@ -591,3 +591,28 @@ def test_account_deletion_request_disables_access_and_preserves_retention_review
     assert "delete-account-password" in page_source
     assert "delete-account-confirmation" in page_source
     assert "Konto deaktivieren & Löschung beantragen" in page_source
+
+
+def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
+    market_source = (BACKEND_DIR / "routes" / "marketplace.py").read_text(encoding="utf-8")
+    commerce_source = (BACKEND_DIR / "routes" / "commerce_center.py").read_text(encoding="utf-8")
+    market_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MarketplacePage.jsx").read_text(encoding="utf-8")
+    commerce_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "CommerceCenterPage.jsx").read_text(encoding="utf-8")
+    api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+
+    assert "def _require_marketplace_idempotency_key" in market_source
+    assert '"status": "processing"' in market_source
+    assert '"purchase_claim_key": key_hash' in market_source
+    assert 'idempotency_key=f"marketplace-seller:{idempotency_key}"' in market_source
+    assert 'idempotency_key=f"marketplace-refund:{idempotency_key}"' in market_source
+    assert "shipping_cost" in market_source and "seller_amount = round(item_price - commission + shipping_cost, 2)" in market_source
+
+    assert "def _require_flash_idempotency_key" in commerce_source
+    assert '"reservation_key": key_hash' in commerce_source
+    assert 'idempotency_key=f"flash-seller:{idempotency_key}"' in commerce_source
+    assert 'idempotency_key=f"flash-refund:{idempotency_key}"' in commerce_source
+    assert "reconciliation_required" in commerce_source
+
+    assert "'Idempotency-Key': idempotencyKey" in market_page
+    assert "flashPurchaseKeysRef" in commerce_page
+    assert '"Idempotency-Key": idempotencyKey' in api_source
