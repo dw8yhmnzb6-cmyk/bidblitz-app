@@ -894,59 +894,194 @@ async def place_bid(req: BidRequest, request: Request):
 
 # ── Process auto-bids after a manual bid ──
 async def process_auto_bids(auction_id: str, last_bidder_id: str):
-    """Check if any auto-bidders should respond to this bid."""
+    """Place at most one race-safe auto-bid in response to a committed bid."""
     auto_bids = await db.auto_bids.find(
         {"auction_id": auction_id, "active": True, "user_id": {"$ne": last_bidder_id}}
-    ).to_list(50)
+    ).sort("updated_at", 1).to_list(50)
 
     for ab in auto_bids:
-        if ab["bids_placed"] >= ab["max_bids"]:
-            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        max_bids = int(ab.get("max_bids") or 0)
+        placed = int(ab.get("bids_placed") or 0)
+        if placed >= max_bids:
+            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False, "processing": False}})
+            continue
+
+        processing_until = ab.get("processing_until")
+        if ab.get("processing") and processing_until and processing_until > now_iso:
+            continue
+
+        next_slot = placed + 1
+        lock_until = (now + timedelta(seconds=30)).isoformat()
+        claimed = await db.auto_bids.update_one(
+            {
+                "_id": ab["_id"],
+                "active": True,
+                "bids_placed": placed,
+                "$or": [
+                    {"processing": {"$ne": True}},
+                    {"processing_until": {"$lte": now_iso}},
+                    {"processing_until": None},
+                ],
+            },
+            {
+                "$set": {
+                    "processing": True,
+                    "processing_slot": next_slot,
+                    "processing_until": lock_until,
+                    "processing_started_at": now_iso,
+                },
+                "$inc": {"bids_placed": 1},
+            },
+        )
+        if claimed.modified_count != 1:
             continue
 
         user = await db.users.find_one({"_id": ObjectId(ab["user_id"])})
-        if not user or user.get("bid_credits", 0) < 1:
-            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+        if not user:
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {"$set": {"active": False, "processing": False, "processing_until": None}},
+            )
             continue
 
-        auction = await db.auctions.find_one({"auction_id": auction_id})
-        if not auction or auction["status"] != "active":
-            break
+        if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"active": False, "processing": False, "processing_until": None, "disabled_reason": "kyc_required"},
+                },
+            )
+            continue
 
-        now = datetime.now(timezone.utc)
-        now_iso = now.isoformat()
-        if auction["ends_at"] < now_iso:
-            break
+        op_hash = hashlib.sha256(f"auto:{auction_id}:{str(ab['_id'])}:{next_slot}".encode("utf-8")).hexdigest()[:20]
+        bid_doc_id = f"AUBID-{op_hash}"
+        credit_state = await _reserve_bid_credit_once(user["_id"], op_hash, auction_id)
+        if credit_state == "insufficient":
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"active": False, "processing": False, "processing_until": None, "disabled_reason": "no_credits"},
+                },
+            )
+            continue
 
-        # Deduct credit
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": -1}})
+        applied_result = None
+        for _ in range(8):
+            snapshot = await db.auctions.find_one({"auction_id": auction_id})
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+            if not snapshot or snapshot.get("status") != "active" or snapshot.get("ends_at", "") <= now_iso:
+                await _refund_reserved_bid_credit(user["_id"], op_hash, auction_id, "auction_ended")
+                await db.auto_bids.update_one(
+                    {"_id": ab["_id"]},
+                    {
+                        "$inc": {"bids_placed": -1},
+                        "$set": {"active": False, "processing": False, "processing_until": None},
+                    },
+                )
+                return
 
-        new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
-        current_ends = datetime.fromisoformat(auction["ends_at"])
-        remaining = (current_ends - now).total_seconds()
-        if remaining <= FINAL_BATTLE_THRESHOLD:
-            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-        elif remaining < TIMER_EXTENSION_SECONDS:
-            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-        else:
-            new_ends = current_ends
+            existing_result = _read_bid_operation_result(snapshot, op_hash)
+            if existing_result:
+                applied_result = existing_result
+                break
 
-        await db.auctions.update_one(
-            {"auction_id": auction_id},
-            {"$set": {"current_price": new_price, "ends_at": new_ends.isoformat(),
-                      "last_bidder_id": ab["user_id"], "last_bidder_name": user.get("name", "Anonymous")},
-             "$inc": {"total_bids": 1}},
+            current_price = float(snapshot.get("current_price") or 0)
+            new_price = round(current_price + PRICE_INCREMENT, 2)
+            current_ends = datetime.fromisoformat(snapshot["ends_at"])
+            remaining = (current_ends - now).total_seconds()
+            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
+            new_ends_iso = new_ends.isoformat()
+            total_after = int(snapshot.get("total_bids") or 0) + 1
+            result_field = f"bid_operation_results.{op_hash}"
+            op_result = {"p": new_price, "e": new_ends_iso, "n": total_after, "t": now_iso}
+
+            updated = await db.auctions.update_one(
+                {
+                    "auction_id": auction_id,
+                    "status": "active",
+                    "current_price": snapshot.get("current_price"),
+                    "ends_at": snapshot.get("ends_at"),
+                    result_field: {"$exists": False},
+                },
+                {
+                    "$set": {
+                        "current_price": new_price,
+                        "ends_at": new_ends_iso,
+                        "last_bidder_id": ab["user_id"],
+                        "last_bidder_name": user.get("name", "Anonymous"),
+                        result_field: op_result,
+                    },
+                    "$inc": {"total_bids": 1},
+                },
+            )
+            if updated.modified_count == 1:
+                applied_result = op_result
+                break
+
+        if not applied_result:
+            latest = await db.auctions.find_one({"auction_id": auction_id}) or {}
+            applied_result = _read_bid_operation_result(latest, op_hash)
+
+        if not applied_result:
+            await _refund_reserved_bid_credit(user["_id"], op_hash, auction_id, "contention")
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"processing": False, "processing_until": None},
+                },
+            )
+            continue
+
+        spent_ok = await _mark_bid_credit_spent(
+            user["_id"],
+            op_hash,
+            auction_id,
+            float(applied_result["p"]),
         )
+        if not spent_ok:
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {"$set": {"processing": False, "processing_until": None, "disabled_reason": "credit_reconciliation"}},
+            )
+            return
 
         bid_record = {
-            "bid_id": secrets.token_hex(6), "auction_id": auction_id,
-            "user_id": ab["user_id"], "user_name": user.get("name", "Anonymous"),
-            "bid_price": new_price, "created_at": now_iso, "is_auto": True,
+            "bid_id": f"BID-{op_hash.upper()}",
+            "auction_id": auction_id,
+            "user_id": ab["user_id"],
+            "user_name": user.get("name", "Anonymous"),
+            "bid_price": float(applied_result["p"]),
+            "created_at": applied_result["t"],
+            "ends_at_after": applied_result["e"],
+            "total_bids_after": int(applied_result["n"]),
+            "operation_key": op_hash,
+            "is_auto": True,
         }
-        await db.auction_bids.insert_one(bid_record)
+        await db.auction_bids.update_one(
+            {"_id": bid_doc_id},
+            {"$setOnInsert": bid_record},
+            upsert=True,
+        )
 
-        await db.auto_bids.update_one({"_id": ab["_id"]}, {"$inc": {"bids_placed": 1}})
-        break  # Only one auto-bid per trigger
+        await db.auto_bids.update_one(
+            {"_id": ab["_id"]},
+            {
+                "$set": {
+                    "processing": False,
+                    "processing_until": None,
+                    "last_bid_at": applied_result["t"],
+                    "active": next_slot < max_bids,
+                },
+                "$unset": {"processing_slot": ""},
+            },
+        )
+        break
 
 
 # ── Set Auto-Bid ──
@@ -960,6 +1095,15 @@ async def set_auto_bid(req: AutoBidRequest, request: Request):
     """Set auto-bid for an auction."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um Auto-Bid zu aktivieren.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
 
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
     if not auction or auction["status"] != "active":
