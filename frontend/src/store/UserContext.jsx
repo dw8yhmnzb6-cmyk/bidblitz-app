@@ -64,6 +64,7 @@ const guestState = {
   kyc_verified: false,
   requires2FA: false,
   twoFAEmailHint: '',
+  twoFAMethod: '',
 };
 
 function mapUser(u) {
@@ -123,7 +124,14 @@ function authReducer(state, action) {
       return state;
     }
     case AUTH_ACTIONS.SET_2FA_PENDING:
-      return { ...state, requires2FA: true, twoFAEmailHint: action.payload || '', isLoading: false, error: null };
+      return {
+        ...state,
+        requires2FA: true,
+        twoFAEmailHint: action.payload?.emailHint || '',
+        twoFAMethod: action.payload?.method || 'email',
+        isLoading: false,
+        error: null,
+      };
     case AUTH_ACTIONS.LOGOUT:
       try { localStorage.removeItem('bidblitz_mode'); } catch (storageError) { void storageError; }
       return { ...guestState, sessionReady: true };
@@ -185,7 +193,13 @@ export function UserProvider({ children }) {
       
       // Check if 2FA is required
       if (response.requires_2fa) {
-        dispatch({ type: AUTH_ACTIONS.SET_2FA_PENDING, payload: response.email_hint || '' });
+        dispatch({
+          type: AUTH_ACTIONS.SET_2FA_PENDING,
+          payload: {
+            emailHint: response.email_hint || '',
+            method: response.two_factor_method || 'email',
+          },
+        });
         return '2fa_required';
       }
       
@@ -207,14 +221,15 @@ export function UserProvider({ children }) {
   }, []);
 
   const verify2FA = useCallback(async (code) => {
-    if (!code || code.length !== 6) {
-      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: '6-stelliger Code erforderlich' });
+    const normalized = String(code || '').trim().toUpperCase();
+    if (![6, 8].includes(normalized.length)) {
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: 'Gültiger 2FA-Code erforderlich' });
       return false;
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
       purgeLegacyAuthStorage();
-      const user = await api.verify2FA({ code });
+      const user = await api.verify2FA({ code: normalized });
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
     } catch (err) {
@@ -322,6 +337,7 @@ export function UserProvider({ children }) {
     dark_mode: state.dark_mode,
     requires2FA: state.requires2FA,
     twoFAEmailHint: state.twoFAEmailHint,
+    twoFAMethod: state.twoFAMethod,
     login,
     verify2FA,
     cancel2FA,
