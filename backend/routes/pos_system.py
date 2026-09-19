@@ -1062,6 +1062,7 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
         reference=payment["payment_id"],
         merchant_name=cart.get("merchant_name", ""),
         metadata={"payment_id": payment["payment_id"], "store_id": cart["store_id"]},
+        idempotency_key=f"pos-customer-debit:{payment['payment_id']}",
     )
     if not debit.success:
         await db.pos_payments.update_one(
@@ -1114,9 +1115,19 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
             if rollback.success:
                 raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
             raise HTTPException(status_code=500, detail="Händlergutschrift und automatische Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+        settlement_marker = f"settlement_markers.{payment['payment_id'].replace('.', '_')}"
         await db.pos_merchants.update_one(
-            {"merchant_id": cart["merchant_id"]},
-            {"$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total}},
+            {"merchant_id": cart["merchant_id"], settlement_marker: {"$exists": False}},
+            {
+                "$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total},
+                "$set": {
+                    settlement_marker: {
+                        "amount": net_to_merchant,
+                        "gross": total,
+                        "created_at": now_iso(),
+                    }
+                },
+            },
         )
 
     # Mark payment paid
