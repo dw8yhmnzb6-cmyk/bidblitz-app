@@ -15,7 +15,7 @@ const POWER_RANGES = [
   { label: "150+ kW (HPC)", min: 150, max: 999 },
 ];
 
-export default function LadesaeulenPage({ onBack }) {
+export default function LadesaeulenPage({ onBack, onNavigate }) {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,6 +31,7 @@ export default function LadesaeulenPage({ onBack }) {
   const [sessions, setSessions] = useState([]);
   const [tab, setTab] = useState("stations"); // stations | charging | history
   const [error, setError] = useState("");
+  const [mode, setMode] = useState("live_ocpp");
   const [timer, setTimer] = useState(0);
   const timerRef = useRef(null);
 
@@ -44,6 +45,7 @@ export default function LadesaeulenPage({ onBack }) {
       const r=await fetch(`${API}/api/ladesaeulen/stations?${params}`);
       const d=await r.json();
       let filtered = d.stations || [];
+      setMode(d.mode || "live_ocpp");
       // Client-side power filter
       if(powerRange.min > 0 || powerRange.max < 999) {
         filtered = filtered.filter(s => s.power_kw >= powerRange.min && s.power_kw <= powerRange.max);
@@ -55,7 +57,19 @@ export default function LadesaeulenPage({ onBack }) {
 
   const loadWallet = async()=>{try{const r=await fetch(`${API}/api/auth/me`,{credentials:"include"});if(r.ok){const d=await r.json();setWalletBalance(d.balance);}}catch{}};
 
-  const checkActive = async()=>{try{const r=await fetch(`${API}/api/ladesaeulen/active-session`,{credentials:"include"});if(r.ok){const d=await r.json();if(d.session){setCharging(d.session);setTab("charging");}}}catch{}};
+  const checkActive = async()=>{try{
+    const r=await fetch(`${API}/api/ladesaeulen/active-session`,{credentials:"include"});
+    if(r.ok){
+      const d=await r.json();
+      if(d.session){
+        if(d.mode==="live_ocpp" && onNavigate){
+          onNavigate(`/ev/session/${d.session.session_id}`);
+          return;
+        }
+        setCharging(d.session);setTab("charging");
+      }
+    }
+  }catch{}};
 
   const loadHistory = async()=>{try{const r=await fetch(`${API}/api/ladesaeulen/my-sessions`,{credentials:"include"});if(r.ok){const d=await r.json();setSessions(d.sessions||[]);}}catch{}};
 
@@ -69,10 +83,22 @@ export default function LadesaeulenPage({ onBack }) {
     }else{if(timerRef.current)clearInterval(timerRef.current);setTimer(0);}
   },[charging]);
 
-  const startCharge = async(stationId)=>{
+  const startCharge = async(station)=>{
     setError("");
+    if(station?.live_ocpp){
+      if(!station.available_connector_id){
+        setError("Aktuell ist kein freier Live-Stecker verfügbar.");
+        return;
+      }
+      if(!onNavigate){
+        setError("Live-Ladeansicht ist nicht erreichbar.");
+        return;
+      }
+      onNavigate(`/ev/start/${encodeURIComponent(station.charge_point_id || station.station_id)}/${station.available_connector_id}`);
+      return;
+    }
     try{
-      const r=await fetch(`${API}/api/ladesaeulen/start`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({station_id:stationId})});
+      const r=await fetch(`${API}/api/ladesaeulen/start`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({station_id:station.station_id})});
       const d=await r.json();
       if(r.ok){setCharging(d.session);setWalletBalance(d.wallet_balance);setTab("charging");setSelected(null);}
       else{setError(d.detail||"Fehler beim Starten");}
@@ -184,15 +210,25 @@ export default function LadesaeulenPage({ onBack }) {
         <div className="rounded-xl p-3" style={{background:"rgba(16,185,129,0.05)",border:"1px solid rgba(16,185,129,0.15)"}}>
           <div className="text-xs font-semibold mb-2" style={{color:"#10B981"}}>Bezahlung via BidBlitz Wallet</div>
           <div className="space-y-1 text-[10px]" style={{color:"var(--text-secondary,#aaa)"}}>
-            <div className="flex justify-between"><span>Reservierung beim Start</span><span>5,00€</span></div>
-            <div className="flex justify-between"><span>Abrechnung pro kWh</span><span>{s.price_per_kwh}€</span></div>
-            <div className="flex justify-between text-green-400"><span>Cashback</span><span>3% zurück</span></div>
+            {s.live_ocpp ? (
+              <>
+                <div className="flex justify-between"><span>Wallet-Autorisierung</span><span>bis 50,00€</span></div>
+                <div className="flex justify-between"><span>Abrechnung pro kWh</span><span>{s.price_per_kwh}€</span></div>
+                <div className="flex justify-between text-green-400"><span>Hardware</span><span>Live OCPP</span></div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between"><span>Test-Reservierung</span><span>5,00€</span></div>
+                <div className="flex justify-between"><span>Abrechnung pro kWh</span><span>{s.price_per_kwh}€</span></div>
+                <div className="flex justify-between text-amber-400"><span>Modus</span><span>Test</span></div>
+              </>
+            )}
           </div>
         </div>
 
         {s.slots_available>0?(
-          <button onClick={()=>startCharge(s.station_id)} className="w-full py-3.5 rounded-xl font-semibold text-sm text-black flex items-center justify-center gap-2" style={{background:"#10B981"}} data-testid="ev-start">
-            <BatteryCharging size={18}/>Freischalten & Laden — Bezahlung via Wallet
+          <button onClick={()=>startCharge(s)} className="w-full py-3.5 rounded-xl font-semibold text-sm text-black flex items-center justify-center gap-2" style={{background:"#10B981"}} data-testid="ev-start">
+            <BatteryCharging size={18}/>{s.live_ocpp ? "Live-Ladevorgang starten" : "Test-Ladevorgang starten"}
           </button>
         ):(<div className="text-center py-3 rounded-xl text-sm font-medium" style={{background:"rgba(245,158,11,0.1)",color:"#F59E0B"}}>Alle Ladepunkte belegt</div>)}
       </div>
@@ -206,7 +242,7 @@ export default function LadesaeulenPage({ onBack }) {
           <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:"var(--bg-card,#111)"}} data-testid="ev-back"><ArrowLeft size={20} style={{color:"var(--text-primary,#fff)"}}/></button>
           <div className="flex-1">
             <h1 className="text-lg font-bold" style={{color:"var(--text-primary,#fff)"}}>Ladesäulen</h1>
-            <p className="text-[10px]" style={{color:"var(--text-secondary,#888)"}}>Bezahlung via BidBlitz Wallet · 3% Cashback</p>
+            <p className="text-[10px]" style={{color:"var(--text-secondary,#888)"}}>{mode==="live_ocpp" ? "Live OCPP · BidBlitz Wallet" : "Testmodus · keine echte Hardware"}</p>
           </div>
           {walletBalance!=null&&(<div className="text-right"><div className="text-xs font-bold" style={{color:"#00C2FF"}}>{walletBalance.toFixed(2)}€</div><div className="text-[9px]" style={{color:"var(--text-secondary,#888)"}}>Guthaben</div></div>)}
         </div>
