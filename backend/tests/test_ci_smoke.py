@@ -1341,3 +1341,23 @@ def test_gift_cards_fail_closed_without_verified_provider_and_ui_matches_backend
     assert "idempotency_key: idempotencyKey" in page
     assert "giftcard-provider-unavailable" in page
     assert "capabilities.purchase_available" in page
+
+
+def test_event_ticket_inventory_and_wallet_settlement_are_exactly_once():
+    backend = (BACKEND_DIR / "routes" / "events.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "EventBookingPage.jsx").read_text(encoding="utf-8")
+
+    assert "Idempotency-Key erforderlich" in backend
+    assert 'ticket_id = f"EVT-{key_hash.upper()}"' in backend
+    assert '"$expr": {' in backend
+    assert 'marker_field = f"ticket_reservations.{marker_hash}"' in backend
+    assert 'idempotency_key=f"event:payment:{ticket_id}"' in backend
+    assert 'idempotency_key=f"event:organizer:{ticket_id}"' in backend
+    assert 'idempotency_key=f"event:cashback:{ticket_id}"' in backend
+    assert '"$setOnInsert": {' in backend
+    assert '"type": "event"' in backend
+    assert 'user.get("kyc_status") != "approved"' in backend
+
+    assert "purchaseAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
