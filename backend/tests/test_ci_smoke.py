@@ -1494,6 +1494,7 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     arcade = (BACKEND_DIR / "routes" / "arcade.py").read_text(encoding="utf-8")
     store = (BACKEND_DIR / "routes" / "rewards_store.py").read_text(encoding="utf-8")
     rewards = (BACKEND_DIR / "routes" / "rewards.py").read_text(encoding="utf-8")
+    quests = (BACKEND_DIR / "routes" / "quests.py").read_text(encoding="utf-8")
     rewards_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RewardsPage.jsx").read_text(encoding="utf-8")
     app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
 
@@ -1539,6 +1540,11 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert "valueRandomRewardsEnabled = hub?.value_random_rewards_enabled === true" in rewards_page
     assert "reward-value-games-unavailable" in rewards_page
     assert 'title="Reward Plinko"' in app
+
+    assert "BLZ-Quest-Belohnungen sind in Production deaktiviert." in quests
+    assert "if not TEST_MODE:" in quests
+    assert 'case "/quests":' in app
+    assert 'title="Quests"' in app
 
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
