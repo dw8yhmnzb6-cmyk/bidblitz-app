@@ -42,6 +42,7 @@ class TransactionType(str, Enum):
     RESALE_PURCHASE = "resale_purchase"
     RESALE_SALE = "resale_sale"
     REWARD = "reward"  # Gaming rewards
+    LOYALTY_CASHBACK = "loyalty_cashback"
     AUCTION_BID = "auction_bid"
     AUCTION_WIN = "auction_win"
     MINING_PURCHASE = "mining_purchase"
