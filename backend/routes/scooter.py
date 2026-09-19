@@ -256,7 +256,15 @@ async def get_active_ride_alias(request: Request):
         {"user_id": uid, "status": {"$in": ["active", "paused"]}},
         {"_id": 0},
     )
-    return {"ride": ride}
+    if ride:
+        ride["rental_id"] = ride.get("ride_id")
+        ride["started_at"] = ride.get("start_time")
+    return {
+        "has_active_rental": bool(ride),
+        "has_active": bool(ride),
+        "rental": ride,
+        "ride": ride,
+    }
 
 
 @router.get("/{scooter_id}")
@@ -390,9 +398,14 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     
     ride.pop("_id", None)
     
+    ride["rental_id"] = ride.get("ride_id")
+    ride["started_at"] = ride.get("start_time")
+    ride["scooter_model"] = scooter.get("model")
+
     return {
         "ok": True,
         "ride": ride,
+        "rental": ride,
         "scooter": {
             "scooter_id": scooter_id,
             "model": scooter.get("model"),
@@ -412,6 +425,7 @@ class EndRideRequest(BaseModel):
     scooter_id: Optional[str] = None
     end_lat: Optional[float] = None
     end_lng: Optional[float] = None
+    end_location: Optional[dict] = None
     parking_photo_url: Optional[str] = None  # Photo proof of correct parking
 
 
@@ -433,7 +447,7 @@ async def end_ride(req: EndRideRequest, request: Request):
     user_id = str(user["_id"])
     
     # Find active ride
-    query = {"user_id": user_id, "status": "active"}
+    query = {"user_id": user_id, "status": {"$in": ["active", "paused"]}}
     if req.ride_id:
         query["ride_id"] = req.ride_id
     elif req.scooter_id:
@@ -482,9 +496,14 @@ async def end_ride(req: EndRideRequest, request: Request):
             # Continue anyway - scooter may auto-lock
     
     # Determine end location
-    end_location = ride.get("start_location", {})
-    if req.end_lat and req.end_lng:
-        end_location = {"lat": req.end_lat, "lng": req.end_lng}
+    end_location = ride.get("current_location") or ride.get("start_location", {})
+    end_lat = req.end_lat
+    end_lng = req.end_lng
+    if req.end_location:
+        end_lat = req.end_location.get("lat")
+        end_lng = req.end_location.get("lng")
+    if end_lat is not None and end_lng is not None:
+        end_location = {"lat": float(end_lat), "lng": float(end_lng)}
     
     # Calculate distance
     start_loc = ride.get("start_location", {})
@@ -535,6 +554,7 @@ async def end_ride(req: EndRideRequest, request: Request):
         "summary": {
             "ride_id": ride_id,
             "duration_minutes": round(duration_minutes),
+            "total_minutes": round(duration_minutes),
             "distance_km": round(distance_km, 2),
             "unlock_fee": UNLOCK_FEE,
             "ride_cost": ride_cost,
