@@ -613,68 +613,157 @@ async def create_nfc_session(req: NfcSessionCreate, request: Request):
 
 @router.post("/nfc/session/confirm")
 async def confirm_nfc_session(req: NfcSessionConfirm, request: Request):
-    """
-    Customer confirms (server-side) the NFC tap by calling this endpoint
-    from the BidBlitz mobile app. No fake hardware confirmations are accepted.
-    """
+    """Customer confirms an NFC/QR fallback session exactly once."""
     user = await get_current_user(request)
+    user_id = str(user["_id"])
+
     sess = await db.pos_nfc_sessions.find_one({"session_id": req.session_id})
     if not sess:
         raise HTTPException(status_code=404, detail="Session nicht gefunden")
-    if sess["status"] != PAYMENT_STATUS_PENDING:
-        raise HTTPException(status_code=400, detail=f"Status {sess['status']}")
 
-    # Expiry check
+    if sess.get("status") == PAYMENT_STATUS_PAID:
+        if sess.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Session gehört einem anderen Nutzer")
+        return {
+            "ok": True,
+            "session_id": req.session_id,
+            "amount": float(sess["amount"]),
+            "status": PAYMENT_STATUS_PAID,
+            "merchant_received": float(sess.get("net_to_merchant") or 0),
+            "fee": float(sess.get("fee") or 0),
+            "replayed": True,
+        }
+    if sess.get("status") not in {PAYMENT_STATUS_PENDING, "processing"}:
+        raise HTTPException(status_code=400, detail=f"Status {sess.get('status')}")
+
     try:
         if datetime.fromisoformat(sess["expires_at"]) < datetime.now(timezone.utc):
             await db.pos_nfc_sessions.update_one(
-                {"session_id": req.session_id}, {"$set": {"status": PAYMENT_STATUS_EXPIRED}}
+                {"session_id": req.session_id, "status": PAYMENT_STATUS_PENDING},
+                {"$set": {"status": PAYMENT_STATUS_EXPIRED}},
             )
             raise HTTPException(status_code=400, detail="Session abgelaufen")
     except (KeyError, ValueError):
         pass
 
-    amount = float(sess["amount"])
-    # Atomic wallet debit (uses payment_engine)
+    claim = await db.pos_nfc_sessions.update_one(
+        {"session_id": req.session_id, "status": PAYMENT_STATUS_PENDING},
+        {"$set": {"status": "processing", "user_id": user_id, "processing_at": now_iso()}},
+    )
+    if claim.modified_count != 1:
+        fresh = await db.pos_nfc_sessions.find_one({"session_id": req.session_id}) or {}
+        if fresh.get("status") == PAYMENT_STATUS_PAID and fresh.get("user_id") == user_id:
+            return {
+                "ok": True,
+                "session_id": req.session_id,
+                "amount": float(fresh["amount"]),
+                "status": PAYMENT_STATUS_PAID,
+                "merchant_received": float(fresh.get("net_to_merchant") or 0),
+                "fee": float(fresh.get("fee") or 0),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Session wird bereits verarbeitet")
+
+    amount = round(float(sess["amount"]), 2)
     debit = await debit_wallet(
-        user_id=str(user["_id"]),
+        user_id=user_id,
         amount=amount,
         tx_type=TransactionType.MERCHANT_PAYMENT,
         description=f"NFC POS — {sess['register_id']}",
         reference=sess["session_id"],
         metadata={"session_id": sess["session_id"], "store_id": sess["store_id"]},
+        idempotency_key=f"pos-nfc-debit:{sess['session_id']}",
     )
     if not debit.success:
         await db.pos_nfc_sessions.update_one(
-            {"session_id": req.session_id},
+            {"session_id": req.session_id, "status": "processing"},
             {"$set": {"status": "failed", "error": debit.error}},
         )
-        raise HTTPException(status_code=400, detail=debit.error)
+        raise HTTPException(status_code=400, detail=debit.error or "Zahlung fehlgeschlagen")
 
     merchant = await db.pos_merchants.find_one({"merchant_id": sess["merchant_id"]})
-    fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE)) if merchant else DEFAULT_MERCHANT_FEE
+    if not merchant or not merchant.get("owner_id"):
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.REFUND,
+            description=f"NFC Rollback {sess['session_id']}",
+            reference=f"NFC-RB-{sess['session_id']}",
+            source="pos_inventory.nfc.rollback",
+            metadata={"session_id": sess["session_id"], "reason": "merchant_missing"},
+            idempotency_key=f"pos-nfc-rollback:{sess['session_id']}",
+        )
+        await db.pos_nfc_sessions.update_one(
+            {"session_id": req.session_id},
+            {"$set": {
+                "status": "failed",
+                "error": "merchant_missing",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Händlerkonto nicht abrechenbar")
+
+    fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE))
     fee = round(amount * fee_rate, 2)
     net = round(amount - fee, 2)
-    if merchant:
-        await db.users.update_one(
-            {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": net}}
-        )
-        await db.pos_merchants.update_one(
-            {"merchant_id": sess["merchant_id"]},
-            {"$inc": {"settlement_balance": net, "lifetime_volume": amount}},
-        )
 
+    credit = await credit_wallet(
+        user_id=str(merchant["owner_id"]),
+        amount=net,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"NFC Merchant Settlement {sess['session_id']}",
+        reference=f"NFC-SETTLE-{sess['session_id']}",
+        source="pos_inventory.nfc",
+        metadata={"session_id": sess["session_id"], "merchant_id": sess["merchant_id"], "store_id": sess["store_id"]},
+        idempotency_key=f"pos-nfc-credit:{sess['session_id']}",
+    )
+    if not credit.success:
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.REFUND,
+            description=f"NFC Rollback {sess['session_id']}",
+            reference=f"NFC-RB-{sess['session_id']}",
+            source="pos_inventory.nfc.rollback",
+            metadata={"session_id": sess["session_id"], "reason": "merchant_credit_failed"},
+            idempotency_key=f"pos-nfc-rollback:{sess['session_id']}",
+        )
+        await db.pos_nfc_sessions.update_one(
+            {"session_id": req.session_id},
+            {"$set": {
+                "status": "failed",
+                "error": credit.error or "merchant_credit_failed",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+            }},
+        )
+        if rollback.success:
+            raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde zurückgebucht.")
+        raise HTTPException(status_code=500, detail="NFC-Zahlung benötigt manuelle Abstimmung")
+
+    settlement_marker = f"settlement_markers.{sess['session_id'].replace('.', '_')}"
+    await db.pos_merchants.update_one(
+        {"merchant_id": sess["merchant_id"], settlement_marker: {"$exists": False}},
+        {
+            "$inc": {"settlement_balance": net, "lifetime_volume": amount},
+            "$set": {settlement_marker: {"amount": net, "gross": amount, "created_at": now_iso()}},
+        },
+    )
+
+    paid_at = now_iso()
     await db.pos_nfc_sessions.update_one(
-        {"session_id": req.session_id},
+        {"session_id": req.session_id, "status": "processing", "user_id": user_id},
         {"$set": {
             "status": PAYMENT_STATUS_PAID,
-            "user_id": str(user["_id"]),
             "fee": fee,
             "net_to_merchant": net,
-            "confirmed_at": now_iso(),
+            "confirmed_at": paid_at,
+            "customer_debit_transaction_id": debit.transaction_id,
+            "merchant_credit_transaction_id": credit.transaction_id,
         }},
     )
-    await _audit(str(user["_id"]), "nfc.confirm", {"session_id": req.session_id, "amount": amount})
+    await _audit(user_id, "nfc.confirm", {"session_id": req.session_id, "amount": amount})
 
     return {
         "ok": True,
@@ -683,6 +772,7 @@ async def confirm_nfc_session(req: NfcSessionConfirm, request: Request):
         "status": PAYMENT_STATUS_PAID,
         "merchant_received": net,
         "fee": fee,
+        "replayed": False,
     }
 
 
