@@ -616,3 +616,28 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     assert "'Idempotency-Key': idempotencyKey" in market_page
     assert "flashPurchaseKeysRef" in commerce_page
     assert '"Idempotency-Key": idempotencyKey' in api_source
+
+
+def test_two_factor_flows_use_hashed_secrets_and_configured_login_factor():
+    auth_source = (BACKEND_DIR / "routes" / "auth.py").read_text(encoding="utf-8")
+    factor_source = (BACKEND_DIR / "routes" / "two_factor.py").read_text(encoding="utf-8")
+    user_context = (BACKEND_DIR.parent / "frontend" / "src" / "store" / "UserContext.jsx").read_text(encoding="utf-8")
+    auth_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuthPage.jsx").read_text(encoding="utf-8")
+
+    assert '"method": method' in auth_source
+    assert 'if method == "totp":' in auth_source
+    assert "_hash_totp_backup_code" in auth_source
+    assert '"two_factor_method": "totp"' in auth_source
+    assert '"two_factor_method": "email"' in auth_source
+
+    assert '"code_hash": _hash_otp_code(otp)' in factor_source
+    assert '"code": otp' not in factor_source
+    assert "totp_backup_code_hashes" in factor_source
+    assert 'request.headers.get("X-Child' not in factor_source
+    assert factor_source.count('@router.post("/disable")') == 1
+    assert factor_source.count('@router.get("/status")') == 1
+
+    assert "twoFAMethod" in user_context
+    assert "[6, 8].includes(normalized.length)" in user_context
+    assert "Authenticator-App" in auth_page
+    assert "maxLength={8}" in auth_page
