@@ -343,7 +343,7 @@ def test_merchant_payout_balance_and_state_machine_contracts():
     assert 'payout.status === "pending_approval"' in admin_page
     assert 'payout.status === "processing"' in admin_page
     assert 'payout.status === "paid"' in admin_page
-    assert 'actionPayout(payout.payout_id, "returned")' in admin_page
+    assert 'onAction(payout.payout_id, "returned")' in admin_page
 
 
 def test_auction_financial_flows_are_idempotent_and_race_safe():
