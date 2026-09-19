@@ -898,143 +898,200 @@ async def _finalize_credit_if_paid(credit_id: str) -> tuple[dict, bool]:
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def process_auto_credit_payments():
-    """
-    Background task: Automatically deducts monthly credit payments from wallet.
-    Called periodically (every hour). Checks if any installment is due today.
-    """
+    """Process at most one due installment per credit per UTC day through the canonical ledger."""
+    if not CREDIT_LIVE_ENABLED:
+        return {"processed": 0, "failed": 0, "disabled": True}
+
+    pool_user_id = await _credit_pool_user_id()
+    if not pool_user_id:
+        return {"processed": 0, "failed": 0, "configuration_error": "CREDIT_POOL_EMAIL"}
+
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
-    # Find all active credits with auto_pay enabled
     active_credits = await db.credits.find({
         "status": "active",
         "auto_pay": True,
     }).to_list(500)
-    
+
     processed = 0
     failed = 0
-    
+
     for credit in active_credits:
-        schedule = credit.get("schedule", [])
-        next_month = credit.get("next_payment_month", 1)
-        
-        # Find the next unpaid installment
-        for inst in schedule:
-            if inst.get("status") == "paid":
+        user_id = str(credit.get("user_id") or "")
+        if not user_id or user_id == pool_user_id:
+            failed += 1
+            continue
+
+        schedule = list(credit.get("schedule") or [])
+        due = next(
+            (
+                item for item in schedule
+                if item.get("status") != "paid" and str(item.get("date") or "") <= today
+            ),
+            None,
+        )
+        if not due:
+            continue
+
+        month = int(due.get("month") or 0)
+        requested_amount = round(float(due.get("amount") or 0), 2)
+        if month <= 0 or requested_amount <= 0:
+            failed += 1
+            continue
+
+        op_key = f"credit:auto-repay:{credit['credit_id']}:{month}:{today}"
+        try:
+            reserved_credit, payment_amount, marker_hash, replay_marker = await _reserve_credit_repayment(
+                credit["credit_id"],
+                user_id,
+                requested_amount,
+                op_key,
+                "auto",
+            )
+        except HTTPException:
+            failed += 1
+            continue
+
+        marker = (reserved_credit.get("repayment_markers") or {}).get(marker_hash) or {}
+        if replay_marker:
+            if marker.get("status") == "completed":
                 continue
-            if inst["date"] <= today:
-                # This installment is due!
-                user_id = credit["user_id"]
-                rate = inst["amount"]
-                
-                # Check wallet balance
-                from bson import ObjectId
+            if marker.get("status") in {"failed", "reconciliation_required"}:
+                continue
+
+        payment = await transfer_between_wallets(
+            from_user_id=user_id,
+            to_user_id=pool_user_id,
+            amount=payment_amount,
+            tx_type=TransactionType.TRANSFER,
+            description=f"Kreditrate Monat {month} — {credit['credit_id']}",
+            reference=f"CREDIT-AUTO-{credit['credit_id']}-{month}",
+            metadata={
+                "credit_id": credit["credit_id"],
+                "kind": "credit_repayment",
+                "payment_type": "auto",
+                "installment_month": month,
+                "scheduled_date": due.get("date"),
+            },
+            idempotency_key=op_key,
+        )
+
+        if not payment.success:
+            status_value = str(getattr(payment.status, "value", payment.status))
+            if status_value in {"pending", "reconciliation_required"}:
+                await db.credits.update_one(
+                    {"credit_id": credit["credit_id"], f"repayment_markers.{marker_hash}.status": "reserved"},
+                    {"$set": {
+                        "status": "reconciliation_required",
+                        "reconciliation_reason": "auto_repayment_wallet_state",
+                        f"repayment_markers.{marker_hash}.status": "reconciliation_required",
+                        f"repayment_markers.{marker_hash}.error": payment.error,
+                    }},
+                )
+            else:
+                await _rollback_credit_repayment(
+                    credit["credit_id"],
+                    marker_hash,
+                    payment_amount,
+                    payment.error or "Wallet transfer failed",
+                )
                 try:
-                    user = await db.users.find_one({"_id": ObjectId(user_id)})
+                    user_doc = await db.users.find_one({"_id": ObjectId(user_id)}, {"balance": 1, "_id": 0}) or {}
                 except Exception:
-                    user = await db.users.find_one({"id": user_id})
-                
-                if not user:
-                    continue
-                
-                balance = user.get("balance", 0)
-                
-                if balance >= rate:
-                    # AUTO-PAY: Deduct from wallet
-                    await db.users.update_one(
-                        {"_id": user["_id"]},
-                        {"$inc": {"balance": -rate}}
-                    )
-                    
-                    # Mark installment as paid
-                    inst["status"] = "paid"
-                    inst["paid_at"] = datetime.now(timezone.utc).isoformat()
-                    
-                    # Update credit
-                    new_remaining = round(credit.get("remaining_amount", 0) - rate, 2)
-                    is_fully_paid = new_remaining <= 0.01
-                    
-                    update = {
-                        "remaining_amount": max(0, new_remaining),
-                        "schedule": schedule,
-                        "next_payment_month": inst["month"] + 1,
-                    }
-                    
-                    if is_fully_paid:
-                        update["status"] = "paid"
-                        update["paid_at"] = datetime.now(timezone.utc).isoformat()
-                    else:
-                        # Find next unpaid date
-                        next_unpaid = next((s for s in schedule if s.get("status") != "paid"), None)
-                        if next_unpaid:
-                            update["next_payment_date"] = next_unpaid["date"]
-                    
-                    await db.credits.update_one(
-                        {"credit_id": credit["credit_id"]},
-                        {"$set": update, "$push": {"payments": {
-                            "amount": rate,
-                            "date": datetime.now(timezone.utc).isoformat(),
-                            "remaining_after": max(0, new_remaining),
-                            "type": "auto_pay",
-                        }}}
-                    )
-                    
-                    # Transaction
-                    await db.transactions.insert_one({
-                        "tx_id": secrets.token_hex(8),
-                        "user_id": user_id,
-                        "type": "CREDIT_PAYMENT",
-                        "amount": rate,
-                        "description": f"Kreditrate Monat {inst['month']} (Auto-Pay) - ID: {credit['credit_id'][:8]}",
-                        "credit_id": credit["credit_id"],
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    })
-                    
-                    # Notify: payment successful
-                    msg = f"Kreditrate €{rate:.2f} (Monat {inst['month']}/{credit['term_months']}) wurde automatisch abgebucht."
-                    if is_fully_paid:
-                        msg += " Dein Kredit ist vollständig bezahlt!"
-                    else:
-                        msg += f" Restschuld: €{max(0,new_remaining):.2f}"
-                    
-                    await db.notifications.insert_one({
-                        "id": secrets.token_hex(8),
-                        "user_id": user_id,
-                        "type": "credit_payment",
-                        "title": "Kreditrate abgebucht",
-                        "message": msg,
-                        "read": False,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    })
-                    
-                    # Update profile
-                    profile_update = {"$inc": {"total_repaid": rate}}
-                    if is_fully_paid:
-                        profile_update["$inc"]["current_debt"] = -credit["amount"]
-                    await db.credit_profiles.update_one(
-                        {"user_id": user_id}, profile_update
-                    )
-                    
-                    processed += 1
-                    
-                else:
-                    # NOT ENOUGH BALANCE — notify user to top up
-                    shortfall = round(rate - balance, 2)
-                    
-                    await db.notifications.insert_one({
-                        "id": secrets.token_hex(8),
+                    user_doc = await db.users.find_one({"id": user_id}, {"balance": 1, "_id": 0}) or {}
+                balance = round(float(user_doc.get("balance") or 0), 2)
+                shortfall = round(max(0.0, payment_amount - balance), 2)
+                notification_id = f"credit-auto-failed:{credit['credit_id']}:{month}:{today}"
+                await db.notifications.update_one(
+                    {"_id": notification_id},
+                    {"$setOnInsert": {
+                        "_id": notification_id,
+                        "id": notification_id,
                         "user_id": user_id,
                         "type": "credit_payment_failed",
                         "title": "Kreditrate konnte nicht abgebucht werden!",
-                        "message": f"Deine Kreditrate über €{rate:.2f} konnte nicht abgebucht werden. Dir fehlen €{shortfall:.2f}. Bitte lade dein Wallet auf!",
+                        "message": (
+                            f"Deine Kreditrate über €{payment_amount:.2f} konnte nicht abgebucht werden. "
+                            f"Dir fehlen aktuell bis zu €{shortfall:.2f}. Bitte Wallet aufladen."
+                        ),
                         "read": False,
                         "created_at": datetime.now(timezone.utc).isoformat(),
                         "action_url": "/wallet",
-                    })
-                    
-                    failed += 1
-                
-                break  # Only process one installment per credit per cycle
-    
+                    }},
+                    upsert=True,
+                )
+            failed += 1
+            continue
+
+        fresh = await db.credits.find_one({"credit_id": credit["credit_id"]}) or reserved_credit
+        fresh_schedule = list(fresh.get("schedule") or [])
+        next_date = None
+        for item in fresh_schedule:
+            if int(item.get("month") or 0) == month:
+                item["status"] = "paid"
+                item["paid_at"] = datetime.now(timezone.utc).isoformat()
+                item["paid_amount"] = payment_amount
+                item["wallet_transaction_id"] = payment.transaction_id
+                break
+        next_unpaid = next((item for item in fresh_schedule if item.get("status") != "paid"), None)
+        if next_unpaid:
+            next_date = next_unpaid.get("date")
+
+        extra_set = {
+            "schedule": fresh_schedule,
+            "next_payment_month": (int(next_unpaid.get("month")) if next_unpaid else month + 1),
+            "next_payment_date": next_date,
+        }
+        if not await _complete_credit_repayment_marker(
+            credit["credit_id"],
+            marker_hash,
+            payment_amount,
+            payment.transaction_id,
+            "auto_pay",
+            extra_set=extra_set,
+        ):
+            await db.credits.update_one(
+                {"credit_id": credit["credit_id"]},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "reconciliation_reason": "auto_payment_finalize_failed",
+                }},
+            )
+            failed += 1
+            continue
+
+        paid_credit = await db.credits.find_one({"credit_id": credit["credit_id"]}) or fresh
+        if not await _record_credit_profile_repayment_once(paid_credit, payment_amount, marker_hash):
+            await db.credits.update_one(
+                {"credit_id": credit["credit_id"]},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "reconciliation_reason": "auto_payment_profile_marker_failed",
+                }},
+            )
+            failed += 1
+            continue
+
+        paid_credit, _ = await _finalize_credit_if_paid(credit["credit_id"])
+        notification_id = f"credit-auto-paid:{credit['credit_id']}:{month}"
+        await db.notifications.update_one(
+            {"_id": notification_id},
+            {"$setOnInsert": {
+                "_id": notification_id,
+                "id": notification_id,
+                "user_id": user_id,
+                "type": "credit_payment",
+                "title": "Kreditrate abgebucht",
+                "message": (
+                    f"Kreditrate €{payment_amount:.2f} (Monat {month}/{credit['term_months']}) wurde abgebucht."
+                    + (" Dein Kredit ist vollständig bezahlt!" if paid_credit.get("status") == "paid" else "")
+                ),
+                "read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        processed += 1
+
     return {"processed": processed, "failed": failed}
 
 
@@ -1093,6 +1150,8 @@ async def repay_credit(req: RepaymentRequest, request: Request):
             await db.credits.update_one(
                 {"credit_id": req.credit_id, f"repayment_markers.{marker_hash}.status": "reserved"},
                 {"$set": {
+                    "status": "reconciliation_required",
+                    "reconciliation_reason": "manual_repayment_wallet_state",
                     f"repayment_markers.{marker_hash}.status": "reconciliation_required",
                     f"repayment_markers.{marker_hash}.error": payment.error,
                 }},
