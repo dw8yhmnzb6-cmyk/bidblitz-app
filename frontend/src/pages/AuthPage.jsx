@@ -332,7 +332,9 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 </div>
                 <h2 className="text-[16px] font-semibold text-white mb-1">Bestätigungscode eingeben</h2>
                 <p className="text-[12px] text-[#555]">
-                  Code an {user.twoFAEmailHint || "deine E-Mail"} gesendet
+                  {user.twoFAMethod === "totp"
+                    ? "Code aus deiner Authenticator-App eingeben"
+                    : `Code an ${user.twoFAEmailHint || "deine E-Mail"} gesendet`}
                 </p>
               </div>
 
@@ -365,7 +367,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
               <motion.button
                 data-testid="verify-2fa-btn"
                 type="submit"
-                disabled={user.isLoading || otpCode.length !== 6}
+                disabled={user.isLoading || ![6, 8].includes(otpCode.length)}
                 className="w-full flex items-center justify-center gap-2 py-[14px] rounded-[14px] text-[13px] font-semibold transition-all disabled:opacity-40"
                 style={{
                   background: "linear-gradient(135deg, #00C2FF 0%, #0088CC 100%)",
