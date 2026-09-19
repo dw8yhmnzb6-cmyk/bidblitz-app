@@ -251,12 +251,13 @@ class BookingRepository:
     
     @classmethod
     async def create(cls, data: dict) -> dict:
-        booking_id = generate_booking_id()
+        payload = dict(data)
+        booking_id = payload.pop("booking_id", None) or generate_booking_id()
         now = datetime.now(timezone.utc).isoformat()
         
         booking = {
             "booking_id": booking_id,
-            **data,
+            **payload,
             "status": BookingStatus.PENDING.value,
             "payment_status": PaymentStatus.PENDING.value,
             "handover_record": None,
@@ -312,6 +313,8 @@ class BookingRepository:
                     BookingStatus.READY_FOR_HANDOVER.value,
                     BookingStatus.ACTIVE.value
                 ]},
+                "payment_status": PaymentStatus.PAID.value,
+                "payment_status": PaymentStatus.PAID.value,
                 "$or": [
                     {"start_date": {"$lte": end_date}, "end_date": {"$gte": start_date}},
                 ]
