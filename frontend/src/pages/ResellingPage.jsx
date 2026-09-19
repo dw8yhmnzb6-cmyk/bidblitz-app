@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, Heart, Tag, Plus, ShoppingBag, Eye, Filter } from "lucide-react";
 
@@ -14,11 +14,13 @@ export default function ResellingPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState({ title: "", description: "", category: "Sneakers", price: "", condition: "Neu", brand: "", size: "" });
   const [msg, setMsg] = useState("");
+  const purchaseAttemptKeyRef = useRef(null);
 
   const categories = ["Sneakers", "Streetwear", "Gaming", "Elektronik", "Accessoires", "Sammlerstücke"];
   const catIcons = { Sneakers: "👟", Streetwear: "👕", Gaming: "🎮", Elektronik: "📱", Accessoires: "⌚", "Sammlerstücke": "💎" };
 
   useEffect(() => { loadListings(); }, [category, search]);
+  useEffect(() => { purchaseAttemptKeyRef.current = null; }, [selected?.listing_id]);
 
   const loadListings = async () => {
     setLoading(true);
@@ -46,14 +48,35 @@ export default function ResellingPage({ onBack }) {
 
   const buyItem = async (listing) => {
     if (!window.confirm(`${listing.title} für €${listing.price.toFixed(2)} kaufen?`)) return;
+    if (!purchaseAttemptKeyRef.current) {
+      purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `resell-${crypto.randomUUID()}`
+        : `resell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseAttemptKeyRef.current;
     try {
       const res = await fetch(`${API}/api/resell/buy`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing_id: listing.listing_id }),
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          listing_id: listing.listing_id,
+          idempotency_key: idempotencyKey,
+        }),
       });
-      const d = await res.json();
-      if (res.ok) { setMsg(d.message); setSelected(null); loadListings(); }
-      else setMsg(d.detail || "Fehler");
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        purchaseAttemptKeyRef.current = null;
+        setMsg(d.message);
+        setSelected(null);
+        loadListings();
+      } else {
+        if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
+        setMsg(typeof d.detail === "string" ? d.detail : "Fehler");
+      }
     } catch { setMsg("Netzwerkfehler"); }
     setTimeout(() => setMsg(""), 4000);
   };
