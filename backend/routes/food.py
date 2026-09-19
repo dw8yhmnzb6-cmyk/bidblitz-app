@@ -284,6 +284,57 @@ def _price_food_line(menu_item: dict, cart_item: CartItem) -> dict:
     }
 
 
+async def _settle_food_order_payment(order: dict, user_id: str, idempotency_key: str) -> tuple[dict, object]:
+    from core.payment_engine import debit_wallet, TransactionType
+
+    payment_result = await debit_wallet(
+        user_id=user_id,
+        amount=round(float(order["total"]), 2),
+        tx_type=TransactionType.FOOD_PAYMENT,
+        description=f"Bestellung: {order['restaurant_name']}",
+        reference=f"FOOD-{order['order_id'][-12:].upper()}",
+        merchant_name=order["restaurant_name"],
+        metadata={
+            "order_id": order["order_id"],
+            "restaurant_id": order["restaurant_id"],
+            "kind": "food_order",
+        },
+        idempotency_key=idempotency_key,
+    )
+    if not payment_result.success:
+        await db.food_orders.update_one(
+            {"order_id": order["order_id"], "user_id": user_id},
+            {"$set": {
+                "status": "payment_failed",
+                "payment_error": payment_result.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=400, detail=payment_result.error or "Zahlung fehlgeschlagen")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.food_orders.update_one(
+        {
+            "order_id": order["order_id"],
+            "user_id": user_id,
+            "status": {"$in": ["payment_pending", "payment_failed"]},
+        },
+        {"$set": {
+            "status": "pending",
+            "payment_status": "paid",
+            "payment_transaction_id": payment_result.transaction_id,
+            "paid_at": now_iso,
+            "updated_at": now_iso,
+        }},
+    )
+    fresh_order = await db.food_orders.find_one(
+        {"order_id": order["order_id"], "user_id": user_id},
+        {"_id": 0},
+    ) or order
+    return fresh_order, payment_result
+
+
+
 # ══════════════════════════════════════
 # NO AUTO-SEEDING - REAL DATA ONLY
 # Restaurants must be registered via /api/food/restaurant/register
@@ -439,96 +490,99 @@ async def get_restaurant(restaurant_id: str):
 
 @router.post("/order")
 async def place_order(req: OrderRequest, request: Request):
-    """Place a food delivery order - Uses Payment Engine for safe wallet deduction."""
-    from core.payment_engine import debit_wallet, TransactionType
-    
+    """Create one wallet-backed food order exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": req.restaurant_id})
+    if req.payment_method != "wallet":
+        raise HTTPException(status_code=400, detail="Food-Bestellungen sind aktuell Wallet-only")
+
+    idempotency_key = _require_food_idempotency_key(req.idempotency_key, request, action="order")
+    key_hash = hashlib.sha256(f"{user_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    order_id = f"FOD-{key_hash}"
+
+    existing = await db.food_orders.find_one(
+        {"order_id": order_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing:
+        if existing.get("status") in {"payment_pending", "payment_failed"}:
+            fresh_order, payment_result = await _settle_food_order_payment(existing, user_id, idempotency_key)
+            return {
+                "ok": True,
+                "order": fresh_order,
+                "new_balance": payment_result.new_balance,
+                "message": "Bestellung wurde fortgesetzt.",
+                "replayed": True,
+            }
+        if existing.get("status") in {"cancelled", "refund_reconciliation_required"}:
+            raise HTTPException(status_code=409, detail="Dieser Bestellversuch wurde beendet. Bitte starte eine neue Bestellung.")
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "order": existing,
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Bestellung bereits verarbeitet.",
+            "replayed": True,
+        }
+
+    restaurant_query = _is_real_approved_restaurant_query(req.restaurant_id)
+    restaurant_query["is_open"] = True
+    restaurant = await db.food_restaurants.find_one(restaurant_query)
     if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
-    
-    if not restaurant.get("is_open", True):
-        raise HTTPException(status_code=400, detail="Restaurant ist geschlossen")
-    
-    # Build order items
-    menu_map = {item["id"]: item for item in restaurant.get("menu", [])}
+        raise HTTPException(status_code=404, detail="Restaurant nicht verfügbar oder nicht freigegeben")
+
+    menu_map = {str(item["id"]): item for item in restaurant.get("menu", []) if item.get("id") is not None}
     order_items = []
-    subtotal = 0
-    
+    subtotal = 0.0
     for cart_item in req.items:
-        menu_item = menu_map.get(cart_item.item_id)
+        menu_item = menu_map.get(str(cart_item.item_id))
         if not menu_item:
             raise HTTPException(status_code=400, detail=f"Artikel {cart_item.item_id} nicht gefunden")
+        line = _price_food_line(menu_item, cart_item)
+        subtotal += float(line["total"])
+        order_items.append(line)
 
-        # Sum option prices for this line
-        options_total = round(sum(o.price for o in cart_item.options), 2)
-        unit_price = round(menu_item["price"] + options_total, 2)
-        item_total = round(unit_price * cart_item.quantity, 2)
-        subtotal += item_total
+    subtotal = round(subtotal, 2)
+    min_order = round(float(restaurant.get("min_order") or MIN_ORDER_AMOUNT), 2)
+    if subtotal < min_order:
+        raise HTTPException(status_code=400, detail=f"Mindestbestellwert: €{min_order:.2f}")
 
-        order_items.append({
-            "item_id": cart_item.item_id,
-            "name": menu_item["name"],
-            "price": menu_item["price"],
-            "options": [o.dict() for o in cart_item.options],
-            "options_total": options_total,
-            "unit_price": unit_price,
-            "quantity": cart_item.quantity,
-            "total": item_total,
-            "notes": cart_item.notes,
-        })
-    
-    if subtotal < MIN_ORDER_AMOUNT:
-        raise HTTPException(status_code=400, detail=f"Mindestbestellwert: €{MIN_ORDER_AMOUNT:.2f}")
-    
-    # Calculate fees (skip delivery + small-order fee for pickup)
     is_pickup = req.delivery_type == "pickup"
-    delivery_fee = 0.0 if is_pickup else restaurant.get("delivery_fee", DELIVERY_FEE_BASE)
+    delivery_fee = 0.0 if is_pickup else round(float(restaurant.get("delivery_fee") or DELIVERY_FEE_BASE), 2)
     service_fee = round(subtotal * SERVICE_FEE_PERCENT, 2)
-    small_order_fee = 0.0 if is_pickup else (SMALL_ORDER_FEE if subtotal < SMALL_ORDER_THRESHOLD else 0)
-    tip = round(req.tip, 2)
+    small_order_fee = 0.0 if is_pickup else (SMALL_ORDER_FEE if subtotal < SMALL_ORDER_THRESHOLD else 0.0)
+    tip = round(float(req.tip or 0), 2)
 
-    # Apply promo code (validate by lookup)
     promo_discount = 0.0
-    promo_doc = None
-    if req.promo_code:
+    promo_code = (req.promo_code or "").upper().strip()
+    if promo_code:
         promo_doc = await db.food_promos.find_one({
-            "code": req.promo_code.upper().strip(),
+            "code": promo_code,
             "active": True,
         })
         if promo_doc:
-            if promo_doc.get("type") == "percent":
-                promo_discount = round(subtotal * float(promo_doc.get("value", 0)) / 100, 2)
-            else:
-                promo_discount = round(float(promo_doc.get("value", 0)), 2)
-            promo_discount = min(promo_discount, subtotal)
+            starts_at = str(promo_doc.get("starts_at") or "")
+            expires_at = str(promo_doc.get("expires_at") or "")
+            now_iso = datetime.now(timezone.utc).isoformat()
+            if (not starts_at or starts_at <= now_iso) and (not expires_at or expires_at >= now_iso):
+                if promo_doc.get("type") == "percent":
+                    promo_discount = round(subtotal * float(promo_doc.get("value", 0)) / 100, 2)
+                else:
+                    promo_discount = round(float(promo_doc.get("value", 0)), 2)
+                promo_discount = min(max(0.0, promo_discount), subtotal)
 
     total = round(subtotal + delivery_fee + service_fee + small_order_fee + tip - promo_discount, 2)
-    
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Bestellbetrag")
+
     now = datetime.now(timezone.utc)
-    order_id = secrets.token_hex(8)
-    
-    # Use Payment Engine for atomic wallet deduction
-    payment_result = await debit_wallet(
-        user_id=user_id,
-        amount=total,
-        tx_type=TransactionType.FOOD_PAYMENT,
-        description=f"Bestellung: {restaurant['name']}",
-        reference=f"FOOD-{order_id[:8].upper()}",
-        merchant_name=restaurant["name"],
-        metadata={"order_id": order_id, "restaurant_id": req.restaurant_id}
-    )
-    
-    if not payment_result.success:
-        raise HTTPException(status_code=400, detail=payment_result.error)
-    
-    # Estimated delivery time
-    delivery_time_parts = restaurant.get("delivery_time", "30-45").split("-")
-    eta_minutes = int(delivery_time_parts[1]) if len(delivery_time_parts) > 1 else 40
-    estimated_delivery = now + timedelta(minutes=eta_minutes)
-    
+    delivery_time_parts = str(restaurant.get("delivery_time") or "30-45").split("-")
+    try:
+        eta_minutes = int(delivery_time_parts[-1])
+    except Exception:
+        eta_minutes = 40
+    estimated_delivery = now + timedelta(minutes=max(1, eta_minutes))
+
     order = {
         "order_id": order_id,
         "user_id": user_id,
@@ -540,39 +594,38 @@ async def place_order(req: OrderRequest, request: Request):
         "items": order_items,
         "delivery_address": req.delivery_address,
         "delivery_type": req.delivery_type,
-        "payment_method": req.payment_method,
-        "subtotal": round(subtotal, 2),
+        "payment_method": "wallet",
+        "subtotal": subtotal,
         "delivery_fee": delivery_fee,
         "service_fee": service_fee,
         "small_order_fee": small_order_fee,
         "tip": tip,
-        "promo_code": req.promo_code.upper().strip() if req.promo_code else None,
+        "promo_code": promo_code or None,
         "promo_discount": promo_discount,
-        "total": round(total, 2),
-        "status": "pending",  # pending -> confirmed -> preparing -> picked_up -> delivered / cancelled
+        "total": total,
+        "status": "payment_pending",
+        "payment_status": "pending",
         "estimated_delivery": estimated_delivery.isoformat(),
         "courier": None,
         "notes": req.notes,
+        "idempotency_key": idempotency_key,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
-        "payment_transaction_id": payment_result.transaction_id,
     }
-    
-    await db.food_orders.insert_one(order)
-    order.pop("_id", None)
-    
-    # Simulate order confirmation (in real app, restaurant confirms)
     await db.food_orders.update_one(
-        {"order_id": order_id},
-        {"$set": {"status": "confirmed", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"order_id": order_id, "user_id": user_id},
+        {"$setOnInsert": order},
+        upsert=True,
     )
-    order["status"] = "confirmed"
-    
+    order = await db.food_orders.find_one({"order_id": order_id, "user_id": user_id}, {"_id": 0}) or order
+
+    fresh_order, payment_result = await _settle_food_order_payment(order, user_id, idempotency_key)
     return {
         "ok": True,
-        "order": order,
+        "order": fresh_order,
         "new_balance": payment_result.new_balance,
-        "message": f"Bestellung aufgegeben! Lieferung ca. {eta_minutes} Min.",
+        "message": f"Bestellung aufgegeben! Restaurantbestätigung ausstehend · ca. {eta_minutes} Min.",
+        "replayed": bool(payment_result.idempotent_replay),
     }
 
 
