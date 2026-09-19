@@ -178,6 +178,77 @@ def _read_bid_operation_result(auction: dict, op_hash: str) -> Optional[dict]:
     return (auction.get("bid_operation_results") or {}).get(op_hash)
 
 
+async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = None) -> tuple[Optional[dict], bool]:
+    """Atomically end an expired auction and publish the winner event once."""
+    now_dt = now or datetime.now(timezone.utc)
+    now_iso = now_dt.isoformat()
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        return None, False
+
+    if auction.get("status") == "active":
+        ends_at = str(auction.get("ends_at") or "")
+        if not ends_at or ends_at > now_iso:
+            return auction, False
+
+        winner_id = auction.get("last_bidder_id")
+        winner_name = auction.get("last_bidder_name")
+        claim = await db.auctions.update_one(
+            {
+                "auction_id": auction_id,
+                "status": "active",
+                "ends_at": auction.get("ends_at"),
+                "last_bidder_id": auction.get("last_bidder_id"),
+            },
+            {"$set": {
+                "status": "ended",
+                "winner_id": winner_id,
+                "winner_name": winner_name,
+                "ended_at": now_iso,
+            }},
+        )
+        auction = await db.auctions.find_one({"auction_id": auction_id}) or auction
+        if claim.modified_count != 1 and auction.get("status") != "ended":
+            return auction, False
+
+    if auction.get("status") != "ended":
+        return auction, False
+
+    winner_id = auction.get("winner_id")
+    if not winner_id:
+        return auction, False
+
+    notification_id = f"auction-win:{auction_id}:{winner_id}"
+    notification_write = await db.auction_notifications.update_one(
+        {"_id": notification_id},
+        {"$setOnInsert": {
+            "_id": notification_id,
+            "user_id": winner_id,
+            "type": "won",
+            "auction_id": auction_id,
+            "message": f"You won {auction.get('title', 'Auction')} for just €{float(auction.get('current_price') or 0):.2f}!",
+            "read": False,
+            "created_at": auction.get("ended_at") or now_iso,
+        }},
+        upsert=True,
+    )
+    published_now = notification_write.upserted_id is not None
+
+    if published_now:
+        try:
+            from routes.email_service import notify_win
+            winner_user = await db.users.find_one({"_id": ObjectId(winner_id)})
+            if winner_user and winner_user.get("email"):
+                asyncio.create_task(notify_win(
+                    winner_user["email"],
+                    winner_user.get("name", "User"),
+                    auction.get("title", "Auction"),
+                    float(auction.get("current_price") or 0),
+                ))
+        except Exception:
+            pass
+
+    return auction, published_now
 
 
 # ── List auctions ──
@@ -186,48 +257,13 @@ async def list_auctions(request: Request, response: Response):
     """List active and upcoming auctions."""
     now = datetime.now(timezone.utc).isoformat()
 
-    # Auto-end expired auctions
+    # Auto-end expired auctions through one atomic finalizer.
     expired = await db.auctions.find(
-        {"status": "active", "ends_at": {"$lt": now}}
+        {"status": "active", "ends_at": {"$lt": now}},
+        {"_id": 0, "auction_id": 1},
     ).limit(100).to_list(100)
     for auc in expired:
-        # Find last bidder
-        last_bid = await db.auction_bids.find_one(
-            {"auction_id": auc["auction_id"]},
-            sort=[("created_at", -1)],
-        )
-        winner_id = last_bid["user_id"] if last_bid else None
-        winner_name = last_bid["user_name"] if last_bid else None
-        await db.auctions.update_one(
-            {"auction_id": auc["auction_id"]},
-            {"$set": {
-                "status": "ended",
-                "winner_id": winner_id,
-                "winner_name": winner_name,
-                "ended_at": now,
-            }},
-        )
-        # Notify winner
-        if winner_id:
-            await db.auction_notifications.insert_one({
-                "user_id": winner_id,
-                "type": "won",
-                "auction_id": auc["auction_id"],
-                "message": f"You won {auc['title']} for just €{auc.get('current_price', 0):.2f}!",
-                "read": False,
-                "created_at": now,
-            })
-            # Email win notification
-            try:
-                from routes.email_service import notify_win
-                winner_user = await db.users.find_one({"_id": ObjectId(winner_id)})
-                if winner_user and winner_user.get("email"):
-                    asyncio.create_task(notify_win(
-                        winner_user["email"], winner_user.get("name", "User"),
-                        auc["title"], auc.get("current_price", 0),
-                    ))
-            except Exception:
-                pass
+        await _finalize_auction_once(auc["auction_id"])
 
     auctions = await db.auctions.find(
         {"status": {"$in": ["active", "upcoming", "ended"]}},
@@ -593,26 +629,11 @@ async def get_auction(auction_id: str, request: Request):
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
 
-    # Auto-end if expired
+    # Auto-end if expired through the same atomic finalizer used by listings.
     if auction["status"] == "active" and auction["ends_at"] < now:
-        last_bid = await db.auction_bids.find_one(
-            {"auction_id": auction_id},
-            sort=[("created_at", -1)],
-        )
-        winner_id = last_bid["user_id"] if last_bid else None
-        winner_name = last_bid["user_name"] if last_bid else None
-        await db.auctions.update_one(
-            {"auction_id": auction_id},
-            {"$set": {
-                "status": "ended",
-                "winner_id": winner_id,
-                "winner_name": winner_name,
-                "ended_at": now,
-            }},
-        )
-        auction["status"] = "ended"
-        auction["winner_id"] = winner_id
-        auction["winner_name"] = winner_name
+        finalized, _ = await _finalize_auction_once(auction_id)
+        if finalized:
+            auction = {k: v for k, v in finalized.items() if k != "_id"}
 
     # Get recent bids (last 30)
     bids = await db.auction_bids.find(
