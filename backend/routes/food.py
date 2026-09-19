@@ -7,6 +7,7 @@ ONLY REAL APPROVED RESTAURANTS - No seeded/demo data shown to users.
 import secrets
 import math
 import random
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -190,21 +191,97 @@ def generate_restaurant_id(name: str) -> str:
 
 class CartItem(BaseModel):
     item_id: str
-    quantity: int = 1
+    quantity: int = Field(default=1, ge=1, le=50)
+    size_id: Optional[str] = None
+    extra_ids: List[str] = Field(default_factory=list)
     notes: Optional[str] = ""
 
 
 class OrderRequest(BaseModel):
     restaurant_id: str
-    items: List[CartItem]
+    items: List[CartItem] = Field(..., min_length=1, max_length=100)
     delivery_address: dict
+    delivery_type: str = Field(default="delivery", pattern="^(delivery|pickup)$")
     payment_method: str = "wallet"
-    tip: float = 0.0
+    tip: float = Field(default=0.0, ge=0, le=100)
     notes: Optional[str] = ""
+    promo_code: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class OrderAction(BaseModel):
     order_id: str
+
+
+def _require_food_idempotency_key(body_key: Optional[str], request: Request, *, action: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"food-{action}:{key}"
+
+
+def _is_real_approved_restaurant_query(restaurant_id: Optional[str] = None) -> dict:
+    query = {
+        "status": "approved",
+        "is_demo": {"$ne": True},
+        "$or": [
+            {"is_real": True},
+            {"approved_by": {"$exists": True}},
+        ],
+    }
+    if restaurant_id:
+        query["restaurant_id"] = restaurant_id
+    return query
+
+
+def _price_food_line(menu_item: dict, cart_item: CartItem) -> dict:
+    if menu_item.get("available") is False:
+        raise HTTPException(status_code=400, detail=f"Artikel {cart_item.item_id} ist derzeit nicht verfügbar")
+
+    base_price = round(float(menu_item.get("price") or 0), 2)
+    sizes = {str(item.get("id")): item for item in (menu_item.get("sizes") or []) if item.get("id") is not None}
+    extras = {str(item.get("id")): item for item in (menu_item.get("extras") or []) if item.get("id") is not None}
+
+    selected_size = None
+    size_extra = 0.0
+    if cart_item.size_id:
+        selected_size = sizes.get(str(cart_item.size_id))
+        if not selected_size:
+            raise HTTPException(status_code=400, detail=f"Ungültige Größe für {menu_item.get('name', cart_item.item_id)}")
+        size_extra = round(float(selected_size.get("price") or 0), 2)
+
+    selected_extras = []
+    extras_total = 0.0
+    for extra_id in dict.fromkeys(str(x) for x in (cart_item.extra_ids or [])):
+        extra = extras.get(extra_id)
+        if not extra:
+            raise HTTPException(status_code=400, detail=f"Ungültiges Extra für {menu_item.get('name', cart_item.item_id)}")
+        price = round(float(extra.get("price") or 0), 2)
+        extras_total += price
+        selected_extras.append({
+            "id": extra_id,
+            "name": extra.get("name", ""),
+            "price": price,
+        })
+
+    unit_price = round(base_price + size_extra + extras_total, 2)
+    item_total = round(unit_price * int(cart_item.quantity), 2)
+    return {
+        "item_id": cart_item.item_id,
+        "name": menu_item.get("name", ""),
+        "price": base_price,
+        "size": {
+            "id": str(selected_size.get("id")),
+            "name": selected_size.get("name", ""),
+            "price": size_extra,
+        } if selected_size else None,
+        "extras": selected_extras,
+        "options_total": round(size_extra + extras_total, 2),
+        "unit_price": unit_price,
+        "quantity": int(cart_item.quantity),
+        "total": item_total,
+        "notes": cart_item.notes,
+    }
 
 
 # ══════════════════════════════════════
@@ -260,7 +337,12 @@ async def get_restaurants(request: Request, category: str = "", search: str = ""
     """Get restaurants with optional filtering. ONLY shows approved real restaurants."""
     
     # ONLY approved restaurants - NO seeded/demo data
-    query = {"is_open": True, "status": "approved", "is_real": True}
+    query = {
+        "is_open": True,
+        "status": "approved",
+        "is_demo": {"$ne": True},
+        "$or": [{"is_real": True}, {"approved_by": {"$exists": True}}],
+    }
     if category:
         query["category"] = category
     if search:
@@ -294,7 +376,12 @@ async def get_nearby_restaurants(lat: float = 52.52, lng: float = 13.405, radius
         return R * 2 * atan2(sqrt(a), sqrt(1-a))
     
     # ONLY approved real restaurants
-    query = {"is_open": True, "status": "approved", "is_real": True}
+    query = {
+        "is_open": True,
+        "status": "approved",
+        "is_demo": {"$ne": True},
+        "$or": [{"is_real": True}, {"approved_by": {"$exists": True}}],
+    }
     restaurants = await db.food_restaurants.find(query, {"_id": 0}).limit(100).to_list(100)
     
     nearby = []
@@ -853,6 +940,8 @@ async def register_restaurant(request: Request):
         "price_level": body.get("price_level", 2),
         "image": body.get("image", ""),
         "menu": [],  # Restaurant adds menu items after approval
+        "is_real": True,
+        "is_demo": False,
         "is_open": False,
         "status": "pending",  # pending, approved, rejected, suspended
         "min_order": body.get("min_order", MIN_ORDER_AMOUNT),
@@ -1038,6 +1127,8 @@ async def admin_approve_restaurant(request: Request):
             {"restaurant_id": restaurant_id},
             {"$set": {
                 "status": "approved",
+                "is_real": True,
+                "is_demo": False,
                 "approved_at": now,
                 "approved_by": str(user["_id"]),
                 "updated_at": now,
@@ -1568,7 +1659,12 @@ async def filtered_restaurants(
     address: str = "",
 ):
     """Advanced filtered restaurant search — Lieferando-style."""
-    query = {"is_open": True, "status": "approved", "is_real": True}
+    query = {
+        "is_open": True,
+        "status": "approved",
+        "is_demo": {"$ne": True},
+        "$or": [{"is_real": True}, {"approved_by": {"$exists": True}}],
+    }
     
     if free_delivery:
         query["$or"] = [{"free_delivery": True}, {"delivery_fee": 0}]
