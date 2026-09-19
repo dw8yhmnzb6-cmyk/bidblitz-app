@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,11 @@ const MerchantPaymentsScreen = ({ navigation }) => {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const paymentAttemptKeyRef = useRef(null);
+
+  useEffect(() => {
+    paymentAttemptKeyRef.current = null;
+  }, [selectedMerchant?.id, amount, description, invoiceNumber]);
 
   useEffect(() => {
     // Check if user is merchant
@@ -100,13 +105,18 @@ const MerchantPaymentsScreen = ({ navigation }) => {
           onPress: async () => {
             setProcessing(true);
             try {
+              if (!paymentAttemptKeyRef.current) {
+                paymentAttemptKeyRef.current = `m2m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+              }
               const response = await ApiService.post('/merchant-payments/pay', {
                 recipient_merchant_id: selectedMerchant.id,
                 amount: parseFloat(amount),
                 description: description.trim(),
                 invoice_number: invoiceNumber.trim() || null,
+                idempotency_key: paymentAttemptKeyRef.current,
               });
 
+              paymentAttemptKeyRef.current = null;
               setShowPaymentModal(false);
               setAmount('');
               setDescription('');
