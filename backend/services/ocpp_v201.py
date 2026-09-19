@@ -363,7 +363,7 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
     if id_token:
         response["idTokenInfo"] = {"status": "Accepted"}
 
-    # ── Started: bind to a pre-existing authorized session or create one
+    # ── Started: only bind to a pre-existing BidBlitz-authorized session.
     if event_type == "Started":
         session = await db.ev_charging_sessions.find_one({
             "charge_point_id": charge_point_id,
@@ -372,40 +372,45 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "status": {"$in": ["authorized", "starting"]},
         }, sort=[("created_at", -1)])
 
-        meter_start = latest_wh if latest_wh is not None else 0.0
-        if session:
-            await db.ev_charging_sessions.update_one(
-                {"session_id": session["session_id"]},
-                {"$set": {
-                    "status": "active",
-                    "ocpp_transaction_id": transaction_id,
-                    "ocpp_protocol": "ocpp2.0.1",
-                    "meter_start_wh": meter_start,
-                    "started_at": timestamp,
-                    "evse_id": evse_id,
-                }},
+        if not session:
+            log.warning(
+                "Rejected unmatched OCPP2 Started cp=%s connector=%s token=%s",
+                charge_point_id, connector_id, str(id_token or "")[:8],
             )
-        else:
-            session_id = f"evs_{secrets.token_hex(6)}"
-            await db.ev_charging_sessions.insert_one({
-                "session_id": session_id,
-                "charge_point_id": charge_point_id,
-                "evse_id": evse_id,
-                "connector_id": connector_id,
+            if id_token:
+                response["idTokenInfo"] = {"status": "Invalid"}
+            return response
+
+        meter_start = latest_wh if latest_wh is not None else 0.0
+        claim = await db.ev_charging_sessions.update_one(
+            {
+                "session_id": session["session_id"],
+                "status": {"$in": ["authorized", "starting"]},
                 "id_tag": id_token,
-                "user_id": None,
-                "tariff": None,
-                "reserved_amount": 0.0,
-                "currency": "EUR",
-                "kwh_charged": 0.0,
-                "current_cost": 0.0,
+            },
+            {"$set": {
                 "status": "active",
                 "ocpp_transaction_id": transaction_id,
                 "ocpp_protocol": "ocpp2.0.1",
                 "meter_start_wh": meter_start,
                 "started_at": timestamp,
-                "created_at": _utcnow_iso(),
-            })
+                "evse_id": evse_id,
+            }},
+        )
+        if claim.modified_count != 1:
+            if id_token:
+                response["idTokenInfo"] = {"status": "Invalid"}
+            return response
+
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_token, "active": True},
+            {"$set": {
+                "active": False,
+                "consumed_at": _utcnow_iso(),
+                "session_id": session["session_id"],
+                "charge_point_id": charge_point_id,
+            }},
+        )
         return response
 
     # ── Updated: live meter sample
