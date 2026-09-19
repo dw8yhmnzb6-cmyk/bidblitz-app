@@ -1493,9 +1493,14 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     casino = (BACKEND_DIR / "routes" / "casino.py").read_text(encoding="utf-8")
     arcade = (BACKEND_DIR / "routes" / "arcade.py").read_text(encoding="utf-8")
     store = (BACKEND_DIR / "routes" / "rewards_store.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
 
     assert "Gaming-Coins mit EUR kaufen ist in Production deaktiviert" in gaming
     assert "Gaming-Coins können in Production nicht in EUR umgewandelt werden" in gaming
+    assert '"value_actions_enabled": bool(TEST_MODE)' in gaming
+    assert "reward_blz = max(10, req.points // 25) if TEST_MODE else 0" in gaming
+    assert 'reward_blz = reward["blz"] if TEST_MODE else 0' in gaming
+    assert 'reward_inc["balance_blz"] = reward_blz' in gaming
 
     assert "def _require_value_game_test_mode" in casino
     assert "Wertbasierte Casino-Spiele sind in Production deaktiviert" in casino
@@ -1504,6 +1509,12 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert "BLZ-Einsatzspiele sind in Production deaktiviert" in arcade
     assert "BLZ-Spielbelohnungen sind in Production deaktiviert" in arcade
     assert '"value_game_enabled": bool(TEST_MODE)' in arcade
+
+    assert 'case "/gaming":' in app
+    assert 'title="Game Center"' in app
+    assert 'case "/arcade":' in app
+    assert 'title="Arcade & Casino"' in app
+    assert "TEST_MODE_FULL_ACCESS" in app
 
     assert "def _require_reward_idempotency_key" in store
     assert "credit_wallet(" in store
