@@ -451,60 +451,130 @@ class ChunkInitRequest(BaseModel):
     filename: str
     total_size: int
     total_chunks: int
+    tier: str = "free"
 
 @router.post("/chunk/init")
 async def chunk_init(req: ChunkInitRequest, request: Request):
     user = await get_current_user(request)
+    user_id = str(user["_id"])
     ext = get_ext(req.filename)
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Dateityp .{ext} nicht erlaubt")
-    if req.total_size > MAX_FILE_SIZE:
+    if req.total_size <= 0 or req.total_size > MAX_FILE_SIZE:
         raise HTTPException(400, f"Datei zu gross. Max: {human_size(MAX_FILE_SIZE)}")
+    if req.total_chunks <= 0 or req.total_chunks > 10000:
+        raise HTTPException(400, "Ungültige Chunk-Anzahl")
 
-    upload_id = str(uuid.uuid4())[:12]
+    tier = req.tier if req.tier in TRANSFER_TIERS else "free"
+    tier_info = TRANSFER_TIERS[tier]
+    if req.total_size > tier_info["max_bytes"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Datei ({human_size(req.total_size)}) überschreitet {tier_info['label']} Limit ({human_size(tier_info['max_bytes'])}).",
+        )
+
+    price = float(tier_info["price"])
+    wallet_key_hash = None
+    if price > 0:
+        wallet_key = _require_transfer_idempotency_key(request)
+        wallet_key_hash = _transfer_key_hash(wallet_key)
+
+        refunded = await db.blitz_transfer_payment_attempts.find_one(
+            {"user_id": user_id, "idempotency_key_hash": wallet_key_hash, "status": "refunded"},
+            {"_id": 0, "idempotency_key_hash": 1},
+        )
+        if refunded:
+            raise HTTPException(status_code=409, detail="Vorheriger Upload-Versuch wurde zurückgebucht. Bitte erneut starten.")
+
+        existing = await db.chunk_uploads.find_one(
+            {"user_id": user_id, "wallet_idempotency_key_hash": wallet_key_hash, "status": "uploading"},
+            {"_id": 0},
+        )
+        if existing:
+            return {
+                "upload_id": existing["upload_id"],
+                "chunk_size": CHUNK_SIZE,
+                "uploaded_chunks": len(existing.get("uploaded_indices") or []),
+                "replayed": True,
+            }
+
+    upload_id = f"BTU-{wallet_key_hash[:12]}" if wallet_key_hash else str(uuid.uuid4())[:12]
     chunk_dir = UPLOAD_DIR / "chunks" / upload_id
     chunk_dir.mkdir(parents=True, exist_ok=True)
 
-    await db.chunk_uploads.insert_one({
+    doc = {
         "upload_id": upload_id,
+        "user_id": user_id,
         "user_email": user.get("email"),
-        "filename": req.filename,
-        "total_size": req.total_size,
-        "total_chunks": req.total_chunks,
+        "filename": Path(req.filename).name,
+        "total_size": int(req.total_size),
+        "total_chunks": int(req.total_chunks),
         "uploaded_chunks": 0,
+        "uploaded_indices": [],
+        "tier": tier,
+        "price": price,
+        "wallet_idempotency_key_hash": wallet_key_hash,
         "status": "uploading",
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    await db.chunk_uploads.update_one(
+        {"upload_id": upload_id, "user_id": user_id},
+        {"$setOnInsert": doc},
+        upsert=True,
+    )
 
-    return {"upload_id": upload_id, "chunk_size": CHUNK_SIZE}
+    return {"upload_id": upload_id, "chunk_size": CHUNK_SIZE, "uploaded_chunks": 0, "replayed": False}
 
 
 # ── Chunked Upload: Upload Chunk ──
 @router.post("/chunk/{upload_id}/{chunk_index}")
 async def upload_chunk(upload_id: str, chunk_index: int, request: Request, chunk: UploadFile = File(...)):
-    info = await db.chunk_uploads.find_one({"upload_id": upload_id})
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    info = await db.chunk_uploads.find_one({"upload_id": upload_id, "user_id": user_id})
     if not info:
         raise HTTPException(404, "Upload nicht gefunden")
+    if info.get("status") != "uploading":
+        raise HTTPException(status_code=409, detail="Upload ist nicht mehr aktiv")
+    if chunk_index < 0 or chunk_index >= int(info.get("total_chunks") or 0):
+        raise HTTPException(status_code=400, detail="Ungültiger Chunk-Index")
 
     chunk_dir = UPLOAD_DIR / "chunks" / upload_id
+    chunk_dir.mkdir(parents=True, exist_ok=True)
     chunk_path = chunk_dir / f"chunk_{chunk_index:06d}"
 
-    content = await chunk.read()
-    chunk_path.write_bytes(content)
+    content = await chunk.read(CHUNK_SIZE + 1)
+    if len(content) > CHUNK_SIZE:
+        raise HTTPException(status_code=413, detail="Chunk zu groß")
+
+    if not chunk_path.exists():
+        chunk_path.write_bytes(content)
 
     await db.chunk_uploads.update_one(
-        {"upload_id": upload_id},
-        {"$inc": {"uploaded_chunks": 1}}
+        {"upload_id": upload_id, "user_id": user_id},
+        {
+            "$addToSet": {"uploaded_indices": chunk_index},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
     )
 
-    info = await db.chunk_uploads.find_one({"upload_id": upload_id})
-    done = info["uploaded_chunks"] >= info["total_chunks"]
+    info = await db.chunk_uploads.find_one(
+        {"upload_id": upload_id, "user_id": user_id},
+        {"_id": 0, "uploaded_indices": 1, "total_chunks": 1},
+    ) or {}
+    uploaded_indices = info.get("uploaded_indices") or []
+    uploaded_count = len(uploaded_indices)
+    await db.chunk_uploads.update_one(
+        {"upload_id": upload_id, "user_id": user_id},
+        {"$set": {"uploaded_chunks": uploaded_count}},
+    )
+    done = uploaded_count == int(info.get("total_chunks") or 0)
 
     return {
         "ok": True,
         "chunk_index": chunk_index,
-        "uploaded": info["uploaded_chunks"],
-        "total": info["total_chunks"],
+        "uploaded": uploaded_count,
+        "total": int(info.get("total_chunks") or 0),
         "complete": done,
     }
 
@@ -516,53 +586,115 @@ class ChunkFinalizeRequest(BaseModel):
     message: str = ""
     recipient_email: str = ""
     expires_days: int = 7
+    password: str = ""
 
 @router.post("/chunk/finalize")
 async def chunk_finalize(req: ChunkFinalizeRequest, request: Request):
     user = await get_current_user(request)
-    info = await db.chunk_uploads.find_one({"upload_id": req.upload_id, "user_email": user.get("email")})
+    user_id = str(user["_id"])
+    info = await db.chunk_uploads.find_one({"upload_id": req.upload_id, "user_id": user_id})
     if not info:
         raise HTTPException(404, "Upload nicht gefunden")
+    if info.get("status") == "completed" and info.get("transfer_id"):
+        existing = await db.transfers.find_one({"transfer_id": info["transfer_id"], "sender_user_id": user_id}, {"_id": 0})
+        if existing:
+            return {
+                "ok": True,
+                "transfer_id": existing["transfer_id"],
+                "download_code": existing["download_code"],
+                "share_link": f"/blitz-transfer/{existing['transfer_id']}/{existing['download_code']}",
+                "file_count": existing.get("file_count", 1),
+                "total_size": existing.get("total_size_human", ""),
+                "expires_at": existing.get("expires_at"),
+                "expires_days": existing.get("expires_days"),
+                "price_paid": existing.get("price_paid", 0),
+                "replayed": True,
+            }
+
+    expected_chunks = int(info.get("total_chunks") or 0)
+    uploaded_indices = set(info.get("uploaded_indices") or [])
+    if uploaded_indices != set(range(expected_chunks)):
+        raise HTTPException(status_code=409, detail="Upload unvollständig. Es fehlen Chunks.")
+
+    tier = info.get("tier") if info.get("tier") in TRANSFER_TIERS else "free"
+    tier_info = TRANSFER_TIERS[tier]
+    price = float(tier_info["price"])
+    wallet_key = None
+    wallet_key_hash = info.get("wallet_idempotency_key_hash")
+    if price > 0:
+        wallet_key = _require_transfer_idempotency_key(request)
+        if _transfer_key_hash(wallet_key) != wallet_key_hash:
+            raise HTTPException(status_code=409, detail="Idempotency-Key passt nicht zu diesem Upload")
 
     chunk_dir = UPLOAD_DIR / "chunks" / req.upload_id
+    for idx in range(expected_chunks):
+        if not (chunk_dir / f"chunk_{idx:06d}").exists():
+            raise HTTPException(status_code=409, detail=f"Chunk {idx} fehlt")
 
-    # Assemble file from chunks
-    transfer_id = str(uuid.uuid4())[:12]
+    transfer_id = f"BTF-{wallet_key_hash[:12]}" if wallet_key_hash else str(uuid.uuid4())[:12]
     download_code = secrets.token_urlsafe(16)
     transfer_dir = UPLOAD_DIR / transfer_id
     transfer_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = f"{uuid.uuid4().hex[:8]}_{info['filename']}"
+    safe_name = f"{uuid.uuid4().hex[:8]}_{Path(info['filename']).name}"
     final_path = transfer_dir / safe_name
-
     total_size = 0
-    with open(final_path, "wb") as out:
-        for i in range(info["total_chunks"]):
-            cp = chunk_dir / f"chunk_{i:06d}"
-            if cp.exists():
+
+    try:
+        with open(final_path, "wb") as out:
+            for idx in range(expected_chunks):
+                cp = chunk_dir / f"chunk_{idx:06d}"
                 data = cp.read_bytes()
                 out.write(data)
                 total_size += len(data)
 
-    # Cleanup chunks
-    import shutil
-    if chunk_dir.exists():
-        shutil.rmtree(chunk_dir)
+        if total_size != int(info.get("total_size") or 0):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Dateigröße stimmt nicht überein ({human_size(total_size)} statt {human_size(int(info.get('total_size') or 0))}).",
+            )
+        if total_size > tier_info["max_bytes"]:
+            raise HTTPException(status_code=400, detail="Datei überschreitet das gewählte Transfer-Paket")
+    except Exception:
+        import shutil
+        if transfer_dir.exists():
+            shutil.rmtree(transfer_dir)
+        raise
+
+    payment_result = None
+    if price > 0:
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=price,
+            tx_type=TransactionType.PAYMENT,
+            description=f"BlitzTransfer {tier_info['label']} — {human_size(total_size)}",
+            reference=f"BTF-{wallet_key_hash[:12].upper()}",
+            metadata={"kind": "blitz_transfer", "tier": tier, "transfer_id": transfer_id, "upload_id": req.upload_id},
+            idempotency_key=wallet_key,
+        )
+        if not payment_result.success:
+            import shutil
+            if transfer_dir.exists():
+                shutil.rmtree(transfer_dir)
+            raise HTTPException(status_code=400, detail=payment_result.error or "Wallet-Zahlung fehlgeschlagen")
 
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=max(1, min(req.expires_days, 30)))
+    expires_days = min(max(1, req.expires_days), tier_info["max_days"])
+    expires_at = now + timedelta(days=expires_days)
     ext = get_ext(info["filename"])
+    pw_hash = hashlib.sha256(req.password.encode()).hexdigest() if req.password else None
 
     transfer = {
         "transfer_id": transfer_id,
         "download_code": download_code,
+        "sender_user_id": user_id,
         "sender_email": user.get("email"),
         "sender_name": user.get("name", ""),
         "recipient_email": req.recipient_email,
         "title": req.title or f"Transfer von {user.get('name', user.get('email'))}",
         "message": req.message,
         "files": [{
-            "original_name": info["filename"],
+            "original_name": Path(info["filename"]).name,
             "stored_name": safe_name,
             "size": total_size,
             "size_human": human_size(total_size),
@@ -573,15 +705,80 @@ async def chunk_finalize(req: ChunkFinalizeRequest, request: Request):
         "total_size": total_size,
         "total_size_human": human_size(total_size),
         "downloads": 0,
-        "max_downloads": 100,
+        "max_downloads": tier_info["max_downloads"],
+        "password_hash": pw_hash,
+        "tier": tier,
+        "price_paid": price,
+        "wallet_idempotency_key_hash": wallet_key_hash,
+        "wallet_transaction_id": payment_result.transaction_id if payment_result else None,
+        "payment_status": "paid" if payment_result else "free",
         "expires_at": expires_at.isoformat(),
-        "expires_days": req.expires_days,
+        "expires_days": expires_days,
         "status": "active",
         "created_at": now.isoformat(),
     }
 
-    await db.transfers.insert_one(transfer)
-    await db.chunk_uploads.delete_one({"upload_id": req.upload_id})
+    try:
+        if wallet_key_hash:
+            await db.transfers.update_one(
+                {"sender_user_id": user_id, "wallet_idempotency_key_hash": wallet_key_hash},
+                {"$setOnInsert": transfer},
+                upsert=True,
+            )
+        else:
+            await db.transfers.insert_one(transfer)
+            transfer.pop("_id", None)
+
+        await db.chunk_uploads.update_one(
+            {"upload_id": req.upload_id, "user_id": user_id},
+            {"$set": {
+                "status": "completed",
+                "transfer_id": transfer_id,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+    except Exception as exc:
+        import shutil
+        if transfer_dir.exists():
+            shutil.rmtree(transfer_dir)
+
+        if payment_result and payment_result.success:
+            await db.blitz_transfer_payment_attempts.update_one(
+                {"user_id": user_id, "idempotency_key_hash": wallet_key_hash},
+                {"$set": {
+                    "user_id": user_id,
+                    "idempotency_key_hash": wallet_key_hash,
+                    "transfer_id": transfer_id,
+                    "status": "refund_pending",
+                    "error": str(exc)[:500],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=price,
+                tx_type=TransactionType.REFUND,
+                description="BlitzTransfer Rückbuchung",
+                reference=f"BTF-REF-{wallet_key_hash[:10].upper()}",
+                source="blitz_transfer_rollback",
+                metadata={"transfer_id": transfer_id, "upload_id": req.upload_id},
+                idempotency_key=f"blitz-transfer-refund:{wallet_key}",
+            )
+            await db.blitz_transfer_payment_attempts.update_one(
+                {"user_id": user_id, "idempotency_key_hash": wallet_key_hash},
+                {"$set": {
+                    "status": "refunded" if refund.success else "reconciliation_required",
+                    "refund_transaction_id": refund.transaction_id if refund.success else None,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        raise HTTPException(status_code=500, detail="Transfer konnte nicht sicher finalisiert werden")
+
+    import shutil
+    if chunk_dir.exists():
+        shutil.rmtree(chunk_dir)
+    await db.chunk_uploads.delete_one({"upload_id": req.upload_id, "user_id": user_id})
 
     return {
         "ok": True,
@@ -591,8 +788,11 @@ async def chunk_finalize(req: ChunkFinalizeRequest, request: Request):
         "file_count": 1,
         "total_size": human_size(total_size),
         "expires_at": expires_at.isoformat(),
-        "expires_days": req.expires_days,
-        "message": f"Datei hochgeladen ({human_size(total_size)}). Link gueltig fuer {req.expires_days} Tage.",
+        "expires_days": expires_days,
+        "price_paid": price,
+        "new_balance": payment_result.new_balance if payment_result else float(user.get("balance") or 0),
+        "replayed": bool(payment_result.idempotent_replay) if payment_result else False,
+        "message": f"Datei hochgeladen ({human_size(total_size)}). Link gueltig fuer {expires_days} Tage.",
     }
 
 
