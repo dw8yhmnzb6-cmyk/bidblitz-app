@@ -501,3 +501,27 @@ def test_kids_child_identity_gps_quiz_and_rewards_are_server_enforced():
     assert "answers: nextAnswers" in app_page
     assert ".answer ===" not in app_page
     assert "BLZ-Punkte verdient" in app_page
+
+
+def test_auth_admin_alias_2fa_ws_and_role_changes_are_session_safe():
+    auth_source = (BACKEND_DIR / "routes" / "auth.py").read_text(encoding="utf-8")
+    admin_source = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+    admin_management = (BACKEND_DIR / "routes" / "admin_management.py").read_text(encoding="utf-8")
+
+    assert "Never cross-map ordinary user addresses" in auth_source
+    assert 'if email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae"' in auth_source
+    assert '(user.get("role") == "admin") or email == "admin@bidblitz.ae"' not in auth_source
+
+    assert "def _hash_pending_2fa_token" in auth_source
+    assert '"token_hash": _hash_pending_2fa_token(pending_token)' in auth_source
+    assert '"token": pending_token' not in auth_source
+    assert '"session_id": session_id' in auth_source
+    assert "Sessiongebundenes Login erforderlich" in auth_source
+
+    assert "def _can_manage_privileged_roles" in admin_management
+    assert "Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen" in admin_management
+    assert '"$inc": {"auth_version": 1}' in admin_management
+    assert "revoke_all_sessions" in admin_management
+
+    assert "Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen" in admin_source
+    assert "revoke_all_sessions" in admin_source
