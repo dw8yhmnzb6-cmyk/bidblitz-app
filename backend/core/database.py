@@ -112,6 +112,12 @@ async def create_indexes():
     # Login attempts - brute force protection
     await safe_create_index(db.login_attempts, "identifier")
     await safe_create_index(db.login_attempts, "locked_until")
+    await safe_create_index(db.sessions, "session_id", unique=True, critical=True)
+    await safe_create_index(db.sessions, [("user_id", 1), ("is_active", 1), ("last_active", -1)])
+    await safe_create_index(db.otp_codes, [("user_id", 1), ("purpose", 1)], unique=True, critical=True)
+    await safe_create_index(db.pending_2fa, "token", unique=True, critical=True)
+    await safe_create_index(db.pending_2fa, "user_id", unique=True, critical=True)
+    await safe_create_index(db.password_resets, "token_hash", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # TRANSACTIONS - High volume, critical for performance
