@@ -1949,6 +1949,13 @@ async def book_ride(req: FlexBookRequest, request: Request):
         car_type=car_type,
         region=region,
     )
+
+    # Use the same zone/time pricing stack as /estimate so the price shown to
+    # the customer is the price that is reserved at booking.
+    from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
+    matched_zone = await find_matching_zone(p_lat, p_lng)
+    time_info = compute_time_multiplier(matched_zone)
+
     fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
     if fixed:
         fare_estimate = {
@@ -1962,6 +1969,9 @@ async def book_ride(req: FlexBookRequest, request: Request):
             "fixed_fare_label": fixed["label"],
             "fixed_fare_zone": fixed["zone"],
         }
+    else:
+        fare_estimate = apply_multi_tariff(fare_estimate, matched_zone, time_info)
+
     fare_total = fare_estimate["total"]
 
     # Apply promo if provided & valid
@@ -2041,6 +2051,17 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
         "fixed_fare": fixed if fixed else None,
+        "tariff_zone": {
+            "id": matched_zone.get("id"),
+            "name": matched_zone.get("name"),
+        } if matched_zone else None,
+        "time_tariff": {
+            "multiplier": time_info["multiplier"],
+            "label": time_info["label"],
+            "night": time_info["night"],
+            "weekend": time_info["weekend"],
+            "holiday": time_info["holiday"],
+        },
         "promo": promo_applied,
         "scheduled_at": req.scheduled_at,
         "status": RideStatus.REQUESTED.value,
