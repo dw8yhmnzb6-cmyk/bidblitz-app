@@ -972,7 +972,7 @@ async def get_analytics(child_id: str, request: Request, days: int = 7):
 # CHILD LOGIN (PIN-based)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/child-login")
+@router.post("/legacy/child-login")
 async def child_login(req: ChildLoginRequest):
     """Child logs in with PIN."""
     import hashlib
