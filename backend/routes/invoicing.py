@@ -24,6 +24,7 @@ from core.audit import get_client_info, log_audit
 from core.config import STRIPE_API_KEY
 from core.database import db
 from core.email import FRONTEND_URL, get_base_template, send_email_detailed
+from core.payment_engine import credit_wallet, transfer_between_wallets, TransactionType
 from core.security import get_current_user
 from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest, StripeCheckout
 
@@ -299,6 +300,77 @@ async def _get_invoice_and_link_by_token(token: str, origin: str = "") -> tuple[
     return invoice, link_payload
 
 
+async def _claim_invoice_payment(
+    *,
+    invoice_id: str,
+    claim_key: str,
+    method: str,
+    payer_user_id: str = "",
+    payer_email: str = "",
+    session_id: str = "",
+) -> dict:
+    """Claim one invoice payment attempt across every payment surface."""
+    claim_id = f"invoice-payment:{invoice_id}"
+    now_iso = _now_iso()
+    doc = {
+        "_id": claim_id,
+        "invoice_id": invoice_id,
+        "claim_key": claim_key,
+        "method": method,
+        "payer_user_id": payer_user_id,
+        "payer_email": payer_email,
+        "session_id": session_id,
+        "status": "processing",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    try:
+        await db.invoice_payment_claims.insert_one(doc)
+        return doc
+    except Exception:
+        current = await db.invoice_payment_claims.find_one({"_id": claim_id}, {"_id": 0}) or {}
+        if current.get("status") == "paid":
+            raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+        if current.get("claim_key") == claim_key:
+            await db.invoice_payment_claims.update_one(
+                {"_id": claim_id, "claim_key": claim_key},
+                {"$set": {"status": "processing", "updated_at": now_iso}},
+            )
+            return current
+        raise HTTPException(status_code=409, detail="Diese Rechnung wird bereits über einen anderen Zahlungsweg bezahlt")
+
+
+async def _release_invoice_payment_claim(invoice_id: str, claim_key: str, error: str = "") -> None:
+    await db.invoice_payment_claims.delete_one({
+        "_id": f"invoice-payment:{invoice_id}",
+        "claim_key": claim_key,
+        "status": "processing",
+    })
+
+
+async def _mark_invoice_claim_paid(invoice_id: str, claim_key: str, reference: str) -> None:
+    await db.invoice_payment_claims.update_one(
+        {"_id": f"invoice-payment:{invoice_id}", "claim_key": claim_key},
+        {"$set": {
+            "status": "paid",
+            "payment_reference": reference,
+            "paid_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }},
+    )
+
+
+async def _mark_invoice_claim_reconciliation(invoice_id: str, claim_key: str, error: str) -> None:
+    await db.invoice_payment_claims.update_one(
+        {"_id": f"invoice-payment:{invoice_id}", "claim_key": claim_key},
+        {"$set": {
+            "status": "reconciliation_required",
+            "error": error,
+            "updated_at": _now_iso(),
+        }},
+    )
+
+
 async def _mark_invoice_paid(invoice: dict, link: dict, now_iso: str, method: str, payer_email: str = "", payer_user_id: str = "", payment_reference: str = "") -> dict:
     invoice_id = invoice.get("invoice_id")
     updated = await db.invoices.find_one_and_update(
@@ -317,16 +389,18 @@ async def _mark_invoice_paid(invoice: dict, link: dict, now_iso: str, method: st
         projection={"_id": 0},
         return_document=ReturnDocument.AFTER,
     )
+    link_token = (link or {}).get("token")
+    link_query = {"token": link_token} if link_token else {"invoice_id": invoice_id, "status": {"$ne": "replaced"}}
     if updated is None:
         current = await db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
-        await db.payment_links.update_one(
-            {"token": link.get("token")},
+        await db.payment_links.update_many(
+            link_query,
             {"$set": {"status": "paid", "payment_status": "paid", "updated_at": now_iso}},
         )
         return current or invoice
 
-    await db.payment_links.update_one(
-        {"token": link.get("token")},
+    await db.payment_links.update_many(
+        link_query,
         {
             "$set": {
                 "status": "paid",
