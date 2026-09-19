@@ -394,6 +394,9 @@ async def redeem_reward(request: Request):
             detail=f"Tageslimit erreicht ({daily_limit}x {REWARD_TYPES[reward_type]['name']} pro Tag)",
         )
 
+    day_key = datetime.now(timezone.utc).strftime("%Y%m%d")
+    daily_field = f"daily_redemption_limits.{day_key}.{reward_type}"
+
     loyalty = await db.user_loyalty.find_one(
         {"user_id": user_id, marker_field: {"$exists": True}},
         {"_id": 0, "coins_balance": 1, marker_field: 1},
@@ -405,9 +408,15 @@ async def redeem_reward(request: Request):
                 "user_id": user_id,
                 "coins_balance": {"$gte": cost},
                 marker_field: {"$exists": False},
+                "$expr": {
+                    "$lt": [
+                        {"$ifNull": [f"${daily_field}", 0]},
+                        daily_limit,
+                    ]
+                },
             },
             {
-                "$inc": {"coins_balance": -cost},
+                "$inc": {"coins_balance": -cost, daily_field: 1},
                 "$set": {
                     marker_field: {
                         "redemption_id": redemption_id,
@@ -420,7 +429,22 @@ async def redeem_reward(request: Request):
             },
         )
         if reserve.modified_count != 1:
-            current = await get_user_coins(user_id)
+            current_doc = await db.user_loyalty.find_one(
+                {"user_id": user_id},
+                {"_id": 0, "coins_balance": 1, "daily_redemption_limits": 1, marker_field: 1},
+            ) or {}
+            marker_root = current_doc.get("redemption_markers") or {}
+            if marker_hash in marker_root:
+                raise HTTPException(status_code=409, detail="Einlösung wird bereits verarbeitet")
+            current_daily = int(
+                (((current_doc.get("daily_redemption_limits") or {}).get(day_key) or {}).get(reward_type, 0)) or 0
+            )
+            if current_daily >= daily_limit:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Tageslimit erreicht ({daily_limit}x {REWARD_TYPES[reward_type]['name']} pro Tag)",
+                )
+            current = int(current_doc.get("coins_balance") or 0)
             raise HTTPException(
                 status_code=400,
                 detail=f"Nicht genug BlitzPoints. Du hast {current}, brauchst aber {cost}.",
@@ -443,7 +467,7 @@ async def redeem_reward(request: Request):
             await db.user_loyalty.update_one(
                 {"user_id": user_id, f"{marker_field}.status": "reserved"},
                 {
-                    "$inc": {"coins_balance": cost},
+                    "$inc": {"coins_balance": cost, daily_field: -1},
                     "$unset": {marker_field: ""},
                 },
             )
@@ -464,7 +488,7 @@ async def redeem_reward(request: Request):
         await db.user_loyalty.update_one(
             {"user_id": user_id, f"{marker_field}.status": "reserved"},
             {
-                "$inc": {"coins_balance": cost},
+                "$inc": {"coins_balance": cost, daily_field: -1},
                 "$unset": {marker_field: ""},
             },
         )
