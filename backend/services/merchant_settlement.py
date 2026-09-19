@@ -346,9 +346,11 @@ async def recompute_balance_snapshot(merchant_id: str) -> dict[str, Any]:
             available_minor += signed_minor
         elif status == "reserved":
             reserved_minor += amount_minor if entry.get("type") == "reserve_hold" else signed_minor
-        elif status in {"payout_pending", "processing"}:
+        elif status in {"payout_pending", "processing"} and entry.get("type") == "payout":
+            available_minor -= amount_minor
             payout_in_progress_minor += amount_minor
         elif status == "paid" and entry.get("type") == "payout":
+            available_minor -= amount_minor
             paid_out_total_minor += amount_minor
     reserve_holds = await db.merchant_reserves.find({"merchant_id": merchant_id, "mode": "hold", "status": "active"}, {"_id": 0, "amount_minor": 1}).to_list(1000)
     reserved_minor = sum(int(item.get("amount_minor") or 0) for item in reserve_holds) if reserve_holds else reserved_minor
