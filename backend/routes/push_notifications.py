@@ -55,23 +55,38 @@ async def get_vapid_public_key():
     return {"publicKey": VAPID_PUBLIC_KEY}
 
 
+@router.get("/subscription-status")
+async def push_subscription_status(request: Request):
+    """Return whether this account currently has at least one push endpoint."""
+    user = await get_current_user(request)
+    user_id = user.get("id") or str(user["_id"])
+    count = await db.push_subscriptions.count_documents({"user_id": user_id})
+    return {
+        "subscribed": count > 0,
+        "devices": count,
+        "push_configured": PUSH_ENABLED,
+    }
+
+
 @router.post("/subscribe")
 async def subscribe_push(subscription: PushSubscription, request: Request):
     """Save push subscription for a user."""
     user = await get_current_user(request)
     user_id = user.get("id") or str(user["_id"])
     
-    # Store subscription in database
+    now = datetime.now(timezone.utc).isoformat()
     await db.push_subscriptions.update_one(
         {"user_id": user_id, "endpoint": subscription.endpoint},
-        {"$set": {
-            "user_id": user_id,
-            "email": user.get("email"),
-            "subscription": subscription.dict(),
-            "created_at": user.get("created_at"),
-            "updated_at": user.get("created_at"),
-        }},
-        upsert=True
+        {
+            "$set": {
+                "user_id": user_id,
+                "email": user.get("email"),
+                "subscription": subscription.model_dump(),
+                "updated_at": now,
+            },
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
     )
     
     logger.info(f"✅ Push subscription saved for user {user_id}")
@@ -79,6 +94,7 @@ async def subscribe_push(subscription: PushSubscription, request: Request):
 
 
 @router.post("/unsubscribe")
+@router.delete("/unsubscribe")
 async def unsubscribe_push(subscription: PushSubscription, request: Request):
     """Remove push subscription."""
     user = await get_current_user(request)
