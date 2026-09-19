@@ -585,7 +585,15 @@ async def finalize_session(session_id: str) -> None:
                 ("price_per_kwh", "price_per_minute", "session_fee", "minimum_fee"), values))}
             energy_amt, minute_amt = kwh * values[0], duration_min * values[1]
             session_fee, minimum_fee = values[2:]
-            gross = from_minor(to_minor(max(energy_amt + minute_amt + session_fee, minimum_fee)))
+            raw_gross = from_minor(to_minor(max(energy_amt + minute_amt + session_fee, minimum_fee)))
+            reserved_amount = round(float(sess.get("reserved_amount") or 0), 2)
+            preauthorized = bool(
+                sess.get("preauth_transaction_id")
+                and sess.get("preauth_escrow_user_id")
+                and sess.get("preauth_status") == "held"
+            )
+            gross = min(raw_gross, reserved_amount) if preauthorized and reserved_amount > 0 else raw_gross
+            preauth_overage = round(max(0.0, raw_gross - gross), 2)
             net = from_minor(to_minor(gross / (1 + vat_rate / 100.0)))
             vat = from_minor(to_minor(gross) - to_minor(net))
             user_id = str(sess.get("user_id") or "")
@@ -604,7 +612,12 @@ async def finalize_session(session_id: str) -> None:
                 raise ValueError("Invalid commission")
             platform_fee = from_minor(to_minor(gross * commission_pct / 100.0)) if operator_user_id else gross
             operator_share = from_minor(to_minor(gross) - to_minor(platform_fee))
-            platform_user_id = await _platform_pool_user_id() if operator_user_id and platform_fee > 0 else None
+            escrow_user_id = str(sess.get("preauth_escrow_user_id") or "")
+            platform_user_id = escrow_user_id if preauthorized else (
+                await _platform_pool_user_id() if operator_user_id and platform_fee > 0 else None
+            )
+            if preauthorized and not platform_user_id:
+                raise ValueError("EV preauthorization escrow wallet missing")
             if operator_user_id and platform_fee > 0 and not platform_user_id:
                 raise ValueError("Platform commission wallet is not configured")
         except (ValueError, TypeError, OverflowError, ArithmeticError) as exc:
@@ -623,6 +636,10 @@ async def finalize_session(session_id: str) -> None:
             "gross": gross, "net": net, "vat": vat, "vat_rate": vat_rate,
             "commission_pct": commission_pct, "platform_fee": platform_fee,
             "operator_share": operator_share,
+            "preauthorized": preauthorized,
+            "reserved_amount": reserved_amount if preauthorized else 0.0,
+            "preauth_overage": preauth_overage if preauthorized else 0.0,
+            "preauth_transaction_id": sess.get("preauth_transaction_id"),
         }
         await db.ev_charging_sessions.update_one(
             {"_id": sess["_id"], "settlement": {"$exists": False}},
@@ -643,7 +660,93 @@ async def finalize_session(session_id: str) -> None:
     commission_pct = terms["commission_pct"]
     platform_fee, operator_share = terms["platform_fee"], terms["operator_share"]
 
-    if gross > 0:
+    preauthorized = bool(terms.get("preauthorized"))
+    reserved_amount = round(float(terms.get("reserved_amount") or 0), 2)
+    preauth_overage = round(float(terms.get("preauth_overage") or 0), 2)
+
+    if preauthorized:
+        escrow_user_id = str(platform_user_id or "")
+        if not escrow_user_id:
+            await _settlement_failed(session_id, "EV escrow wallet missing")
+            return
+
+        operator_payment = None
+        if operator_user_id and operator_share > 0 and escrow_user_id != operator_user_id:
+            operator_payment = await transfer_between_wallets(
+                from_user_id=escrow_user_id,
+                to_user_id=operator_user_id,
+                amount=operator_share,
+                tx_type=TransactionType.EV_CHARGING_REVENUE,
+                description=f"EV Betreibererlös {sess['charge_point_id']} — {kwh:.2f} kWh",
+                reference=f"{txn_ref}-OP",
+                idempotency_key=f"ev:settlement:{session_id}:operator",
+                metadata={"session_id": session_id, "settlement_ref": txn_ref, **terms},
+            )
+            if not operator_payment.success:
+                await _settlement_failed(
+                    session_id,
+                    operator_payment.error or "Operator settlement incomplete",
+                    operator_payment.status.value,
+                )
+                return
+
+        refund_amount = round(max(0.0, reserved_amount - gross), 2)
+        refund_result = None
+        if refund_amount > 0:
+            refund_result = await transfer_between_wallets(
+                from_user_id=escrow_user_id,
+                to_user_id=user_id,
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"EV Preauthorization Restbetrag {sess['charge_point_id']}",
+                reference=f"{txn_ref}-REF",
+                idempotency_key=f"ev:settlement:{session_id}:refund",
+                metadata={
+                    "session_id": session_id,
+                    "settlement_ref": txn_ref,
+                    "reserved_amount": reserved_amount,
+                    "final_cost": gross,
+                },
+            )
+            if not refund_result.success:
+                await _settlement_failed(
+                    session_id,
+                    refund_result.error or "Preauthorization refund incomplete",
+                    refund_result.status.value,
+                )
+                return
+
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "preauth_status": "settled",
+                "preauth_final_charge": gross,
+                "preauth_refund_amount": refund_amount,
+                "preauth_refund_transaction_id": refund_result.transaction_id if refund_result else None,
+                "operator_payment_transaction_id": operator_payment.transaction_id if operator_payment else None,
+                "preauth_overage": preauth_overage,
+            }},
+        )
+        if operator_user_id:
+            await db.ev_operator_commissions.update_one(
+                {"_id": f"ev:commission:{session_id}"},
+                {"$setOnInsert": {
+                    "session_id": session_id,
+                    "charge_point_id": sess["charge_point_id"],
+                    "operator_user_id": operator_user_id,
+                    "gross": gross,
+                    "commission_pct": commission_pct,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "ref": operator_payment.reference if operator_payment else txn_ref,
+                    "success": True,
+                    "source": "preauthorized_escrow",
+                    "created_at": _utcnow_iso(),
+                }},
+                upsert=True,
+            )
+
+    elif gross > 0:
         kwargs = {
             "amount": gross, "tx_type": TransactionType.EV_CHARGING,
             "description": f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
