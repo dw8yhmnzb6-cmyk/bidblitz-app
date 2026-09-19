@@ -768,7 +768,7 @@ async def list_payouts(merchant_id: str, *, status: str = "", branch_id: str = "
     return await db.merchant_payouts.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
 
 
-async def update_payout_status(*, payout_id: str, status: str, actor_id: str, failure_reason: str = "") -> dict[str, Any]:
+async def update_payout_status(*, payout_id: str, status: str, actor_id: str, failure_reason: str = "", provider_reference: str | None = None) -> dict[str, Any]:
     payout = await db.merchant_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
     if not payout:
         raise ValueError("Auszahlung nicht gefunden")
@@ -789,6 +789,10 @@ async def update_payout_status(*, payout_id: str, status: str, actor_id: str, fa
     if status not in allowed_transitions.get(current_status, set()):
         raise ValueError(f"Ungültiger Payout-Statuswechsel: {current_status} → {status}")
 
+    clean_provider_reference = (provider_reference or "").strip()
+    if status == "paid" and len(clean_provider_reference) < 6:
+        raise ValueError("Provider-/Bankreferenz ist erforderlich, bevor eine Auszahlung als bezahlt markiert werden darf")
+
     updates = {"status": status, "updated_at": now_iso()}
     if status in {"processing", "failed", "returned", "cancelled"}:
         updates["processed_at"] = now_iso()
@@ -796,6 +800,8 @@ async def update_payout_status(*, payout_id: str, status: str, actor_id: str, fa
         updates["approved_at"] = now_iso()
     if status == "paid":
         updates["paid_at"] = now_iso()
+        updates["provider_reference"] = clean_provider_reference
+        updates["paid_confirmed_by"] = actor_id
     if failure_reason:
         updates["failure_reason"] = failure_reason
 
