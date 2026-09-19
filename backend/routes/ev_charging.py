@@ -312,46 +312,86 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         status_code = 409 if preauth.status.value in {"pending", "reconciliation_required"} else 402
         raise HTTPException(status_code, preauth.error or "EV Preauthorization fehlgeschlagen")
 
-    # Create authorization (id_tag = user-specific OCPP token)
+    # Persist authorization + session after the escrow transfer. If persistence
+    # fails, refund the held amount immediately so funds cannot become orphaned.
     id_tag = f"BB{secrets.token_hex(8).upper()}"
-    await db.ev_authorizations.insert_one({
-        "id_tag": id_tag,
-        "user_id": user_id,
-        "user_email": user.get("email"),
-        "active": True,
-        "created_at": _utcnow_iso(),
-        "expires_at": None,
-    })
+    try:
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$setOnInsert": {
+                "id_tag": id_tag,
+                "user_id": user_id,
+                "user_email": user.get("email"),
+                "active": True,
+                "created_at": _utcnow_iso(),
+                "expires_at": None,
+            }},
+            upsert=True,
+        )
 
-    # Create session in 'authorized' state
-    await db.ev_charging_sessions.insert_one({
-        "session_id": session_id,
-        "charge_point_id": req.charge_point_id,
-        "connector_id": req.connector_id,
-        "user_id": user_id,
-        "user_email": user.get("email"),
-        "id_tag": id_tag,
-        "tariff": {
-            "tariff_id": str(cp.get("tariff_id")),
-            "price_per_kwh": float(tariff.get("price_per_kwh", 0)),
-            "price_per_minute": float(tariff.get("price_per_minute", 0)),
-            "session_fee": float(tariff.get("session_fee", 0)),
-            "idle_fee_per_minute": float(tariff.get("idle_fee_per_minute", 0)),
-            "minimum_fee": float(tariff.get("minimum_fee", 0)),
-            "currency": tariff.get("currency", "EUR"),
-            "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
-        },
-        "reserved_amount": round(float(req.max_amount), 2),
-        "preauth_status": "held",
-        "preauth_transaction_id": preauth.transaction_id,
-        "preauth_escrow_user_id": escrow_user_id,
-        "currency": "EUR",
-        "kwh_charged": 0.0,
-        "current_cost": 0.0,
-        "status": "authorized",
-        "start_idempotency_key": client_key,
-        "created_at": _utcnow_iso(),
-    })
+        session_doc = {
+            "session_id": session_id,
+            "charge_point_id": req.charge_point_id,
+            "connector_id": req.connector_id,
+            "user_id": user_id,
+            "user_email": user.get("email"),
+            "id_tag": id_tag,
+            "tariff": {
+                "tariff_id": str(cp.get("tariff_id")),
+                "price_per_kwh": float(tariff.get("price_per_kwh", 0)),
+                "price_per_minute": float(tariff.get("price_per_minute", 0)),
+                "session_fee": float(tariff.get("session_fee", 0)),
+                "idle_fee_per_minute": float(tariff.get("idle_fee_per_minute", 0)),
+                "minimum_fee": float(tariff.get("minimum_fee", 0)),
+                "currency": tariff.get("currency", "EUR"),
+                "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
+            },
+            "reserved_amount": round(float(req.max_amount), 2),
+            "preauth_status": "held",
+            "preauth_transaction_id": preauth.transaction_id,
+            "preauth_escrow_user_id": escrow_user_id,
+            "currency": "EUR",
+            "kwh_charged": 0.0,
+            "current_cost": 0.0,
+            "status": "authorized",
+            "start_idempotency_key": client_key,
+            "created_at": _utcnow_iso(),
+        }
+        session_write = await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "user_id": user_id},
+            {"$setOnInsert": session_doc},
+            upsert=True,
+        )
+        if session_write.upserted_id is None:
+            persisted = await db.ev_charging_sessions.find_one(
+                {"session_id": session_id, "user_id": user_id},
+                {"_id": 0, "charge_point_id": 1, "connector_id": 1, "preauth_transaction_id": 1},
+            ) or {}
+            if (
+                persisted.get("charge_point_id") != req.charge_point_id
+                or int(persisted.get("connector_id") or 0) != int(req.connector_id)
+                or persisted.get("preauth_transaction_id") != preauth.transaction_id
+            ):
+                raise RuntimeError("Persisted EV session does not match preauthorization")
+    except Exception as exc:
+        refund = await _refund_ev_preauthorization(
+            session_id=session_id,
+            user_id=user_id,
+            escrow_user_id=escrow_user_id,
+            amount=req.max_amount,
+            reason="session_persistence_failed",
+        )
+        await db.ev_authorizations.update_many(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "cancelled_at": _utcnow_iso()}},
+        )
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
+        if not refund or not refund.success:
+            raise HTTPException(status_code=500, detail="EV-Session konnte nicht gespeichert werden; Preauthorization benötigt Abstimmung")
+        raise HTTPException(status_code=500, detail="EV-Session konnte nicht gespeichert werden; reservierter Betrag wurde zurückgezahlt")
 
     # Send RemoteStart / RequestStartTransaction depending on protocol
     try:
