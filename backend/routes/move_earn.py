@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.rate_limit import RATE_ADMIN_ACTION, limiter
 from core.security import get_current_user
 
@@ -1134,12 +1135,13 @@ async def _status_payload(user: dict) -> dict:
             "title": f"{slot.get('tier', 'reward').title()} Reward",
             "unlock_steps": threshold,
             "energy_cost": int(slot.get("energy_cost", 0) or 0),
-            "unlocked": int(daily.get("accepted_steps", 0) or 0) >= threshold,
+            "unlocked": bool(TEST_MODE and int(daily.get("accepted_steps", 0) or 0) >= threshold),
             "claimed": code in claimed_codes,
         })
 
     progress_pct = min(100, int(round((int(daily.get("accepted_steps", 0) or 0) / max(1, int(settings.get("daily_step_goal", 10000)))) * 100)))
     return {
+        "value_rewards_enabled": bool(TEST_MODE),
         "profile": {
             "level": level,
             "next_level": next_level,
@@ -1365,6 +1367,12 @@ async def claim_move_reward(request: Request, req: ClaimRewardRequest):
 
     reward_code = req.reward_code.strip()
     result: dict[str, Any]
+
+    if reward_code != "checkin" and not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Move-&-Earn-Wert-Rewards sind in Production bis zur verifizierten Schrittquelle deaktiviert.",
+        )
 
     if reward_code == "checkin":
         claim_id, replay = await _begin_move_reward_claim(uid, reward_code)
