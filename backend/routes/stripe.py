@@ -708,6 +708,7 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         )
 
     transaction_id = wallet_credit.transaction_id
+    credited_now = not bool(wallet_credit.idempotent_replay)
     new_balance = round(float(wallet_credit.new_balance or 0), 2)
     await db.quick_topup_attempts.update_one(
         {"_id": attempt_id},
