@@ -325,3 +325,22 @@ def test_pos_payments_fail_closed_and_retry_safely():
     assert 'const correctlyWired = !["voucher", "invoice"].includes(key);' in pos_page
     assert 'key !== "tap_to_pay" && (key !== "card" || externalCardCertified)' in pos_page
     assert 'body.card_reference = `CARD-' not in pos_page
+
+
+def test_merchant_payout_balance_and_state_machine_contracts():
+    settlement_source = (BACKEND_DIR / "services" / "merchant_settlement.py").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminMerchantSettlementsPage.jsx").read_text(encoding="utf-8")
+
+    assert 'available_minor -= amount_minor' in settlement_source
+    assert 'PAYOUT_ACTIVE_STATUSES = {"created", "pending_approval", "processing", "reconciliation_required"}' in settlement_source
+    assert '"pending_approval": {"processing", "cancelled"}' in settlement_source
+    assert '"processing": {"paid", "failed", "cancelled"}' in settlement_source
+    assert '"paid": {"returned"}' in settlement_source
+    assert 'existing_return = await db.merchant_balance_entries.find_one' in settlement_source
+    assert '"type": "payout_return"' in settlement_source
+    assert '"payout_lock": lock_token' in settlement_source
+
+    assert 'payout.status === "pending_approval"' in admin_page
+    assert 'payout.status === "processing"' in admin_page
+    assert 'payout.status === "paid"' in admin_page
+    assert 'actionPayout(payout.payout_id, "returned")' in admin_page
