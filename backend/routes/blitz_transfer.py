@@ -7,18 +7,19 @@ import os
 import uuid
 import secrets
 import hashlib
+import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
-from typing import Optional
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/transfer", tags=["transfer"])
+logger = logging.getLogger("bidblitz.transfer")
 
 UPLOAD_DIR = Path("/var/www/bidblitz/uploads/transfers") if os.path.exists("/var/www/bidblitz") else Path(__file__).parent.parent / "uploads" / "transfers"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
