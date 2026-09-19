@@ -1077,7 +1077,7 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
             "completed_at": completed_at,
         }},
     )
-    await db.marketplace_listings.update_one(
+    listing_final = await db.marketplace_listings.update_one(
         {"listing_id": sale["listing_id"], "flash_purchase_key": key_hash},
         {
             "$set": {
@@ -1091,7 +1091,7 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
             "$unset": {"flash_purchase_key": ""},
         },
     )
-    await db.commerce_flash_sales.update_one(
+    sale_final = await db.commerce_flash_sales.update_one(
         {"sale_id": sale_id, "reservation_key": key_hash},
         {
             "$set": {
@@ -1104,6 +1104,20 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
             "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""},
         },
     )
+    if listing_final.modified_count != 1 or sale_final.modified_count != 1:
+        await db.commerce_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "reconciliation_reason": "post_settlement_inventory_finalization_failed",
+                "reconciliation_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Zahlung wurde verarbeitet, aber der Produktstatus muss manuell abgestimmt werden.",
+        )
+
     await _credit_flash_revenue_once(order_id, commission, now)
 
     if not platform_owned:
