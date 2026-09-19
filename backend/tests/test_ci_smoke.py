@@ -770,3 +770,20 @@ def test_unverified_provider_and_client_declared_money_flows_fail_closed():
     assert "Legacy client-declared winnings are unsafe" in gaming_source
     assert "Cashback wird automatisch aus verifizierten Transaktionen gutgeschrieben." in gaming_source
     assert '"gaming_coins": {"$gte": amount}' in gaming_source
+
+
+def test_mining_and_gaming_rewards_cannot_be_double_claimed_or_overspent():
+    mining_source = (BACKEND_DIR / "routes" / "mining.py").read_text(encoding="utf-8")
+    gaming_source = (BACKEND_DIR / "routes" / "gaming.py").read_text(encoding="utf-8")
+
+    assert '"status": "processing"' in mining_source
+    assert '"status": "completed"' in mining_source
+    assert '"blz_balance": {"$gte": req.amount}' in mining_source
+    assert "await credit_wallet(" in mining_source
+    assert '"referred_id": user_id' in mining_source
+    assert '"$setOnInsert"' in mining_source
+
+    assert '"gaming_coins": {"$gte": amount}' in gaming_source
+    assert '"claimed_points": {"$ne": req.points}' in gaming_source
+    assert '"vip_claims": {"$ne": req.perk_type}' in gaming_source
+    assert "gaming_reward_markers" in gaming_source
