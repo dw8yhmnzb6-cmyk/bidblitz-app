@@ -549,11 +549,10 @@ async def get_tasks(child_id: str, request: Request, status: str = None):
 @router.post("/task/submit/{task_id}")
 async def submit_task(task_id: str, request: Request):
     """Child submits task for approval."""
-    # Get child from header
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+
     task = await db.child_tasks.find_one({"task_id": task_id, "child_id": child_id})
     if not task:
         raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
@@ -715,14 +714,10 @@ async def reject_task(task_id: str, request: Request):
 
 @router.post("/location/update")
 async def update_location(req: LocationUpdateRequest, request: Request):
-    """Child device sends location update."""
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    """Child device sends location update with the canonical child token."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
     
     now = datetime.now(timezone.utc)
     
@@ -974,76 +969,30 @@ async def get_analytics(child_id: str, request: Request, days: int = 7):
 
 @router.post("/legacy/child-login")
 async def child_login(req: ChildLoginRequest):
-    """Child logs in with PIN."""
-    import hashlib
-    
-    child = await db.children.find_one({"child_id": req.child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    pin_hash = hashlib.sha256(req.pin.encode()).hexdigest()
-    if pin_hash != child.get("pin_hash"):
-        raise HTTPException(status_code=401, detail="Falscher PIN")
-    
-    if child.get("is_locked"):
-        raise HTTPException(status_code=403, detail="Konto gesperrt")
-    
-    # Generate child session token
-    session_token = secrets.token_hex(32)
-    now = datetime.now(timezone.utc)
-    
-    await db.child_sessions.update_one(
-        {"child_id": req.child_id},
-        {"$set": {
-            "token": session_token,
-            "created_at": now.isoformat(),
-            "expires_at": (now + timedelta(hours=24)).isoformat(),
-        }},
-        upsert=True
-    )
-    
-    return {
-        "ok": True,
-        "child_id": req.child_id,
-        "name": child.get("name"),
-        "balance": child.get("balance", 0),
-        "avatar": child.get("avatar"),
-        "token": session_token,
-    }
+    """Compatibility login delegated to the canonical child session."""
+    from routes.kids import child_login as canonical_child_login
+    result = await canonical_child_login(req)
+    return {**result, "token": result.get("child_token")}
 
 
 @router.get("/child-me")
 async def get_child_profile(request: Request):
-    """Get child's own profile (child mode)."""
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.children.find_one(
-        {"child_id": child_id},
-        {"_id": 0, "pin_hash": 0, "parent_id": 0}
-    )
-    
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    # Get pending tasks
+    """Legacy profile route backed by the canonical child token."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+
     tasks = await db.child_tasks.find(
         {"child_id": child_id, "status": "pending"},
         {"_id": 0}
     ).to_list(10)
-    
-    # Get recent transactions
     txs = await db.child_transactions.find(
         {"child_id": child_id},
         {"_id": 0}
     ).sort("created_at", -1).limit(5).to_list(5)
-    
-    return {
-        "child": child,
-        "pending_tasks": tasks,
-        "recent_transactions": txs,
-    }
+
+    public_child = {k: v for k, v in child.items() if k not in {"pin_hash", "pin_hash_v2", "pin_salt", "parent_id"}}
+    return {"child": public_child, "pending_tasks": tasks, "recent_transactions": txs}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1086,13 +1035,9 @@ async def child_send_message(request: Request):
     body = await request.json()
     message_text = body.get("message", "")
     
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
     
     now = datetime.now(timezone.utc)
     msg_id = secrets.token_hex(8)
