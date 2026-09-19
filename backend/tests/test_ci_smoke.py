@@ -1558,6 +1558,21 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert 'case "/achievements":' in app
     assert 'title="Achievements"' in app
 
+def test_move_earn_value_rewards_require_verified_production_source():
+    backend = (BACKEND_DIR / "routes" / "move_earn.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MoveEarnPage.jsx").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in backend
+    assert '"value_rewards_enabled": bool(TEST_MODE)' in backend
+    assert 'if reward_code != "checkin" and not TEST_MODE:' in backend
+    assert "Move-&-Earn-Wert-Rewards sind in Production bis zur verifizierten Schrittquelle deaktiviert." in backend
+    assert '"unlocked": bool(TEST_MODE and int(daily.get("accepted_steps", 0) or 0) >= threshold)' in backend
+    assert "valueRewardsEnabled = status?.value_rewards_enabled === true" in page
+    assert "move-value-rewards-unavailable" in page
+    assert "disabled={!valueRewardsEnabled || !card.unlocked || card.claimed}" in page
+    assert "disabled={!valueRewardsEnabled || !mission.completed || mission.claimed}" in page
+
+
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
     registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
