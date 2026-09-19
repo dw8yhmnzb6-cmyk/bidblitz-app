@@ -787,3 +787,26 @@ def test_mining_and_gaming_rewards_cannot_be_double_claimed_or_overspent():
     assert '"claimed_points": {"$ne": req.points}' in gaming_source
     assert '"vip_claims": {"$ne": req.perk_type}' in gaming_source
     assert "gaming_reward_markers" in gaming_source
+
+
+def test_mining_launchpad_and_loyalty_rewards_are_ledger_backed_and_exactly_once():
+    mining_source = (BACKEND_DIR / "routes" / "mining_phase2.py").read_text(encoding="utf-8")
+    loyalty_source = (BACKEND_DIR / "routes" / "loyalty_system.py").read_text(encoding="utf-8")
+    engine_source = (BACKEND_DIR / "core" / "payment_engine.py").read_text(encoding="utf-8")
+    database_source = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
+
+    assert "TransactionType.MINING_PURCHASE" in mining_source
+    assert "mining_launchpad_buys.update_one" in mining_source
+    assert 'marker_field = f"purchase_markers.{purchase_hash}"' in mining_source
+    assert "mining-launchpad-refund" in mining_source
+    assert 'db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -project["price_eur"]}})' not in mining_source
+
+    assert "LOYALTY_CASHBACK" in engine_source
+    assert "loyalty_reward_claims" in loyalty_source
+    assert "credit_wallet(" in loyalty_source
+    assert 'marker_field = f"reward_markers.{claim_hash}"' in loyalty_source
+    assert '"$inc": {"balance": cashback_earned}' not in loyalty_source
+
+    assert 'db.mining_launchpad_buys, [("user_id", 1), ("project_id", 1)], unique=True' in database_source
+    assert 'db.loyalty_reward_claims, "claim_id", unique=True' in database_source
+    assert 'db.user_loyalty, "user_id", unique=True' in database_source
