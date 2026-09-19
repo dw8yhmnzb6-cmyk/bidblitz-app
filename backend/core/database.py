@@ -188,6 +188,8 @@ async def create_indexes():
     await safe_create_index(db.mining_claims, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mining_referrals, "referrer_id")
     await safe_create_index(db.mining_referrals, "referee_id")
+    await safe_create_index(db.mining_launchpad_buys, [("user_id", 1), ("project_id", 1)], unique=True, critical=True)
+    await safe_create_index(db.loyalty_reward_claims, "claim_id", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # KIDS SYSTEM
