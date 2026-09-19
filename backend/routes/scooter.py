@@ -5,6 +5,7 @@ Production-ready for IoT device communication.
 """
 
 import secrets
+import os
 import math
 import logging
 import hashlib
@@ -16,6 +17,7 @@ from typing import Optional
 from enum import Enum
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/scooter", tags=["Scooter IoT"])
@@ -101,9 +103,27 @@ async def _get_active_scooter_subscription(user: dict) -> Optional[dict]:
     return sub
 
 
-# IoT Provider Configuration (configure in .env for production)
-IOT_PROVIDER_URL = "https://iot.bidblitz.ae/api/v1"  # Replace with real IoT provider
-IOT_API_KEY = ""  # Set from environment
+# IoT Provider Configuration. Production fails closed unless these are set.
+IOT_PROVIDER_URL = os.environ.get("IOT_PROVIDER_URL", "").rstrip("/")
+IOT_API_KEY = os.environ.get("IOT_API_KEY", "")
+IOT_DEVICE_INGEST_KEY = os.environ.get("IOT_DEVICE_INGEST_KEY", "")
+
+
+def _iot_live_configured() -> bool:
+    return bool(IOT_PROVIDER_URL and IOT_API_KEY)
+
+
+def _require_iot_device_ingest_auth(request: Request) -> None:
+    if TEST_MODE:
+        return
+    expected = IOT_DEVICE_INGEST_KEY or IOT_API_KEY
+    if not expected:
+        raise HTTPException(status_code=503, detail="IoT device ingest is not configured")
+    auth = request.headers.get("Authorization", "")
+    bearer = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+    provided = request.headers.get("X-IoT-Key", "").strip() or bearer
+    if not provided or not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Invalid IoT device credentials")
 
 # Timeouts
 DEVICE_TIMEOUT_SECONDS = 10
@@ -141,67 +161,102 @@ class DeviceCommandResult:
 
 
 async def send_device_command(device_id: str, command: DeviceCommand, params: dict = None) -> DeviceCommandResult:
-    """
-    Send command to physical scooter IoT device.
-    
-    In production, this connects to your IoT provider API (e.g., Segway, Comodule, etc.)
-    For development/testing, returns simulated success.
-    """
+    """Send an audited command to a physical scooter; simulate only in TEST_MODE."""
     if not device_id:
         return DeviceCommandResult(False, "No device_id configured")
-    
-    # Log command for audit
-    logger.info(f"IoT Command: device={device_id}, cmd={command.value}, params={params}")
-    
-    # Record command in DB for audit trail
+
+    command_id = secrets.token_hex(8)
+    logger.info("IoT Command: device=%s, cmd=%s", device_id, command.value)
     await db.scooter_device_commands.insert_one({
-        "command_id": secrets.token_hex(8),
+        "command_id": command_id,
         "device_id": device_id,
         "command": command.value,
         "params": params or {},
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
     })
-    
-    # Production IoT API call (uncomment when IoT provider is configured)
-    """
+
+    if TEST_MODE:
+        await db.scooter_device_commands.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "status": "success",
+                "mode": "simulation",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return DeviceCommandResult(True, f"Command {command.value} sent (test simulation)", {"simulated": True})
+
+    if not _iot_live_configured():
+        await db.scooter_device_commands.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "status": "failed",
+                "error": "IoT provider not configured",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return DeviceCommandResult(False, "IoT provider not configured")
+
     try:
         async with httpx.AsyncClient(timeout=DEVICE_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{IOT_PROVIDER_URL}/devices/{device_id}/command",
-                json={"command": command.value, "params": params or {}},
-                headers={"Authorization": f"Bearer {IOT_API_KEY}"}
+                json={"command": command.value, "params": params or {}, "command_id": command_id},
+                headers={
+                    "Authorization": f"Bearer {IOT_API_KEY}",
+                    "Idempotency-Key": f"scooter-command:{command_id}",
+                },
             )
-            
-            if response.status_code == 200:
-                data = response.json()
-                # Update command status
-                await db.scooter_device_commands.update_one(
-                    {"device_id": device_id, "status": "pending"},
-                    {"$set": {"status": "success", "response": data}}
-                )
-                return DeviceCommandResult(True, "Command sent", data)
-            else:
-                await db.scooter_device_commands.update_one(
-                    {"device_id": device_id, "status": "pending"},
-                    {"$set": {"status": "failed", "error": response.text}}
-                )
-                return DeviceCommandResult(False, f"Device error: {response.status_code}")
-                
-    except httpx.TimeoutException:
-        return DeviceCommandResult(False, "Device timeout - check connectivity")
-    except Exception as e:
-        logger.error(f"IoT command failed: {e}")
-        return DeviceCommandResult(False, str(e))
-    """
-    
-    # Development mode: Simulate success
-    await db.scooter_device_commands.update_one(
-        {"device_id": device_id, "status": "pending"},
-        {"$set": {"status": "success", "mode": "simulation"}}
-    )
-    return DeviceCommandResult(True, f"Command {command.value} sent (simulation mode)", {"simulated": True})
+        if response.status_code not in {200, 201, 202}:
+            error_text = response.text[:500]
+            await db.scooter_device_commands.update_one(
+                {"command_id": command_id},
+                {"$set": {
+                    "status": "failed",
+                    "provider_status": response.status_code,
+                    "error": error_text,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            return DeviceCommandResult(False, f"Device provider error: {response.status_code}")
 
+        try:
+            data = response.json()
+        except Exception:
+            data = {"raw": response.text[:500]}
+        await db.scooter_device_commands.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "status": "success",
+                "mode": "live",
+                "provider_status": response.status_code,
+                "response": data,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return DeviceCommandResult(True, "Command accepted by IoT provider", data)
+    except httpx.TimeoutException:
+        await db.scooter_device_commands.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "status": "failed",
+                "error": "timeout",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return DeviceCommandResult(False, "Device timeout - check connectivity")
+    except Exception as exc:
+        logger.exception("IoT command failed for %s", device_id)
+        await db.scooter_device_commands.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "status": "failed",
+                "error": str(exc)[:500],
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return DeviceCommandResult(False, "IoT command failed")
 
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance in km using Haversine formula."""
@@ -217,8 +272,40 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/nearby")
-async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: float = 5.0):
-    """Get available scooters near location (public endpoint)."""
+async def get_nearby_scooters(lat: Optional[float] = None, lng: Optional[float] = None, radius: float = 5.0):
+    """Get available scooters only for an explicit user location."""
+    effective_enabled = SCOOTER_MODULE_ENABLED and (TEST_MODE or _iot_live_configured())
+    if not effective_enabled:
+        return {
+            "scooters": [],
+            "total": 0,
+            "module_enabled": False,
+            "message": "Scooter-IoT ist noch nicht für Livebetrieb verbunden.",
+            "pricing": {
+                "unlock_fee": UNLOCK_FEE,
+                "per_minute": PER_MINUTE_RATE,
+                "daily_cap": MAX_DAILY_CAP,
+                "min_balance": MIN_WALLET_BALANCE,
+            },
+        }
+    if lat is None or lng is None:
+        return {
+            "scooters": [],
+            "total": 0,
+            "module_enabled": True,
+            "location_required": True,
+            "message": "Standortzugriff erforderlich, um Scooter in deiner Nähe anzuzeigen.",
+            "pricing": {
+                "unlock_fee": UNLOCK_FEE,
+                "per_minute": PER_MINUTE_RATE,
+                "daily_cap": MAX_DAILY_CAP,
+                "min_balance": MIN_WALLET_BALANCE,
+            },
+        }
+    if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
+        raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
+    radius = max(0.1, min(float(radius), 20.0))
+
     # Module disabled - return empty state
     if not SCOOTER_MODULE_ENABLED:
         return {
@@ -250,10 +337,10 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
     nearby = []
     for s in scooters:
         loc = s.get("location", {})
-        slat = loc.get("lat") or s.get("lat", 0)
-        slng = loc.get("lng") or s.get("lng", 0)
-        
-        if slat == 0 and slng == 0:
+        slat = loc.get("lat") if loc.get("lat") is not None else s.get("lat")
+        slng = loc.get("lng") if loc.get("lng") is not None else s.get("lng")
+
+        if slat is None or slng is None:
             continue
         
         s["lat"] = slat
@@ -878,17 +965,18 @@ async def get_ride_history(request: Request, limit: int = 20):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class DeviceUpdateRequest(BaseModel):
-    device_id: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    battery: Optional[int] = None
-    speed: Optional[float] = None
+    device_id: str = Field(..., min_length=2, max_length=128)
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    battery: Optional[int] = Field(default=None, ge=0, le=100)
+    speed: Optional[float] = Field(default=None, ge=0, le=120)
     locked: Optional[bool] = None
-    signal_strength: Optional[int] = None
+    signal_strength: Optional[int] = Field(default=None, ge=-200, le=0)
 
 
 @router.post("/device/update")
-async def device_location_update(req: DeviceUpdateRequest):
+async def device_location_update(req: DeviceUpdateRequest, request: Request):
+    _require_iot_device_ingest_auth(request)
     """
     Receive location/status updates from scooter IoT device.
     Called by the physical scooter hardware.
@@ -937,8 +1025,9 @@ async def device_location_update(req: DeviceUpdateRequest):
 
 
 @router.post("/device/ping")
-async def device_ping(req: DeviceUpdateRequest):
-    """Simple ping from device to confirm connectivity."""
+async def device_ping(req: DeviceUpdateRequest, request: Request):
+    """Authenticated ping from a physical scooter."""
+    _require_iot_device_ingest_auth(request)
     scooter = await db.scooters.find_one({"device_id": req.device_id})
     if not scooter:
         return {"ok": False, "error": "Unknown device"}
