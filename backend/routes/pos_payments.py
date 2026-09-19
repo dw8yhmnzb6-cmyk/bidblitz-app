@@ -68,6 +68,18 @@ async def get_fee_rates() -> dict:
     return dict(DEFAULT_FEES)
 
 
+async def _require_merchant_profile(user: dict) -> dict:
+    user_id = str(user["_id"])
+    profile = await db.merchant_profiles.find_one({"user_id": user_id})
+    if not profile:
+        staff = await db.merchant_staff.find_one({"user_id": user_id, "status": "active"})
+        if staff and ObjectId.is_valid(str(staff.get("merchant_id") or "")):
+            profile = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    if not profile:
+        raise HTTPException(status_code=403, detail="Aktives Händlerprofil erforderlich")
+    return profile
+
+
 def generate_barcode_token(user_id: str) -> str:
     salt = secrets.token_hex(8)
     raw = f"{user_id}:{salt}:{datetime.now(timezone.utc).isoformat()}"
@@ -171,7 +183,8 @@ async def refresh_barcode(request: Request):
 
 @router.post("/barcode-lookup")
 async def barcode_lookup(request: Request):
-    await get_current_user(request)
+    actor = await get_current_user(request)
+    await _require_merchant_profile(actor)
     body = await request.json()
     barcode = body.get("barcode", "")
 
@@ -191,7 +204,11 @@ async def barcode_lookup(request: Request):
 
     return {
         "customer_name": customer.get("name", ""),
-        "customer_email": customer.get("email", ""),
+        "customer_email": (
+            customer.get("email", "")[:2] + "***@" + customer.get("email", "").split("@", 1)[1]
+            if customer.get("email") and "@" in customer.get("email", "")
+            else ""
+        ),
         "barcode": barcode, "valid": True,
     }
 
@@ -212,12 +229,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
     merchant_uid = str(merchant_user["_id"])
 
-    mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
-    if not mp and merchant_user.get("role") not in ("merchant", "admin"):
-        staff = await db.merchant_staff.find_one({"user_id": merchant_uid, "status": "active"})
-        if not staff:
-            raise HTTPException(status_code=403, detail="Merchant access required")
-        mp = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    mp = await _require_merchant_profile(merchant_user)
 
     now = datetime.now(timezone.utc)
     bc = await db.payment_barcodes.find_one({"barcode": req.barcode, "active": True})
@@ -268,6 +280,8 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
     merchant_owner_id = mp.get("user_id", "") if mp else ""
+    if not merchant_owner_id:
+        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
 
     now_iso = now.isoformat()
 
@@ -437,12 +451,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
     merchant_uid = str(merchant_user["_id"])
 
-    mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
-    if not mp and merchant_user.get("role") not in ("merchant", "admin"):
-        staff = await db.merchant_staff.find_one({"user_id": merchant_uid, "status": "active"})
-        if not staff:
-            raise HTTPException(status_code=403, detail="Merchant access required")
-        mp = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    mp = await _require_merchant_profile(merchant_user)
 
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
@@ -497,6 +506,8 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         customer_name = customer_doc.get("name", "")
 
     merchant_owner_id = mp.get("user_id", "") if mp else ""
+    if not merchant_owner_id:
+        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
 
     if mid and merchant_owner_id:
         merchant_credit_result = await _credit_merchant_wallet(
