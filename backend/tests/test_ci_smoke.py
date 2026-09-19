@@ -846,3 +846,21 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
     assert 'idempotent_replay=getattr(result, "idempotent_replay", False)' in engine_source
     assert "paymentAttemptKeyRef" in mobile_source
     assert "idempotency_key: paymentAttemptKeyRef.current" in mobile_source
+
+
+def test_auction_winners_and_referrals_are_race_safe():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert "async def _finalize_auction_once" in source
+    assert 'winner_id = auction.get("last_bidder_id")' in source
+    assert 'notification_id = f"auction-win:{auction_id}:{winner_id}"' in source
+    assert '"$setOnInsert": {' in source
+    assert 'await _finalize_auction_once(auc["auction_id"])' in source
+    assert "finalized, _ = await _finalize_auction_once(auction_id)" in source
+    assert '"force_ended_by": str(user["_id"])' in source
+
+    assert 'grant_scope = f"auction-referral:{user_id}:{referrer_id}"' in source
+    assert 'grant_key=f"{grant_scope}:invitee"' in source
+    assert 'grant_key=f"{grant_scope}:referrer"' in source
+    assert 'notification_id = f"auction-referral:{user_id}:{referrer_id}"' in source
+    assert '"replayed": replayed or not invitee_new or not referrer_new' in source
