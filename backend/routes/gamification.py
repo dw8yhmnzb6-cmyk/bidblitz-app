@@ -17,6 +17,7 @@ from bson import ObjectId
 import asyncio
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from routes.web_push import send_push_to_user
 
@@ -305,6 +306,8 @@ async def get_daily_challenges(request: Request):
 async def complete_challenge(challenge_id: str, request: Request):
     """Manually complete a challenge (called by other routes)."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BLZ-Gamification-Rewards sind in Production deaktiviert.")
     user_id = str(user["_id"])
     
     if challenge_id not in DAILY_CHALLENGES:
@@ -389,6 +392,8 @@ async def track_challenge_progress(user_id: str, challenge_id: str, increment: i
     Track progress for a challenge. Auto-complete when target reached.
     Call this from other routes (e.g., auctions.py, taxi.py, mining.py).
     """
+    if not TEST_MODE:
+        return
     if challenge_id not in DAILY_CHALLENGES:
         return
     
@@ -518,6 +523,8 @@ async def get_achievements(request: Request):
 async def unlock_achievement(achievement_id: str, request: Request):
     """Manually unlock an achievement (called by other routes)."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BLZ-Achievement-Rewards sind in Production deaktiviert.")
     user_id = str(user["_id"])
     
     if achievement_id not in ACHIEVEMENTS:
@@ -573,6 +580,8 @@ async def check_and_unlock_achievement(user_id: str, achievement_id: str):
     Check and unlock an achievement if not already unlocked.
     Call this from other routes when a milestone is reached.
     """
+    if not TEST_MODE:
+        return False
     if achievement_id not in ACHIEVEMENTS:
         return False
     
