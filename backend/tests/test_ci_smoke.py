@@ -1385,3 +1385,20 @@ def test_legacy_ev_finder_routes_production_users_into_live_ocpp_flow():
     assert 'currentPath.startsWith("/ev/session/")' in app
     assert "<EVStartChargingPage" in app
     assert "<EVLiveSessionPage" in app
+
+
+def test_supercharger_staking_is_fail_closed_without_live_provider():
+    backend = (BACKEND_DIR / "routes" / "supercharger.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "SuperchargerPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/capabilities")' in backend
+    assert '"live_staking_provider_connected": False' in backend
+    assert '"deposit_available": bool(TEST_MODE)' in backend
+    assert "Es wurden keine BLZ abgezogen" in backend
+    assert '"is_demo": True' in backend
+    assert '"legacy_demo_count": legacy_demo_count' in backend
+
+    assert "/api/supercharger/capabilities" in page
+    assert "capabilities.deposit_available" in page
+    assert "supercharger-provider-unavailable" in page
+    assert "Noch nicht verfügbar" in page
