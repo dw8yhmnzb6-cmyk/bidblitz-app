@@ -641,3 +641,26 @@ def test_two_factor_flows_use_hashed_secrets_and_configured_login_factor():
     assert "[6, 8].includes(normalized.length)" in user_context
     assert "Authenticator-App" in auth_page
     assert "maxLength={8}" in auth_page
+
+
+def test_marketplace_and_flash_sale_money_paths_are_retry_safe():
+    marketplace_source = (BACKEND_DIR / "routes" / "marketplace.py").read_text(encoding="utf-8")
+    commerce_source = (BACKEND_DIR / "routes" / "commerce_center.py").read_text(encoding="utf-8")
+    dashboard_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MarketplaceDashboardPage.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_marketplace_kyc" in marketplace_source
+    assert '_require_marketplace_kyc(user, action="zu verkaufen")' in marketplace_source
+    assert '_require_marketplace_kyc(user, action="zu kaufen")' in marketplace_source
+    assert "def _require_marketplace_action_idempotency_key" in marketplace_source
+    assert "promotion_operations" in marketplace_source
+    assert "marketplace_promo_ids" in marketplace_source
+    assert "marketplace-boost-rollback" in marketplace_source
+    assert "marketplace-vip-rollback" in marketplace_source
+
+    assert "async def _release_flash_claim" in commerce_source
+    assert "post_settlement_inventory_finalization_failed" in commerce_source
+    assert 'status": "reconciliation_required"' in commerce_source
+
+    assert "boost_type: boostType" in dashboard_source
+    assert "'Idempotency-Key': idempotencyKey" in dashboard_source
+    assert "promotionAttemptKeysRef" in dashboard_source
