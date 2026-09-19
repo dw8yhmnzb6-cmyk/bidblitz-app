@@ -404,6 +404,90 @@ async def _ensure_vendor_deposit_keep(booking: dict, amount: float) -> bool:
     return bool(vendor)
 
 
+async def _ensure_car_rental_completion_stats(booking: dict) -> bool:
+    booking_id = booking["booking_id"]
+    marker = hashlib.sha256(f"car-rental-complete:{booking_id}".encode("utf-8")).hexdigest()[:24]
+    vendor_field = f"completion_stats_markers.{marker}"
+    car_field = f"completion_stats_markers.{marker}"
+
+    vendor_result = await db.car_rental_vendors.update_one(
+        {"vendor_id": booking["vendor_id"], vendor_field: {"$exists": False}},
+        {
+            "$inc": {
+                "total_bookings": 1,
+                "total_revenue": round(float(booking.get("vendor_share") or 0), 2),
+            },
+            "$set": {
+                vendor_field: {
+                    "booking_id": booking_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if vendor_result.modified_count != 1:
+        vendor = await db.car_rental_vendors.find_one(
+            {"vendor_id": booking["vendor_id"], vendor_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not vendor:
+            return False
+
+    car_result = await db.car_rental_cars.update_one(
+        {"car_id": booking["car_id"], car_field: {"$exists": False}},
+        {
+            "$inc": {
+                "total_bookings": 1,
+                "total_revenue": round(float(booking.get("total_amount") or 0), 2),
+                "total_days_rented": int(booking.get("rental_days") or 0),
+            },
+            "$set": {
+                car_field: {
+                    "booking_id": booking_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if car_result.modified_count != 1:
+        car = await db.car_rental_cars.find_one(
+            {"car_id": booking["car_id"], car_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not car:
+            return False
+    return True
+
+
+async def _restore_failed_payout_reservation_once(payout: dict) -> bool:
+    if not payout.get("reserved_from_pending_payout", True):
+        return True
+    payout_id = str(payout["payout_id"])
+    marker = hashlib.sha256(f"car-rental-payout-failed:{payout_id}".encode("utf-8")).hexdigest()[:24]
+    marker_field = f"payout_failure_restore_markers.{marker}"
+    amount = round(float(payout.get("amount") or 0), 2)
+    result = await db.car_rental_vendors.update_one(
+        {"vendor_id": payout["vendor_id"], marker_field: {"$exists": False}},
+        {
+            "$inc": {"pending_payout": amount},
+            "$set": {
+                marker_field: {
+                    "payout_id": payout_id,
+                    "amount": amount,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if result.modified_count == 1:
+        return True
+    vendor = await db.car_rental_vendors.find_one(
+        {"vendor_id": payout["vendor_id"], marker_field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(vendor)
+
+
 class BookingService:
     
     @classmethod
@@ -731,6 +815,8 @@ class BookingService:
         if booking["vendor_id"] != vendor_id:
             return None, "Keine Berechtigung"
         if booking.get("status") == BookingStatus.COMPLETED.value:
+            if not await _ensure_car_rental_completion_stats(booking):
+                return None, "Rückgabe-Statistik benötigt Abstimmung"
             return {
                 "extra_charges": booking.get("extra_charges", []),
                 "total_extra_charges": booking.get("total_extra_charges", 0),
@@ -825,6 +911,8 @@ class BookingService:
         if transition.modified_count != 1:
             fresh = await BookingRepository.get_by_id(booking_id)
             if fresh and fresh.get("status") == BookingStatus.COMPLETED.value:
+                if not await _ensure_car_rental_completion_stats(fresh):
+                    return None, "Rückgabe-Statistik benötigt Abstimmung"
                 return {
                     "extra_charges": fresh.get("extra_charges", []),
                     "total_extra_charges": fresh.get("total_extra_charges", 0),
@@ -841,11 +929,9 @@ class BookingService:
         })
         await _release_car_rental_days(booking_id)
 
-        await VendorRepository.increment_stats(vendor_id, "total_bookings", 1)
-        await VendorRepository.increment_stats(vendor_id, "total_revenue", booking["vendor_share"])
-        await CarRepository.increment_stats(booking["car_id"], "total_bookings", 1)
-        await CarRepository.increment_stats(booking["car_id"], "total_revenue", booking["total_amount"])
-        await CarRepository.increment_stats(booking["car_id"], "total_days_rented", booking["rental_days"])
+        final_booking = await BookingRepository.get_by_id(booking_id) or booking
+        if not await _ensure_car_rental_completion_stats(final_booking):
+            return None, "Rückgabe-Statistik benötigt Abstimmung"
 
         return {
             "extra_charges": extra_charges,
@@ -1275,6 +1361,8 @@ class PayoutService:
 
         current = str(payout.get("status") or "pending")
         if current == status:
+            if current == "failed" and not await _restore_failed_payout_reservation_once(payout):
+                return False, "Auszahlungsreservierung benötigt Abstimmung"
             return True, None
         if current in {"completed", "failed"}:
             return False, "Auszahlung bereits verarbeitet"
@@ -1317,9 +1405,6 @@ class PayoutService:
             fresh = await PayoutRepository.get_by_id(payout_id)
             return (True, None) if fresh and fresh.get("status") == "failed" else (False, "Auszahlung wurde parallel geändert")
 
-        if payout.get("reserved_from_pending_payout", True):
-            await db.car_rental_vendors.update_one(
-                {"vendor_id": payout["vendor_id"]},
-                {"$inc": {"pending_payout": round(float(payout["amount"]), 2)}},
-            )
+        if not await _restore_failed_payout_reservation_once(payout):
+            return False, "Auszahlungsreservierung benötigt Abstimmung"
         return True, None
