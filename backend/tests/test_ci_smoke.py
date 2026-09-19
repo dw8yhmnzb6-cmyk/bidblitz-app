@@ -542,3 +542,18 @@ def test_kyc_production_is_fail_closed_and_uploads_are_real_images():
     assert 'head.startswith(b"\\x89PNG' in source
     assert 'head[8:12] == b"WEBP"' in source
     assert 'head[4:8] == b"ftyp"' in source
+
+
+def test_kyc_and_role_verification_fail_closed_in_production():
+    kyc_source = (BACKEND_DIR / "routes" / "kyc.py").read_text(encoding="utf-8")
+    verification_source = (BACKEND_DIR / "routes" / "verification.py").read_text(encoding="utf-8")
+
+    assert "KYC_AUTOMATED_PROVIDER_CERTIFIED" in kyc_source
+    assert "manual_review_required" in kyc_source
+    assert "def _validate_saved_image_signature" in kyc_source
+    assert "_validate_saved_image_signature(front_path" in kyc_source
+
+    assert "def _valid_image_signature" in verification_source
+    assert "File {key} is not a valid image" in verification_source
+    assert '"$inc": {"auth_version": 1}' in verification_source
+    assert "revoke_all_sessions" in verification_source
