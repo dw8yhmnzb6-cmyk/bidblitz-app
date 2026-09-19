@@ -191,8 +191,12 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
         if not ends_at or ends_at > now_iso:
             return auction, False
 
-        winner_id = auction.get("last_bidder_id")
-        winner_name = auction.get("last_bidder_name")
+        raw_winner_id = auction.get("last_bidder_id")
+        raw_winner_name = auction.get("last_bidder_name")
+        bot_last_bidder = str(raw_winner_id or "").startswith("bot_")
+        winner_id = None if bot_last_bidder else raw_winner_id
+        winner_name = None if bot_last_bidder else raw_winner_name
+        needs_review = bool(bot_last_bidder and not auction.get("bot_only"))
         claim = await db.auctions.update_one(
             {
                 "auction_id": auction_id,
@@ -205,6 +209,12 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
                 "winner_id": winner_id,
                 "winner_name": winner_name,
                 "ended_at": now_iso,
+                "requires_manual_review": needs_review,
+                "end_reason": (
+                    "bot_last_bidder_requires_review"
+                    if needs_review
+                    else ("bot_only_demo_complete" if bot_last_bidder else "timer_expired")
+                ),
             }},
         )
         auction = await db.auctions.find_one({"auction_id": auction_id}) or auction
@@ -2605,6 +2615,11 @@ async def set_bot_config(req: BotConfigRequest, request: Request):
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
+    if req.bot_enabled and not TEST_MODE and not auction.get("bot_only"):
+        raise HTTPException(
+            status_code=403,
+            detail="Bots dürfen in Production nur auf klar markierten bot_only Demo-/Testauktionen aktiviert werden.",
+        )
 
     await db.auctions.update_one(
         {"auction_id": req.auction_id},
@@ -2648,6 +2663,11 @@ async def set_bot_strategy(req: BotStrategyRequest, request: Request):
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
+    if not TEST_MODE and not auction.get("bot_only"):
+        raise HTTPException(
+            status_code=403,
+            detail="Bot-Strategien sind in Production nur für bot_only Demo-/Testauktionen erlaubt.",
+        )
     
     strategy = BOT_STRATEGIES[req.strategy]
     aggression = BOT_AGGRESSION_SETTINGS[strategy["aggression"]]
@@ -2672,10 +2692,17 @@ async def set_bot_strategy(req: BotStrategyRequest, request: Request):
 
 
 async def execute_bot_bid(auction):
-    """Place a single bot bid on an auction."""
+    """Place a bot bid only in test mode or an explicit bot-only auction."""
     import logging
     logger = logging.getLogger("bidblitz.bots")
-    
+
+    if not TEST_MODE and not auction.get("bot_only"):
+        logger.warning(
+            "Blocked production bot bid on customer auction %s",
+            auction.get("auction_id"),
+        )
+        return {"skipped": True, "reason": "customer_auction"}
+
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
@@ -2783,12 +2810,15 @@ async def bot_bidding_loop():
             now = datetime.now(timezone.utc)
             now_iso = now.isoformat()
 
-            bot_auctions = await db.auctions.find({
+            bot_query = {
                 "status": "active",
                 "bot_enabled": True,
                 "bot_target_price": {"$gt": 0},
                 "ends_at": {"$gt": now_iso},
-            }).to_list(100)
+            }
+            if not TEST_MODE:
+                bot_query["bot_only"] = True
+            bot_auctions = await db.auctions.find(bot_query).to_list(100)
             
             if bot_auctions:
                 logger.info(f"🤖 Bot loop: Found {len(bot_auctions)} active bot auctions")
@@ -3232,7 +3262,9 @@ async def force_end_auction(auction_id: str, request: Request):
 
         winner_id = auction.get("last_bidder_id")
         winner_name = auction.get("last_bidder_name")
-        if str(winner_id or "").startswith("bot_"):
+        bot_last_bidder = str(winner_id or "").startswith("bot_")
+        needs_review = bool(bot_last_bidder and not auction.get("bot_only"))
+        if bot_last_bidder:
             winner_id = None
             winner_name = None
 
@@ -3250,6 +3282,12 @@ async def force_end_auction(auction_id: str, request: Request):
                 "ended_at": now_iso,
                 "winner_id": winner_id,
                 "winner_name": winner_name,
+                "requires_manual_review": needs_review,
+                "end_reason": (
+                    "bot_last_bidder_requires_review"
+                    if needs_review
+                    else ("bot_only_demo_complete" if bot_last_bidder else "force_ended")
+                ),
                 "force_ended_by": str(user["_id"]),
             }},
         )
