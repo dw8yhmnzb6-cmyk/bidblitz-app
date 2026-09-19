@@ -164,12 +164,18 @@ async def update_child_location(loc: LocationUpdate, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    # Get child record
+    # Get child record and verify that the authenticated account is actually
+    # the parent or the linked child account. A foreign logged-in user must never
+    # be able to spoof a child's GPS position.
     child = await db.kids_children.find_one({"child_id": loc.child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    parent_id = child["parent_id"]
+
+    parent_id = str(child["parent_id"])
+    linked_child_user_id = str(child.get("user_id") or "")
+    if user_id not in {parent_id, linked_child_user_id}:
+        raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
+
     now = datetime.now(timezone.utc)
     
     # Update current location
