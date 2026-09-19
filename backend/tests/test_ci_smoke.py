@@ -865,6 +865,18 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
     assert "idempotency_key: paymentAttemptKeyRef.current" in mobile_source
 
 
+def test_auction_production_bots_cannot_manipulate_customer_auctions():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert 'if not TEST_MODE and not auction.get("bot_only"):' in source
+    assert 'bot_query["bot_only"] = True' in source
+    assert 'Bots dürfen in Production nur auf klar markierten bot_only' in source
+    assert 'Bot-Strategien sind in Production nur für bot_only' in source
+    assert 'bot_last_bidder = str(raw_winner_id or "").startswith("bot_")' in source
+    assert '"bot_last_bidder_requires_review"' in source
+    assert '"requires_manual_review": needs_review' in source
+
+
 def test_auction_winners_and_referrals_are_race_safe():
     source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
 
