@@ -188,12 +188,32 @@ class StartChargingRequest(BaseModel):
     connector_id: int = 1
     max_amount: float = Field(default=50.0, ge=1.0, le=500.0,
                               description="EUR cap to pre-authorize from wallet")
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 @router.post("/start")
 async def start_charging(req: StartChargingRequest, request: Request) -> Dict[str, Any]:
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    client_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if len(client_key) < 8:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    key_hash = hashlib.sha256(f"{user_id}:{client_key}".encode("utf-8")).hexdigest()[:20]
+    session_id = f"evs_{key_hash[:16]}"
+
+    existing = await db.ev_charging_sessions.find_one(
+        {"session_id": session_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing:
+        if existing.get("charge_point_id") != req.charge_point_id or int(existing.get("connector_id") or 0) != int(req.connector_id):
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Ladesession verwendet")
+        return {
+            "session_id": session_id,
+            "status": existing.get("status"),
+            "id_tag": existing.get("id_tag"),
+            "replayed": True,
+        }
 
     # Lookups & validation
     cp = await db.ev_charge_points.find_one({"charge_point_id": req.charge_point_id, "active": True})
@@ -219,10 +239,39 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     # Pre-existing active session for same user → block
     dup = await db.ev_charging_sessions.find_one({
         "user_id": user_id,
-        "status": {"$in": ["authorized", "starting", "active"]},
+        "status": {"$in": ["authorized", "starting", "active", "stopping"]},
     })
     if dup:
         raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
+
+    # Claim physical connector before RemoteStart so two users cannot race the same plug.
+    claim_id = f"{req.charge_point_id}:{req.connector_id}"
+    try:
+        await db.ev_connector_claims.insert_one({
+            "_id": claim_id,
+            "charge_point_id": req.charge_point_id,
+            "connector_id": req.connector_id,
+            "session_id": session_id,
+            "user_id": user_id,
+            "status": "claimed",
+            "claimed_at": _utcnow_iso(),
+        })
+    except Exception:
+        claim_doc = await db.ev_connector_claims.find_one({"_id": claim_id}) or {}
+        if claim_doc.get("status") in {"released", "failed"}:
+            takeover = await db.ev_connector_claims.update_one(
+                {"_id": claim_id, "status": {"$in": ["released", "failed"]}},
+                {"$set": {
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "status": "claimed",
+                    "claimed_at": _utcnow_iso(),
+                }},
+            )
+            if takeover.modified_count != 1:
+                raise HTTPException(status_code=409, detail="Stecker wurde gerade von einem anderen Nutzer reserviert")
+        elif str(claim_doc.get("session_id") or "") != session_id:
+            raise HTTPException(status_code=409, detail="Stecker wurde gerade von einem anderen Nutzer reserviert")
 
     # Wallet balance check (we will deduct after session ends; here only verify)
     balance = float(user.get("balance") or 0)
@@ -241,7 +290,6 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     })
 
     # Create session in 'authorized' state
-    session_id = f"evs_{secrets.token_hex(6)}"
     await db.ev_charging_sessions.insert_one({
         "session_id": session_id,
         "charge_point_id": req.charge_point_id,
@@ -264,6 +312,7 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         "kwh_charged": 0.0,
         "current_cost": 0.0,
         "status": "authorized",
+        "start_idempotency_key": client_key,
         "created_at": _utcnow_iso(),
     })
 
@@ -281,6 +330,10 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             {"session_id": session_id},
             {"$set": {"status": "failed", "error": str(exc)[:200]}},
         )
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
         raise HTTPException(502, f"Hardware-Kommunikation fehlgeschlagen: {exc}")
 
     accepted = (result or {}).get("status") == "Accepted"
@@ -289,12 +342,16 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             {"session_id": session_id},
             {"$set": {"status": "rejected", "error": "Station rejected RemoteStart"}},
         )
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
         raise HTTPException(409, "Ladestation hat den Start abgelehnt")
 
     await db.ev_charging_sessions.update_one(
         {"session_id": session_id}, {"$set": {"status": "starting"}}
     )
-    return {"session_id": session_id, "status": "starting", "id_tag": id_tag}
+    return {"session_id": session_id, "status": "starting", "id_tag": id_tag, "replayed": False}
 
 
 @router.get("/session/{session_id}")
@@ -550,6 +607,10 @@ async def finalize_session(session_id: str) -> None:
             "duration_min": round(duration_min, 1), "settlement_ref": txn_ref,
             "settled_at": _utcnow_iso(), "receipt_no": saved_receipt["receipt_no"],
         }, "$unset": {"settlement_error": ""}},
+    )
+    await db.ev_connector_claims.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "released", "released_at": _utcnow_iso()}},
     )
 
 
