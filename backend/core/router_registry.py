@@ -256,6 +256,7 @@ def register_all_routers(app):
         ("routes.admin_approvals", "router"),
         
         # Crypto
+        ("routes.crypto", "router"),
         ("routes.crypto_wallet", "router"),
         ("routes.crypto_prices", "router"),
         
