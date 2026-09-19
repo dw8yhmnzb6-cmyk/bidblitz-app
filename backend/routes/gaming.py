@@ -331,20 +331,43 @@ async def claim_season_xp(req: SeasonClaimRequest, request: Request):
         raise HTTPException(status_code=404, detail="Milestone nicht gefunden")
     if season["user_points"] < req.points:
         raise HTTPException(status_code=400, detail="Noch nicht genug XP für diesen Claim")
-    claims = await _get_or_create_season_claims(user_id, season["season_id"])
-    if req.points in claims.get("claimed_points", []):
+
+    claim = await db.gaming_season_claims.update_one(
+        {
+            "user_id": user_id,
+            "season_id": season["season_id"],
+            "claimed_points": {"$ne": req.points},
+        },
+        {
+            "$addToSet": {"claimed_points": req.points},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
+        upsert=True,
+    )
+    if claim.modified_count != 1 and claim.upserted_id is None:
         raise HTTPException(status_code=400, detail="Milestone bereits geclaimt")
 
     reward_coins = req.points // 2
     reward_blz = max(10, req.points // 25)
-    await add_coins(user_id, reward_coins, f"Season Claim {req.points} XP", "season_claim")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward_blz}})
-    await db.gaming_season_claims.update_one(
-        {"user_id": user_id, "season_id": season["season_id"]},
-        {"$addToSet": {"claimed_points": req.points}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
+    marker = f"gaming_reward_markers.season_{season['season_id']}_{req.points}"
+    reward = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$exists": False}},
+        {
+            "$inc": {"gaming_coins": reward_coins, "balance_blz": reward_blz},
+            "$set": {marker: {"coins": reward_coins, "blz": reward_blz, "created_at": datetime.now(timezone.utc).isoformat()}},
+        },
     )
-    return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": reward_coins, "blz_added": reward_blz, "new_balance": await get_user_coins(user_id)}
+    if reward.modified_count != 1:
+        return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": 0, "blz_added": 0, "new_balance": await get_user_coins(user_id), "replayed": True}
+
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": reward_coins,
+        "reason": f"Season Claim {req.points} XP",
+        "game": "season_claim",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": reward_coins, "blz_added": reward_blz, "new_balance": await get_user_coins(user_id), "replayed": False}
 
 
 @router.post("/vip-claim")
@@ -357,10 +380,6 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
         raise HTTPException(status_code=400, detail="VIP Club nicht aktiv")
 
     season_id = overview["season"]["season_id"]
-    claims = await _get_or_create_season_claims(user_id, season_id)
-    if req.perk_type in claims.get("vip_claims", []):
-        raise HTTPException(status_code=400, detail="VIP Perk in dieser Season bereits aktiviert")
-
     perk_rewards = {
         "vip_spin": {"coins": 250, "blz": 20, "label": "VIP Spin"},
         "xp_boost": {"coins": 400, "blz": 25, "label": "XP Boost"},
@@ -370,14 +389,36 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
     if not reward:
         raise HTTPException(status_code=404, detail="VIP Perk unbekannt")
 
-    await add_coins(user_id, reward["coins"], f"VIP Perk: {reward['label']}", "vip_perk")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward["blz"]}})
-    await db.gaming_season_claims.update_one(
-        {"user_id": user_id, "season_id": season_id},
-        {"$addToSet": {"vip_claims": req.perk_type}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    claim = await db.gaming_season_claims.update_one(
+        {"user_id": user_id, "season_id": season_id, "vip_claims": {"$ne": req.perk_type}},
+        {
+            "$addToSet": {"vip_claims": req.perk_type},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
         upsert=True,
     )
-    return {"ok": True, "perk": reward["label"], "coins_added": reward["coins"], "blz_added": reward["blz"], "new_balance": await get_user_coins(user_id)}
+    if claim.modified_count != 1 and claim.upserted_id is None:
+        raise HTTPException(status_code=400, detail="VIP Perk in dieser Season bereits aktiviert")
+
+    marker = f"gaming_reward_markers.vip_{season_id}_{req.perk_type}"
+    applied = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$exists": False}},
+        {
+            "$inc": {"gaming_coins": reward["coins"], "balance_blz": reward["blz"]},
+            "$set": {marker: {"coins": reward["coins"], "blz": reward["blz"], "created_at": datetime.now(timezone.utc).isoformat()}},
+        },
+    )
+    if applied.modified_count != 1:
+        return {"ok": True, "perk": reward["label"], "coins_added": 0, "blz_added": 0, "new_balance": await get_user_coins(user_id), "replayed": True}
+
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": reward["coins"],
+        "reason": f"VIP Perk: {reward['label']}",
+        "game": "vip_perk",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True, "perk": reward["label"], "coins_added": reward["coins"], "blz_added": reward["blz"], "new_balance": await get_user_coins(user_id), "replayed": False}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
