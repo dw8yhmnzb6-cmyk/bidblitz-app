@@ -1253,3 +1253,22 @@ def test_split_bill_participants_and_amounts_are_canonical_and_cent_exact():
     assert "stored_total_cents != expected_total_cents" in source
     assert 'notification_id = f"split-invite:{split_id}:{p[\'user_id\']}"' in source
     assert 'idempotency_key=f"split_bill:{req.split_id}:{user_id}"' in source
+
+
+def test_invoice_wallet_and_stripe_settlements_use_canonical_ledger_once():
+    source = (BACKEND_DIR / "routes" / "invoicing.py").read_text(encoding="utf-8")
+
+    assert "async def _claim_invoice_payment" in source
+    assert "async def _mark_invoice_claim_paid" in source
+    assert "async def _mark_invoice_claim_reconciliation" in source
+    assert "transfer_between_wallets(" in source
+    assert "credit_wallet(" in source
+    assert 'idempotency_key=f"invoice:wallet:{invoice_id}:{payer_user_id}"' in source
+    assert 'idempotency_key=f"invoice:stripe:{invoice_id}:{session_id}"' in source
+    assert '"wallet_transaction_id": credit.transaction_id' in source
+    assert "Diese Rechnung wird bereits über einen anderen Zahlungsweg bezahlt" in source
+
+    # Invoice settlement must never bypass the canonical wallet engine.
+    assert '"$inc": {"balance": -' not in source
+    assert '"$inc": {"balance": amount' not in source
+    assert '"balance": {"$gte": amount}' not in source
