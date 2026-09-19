@@ -1316,3 +1316,28 @@ def test_all_card_surfaces_are_waitlist_or_fail_closed_without_live_issuer():
     assert "Auf Warteliste eintragen" in card_page
     assert "blitzcard-issuer-unavailable" in blitz_page
     assert "Noch nicht verfügbar" in blitz_page
+
+
+def test_gift_cards_fail_closed_without_verified_provider_and_ui_matches_backend():
+    backend = (BACKEND_DIR / "routes" / "gift_cards.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "GiftCardsPage.jsx").read_text(encoding="utf-8")
+
+    assert 'router = APIRouter(prefix="/api/gift-cards"' in backend
+    assert '@router.get("/capabilities")' in backend
+    assert '"live_provider_connected": False' in backend
+    assert '"purchase_available": bool(TEST_MODE)' in backend
+    assert "Es wurde kein Wallet-Guthaben belastet" in backend
+    assert 'idempotency_key=f"gift-card:test:{user_id}:{idempotency_key}"' in backend
+    assert 'idempotency_key=f"gift-card:test-rollback:{card_id}"' in backend
+    assert '"is_demo": True' in backend
+    assert '"routes.gift_cards", "router"' in registry
+    assert '"routes.tips_gifts", "router"' not in registry
+
+    assert "/api/gift-cards/capabilities" in page
+    assert "/api/gift-cards/my" in page
+    assert "/api/gift-cards/purchase" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
+    assert "giftcard-provider-unavailable" in page
+    assert "capabilities.purchase_available" in page
