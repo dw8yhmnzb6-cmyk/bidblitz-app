@@ -9,7 +9,10 @@ from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 import secrets
+import hashlib
+from pymongo.errors import DuplicateKeyError
 
 router = APIRouter(prefix="/api/hotels", tags=["hotels"])
 
@@ -39,14 +42,141 @@ class BookingCreate(BaseModel):
     property_id: str
     check_in: str  # YYYY-MM-DD
     check_out: str  # YYYY-MM-DD
-    guests: int = 1
-    message: str = ""
+    guests: int = Field(default=1, ge=1, le=50)
+    message: str = Field(default="", max_length=1000)
+    idempotency_key: Optional[str] = None
 
 
 class ReviewCreate(BaseModel):
     booking_id: str
     rating: int = Field(..., ge=1, le=5)
     comment: str = ""
+
+
+def _require_hotel_idempotency_key(body_key: Optional[str], request: Request, *, action: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"hotel-{action}:{key}"
+
+
+def _hotel_night_keys(property_id: str, check_in: str, check_out: str) -> list[str]:
+    ci = datetime.strptime(check_in, "%Y-%m-%d").date()
+    co = datetime.strptime(check_out, "%Y-%m-%d").date()
+    keys = []
+    day = ci
+    while day < co:
+        keys.append(f"HN-{hashlib.sha256(f'{property_id}:{day.isoformat()}'.encode('utf-8')).hexdigest()[:24]}")
+        day += timedelta(days=1)
+    return keys
+
+
+async def _claim_hotel_nights(property_id: str, check_in: str, check_out: str, booking_id: str) -> list[str]:
+    keys = _hotel_night_keys(property_id, check_in, check_out)
+    now = datetime.now(timezone.utc).isoformat()
+    for key in keys:
+        try:
+            await db.hotel_night_claims.insert_one({
+                "_id": key,
+                "property_id": property_id,
+                "booking_id": booking_id,
+                "created_at": now,
+            })
+        except DuplicateKeyError:
+            existing = await db.hotel_night_claims.find_one({"_id": key}, {"_id": 0, "booking_id": 1})
+            if not existing or existing.get("booking_id") != booking_id:
+                await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+                raise HTTPException(status_code=409, detail="Unterkunft ist in diesem Zeitraum nicht verfügbar")
+    return keys
+
+
+async def _grant_hotel_cashback(booking: dict) -> object | None:
+    cashback = round(float(booking.get("cashback") or 0), 2)
+    if cashback <= 0:
+        return None
+    result = await credit_wallet(
+        user_id=booking["guest_id"],
+        amount=cashback,
+        tx_type=TransactionType.REWARD,
+        description=f"Hotel Cashback: {booking.get('property_title', '')}",
+        reference=f"HTL-CB-{booking['booking_id'][-12:].upper()}",
+        source="hotel_cashback",
+        metadata={"booking_id": booking["booking_id"], "property_id": booking["property_id"]},
+        idempotency_key=f"hotel-cashback:{booking['booking_id']}",
+    )
+    if result.success:
+        await db.hotel_bookings.update_one(
+            {"booking_id": booking["booking_id"]},
+            {"$set": {
+                "cashback_status": "completed",
+                "cashback_transaction_id": result.transaction_id,
+                "cashback_paid_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+    else:
+        await db.hotel_bookings.update_one(
+            {"booking_id": booking["booking_id"]},
+            {"$set": {
+                "cashback_status": "reconciliation_required",
+                "cashback_error": result.error,
+            }},
+        )
+    return result
+
+
+async def _settle_hotel_booking(booking_id: str) -> dict:
+    booking = await db.hotel_bookings.find_one({"booking_id": booking_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+    if booking.get("settlement_status") == "completed":
+        return {"booking": booking, "replayed": True}
+
+    owner_share = round(float(booking.get("total") or 0) * 0.90, 2)
+    platform_fee = round(float(booking.get("total") or 0) - owner_share, 2)
+    result = await credit_wallet(
+        user_id=booking["owner_id"],
+        amount=owner_share,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Hotel-Aufenthalt: {booking.get('property_title', '')}",
+        reference=f"HTL-HOST-{booking_id[-10:].upper()}",
+        source="hotel_booking",
+        metadata={"booking_id": booking_id, "property_id": booking.get("property_id")},
+        idempotency_key=f"hotel-settlement:{booking_id}:owner",
+    )
+    if not result.success:
+        await db.hotel_bookings.update_one(
+            {"booking_id": booking_id},
+            {"$set": {"settlement_status": "reconciliation_required", "settlement_error": result.error}},
+        )
+        raise HTTPException(status_code=500, detail=result.error or "Vermieter-Auszahlung konnte nicht abgeschlossen werden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    transition = await db.hotel_bookings.update_one(
+        {"booking_id": booking_id, "settlement_status": {"$ne": "completed"}},
+        {"$set": {
+            "status": "completed",
+            "settlement_status": "completed",
+            "owner_share": owner_share,
+            "platform_fee": platform_fee,
+            "owner_payment_transaction_id": result.transaction_id,
+            "completed_at": now,
+            "settled_at": now,
+        }},
+    )
+    await db.platform_fees.update_one(
+        {"type": "hotel", "booking_id": booking_id},
+        {"$setOnInsert": {
+            "type": "hotel",
+            "booking_id": booking_id,
+            "total": float(booking.get("total") or 0),
+            "owner_share": owner_share,
+            "platform_fee": platform_fee,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    final_booking = await db.hotel_bookings.find_one({"booking_id": booking_id}, {"_id": 0}) or booking
+    return {"booking": final_booking, "replayed": transition.modified_count != 1}
 
 
 # ─── Property CRUD ───
@@ -231,67 +361,79 @@ async def delete_property(property_id: str, request: Request):
 
 @router.post("/book")
 async def book_property(req: BookingCreate, request: Request):
+    """Book one property/date range exactly once; guest payment remains in escrow until stay completion."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idempotency_key = _require_hotel_idempotency_key(req.idempotency_key, request, action="booking")
+    key_hash = hashlib.sha256(f"{user_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    booking_id = f"HTB-{key_hash}"
+
+    existing = await db.hotel_bookings.find_one({"booking_id": booking_id, "guest_id": user_id}, {"_id": 0})
+    if existing:
+        if existing.get("status") in {"confirmed", "payment_pending", "payment_failed"}:
+            if existing.get("status") in {"payment_pending", "payment_failed"}:
+                await _claim_hotel_nights(existing["property_id"], existing["check_in"], existing["check_out"], booking_id)
+                payment = await debit_wallet(
+                    user_id=user_id,
+                    amount=float(existing["total"]),
+                    tx_type=TransactionType.PAYMENT,
+                    description=f"Hotelbuchung: {existing['property_title']}",
+                    reference=existing["reference"],
+                    metadata={"booking_id": booking_id, "property_id": existing["property_id"], "kind": "hotel_escrow"},
+                    idempotency_key=idempotency_key,
+                )
+                if not payment.success:
+                    await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+                    raise HTTPException(status_code=400, detail=payment.error or "Zahlung fehlgeschlagen")
+                await db.hotel_bookings.update_one(
+                    {"booking_id": booking_id},
+                    {"$set": {
+                        "status": "confirmed",
+                        "payment_status": "escrow_held",
+                        "payment_transaction_id": payment.transaction_id,
+                        "paid_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                existing = await db.hotel_bookings.find_one({"booking_id": booking_id}, {"_id": 0}) or existing
+            await _grant_hotel_cashback(existing)
+            fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+            return {
+                "ok": True,
+                "booking": await db.hotel_bookings.find_one({"booking_id": booking_id}, {"_id": 0}) or existing,
+                "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Dieser Buchungsversuch wurde bereits beendet")
 
     prop = await db.properties.find_one({"property_id": req.property_id, "status": "active"})
     if not prop:
         raise HTTPException(status_code=404, detail="Unterkunft nicht gefunden")
-
     if prop["owner_id"] == user_id:
         raise HTTPException(status_code=400, detail="Eigene Unterkunft kann nicht gebucht werden")
 
-    check_in = datetime.strptime(req.check_in, "%Y-%m-%d")
-    check_out = datetime.strptime(req.check_out, "%Y-%m-%d")
+    try:
+        check_in = datetime.strptime(req.check_in, "%Y-%m-%d")
+        check_out = datetime.strptime(req.check_out, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Datum ungültig (YYYY-MM-DD)")
     if check_out <= check_in:
         raise HTTPException(status_code=400, detail="Check-out muss nach Check-in sein")
+    if check_in.date() < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=400, detail="Check-in liegt in der Vergangenheit")
+    if req.guests > int(prop.get("max_guests") or 1):
+        raise HTTPException(status_code=400, detail=f"Max. {prop.get('max_guests')} Gäste")
 
     nights = (check_out - check_in).days
-    subtotal = round(prop["price_per_night"] * nights, 2)
-    cleaning = float(prop.get("cleaning_fee", 0) or 0)
+    subtotal = round(float(prop["price_per_night"]) * nights, 2)
+    cleaning = round(float(prop.get("cleaning_fee") or 0), 2)
     service_pct = float(prop.get("service_fee_pct", 0.10) or 0)
     service_fee = round(subtotal * service_pct, 2)
     total = round(subtotal + cleaning + service_fee, 2)
-
-    # Check wallet balance
-    balance = user.get("balance", 0)
-    if balance < total:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{total:.2f}")
-
-    # Check availability (no overlapping bookings)
-    overlap = await db.hotel_bookings.find_one({
-        "property_id": req.property_id,
-        "status": {"$in": ["confirmed", "pending"]},
-        "$or": [
-            {"check_in": {"$lt": req.check_out}, "check_out": {"$gt": req.check_in}},
-        ],
-    })
-    if overlap:
-        raise HTTPException(status_code=400, detail="Unterkunft ist in diesem Zeitraum nicht verfügbar")
-
-    # Charge customer
-    result = await db.users.update_one(
-        {"_id": user["_id"], "balance": {"$gte": total}},
-        {"$inc": {"balance": -total}},
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Zahlung fehlgeschlagen")
-
-    # Credit owner
-    await db.users.update_one(
-        {"_id": ObjectId(prop["owner_id"])},
-        {"$inc": {"balance": total * 0.9}},  # 10% platform fee
-    )
-
-    # Cashback
     cashback = round(total * CASHBACK_RATE, 2)
-    if cashback > 0:
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": cashback}})
+    ref = f"HTL-{key_hash[:12].upper()}"
 
+    await _claim_hotel_nights(req.property_id, req.check_in, req.check_out, booking_id)
     now = datetime.now(timezone.utc).isoformat()
-    booking_id = secrets.token_hex(8)
-    ref = f"HTL-{secrets.token_hex(4).upper()}"
-
     booking = {
         "booking_id": booking_id,
         "property_id": req.property_id,
@@ -305,31 +447,60 @@ async def book_property(req: BookingCreate, request: Request):
         "check_out": req.check_out,
         "nights": nights,
         "guests": req.guests,
-        "price_per_night": prop["price_per_night"],
+        "price_per_night": float(prop["price_per_night"]),
         "subtotal": subtotal,
         "cleaning_fee": cleaning,
         "service_fee": service_fee,
         "total": total,
-        "platform_fee": round(total * 0.1, 2),
         "cashback": cashback,
+        "cashback_status": "pending" if cashback > 0 else "not_applicable",
+        "cancellation_policy": prop.get("cancellation_policy", "flexible"),
         "message": req.message,
-        "status": "confirmed",
+        "status": "payment_pending",
+        "payment_status": "pending",
+        "settlement_status": "escrow_held",
         "reference": ref,
+        "idempotency_key": idempotency_key,
         "created_at": now,
     }
-    await db.hotel_bookings.insert_one(booking)
-    booking.pop("_id", None)
+    await db.hotel_bookings.update_one(
+        {"booking_id": booking_id, "guest_id": user_id},
+        {"$setOnInsert": booking},
+        upsert=True,
+    )
 
+    payment = await debit_wallet(
+        user_id=user_id,
+        amount=total,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Buchung: {prop['title']} ({nights} Nächte)",
+        reference=ref,
+        metadata={"booking_id": booking_id, "property_id": req.property_id, "kind": "hotel_escrow"},
+        idempotency_key=idempotency_key,
+    )
+    if not payment.success:
+        await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+        await db.hotel_bookings.update_one(
+            {"booking_id": booking_id},
+            {"$set": {"status": "payment_failed", "payment_error": payment.error}},
+        )
+        raise HTTPException(status_code=400, detail=payment.error or "Zahlung fehlgeschlagen")
+
+    paid_at = datetime.now(timezone.utc).isoformat()
+    await db.hotel_bookings.update_one(
+        {"booking_id": booking_id},
+        {"$set": {
+            "status": "confirmed",
+            "payment_status": "escrow_held",
+            "payment_transaction_id": payment.transaction_id,
+            "paid_at": paid_at,
+        }},
+    )
     await db.properties.update_one({"property_id": req.property_id}, {"$inc": {"booking_count": 1}})
-
-    # Transaction records
-    await db.transactions.insert_one({
-        "id": booking_id, "user_id": user_id, "type": "hotel_booking",
-        "amount": -total, "description": f"Buchung: {prop['title']} ({nights} Nächte)",
-        "status": "completed", "reference": ref, "category": "hotel", "created_at": now,
-    })
-
-    return {"ok": True, "booking": booking}
+    confirmed = await db.hotel_bookings.find_one({"booking_id": booking_id}, {"_id": 0}) or booking
+    await _grant_hotel_cashback(confirmed)
+    confirmed = await db.hotel_bookings.find_one({"booking_id": booking_id}, {"_id": 0}) or confirmed
+    return {"ok": True, "booking": confirmed, "new_balance": payment.new_balance, "replayed": False}
 
 
 @router.get("/my-bookings")
@@ -352,26 +523,101 @@ async def host_bookings(request: Request):
 
 @router.post("/cancel/{booking_id}")
 async def cancel_booking(booking_id: str, request: Request):
+    """Cancel a confirmed escrow booking and refund 90% exactly once."""
     user = await get_current_user(request)
-    b = await db.hotel_bookings.find_one({"booking_id": booking_id})
-    if not b or b["guest_id"] != str(user["_id"]):
-        raise HTTPException(status_code=403, detail="Nicht berechtigt")
-    if b["status"] != "confirmed":
+    user_id = str(user["_id"])
+    booking = await db.hotel_bookings.find_one({"booking_id": booking_id, "guest_id": user_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+
+    if booking.get("status") == "cancelled" and booking.get("refund_status") == "completed":
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "refund": round(float(booking.get("refund") or 0), 2),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "replayed": True,
+        }
+    if booking.get("status") not in {"confirmed", "cancelling"}:
         raise HTTPException(status_code=400, detail="Buchung kann nicht storniert werden")
 
-    # Refund (minus 10% cancellation fee)
-    refund = round(b["total"] * 0.9, 2)
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": refund}})
-    await db.hotel_bookings.update_one(
-        {"booking_id": booking_id}, {"$set": {"status": "cancelled", "refund": refund}}
+    if booking.get("status") == "confirmed":
+        claim = await db.hotel_bookings.update_one(
+            {"booking_id": booking_id, "guest_id": user_id, "status": "confirmed"},
+            {"$set": {
+                "status": "cancelling",
+                "refund_status": "processing",
+                "cancel_started_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            booking = await db.hotel_bookings.find_one({"booking_id": booking_id}) or booking
+            if booking.get("status") != "cancelling":
+                raise HTTPException(status_code=409, detail="Buchungsstatus wurde parallel geändert")
+
+    booking = await db.hotel_bookings.find_one({"booking_id": booking_id}) or booking
+    refund_amount = round(float(booking["total"]) * 0.90, 2)
+    refund = await credit_wallet(
+        user_id=user_id,
+        amount=refund_amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Stornierung: {booking['property_title']}",
+        reference=f"HTL-REF-{booking_id[-10:].upper()}",
+        source="hotel_cancellation",
+        metadata={"booking_id": booking_id, "original_transaction": booking.get("payment_transaction_id")},
+        idempotency_key=f"hotel-refund:{booking_id}",
     )
-    now = datetime.now(timezone.utc).isoformat()
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8), "user_id": str(user["_id"]), "type": "hotel_refund",
-        "amount": refund, "description": f"Stornierung: {b['property_title']}",
-        "status": "completed", "reference": b["reference"], "category": "hotel", "created_at": now,
-    })
-    return {"ok": True, "refund": refund}
+    if not refund.success:
+        await db.hotel_bookings.update_one(
+            {"booking_id": booking_id},
+            {"$set": {"refund_status": "reconciliation_required", "refund_error": refund.error}},
+        )
+        raise HTTPException(status_code=409, detail=refund.error or "Erstattung wird noch verarbeitet")
+
+    cancelled_at = datetime.now(timezone.utc).isoformat()
+    await db.hotel_bookings.update_one(
+        {"booking_id": booking_id, "status": "cancelling"},
+        {"$set": {
+            "status": "cancelled",
+            "refund": refund_amount,
+            "refund_status": "completed",
+            "refund_transaction_id": refund.transaction_id,
+            "cancelled_at": cancelled_at,
+            "settlement_status": "cancelled",
+        }},
+    )
+    await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+    await db.properties.update_one(
+        {"property_id": booking["property_id"], "booking_count": {"$gt": 0}},
+        {"$inc": {"booking_count": -1}},
+    )
+    return {"ok": True, "refund": refund_amount, "new_balance": refund.new_balance, "replayed": bool(refund.idempotent_replay)}
+
+
+@router.post("/complete/{booking_id}")
+async def complete_booking(booking_id: str, request: Request):
+    """Host/admin settles escrow after checkout."""
+    user = await get_current_user(request)
+    booking = await db.hotel_bookings.find_one({"booking_id": booking_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+    is_host = booking.get("owner_id") == str(user["_id"])
+    is_admin = user.get("role") in {"admin", "super_admin"}
+    if not (is_host or is_admin):
+        raise HTTPException(status_code=403, detail="Nicht berechtigt")
+    if booking.get("status") == "completed" and booking.get("settlement_status") == "completed":
+        return {"ok": True, "booking": booking, "replayed": True}
+    if booking.get("status") != "confirmed":
+        raise HTTPException(status_code=400, detail="Nur bestätigte Buchungen können abgeschlossen werden")
+    try:
+        checkout_date = datetime.strptime(booking["check_out"], "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Ungültiges Check-out-Datum")
+    if datetime.now(timezone.utc).date() < checkout_date and not is_admin:
+        raise HTTPException(status_code=400, detail="Aufenthalt ist noch nicht beendet")
+
+    result = await _settle_hotel_booking(booking_id)
+    return {"ok": True, "booking": result["booking"], "replayed": result["replayed"]}
 
 
 # ─── Reviews ───
