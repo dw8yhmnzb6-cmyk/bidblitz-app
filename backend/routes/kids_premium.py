@@ -48,7 +48,7 @@ async def _get_child(child_id: str, parent_id: str) -> dict:
     return child
 
 
-async def _grant_child_blz_once(child_id: str, amount: int, grant_key: str) -> bool:
+async def _grant_child_blz_once(child_id: str, amount: int, grant_key: str) -> tuple[bool, bool]:
     import hashlib
     digest = hashlib.sha256(grant_key.encode("utf-8")).hexdigest()[:24]
     field = f"premium_reward_grants.{digest}"
@@ -66,9 +66,9 @@ async def _grant_child_blz_once(child_id: str, amount: int, grant_key: str) -> b
         },
     )
     if result.modified_count == 1:
-        return True
+        return True, True
     existing = await db.kids_children.find_one({"child_id": child_id, field: {"$exists": True}}, {"_id": 1})
-    return bool(existing)
+    return False, bool(existing)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -170,7 +170,7 @@ async def approve_chore(chore_id: str, request: Request):
 
     now = datetime.now(timezone.utc).isoformat()
     reward = int(chore.get("reward_blz", 0))
-    grant_ok = await _grant_child_blz_once(
+    reward_new, grant_ok = await _grant_child_blz_once(
         chore["child_id"],
         reward,
         grant_key=f"chore:{chore_id}",
@@ -190,9 +190,9 @@ async def approve_chore(chore_id: str, request: Request):
     if status_update.matched_count != 1:
         raise HTTPException(409, "Aufgabe änderte sich gleichzeitig")
 
-    if chore.get("status") != "approved":
+    if reward_new:
         await _track_achievement(chore["child_id"], "chore_completed", 1)
-    return {"ok": True, "reward_blz": reward, "replayed": chore.get("status") == "approved"}
+    return {"ok": True, "reward_blz": reward, "replayed": not reward_new}
 
 
 @router.post("/chores/{chore_id}/reject")
