@@ -83,6 +83,24 @@ async def _settle_outstanding_scooter_debts(user: dict) -> float:
     return round(remaining, 2)
 
 
+async def _get_active_scooter_subscription(user: dict) -> Optional[dict]:
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = str(user["_id"])
+    email = user.get("email", "")
+    sub = await db.scooter_subscriptions.find_one(
+        {
+            "status": "active",
+            "expires_at": {"$gt": now},
+            "$or": [
+                {"user_id": user_id},
+                {"user_email": email},
+            ],
+        },
+        {"_id": 0},
+    )
+    return sub
+
+
 # IoT Provider Configuration (configure in .env for production)
 IOT_PROVIDER_URL = "https://iot.bidblitz.ae/api/v1"  # Replace with real IoT provider
 IOT_API_KEY = ""  # Set from environment
@@ -284,8 +302,10 @@ async def get_scooter_plans_alt():
 async def get_scooter_pricing():
     """Public: pricing & service info."""
     return {
-        "unlock_fee": 1.00,
-        "per_minute": 0.20,
+        "unlock_fee": UNLOCK_FEE,
+        "per_minute": PER_MINUTE_RATE,
+        "min_balance": MIN_WALLET_BALANCE,
+        "daily_cap": MAX_DAILY_CAP,
         "currency": "EUR",
         "free_paused_minutes": 5,
         "max_speed_kmh": 25,
@@ -379,12 +399,18 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     if active_ride:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
 
+    subscription = await _get_active_scooter_subscription(user)
+    ride_unlock_fee = float((subscription or {}).get("unlock_fee", UNLOCK_FEE))
+    ride_rate = float((subscription or {}).get("per_minute_rate", PER_MINUTE_RATE))
+    free_minutes_per_day = int((subscription or {}).get("free_minutes_per_day", 0) or 0)
+
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     balance = float(fresh_user.get("balance") or 0)
-    if balance < MIN_WALLET_BALANCE:
+    required_balance = 0.0 if subscription else MIN_WALLET_BALANCE
+    if balance < required_balance:
         raise HTTPException(
             status_code=400,
-            detail=f"Mindestguthaben €{MIN_WALLET_BALANCE:.2f} erforderlich. Aktuell: €{balance:.2f}",
+            detail=f"Mindestguthaben €{required_balance:.2f} erforderlich. Aktuell: €{balance:.2f}",
         )
 
     scooter = await db.scooters.find_one({
@@ -426,23 +452,25 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             )
             raise HTTPException(status_code=503, detail=f"Scooter Entsperrung fehlgeschlagen: {cmd_result.message}")
 
-    payment_result = await debit_wallet(
-        user_id=user_id,
-        amount=UNLOCK_FEE,
-        tx_type=TransactionType.SCOOTER_PAYMENT,
-        description=f"Scooter Entsperrgebühr ({scooter_id})",
-        reference=f"SC-{claim_hash[:12].upper()}",
-        metadata={"ride_id": ride_id, "scooter_id": scooter_id, "type": "unlock"},
-        idempotency_key=idempotency_key,
-    )
-    if not payment_result.success:
-        if device_id:
-            await send_device_command(device_id, DeviceCommand.LOCK)
-        await db.scooters.update_one(
-            {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
-            {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
+    payment_result = None
+    if ride_unlock_fee > 0:
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=ride_unlock_fee,
+            tx_type=TransactionType.SCOOTER_PAYMENT,
+            description=f"Scooter Entsperrgebühr ({scooter_id})",
+            reference=f"SC-{claim_hash[:12].upper()}",
+            metadata={"ride_id": ride_id, "scooter_id": scooter_id, "type": "unlock"},
+            idempotency_key=idempotency_key,
         )
-        raise HTTPException(status_code=400, detail=payment_result.error or "Entsperrgebühr konnte nicht bezahlt werden")
+        if not payment_result.success:
+            if device_id:
+                await send_device_command(device_id, DeviceCommand.LOCK)
+            await db.scooters.update_one(
+                {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
+                {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
+            )
+            raise HTTPException(status_code=400, detail=payment_result.error or "Entsperrgebühr konnte nicht bezahlt werden")
 
     now = datetime.now(timezone.utc)
     ride = {
@@ -456,13 +484,16 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         "start_location": scooter.get("location", {}),
         "start_time": now.isoformat(),
         "started_at": now.isoformat(),
-        "unlock_fee": UNLOCK_FEE,
-        "per_minute_rate": PER_MINUTE_RATE,
-        "current_cost": UNLOCK_FEE,
+        "unlock_fee": ride_unlock_fee,
+        "per_minute_rate": ride_rate,
+        "free_minutes_per_day": free_minutes_per_day,
+        "subscription_id": (subscription or {}).get("sub_id"),
+        "subscription_plan_id": (subscription or {}).get("plan_id"),
+        "current_cost": ride_unlock_fee,
         "distance_km": 0,
         "unlock_idempotency_key": idempotency_key,
-        "unlock_payment_transaction_id": payment_result.transaction_id,
-        "payment_status": "unlock_paid",
+        "unlock_payment_transaction_id": payment_result.transaction_id if payment_result else None,
+        "payment_status": "unlock_paid" if payment_result else "subscription_unlock",
         "created_at": now.isoformat(),
     }
     await db.scooter_rides.update_one(
@@ -484,19 +515,21 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         },
     )
     if assigned.modified_count != 1:
-        refund = await credit_wallet(
-            user_id=user_id,
-            amount=UNLOCK_FEE,
-            tx_type=TransactionType.REFUND,
-            description="Scooter Unlock Rollback",
-            reference=f"SC-ROLLBACK-{claim_hash[:12].upper()}",
-            source="scooter_unlock_rollback",
-            metadata={"ride_id": ride_id, "scooter_id": scooter_id},
-            idempotency_key=f"scooter-unlock-rollback:{ride_id}",
-        )
+        refund = None
+        if ride_unlock_fee > 0:
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=ride_unlock_fee,
+                tx_type=TransactionType.REFUND,
+                description="Scooter Unlock Rollback",
+                reference=f"SC-ROLLBACK-{claim_hash[:12].upper()}",
+                source="scooter_unlock_rollback",
+                metadata={"ride_id": ride_id, "scooter_id": scooter_id},
+                idempotency_key=f"scooter-unlock-rollback:{ride_id}",
+            )
         await db.scooter_rides.update_one(
             {"ride_id": ride_id, "user_id": user_id},
-            {"$set": {"status": "cancelled", "cancel_reason": "scooter_assignment_failed", "refund_transaction_id": refund.transaction_id if refund.success else None}},
+            {"$set": {"status": "cancelled", "cancel_reason": "scooter_assignment_failed", "refund_transaction_id": refund.transaction_id if refund and refund.success else None}},
         )
         if device_id:
             await send_device_command(device_id, DeviceCommand.LOCK)
@@ -512,7 +545,11 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             "model": scooter.get("model"),
             "battery": scooter.get("battery"),
         },
-        "new_balance": payment_result.new_balance,
+        "new_balance": (
+            payment_result.new_balance
+            if payment_result
+            else float((await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}).get("balance") or 0)
+        ),
         "message": "Scooter entsperrt! Gute Fahrt!",
         "replayed": False,
     }
@@ -582,8 +619,26 @@ async def end_ride(req: EndRideRequest, request: Request):
         duration_seconds = max(0, (now - start_time).total_seconds())
         duration_minutes = max(1, duration_seconds / 60)
         rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)
-        unlock_fee = float(ride.get("unlock_fee") or UNLOCK_FEE)
-        ride_cost = round(duration_minutes * rate, 2)
+        unlock_fee = float(ride.get("unlock_fee") if ride.get("unlock_fee") is not None else UNLOCK_FEE)
+        free_minutes_per_day = int(ride.get("free_minutes_per_day") or 0)
+        free_minutes_remaining = 0.0
+        if free_minutes_per_day > 0 and ride.get("subscription_id"):
+            day_start = start_time.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            prior_rides = await db.scooter_rides.find(
+                {
+                    "user_id": user_id,
+                    "subscription_id": ride.get("subscription_id"),
+                    "status": "completed",
+                    "start_time": {"$gte": day_start.isoformat(), "$lt": start_time.isoformat()},
+                },
+                {"_id": 0, "duration_minutes": 1},
+            ).to_list(200)
+            used_minutes = sum(float(item.get("duration_minutes") or 0) for item in prior_rides)
+            free_minutes_remaining = max(0.0, free_minutes_per_day - used_minutes)
+
+        free_minutes_used = min(duration_minutes, free_minutes_remaining)
+        billable_minutes = max(0.0, duration_minutes - free_minutes_used)
+        ride_cost = round(billable_minutes * rate, 2)
         total_cost = min(round(unlock_fee + ride_cost, 2), MAX_DAILY_CAP)
         ride_cost_to_deduct = max(0.0, round(total_cost - unlock_fee, 2))
 
@@ -603,6 +658,8 @@ async def end_ride(req: EndRideRequest, request: Request):
             "ride_cost": ride_cost,
             "total_cost": total_cost,
             "ride_cost_to_deduct": ride_cost_to_deduct,
+            "free_minutes_used": round(free_minutes_used, 2),
+            "billable_minutes": round(billable_minutes, 2),
             "end_location": end_location,
         }
         claim = await db.scooter_rides.update_one(
@@ -669,6 +726,8 @@ async def end_ride(req: EndRideRequest, request: Request):
             "duration_minutes": settlement.get("duration_minutes", 0),
             "ride_cost": settlement.get("ride_cost", 0),
             "total_cost": settlement.get("total_cost", 0),
+            "free_minutes_used": settlement.get("free_minutes_used", 0),
+            "billable_minutes": settlement.get("billable_minutes", settlement.get("duration_minutes", 0)),
             "distance_km": round(distance_km, 2),
             "parking_photo_url": req.parking_photo_url,
             "payment_status": payment_status,
@@ -1094,40 +1153,73 @@ async def get_scooter_plans():
 
 class SubscribePlanReq(BaseModel):
     plan_id: str
+    idempotency_key: Optional[str] = None
 
 @router.post("/subscribe")
 async def subscribe_plan(req: SubscribePlanReq, request: Request):
-    """Subscribe to a scooter plan. Deducts from wallet."""
+    """Subscribe once through the canonical wallet ledger."""
+    from core.payment_engine import debit_wallet, TransactionType
+
     user = await get_current_user(request)
+    user_id = str(user["_id"])
     email = user.get("email", "")
+    idempotency_key = _require_scooter_idempotency_key(req.idempotency_key, request, prefix="scooter-subscription")
+    sub_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16]
+    sub_id = f"SCS-{sub_hash}"
+
+    existing_same = await db.scooter_subscriptions.find_one({"sub_id": sub_id, "user_id": user_id}, {"_id": 0})
+    if existing_same:
+        return {"ok": True, "subscription": existing_same, "replayed": True}
 
     plan = next((p for p in SCOOTER_PLANS if p["plan_id"] == req.plan_id), None)
     if not plan:
         raise HTTPException(400, "Ungültiger Plan")
 
-    # Check existing active subscription
-    existing = await db.scooter_subscriptions.find_one({
-        "user_email": email,
-        "status": "active",
-        "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
-    })
-    if existing:
+    now = datetime.now(timezone.utc)
+    active = await _get_active_scooter_subscription(user)
+    if active:
         raise HTTPException(400, "Du hast bereits ein aktives Abo")
 
-    # Check wallet balance
-    user_doc = await db.users.find_one({"email": email})
-    balance = user_doc.get("balance", 0) if user_doc else 0
-    if balance < plan["price"]:
-        raise HTTPException(400, f"Nicht genügend Guthaben. Benötigt: {plan['price']}€, Verfügbar: {balance:.2f}€")
+    await db.users.update_one(
+        {"_id": user["_id"], "active_scooter_subscription_id": {"$ne": None}},
+        {"$set": {"active_scooter_subscription_id": None}},
+    )
+    claim = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"active_scooter_subscription_id": {"$exists": False}},
+                {"active_scooter_subscription_id": None},
+                {"active_scooter_subscription_id": sub_id},
+            ],
+        },
+        {"$set": {"active_scooter_subscription_id": sub_id, "scooter_subscription_claimed_at": now.isoformat()}},
+    )
+    if claim.modified_count != 1:
+        current = await db.users.find_one({"_id": user["_id"]}, {"active_scooter_subscription_id": 1, "_id": 0}) or {}
+        if current.get("active_scooter_subscription_id") != sub_id:
+            raise HTTPException(status_code=409, detail="Eine andere Abo-Anfrage wird bereits verarbeitet")
 
-    # Deduct from wallet
-    await db.users.update_one({"email": email}, {"$inc": {"balance": -plan["price"]}})
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=float(plan["price"]),
+        tx_type=TransactionType.SUBSCRIPTION,
+        description=f"Scooter {plan['name']}",
+        reference=f"SC-SUB-{sub_hash.upper()}",
+        metadata={"plan_id": plan["plan_id"], "sub_id": sub_id, "kind": "scooter_subscription"},
+        idempotency_key=idempotency_key,
+    )
+    if not result.success:
+        await db.users.update_one(
+            {"_id": user["_id"], "active_scooter_subscription_id": sub_id},
+            {"$set": {"active_scooter_subscription_id": None}},
+        )
+        raise HTTPException(status_code=400, detail=result.error or "Abo-Zahlung fehlgeschlagen")
 
-    now = datetime.now(timezone.utc)
     expires = now + timedelta(days=plan["duration_days"])
-
     subscription = {
-        "sub_id": secrets.token_hex(8),
+        "sub_id": sub_id,
+        "user_id": user_id,
         "user_email": email,
         "user_name": user.get("name", ""),
         "plan_id": plan["plan_id"],
@@ -1141,21 +1233,16 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
         "status": "active",
         "started_at": now.isoformat(),
         "expires_at": expires.isoformat(),
+        "payment_transaction_id": result.transaction_id,
+        "idempotency_key": idempotency_key,
     }
-    await db.scooter_subscriptions.insert_one(subscription)
-    subscription.pop("_id", None)
-
-    # Log transaction
-    await db.transactions.insert_one({
-        "user_email": email,
-        "type": "scooter_subscription",
-        "amount": -plan["price"],
-        "description": f"Scooter {plan['name']}",
-        "reference": subscription["sub_id"],
-        "created_at": now.isoformat(),
-    })
-
-    return {"ok": True, "subscription": subscription}
+    await db.scooter_subscriptions.update_one(
+        {"sub_id": sub_id, "user_id": user_id},
+        {"$setOnInsert": subscription},
+        upsert=True,
+    )
+    subscription = await db.scooter_subscriptions.find_one({"sub_id": sub_id, "user_id": user_id}, {"_id": 0}) or subscription
+    return {"ok": True, "subscription": subscription, "new_balance": result.new_balance, "replayed": False}
 
 
 @router.get("/my-subscription")
@@ -1177,12 +1264,19 @@ async def get_my_subscription(request: Request):
 async def cancel_subscription(request: Request):
     """Cancel active scooter subscription."""
     user = await get_current_user(request)
+    active = await _get_active_scooter_subscription(user)
+    if not active:
+        raise HTTPException(400, "Kein aktives Abo gefunden")
     result = await db.scooter_subscriptions.update_one(
-        {"user_email": user.get("email", ""), "status": "active"},
+        {"sub_id": active["sub_id"], "status": "active"},
         {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
     )
     if result.modified_count == 0:
         raise HTTPException(400, "Kein aktives Abo gefunden")
+    await db.users.update_one(
+        {"_id": user["_id"], "active_scooter_subscription_id": active["sub_id"]},
+        {"$set": {"active_scooter_subscription_id": None}},
+    )
     return {"ok": True, "message": "Abo gekündigt"}
 
 
