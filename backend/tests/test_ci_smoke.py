@@ -1579,3 +1579,34 @@ def test_blitzpay_nfc_requires_authenticated_merchant_and_platform_escrow():
     assert '"type": "blitzpay_nfc"' in source
     assert '"platform_fee": fee' in source
     assert '"routes.blitzpay", "router"' in registry
+
+
+def test_mining_value_loops_are_preview_only_until_live_provider_exists():
+    mining = (BACKEND_DIR / "routes" / "mining.py").read_text(encoding="utf-8")
+    phase2 = (BACKEND_DIR / "routes" / "mining_phase2.py").read_text(encoding="utf-8")
+    blitz = (BACKEND_DIR / "routes" / "blitz_mine.py").read_text(encoding="utf-8")
+    mining_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
+    blitz_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzMinePage.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_mining_value_mode" in mining
+    assert '"live_mining_provider_connected": False' in mining
+    assert '"value_actions_enabled": bool(TEST_MODE)' in mining
+    assert "if not TEST_MODE:" in mining
+    assert "return 0" in mining
+    assert "_require_mining_value_mode()" in mining
+    assert '"proof_verified_live": False' in mining
+
+    assert "from routes.mining import _require_mining_value_mode" in phase2
+    assert '"listings": [], "capabilities": _mining_capabilities()' in phase2
+    assert '"has_card": False' in phase2
+    assert '"projects": [], "capabilities": _mining_capabilities()' in phase2
+
+    assert "def _require_blitz_mine_value_mode" in blitz
+    assert '"value_actions_enabled": bool(TEST_MODE)' in blitz
+    assert "_require_blitz_mine_value_mode()" in blitz
+
+    assert "mining-provider-unavailable" in mining_page
+    assert "miningValueEnabled" in mining_page
+    assert "BlitzMine Preview" in mining_page
+    assert "blitzmine-provider-unavailable" in blitz_page
+    assert "valueActionsEnabled" in blitz_page
