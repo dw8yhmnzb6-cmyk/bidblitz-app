@@ -18,12 +18,16 @@ Regeln:
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import secrets
+import hashlib
+import os
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
+from core.payment_engine import transfer_between_wallets, TransactionType
 
 router = APIRouter(prefix="/api/credit", tags=["credit"])
 
@@ -42,6 +46,27 @@ CREDIT_SCORES = {
     "C": {"color": "#EF4444", "label": "Gesperrt", "can_borrow": False, "max_amount": 0},
 }
 
+CREDIT_LIVE_ENABLED = TEST_MODE or os.environ.get("CREDIT_LIVE_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def _require_credit_live() -> None:
+    if not CREDIT_LIVE_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="BidBlitz Credit ist für Livebetrieb noch nicht freigeschaltet.",
+        )
+
+
+async def _credit_pool_user_id() -> Optional[str]:
+    email = os.environ.get("CREDIT_POOL_EMAIL", "").strip().lower()
+    if not email and TEST_MODE:
+        email = "admin@bidblitz.ae"
+    if not email:
+        return None
+    pool = await db.users.find_one({"email": email}, {"_id": 1})
+    return str(pool["_id"]) if pool else None
+
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODELS
@@ -50,11 +75,13 @@ CREDIT_SCORES = {
 class CreditRequest(BaseModel):
     amount: float = Field(..., gt=0, le=MAX_CREDIT_AMOUNT, description="Kreditbetrag in EUR")
     term_months: int = Field(default=6, ge=1, le=36, description="Laufzeit in Monaten")
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 class RepaymentRequest(BaseModel):
     credit_id: str
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0, le=MAX_CREDIT_AMOUNT * 2)
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -219,74 +246,87 @@ async def get_credit_status(request: Request):
 
 
 @router.post("/request")
-@router.post("/apply")  # Alias for frontend
+@router.post("/apply")
 async def request_credit(req: CreditRequest, request: Request):
-    """Request a new credit (BNPL)."""
+    """Create one KYC-gated, retry-safe credit application."""
+    _require_credit_live()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Get credit profile
+    if user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "KYC-Verifizierung erforderlich, bevor ein Kreditantrag gestellt werden kann.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
+
+    key = req.idempotency_key.strip()
+    key_hash = hashlib.sha256(f"{user_id}:{key}".encode("utf-8")).hexdigest()[:20]
+    credit_id = f"CR-{key_hash.upper()}"
+    existing = await db.credits.find_one({"credit_id": credit_id, "user_id": user_id}, {"_id": 0})
+    if existing:
+        if round(float(existing.get("amount") or 0), 2) != round(float(req.amount), 2) or int(existing.get("term_months") or 0) != int(req.term_months):
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Kreditantrag verwendet")
+        return {
+            "ok": True,
+            "credit": existing,
+            "message": "Kreditantrag wurde bereits eingereicht.",
+            "status": existing.get("status"),
+            "replayed": True,
+        }
+
     profile = await get_user_credit_profile(user_id)
     score_info = CREDIT_SCORES.get(profile["score"], CREDIT_SCORES["A"])
-    
-    # Check if user can borrow
     if not score_info["can_borrow"]:
         if profile["score"] == "C":
-            ban_until = profile.get("ban_until", "unbekannt")
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Kredit gesperrt (Score C). Sperre bis: {ban_until}"
-            )
-        raise HTTPException(
-            status_code=403, 
-            detail=f"Kredit derzeit nicht möglich (Score {profile['score']})"
-        )
-    
-    # Check current debt
-    active_credits = await db.credits.find({
+            raise HTTPException(status_code=403, detail=f"Kredit gesperrt (Score C). Sperre bis: {profile.get('ban_until', 'unbekannt')}")
+        raise HTTPException(status_code=403, detail=f"Kredit derzeit nicht möglich (Score {profile['score']})")
+
+    commitments = await db.credits.find({
         "user_id": user_id,
-        "status": "active"
-    }).to_list(10)
-    
-    total_debt = sum(c.get("remaining_amount", 0) for c in active_credits)
-    available = score_info["max_amount"] - total_debt
-    
-    if req.amount > available:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Maximaler verfügbarer Kredit: €{available:.2f}"
-        )
-    
+        "status": {"$in": ["pending", "approving", "active", "reconciliation_required"]},
+    }, {"_id": 0, "amount": 1, "remaining_amount": 1, "status": 1}).to_list(100)
+    committed = 0.0
+    for item in commitments:
+        if item.get("status") == "active":
+            committed += float(item.get("remaining_amount") or 0)
+        else:
+            committed += float(item.get("amount") or 0)
+    available = max(0.0, float(score_info["max_amount"]) - committed)
+    if float(req.amount) > available:
+        raise HTTPException(status_code=400, detail=f"Maximaler verfügbarer Kredit: €{available:.2f}")
+
     now = datetime.now(timezone.utc)
-    term = req.term_months
-    interest_rate = 0.059  # 5.9% p.a.
-    total_interest = round(req.amount * interest_rate * (term / 12), 2)
-    total_repayment = round(req.amount + total_interest, 2)
+    term = int(req.term_months)
+    interest_rate = 0.059
+    total_interest = round(float(req.amount) * interest_rate * (term / 12), 2)
+    total_repayment = round(float(req.amount) + total_interest, 2)
     monthly_rate = round(total_repayment / term, 2)
     due_date = now + timedelta(days=30 * term)
-    
-    # Build repayment schedule
+
     schedule = []
     remaining = total_repayment
     for i in range(term):
         payment_date = now + timedelta(days=30 * (i + 1))
-        remaining = round(remaining - monthly_rate, 2)
-        if remaining < 0:
-            remaining = 0
+        installment_amount = monthly_rate if i < term - 1 else round(max(0.0, remaining), 2)
+        remaining = round(max(0.0, remaining - installment_amount), 2)
         schedule.append({
             "month": i + 1,
             "date": payment_date.strftime("%Y-%m-%d"),
-            "amount": monthly_rate,
+            "amount": installment_amount,
             "remaining": remaining,
+            "status": "pending",
         })
-    
-    # Create credit — status "pending" (wartet auf Admin-Genehmigung)
+
     credit = {
-        "credit_id": secrets.token_hex(8),
+        "_id": credit_id,
+        "credit_id": credit_id,
         "user_id": user_id,
         "user_email": user.get("email", ""),
         "user_name": user.get("name", user.get("email", "")),
-        "amount": round(req.amount, 2),
+        "amount": round(float(req.amount), 2),
         "remaining_amount": total_repayment,
         "total_interest": total_interest,
         "total_repayment": total_repayment,
@@ -294,8 +334,9 @@ async def request_credit(req: CreditRequest, request: Request):
         "term_months": term,
         "interest_rate": interest_rate,
         "schedule": schedule,
-        "status": "pending",  # pending → approved → active → paid  |  pending → rejected
+        "status": "pending",
         "auto_pay": True,
+        "request_idempotency_hash": key_hash,
         "created_at": now.isoformat(),
         "due_date": due_date.isoformat(),
         "approved_at": None,
@@ -306,37 +347,45 @@ async def request_credit(req: CreditRequest, request: Request):
         "next_payment_date": schedule[0]["date"] if schedule else None,
         "next_payment_month": 1,
     }
-    
-    await db.credits.insert_one(credit)
-    
-    # DO NOT add money yet — wait for admin approval
-    
-    # Update profile stats
+
+    write = await db.credits.update_one(
+        {"_id": credit_id},
+        {"$setOnInsert": credit},
+        upsert=True,
+    )
+    if write.upserted_id is None:
+        saved = await db.credits.find_one({"_id": credit_id}, {"_id": 0})
+        if saved:
+            return {"ok": True, "credit": saved, "status": saved.get("status"), "replayed": True}
+        raise HTTPException(status_code=409, detail="Kreditantrag wurde parallel geändert")
+
     await db.credit_profiles.update_one(
         {"user_id": user_id},
-        {"$inc": {"total_credits_taken": 1}}
+        {"$inc": {"total_credits_taken": 1}},
     )
-    
-    # Notify user
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "credit",
-        "title": "Kreditantrag eingereicht",
-        "message": f"Dein Kreditantrag über €{req.amount:.2f} ({term} Monate) wird geprüft. Du erhältst eine Benachrichtigung sobald er bearbeitet wurde.",
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    credit.pop("_id", None)
-    
+    await db.notifications.update_one(
+        {"_id": f"credit-request:{credit_id}"},
+        {"$setOnInsert": {
+            "_id": f"credit-request:{credit_id}",
+            "id": f"credit-request:{credit_id}",
+            "user_id": user_id,
+            "type": "credit",
+            "title": "Kreditantrag eingereicht",
+            "message": f"Dein Kreditantrag über €{req.amount:.2f} ({term} Monate) wird geprüft.",
+            "read": False,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
+
+    public_credit = {k: v for k, v in credit.items() if k != "_id"}
     return {
         "ok": True,
-        "credit": credit,
+        "credit": public_credit,
         "message": f"Kreditantrag über €{req.amount:.2f} eingereicht! Wartet auf Admin-Genehmigung.",
         "status": "pending",
+        "replayed": False,
     }
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
