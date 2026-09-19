@@ -41,6 +41,7 @@ import TestBuildDebugLine from "./components/TestBuildDebugLine";
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
 const HomePage = lazy(() => import("./pages/HomePage"));
+const AboutBidBlitzPage = lazy(() => import("./pages/AboutBidBlitzPage"));
 const WalletPage = lazy(() => import("./pages/WalletPage"));
 const ScannerPage = lazy(() => import("./pages/ScannerPage"));
 const MerchantPage = lazy(() => import("./pages/MerchantPage"));
@@ -284,8 +285,8 @@ const LiveAuctionsPage = lazy(() => import("./pages/LiveAuctionsPage"));
 const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const BlitzLearnPage = lazy(() => import("./pages/BlitzLearnPage"));
 const BlitzHubPage = lazy(() => import("./pages/BlitzHubPage"));
-const GlobalSearch = lazy(() => import("./pages/ExtraFeatures"));
-const OnboardingTour = lazy(() => import("./pages/ExtraFeatures"));
+const GlobalSearch = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.GlobalSearch })));
+const OnboardingTour = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.OnboardingTour })));
 const CityServicesPage = lazy(() => import("./pages/CityServicesPage"));
 const BlitzPayPage = lazy(() => import("./pages/BlitzPayPage"));
 const CryptoEarnPage = lazy(() => import("./pages/CryptoEarnPage"));
@@ -664,6 +665,8 @@ function AppContent() {
     switch (basePath) {
       case "/":
         return <HomePage {...homeProps} />;
+      case "/about-bidblitz":
+        return <AboutBidBlitzPage onNavigate={handleNavigate} onRegister={homeProps.onRegister} />;
       case "/landing":
         return <LandingPage onGetStarted={() => handleNavigate("/")} />;
       case "/wallet":
@@ -1220,8 +1223,6 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
       case "/blitzhub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
-      case "/leaderboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MorePage {...pageProps} initialPanel="discover" />;
       case "/city":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":
@@ -1470,7 +1471,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/about-bidblitz", "/pay/directory"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&

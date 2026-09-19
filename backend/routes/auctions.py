@@ -6,6 +6,7 @@ Users buy bid credits, each bid costs 1 credit, increases price by €0.01, exte
 import secrets
 import asyncio
 import random
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -30,6 +31,153 @@ CREDIT_PACKAGES = {
     "100": {"credits": 100, "price": 29.00},    # 0.29/bid (42% off)
     "250": {"credits": 250, "price": 62.50},    # 0.25/bid (50% off)
 }
+
+def _require_auction_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+def _auction_grant_field(kind: str, key: str) -> str:
+    digest = hashlib.sha256(f"{kind}:{key}".encode("utf-8")).hexdigest()[:32]
+    return f"auction_credit_grants.{digest}"
+
+
+async def _grant_bid_credits_once(user_object_id, *, credits: int, grant_key: str, source: str, metadata: Optional[dict] = None) -> tuple[bool, bool]:
+    field = _auction_grant_field(source, grant_key)
+    marker = {
+        "credits": int(credits),
+        "source": source,
+        "grant_key_hash": hashlib.sha256(grant_key.encode("utf-8")).hexdigest()[:16],
+        "metadata": metadata or {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.users.update_one(
+        {"_id": user_object_id, field: {"$exists": False}},
+        {"$inc": {"bid_credits": int(credits)}, "$set": {field: marker}},
+    )
+    if result.modified_count == 1:
+        return True, True
+    existing = await db.users.find_one({"_id": user_object_id, field: {"$exists": True}}, {"_id": 1})
+    return False, bool(existing)
+
+
+async def _grant_first_purchase_bonus_once(user_object_id, *, eligible: bool) -> int:
+    if not eligible:
+        return 0
+    result = await db.users.update_one(
+        {"_id": user_object_id, "auction_first_purchase_bonus_awarded": {"$ne": True}},
+        {
+            "$inc": {"bid_credits": 5},
+            "$set": {
+                "auction_first_purchase_bonus_awarded": True,
+                "auction_first_purchase_bonus_awarded_at": datetime.now(timezone.utc).isoformat(),
+            },
+        },
+    )
+    return 5 if result.modified_count == 1 else 0
+
+
+async def _has_previous_credit_purchase(user_id: str) -> bool:
+    previous = await db.transactions.find_one({
+        "user_id": user_id,
+        "$or": [
+            {"category": "auction", "type": "purchase"},
+            {"type": "auction_bid", "metadata.purchase_kind": "bid_credits"},
+        ],
+    }, {"_id": 1})
+    return bool(previous)
+
+def _bid_operation_hash(user_id: str, auction_id: str, idempotency_key: str) -> str:
+    return hashlib.sha256(f"{user_id}:{auction_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+
+
+async def _reserve_bid_credit_once(user_object_id, op_hash: str, auction_id: str) -> str:
+    reservation_field = f"auction_bid_reservations.{op_hash}"
+    spent_field = f"auction_bid_spent.{op_hash}"
+
+    if await db.users.find_one({"_id": user_object_id, spent_field: {"$exists": True}}, {"_id": 1}):
+        return "spent"
+    if await db.users.find_one({"_id": user_object_id, reservation_field: {"$exists": True}}, {"_id": 1}):
+        return "reserved"
+
+    result = await db.users.update_one(
+        {
+            "_id": user_object_id,
+            "bid_credits": {"$gte": 1},
+            reservation_field: {"$exists": False},
+            spent_field: {"$exists": False},
+        },
+        {
+            "$inc": {"bid_credits": -1},
+            "$set": {
+                reservation_field: {
+                    "auction_id": auction_id,
+                    "reserved_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if result.modified_count == 1:
+        return "reserved"
+
+    if await db.users.find_one({"_id": user_object_id, spent_field: {"$exists": True}}, {"_id": 1}):
+        return "spent"
+    if await db.users.find_one({"_id": user_object_id, reservation_field: {"$exists": True}}, {"_id": 1}):
+        return "reserved"
+    return "insufficient"
+
+
+async def _mark_bid_credit_spent(user_object_id, op_hash: str, auction_id: str, bid_price: float) -> bool:
+    reservation_field = f"auction_bid_reservations.{op_hash}"
+    spent_field = f"auction_bid_spent.{op_hash}"
+    result = await db.users.update_one(
+        {"_id": user_object_id, reservation_field: {"$exists": True}},
+        {
+            "$unset": {reservation_field: ""},
+            "$set": {
+                spent_field: {
+                    "auction_id": auction_id,
+                    "bid_price": bid_price,
+                    "spent_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if result.modified_count == 1:
+        return True
+    return bool(await db.users.find_one({"_id": user_object_id, spent_field: {"$exists": True}}, {"_id": 1}))
+
+
+async def _refund_reserved_bid_credit(user_object_id, op_hash: str, auction_id: str, reason: str) -> bool:
+    reservation_field = f"auction_bid_reservations.{op_hash}"
+    refund_field = f"auction_bid_refunds.{op_hash}"
+    result = await db.users.update_one(
+        {
+            "_id": user_object_id,
+            reservation_field: {"$exists": True},
+            refund_field: {"$exists": False},
+        },
+        {
+            "$inc": {"bid_credits": 1},
+            "$unset": {reservation_field: ""},
+            "$set": {
+                refund_field: {
+                    "auction_id": auction_id,
+                    "reason": reason,
+                    "refunded_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    return result.modified_count == 1
+
+
+def _read_bid_operation_result(auction: dict, op_hash: str) -> Optional[dict]:
+    return (auction.get("bid_operation_results") or {}).get(op_hash)
+
+
 
 
 # ── List auctions ──
@@ -224,54 +372,13 @@ async def get_credit_packages(request: Request):
 # ── Buy Credits ──
 @router.post("/credits/buy")
 async def buy_credits(request: Request):
-    """Buy bid credits using wallet balance."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
+    """Backward-compatible alias for the canonical wallet credit purchase."""
     body = await request.json()
-    package_id = body.get("package_id")
-    
-    if package_id not in CREDIT_PACKAGES:
-        raise HTTPException(status_code=400, detail="Invalid package")
-    
-    pkg = CREDIT_PACKAGES[package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
-    
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
-        )
-    
-    # Deduct balance and add credits
-    new_balance = round(balance - price, 2)
-    new_credits = user.get("bid_credits", 0) + credits
-    
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"balance": new_balance, "bid_credits": new_credits}}
+    req = BuyCreditsRequest(
+        package_id=body.get("package_id", ""),
+        idempotency_key=body.get("idempotency_key"),
     )
-    
-    # Log transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "category": "auction",
-        "amount": -price,
-        "description": f"{credits} Bid Credits",
-        "status": "completed",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "credits_added": credits,
-        "total_credits": new_credits,
-        "new_balance": new_balance,
-    }
+    return await buy_credits_direct(req, request)
 
 
 # ── Daily Reward ──
@@ -279,19 +386,37 @@ DAILY_REWARD_CREDITS = 3
 
 @router.post("/daily-reward")
 async def claim_daily_reward(request: Request):
-    """Claim daily free bid credits."""
+    """Claim daily free bid credits exactly once per 24h window."""
     user = await get_current_user(request)
     now = datetime.now(timezone.utc)
-    last_claim = user.get("last_daily_claim")
-    if last_claim:
-        last_dt = datetime.fromisoformat(last_claim)
-        if (now - last_dt).total_seconds() < 86400:
-            remaining_secs = int(86400 - (now - last_dt).total_seconds())
-            raise HTTPException(status_code=400, detail=f"Already claimed. Next in {remaining_secs}s")
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": DAILY_REWARD_CREDITS}, "$set": {"last_daily_claim": now.isoformat()}},
+    cutoff = (now - timedelta(hours=24)).isoformat()
+
+    result = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"last_daily_claim": {"$exists": False}},
+                {"last_daily_claim": None},
+                {"last_daily_claim": {"$lte": cutoff}},
+            ],
+        },
+        {
+            "$inc": {"bid_credits": DAILY_REWARD_CREDITS},
+            "$set": {"last_daily_claim": now.isoformat()},
+        },
     )
+    if result.modified_count != 1:
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"last_daily_claim": 1, "_id": 0}) or {}
+        last_claim = fresh.get("last_daily_claim")
+        remaining_secs = 86400
+        if last_claim:
+            try:
+                elapsed = (now - datetime.fromisoformat(last_claim)).total_seconds()
+                remaining_secs = max(1, int(86400 - elapsed))
+            except Exception:
+                pass
+        raise HTTPException(status_code=400, detail=f"Already claimed. Next in {remaining_secs}s")
+
     updated = await db.users.find_one({"_id": user["_id"]})
     return {"credits_awarded": DAILY_REWARD_CREDITS, "total_credits": updated.get("bid_credits", 0)}
 
@@ -317,8 +442,9 @@ async def check_first_purchase(request: Request):
     """Check if user qualifies for first-purchase bonus."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    has_purchased = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
-    return {"is_first_purchase": not bool(has_purchased), "bonus_credits": 5}
+    has_purchased = await _has_previous_credit_purchase(user_id)
+    bonus_already_awarded = bool(user.get("auction_first_purchase_bonus_awarded"))
+    return {"is_first_purchase": not has_purchased and not bonus_already_awarded, "bonus_credits": 5}
 
 
 # ── Referral Leaderboard ──
@@ -523,13 +649,13 @@ async def get_auction(auction_id: str, request: Request):
 # ── Place a bid ──
 class BidRequest(BaseModel):
     auction_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/bid")
 async def place_bid(req: BidRequest, request: Request):
-    """Place a bid on an auction. Costs 1 credit."""
+    """Place one idempotent bid: exactly one credit -> exactly one €0.01 increment."""
     user = await get_current_user(request)
-    # Block bidding without KYC (admins exempt)
     if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
         raise HTTPException(
             status_code=403,
@@ -539,21 +665,37 @@ async def place_bid(req: BidRequest, request: Request):
                 "kyc_status": user.get("kyc_status", "not_started"),
             },
         )
+
     user_id = str(user["_id"])
-    ip, ua = get_client_info(request)
+    idempotency_key = _require_auction_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix="auction-bid",
+    )
+    op_hash = _bid_operation_hash(user_id, req.auction_id, idempotency_key)
+    bid_doc_id = f"AUBID-{op_hash}"
 
-    now = datetime.now(timezone.utc)
-    now_iso = now.isoformat()
+    existing_bid = await db.auction_bids.find_one({"_id": bid_doc_id}, {"_id": 0})
+    if existing_bid:
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"bid_credits": 1, "_id": 0}) or {}
+        return {
+            "bid": existing_bid,
+            "new_price": existing_bid.get("bid_price"),
+            "ends_at": existing_bid.get("ends_at_after"),
+            "total_bids": existing_bid.get("total_bids_after"),
+            "remaining_credits": fresh_user.get("bid_credits", 0),
+            "replayed": True,
+        }
 
-    # Check auction exists and is active
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
-    if auction["status"] != "active":
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    if auction.get("status") != "active":
         raise HTTPException(status_code=400, detail="Auction is not active")
-    if auction["ends_at"] < now_iso:
+    if auction.get("ends_at", "") <= now_iso:
         raise HTTPException(status_code=400, detail="Auction has ended")
-    # Bot-only auctions: humans cannot bid
     if auction.get("bot_only"):
         raise HTTPException(
             status_code=403,
@@ -563,133 +705,178 @@ async def place_bid(req: BidRequest, request: Request):
             },
         )
 
-    # Check user has credits
-    credits = user.get("bid_credits", 0)
-    if credits < 1:
+    credit_state = await _reserve_bid_credit_once(user["_id"], op_hash, req.auction_id)
+    if credit_state == "insufficient":
         raise HTTPException(status_code=400, detail="Not enough bid credits")
 
-    # Deduct 1 credit + update bid streak
-    today_str = now.strftime("%Y-%m-%d")
-    last_bid_date = user.get("last_bid_date", "")
-    streak_update = {}
-    if last_bid_date:
-        try:
-            last_dt = datetime.fromisoformat(last_bid_date)
-            last_day = last_dt.strftime("%Y-%m-%d")
-            if last_day == today_str:
-                pass  # Same day, no streak change
-            elif (now - last_dt).total_seconds() <= 86400 * 1.5:
-                streak_update = {"$inc": {"bid_streak": 1}}
-            else:
-                streak_update = {"$set": {"bid_streak": 1}}
-        except Exception:
-            streak_update = {"$set": {"bid_streak": 1}}
-    else:
-        streak_update = {"$set": {"bid_streak": 1}}
+    # If a retry arrives after the price update but before the response was delivered,
+    # recover from the result stored atomically on the auction document.
+    fresh_auction = await db.auctions.find_one({"auction_id": req.auction_id}) or {}
+    recovered = _read_bid_operation_result(fresh_auction, op_hash)
+    if recovered:
+        await _mark_bid_credit_spent(user["_id"], op_hash, req.auction_id, float(recovered["p"]))
+        bid_record = {
+            "bid_id": f"BID-{op_hash.upper()}",
+            "auction_id": req.auction_id,
+            "user_id": user_id,
+            "user_name": user.get("name", "Anonymous"),
+            "bid_price": float(recovered["p"]),
+            "created_at": recovered["t"],
+            "ends_at_after": recovered["e"],
+            "total_bids_after": int(recovered["n"]),
+            "operation_key": op_hash,
+        }
+        await db.auction_bids.update_one(
+            {"_id": bid_doc_id},
+            {"$setOnInsert": bid_record},
+            upsert=True,
+        )
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"bid_credits": 1, "_id": 0}) or {}
+        return {
+            "bid": bid_record,
+            "new_price": bid_record["bid_price"],
+            "ends_at": bid_record["ends_at_after"],
+            "total_bids": bid_record["total_bids_after"],
+            "remaining_credits": fresh_user.get("bid_credits", 0),
+            "replayed": True,
+        }
 
-    update_ops = {"$inc": {"bid_credits": -1}, "$set": {"last_bid_date": now.isoformat()}}
-    if "$inc" in streak_update:
-        update_ops["$inc"]["bid_streak"] = streak_update["$inc"]["bid_streak"]
-    elif "$set" in streak_update:
-        update_ops["$set"]["bid_streak"] = streak_update["$set"]["bid_streak"]
+    applied_snapshot = None
+    applied_result = None
 
-    await db.users.update_one({"_id": user["_id"]}, update_ops)
+    for _ in range(8):
+        snapshot = await db.auctions.find_one({"auction_id": req.auction_id})
+        if not snapshot:
+            await _refund_reserved_bid_credit(user["_id"], op_hash, req.auction_id, "auction_missing")
+            raise HTTPException(status_code=404, detail="Auction not found")
 
-    # Calculate new price
-    new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        if snapshot.get("status") != "active" or snapshot.get("ends_at", "") <= now_iso:
+            await _refund_reserved_bid_credit(user["_id"], op_hash, req.auction_id, "auction_ended")
+            raise HTTPException(status_code=400, detail="Auction has ended")
+        if snapshot.get("bot_only"):
+            await _refund_reserved_bid_credit(user["_id"], op_hash, req.auction_id, "bot_only")
+            raise HTTPException(status_code=403, detail="Diese Auktion ist nur für Bots")
 
-    # Extend timer — FINAL BATTLE logic
-    current_ends = datetime.fromisoformat(auction["ends_at"])
-    remaining = (current_ends - now).total_seconds()
+        existing_result = _read_bid_operation_result(snapshot, op_hash)
+        if existing_result:
+            applied_snapshot = snapshot
+            applied_result = existing_result
+            break
 
-    if remaining <= FINAL_BATTLE_THRESHOLD:
-        # Final battle: always reset to 20 seconds from now
-        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-    elif remaining < TIMER_EXTENSION_SECONDS:
-        # Normal mode but close: extend to minimum
-        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-    else:
-        new_ends = current_ends
-    new_ends_iso = new_ends.isoformat()
+        current_price = float(snapshot.get("current_price") or 0)
+        new_price = round(current_price + PRICE_INCREMENT, 2)
+        current_ends = datetime.fromisoformat(snapshot["ends_at"])
+        remaining = (current_ends - now).total_seconds()
+        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
+        new_ends_iso = new_ends.isoformat()
+        total_after = int(snapshot.get("total_bids") or 0) + 1
+        result_field = f"bid_operation_results.{op_hash}"
+        op_result = {
+            "p": new_price,
+            "e": new_ends_iso,
+            "n": total_after,
+            "t": now_iso,
+        }
 
-    # Update auction
-    await db.auctions.update_one(
-        {"auction_id": req.auction_id},
-        {"$set": {
-            "current_price": new_price,
-            "ends_at": new_ends_iso,
-            "last_bidder_id": user_id,
-            "last_bidder_name": user.get("name", "Anonymous"),
-        },
-        "$inc": {"total_bids": 1}},
+        update = await db.auctions.update_one(
+            {
+                "auction_id": req.auction_id,
+                "status": "active",
+                "current_price": snapshot.get("current_price"),
+                "ends_at": snapshot.get("ends_at"),
+                result_field: {"$exists": False},
+            },
+            {
+                "$set": {
+                    "current_price": new_price,
+                    "ends_at": new_ends_iso,
+                    "last_bidder_id": user_id,
+                    "last_bidder_name": user.get("name", "Anonymous"),
+                    result_field: op_result,
+                },
+                "$inc": {"total_bids": 1},
+            },
+        )
+        if update.modified_count == 1:
+            applied_snapshot = snapshot
+            applied_result = op_result
+            break
+
+    if not applied_result:
+        latest = await db.auctions.find_one({"auction_id": req.auction_id}) or {}
+        applied_result = _read_bid_operation_result(latest, op_hash)
+        if not applied_result:
+            await _refund_reserved_bid_credit(user["_id"], op_hash, req.auction_id, "contention")
+            raise HTTPException(status_code=409, detail="Gebot konnte wegen gleichzeitiger Gebote nicht sicher gesetzt werden. Credit wurde zurückgegeben.")
+
+    spent_ok = await _mark_bid_credit_spent(
+        user["_id"],
+        op_hash,
+        req.auction_id,
+        float(applied_result["p"]),
     )
+    if not spent_ok:
+        raise HTTPException(status_code=500, detail="Gebot gesetzt, Credit-Abrechnung muss geprüft werden.")
 
-    # Record bid
     bid_record = {
-        "bid_id": secrets.token_hex(6),
+        "bid_id": f"BID-{op_hash.upper()}",
         "auction_id": req.auction_id,
         "user_id": user_id,
         "user_name": user.get("name", "Anonymous"),
-        "bid_price": new_price,
-        "created_at": now_iso,
+        "bid_price": float(applied_result["p"]),
+        "created_at": applied_result["t"],
+        "ends_at_after": applied_result["e"],
+        "total_bids_after": int(applied_result["n"]),
+        "operation_key": op_hash,
     }
-    await db.auction_bids.insert_one(bid_record)
-    bid_record.pop("_id", None)
+    await db.auction_bids.update_one(
+        {"_id": bid_doc_id},
+        {"$setOnInsert": bid_record},
+        upsert=True,
+    )
 
-    # Notify previous bidder they were outbid
-    if auction.get("last_bidder_id") and auction["last_bidder_id"] != user_id:
+    # Streak metadata only after the financial bid is safely committed.
+    fresh_before_streak = await db.users.find_one({"_id": user["_id"]}, {"last_bid_date": 1, "bid_streak": 1}) or {}
+    previous_last = fresh_before_streak.get("last_bid_date")
+    streak_update = {"last_bid_date": applied_result["t"]}
+    if previous_last:
+        try:
+            previous_dt = datetime.fromisoformat(previous_last)
+            if previous_dt.strftime("%Y-%m-%d") != datetime.fromisoformat(applied_result["t"]).strftime("%Y-%m-%d"):
+                streak_update["bid_streak"] = int(fresh_before_streak.get("bid_streak") or 0) + 1
+        except Exception:
+            streak_update["bid_streak"] = max(1, int(fresh_before_streak.get("bid_streak") or 0))
+    else:
+        streak_update["bid_streak"] = 1
+    await db.users.update_one({"_id": user["_id"]}, {"$set": streak_update})
+
+    previous_bidder_id = (applied_snapshot or {}).get("last_bidder_id")
+    previous_title = (applied_snapshot or {}).get("title", "Auktion")
+    if previous_bidder_id and previous_bidder_id != user_id:
         await db.auction_notifications.insert_one({
-            "user_id": auction["last_bidder_id"],
+            "user_id": previous_bidder_id,
             "type": "outbid",
             "auction_id": req.auction_id,
-            "message": f"You were outbid on {auction['title']}!",
+            "message": f"You were outbid on {previous_title}!",
             "read": False,
-            "created_at": now_iso,
+            "created_at": applied_result["t"],
         })
-        # Push notification to outbid user
         try:
             from routes.web_push import send_push_to_user
             asyncio.create_task(send_push_to_user(
-                user_id=auction["last_bidder_id"],
+                user_id=previous_bidder_id,
                 title="🔥 Du wurdest überboten!",
-                body=f"{auction['title']} — jetzt €{new_price:.2f}. Schnell, biete weiter!",
+                body=f"{previous_title} — jetzt €{float(applied_result['p']):.2f}. Schnell, biete weiter!",
                 icon="/logo192.png",
                 data={"url": f"/auction/{req.auction_id}", "type": "outbid", "auction_id": req.auction_id},
             ))
         except Exception:
             pass
-        # Email outbid notification (fire-and-forget)
-        try:
-            from routes.email_service import notify_outbid
-            prev_user = await db.users.find_one({"_id": ObjectId(auction["last_bidder_id"])})
-            if prev_user and prev_user.get("email"):
-                asyncio.create_task(notify_outbid(
-                    prev_user["email"], prev_user.get("name", "User"),
-                    auction["title"], req.auction_id, new_price,
-                ))
-        except Exception:
-            pass
 
-    # Push to all watchlist users (except current bidder + previous bidder)
-    try:
-        from routes.web_push import send_push_to_user
-        watchers = await db.watchlist.find(
-            {"auction_id": req.auction_id, "user_id": {"$nin": [user_id, auction.get("last_bidder_id") or ""]}},
-            {"_id": 0, "user_id": 1},
-        ).to_list(50)
-        for w in watchers:
-            asyncio.create_task(send_push_to_user(
-                user_id=w["user_id"],
-                title="📈 Neues Gebot bei deiner gemerkten Auktion",
-                body=f"{auction['title']} — jetzt €{new_price:.2f}",
-                data={"url": f"/auction/{req.auction_id}", "type": "watchlist_bid"},
-            ))
-    except Exception:
-        pass
+    fresh_user = await db.users.find_one({"_id": user["_id"]}, {"bid_credits": 1, "_id": 0}) or {}
 
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-
-    # Trigger auto-bids from other users
     try:
         await process_auto_bids(req.auction_id, user_id)
     except Exception:
@@ -697,68 +884,204 @@ async def place_bid(req: BidRequest, request: Request):
 
     return {
         "bid": bid_record,
-        "new_price": new_price,
-        "ends_at": new_ends_iso,
-        "total_bids": auction["total_bids"] + 1,
-        "remaining_credits": updated_user.get("bid_credits", 0),
+        "new_price": bid_record["bid_price"],
+        "ends_at": bid_record["ends_at_after"],
+        "total_bids": bid_record["total_bids_after"],
+        "remaining_credits": fresh_user.get("bid_credits", 0),
+        "replayed": False,
     }
 
 
 # ── Process auto-bids after a manual bid ──
 async def process_auto_bids(auction_id: str, last_bidder_id: str):
-    """Check if any auto-bidders should respond to this bid."""
+    """Place at most one race-safe auto-bid in response to a committed bid."""
     auto_bids = await db.auto_bids.find(
         {"auction_id": auction_id, "active": True, "user_id": {"$ne": last_bidder_id}}
-    ).to_list(50)
+    ).sort("updated_at", 1).to_list(50)
 
     for ab in auto_bids:
-        if ab["bids_placed"] >= ab["max_bids"]:
-            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        max_bids = int(ab.get("max_bids") or 0)
+        placed = int(ab.get("bids_placed") or 0)
+        if placed >= max_bids:
+            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False, "processing": False}})
+            continue
+
+        processing_until = ab.get("processing_until")
+        if ab.get("processing") and processing_until and processing_until > now_iso:
+            continue
+
+        next_slot = placed + 1
+        lock_until = (now + timedelta(seconds=30)).isoformat()
+        claimed = await db.auto_bids.update_one(
+            {
+                "_id": ab["_id"],
+                "active": True,
+                "bids_placed": placed,
+                "$or": [
+                    {"processing": {"$ne": True}},
+                    {"processing_until": {"$lte": now_iso}},
+                    {"processing_until": None},
+                ],
+            },
+            {
+                "$set": {
+                    "processing": True,
+                    "processing_slot": next_slot,
+                    "processing_until": lock_until,
+                    "processing_started_at": now_iso,
+                },
+                "$inc": {"bids_placed": 1},
+            },
+        )
+        if claimed.modified_count != 1:
             continue
 
         user = await db.users.find_one({"_id": ObjectId(ab["user_id"])})
-        if not user or user.get("bid_credits", 0) < 1:
-            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+        if not user:
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {"$set": {"active": False, "processing": False, "processing_until": None}},
+            )
             continue
 
-        auction = await db.auctions.find_one({"auction_id": auction_id})
-        if not auction or auction["status"] != "active":
-            break
+        if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"active": False, "processing": False, "processing_until": None, "disabled_reason": "kyc_required"},
+                },
+            )
+            continue
 
-        now = datetime.now(timezone.utc)
-        now_iso = now.isoformat()
-        if auction["ends_at"] < now_iso:
-            break
+        op_hash = hashlib.sha256(f"auto:{auction_id}:{str(ab['_id'])}:{next_slot}".encode("utf-8")).hexdigest()[:20]
+        bid_doc_id = f"AUBID-{op_hash}"
+        credit_state = await _reserve_bid_credit_once(user["_id"], op_hash, auction_id)
+        if credit_state == "insufficient":
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"active": False, "processing": False, "processing_until": None, "disabled_reason": "no_credits"},
+                },
+            )
+            continue
 
-        # Deduct credit
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": -1}})
+        applied_result = None
+        for _ in range(8):
+            snapshot = await db.auctions.find_one({"auction_id": auction_id})
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+            if not snapshot or snapshot.get("status") != "active" or snapshot.get("ends_at", "") <= now_iso:
+                await _refund_reserved_bid_credit(user["_id"], op_hash, auction_id, "auction_ended")
+                await db.auto_bids.update_one(
+                    {"_id": ab["_id"]},
+                    {
+                        "$inc": {"bids_placed": -1},
+                        "$set": {"active": False, "processing": False, "processing_until": None},
+                    },
+                )
+                return
 
-        new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
-        current_ends = datetime.fromisoformat(auction["ends_at"])
-        remaining = (current_ends - now).total_seconds()
-        if remaining <= FINAL_BATTLE_THRESHOLD:
-            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-        elif remaining < TIMER_EXTENSION_SECONDS:
-            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
-        else:
-            new_ends = current_ends
+            existing_result = _read_bid_operation_result(snapshot, op_hash)
+            if existing_result:
+                applied_result = existing_result
+                break
 
-        await db.auctions.update_one(
-            {"auction_id": auction_id},
-            {"$set": {"current_price": new_price, "ends_at": new_ends.isoformat(),
-                      "last_bidder_id": ab["user_id"], "last_bidder_name": user.get("name", "Anonymous")},
-             "$inc": {"total_bids": 1}},
+            current_price = float(snapshot.get("current_price") or 0)
+            new_price = round(current_price + PRICE_INCREMENT, 2)
+            current_ends = datetime.fromisoformat(snapshot["ends_at"])
+            remaining = (current_ends - now).total_seconds()
+            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
+            new_ends_iso = new_ends.isoformat()
+            total_after = int(snapshot.get("total_bids") or 0) + 1
+            result_field = f"bid_operation_results.{op_hash}"
+            op_result = {"p": new_price, "e": new_ends_iso, "n": total_after, "t": now_iso}
+
+            updated = await db.auctions.update_one(
+                {
+                    "auction_id": auction_id,
+                    "status": "active",
+                    "current_price": snapshot.get("current_price"),
+                    "ends_at": snapshot.get("ends_at"),
+                    result_field: {"$exists": False},
+                },
+                {
+                    "$set": {
+                        "current_price": new_price,
+                        "ends_at": new_ends_iso,
+                        "last_bidder_id": ab["user_id"],
+                        "last_bidder_name": user.get("name", "Anonymous"),
+                        result_field: op_result,
+                    },
+                    "$inc": {"total_bids": 1},
+                },
+            )
+            if updated.modified_count == 1:
+                applied_result = op_result
+                break
+
+        if not applied_result:
+            latest = await db.auctions.find_one({"auction_id": auction_id}) or {}
+            applied_result = _read_bid_operation_result(latest, op_hash)
+
+        if not applied_result:
+            await _refund_reserved_bid_credit(user["_id"], op_hash, auction_id, "contention")
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {
+                    "$inc": {"bids_placed": -1},
+                    "$set": {"processing": False, "processing_until": None},
+                },
+            )
+            continue
+
+        spent_ok = await _mark_bid_credit_spent(
+            user["_id"],
+            op_hash,
+            auction_id,
+            float(applied_result["p"]),
         )
+        if not spent_ok:
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {"$set": {"processing": False, "processing_until": None, "disabled_reason": "credit_reconciliation"}},
+            )
+            return
 
         bid_record = {
-            "bid_id": secrets.token_hex(6), "auction_id": auction_id,
-            "user_id": ab["user_id"], "user_name": user.get("name", "Anonymous"),
-            "bid_price": new_price, "created_at": now_iso, "is_auto": True,
+            "bid_id": f"BID-{op_hash.upper()}",
+            "auction_id": auction_id,
+            "user_id": ab["user_id"],
+            "user_name": user.get("name", "Anonymous"),
+            "bid_price": float(applied_result["p"]),
+            "created_at": applied_result["t"],
+            "ends_at_after": applied_result["e"],
+            "total_bids_after": int(applied_result["n"]),
+            "operation_key": op_hash,
+            "is_auto": True,
         }
-        await db.auction_bids.insert_one(bid_record)
+        await db.auction_bids.update_one(
+            {"_id": bid_doc_id},
+            {"$setOnInsert": bid_record},
+            upsert=True,
+        )
 
-        await db.auto_bids.update_one({"_id": ab["_id"]}, {"$inc": {"bids_placed": 1}})
-        break  # Only one auto-bid per trigger
+        await db.auto_bids.update_one(
+            {"_id": ab["_id"]},
+            {
+                "$set": {
+                    "processing": False,
+                    "processing_until": None,
+                    "last_bid_at": applied_result["t"],
+                    "active": next_slot < max_bids,
+                },
+                "$unset": {"processing_slot": ""},
+            },
+        )
+        break
 
 
 # ── Set Auto-Bid ──
@@ -772,6 +1095,15 @@ async def set_auto_bid(req: AutoBidRequest, request: Request):
     """Set auto-bid for an auction."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um Auto-Bid zu aktivieren.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
 
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
     if not auction or auction["status"] != "active":
@@ -818,68 +1150,61 @@ async def get_auto_bid(auction_id: str, request: Request):
 # ── Buy bid credits ──
 class BuyCreditsRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits")
 async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
-    """Buy bid credits using wallet balance - Uses Payment Engine for safety."""
+    """Buy bid credits from the canonical wallet with exactly-once credit grants."""
     from core.payment_engine import debit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    ip, ua = get_client_info(request)
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-wallet")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
 
     pkg = CREDIT_PACKAGES[req.package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
+    price = float(pkg["price"])
+    credits = int(pkg["credits"])
+    had_previous_purchase = await _has_previous_credit_purchase(user_id)
 
-    # Check first purchase bonus
-    has_prev = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
-    bonus = 5 if not has_prev else 0
-    total_credits_add = credits + bonus
-
-    # Use Payment Engine for atomic wallet deduction
+    ref_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16].upper()
     result = await debit_wallet(
         user_id=user_id,
         amount=price,
         tx_type=TransactionType.AUCTION_BID,
-        description=f"Auction Credits: {credits} credits" + (f" (+{bonus} bonus)" if bonus else ""),
-        metadata={"package_id": req.package_id, "credits": credits, "bonus": bonus}
+        description=f"Auction Credits: {credits} credits",
+        reference=f"BIDS-W-{ref_hash}",
+        metadata={
+            "purchase_kind": "bid_credits",
+            "category": "auction",
+            "package_id": req.package_id,
+            "credits": credits,
+        },
+        idempotency_key=idempotency_key,
     )
-    
     if not result.success:
-        raise HTTPException(status_code=400, detail=result.error)
-    
-    # Add credits after successful payment
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": total_credits_add}}
+        status_code = 409 if result.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code=status_code, detail=result.error or "Credit purchase failed")
+
+    _, grant_ok = await _grant_bid_credits_once(
+        user["_id"],
+        credits=credits,
+        grant_key=idempotency_key,
+        source="wallet_purchase",
+        metadata={"package_id": req.package_id, "payment_transaction_id": result.transaction_id},
     )
+    if not grant_ok:
+        raise HTTPException(status_code=500, detail="Credit-Gutschrift konnte nicht bestätigt werden. Manuelle Prüfung erforderlich.")
 
-    # Create transaction
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "amount": -price,
-        "description": f"Bid Credits ({credits}x)" + (f" + {bonus} Bonus" if bonus else ""),
-        "status": "completed",
-        "reference": f"BIDS-{secrets.token_hex(4).upper()}",
-        "category": "auction",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
-
+    bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
-    # Process influencer commission
     try:
         from routes.influencer import process_commission
-        asyncio.create_task(process_commission(user_id, price, txn["reference"]))
+        asyncio.create_task(process_commission(user_id, price, result.reference or f"BIDS-W-{ref_hash}"))
     except Exception:
         pass
 
@@ -889,40 +1214,45 @@ async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
         "is_first_purchase": bool(bonus),
+        "transaction_id": result.transaction_id,
+        "reference": result.reference,
     }
 
 
 # ── Buy bid credits directly with saved Stripe card ──
 class BuyCreditsDirectRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits-direct")
 async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Request):
-    """Buy bid credits directly charging saved Stripe card (1-click)."""
+    """Buy bid credits with a saved Stripe card, idempotently."""
     import stripe as stripe_mod
     from core.config import STRIPE_API_KEY
     stripe_mod.api_key = STRIPE_API_KEY
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-card")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
 
     pkg = CREDIT_PACKAGES[req.package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
+    price = float(pkg["price"])
+    credits = int(pkg["credits"])
+    had_previous_purchase = await _has_previous_credit_purchase(user_id)
 
     cust_id = user.get("stripe_customer_id")
     pm_id = user.get("stripe_pm_id")
     if not cust_id or not pm_id:
         raise HTTPException(status_code=400, detail="No saved payment method")
 
-    # Charge saved card off-session
+    stripe_idempotency = f"bidcredits-{hashlib.sha256(idempotency_key.encode('utf-8')).hexdigest()[:32]}"
     try:
         intent = stripe_mod.PaymentIntent.create(
-            amount=int(price * 100),
+            amount=int(round(price * 100)),
             currency="eur",
             customer=cust_id,
             payment_method=pm_id,
@@ -933,10 +1263,11 @@ async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Req
                 "type": "bid_credits_direct",
                 "package_id": req.package_id,
                 "credits": str(credits),
+                "client_idempotency_hash": hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16],
             },
+            idempotency_key=stripe_idempotency,
         )
     except stripe_mod.error.CardError:
-        # Card declined — remove saved method
         await db.users.update_one(
             {"_id": user["_id"]},
             {"$unset": {
@@ -951,44 +1282,55 @@ async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Req
     if intent.status != "succeeded":
         raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
 
-    # Add credits
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": credits}},
+    _, grant_ok = await _grant_bid_credits_once(
+        user["_id"],
+        credits=credits,
+        grant_key=idempotency_key,
+        source="saved_card_purchase",
+        metadata={"package_id": req.package_id, "stripe_pi_id": intent.id},
     )
+    if not grant_ok:
+        raise HTTPException(status_code=500, detail="Kartenzahlung erfolgreich, Credit-Gutschrift muss manuell geprüft werden.")
 
-    # Create transaction
-    ref = f"BIDS-D-{secrets.token_hex(4).upper()}"
+    bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
+    ref_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16].upper()
+    ref = f"BIDS-D-{ref_hash}"
     txn = {
-        "id": secrets.token_hex(8),
+        "id": f"AUC-CARD-{hashlib.sha256(intent.id.encode('utf-8')).hexdigest()[:20]}",
         "user_id": user_id,
         "type": "purchase",
         "amount": -price,
-        "description": f"Bid Credits ({credits}x) — Card",
+        "description": f"Bid Credits ({credits}x) — Card" + (f" + {bonus} Bonus" if bonus else ""),
         "status": "completed",
         "reference": ref,
         "payment_method": "saved_card",
         "category": "auction",
         "stripe_pi_id": intent.id,
+        "idempotency_key": idempotency_key,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
+    await db.transactions.update_one(
+        {"user_id": user_id, "stripe_pi_id": intent.id, "type": "purchase"},
+        {"$setOnInsert": txn},
+        upsert=True,
+    )
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
-
     return {
         "credits_added": credits,
+        "bonus_credits": bonus,
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
         "method": "card",
         "reference": ref,
+        "stripe_pi_id": intent.id,
     }
 
 
 # ── Buy bid credits via Stripe Checkout (new card) ──
 class BuyCreditsStripeRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits-stripe")
@@ -999,6 +1341,7 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-stripe")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
@@ -1007,17 +1350,33 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
     price = float(pkg["price"])
     credits_amount = pkg["credits"]
 
-    # Store pending purchase info
-    pending_id = secrets.token_hex(8)
-    await db.pending_credit_purchases.insert_one({
-        "pending_id": pending_id,
-        "user_id": user_id,
-        "package_id": req.package_id,
-        "credits": credits_amount,
-        "price": price,
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    # One local pending purchase per client attempt.
+    pending_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    pending_id = f"ACP-{pending_hash}"
+    existing_pending = await db.pending_credit_purchases.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing_pending and existing_pending.get("session_id") and existing_pending.get("checkout_url"):
+        return {
+            "checkout_url": existing_pending["checkout_url"],
+            "session_id": existing_pending["session_id"],
+            "pending_id": pending_id,
+        }
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$setOnInsert": {
+            "pending_id": pending_id,
+            "user_id": user_id,
+            "package_id": req.package_id,
+            "credits": credits_amount,
+            "price": price,
+            "status": "pending",
+            "idempotency_key": idempotency_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
 
     # Build success/cancel URLs from frontend origin (security: never trust client amount)
     origin = request.headers.get("origin") or request.headers.get("referer") or "https://bidblitz.ae"
@@ -1050,7 +1409,9 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"Stripe-Fehler: {str(e)[:200]}")
 
     # Persist payment_transactions row (mandatory per playbook)
-    await db.payment_transactions.insert_one({
+    await db.payment_transactions.update_one(
+        {"session_id": session.session_id, "user_id": user_id},
+        {"$setOnInsert": {
         "session_id": session.session_id,
         "pending_id": pending_id,
         "user_id": user_id,
@@ -1058,63 +1419,56 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         "currency": "eur",
         "metadata": {
             "type": "bid_credits",
+            "pending_id": pending_id,
             "package_id": req.package_id,
             "credits": str(credits_amount),
+            "idempotency_key": idempotency_key,
         },
         "payment_status": "initiated",
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+        }},
+        upsert=True,
+    )
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$set": {"session_id": session.session_id, "checkout_url": session.url}},
+    )
 
     return {"checkout_url": session.url, "session_id": session.session_id, "pending_id": pending_id}
 
 
 @router.post("/buy-credits-confirm/{pending_id}")
 async def confirm_credit_purchase(pending_id: str, request: Request):
-    """Confirm a pending Stripe credit purchase after successful checkout."""
+    """Compatibility endpoint: never grants credits without a verified Stripe settlement."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    pending = await db.pending_credit_purchases.find_one({"pending_id": pending_id, "user_id": user_id})
+    pending = await db.pending_credit_purchases.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
+    )
     if not pending:
         raise HTTPException(status_code=404, detail="Purchase not found")
-    if pending["status"] == "completed":
-        # Already processed
-        updated_user = await db.users.find_one({"_id": user["_id"]})
-        return {"credits_added": pending["credits"], "total_credits": updated_user.get("bid_credits", 0)}
 
-    credits_amount = pending["credits"]
-    price = pending["price"]
-
-    # Mark as completed
-    await db.pending_credit_purchases.update_one(
-        {"pending_id": pending_id},
-        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    txn = await db.payment_transactions.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
     )
+    if not txn or txn.get("payment_status") != "credited":
+        raise HTTPException(
+            status_code=409,
+            detail="Stripe-Zahlung ist noch nicht verifiziert. Bitte Zahlungsstatus erneut prüfen.",
+        )
 
-    # Add credits
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_amount}})
-
-    # Create transaction
-    ref = f"BIDS-S-{secrets.token_hex(4).upper()}"
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "amount": -price,
-        "description": f"Bid Credits ({credits_amount}x) — Stripe",
-        "status": "completed",
-        "reference": ref,
-        "payment_method": "stripe_checkout",
-        "category": "auction",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.transactions.insert_one(txn)
-
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
     updated_user = await db.users.find_one({"_id": user["_id"]})
     return {
-        "credits_added": credits_amount,
+        "credits_added": int(pending.get("credits") or 0),
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
+        "verified": True,
     }
 
 
@@ -1138,7 +1492,7 @@ async def get_credits_purchase_status(session_id: str, request: Request):
         return {
             "status": "completed",
             "payment_status": "paid",
-            "credits_added": int(txn.get("metadata", {}).get("credits", 0)),
+            "credits_added": int(txn.get("metadata", {}).get("credits", 0)) + int(txn.get("bonus_credits") or 0),
             "amount": txn.get("amount", 0),
         }
 
@@ -1149,30 +1503,75 @@ async def get_credits_purchase_status(session_id: str, request: Request):
         stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
         status = await stripe_checkout.get_checkout_status(session_id)
 
-        # Manually credit if Stripe confirms paid + not yet credited (idempotent)
+        # Credit only after Stripe confirms paid. Credit grant is exactly-once and
+        # the payment row is marked credited only after that grant is confirmed.
         if status.payment_status == "paid":
-            updated = await db.payment_transactions.find_one_and_update(
-                {"session_id": session_id, "payment_status": {"$ne": "credited"}},
+            fresh_txn = await db.payment_transactions.find_one(
+                {"session_id": session_id, "user_id": user_id},
+                {"_id": 0},
+            ) or txn
+            m = fresh_txn.get("metadata", {}) or {}
+            credits_to_add = int(m.get("credits", 0))
+            grant_key = f"stripe-session:{session_id}"
+            _, grant_ok = await _grant_bid_credits_once(
+                user["_id"],
+                credits=credits_to_add,
+                grant_key=grant_key,
+                source="stripe_checkout_purchase",
+                metadata={"session_id": session_id, "package_id": m.get("package_id")},
+            )
+            if not grant_ok:
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id, "user_id": user_id},
+                    {"$set": {"payment_status": "reconciliation_required", "reconciliation_required_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(status_code=500, detail="Stripe bezahlt, Credit-Gutschrift muss manuell geprüft werden.")
+
+            had_previous_purchase = await _has_previous_credit_purchase(user_id)
+            bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
+            now_completed = datetime.now(timezone.utc).isoformat()
+            await db.payment_transactions.update_one(
+                {"session_id": session_id, "user_id": user_id},
                 {"$set": {
                     "payment_status": "credited",
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": now_completed,
+                    "bonus_credits": bonus,
                 }},
             )
-            if updated:
-                m = updated.get("metadata", {}) or {}
-                credits_to_add = int(m.get("credits", 0))
-                if credits_to_add:
-                    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_to_add}})
-                    if m.get("pending_id"):
-                        await db.pending_credit_purchases.update_one(
-                            {"pending_id": m["pending_id"]},
-                            {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
-                        )
+            pending_id = fresh_txn.get("pending_id") or m.get("pending_id")
+            if pending_id:
+                await db.pending_credit_purchases.update_one(
+                    {"pending_id": pending_id, "user_id": user_id},
+                    {"$set": {"status": "completed", "completed_at": now_completed}},
+                )
+
+            purchase_ref = f"BIDS-S-{hashlib.sha256(session_id.encode('utf-8')).hexdigest()[:16].upper()}"
+            purchase_doc = {
+                "id": f"AUC-STRIPE-{hashlib.sha256(session_id.encode('utf-8')).hexdigest()[:20]}",
+                "user_id": user_id,
+                "type": "purchase",
+                "amount": -float(fresh_txn.get("amount") or 0),
+                "description": f"Bid Credits ({credits_to_add}x) — Stripe" + (f" + {bonus} Bonus" if bonus else ""),
+                "status": "completed",
+                "reference": purchase_ref,
+                "payment_method": "stripe_checkout",
+                "category": "auction",
+                "stripe_session_id": session_id,
+                "created_at": now_completed,
+            }
+            await db.transactions.update_one(
+                {"user_id": user_id, "stripe_session_id": session_id, "type": "purchase"},
+                {"$setOnInsert": purchase_doc},
+                upsert=True,
+            )
 
         return {
             "status": "completed" if status.payment_status == "paid" else "pending",
             "payment_status": status.payment_status,
-            "credits_added": int(txn.get("metadata", {}).get("credits", 0)) if status.payment_status == "paid" else 0,
+            "credits_added": (
+                int(txn.get("metadata", {}).get("credits", 0))
+                + int((await db.payment_transactions.find_one({"session_id": session_id, "user_id": user_id}, {"bonus_credits": 1, "_id": 0}) or {}).get("bonus_credits") or 0)
+            ) if status.payment_status == "paid" else 0,
             "amount": txn.get("amount", 0),
         }
     except Exception as e:

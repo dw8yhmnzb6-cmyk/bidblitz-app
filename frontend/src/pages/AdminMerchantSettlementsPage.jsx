@@ -6,6 +6,31 @@ import { SectionCard } from "../components/merchant-settlement/SectionCard";
 
 const money = (minor) => `${(Number(minor || 0) / 100).toFixed(2)} €`;
 
+function PayoutActions({ payout, index, onAction }) {
+  const base = "inline-flex min-h-10 items-center gap-2 rounded-full px-3 py-2 text-sm font-bold";
+  if (payout.status === "pending_approval") {
+    return (
+      <>
+        <button onClick={() => onAction(payout.payout_id, "approve")} className={`${base} bg-[#06B6D4] text-black`} data-testid={`admin-merchant-payout-approve-${index + 1}`}><Shield size={14} />Freigeben</button>
+        <button onClick={() => onAction(payout.payout_id, "cancelled")} className={`${base} border border-white/10 bg-white/5 text-white`} data-testid={`admin-merchant-payout-cancel-${index + 1}`}>Abbrechen</button>
+      </>
+    );
+  }
+  if (payout.status === "processing") {
+    return (
+      <>
+        <button onClick={() => onAction(payout.payout_id, "paid")} className={`${base} bg-[#06B6D4] text-black`} data-testid={`admin-merchant-payout-paid-${index + 1}`}>Als bezahlt markieren</button>
+        <button onClick={() => onAction(payout.payout_id, "failed")} className={`${base} border border-white/10 bg-white/5 text-white`} data-testid={`admin-merchant-payout-failed-${index + 1}`}><RotateCcw size={14} />Fehlgeschlagen</button>
+        <button onClick={() => onAction(payout.payout_id, "cancelled")} className={`${base} border border-white/10 bg-white/5 text-white`} data-testid={`admin-merchant-payout-cancel-${index + 1}`}>Abbrechen</button>
+      </>
+    );
+  }
+  if (payout.status === "paid") {
+    return <button onClick={() => onAction(payout.payout_id, "returned")} className={`${base} border border-white/10 bg-white/5 text-white`} data-testid={`admin-merchant-payout-returned-${index + 1}`}><RotateCcw size={14} />Bank-Rückläufer</button>;
+  }
+  return <span className="text-xs text-white/50">Keine weitere Aktion verfügbar</span>;
+}
+
 export default function AdminMerchantSettlementsPage({ onBack }) {
   const [data, setData] = useState({ settlements: [], payouts: [], balances: [] });
   const [reserveForm, setReserveForm] = useState({ merchant_id: "", percentage_basis_points: "1000", fixed_minor: "0", reason: "Rolling Reserve 10 %", hold_days: "30" });
@@ -25,7 +50,12 @@ export default function AdminMerchantSettlementsPage({ onBack }) {
 
   const actionPayout = async (payoutId, action) => {
     try {
-      await api.adminMerchantPayoutAction(payoutId, { action, failure_reason: action === "failed" ? "Admin markiert fehlgeschlagen" : "" });
+      const reasons = {
+        failed: "Admin markiert fehlgeschlagen",
+        returned: "Bank-Rückläufer",
+        cancelled: "Auszahlung administrativ abgebrochen",
+      };
+      await api.adminMerchantPayoutAction(payoutId, { action, failure_reason: reasons[action] || "" });
       await load();
     } catch (error) {
       toast.error(error.message || "Payout-Aktion fehlgeschlagen.");
@@ -154,7 +184,22 @@ export default function AdminMerchantSettlementsPage({ onBack }) {
         </SectionCard>
         <SectionCard title="Payouts" testId="admin-merchant-payouts-list">
           <div className="grid gap-3">
-            {data.payouts.map((payout, index) => <div key={payout.payout_id} className="rounded-[20px] border border-white/10 bg-[#071019] p-4 text-white" data-testid={`admin-merchant-payout-row-${index + 1}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="font-black">{payout.payout_id}</div><div className="mt-1 text-sm text-white/60">{payout.merchant_id} · {payout.status}</div></div><div className="text-right"><div className="text-lg font-black">{money(payout.amount_minor)}</div><div className="mt-3 flex flex-wrap gap-2 justify-end"><button onClick={() => actionPayout(payout.payout_id, "approve")} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white" data-testid={`admin-merchant-payout-approve-${index + 1}`}><Shield size={14} />Freigeben</button><button onClick={() => actionPayout(payout.payout_id, "paid")} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#06B6D4] px-3 py-2 text-sm font-bold text-black" data-testid={`admin-merchant-payout-paid-${index + 1}`}>Als bezahlt markieren</button><button onClick={() => actionPayout(payout.payout_id, "failed")} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white" data-testid={`admin-merchant-payout-failed-${index + 1}`}><RotateCcw size={14} />Fehlgeschlagen</button></div></div></div></div>)}
+            {data.payouts.map((payout, index) => (
+              <div key={payout.payout_id} className="rounded-[20px] border border-white/10 bg-[#071019] p-4 text-white" data-testid={`admin-merchant-payout-row-${index + 1}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-black">{payout.payout_id}</div>
+                    <div className="mt-1 text-sm text-white/60">{payout.merchant_id} · {payout.status}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-black">{money(payout.amount_minor)}</div>
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <PayoutActions payout={payout} index={index} onAction={actionPayout} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
             {!data.payouts.length ? <div className="rounded-[20px] border border-dashed border-white/10 bg-[#071019] p-4 text-sm text-white/60" data-testid="admin-merchant-payout-empty">Noch keine Auszahlungen vorhanden.</div> : null}
           </div>
         </SectionCard>

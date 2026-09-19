@@ -13,6 +13,7 @@ BidBlitz V2 — POS Payment System
 import secrets
 import hashlib
 import logging
+import math
 import io
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -22,6 +23,7 @@ from typing import Optional
 from bson import ObjectId
 from fpdf import FPDF
 from core.database import db
+from core.merchant_commission import MIN_MERCHANT_COMMISSION_RATE, effective_merchant_rate
 from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -29,9 +31,9 @@ logger = logging.getLogger("bidblitz.payments")
 
 # Default fee structure (overridable by admin via DB)
 DEFAULT_FEES = {
-    "wallet": 0.005,
-    "barcode": 0.005,
-    "nfc_wallet": 0.003,
+    "wallet": MIN_MERCHANT_COMMISSION_RATE,
+    "barcode": MIN_MERCHANT_COMMISSION_RATE,
+    "nfc_wallet": MIN_MERCHANT_COMMISSION_RATE,
     "nfc_card": 0.025,
     "apple_pay": 0.025,
     "google_pay": 0.025,
@@ -62,8 +64,20 @@ async def get_fee_rates() -> dict:
     """Get fee rates from DB or fallback to defaults."""
     cfg = await db.fee_config.find_one({"_id": "merchant_fees"})
     if cfg:
-        return {k: cfg.get(k, DEFAULT_FEES.get(k, 0.025)) for k in DEFAULT_FEES}
+        return {k: effective_merchant_rate(cfg.get(k), default) for k, default in DEFAULT_FEES.items()}
     return dict(DEFAULT_FEES)
+
+
+async def _require_merchant_profile(user: dict) -> dict:
+    user_id = str(user["_id"])
+    profile = await db.merchant_profiles.find_one({"user_id": user_id})
+    if not profile:
+        staff = await db.merchant_staff.find_one({"user_id": user_id, "status": "active"})
+        if staff and ObjectId.is_valid(str(staff.get("merchant_id") or "")):
+            profile = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    if not profile:
+        raise HTTPException(status_code=403, detail="Aktives Händlerprofil erforderlich")
+    return profile
 
 
 def generate_barcode_token(user_id: str) -> str:
@@ -71,6 +85,12 @@ def generate_barcode_token(user_id: str) -> str:
     raw = f"{user_id}:{salt}:{datetime.now(timezone.utc).isoformat()}"
     token = hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
     return f"BLZ-{token}"
+
+
+def deterministic_payment_reference(prefix: str, *parts) -> str:
+    raw = ":".join(str(part or "") for part in parts)
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest().upper()[:12]
+    return f"{prefix}-{digest}"
 
 
 async def detect_payment_type(method: str) -> dict:
@@ -163,7 +183,8 @@ async def refresh_barcode(request: Request):
 
 @router.post("/barcode-lookup")
 async def barcode_lookup(request: Request):
-    await get_current_user(request)
+    actor = await get_current_user(request)
+    await _require_merchant_profile(actor)
     body = await request.json()
     barcode = body.get("barcode", "")
 
@@ -183,7 +204,11 @@ async def barcode_lookup(request: Request):
 
     return {
         "customer_name": customer.get("name", ""),
-        "customer_email": customer.get("email", ""),
+        "customer_email": (
+            customer.get("email", "")[:2] + "***@" + customer.get("email", "").split("@", 1)[1]
+            if customer.get("email") and "@" in customer.get("email", "")
+            else ""
+        ),
         "barcode": barcode, "valid": True,
     }
 
@@ -204,12 +229,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
     merchant_uid = str(merchant_user["_id"])
 
-    mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
-    if not mp and merchant_user.get("role") not in ("merchant", "admin"):
-        staff = await db.merchant_staff.find_one({"user_id": merchant_uid, "status": "active"})
-        if not staff:
-            raise HTTPException(status_code=403, detail="Merchant access required")
-        mp = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    mp = await _require_merchant_profile(merchant_user)
 
     now = datetime.now(timezone.utc)
     bc = await db.payment_barcodes.find_one({"barcode": req.barcode, "active": True})
@@ -233,7 +253,9 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method or "barcode")
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
-    reference = f"BRC-{secrets.token_hex(4).upper()}"
+    reference = deterministic_payment_reference(
+        "BRC", merchant_uid, req.barcode, f"{req.amount:.2f}", pt["category"]
+    )
 
     customer_debit = await debit_wallet(
         user_id=customer_uid,
@@ -258,26 +280,13 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
     merchant_owner_id = mp.get("user_id", "") if mp else ""
+    if not merchant_owner_id:
+        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
 
     now_iso = now.isoformat()
 
-    if mp:
-        await db.merchant_profiles.update_one(
-            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
-        )
-        if merchant_owner_id:
-            await db.merchants.update_one(
-                {"user_id": merchant_owner_id},
-                {"$inc": {
-                    "gross_earnings": req.amount,
-                    "total_earnings": net,
-                    "total_fees": fee,
-                    "total_transactions": 1,
-                    "available_payout": net,
-                }},
-                upsert=True,
-            )
-        
+    merchant_credit_result = None
+    if mp and merchant_owner_id:
         merchant_credit_result = await _credit_merchant_wallet(
             merchant_owner_id,
             net,
@@ -293,8 +302,8 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             customer_name=customer.get("name", ""),
             customer_email=customer.get("email", ""),
         )
-        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
-            await credit_wallet(
+        if not merchant_credit_result or not merchant_credit_result.success:
+            refund = await credit_wallet(
                 user_id=customer_uid,
                 amount=req.amount,
                 tx_type=TransactionType.REFUND,
@@ -304,13 +313,16 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
                 metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.barcode_pay.rollback"}},
                 idempotency_key=f"refund:{customer_debit.transaction_id}",
             )
-            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
+            if not refund.success:
+                logger.error("POS barcode rollback requires reconciliation: %s", reference)
+                raise HTTPException(status_code=500, detail="Händlergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed; customer refunded"))
 
-    await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-
+    stats_written = False
     if mid:
-        await db.merchant_transactions.insert_one({
+        merchant_tx = {
             "merchant_id": mid, "branch_id": "", "device_id": "barcode",
+            "reference": reference,
             "amount": req.amount, "fee": fee, "net": net,
             "commission_rate": pt["fee_rate"] * 100,
             "description": req.description,
@@ -319,7 +331,32 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             "payment_method": pt["category"],
             "payment_type_label": pt["label"],
             "status": "completed", "created_at": now_iso,
-        })
+        }
+        write = await db.merchant_transactions.update_one(
+            {"reference": reference},
+            {"$setOnInsert": merchant_tx},
+            upsert=True,
+        )
+        stats_written = write.upserted_id is not None
+
+    if mp and stats_written:
+        await db.merchant_profiles.update_one(
+            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+        )
+        if merchant_owner_id:
+            await db.merchants.update_one(
+                {"user_id": merchant_owner_id},
+                {"$inc": {
+                    "gross_earnings": req.amount,
+                    "total_earnings": net,
+                    "total_fees": fee,
+                    "total_transactions": 1,
+                    "available_payout": net,
+                }},
+                upsert=True,
+            )
+
+    await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
 
     updated_customer = await db.users.find_one({"_id": ObjectId(customer_uid)})
 
@@ -414,12 +451,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
     merchant_uid = str(merchant_user["_id"])
 
-    mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
-    if not mp and merchant_user.get("role") not in ("merchant", "admin"):
-        staff = await db.merchant_staff.find_one({"user_id": merchant_uid, "status": "active"})
-        if not staff:
-            raise HTTPException(status_code=403, detail="Merchant access required")
-        mp = await db.merchant_profiles.find_one({"_id": ObjectId(staff["merchant_id"])})
+    mp = await _require_merchant_profile(merchant_user)
 
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
@@ -429,9 +461,18 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method)
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
-    reference = f"NFC-{secrets.token_hex(4).upper()}"
+    reference = deterministic_payment_reference(
+        "NFC", merchant_uid, req.customer_id or "external", f"{req.amount:.2f}",
+        req.device_id or "default", pt["category"]
+    )
     customer_name = ""
     customer_doc = None
+
+    if req.payment_method not in ("nfc_wallet", "wallet"):
+        raise HTTPException(
+            status_code=503,
+            detail="Externe Karten-/NFC-Zahlung ist in diesem Endpoint nicht provider-verifiziert. Nutze BidBlitz Wallet oder einen zertifizierten Terminal-Provider.",
+        )
 
     if req.payment_method in ("nfc_wallet", "wallet"):
         if not req.customer_id:
@@ -465,12 +506,62 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         customer_name = customer_doc.get("name", "")
 
     merchant_owner_id = mp.get("user_id", "") if mp else ""
+    if not merchant_owner_id:
+        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
 
-    if mid:
-        await db.merchant_profiles.update_one(
-            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+    if mid and merchant_owner_id:
+        merchant_credit_result = await _credit_merchant_wallet(
+            merchant_owner_id,
+            net,
+            reference=reference,
+            source_user_id=req.customer_id or "wallet",
+            description=f"NFC Zahlung: {req.description or 'Payment'}",
+            merchant_name=merchant_name,
+            merchant_id=mid,
+            gross_amount=req.amount,
+            fee_amount=fee,
+            payment_method=pt["category"],
+            route_name="pos_payments.nfc_pay",
+            customer_name=customer_name,
+            customer_email=(customer_doc or {}).get("email", ""),
         )
-        if merchant_owner_id:
+        if not merchant_credit_result or not merchant_credit_result.success:
+            refund = await credit_wallet(
+                user_id=req.customer_id,
+                amount=req.amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Refund: NFC payment failed ({req.description or 'Payment'})",
+                reference=f"REF-{reference}",
+                source="pos_payments.nfc_pay.rollback",
+                metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.nfc_pay.rollback"}},
+                idempotency_key=f"refund:{reference}:{req.customer_id}",
+            )
+            if not refund.success:
+                logger.error("POS NFC rollback requires reconciliation: %s", reference)
+                raise HTTPException(status_code=500, detail="Händlergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed; customer refunded"))
+
+        merchant_tx = {
+            "merchant_id": mid, "branch_id": "", "device_id": req.device_id or "nfc",
+            "reference": reference,
+            "amount": req.amount, "fee": fee, "net": net,
+            "commission_rate": pt["fee_rate"] * 100,
+            "description": req.description,
+            "customer_ref": req.customer_id or "wallet",
+            "customer_name": customer_name,
+            "payment_method": pt["category"],
+            "payment_type_label": pt["label"],
+            "status": "completed", "created_at": now_iso,
+        }
+        write = await db.merchant_transactions.update_one(
+            {"reference": reference},
+            {"$setOnInsert": merchant_tx},
+            upsert=True,
+        )
+        if write.upserted_id is not None:
+            await db.merchant_profiles.update_one(
+                {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+            )
             await db.merchants.update_one(
                 {"user_id": merchant_owner_id},
                 {"$inc": {
@@ -482,46 +573,6 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
                 }},
                 upsert=True,
             )
-        await db.merchant_transactions.insert_one({
-            "merchant_id": mid, "branch_id": "", "device_id": req.device_id or "nfc",
-            "amount": req.amount, "fee": fee, "net": net,
-            "commission_rate": pt["fee_rate"] * 100,
-            "description": req.description,
-            "customer_ref": req.customer_id or "card",
-            "customer_name": customer_name,
-            "payment_method": pt["category"],
-            "payment_type_label": pt["label"],
-            "status": "completed", "created_at": now_iso,
-        })
-        
-        merchant_credit_result = await _credit_merchant_wallet(
-            merchant_owner_id,
-            net,
-            reference=reference,
-            source_user_id=req.customer_id or "card",
-            description=f"NFC Zahlung: {req.description or 'Payment'}",
-            merchant_name=merchant_name,
-            merchant_id=mid,
-            gross_amount=req.amount,
-            fee_amount=fee,
-            payment_method=pt["category"],
-            route_name="pos_payments.nfc_pay",
-            customer_name=customer_name,
-            customer_email=(customer_doc or {}).get("email", ""),
-        )
-        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
-            if req.customer_id:
-                await credit_wallet(
-                    user_id=req.customer_id,
-                    amount=req.amount,
-                    tx_type=TransactionType.REFUND,
-                    description=f"Refund: NFC payment failed ({req.description or 'Payment'})",
-                    reference=f"REF-{reference}",
-                    source="pos_payments.nfc_pay.rollback",
-                    metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.nfc_pay.rollback"}},
-                    idempotency_key=f"refund:{reference}:{req.customer_id}",
-                )
-            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
 
     receipt = generate_receipt(
         (customer_debit.transaction_id if req.customer_id and req.payment_method in ("nfc_wallet", "wallet") else secrets.token_hex(8)), req.amount, fee, net, pt,
@@ -604,9 +655,12 @@ async def set_admin_fees(request: Request):
     update = {}
     for k in DEFAULT_FEES:
         if k in fees:
-            val = float(fees[k]) / 100  # Input is percentage, store as decimal
-            if val < 0 or val > 0.5:
-                raise HTTPException(status_code=400, detail=f"Fee for {k} must be between 0% and 50%")
+            try:
+                val = float(fees[k]) / 100  # Input is percentage, store as decimal
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail=f"Invalid fee for {k}")
+            if not math.isfinite(val) or not MIN_MERCHANT_COMMISSION_RATE <= val <= 0.5:
+                raise HTTPException(status_code=400, detail=f"Fee for {k} must be between 1.5% and 50%")
             update[k] = val
     if update:
         await db.fee_config.update_one(
@@ -711,6 +765,7 @@ async def request_merchant_trial(req: OnboardingRequest, request: Request):
 
 @router.get("/pricing")
 async def get_pricing():
+    rates = await get_fee_rates()
     return {
         "plans": [
             {
@@ -720,7 +775,7 @@ async def get_pricing():
                 "price_label": "Free",
                 "description": "Perfect for small businesses getting started",
                 "features": [
-                    "BidBlitz Wallet payments (0.5% fee)",
+                    f"BidBlitz Wallet payments ({rates['wallet'] * 100:g}% fee)",
                     "Barcode/QR payments",
                     "1 branch, 2 registers",
                     "Basic daily reports",
@@ -737,8 +792,8 @@ async def get_pricing():
                 "description": "For growing businesses",
                 "features": [
                     "All Starter features",
-                    "NFC Wallet payments (0.3% fee)",
-                    "Card/contactless (2.5% fee)",
+                    f"NFC Wallet payments ({rates['nfc_wallet'] * 100:g}% fee)",
+                    f"Card/contactless ({rates['card'] * 100:g}% fee)",
                     "5 branches, 20 registers",
                     "Shift & monthly reports",
                     "Staff management",
@@ -774,12 +829,12 @@ async def get_pricing():
             {"id": "terminal_purchase", "name": "BidBlitz Terminal (Purchase)", "price": 399, "description": "Own your terminal — NFC + scanner built-in", "monthly": 0},
         ],
         "fee_structure": {
-            "wallet": {"rate": 0.5, "label": "BidBlitz Wallet"},
-            "nfc_wallet": {"rate": 0.3, "label": "NFC Wallet"},
-            "barcode": {"rate": 0.5, "label": "Barcode/QR"},
-            "card": {"rate": 2.5, "label": "Card/Contactless"},
-            "apple_pay": {"rate": 2.5, "label": "Apple Pay"},
-            "google_pay": {"rate": 2.5, "label": "Google Pay"},
+            "wallet": {"rate": round(rates["wallet"] * 100, 4), "label": "BidBlitz Wallet"},
+            "nfc_wallet": {"rate": round(rates["nfc_wallet"] * 100, 4), "label": "NFC Wallet"},
+            "barcode": {"rate": round(rates["barcode"] * 100, 4), "label": "Barcode/QR"},
+            "card": {"rate": round(rates["card"] * 100, 4), "label": "Card/Contactless"},
+            "apple_pay": {"rate": round(rates["apple_pay"] * 100, 4), "label": "Apple Pay"},
+            "google_pay": {"rate": round(rates["google_pay"] * 100, 4), "label": "Google Pay"},
         },
     }
 

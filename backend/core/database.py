@@ -32,21 +32,22 @@ def sanitize_doc(doc):
 
 async def create_indexes():
     """Create database indexes for optimal query performance.
-    Uses drop_duplicates to handle existing index conflicts."""
+    Critical financial uniqueness constraints fail closed instead of being ignored.
+    """
     import logging
     logger = logging.getLogger("bidblitz.db")
     
-    async def safe_create_index(collection, keys, **kwargs):
-        """Safely create index, dropping conflicting ones if needed."""
+    async def safe_create_index(collection, keys, *, critical=False, **kwargs):
+        """Create an index; critical financial indexes must never fail silently."""
         try:
             await collection.create_index(keys, **kwargs)
+            return
         except Exception as e:
             if "IndexKeySpecsConflict" in str(e) or "existing index" in str(e).lower():
-                # Drop and recreate
+                # Drop and recreate a conflicting index definition.
                 try:
                     index_name = kwargs.get("name")
                     if not index_name:
-                        # Generate name from keys
                         if isinstance(keys, str):
                             index_name = f"{keys}_1"
                         elif isinstance(keys, list):
@@ -54,10 +55,19 @@ async def create_indexes():
                             index_name = "_".join(parts)
                     await collection.drop_index(index_name)
                     await collection.create_index(keys, **kwargs)
-                except Exception:
-                    pass  # Index might not exist or other issue
-            else:
-                logger.warning(f"Index creation warning: {e}")
+                    return
+                except Exception as recreate_error:
+                    if critical:
+                        raise RuntimeError(
+                            f"Critical database index could not be created for {keys}: {recreate_error}"
+                        ) from recreate_error
+                    logger.warning(f"Index recreation warning for {keys}: {recreate_error}")
+                    return
+            if critical:
+                raise RuntimeError(
+                    f"Critical database index could not be created for {keys}: {e}"
+                ) from e
+            logger.warning(f"Index creation warning: {e}")
     
     # ═══════════════════════════════════════════════════════════════════════════
     # CORE COLLECTIONS
@@ -102,6 +112,12 @@ async def create_indexes():
     # Login attempts - brute force protection
     await safe_create_index(db.login_attempts, "identifier")
     await safe_create_index(db.login_attempts, "locked_until")
+    await safe_create_index(db.sessions, "session_id", unique=True, critical=True)
+    await safe_create_index(db.sessions, [("user_id", 1), ("is_active", 1), ("last_active", -1)])
+    await safe_create_index(db.otp_codes, [("user_id", 1), ("purpose", 1)], unique=True, critical=True)
+    await safe_create_index(db.pending_2fa, "token", unique=True, critical=True)
+    await safe_create_index(db.pending_2fa, "user_id", unique=True, critical=True)
+    await safe_create_index(db.password_resets, "token_hash", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # TRANSACTIONS - High volume, critical for performance
@@ -179,8 +195,14 @@ async def create_indexes():
     
     await safe_create_index(db.kids_children, "child_id", unique=True)
     await safe_create_index(db.kids_children, "parent_id")
+    await safe_create_index(db.kids_transactions, "id", unique=True, sparse=True, critical=True)
     await safe_create_index(db.kids_transactions, [("child_id", 1), ("created_at", -1)])
     await safe_create_index(db.kids_transactions, [("parent_id", 1), ("created_at", -1)])
+    await safe_create_index(db.kids_subscriptions, "user_id", unique=True, critical=True)
+    await safe_create_index(db.kids_checkout_sessions, "session_id", unique=True, critical=True)
+    await safe_create_index(db.kids_sessions, "child_id", unique=True, critical=True)
+    await safe_create_index(db.kids_sessions, "token", unique=True, critical=True)
+    await safe_create_index(db.kids_login_attempts, "child_id", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # SUBSCRIPTIONS
@@ -198,6 +220,8 @@ async def create_indexes():
     await safe_create_index(db.taxi_rides, "status")
     
     await safe_create_index(db.scooter_rides, [("user_id", 1), ("created_at", -1)])
+    await safe_create_index(db.mobility_payments, "payment_id", unique=True, critical=True)
+    await safe_create_index(db.mobility_earnings, "earning_id", unique=True, critical=True)
     
     await safe_create_index(db.food_orders, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.food_orders, [("restaurant_id", 1), ("status", 1)])
@@ -290,7 +314,9 @@ async def create_indexes():
     await safe_create_index(db.wallet_ledger_entries, [("wallet_id", 1), ("created_at", -1)])
     await safe_create_index(db.wallet_ledger_entries, "idempotency_key")
 
-    await safe_create_index(db.payment_idempotency, "idempotency_key", unique=True)
+    # This uniqueness guarantee is a money-safety invariant. If historical
+    # duplicates or an incompatible index prevent it, startup must not become ready.
+    await safe_create_index(db.payment_idempotency, "idempotency_key", unique=True, critical=True)
     await safe_create_index(db.payment_idempotency, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.payment_idempotency, "expires_at")
 

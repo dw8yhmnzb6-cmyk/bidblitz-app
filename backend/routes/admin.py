@@ -12,15 +12,22 @@ from core.security import get_current_user
 from core.config import FEES
 from core.rate_limit import limiter, RATE_ADMIN_ACTION
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.admin_financial_metrics import (
+    AUCTION_REVENUE_TYPES,
+    payment_activity_match,
+    payment_volume_pipeline,
+    platform_fee_pipeline,
+    revenue_pipeline,
+)
 from typing import Optional
-from routes.admin_management import _canonical_admin_balances, _normalize_admin_user_row
+from routes.admin_management import _canonical_admin_balances, _normalize_admin_user_row, _can_manage_privileged_roles
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
@@ -40,41 +47,43 @@ async def overview(request: Request):
     total_users = await db.users.count_documents({})
     total_merchants = await db.merchants.count_documents({})
 
-    # Aggregate payment volume from all transactions
-    pipeline = [
-        {"$match": {"status": "completed"}},
-        {"$group": {
-            "_id": None, 
-            "volume": {"$sum": {"$abs": {"$ifNull": ["$amount", 0]}}},
-            "fees": {"$sum": {"$ifNull": ["$fee_amount", 0]}}
-        }},
-    ]
-    agg = await db.transactions.aggregate(pipeline).to_list(1)
-    stats = agg[0] if agg else {"volume": 0, "fees": 0}
+    # Count each logical payment/send/top-up exactly once. Canonical transfers have
+    # debit + credit transaction rows, so summing every completed row double-counts.
+    volume_agg = await db.transactions.aggregate(payment_volume_pipeline()).to_list(1)
+    payment_volume = volume_agg[0]["total"] if volume_agg else 0
 
-    # Calculate total revenue from different sources
-    total_revenue = 0
-    
-    # Auction credits purchases
-    auction_revenue = await db.transactions.aggregate([
-        {"$match": {"type": "credit_purchase", "status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
+    # Merchant-payment fees exist on both payer and merchant metadata. Only the
+    # payer debit row represents platform fee revenue.
+    fee_agg = await db.transactions.aggregate(platform_fee_pipeline()).to_list(1)
+    platform_fee_revenue = fee_agg[0]["total"] if fee_agg else 0
+
+    # Product/subscription gross sales. These are kept separate from platform fees.
+    auction_revenue_agg = await db.transactions.aggregate(
+        revenue_pipeline(AUCTION_REVENUE_TYPES)
+    ).to_list(1)
+    auction_revenue = auction_revenue_agg[0]["total"] if auction_revenue_agg else 0
+
+    mining_revenue_agg = await db.transactions.aggregate(
+        revenue_pipeline(("mining_purchase",))
+    ).to_list(1)
+    mining_revenue = mining_revenue_agg[0]["total"] if mining_revenue_agg else 0
+
+    # Wallet-paid Kids subscriptions are transaction rows.
+    kids_wallet_revenue_agg = await db.transactions.aggregate(
+        revenue_pipeline(("kids_subscription",))
+    ).to_list(1)
+    kids_wallet_revenue = kids_wallet_revenue_agg[0]["total"] if kids_wallet_revenue_agg else 0
+
+    # Stripe Kids currently settles through kids_checkout_sessions and does not
+    # create a db.transactions row, so it must be counted from its verified source.
+    kids_stripe_revenue_agg = await db.kids_checkout_sessions.aggregate([
+        {"$match": {"status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$amount", 0]}}}},
     ]).to_list(1)
-    total_revenue += auction_revenue[0]["total"] if auction_revenue else 0
-    
-    # Mining packages
-    mining_revenue = await db.transactions.aggregate([
-        {"$match": {"type": "mining_purchase", "status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
-    ]).to_list(1)
-    total_revenue += mining_revenue[0]["total"] if mining_revenue else 0
-    
-    # Kids subscriptions
-    kids_revenue = await db.transactions.aggregate([
-        {"$match": {"type": "kids_subscription", "status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
-    ]).to_list(1)
-    total_revenue += kids_revenue[0]["total"] if kids_revenue else 0
+    kids_stripe_revenue = kids_stripe_revenue_agg[0]["total"] if kids_stripe_revenue_agg else 0
+    kids_revenue = kids_wallet_revenue + kids_stripe_revenue
+
+    total_revenue = auction_revenue + mining_revenue + kids_revenue
 
     # Payout stats
     pending_payouts = await db.payouts.count_documents({"status": {"$in": ["pending", "approved"]}})
@@ -91,20 +100,20 @@ async def overview(request: Request):
     processed = processed_agg[0] if processed_agg else {"total": 0, "count": 0}
 
     total_txns = await db.transactions.count_documents({})
-    
+
     # Auction stats
     active_auctions = await db.auctions.count_documents({"status": "active"})
-    
+
     # Mining stats
     active_miners = await db.mining_miners.count_documents({"status": "active"})
-    
+
     # Driver stats
     active_drivers = await db.drivers.count_documents({"status": "active", "is_verified": True})
     online_drivers = await db.drivers.count_documents({"is_online": True})
-    
+
     # Restaurant stats
     active_restaurants = await db.food_restaurants.count_documents({"status": "approved"})
-    
+
     # Scooter stats
     total_scooters = await db.scooters.count_documents({})
     available_scooters = await db.scooters.count_documents({"status": "available"})
@@ -118,9 +127,15 @@ async def overview(request: Request):
         "total_users": total_users,
         "total_merchants": total_merchants,
         "total_transactions": total_txns,
-        "payment_volume": round(stats["volume"], 2),
-        "platform_fee_revenue": round(stats["fees"], 2),
+        "payment_volume": round(payment_volume, 2),
+        "platform_fee_revenue": round(platform_fee_revenue, 2),
         "total_revenue": round(total_revenue, 2),
+        "revenue_breakdown": {
+            "auction_credits": round(auction_revenue, 2),
+            "mining": round(mining_revenue, 2),
+            "kids_wallet": round(kids_wallet_revenue, 2),
+            "kids_stripe": round(kids_stripe_revenue, 2),
+        },
         "pending_payouts_count": pending_payouts,
         "pending_payouts_amount": round(pending_amount, 2),
         "processed_payouts_count": processed["count"],
@@ -196,16 +211,50 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
 
 @router.put("/users/{user_id}/role")
 async def update_user_role(user_id: str, request: Request):
-    await require_admin(request)
+    admin = await require_admin(request)
     body = await request.json()
     new_role = body.get("role", "")
     if new_role not in ["user", "merchant", "admin", "driver"]:
         raise HTTPException(status_code=400, detail="Ungueltige Rolle")
-    result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": new_role}})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="User nicht gefunden")
-    return {"ok": True, "message": f"Rolle auf '{new_role}' geaendert!"}
 
+    target = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+
+    current_role = str(target.get("role") or "user")
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    if target_email == "admin@bidblitz.ae" and new_role != "admin":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann über diese Route nicht herabgestuft werden")
+    if (new_role == "admin" or current_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.users.update_one(
+        {"_id": target["_id"], "role": current_role},
+        {
+            "$set": {
+                "role": new_role,
+                "role_changed_at": now,
+                "role_changed_by": str(admin.get("_id") or admin.get("id") or ""),
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    if result.modified_count != 1 and current_role != new_role:
+        raise HTTPException(status_code=409, detail="Rolle wurde parallel geändert")
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(target["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        details={"action": "role_change", "target_user_id": user_id, "old_role": current_role, "new_role": new_role},
+    )
+    return {"ok": True, "message": f"Rolle auf '{new_role}' geaendert!"}
 
 
 # ── Merchant Management ──
@@ -518,7 +567,6 @@ async def get_compliance_checks(
     return {"checks": checks, "total": total}
 
 
-
 # ── Feature Flags Management ──
 @router.get("/feature-flags")
 async def get_feature_flags(request: Request):
@@ -543,7 +591,6 @@ async def update_feature_flag(flag_name: str, request: Request):
     ip, ua = get_client_info(request)
     await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), "admin", ip, ua, "success", f"Updated flag: {flag_name}")
     return {"flag": flag_name, "data": result}
-
 
 
 # ── Soft Launch Management ──
@@ -572,13 +619,10 @@ async def get_soft_launch(request: Request):
     h24 = (now - timedelta(hours=24)).isoformat()
     h1 = (now - timedelta(hours=1)).isoformat()
 
-    # Payment activity (24h)
-    payments_24h = await db.transactions.count_documents({
-        "created_at": {"$gte": h24}, "type": {"$in": ["payment", "send", "topup"]}
-    })
-    payments_1h = await db.transactions.count_documents({
-        "created_at": {"$gte": h1}, "type": {"$in": ["payment", "send", "topup"]}
-    })
+    # Completed logical payment activity. Sender/recipient and payer/merchant rows
+    # must not make one payment appear twice.
+    payments_24h = await db.transactions.count_documents(payment_activity_match(h24))
+    payments_1h = await db.transactions.count_documents(payment_activity_match(h1))
 
     # Failed payments (24h)
     failed_24h = await db.audit_logs.count_documents({
@@ -586,12 +630,8 @@ async def get_soft_launch(request: Request):
         "event": {"$in": ["payment_failed", "send_failed", "topup_failed"]},
     })
 
-    # Payment volume (24h)
-    volume_pipeline = [
-        {"$match": {"created_at": {"$gte": h24}, "type": {"$in": ["payment", "send", "topup"]}, "amount": {"$gt": 0}}},
-        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
-    ]
-    vol = await db.transactions.aggregate(volume_pipeline).to_list(1)
+    # Payment volume (24h), using the exact same one-row-per-logical-payment rule.
+    vol = await db.transactions.aggregate(payment_volume_pipeline(h24)).to_list(1)
     volume_24h = round(vol[0]["total"], 2) if vol else 0
 
     # Support issues (open)
@@ -690,7 +730,6 @@ async def remove_from_whitelist(req: WhitelistUpdate, request: Request):
 
 
 # ── Invite Codes ──
-
 @router.post("/invite-codes")
 async def generate_invite_codes(req: InviteCodeRequest, request: Request):
     """Generate a batch of invite codes."""
@@ -741,11 +780,9 @@ async def deactivate_invite_code(code: str, request: Request):
     return {"success": True, "code": code, "active": False}
 
 
-
 # ══════════════════════════════════════
 # SYSTEM HEALTH CHECK
 # ══════════════════════════════════════
-
 @router.get("/system-health")
 async def system_health(request: Request):
     """
@@ -753,7 +790,7 @@ async def system_health(request: Request):
     Returns status of all modules.
     """
     await require_admin(request)
-    
+
     health = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "healthy",
@@ -761,7 +798,7 @@ async def system_health(request: Request):
         "counts": {},
         "warnings": [],
     }
-    
+
     # 1. Database connectivity
     try:
         await db.users.find_one({})
@@ -769,7 +806,7 @@ async def system_health(request: Request):
     except Exception as e:
         health["modules"]["database"] = f"✗ ERROR: {str(e)}"
         health["status"] = "unhealthy"
-    
+
     # 2. User counts
     health["counts"]["users"] = await db.users.count_documents({})
     health["counts"]["admins"] = await db.users.count_documents({"role": "admin"})
@@ -778,29 +815,29 @@ async def system_health(request: Request):
     health["counts"]["restaurants"] = await db.food_restaurants.count_documents({})
     health["counts"]["scooters"] = await db.scooters.count_documents({})
     health["counts"]["active_scooters"] = await db.scooters.count_documents({"status": {"$in": ["available", "locked"]}})
-    
+
     # 3. Module checks
     health["modules"]["wallet"] = "✓ OK" if health["counts"]["users"] > 0 else "⚠ No users"
     health["modules"]["drivers"] = "✓ OK" if health["counts"]["drivers"] >= 0 else "✗ ERROR"
     health["modules"]["scooters"] = "✓ OK" if health["counts"]["scooters"] >= 0 else "✗ ERROR"
     health["modules"]["restaurants"] = "✓ OK" if health["counts"]["restaurants"] >= 0 else "✗ ERROR"
-    
+
     # 4. Transaction volume
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_txs = await db.transactions.count_documents({"created_at": {"$gte": today.isoformat()}})
     health["counts"]["transactions_today"] = today_txs
-    
+
     # 5. Pending applications
     pending_drivers = await db.driver_applications.count_documents({"status": "pending"})
     pending_restaurants = await db.restaurant_applications.count_documents({"status": "pending"})
     health["counts"]["pending_driver_applications"] = pending_drivers
     health["counts"]["pending_restaurant_applications"] = pending_restaurants
-    
+
     if pending_drivers > 0:
         health["warnings"].append(f"{pending_drivers} Fahrer-Bewerbungen warten auf Genehmigung")
     if pending_restaurants > 0:
         health["warnings"].append(f"{pending_restaurants} Restaurant-Bewerbungen warten auf Genehmigung")
-    
+
     # 6. Active rides/orders
     health["counts"]["active_rides"] = await db.taxi_rides.count_documents({
         "status": {"$in": ["requested", "accepted", "arriving", "in_progress"]}
@@ -808,26 +845,26 @@ async def system_health(request: Request):
     health["counts"]["active_food_orders"] = await db.food_orders.count_documents({
         "status": {"$in": ["pending", "confirmed", "preparing", "ready", "picked_up"]}
     })
-    
+
     # 7. Auctions
     health["counts"]["active_auctions"] = await db.auctions.count_documents({
         "status": "active"
     })
-    
+
     # 8. Marketplace
     health["counts"]["active_listings"] = await db.marketplace_listings.count_documents({
         "status": "active"
     })
-    
+
     # 9. Chat messages today
     health["counts"]["messages_today"] = await db.chat_messages.count_documents({
         "created_at": {"$gte": today.isoformat()}
     })
-    
+
     # 10. Platform revenue today
     revenue_doc = await db.platform_revenue.find_one({"date": today.strftime("%Y-%m-%d")})
     health["counts"]["revenue_today"] = round(revenue_doc.get("total", 0) if revenue_doc else 0, 2)
-    
+
     # Overall status
     if health["status"] == "healthy" and len(health["warnings"]) == 0:
         health["message"] = "Alle Systeme laufen einwandfrei!"
@@ -835,7 +872,7 @@ async def system_health(request: Request):
         health["message"] = f"System läuft mit {len(health['warnings'])} Hinweis(en)"
     else:
         health["message"] = "System hat Probleme - bitte prüfen!"
-    
+
     return health
 
 
@@ -907,7 +944,6 @@ async def admin_cleanup_all_fake_data(request: Request):
         "details": results,
         "message": f"Aufräumung abgeschlossen! {total_removed} Einträge entfernt."
     }
-
 
 
 # ─── Email Dispatch Smoketest (Resend DNS-Verifikation) ───────────────────

@@ -13,7 +13,7 @@ import { useUser } from '../store/UserContext';
 import * as api from '../services/taxiApi';
 
 const VEHICLES = [
-  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', badge: 'Empfohlen' },
+  { id: 'standard', label: 'Standard', subtitle: 'Schnell & günstig', badge: 'Empfohlen' },
   { id: 'premium', label: 'Comfort', subtitle: 'Mehr Komfort & Ruhe' },
   { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck' },
 ];
@@ -191,11 +191,12 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
 }
 
 function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip, liveMovementLabel }) {
-  const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
-  const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
-  const driver = ride?.driver?.name || ride?.driver_name || 'Fahrer';
+  const etaValue = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 0);
+  const eta = Number.isFinite(etaValue) && etaValue > 0 ? etaValue : null;
+  const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || null;
+  const driver = ride?.driver?.name || ride?.driver_name || null;
   const price = Number(ride?.estimated_price || ride?.fare_estimate || ride?.final_fare || 0);
-  const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Dein Standort';
+  const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Abholpunkt';
   const dropoffAddress = ride?.dropoff?.address || ride?.dropoff_address || 'Ziel';
   const status = ride?.status || 'requested';
   const statusLabel = status === 'accepted'
@@ -206,22 +207,53 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
         ? 'Fahrt läuft'
         : status === 'completed'
           ? 'Abgeschlossen'
-          : 'Suche Fahrer…';
+          : status === 'cancelled'
+            ? 'Storniert'
+            : 'Suche Fahrer…';
+  const heroTitle = status === 'requested'
+    ? 'Fahrer wird gesucht'
+    : status === 'accepted'
+      ? 'Fahrer bestätigt'
+      : status === 'arriving'
+        ? 'Fahrer kommt zu dir'
+        : status === 'started'
+          ? 'Fahrt läuft'
+          : status === 'completed'
+            ? 'Fahrt abgeschlossen'
+            : 'Fahrt storniert';
+  const heroValue = status === 'requested'
+    ? 'Suche…'
+    : status === 'started'
+      ? 'Unterwegs'
+      : status === 'completed'
+        ? 'Fertig'
+        : status === 'cancelled'
+          ? 'Beendet'
+          : eta
+            ? `${eta} Min.`
+            : 'Wird berechnet';
+  const heroSubtitle = status === 'requested'
+    ? 'Wir suchen einen passenden verfügbaren Fahrer.'
+    : driver
+      ? `${driver} ${status === 'started' ? 'fährt dich zum Ziel.' : 'ist deiner Fahrt zugeteilt.'}`
+      : 'Fahrtdaten werden aktualisiert.';
   const canCancel = ['requested', 'accepted', 'arriving'].includes(status);
 
   return (
     <div className="space-y-4" data-testid="booking-status-view">
       <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 text-center shadow-sm">
-        <div className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--bb-text-muted)]">Fahrer unterwegs</div>
-        <div className="mt-3 text-5xl font-black tracking-tight text-white">{eta} Min.</div>
-        <div className="mt-2 text-sm text-[var(--bb-text-secondary)]">{driver} ist auf dem Weg zu dir.</div>
-        <div className="mt-5 flex items-center justify-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bb-bg-card)] text-xl font-black text-white">{driver.charAt(0)}</div>
-          <div className="text-left">
-            <div className="text-base font-bold text-white">{driver}</div>
-            <div className="mt-1 inline-flex rounded-full bg-[var(--bb-bg-card)] px-3.5 py-1.5 text-sm font-black text-white">{plate}</div>
+        <div className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--bb-text-muted)]">{heroTitle}</div>
+        <div className="mt-3 text-5xl font-black tracking-tight text-white">{heroValue}</div>
+        <div className="mt-2 text-sm text-[var(--bb-text-secondary)]">{heroSubtitle}</div>
+        {driver ? (
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bb-bg-card)] text-xl font-black text-white">{driver.charAt(0)}</div>
+            <div className="text-left">
+              <div className="text-base font-bold text-white">{driver}</div>
+              {plate ? <div className="mt-1 inline-flex rounded-full bg-[var(--bb-bg-card)] px-3.5 py-1.5 text-sm font-black text-white">{plate}</div> : null}
+            </div>
           </div>
-        </div>
+        ) : null}
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--bb-bg-card)] p-3 text-left">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Preis</div>
@@ -307,7 +339,7 @@ export default function TaxiPage({ onNavigate }) {
   const { search } = useTaxiGeocoder({ debounceMs: 100 });
   const { savedPlaces, recentAddresses } = useTaxiSimpleData(user);
 
-  const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
+  const [pickup, setPickup] = useState({ lat: null, lng: null, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
   const [sheetMode, setSheetMode] = useState('summary');
   const [searchValue, setSearchValue] = useState('');
@@ -325,6 +357,10 @@ export default function TaxiPage({ onNavigate }) {
   const [bookingMode, setBookingMode] = useState('now');
   const [scheduledAt, setScheduledAt] = useState('');
   const [pricingConfig, setPricingConfig] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatSending, setChatSending] = useState(false);
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -332,19 +368,30 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
+    const requireManualPickup = () => {
+      setPickup({ lat: null, lng: null, address: 'Abholpunkt auswählen' });
+      setPickupMoveMode(true);
+      setError('Standort konnte nicht ermittelt werden. Bitte wähle den Abholpunkt auf der Karte.');
+    };
+
     if (!navigator.geolocation) {
-      setPickup((prev) => ({ ...prev, address: 'Dein Standort' }));
+      requireManualPickup();
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const next = { lat: position.coords.latitude, lng: position.coords.longitude, address: 'Dein Standort' };
+        const next = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          address: 'Aktueller Standort',
+        };
         setPickup(next);
         const address = await api.reverseGeocode(next.lat, next.lng);
         if (address) setPickup((prev) => ({ ...prev, address }));
       },
-      () => setPickup((prev) => ({ ...prev, address: 'Dein Standort' })),
-      { enableHighAccuracy: true, timeout: 10000 },
+      requireManualPickup,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
     );
   }, []);
 
@@ -374,17 +421,17 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
-    if (!activeRide?.ride_id) return undefined;
+    if (!activeRide?.ride_id || ['completed', 'cancelled'].includes(activeRide?.status)) return undefined;
     const interval = setInterval(async () => {
       const data = await api.fetchRide(activeRide.ride_id);
       const nextRide = data?.ride || data;
       if (nextRide?.ride_id) setActiveRide(nextRide);
-    }, 10000);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [activeRide?.ride_id]);
+  }, [activeRide?.ride_id, activeRide?.status]);
 
   useEffect(() => {
-    if (!pickup?.lat || activeRide) return;
+    if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || activeRide) return;
     let cancelled = false;
     const loadDrivers = async () => {
       const result = await api.fetchNearbyDriversCount({ lat: pickup.lat, lng: pickup.lng, carType: selectedVehicle });
@@ -428,7 +475,10 @@ export default function TaxiPage({ onNavigate }) {
   }, [pickup?.lat, pickup?.lng, searchValue]);
 
   const estimateRide = useCallback(async (nextDropoff) => {
-    if (!pickup?.lat || !nextDropoff?.lat) return;
+    if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || !Number.isFinite(nextDropoff?.lat) || !Number.isFinite(nextDropoff?.lng)) {
+      setError('Bitte zuerst einen gültigen Abhol- und Zielpunkt wählen.');
+      return;
+    }
     setEstimating(true);
     setError('');
     const result = await api.estimateRide({ pickup, dropoff: nextDropoff });
@@ -514,8 +564,8 @@ export default function TaxiPage({ onNavigate }) {
   }, [activeRide]);
 
   const driverGpsLabel = useMemo(() => {
-    if (!activeRide?.driver_lat || !activeRide?.driver_lng) return 'GPS wird synchronisiert';
-    return `Live bei ${Number(activeRide.driver_lat).toFixed(4)}, ${Number(activeRide.driver_lng).toFixed(4)}`;
+    if (!Number.isFinite(activeRide?.driver_lat) || !Number.isFinite(activeRide?.driver_lng)) return 'GPS wird synchronisiert';
+    return 'Fahrerposition live verbunden';
   }, [activeRide?.driver_lat, activeRide?.driver_lng]);
 
   const selectedEstimate = useMemo(
@@ -536,7 +586,10 @@ export default function TaxiPage({ onNavigate }) {
   const regionLabel = useMemo(() => detectRegion(pickup.address), [pickup.address]);
 
   const handleBookRide = useCallback(async () => {
-    if (!selectedEstimate) return;
+    if (!selectedEstimate) {
+      setError('Preis konnte noch nicht berechnet werden. Bitte Ziel oder Abholpunkt erneut wählen.');
+      return;
+    }
     const normalizedScheduledAt = bookingMode === 'later' && scheduledAt ? new Date(scheduledAt).toISOString() : null;
     if (bookingMode === 'later' && !normalizedScheduledAt) {
       toast.error('Bitte Zeit für spätere Buchung auswählen.');
@@ -571,9 +624,45 @@ export default function TaxiPage({ onNavigate }) {
     await loadActiveRide();
   }, [activeRide?.ride_id, loadActiveRide]);
 
-  const handleOpenChat = useCallback(() => {
-    toast.info('Live-Chat öffnet im nächsten Schritt.');
-  }, []);
+  const loadChat = useCallback(async () => {
+    if (!activeRide?.ride_id) return;
+    const result = await api.fetchRideMessages(activeRide.ride_id);
+    if (result?.ok) {
+      setChatMessages(result.messages || []);
+    }
+  }, [activeRide?.ride_id]);
+
+  useEffect(() => {
+    if (!chatOpen || !activeRide?.ride_id) return undefined;
+    loadChat();
+    const interval = setInterval(loadChat, 3000);
+    return () => clearInterval(interval);
+  }, [activeRide?.ride_id, chatOpen, loadChat]);
+
+  const handleOpenChat = useCallback(async () => {
+    if (!activeRide?.ride_id) return;
+    if (!activeRide?.driver_id && !activeRide?.driver?.driver_id) {
+      toast.info('Der Chat wird verfügbar, sobald ein Fahrer die Fahrt angenommen hat.');
+      return;
+    }
+    setChatOpen(true);
+    await loadChat();
+  }, [activeRide, loadChat]);
+
+  const handleSendChat = useCallback(async (event) => {
+    event?.preventDefault?.();
+    const text = chatDraft.trim();
+    if (!text || !activeRide?.ride_id || chatSending) return;
+    setChatSending(true);
+    const result = await api.sendRideMessage(activeRide.ride_id, text);
+    setChatSending(false);
+    if (!result?.ok) {
+      toast.error(result?.error || 'Nachricht konnte nicht gesendet werden');
+      return;
+    }
+    setChatDraft('');
+    setChatMessages((prev) => [...prev, result.message].filter(Boolean));
+  }, [activeRide?.ride_id, chatDraft, chatSending]);
 
   const handleCallDriver = useCallback(() => {
     const phone = activeRide?.driver?.phone || activeRide?.driver_phone;
@@ -606,7 +695,7 @@ export default function TaxiPage({ onNavigate }) {
       <div className="relative h-dvh w-full overflow-hidden bg-[#02050B]">
         <div className="absolute inset-0 z-0" data-testid="taxi-simple-map-view">
           <TaxiMapbox
-            pickup={pickup?.lat ? pickup : null}
+            pickup={Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) ? pickup : null}
             dropoff={dropoff?.lat ? dropoff : null}
             driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
             nearbyDrivers={mapDrivers}
@@ -647,7 +736,7 @@ export default function TaxiPage({ onNavigate }) {
                   <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Wohin soll&apos;s gehen?</h1>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/6 px-3.5 py-2.5 text-sm font-bold text-[var(--bb-text-secondary)]" data-testid="taxi-driver-count-pill">
-                  {mapDrivers.length} Fahrer
+                  {nearbyDrivers.length} Fahrer
                 </div>
               </div>
 
@@ -825,7 +914,7 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Verfügbarkeit</div>
-                      <div className="mt-1 text-sm font-black text-white">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
+                      <div className="mt-1 text-sm font-black text-white">{nearbyDrivers.length > 0 ? `${nearbyDrivers.length} Fahrer nahebei` : 'Aktuell kein Fahrer nahebei'}</div>
                     </div>
                   </div>
                   <PricingOverviewCard selectedEstimate={selectedEstimate} bookingMode={bookingMode} regionFallback={regionLabel} />
@@ -889,12 +978,12 @@ export default function TaxiPage({ onNavigate }) {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
-                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Driver Lat</div>
-                    <div className="mt-1 font-black text-white">{Number(activeRide?.driver_lat || 0).toFixed(4)}</div>
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Aktualisierung</div>
+                    <div className="mt-1 font-black text-white">ca. 3 Sek.</div>
                   </div>
                   <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
-                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Driver Lng</div>
-                    <div className="mt-1 font-black text-white">{Number(activeRide?.driver_lng || 0).toFixed(4)}</div>
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Verbindung</div>
+                    <div className="mt-1 font-black text-white">{Number.isFinite(activeRide?.driver_lat) ? 'Live' : 'Wird aufgebaut'}</div>
                   </div>
                 </div>
               </div>
@@ -916,6 +1005,77 @@ export default function TaxiPage({ onNavigate }) {
           ) : null}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {chatOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[90] flex items-end bg-black/60 backdrop-blur-sm sm:items-center sm:justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-testid="taxi-chat-overlay"
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              className="flex max-h-[78vh] w-full flex-col rounded-t-[28px] border border-white/10 bg-[#07101D] p-4 shadow-2xl sm:max-w-md sm:rounded-[28px]"
+              data-testid="taxi-chat-dialog"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Fahrt-Chat</div>
+                  <div className="mt-1 text-lg font-black text-white">{activeRide?.driver?.name || activeRide?.driver_name || 'Fahrer'}</div>
+                </div>
+                <button
+                  onClick={() => setChatOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-white"
+                  data-testid="taxi-chat-close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="min-h-[220px] flex-1 space-y-3 overflow-y-auto py-4" data-testid="taxi-chat-messages">
+                {chatMessages.length ? chatMessages.map((message) => {
+                  const mine = message.sender_role === 'customer';
+                  return (
+                    <div key={message.message_id || message.sent_at} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm ${mine ? 'bg-[var(--bb-accent-cyan)] text-[#08111D]' : 'bg-white/8 text-white'}`}>
+                        <div className="font-semibold">{message.text}</div>
+                        <div className={`mt-1 text-[10px] ${mine ? 'text-[#08111D]/60' : 'text-[var(--bb-text-muted)]'}`}>{message.sender_name || (mine ? 'Du' : 'Fahrer')}</div>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="rounded-2xl bg-white/6 px-4 py-4 text-center text-sm text-[var(--bb-text-secondary)]">
+                    Noch keine Nachrichten. Du kannst dem Fahrer jetzt direkt schreiben.
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSendChat} className="flex items-center gap-2 border-t border-white/10 pt-3">
+                <input
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  maxLength={400}
+                  placeholder="Nachricht an Fahrer"
+                  className="min-h-[48px] min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/6 px-4 text-sm text-white outline-none placeholder:text-[var(--bb-text-muted)]"
+                  data-testid="taxi-chat-input"
+                />
+                <button
+                  type="submit"
+                  disabled={chatSending || !chatDraft.trim()}
+                  className="min-h-[48px] rounded-2xl bg-[var(--bb-accent-cyan)] px-4 text-sm font-black text-[#08111D] disabled:opacity-50"
+                  data-testid="taxi-chat-send"
+                >
+                  {chatSending ? '...' : 'Senden'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

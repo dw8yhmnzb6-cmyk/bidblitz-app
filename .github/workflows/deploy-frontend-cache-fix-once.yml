@@ -1,0 +1,131 @@
+name: One-time Frontend Cache Fix Deploy
+# User-authorized merchant commission copy update, source fe9227cd869b34be07656657919e45ae934b0706.
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - .github/workflows/deploy-frontend-cache-fix-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+        with:
+          ref: fe9227cd869b34be07656657919e45ae934b0706
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspace dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: 'false'
+          GENERATE_SOURCEMAP: 'false'
+          REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_STRIPE_PUBLISHABLE_KEY || secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: 'false'
+        run: |
+          set -euo pipefail
+          export BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=false
+          REACT_APP_BUILD_ID=${BUILD_ID}
+          EOF
+          npm run build
+          test -s build/index.html
+          test -s build/version.json
+          test -s build/service-worker.js
+          (cd .. && node frontend/scripts/check-update-safety.js)
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          version = json.loads(Path('build/version.json').read_text())
+          assert version['git_commit'] == 'fe9227cd869b34be07656657919e45ae934b0706'
+          print('Built version:', version['build_id'])
+          PY
+
+      - name: Package frontend
+        run: tar -C frontend/build -czf /tmp/bidblitz-frontend.tgz .
+
+      - name: Install SSH client helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Upload release archive
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e scp -o StrictHostKeyChecking=no /tmp/bidblitz-frontend.tgz root@212.227.20.190:/tmp/bidblitz-frontend.tgz
+
+      - name: Atomically activate frontend
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 <<'REMOTE'
+          set -euo pipefail
+          APP=/var/www/bidblitz/frontend
+          NEW="$APP/build.new"
+          LIVE="$APP/build"
+          OLD="$APP/build.previous.$(date -u +%Y%m%d%H%M%S)"
+          rm -rf "$NEW"
+          mkdir -p "$NEW"
+          tar -xzf /tmp/bidblitz-frontend.tgz -C "$NEW"
+          test -s "$NEW/index.html"
+          test -s "$NEW/version.json"
+          test -s "$NEW/service-worker.js"
+          nginx -t
+          if [ -d "$LIVE" ]; then mv "$LIVE" "$OLD"; fi
+          mv "$NEW" "$LIVE"
+          chown -R www-data:www-data "$LIVE"
+          if ! systemctl reload nginx; then
+            mv "$LIVE" "$NEW"
+            if [ -d "$OLD" ]; then mv "$OLD" "$LIVE"; fi
+            systemctl reload nginx
+            exit 1
+          fi
+          rm -f /tmp/bidblitz-frontend.tgz
+          REMOTE
+
+      - name: Verify production freshness
+        run: |
+          set -euo pipefail
+          stamp=$(date +%s)
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/version.json?deploy=$stamp" -o /tmp/bidblitz-live-version.json
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/index.html?deploy=$stamp" -o /tmp/bidblitz-live-index.html
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/service-worker.js?deploy=$stamp" -o /tmp/bidblitz-live-sw.js
+          cmp frontend/build/index.html /tmp/bidblitz-live-index.html
+          cmp frontend/build/service-worker.js /tmp/bidblitz-live-sw.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          expected = json.loads(Path('frontend/build/version.json').read_text())
+          actual = json.loads(Path('/tmp/bidblitz-live-version.json').read_text())
+          assert actual['build_id'] == expected['build_id']
+          assert actual['git_commit'] == 'fe9227cd869b34be07656657919e45ae934b0706'
+          print('Verified live frontend:', actual['build_id'])
+          PY
+          headers=$(curl -fsSI "https://bidblitz.ae/index.html?deploy=$stamp" | tr -d '\r')
+          echo "$headers" | grep -qi 'cache-control:.*no-store'
+          curl -fsS https://bidblitz.ae/api/system/version

@@ -5,10 +5,10 @@ from bson import ObjectId
 from core.database import db
 from core.security import (
     hash_password, verify_password, create_access_token, create_refresh_token,
-    set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user
+    set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user, validate_auth_state
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
-from core.rate_limit import limiter, RATE_REGISTER
+from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN, RATE_PASSWORD
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.payment_engine import credit_wallet, TransactionType
 from core.soft_launch import is_email_whitelisted, is_registration_open, validate_invite_code, redeem_invite_code
@@ -31,7 +31,7 @@ def _canonical_admin_identity(user: dict) -> dict:
         for a in (user.get("email_aliases") or [])
         if a
     ]
-    if (user.get("role") == "admin") or email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
+    if email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
         user["email"] = "admin@bidblitz.ae"
         user["canonical_email"] = "admin@bidblitz.ae"
         user["name"] = "BidBlitz Admin"
@@ -46,20 +46,24 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
     if not email:
         return [""]
-    if email == "admin@bidblitz.ae":
-        return [email, "admin@bitblitz.ae"]
-    if email == "admin@bidblitz.com":
-        return [email, "admin@bitblitz.com"]
-    candidates = [email]
-    if email.endswith("@bidblitz.ae"):
-        candidates.append(email[:-2] + "com")
-    elif email.endswith("@bidblitz.com"):
-        candidates.append(email[:-3] + "ae")
-    if email.endswith("@bidblitz.ae"):
-        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
-    elif email.endswith("@bidblitz.com"):
-        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
-    return list(dict.fromkeys(candidates))
+
+    canonical_admin_aliases = {
+        "admin@bidblitz.ae",
+        "admin@bitblitz.ae",
+        "admin@bid-blitz.ae",
+    }
+    legacy_disabled_admin_aliases = {
+        "admin@bidblitz.com",
+        "admin@bitblitz.com",
+        "admin@bid-blitz.com",
+    }
+    if email in canonical_admin_aliases:
+        return ["admin@bidblitz.ae", "admin@bitblitz.ae"]
+    if email in legacy_disabled_admin_aliases:
+        return ["admin@bidblitz.com", "admin@bitblitz.com"]
+
+    # Never cross-map ordinary user addresses between .ae/.com or typo domains.
+    return [email]
 
 
 def _auth_email_query(email_candidates: list[str]) -> dict:
@@ -119,6 +123,14 @@ def _verify_legacy_password(plain_password: str, user: dict) -> str | None:
 
 def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _hash_pending_2fa_token(token: str) -> str:
+    return hashlib.sha256(f"2fa:{token}".encode("utf-8")).hexdigest()
+
+
+def _hash_otp(code: str) -> str:
+    return hashlib.sha256(f"bidblitz-otp:{code}".encode("utf-8")).hexdigest()
 
 
 def _parse_reset_expiry(value) -> datetime:
@@ -293,19 +305,18 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if not display_name:
         raise HTTPException(status_code=422, detail="Name is required")
 
-    # TEMPORARY FIX: Registration always open (soft launch disabled)
     invite_used = None
     invite_type = "user"
-    # Soft launch gate: invite code OR whitelist OR open registration
-    # if not await is_registration_open():
-    #     if req.invite_code:
-    #         valid, msg, code_type = await validate_invite_code(req.invite_code)
-    #         if not valid:
-    #             raise HTTPException(status_code=403, detail=msg)
-    #         invite_used = req.invite_code.strip().upper()
-    #         invite_type = code_type or "user"
-    #     elif not await is_email_whitelisted(email):
-    #         raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
+    # Respect the platform soft-launch configuration instead of bypassing it.
+    if not await is_registration_open():
+        if req.invite_code:
+            valid, msg, code_type = await validate_invite_code(req.invite_code)
+            if not valid:
+                raise HTTPException(status_code=403, detail=msg)
+            invite_used = req.invite_code.strip().upper()
+            invite_type = code_type or "user"
+        elif not await is_email_whitelisted(email):
+            raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
 
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -368,6 +379,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "last_login_ip": "",
         "last_login_user_agent": "",
         "login_count": 0,
+        "auth_version": 0,
     }
     # Save requested role if provided (admin approval required)
     if req.requested_role and req.requested_role in ("merchant", "influencer", "manager", "investor"):
@@ -411,8 +423,18 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception as e:
         logger.warning(f"Welcome bonus tx failed: {e}")
 
-    access_token = create_access_token(user_id, email, email)
-    refresh_token = create_refresh_token(user_id, email)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, email, ip, ua)
+    access_token = create_access_token(
+        user_id, email, email,
+        session_id=session_id,
+        auth_version=int(user_doc.get("auth_version", 0) or 0),
+    )
+    refresh_token = create_refresh_token(
+        user_id, email,
+        session_id=session_id,
+        auth_version=int(user_doc.get("auth_version", 0) or 0),
+    )
     set_auth_cookies(response, access_token, refresh_token)
 
     await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
@@ -471,6 +493,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
 
 @router.post("/login")
+@limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
     email_candidates = _auth_email_candidates(req.email)
     email = email_candidates[0]
@@ -559,7 +582,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
         await db.otp_codes.insert_one({
             "user_id": user_id,
-            "code": otp,
+            "code_hash": _hash_otp(otp),
             "purpose": "login",
             "attempts": 0,
             "created_at": now.isoformat(),
@@ -570,18 +593,25 @@ async def login(req: LoginRequest, request: Request, response: Response):
         pending_token = secrets.token_urlsafe(32)
         await db.pending_2fa.delete_many({"user_id": user_id})
         await db.pending_2fa.insert_one({
-            "token": pending_token,
+            "token_hash": _hash_pending_2fa_token(pending_token),
             "user_id": user_id,
+            "login_email": email,
+            "remember_me": bool(req.remember_me),
             "created_at": now.isoformat(),
             "expires_at": expires.isoformat(),
         })
         
         # Send OTP email
+        email_sent = False
         try:
             from core.email import send_otp_email
-            send_otp_email(matched_email, otp, "login", user.get("name", ""))
+            email_sent = bool(send_otp_email(matched_email, otp, "login", user.get("name", "")))
         except Exception as e:
             logger.warning(f"Failed to send OTP email: {e}")
+        if not email_sent:
+            await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
+            await db.pending_2fa.delete_many({"user_id": user_id})
+            raise HTTPException(status_code=503, detail="2FA-Code konnte nicht zugestellt werden. Bitte erneut versuchen.")
         
         # Set pending session cookie
         response.set_cookie(
@@ -600,8 +630,19 @@ async def login(req: LoginRequest, request: Request, response: Response):
             "email_hint": f"{email[:3]}***{email[-10:]}",
         }
     
-    access_token = create_access_token(user_id, user.get("email", email), email)
-    refresh_token = create_refresh_token(user_id, email)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, user.get("email", email), ip, ua)
+    auth_version = int(user.get("auth_version", 0) or 0)
+    access_token = create_access_token(
+        user_id, user.get("email", email), email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    refresh_token = create_refresh_token(
+        user_id, email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
     set_auth_cookies(response, access_token, refresh_token, req.remember_me)
     user["login_email"] = email
     await _record_login_success(user_id, ip, ua)
@@ -620,16 +661,43 @@ async def get_me(request: Request):
 
 @router.get("/ws-token")
 async def ws_token(request: Request):
-    """Liefert kurzlebiges JWT für WebSocket-Auth (5 Min). Browser können httpOnly-Cookies nicht in WS-URL einbauen."""
+    """Issue a short-lived WebSocket JWT bound to the current concrete session."""
     user = await get_current_user(request)
     import jwt as _jwt
     from core.config import JWT_SECRET, JWT_ALGORITHM
     from datetime import datetime, timedelta, timezone
+
+    raw_access = request.cookies.get("access_token")
+    if not raw_access:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            raw_access = auth_header[7:]
+    if not raw_access:
+        raise HTTPException(status_code=401, detail="Aktive Session erforderlich")
+
+    try:
+        access_payload = _jwt.decode(raw_access, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Aktive Session ungültig")
+
+    session_id = str(access_payload.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Sessiongebundenes Login erforderlich")
+
+    session = await db.sessions.find_one(
+        {"session_id": session_id, "user_id": str(user["_id"]), "is_active": True},
+        {"_id": 0, "session_id": 1},
+    )
+    if not session:
+        raise HTTPException(status_code=401, detail="Session widerrufen")
+
     payload = {
         "sub": str(user["_id"]),
         "email": user.get("email", ""),
         "exp": datetime.now(timezone.utc) + timedelta(seconds=300),
         "type": "access",
+        "auth_version": int(user.get("auth_version", 0) or 0),
+        "session_id": session_id,
     }
     token = _jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return {"token": token, "expires_in": 300}
@@ -637,14 +705,45 @@ async def ws_token(request: Request):
 
 @router.post("/logout")
 async def logout(request: Request, response: Response):
+    user = None
     try:
         user = await get_current_user(request)
         ip, ua = get_client_info(request)
-        await log_audit(AuditEvent.LOGOUT, user_id=str(user["_id"]), email=user.get("email", ""),
-                        ip=ip, user_agent=ua)
+        await log_audit(
+            AuditEvent.LOGOUT,
+            user_id=str(user["_id"]),
+            email=user.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+        )
     except Exception:
         pass
+
+    # Revoke the concrete session from either access or refresh token.
+    try:
+        import jwt as pyjwt
+        from core.config import JWT_SECRET, JWT_ALGORITHM
+        from routes.sessions import revoke_session
+        candidates = [
+            request.cookies.get("access_token"),
+            request.cookies.get("refresh_token"),
+        ]
+        for raw in candidates:
+            if not raw:
+                continue
+            try:
+                payload = pyjwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                session_id = payload.get("session_id")
+                if session_id:
+                    await revoke_session(session_id)
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
     clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
     return {"message": "Logged out"}
 
 
@@ -660,17 +759,41 @@ async def refresh_token(request: Request, response: Response):
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
+
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        new_access = create_access_token(str(user["_id"]), user["email"], payload.get("login_email") or payload.get("email") or user["email"])
-        user["login_email"] = payload.get("login_email") or payload.get("email") or user["email"]
+
+        await validate_auth_state(user, payload)
+
+        session_id = str(payload.get("session_id") or "")
+        auth_version = int(user.get("auth_version", 0) or 0)
+        login_email = payload.get("login_email") or payload.get("email") or user["email"]
+        new_access = create_access_token(
+            str(user["_id"]),
+            user["email"],
+            login_email,
+            session_id=session_id,
+            auth_version=auth_version,
+        )
+        user["login_email"] = login_email
+
         from core.config import COOKIE_SECURE, COOKIE_SAMESITE, ACCESS_TOKEN_EXPIRE_MINUTES
-        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE,
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/",
+        )
         return serialize_user(_canonical_admin_identity(user))
     except pyjwt.ExpiredSignatureError:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except pyjwt.InvalidTokenError:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
@@ -680,6 +803,7 @@ async def refresh_token(request: Request, response: Response):
 # ═══════════════════════════════════════════════════
 
 @router.post("/forgot-password")
+@limiter.limit(RATE_PASSWORD)
 async def forgot_password(request: Request):
     """Request password reset link."""
     body = await request.json()
@@ -699,7 +823,8 @@ async def forgot_password(request: Request):
 
 
 @router.get("/reset-password/verify")
-async def verify_password_reset_token(token: str):
+@limiter.limit(RATE_PASSWORD)
+async def verify_password_reset_token(request: Request, token: str):
     token_hash = _hash_reset_token(token.strip())
     entry = await db.password_resets.find_one({"token_hash": token_hash, "used_at": None})
     if not entry:
@@ -713,6 +838,7 @@ async def verify_password_reset_token(token: str):
 
 
 @router.post("/reset-password")
+@limiter.limit(RATE_PASSWORD)
 async def reset_password(request: Request):
     """Reset password using token."""
     body = await request.json()
@@ -728,14 +854,21 @@ async def reset_password(request: Request):
     if len(new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    reset_entry = await db.password_resets.find_one({"token_hash": _hash_reset_token(token), "used_at": None})
+    token_hash = _hash_reset_token(token)
+    claimed_at = datetime.now(timezone.utc)
+    reset_entry = await db.password_resets.find_one_and_update(
+        {"token_hash": token_hash, "used_at": None},
+        {"$set": {"used_at": claimed_at.isoformat(), "used_reason": "password_reset_processing"}},
+    )
     if not reset_entry:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
-    
-    # Check expiry
+
     expires = _parse_reset_expiry(reset_entry["expires_at"])
-    if datetime.now(timezone.utc) > expires:
-        await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "expired"}})
+    if claimed_at > expires:
+        await db.password_resets.update_one(
+            {"_id": reset_entry["_id"]},
+            {"$set": {"used_reason": "expired"}},
+        )
         raise HTTPException(status_code=400, detail="Token expired")
     
     email = reset_entry["email"]
@@ -746,18 +879,30 @@ async def reset_password(request: Request):
     # Hash new password - MUST use password_hash (same field as registration)
     hashed = hash_password(new_password)
     
+    reset_at = datetime.now(timezone.utc).isoformat()
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {
-            "password_hash": hashed,
-            "password_reset_at": datetime.now(timezone.utc).isoformat(),
-            "force_password_change": False,
-            "force_password_change_reason": None,
-            "force_password_change_requested_at": None,
-        }, "$unset": {"password": ""}}
+        {
+            "$set": {
+                "password_hash": hashed,
+                "password_reset_at": reset_at,
+                "force_password_change": False,
+                "force_password_change_reason": None,
+                "force_password_change_requested_at": None,
+            },
+            "$inc": {"auth_version": 1},
+            "$unset": {"password": ""},
+        },
     )
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(user["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(user["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(user["_id"])})
 
-    await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "password_reset_completed"}})
+    await db.password_resets.update_one(
+        {"_id": reset_entry["_id"]},
+        {"$set": {"used_reason": "password_reset_completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
 
     ip, ua = get_client_info(request)
     await log_audit(
@@ -780,6 +925,7 @@ async def reset_password(request: Request):
 # ═══════════════════════════════════════════════════
 
 @router.post("/verify-2fa")
+@limiter.limit(RATE_PASSWORD)
 async def verify_2fa_login(request: Request, response: Response):
     """Complete login after 2FA OTP verification."""
     body = await request.json()
@@ -793,7 +939,13 @@ async def verify_2fa_login(request: Request, response: Response):
     if not pending_token:
         raise HTTPException(status_code=400, detail="Keine ausstehende Anmeldung")
     
-    pending = await db.pending_2fa.find_one({"token": pending_token})
+    pending_hash = _hash_pending_2fa_token(pending_token)
+    pending = await db.pending_2fa.find_one({
+        "$or": [
+            {"token_hash": pending_hash},
+            {"token": pending_token},
+        ]
+    })
     if not pending:
         raise HTTPException(status_code=400, detail="Session abgelaufen. Bitte erneut einloggen.")
     
@@ -802,7 +954,7 @@ async def verify_2fa_login(request: Request, response: Response):
     
     # Check expiry
     if pending.get("expires_at") and now > datetime.fromisoformat(pending["expires_at"]):
-        await db.pending_2fa.delete_one({"token": pending_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Session abgelaufen")
     
     # Find OTP
@@ -817,11 +969,17 @@ async def verify_2fa_login(request: Request, response: Response):
     
     if otp_doc.get("attempts", 0) >= 3:
         await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
-        await db.pending_2fa.delete_one({"token": pending_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Zu viele Versuche. Bitte erneut einloggen.")
     
-    # Verify code
-    if otp_doc["code"] != code:
+    # Verify code without storing OTP plaintext.
+    stored_hash = otp_doc.get("code_hash")
+    valid_code = (
+        secrets.compare_digest(stored_hash, _hash_otp(code))
+        if stored_hash
+        else secrets.compare_digest(str(otp_doc.get("code") or ""), code)
+    )
+    if not valid_code:
         await db.otp_codes.update_one(
             {"_id": otp_doc["_id"]},
             {"$inc": {"attempts": 1}}
@@ -842,9 +1000,24 @@ async def verify_2fa_login(request: Request, response: Response):
     email = user["email"]
     ip, ua = get_client_info(request)
     
-    access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id, user.get("login_email") or user.get("email", ""))
-    set_auth_cookies(response, access_token, refresh_token, remember=True)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, email, ip, ua)
+    auth_version = int(user.get("auth_version", 0) or 0)
+    login_email = pending.get("login_email") or user.get("login_email") or user.get("email", "")
+    access_token = create_access_token(
+        user_id,
+        email,
+        login_email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    refresh_token = create_refresh_token(
+        user_id,
+        login_email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    set_auth_cookies(response, access_token, refresh_token, remember_me=bool(pending.get("remember_me", True)))
     await _record_login_success(user_id, ip, ua)
     
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,

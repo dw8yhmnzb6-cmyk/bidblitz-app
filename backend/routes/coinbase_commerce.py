@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 
 logger = logging.getLogger("bidblitz.coinbase")
 
@@ -88,7 +89,6 @@ async def create_charge(req: ChargeRequest, request: Request, user=Depends(get_c
         logger.error(f"Coinbase HTTP error: {e}")
         raise HTTPException(status_code=502, detail="Coinbase Commerce nicht erreichbar")
 
-    # Persist charge record
     user_id = user_id_str
     await db.crypto_charges.insert_one(
         {
@@ -144,7 +144,6 @@ async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
         logger.error("Webhook received but COINBASE_COMMERCE_WEBHOOK_SECRET not configured")
         raise HTTPException(status_code=503, detail="Webhook secret not configured")
 
-    # Signature check (HMAC-SHA256, HEX - Coinbase Standard)
     expected = hmac.new(
         COMMERCE_WEBHOOK_SECRET.encode("utf-8"),
         payload_raw.encode("utf-8"),
@@ -165,8 +164,6 @@ async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
     charge_id = charge_data.get("id")
 
     logger.info(f"Coinbase webhook: {event_type} for charge {charge_id}")
-
-    # Ack immediately, process async
     background_tasks.add_task(_process_event, event_type, charge_id, charge_data)
     return {"status": "received", "event": event_type}
 
@@ -180,7 +177,6 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
         logger.warning(f"Webhook for unknown charge {charge_id}")
         return
 
-    # Store event for audit
     await db.crypto_charges.update_one(
         {"charge_id": charge_id},
         {"$push": {"webhook_events": {"type": event_type, "at": datetime.now(timezone.utc).isoformat()}}},
@@ -200,40 +196,50 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
     else:
         return
 
-    # Idempotency: only credit once
     if event_type == "charge:confirmed" and charge.get("status") != "confirmed":
         user_id = charge["user_id"]
         amount = float(charge["amount_eur"])
 
-        # Credit user wallet
-        await db.users.update_one({"_id": _oid(user_id)}, {"$inc": {"balance": amount}})
-
-        # Log wallet transaction
-        await db.transactions.insert_one(
-            {
-                "user_id": user_id,
-                "type": "topup",
-                "amount": amount,
-                "currency": "EUR",
-                "status": "completed",
-                "description": "Krypto-Aufladung via Coinbase",
-                "merchant_name": "Coinbase Commerce",
-                "category": "topup",
-                "reference": f"CB-{charge_id[:8].upper()}",
-                "date": datetime.now(timezone.utc).isoformat(),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+        result = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.TOPUP,
+            description="Krypto-Aufladung via Coinbase",
+            source="coinbase_commerce",
+            reference=f"CB-{charge_id[:8].upper()}",
+            metadata={
                 "external_id": charge_id,
-            }
+                "provider": "coinbase_commerce",
+                "route": "coinbase_commerce.webhook",
+                "audit_metadata": {"kind": "coinbase_wallet_topup"},
+            },
+            idempotency_key=f"coinbase_charge:{charge_id}",
         )
+        if not result.success:
+            await db.crypto_charges.update_one(
+                {"charge_id": charge_id},
+                {"$set": {
+                    "settlement_status": str(getattr(result.status, "value", result.status)),
+                    "settlement_error": result.error or "Wallet settlement failed",
+                    "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            logger.error("Coinbase wallet settlement failed for charge %s: %s", charge_id, result.error)
+            return
 
         await db.crypto_charges.update_one(
             {"charge_id": charge_id},
-            {"$set": {"status": "confirmed", "confirmed_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {
+                "status": "confirmed",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                "settlement_status": "completed",
+                "wallet_transaction_id": result.transaction_id,
+                "wallet_reference": result.reference,
+            }},
         )
-        logger.info(f"✅ Credited {amount}€ to user {user_id} from Coinbase charge {charge_id}")
+        logger.info("Credited %s EUR to user %s from Coinbase charge %s", amount, user_id, charge_id)
         return
 
-    # All other status updates
     await db.crypto_charges.update_one(
         {"charge_id": charge_id}, {"$set": {"status": new_status}}
     )

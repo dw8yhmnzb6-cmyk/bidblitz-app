@@ -30,54 +30,22 @@ class ReplyTicketRequest(BaseModel):
 
 @router.post("/create")
 async def create_ticket(req: CreateTicketRequest, request: Request):
-    """User: Create a new support ticket."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    ticket_id = secrets.token_hex(6)
-    now = datetime.now(timezone.utc).isoformat()
-    
-    ticket = {
-        "ticket_id": ticket_id,
-        "user_id": user_id,
-        "user_name": user.get("name", ""),
-        "user_email": user.get("email", ""),
-        "subject": req.subject,
-        "category": req.category,
-        "status": "open",  # open, in_progress, resolved, closed
-        "priority": "normal",  # low, normal, high, urgent
-        "messages": [
-            {
-                "from_user_id": user_id,
-                "from_name": user.get("name", ""),
-                "message": req.message,
-                "is_admin": False,
-                "created_at": now,
-            }
-        ],
-        "created_at": now,
-        "updated_at": now,
-    }
-    
-    await db.support_tickets.insert_one(ticket)
-    
-    # Notify admin
-    admin = await db.users.find_one({"role": "admin"})
-    if admin:
-        try:
-            asyncio.create_task(send_push_to_user(
-                str(admin["_id"]),
-                title="🆘 Neues Support-Ticket",
-                body=f"{req.subject} von {user.get('name', 'User')}",
-                data={"type": "new_ticket", "ticket_id": ticket_id},
-            ))
-        except Exception:
-            pass
-    
+    """Backward-compatible wrapper around the canonical support ticket flow."""
+    from routes.support import CreateTicketRequest as CanonicalCreateTicketRequest, create_ticket as canonical_create_ticket
+    result = await canonical_create_ticket(
+        CanonicalCreateTicketRequest(
+            subject=req.subject,
+            message=req.message,
+            category=req.category,
+        ),
+        request,
+    )
     return {
         "ok": True,
-        "ticket_id": ticket_id,
+        "ticket_id": result["ticket_id"],
+        "status": result.get("status", "open"),
         "message": "Ticket erstellt. Wir melden uns bald.",
+        "canonical": True,
     }
 
 
@@ -117,60 +85,19 @@ async def get_ticket_detail(ticket_id: str, request: Request):
 
 @router.post("/reply")
 async def reply_to_ticket(req: ReplyTicketRequest, request: Request):
-    """Reply to a ticket (user or admin)."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    is_admin = user.get("role") == "admin"
-    
-    ticket = await db.support_tickets.find_one({"ticket_id": req.ticket_id})
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
-    
-    # Check permission
-    is_owner = ticket["user_id"] == user_id
-    if not (is_admin or is_owner):
-        raise HTTPException(status_code=403, detail="Keine Berechtigung")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    new_message = {
-        "from_user_id": user_id,
-        "from_name": user.get("name", "Admin" if is_admin else ""),
-        "message": req.message,
-        "is_admin": is_admin,
-        "created_at": now,
-    }
-    
-    # Update ticket
-    update_data = {
-        "updated_at": now,
-    }
-    
-    if is_admin and ticket["status"] == "open":
-        update_data["status"] = "in_progress"
-    
-    await db.support_tickets.update_one(
-        {"ticket_id": req.ticket_id},
-        {
-            "$push": {"messages": new_message},
-            "$set": update_data,
-        },
+    """Backward-compatible wrapper around canonical threaded support messages."""
+    from routes.support import TicketMessageRequest as CanonicalTicketMessageRequest, send_ticket_message
+    result = await send_ticket_message(
+        req.ticket_id,
+        CanonicalTicketMessageRequest(message=req.message),
+        request,
     )
-    
-    # Send notification to the other party
-    notify_user_id = ticket["user_id"] if is_admin else None
-    if notify_user_id:
-        try:
-            asyncio.create_task(send_push_to_user(
-                notify_user_id,
-                title=f"💬 Neue Antwort auf Ticket #{req.ticket_id[:6]}",
-                body=req.message[:50],
-                data={"type": "ticket_reply", "ticket_id": req.ticket_id},
-            ))
-        except Exception:
-            pass
-    
-    return {"ok": True, "message": "Antwort gesendet"}
+    return {
+        "ok": True,
+        "message": "Antwort gesendet",
+        "ticket_message": result.get("message"),
+        "canonical": True,
+    }
 
 
 @router.post("/{ticket_id}/close")
@@ -205,42 +132,31 @@ async def close_ticket(ticket_id: str, request: Request):
 # Admin endpoints
 @router.get("/admin/all")
 async def get_all_tickets(request: Request, status: Optional[str] = None):
-    """Admin: Get all tickets with optional status filter."""
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    query = {}
-    if status:
-        query["status"] = status
-    
-    tickets = await db.support_tickets.find(
-        query,
-        {"_id": 0, "messages": 0}
-    ).sort("updated_at", -1).to_list(200)
-    
-    return {"tickets": tickets, "total": len(tickets)}
+    """Legacy admin listing backed by canonical support records."""
+    from routes.support import admin_get_tickets
+    return await admin_get_tickets(request=request, status=status or "", limit=100, skip=0)
 
 
 @router.post("/admin/{ticket_id}/status")
 async def update_ticket_status(ticket_id: str, status: str, request: Request):
-    """Admin: Update ticket status."""
+    """Legacy admin status endpoint backed by the canonical ticket record."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
-    
-    valid_statuses = ["open", "in_progress", "resolved", "closed"]
+
+    valid_statuses = {"open", "in_progress", "resolved", "closed"}
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
-    
-    await db.support_tickets.update_one(
+
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"status": status, "updated_at": now}
+    if status == "resolved":
+        updates.update({"resolved_at": now, "resolved_by": str(user["_id"])})
+
+    result = await db.support_tickets.update_one(
         {"ticket_id": ticket_id},
-        {
-            "$set": {
-                "status": status,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        },
+        {"$set": updates},
     )
-    
-    return {"ok": True, "status": status}
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"ok": True, "status": status, "canonical": True}

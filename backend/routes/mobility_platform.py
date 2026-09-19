@@ -164,6 +164,7 @@ class MobilityBookingRequest(BaseModel):
     dropoff: MobilityBookingLocation
     preferences: Optional[dict] = None
     ai_recommendation: Optional[dict] = None
+    request_id: Optional[str] = Field(default=None, min_length=8, max_length=120)
 
 
 class MobilityCheckoutSessionRequest(BaseModel):
@@ -192,6 +193,7 @@ class BestRouteBookRequest(BaseModel):
     route_id: str
     transport_type: str
     payment_method: str = Field(default="wallet")
+    request_id: Optional[str] = Field(default=None, min_length=8, max_length=120)
 
 
 class FrequentRouteSaveRequest(BaseModel):
@@ -1109,6 +1111,11 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
 
     if req.payment_method not in DIRECT_BOOKING_METHODS:
         raise HTTPException(400, "Direktbuchung ist nur mit Wallet oder Cash verfügbar")
+    request_id = req.request_id or uuid4().hex
+    booking_id = f"mob-{request_id[:24]}"
+    existing_booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": user_id}, {"_id": 0})
+    if existing_booking:
+        return {"ok": True, "reused": True, "booking": existing_booking, "new_balance": None}
 
     route_payload = await _compute_route_payload(
         req.pickup.lat,
@@ -1125,7 +1132,6 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
 
     from routes.mobility_payments import process_payment
 
-    booking_id = f"mob-{uuid4().hex[:12]}"
     assignment = await _assign_booking_resource(req.transport_type, req.pickup.model_dump())
     payment_result = None
     payment_status = "cash_due" if req.payment_method == "cash" else "paid"
@@ -1139,6 +1145,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
             reference_type="mobility_booking",
             description=f"{option['label']} · {req.pickup.address} → {req.dropoff.address}",
             commission_category=req.transport_type,
+            idempotency_key=f"mobility:booking:{user_id}:{request_id}",
         )
         payment_id = ((payment_result or {}).get("payment") or {}).get("payment_id")
     else:
@@ -1165,6 +1172,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
         })
 
     booking = {
+        "_id": f"mobility:{user_id}:{request_id}",
         "booking_id": booking_id,
         "user_id": user_id,
         "user_email": user.get("email"),
@@ -1249,6 +1257,11 @@ async def save_frequent_route(req: FrequentRouteSaveRequest, request: Request):
 async def book_best_route(req: BestRouteBookRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    request_id = req.request_id or uuid4().hex
+    booking_id = f"mob-{request_id[:24]}"
+    existing_booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": user_id}, {"_id": 0})
+    if existing_booking:
+        return {"ok": True, "reused": True, "booking": existing_booking, "new_balance": None}
     frequent = await db.mobility_frequent_routes.find_one({"route_id": req.route_id, "user_id": user_id}, {"_id": 0})
     source = frequent
     if not source:
@@ -1286,15 +1299,16 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
             amount=float(option["price_eur"]),
             tx_type=TransactionType.PAYMENT,
             description=f"Mobility Rebook: {option['label']}",
-            reference=f"MOB-FREQ-{uuid4().hex[:8].upper()}",
+            reference=f"MOB-FREQ-{request_id[:16].upper()}",
+            idempotency_key=f"mobility:rebook:{user_id}:{request_id}",
             metadata={"type": "mobility_rebook", "route_id": req.route_id, "transport_type": option["type"]},
         )
         if not payment_result.success:
             raise HTTPException(400, payment_result.error or "Wallet-Zahlung fehlgeschlagen")
 
-    booking_id = f"mob-{uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
     booking = {
+        "_id": f"mobility:{user_id}:{request_id}",
         "booking_id": booking_id,
         "user_id": user_id,
         "transport_type": option["type"],

@@ -10,6 +10,7 @@ Roles: merchant_admin, store_manager, cashier, accountant, bidblitz_admin
 import secrets
 import logging
 import io
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
@@ -46,6 +47,7 @@ PAYMENT_STATUS_PAID = "paid"
 PAYMENT_STATUS_EXPIRED = "expired"
 PAYMENT_STATUS_REFUNDED = "refunded"
 PAYMENT_STATUS_CANCELLED = "cancelled"
+PAYMENT_STATUS_RECONCILIATION = "reconciliation_required"
 
 POS_ROLES = {"merchant_admin", "store_manager", "cashier", "accountant", "bidblitz_admin"}
 
@@ -875,6 +877,15 @@ async def create_payment(req: PaymentCreate, request: Request):
         )
         if existing_paid:
             sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+            if not sale:
+                sale = await _finalise_sale(
+                    existing_paid,
+                    cart,
+                    existing_paid.get("customer_id"),
+                    existing_paid.get("method", "unknown"),
+                    float(existing_paid.get("fee_amount") or 0),
+                    float(cart.get("total") or 0),
+                )
             return {
                 "ok": True,
                 "payment": existing_paid,
@@ -907,6 +918,15 @@ async def create_payment(req: PaymentCreate, request: Request):
     )
     if existing_paid:
         sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+        if not sale:
+            sale = await _finalise_sale(
+                existing_paid,
+                cart,
+                existing_paid.get("customer_id"),
+                existing_paid.get("method", "unknown"),
+                float(existing_paid.get("fee_amount") or 0),
+                float(cart.get("total") or 0),
+            )
         return {
             "ok": True,
             "payment": existing_paid,
@@ -968,10 +988,16 @@ async def create_payment(req: PaymentCreate, request: Request):
         sale = await _finalise_sale(payment_doc, cart, None, "cash", 0, req.cash_received)
         return {"ok": True, "payment": payment_doc, "sale": sale}
 
-    # ─── Card external (terminal handles charge) ───
+    # ─── Card external ───
+    # Fail closed until a certified terminal/provider integration verifies the charge.
     if req.method == "card_external":
-        if not req.card_reference:
-            raise HTTPException(status_code=400, detail="Karten-Referenz erforderlich")
+        if os.environ.get("POS_EXTERNAL_CARD_CERTIFIED", "").lower() != "true":
+            raise HTTPException(
+                status_code=503,
+                detail="Kartenzahlung ist noch nicht mit einem zertifizierten Terminal-Provider verbunden.",
+            )
+        if not req.card_reference or req.card_reference.startswith("CARD-"):
+            raise HTTPException(status_code=400, detail="Verifizierte Provider-Referenz erforderlich")
         payment_doc["status"] = PAYMENT_STATUS_PAID
         payment_doc["paid_at"] = now.isoformat()
         payment_doc["card_reference"] = req.card_reference
@@ -1060,7 +1086,34 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
             idempotency_key=f"pos-settlement:{payment['payment_id']}",
         )
         if not credit.success:
-            raise HTTPException(status_code=400, detail=credit.error or "Merchant settlement failed")
+            rollback = await credit_wallet(
+                user_id=customer_id,
+                amount=total,
+                tx_type=TransactionType.REFUND,
+                description=f"POS Rollback {payment['payment_id']}",
+                reference=f"ROLLBACK-{payment['payment_id']}",
+                source="pos_system.rollback",
+                metadata={
+                    "payment_id": payment["payment_id"],
+                    "reason": "merchant_settlement_failed",
+                    "merchant_id": cart["merchant_id"],
+                },
+                idempotency_key=f"pos-rollback:{payment['payment_id']}",
+            )
+            rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
+            await db.pos_payments.update_one(
+                {"payment_id": payment["payment_id"]},
+                {"$set": {
+                    "status": rollback_status,
+                    "error": credit.error or "merchant_settlement_failed",
+                    "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                    "reconciliation_required": not rollback.success,
+                    "updated_at": now_iso(),
+                }},
+            )
+            if rollback.success:
+                raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
+            raise HTTPException(status_code=500, detail="Händlergutschrift und automatische Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
         await db.pos_merchants.update_one(
             {"merchant_id": cart["merchant_id"]},
             {"$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total}},

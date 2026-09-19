@@ -3,13 +3,13 @@ BidBlitz V2 - User Profile Routes
 Profile viewing, editing, password management, and KYC.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
-from core.security import get_current_user, hash_password, verify_password, serialize_user
+from core.security import get_current_user, hash_password, verify_password, serialize_user, clear_auth_cookies
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.rate_limit import limiter, RATE_PASSWORD
 
@@ -107,7 +107,7 @@ class ProfileUpdate(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 @router.get("/profile")
@@ -172,27 +172,50 @@ async def update_profile(req: ProfileUpdate, request: Request):
 
 @router.post("/change-password")
 @limiter.limit(RATE_PASSWORD)
-async def change_password(req: ChangePasswordRequest, request: Request):
-    """Change user password."""
+async def change_password(req: ChangePasswordRequest, request: Request, response: Response):
+    """Change password and revoke every previously issued credential."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
 
-    if not verify_password(req.current_password, user["password_hash"]):
+    password_hash = (user.get("password_hash") or "").strip()
+    if not password_hash or not verify_password(req.current_password, password_hash):
         await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
                         ip=ip, user_agent=ua, details={"success": False}, severity="warn")
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if req.new_password == req.current_password:
+        raise HTTPException(status_code=400, detail="Das neue Passwort muss sich vom aktuellen Passwort unterscheiden")
 
     new_hash = hash_password(req.new_password)
+    changed_at = datetime.now(timezone.utc).isoformat()
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {
+            "$set": {
+                "password_hash": new_hash,
+                "updated_at": changed_at,
+                "password_changed_at": changed_at,
+            },
+            "$inc": {"auth_version": 1},
+            "$unset": {"password": ""},
+        },
     )
 
-    await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
-                    ip=ip, user_agent=ua, details={"success": True})
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(user_id)
+    await db.pending_2fa.delete_many({"user_id": user_id})
+    await db.otp_codes.delete_many({"user_id": user_id})
+    clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
 
-    return {"success": True, "message": "Password updated successfully"}
+    await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua, details={"success": True, "all_sessions_revoked": True})
+
+    return {
+        "success": True,
+        "message": "Passwort aktualisiert. Bitte melde dich auf deinen Geräten neu an.",
+        "sessions_revoked": True,
+    }
 
 
 # ═══════════════════════════════════════════════════

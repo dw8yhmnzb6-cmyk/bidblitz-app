@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import MiniLeafletMap from "../components/MiniLeafletMap";
@@ -81,6 +81,7 @@ const KidsDashboard = ({ onBack, onNavigate, t, subStatus }) => {
   const [success, setSuccess] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('wallet'); // wallet | tracking
+  const walletSubscriptionAttemptKeyRef = useRef(null);
   const [activeFeature, setActiveFeature] = useState(null);
   const [tasksChild, setTasksChild] = useState(null); // Für Aufgaben-Modal
   const [childTasks, setChildTasks] = useState([]); // Aufgaben für das aktuell ausgewählte Kind
@@ -1415,11 +1416,20 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
   const handleWalletPayment = async () => {
     setLoading(true);
     try {
+      if (!walletSubscriptionAttemptKeyRef.current) {
+        walletSubscriptionAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `kids-sub-${crypto.randomUUID()}`
+          : `kids-sub-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = walletSubscriptionAttemptKeyRef.current;
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/pay-with-wallet`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({ plan, idempotency_key: idempotencyKey }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1427,6 +1437,7 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
         setLoading(false);
         return;
       }
+      walletSubscriptionAttemptKeyRef.current = null;
       toast.success(data.message || "Kids Abo aktiviert!");
       setSubStatus({ status: "active", plan: data.plan, trial_available: false, expires_at: data.expires_at });
       setShowDashboard(true);

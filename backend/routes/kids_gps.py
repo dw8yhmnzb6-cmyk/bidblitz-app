@@ -14,6 +14,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/kids/gps", tags=["kids-gps"])
 
@@ -164,12 +165,18 @@ async def update_child_location(loc: LocationUpdate, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    # Get child record
+    # Get child record and verify that the authenticated account is actually
+    # the parent or the linked child account. A foreign logged-in user must never
+    # be able to spoof a child's GPS position.
     child = await db.kids_children.find_one({"child_id": loc.child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    parent_id = child["parent_id"]
+
+    parent_id = str(child["parent_id"])
+    linked_child_user_id = str(child.get("user_id") or "")
+    if user_id not in {parent_id, linked_child_user_id}:
+        raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
+
     now = datetime.now(timezone.utc)
     
     # Update current location
@@ -224,6 +231,8 @@ async def get_child_location(child_id: str, request: Request):
     """Get child's current location with precise address via reverse geocoding."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
+    if not TEST_MODE and user.get("role") != "admin":
+        raise HTTPException(status_code=404, detail="Route nicht verfügbar")
     
     child = await verify_parent_child_access(parent_id, child_id)
     
@@ -515,6 +524,7 @@ async def simulate_location(child_id: str, request: Request, lat: float = 52.52,
     
     # Save to history
     await db.kids_location_history.insert_one({
+        "parent_id": parent_id,
         "child_id": child_id,
         "lat": lat, "lng": lng,
         "accuracy": 10.0,

@@ -9,6 +9,7 @@ on:
 jobs:
   visual-qa:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       QA_BASE_URL: ${{ secrets.QA_BASE_URL }}
       QA_USER_EMAIL: ${{ secrets.QA_USER_EMAIL }}
@@ -27,18 +28,44 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build frontend
-        run: npm --workspace frontend run build
+        working-directory: frontend
+        env:
+          CI: "false"
+          GENERATE_SOURCEMAP: "false"
+          NODE_OPTIONS: --max-old-space-size=4096
+          REACT_APP_BACKEND_URL: ${{ secrets.QA_API_BASE_URL || 'https://bidblitz.ae' }}
+          REACT_APP_TEST_MODE: "false"
+        run: npm run build
 
       - name: Prepare QA output directory
         run: rm -rf frontend/qa-output && mkdir -p frontend/qa-output/screenshots
 
+      - name: Start local production build for Visual QA
+        if: ${{ env.QA_BASE_URL == '' }}
+        run: |
+          python3 frontend/scripts/visual-qa/serve-build.py --directory frontend/build --port 3000 > /tmp/bidblitz-visual-qa-server.log 2>&1 &
+          echo $! > /tmp/bidblitz-visual-qa-server.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null && curl -fsS http://127.0.0.1:3000/auctions >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/bidblitz-visual-qa-server.log
+          exit 1
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Run home responsive tests
+        run: npx playwright test tests/visual/home.spec.ts
         working-directory: frontend
 
       - name: Run auction visual tests
@@ -74,18 +101,30 @@ jobs:
         run: node frontend/scripts/visual-qa/upload-report.mjs
 
       - name: Upload screenshots
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: bidblitz-visual-screenshots
           path: frontend/qa-output/screenshots
 
+      - name: Upload failure diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidblitz-visual-diagnostics
+          path: |
+            frontend/qa-output/raw-route-audit.json
+            frontend/playwright-report/.artifacts/**/error-context.md
+
       - name: Upload HTML report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: bidblitz-visual-qa-html
           path: visual-qa-report.html
 
       - name: Upload JSON report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: bidblitz-visual-qa-json
