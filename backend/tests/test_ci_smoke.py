@@ -403,3 +403,29 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert "'Idempotency-Key': idempotencyKey" in scooter_page
     assert "data.rentals || data.rides || []" in scooter_page
     assert "activeRental.free_minutes_remaining_at_start" in scooter_page
+
+
+def test_mobility_payments_refunds_and_payouts_are_exactly_once():
+    source = (BACKEND_DIR / "routes" / "mobility_payments.py").read_text(encoding="utf-8")
+    database_source = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
+
+    assert "async def _credit_platform_revenue_once" in source
+    assert '"processed_payment_ids": [payment_id]' in source
+    assert '"$addToSet": {"processed_payment_ids": payment_id}' in source
+    assert "wallet_idempotency_key" in source
+    assert '"status": "processing"' in source
+    assert '"status": "completed"' in source
+
+    assert "async def credit_earning" in source
+    assert 'marker_field = f"mobility_earning_markers.{digest}"' in source
+    assert '"$setOnInsert": earning_record' in source
+
+    assert "await credit_wallet(" in source
+    assert 'refund_key = f"mobility-refund:{payment_id}"' in source
+    assert "PAYOUT_RESERVED_STATUSES" in source
+    assert "mobility_payout_lock" in source
+    assert 'if payout.get("status") != "approved"' in source
+    assert "Bank-/Provider-Referenz erforderlich" in source
+
+    assert 'db.mobility_payments, "payment_id", unique=True, critical=True' in database_source
+    assert 'db.mobility_earnings, "earning_id", unique=True, critical=True' in database_source
