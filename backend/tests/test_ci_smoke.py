@@ -827,8 +827,22 @@ def test_pos_cart_and_external_card_paths_fail_closed():
     assert 'POS_EXTERNAL_CARD_CERTIFIED' in pos_source
     assert 'req.card_reference.startswith("CARD-")' in pos_source
 
+    # Offline cash sales must be retry-safe and tied to the captured shift.
+    assert 'client_sale_id: Optional[str]' in pos_source
+    assert 'captured_shift_id: Optional[str]' in pos_source
+    assert '"_id": f"offline:{req.client_sale_id}"' in pos_source
+    assert '"offline_synced_after_shift_close"' in pos_source
+    assert 'expected_total' in pos_source
+    assert 'merchant_settlement_target_missing' in pos_source
+    assert 'idempotency_key=f"pos-rollback:{payment[\'payment_id\']}"' in pos_source
+
     assert 'cardRef || `CARD-${Date.now()}`' not in checkout_source
     assert 'providerReference = cardRef.trim()' in checkout_source
+    assert 'offline_sale_id: offlineSaleId' in checkout_source
+    assert 'captured_shift_id: q.shift_id' in checkout_source
+    assert 'expected_total: q.total' in checkout_source
+    assert 'Gutscheine können offline nicht sicher eingelöst werden' in checkout_source
+    assert 'lineDiscount' in checkout_source
 
 
 def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
@@ -843,6 +857,9 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
     assert "if not transfer_result.idempotent_replay:" in merchant_source
     assert 'direction": "credit"' in merchant_source
     assert "total_sent = sum(abs(float" in merchant_source
+    assert '"metadata.recipient_id": 1' in merchant_source
+    assert 'meta.get("recipient_id") or meta.get("counterparty_user_id")' in merchant_source
+    assert "ObjectId(rid) for rid in recipient_ids if ObjectId.is_valid(rid)" in merchant_source
     assert 'idempotent_replay=getattr(result, "idempotent_replay", False)' in engine_source
     assert "paymentAttemptKeyRef" in mobile_source
     assert "idempotency_key: paymentAttemptKeyRef.current" in mobile_source
