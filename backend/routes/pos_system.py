@@ -230,19 +230,19 @@ class ShiftClose(BaseModel):
 class CartItemModel(BaseModel):
     product_id: Optional[str] = None
     barcode: Optional[str] = None
-    name: Optional[str] = None      # for free-form items
-    quantity: float = 1
-    price: Optional[float] = None   # required if no product_id
-    tax_rate: Optional[float] = None
-    discount_pct: float = 0          # per-line discount %
-    discount_amount: float = 0       # absolute discount
+    name: Optional[str] = Field(default=None, max_length=160)      # for free-form items
+    quantity: float = Field(default=1, gt=0, le=10000)
+    price: Optional[float] = Field(default=None, gt=0, le=1_000_000)   # required if no product_id
+    tax_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    discount_pct: float = Field(default=0, ge=0, le=100)          # per-line discount %
+    discount_amount: float = Field(default=0, ge=0, le=1_000_000) # absolute discount
 
 
 class CartCreate(BaseModel):
     register_id: str
-    items: List[CartItemModel]
-    discount_pct: float = 0           # whole-cart discount %
-    customer_note: Optional[str] = ""
+    items: List[CartItemModel] = Field(..., min_length=1, max_length=500)
+    discount_pct: float = Field(default=0, ge=0, le=100)           # whole-cart discount %
+    customer_note: Optional[str] = Field(default="", max_length=500)
 
 
 class PaymentCreate(BaseModel):
@@ -659,7 +659,11 @@ async def _resolve_cart_items(store_id: str, items: List[CartItemModel]) -> Dict
     for it in items:
         product = None
         if it.product_id:
-            product = await db.pos_products.find_one({"product_id": it.product_id, "active": True})
+            product = await db.pos_products.find_one({
+                "product_id": it.product_id,
+                "store_id": store_id,
+                "active": True,
+            })
         elif it.barcode:
             product = await db.pos_products.find_one(
                 {"store_id": store_id, "barcode": it.barcode, "active": True}
@@ -683,14 +687,16 @@ async def _resolve_cart_items(store_id: str, items: List[CartItemModel]) -> Dict
                 if stock < qty:
                     warnings.append(f"{name}: Bestand wird negativ ({stock - qty})")
         else:
-            if it.price is None or it.name is None:
+            if it.product_id:
+                raise HTTPException(status_code=404, detail="Produkt gehört nicht zu dieser Filiale oder ist nicht aktiv")
+            if it.price is None or not (it.name or "").strip():
                 raise HTTPException(status_code=400, detail="Manueller Artikel braucht Name & Preis")
-            name = it.name
+            name = it.name.strip()
             unit_price = float(it.price)
-            tax_rate = float(it.tax_rate or 0.19)
+            tax_rate = float(it.tax_rate if it.tax_rate is not None else 0.19)
             product_id = None
 
-        qty = float(it.quantity or 1)
+        qty = float(it.quantity)
         line_gross = round(unit_price * qty, 2)
         # Apply line discount
         disc_pct = float(it.discount_pct or 0)
@@ -928,6 +934,9 @@ async def create_payment(req: PaymentCreate, request: Request):
     actor = await get_actor_context(user, cart["store_id"], cart["register_id"])
 
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant nicht gefunden")
+    require_permission(actor, "payment.collect")
     if merchant.get("status") != "approved" and req.method in ("wallet_qr", "barcode"):
         raise HTTPException(status_code=403, detail="Merchant noch nicht freigeschaltet (BidBlitz Admin Approval erforderlich)")
 
@@ -979,7 +988,6 @@ async def create_payment(req: PaymentCreate, request: Request):
         )
 
     if req.method in ("wallet_qr", "barcode"):
-        require_permission(actor, "payment.collect")
         limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
         policy = evaluate_transaction_limits(actor, "payment", total, limits)
         await audit_pos_security_event("pos_payment_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": total, "store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"]}, severity="info")
