@@ -61,6 +61,72 @@ async def create_notification(user_id: str, title: str, message: str, type_: str
     })
 
 
+def _driver_location(driver: dict) -> dict:
+    return driver.get("current_location") or driver.get("location") or {}
+
+
+def _driver_vehicle_type(driver: dict) -> str:
+    vehicle = driver.get("vehicle") or driver.get("car") or {}
+    return vehicle.get("type") or vehicle.get("vehicle_type") or "standard"
+
+
+async def _pending_customer_rides(driver: dict, limit: int = 20) -> List[dict]:
+    """Return live customer bookings from the canonical taxi_rides collection."""
+    if not (driver.get("is_online") or driver.get("online")):
+        return []
+
+    loc = _driver_location(driver)
+    try:
+        lat = float(loc.get("lat"))
+        lng = float(loc.get("lng"))
+    except (TypeError, ValueError):
+        return []
+
+    dispatch_cutoff = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    rides = await db.taxi_rides.find({
+        "status": "requested",
+        "car_type": _driver_vehicle_type(driver),
+        "rejected_driver_ids": {"$ne": driver["driver_id"]},
+        "$or": [
+            {"scheduled_at": None},
+            {"scheduled_at": {"$lte": dispatch_cutoff}},
+            {"scheduled_at": {"$exists": False}, "options.scheduled_at": None},
+            {"options.scheduled_at": {"$lte": dispatch_cutoff}},
+        ],
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+    rows = []
+    for ride in rides:
+        pickup = ride.get("pickup") or {}
+        try:
+            p_lat = float(pickup.get("lat"))
+            p_lng = float(pickup.get("lng"))
+        except (TypeError, ValueError):
+            continue
+        distance_to_pickup = haversine(lat, lng, p_lat, p_lng)
+        if distance_to_pickup > 10:
+            continue
+        rows.append({
+            "request_id": ride["ride_id"],
+            "ride_id": ride["ride_id"],
+            "customer_id": ride.get("customer_id"),
+            "customer_name": ride.get("customer_name") or "Kunde",
+            "pickup": pickup,
+            "destination": ride.get("dropoff") or {},
+            "dropoff": ride.get("dropoff") or {},
+            "distance_km": ride.get("distance_km_estimate", 0),
+            "distance_to_pickup_km": round(distance_to_pickup, 2),
+            "estimated_fare": ride.get("fare_estimate", 0),
+            "eta_minutes": max(1, round(distance_to_pickup * 2.5)),
+            "status": "pending",
+            "created_at": ride.get("created_at"),
+            "scheduled_at": ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at"),
+        })
+
+    rows.sort(key=lambda item: item["distance_to_pickup_km"])
+    return rows[:limit]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODELS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -169,14 +235,8 @@ async def get_driver_status(request: Request):
     if active_ride:
         active_ride.pop("_id", None)
     
-    # Get pending ride requests
-    pending_requests = await db.taxi_ride_requests.find({
-        "driver_id": driver["driver_id"],
-        "status": "pending"
-    }).sort("created_at", -1).to_list(10)
-    
-    for p in pending_requests:
-        p.pop("_id", None)
+    # Get pending customer bookings from canonical taxi_rides.
+    pending_requests = await _pending_customer_rides(driver, limit=10)
     
     return {
         "driver_id": driver["driver_id"],
@@ -208,11 +268,13 @@ async def go_online(location: LocationUpdate, request: Request):
         {"driver_id": driver["driver_id"]},
         {"$set": {
             "is_online": True,
+            "online": True,
             "current_location": {
                 "lat": location.lat,
                 "lng": location.lng,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             },
+            "location": {"lat": location.lat, "lng": location.lng},
             "went_online_at": datetime.now(timezone.utc).isoformat()
         }}
     )
@@ -238,6 +300,7 @@ async def go_offline(request: Request):
         {"driver_id": driver["driver_id"]},
         {"$set": {
             "is_online": False,
+            "online": False,
             "went_offline_at": datetime.now(timezone.utc).isoformat()
         }}
     )
@@ -257,7 +320,8 @@ async def update_location(location: LocationUpdate, request: Request):
                 "lat": location.lat,
                 "lng": location.lng,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }
+            },
+            "location": {"lat": location.lat, "lng": location.lng}
         }}
     )
     
@@ -270,17 +334,9 @@ async def update_location(location: LocationUpdate, request: Request):
 
 @router.get("/ride-requests")
 async def get_ride_requests(request: Request):
-    """Get pending ride requests for this driver."""
+    """Get canonical pending taxi rides available to this driver."""
     driver, _ = await get_verified_driver(request)
-    
-    requests = await db.taxi_ride_requests.find({
-        "driver_id": driver["driver_id"],
-        "status": "pending"
-    }).sort("created_at", -1).to_list(20)
-    
-    for r in requests:
-        r.pop("_id", None)
-    
+    requests = await _pending_customer_rides(driver, limit=20)
     return {"requests": requests, "total": len(requests)}
 
 
