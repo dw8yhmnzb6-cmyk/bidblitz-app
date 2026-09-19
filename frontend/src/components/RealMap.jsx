@@ -134,12 +134,13 @@ export const TaxiMapbox = ({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !mapboxgl.accessToken) return undefined;
-    const center = pickup?.lng && pickup?.lat ? [pickup.lng, pickup.lat] : [13.405, 52.52];
+    const hasPickup = Number.isFinite(pickup?.lng) && Number.isFinite(pickup?.lat);
+    const center = hasPickup ? [pickup.lng, pickup.lat] : [15.0, 48.5];
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
       center,
-      zoom: pickup?.lng && pickup?.lat ? 16 : 13.5,
+      zoom: hasPickup ? 16 : 4.5,
       attributionControl: false,
       pitchWithRotate: false,
       dragRotate: false,
@@ -182,15 +183,15 @@ export const TaxiMapbox = ({
       addMarker(driver.lng, driver.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 16 }));
     });
 
-    if (pickup?.lat && pickup?.lng) {
+    if (Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng)) {
       addMarker(pickup.lng, pickup.lat, createMapboxPin({ background: '#2563EB', border: '#ffffff', size: 20, ring: true }));
     }
 
-    if (dropoff?.lat && dropoff?.lng) {
+    if (Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng)) {
       addMarker(dropoff.lng, dropoff.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 20, innerHtml: '<span style="font-size:11px">■</span>' }));
     }
 
-    if (driverLocation?.lat && driverLocation?.lng) {
+    if (Number.isFinite(driverLocation?.lat) && Number.isFinite(driverLocation?.lng)) {
       addMarker(driverLocation.lng, driverLocation.lat, createMapboxPin({ background: '#16A34A', border: '#ffffff', size: 18 }));
     }
 
