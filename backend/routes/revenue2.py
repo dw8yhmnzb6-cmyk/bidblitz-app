@@ -7,6 +7,8 @@ Revenue Features Batch 2:
 from datetime import datetime, timezone, timedelta
 import random
 import secrets
+import hashlib
+import os
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -15,6 +17,8 @@ import logging
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
+from core.payment_engine import debit_wallet, credit_wallet, transfer_between_wallets, TransactionType
 
 logger = logging.getLogger("bidblitz.revenue2")
 router = APIRouter(prefix="/api", tags=["revenue2"])
@@ -23,6 +27,101 @@ router = APIRouter(prefix="/api", tags=["revenue2"])
 def _oid(s):
     try: return ObjectId(s)
     except Exception: return s
+
+
+def _require_revenue2_idempotency_key(body_key: Optional[str], request: Request, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+async def _platform_pool_user_id() -> str:
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
+    pool = await db.users.find_one({"email": email}, {"_id": 1})
+    if not pool:
+        raise HTTPException(status_code=503, detail="BidBlitz Plattform-Wallet ist nicht konfiguriert")
+    return str(pool["_id"])
+
+
+async def _mutate_blz_once(
+    *,
+    user_id: str,
+    amount: int,
+    direction: str,
+    idempotency_key: str,
+    description: str,
+    category: str,
+) -> dict:
+    """Exactly-once mutation for internal BLZ points with deterministic audit row."""
+    amount = int(amount)
+    if amount <= 0 or direction not in {"debit", "credit"}:
+        raise HTTPException(status_code=400, detail="Ungültige BLZ-Buchung")
+
+    digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"revenue2_blz_markers.{digest}"
+    selector = {"_id": _oid(user_id), marker_field: {"$exists": False}}
+    delta = amount if direction == "credit" else -amount
+    if direction == "debit":
+        selector["balance_blz"] = {"$gte": amount}
+
+    marker = {
+        "direction": direction,
+        "amount": amount,
+        "category": category,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.users.update_one(
+        selector,
+        {
+            "$inc": {"balance_blz": delta},
+            "$set": {marker_field: marker},
+        },
+    )
+    replayed = False
+    if result.modified_count != 1:
+        existing = await db.users.find_one(
+            {"_id": _oid(user_id), marker_field: {"$exists": True}},
+            {"_id": 0, "balance_blz": 1},
+        )
+        if existing:
+            replayed = True
+        else:
+            fresh = await db.users.find_one({"_id": _oid(user_id)}, {"_id": 0, "balance_blz": 1})
+            if not fresh:
+                raise HTTPException(status_code=404, detail="Wallet-Nutzer nicht gefunden")
+            if direction == "debit":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Nicht genug BLZ (verfügbar: {int(float(fresh.get('balance_blz', 0) or 0))})",
+                )
+            raise HTTPException(status_code=409, detail="BLZ-Buchung konnte nicht atomar angewendet werden")
+
+    tx_id = f"BLZ-{digest.upper()}"
+    await db.transactions.update_one(
+        {"id": tx_id},
+        {"$setOnInsert": {
+            "id": tx_id,
+            "user_id": user_id,
+            "type": "payment" if direction == "debit" else "reward",
+            "amount": -amount if direction == "debit" else amount,
+            "currency": "BLZ",
+            "direction": direction,
+            "status": "completed",
+            "description": description,
+            "category": category,
+            "reference": tx_id,
+            "idempotency_key": idempotency_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    fresh = await db.users.find_one({"_id": _oid(user_id)}, {"_id": 0, "balance_blz": 1}) or {}
+    return {
+        "transaction_id": tx_id,
+        "new_balance_blz": int(float(fresh.get("balance_blz", 0) or 0)),
+        "replayed": replayed,
+    }
 
 
 # ═══════════════════════════════════════════════════════════
@@ -106,73 +205,155 @@ async def premium_status(request: Request):
 
 class PremiumPurchaseRequest(BaseModel):
     payment_method: str = Field(..., pattern="^(eur|blz)$")
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/premium/purchase")
 async def purchase_premium(req: PremiumPurchaseRequest, request: Request):
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
+    key = _require_revenue2_idempotency_key(req.idempotency_key, request, "premium")
+    purchase_id = "PREM-" + hashlib.sha256(f"{uid}:{key}".encode("utf-8")).hexdigest()[:20].upper()
     info = _launch_info()
-    price_eur = info["price_eur"]
-    price_blz = info["price_blz"]
-    # Check active sub
-    existing = await db.premium_subscriptions.find_one({"user_id": uid, "active": True})
-    if req.payment_method == "eur":
-        bal = float(user.get("balance", 0) or 0)
-        if bal < price_eur:
-            raise HTTPException(400, f"Nicht genug Guthaben (brauchst €{price_eur})")
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -price_eur}})
-        amount, currency = price_eur, "EUR"
-    else:
-        bal = float(user.get("balance_blz", 0) or 0)
-        if bal < price_blz:
-            raise HTTPException(400, f"Nicht genug BLZ (brauchst {price_blz})")
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": -price_blz}})
-        amount, currency = price_blz, "BLZ"
+    price_eur = float(info["price_eur"])
+    price_blz = int(info["price_blz"])
 
+    payload = {
+        "user_id": uid,
+        "payment_method": req.payment_method,
+        "price_eur": price_eur,
+        "price_blz": price_blz,
+    }
+    attempt = await db.premium_purchase_attempts.find_one({"_id": purchase_id}, {"_id": 0})
+    if attempt and attempt.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Daten verwendet")
+    if attempt and attempt.get("status") == "completed":
+        return {
+            "ok": True,
+            "expires_at": attempt["expires_at"],
+            "bonus_blz": PREMIUM_BENEFITS["monthly_blz_bonus"],
+            "launch_discount": info["launch_active"],
+            "replayed": True,
+        }
 
-    now = datetime.now(timezone.utc)
-    # Extend existing or create new
-    if existing:
-        current_expires = existing.get("expires_at")
-        base = now
-        if current_expires:
-            try:
-                exp_dt = datetime.fromisoformat(current_expires.replace("Z", "+00:00"))
-                if exp_dt.tzinfo is None:
-                    exp_dt = exp_dt.replace(tzinfo=timezone.utc)
-                if exp_dt > now:
-                    base = exp_dt
-            except Exception:
-                pass
-        new_expires = (base + timedelta(days=30)).isoformat()
+    # One active purchase processor per user. Same idempotent retry may resume it.
+    lock = await db.users.update_one(
+        {
+            "_id": _oid(uid),
+            "$or": [
+                {"premium_purchase_lock": {"$exists": False}},
+                {"premium_purchase_lock": None},
+                {"premium_purchase_lock": purchase_id},
+            ],
+        },
+        {"$set": {"premium_purchase_lock": purchase_id}},
+    )
+    if lock.matched_count != 1:
+        raise HTTPException(status_code=409, detail="Ein Premium-Kauf wird bereits verarbeitet")
+
+    try:
+        now = datetime.now(timezone.utc)
+        if not attempt:
+            existing = await db.premium_subscriptions.find_one({"user_id": uid, "active": True}, {"_id": 0})
+            base = now
+            current_expires = (existing or {}).get("expires_at")
+            if current_expires:
+                try:
+                    exp_dt = datetime.fromisoformat(str(current_expires).replace("Z", "+00:00"))
+                    if exp_dt.tzinfo is None:
+                        exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                    if exp_dt > now:
+                        base = exp_dt
+                except Exception:
+                    pass
+            expires_at = (base + timedelta(days=30)).isoformat()
+            await db.premium_purchase_attempts.update_one(
+                {"_id": purchase_id},
+                {"$setOnInsert": {
+                    "_id": purchase_id,
+                    "payload": payload,
+                    "expires_at": expires_at,
+                    "status": "pending",
+                    "created_at": now.isoformat(),
+                }},
+                upsert=True,
+            )
+            attempt = await db.premium_purchase_attempts.find_one({"_id": purchase_id}, {"_id": 0}) or {}
+        expires_at = str(attempt.get("expires_at"))
+
+        if req.payment_method == "eur":
+            payment = await debit_wallet(
+                user_id=uid,
+                amount=price_eur,
+                tx_type=TransactionType.SUBSCRIPTION,
+                description="BidBlitz Premium (30 Tage)",
+                reference=purchase_id,
+                metadata={"purchase_id": purchase_id, "category": "premium"},
+                idempotency_key=f"revenue2-premium:{purchase_id}:eur",
+            )
+            if not payment.success:
+                status_code = 409 if payment.status.value in {"pending", "reconciliation_required"} else 400
+                raise HTTPException(status_code=status_code, detail=payment.error or "Premium-Zahlung fehlgeschlagen")
+            payment_transaction_id = payment.transaction_id
+            payment_replayed = bool(payment.idempotent_replay)
+        else:
+            payment = await _mutate_blz_once(
+                user_id=uid,
+                amount=price_blz,
+                direction="debit",
+                idempotency_key=f"revenue2-premium:{purchase_id}:blz",
+                description="BidBlitz Premium (30 Tage)",
+                category="premium",
+            )
+            payment_transaction_id = payment["transaction_id"]
+            payment_replayed = bool(payment["replayed"])
+
+        bonus = await _mutate_blz_once(
+            user_id=uid,
+            amount=int(PREMIUM_BENEFITS["monthly_blz_bonus"]),
+            direction="credit",
+            idempotency_key=f"revenue2-premium:{purchase_id}:bonus",
+            description="BidBlitz Premium Monatsbonus",
+            category="premium_bonus",
+        )
+
         await db.premium_subscriptions.update_one(
             {"user_id": uid},
-            {"$set": {"expires_at": new_expires, "last_renewed_at": now.isoformat(), "active": True}},
+            {"$set": {
+                "active": True,
+                "expires_at": expires_at,
+                "last_renewed_at": now.isoformat(),
+                "last_purchase_id": purchase_id,
+                "payment_method": req.payment_method,
+                "payment_transaction_id": payment_transaction_id,
+                "auto_renew": True,
+            },
+             "$setOnInsert": {"started_at": now.isoformat()}},
+            upsert=True,
         )
-    else:
-        new_expires = (now + timedelta(days=30)).isoformat()
-        await db.premium_subscriptions.insert_one({
-            "user_id": uid,
-            "active": True,
-            "started_at": now.isoformat(),
-            "expires_at": new_expires,
-            "last_renewed_at": now.isoformat(),
-        })
-    # Credit monthly BLZ bonus
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": PREMIUM_BENEFITS["monthly_blz_bonus"]}})
+        await db.premium_purchase_attempts.update_one(
+            {"_id": purchase_id},
+            {"$set": {
+                "status": "completed",
+                "payment_transaction_id": payment_transaction_id,
+                "bonus_transaction_id": bonus["transaction_id"],
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
 
-    desc = "BidBlitz Premium (30 Tage)"
-    if info["launch_active"]:
-        desc = f"BidBlitz Premium (30 Tage · LAUNCH -{info['discount_pct']}%)"
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "payment", "amount": amount, "currency": currency,
-        "status": "completed", "description": desc,
-        "merchant_name": "BidBlitz", "category": "premium",
-        "reference": f"PREM-{now.strftime('%Y%m%d%H%M%S')}",
-        "date": now.isoformat(), "created_at": now.isoformat(),
-    })
-    return {"ok": True, "expires_at": new_expires, "bonus_blz": PREMIUM_BENEFITS["monthly_blz_bonus"], "launch_discount": info["launch_active"]}
+        return {
+            "ok": True,
+            "expires_at": expires_at,
+            "bonus_blz": PREMIUM_BENEFITS["monthly_blz_bonus"],
+            "launch_discount": info["launch_active"],
+            "payment_transaction_id": payment_transaction_id,
+            "replayed": payment_replayed or bool(bonus["replayed"]),
+        }
+    finally:
+        await db.users.update_one(
+            {"_id": _oid(uid), "premium_purchase_lock": purchase_id},
+            {"$unset": {"premium_purchase_lock": ""}},
+        )
 
 
 @router.post("/premium/cancel")
