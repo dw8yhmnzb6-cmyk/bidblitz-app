@@ -673,81 +673,51 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         }},
     )
 
-    # The balance increment and durable PaymentIntent marker live in the same user
-    # document. The marker must never be trimmed: removing an old intent would reopen
-    # a replay window for a previously succeeded payment after a partial finalization.
+    # Credit through the canonical wallet ledger. Stripe's PaymentIntent ID is
+    # the stable exactly-once identity across retries and network timeouts.
     credit_time = datetime.now(timezone.utc).isoformat()
-    wallet_result = await db.users.update_one(
-        {
-            "_id": user["_id"],
-            "quick_topup_credited_intents": {"$ne": intent.id},
-        },
-        {
-            "$inc": {"balance": amount},
-            "$addToSet": {"quick_topup_credited_intents": intent.id},
-            "$set": {"last_balance_update": credit_time},
-        },
-    )
-
-    updated_user = await db.users.find_one(
-        {"_id": user["_id"]},
-        {"balance": 1, "quick_topup_credited_intents": 1},
-    )
-    if not updated_user:
-        raise HTTPException(status_code=500, detail="Wallet credit failed")
-
-    credited_intents = updated_user.get("quick_topup_credited_intents", []) or []
-    if wallet_result.modified_count != 1 and intent.id not in credited_intents:
-        raise HTTPException(status_code=500, detail="Wallet credit failed")
-
-    credited_now = wallet_result.modified_count == 1
     ref_hash = hashlib.sha256(intent.id.encode("utf-8")).hexdigest().upper()
     ref = f"QUICK-{ref_hash[:12]}"
-    transaction_id = f"QTP-{ref_hash[:16]}"
-    txn = {
-        "_id": f"quick_topup:{intent.id}",
-        "id": transaction_id,
-        "idempotency_key": attempt_id,
-        "user_id": user_id,
-        "type": "topup",
-        "amount": amount,
-        "description": f"1-Click Top-Up (EUR {amount:.2f})",
-        "merchant_name": "Stripe",
-        "status": "completed",
-        "reference": ref,
-        "payment_method": "saved_card",
-        "category": "topup",
-        "stripe_pi_id": intent.id,
-        "created_at": credit_time,
-    }
-    try:
-        await db.transactions.insert_one(txn)
-    except Exception:
-        existing_txn = await db.transactions.find_one(
-            {"_id": txn["_id"], "stripe_pi_id": intent.id},
-            {"_id": 1},
+    wallet_credit = await credit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.STRIPE_TOPUP,
+        description=f"1-Click Top-Up (EUR {amount:.2f})",
+        reference=ref,
+        source="stripe_quick_topup",
+        metadata={
+            "stripe_pi_id": intent.id,
+            "payment_method": "saved_card",
+            "package_amount": amount,
+            "attempt_id": attempt_id,
+        },
+        idempotency_key=f"stripe-quick-topup:{intent.id}",
+    )
+    if not wallet_credit.success:
+        await db.quick_topup_attempts.update_one(
+            {"_id": attempt_id},
+            {"$set": {
+                "status": "wallet_credit_failed",
+                "wallet_error": wallet_credit.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
         )
-        if not existing_txn:
-            await db.quick_topup_attempts.update_one(
-                {"_id": attempt_id},
-                {"$set": {
-                    "status": "wallet_credited_audit_pending",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="Wallet credited; transaction finalization pending. Retry safely.",
-            )
+        raise HTTPException(
+            status_code=500,
+            detail="Stripe bezahlt, Wallet-Gutschrift muss sicher wiederholt werden.",
+        )
 
-    new_balance = round(float(updated_user.get("balance", 0) or 0), 2)
+    transaction_id = wallet_credit.transaction_id
+    new_balance = round(float(wallet_credit.new_balance or 0), 2)
     await db.quick_topup_attempts.update_one(
         {"_id": attempt_id},
         {"$set": {
             "status": "credited",
             "reference": ref,
             "transaction_id": transaction_id,
+            "wallet_reference": wallet_credit.reference,
             "new_balance": new_balance,
+            "idempotent_replay": wallet_credit.idempotent_replay,
             "credited_at": credit_time,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }},
