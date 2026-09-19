@@ -1293,3 +1293,26 @@ def test_virtual_cards_fail_closed_without_live_issuer_and_never_list_pan():
     assert "vcard-live-issuer-unavailable" in page
     assert "card_creation_available" in page
     assert "/api/virtual-cards" not in page
+
+
+def test_all_card_surfaces_are_waitlist_or_fail_closed_without_live_issuer():
+    card = (BACKEND_DIR / "routes" / "card.py").read_text(encoding="utf-8")
+    blitz = (BACKEND_DIR / "routes" / "blitzcard.py").read_text(encoding="utf-8")
+    card_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "CardPage.jsx").read_text(encoding="utf-8")
+    blitz_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzCardPage.jsx").read_text(encoding="utf-8")
+
+    assert "if req.tier == \"virtual_free\" and TEST_MODE" in card
+    assert '"status": "waitlist"' in card
+    assert '"issuer_live": False' in card
+    assert '"is_demo": bool(TEST_MODE)' in card
+    assert "production_downgraded_at" in card
+
+    assert '@router.get("/capabilities")' in blitz
+    assert '"orders_enabled": bool(TEST_MODE)' in blitz
+    assert "BlitzCard-Ausgabe ist deaktiviert" in blitz
+    assert "legacy_demo_card_detected" in blitz
+
+    assert "Kartenausgabe ist derzeit" in card_page
+    assert "Auf Warteliste eintragen" in card_page
+    assert "blitzcard-issuer-unavailable" in blitz_page
+    assert "Noch nicht verfügbar" in blitz_page
