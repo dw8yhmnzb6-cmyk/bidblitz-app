@@ -1124,3 +1124,24 @@ def test_appointment_bookings_are_atomic_retry_safe_and_demo_free_in_production(
     assert "bookingAttemptKeyRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
+
+
+def test_apartment_bookings_use_real_escrow_availability_and_retry_safety():
+    backend = (BACKEND_DIR / "routes" / "apartments.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ApartmentsPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def _claim_apartment_nights" in backend
+    assert "db.apartment_night_claims.insert_one" in backend
+    assert "Idempotency-Key erforderlich" in backend
+    assert '"kind": "apartment_escrow"' in backend
+    assert 'to_user_id=escrow_user_id' in backend
+    assert '"payment_status": "escrow_held"' in backend
+    assert '@router.post("/bookings/{booking_id}/cancel")' in backend
+    assert '@router.post("/hosting/bookings/{booking_id}/complete")' in backend
+    assert 'idempotency_key=f"apartment:refund:{booking_id}"' in backend
+    assert 'idempotency_key=f"apartment:settlement:{booking_id}"' in backend
+    assert 'user.get("kyc_status") != "approved"' in backend
+
+    assert "bookingAttemptKeyRef" in page
+    assert "'Idempotency-Key': idempotencyKey" in page
+    assert "idempotency_key: idempotencyKey" in page
