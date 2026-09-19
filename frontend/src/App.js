@@ -919,7 +919,11 @@ function AppContent() {
       case "/admin/smm":
         return user.role === "admin" ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/arcade":
-        return <ArcadePage onBack={() => handleNavigate("/")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <ArcadePage onBack={() => handleNavigate("/")} />
+            : <ProviderUnavailablePage title="Arcade & Casino" description="BLZ-Einsätze und spielbasierte BLZ-Gewinne sind in Production deaktiviert. Es werden keine wertbasierten Spieleinsätze angenommen." onBack={() => handleNavigate("/more")} />;
       case "/affiliate":
         return <AffiliatePage onBack={() => handleNavigate("/")} />;
       case "/lottery":
@@ -1164,7 +1168,11 @@ function AppContent() {
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
       case "/gaming":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Game Center" description="Wertbasierte Gaming-Coins, BLZ-Belohnungen und Einlösungen sind in Production deaktiviert. Es werden keine Wallet- oder BLZ-Werte durch Spiele erzeugt oder eingelöst." onBack={() => handleNavigate("/more")} />;
       case "/real-estate":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RealEstatePage onBack={() => handleNavigate("/more")} />;
       case "/freelancer":
