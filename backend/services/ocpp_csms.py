@@ -195,14 +195,19 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
 
     transaction_id = secrets.randbelow(2_000_000_000) + 1_000  # stay >0, fit int32
 
-    # Find a pending session matching id_tag + connector + cp (created during
-    # RemoteStart). Falls back to creating one if a station-initiated charge.
+    # Only a server-authorized BidBlitz session may begin charging.
     session = await db.ev_charging_sessions.find_one({
         "charge_point_id": charge_point_id,
         "connector_id": connector_id,
         "id_tag": id_tag,
         "status": {"$in": ["authorized", "starting"]},
     }, sort=[("created_at", -1)])
+    if not session:
+        log.warning(
+            "Rejected unmatched StartTransaction cp=%s connector=%s id_tag=%s",
+            charge_point_id, connector_id, id_tag[:8],
+        )
+        return {"transactionId": transaction_id, "idTagInfo": {"status": "Invalid"}}
 
     update = {
         "status": "active",
@@ -210,28 +215,26 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
         "meter_start_wh": meter_start,
         "started_at": timestamp,
     }
-
-    if session:
-        await db.ev_charging_sessions.update_one({"session_id": session["session_id"]}, {"$set": update})
-        session_id = session["session_id"]
-    else:
-        # Station-initiated (e.g. RFID swipe without remote-start).
-        session_id = f"evs_{secrets.token_hex(6)}"
-        await db.ev_charging_sessions.insert_one({
-            "session_id": session_id,
-            "charge_point_id": charge_point_id,
-            "connector_id": connector_id,
+    claim = await db.ev_charging_sessions.update_one(
+        {
+            "session_id": session["session_id"],
+            "status": {"$in": ["authorized", "starting"]},
             "id_tag": id_tag,
-            "user_id": None,
-            "tariff": None,
-            "reserved_amount": 0.0,
-            "currency": "EUR",
-            "kwh_charged": 0.0,
-            "current_cost": 0.0,
-            "created_at": _utcnow_iso(),
-            **update,
-        })
+        },
+        {"$set": update},
+    )
+    if claim.modified_count != 1:
+        return {"transactionId": transaction_id, "idTagInfo": {"status": "Invalid"}}
 
+    await db.ev_authorizations.update_one(
+        {"id_tag": id_tag, "active": True},
+        {"$set": {
+            "active": False,
+            "consumed_at": _utcnow_iso(),
+            "session_id": session["session_id"],
+            "charge_point_id": charge_point_id,
+        }},
+    )
     return {"transactionId": transaction_id, "idTagInfo": {"status": "Accepted"}}
 
 
