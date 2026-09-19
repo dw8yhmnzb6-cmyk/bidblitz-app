@@ -469,3 +469,35 @@ def test_kids_wallet_payments_parental_controls_and_sessions_are_safe():
     assert "daily_limit: Number(dailyLimit)" in wallet_modal
     assert "weekly_limit: Number(weeklyLimit)" in wallet_modal
     assert "daily_screen_limit" not in wallet_modal
+
+
+def test_kids_child_identity_gps_quiz_and_rewards_are_server_enforced():
+    kids_source = (BACKEND_DIR / "routes" / "kids.py").read_text(encoding="utf-8")
+    app_source = (BACKEND_DIR / "routes" / "kids_app.py").read_text(encoding="utf-8")
+    gps_source = (BACKEND_DIR / "routes" / "kids_gps.py").read_text(encoding="utf-8")
+    legacy_source = (BACKEND_DIR / "routes" / "kids_system.py").read_text(encoding="utf-8")
+    app_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "KidsAppPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def get_child_from_token" in kids_source
+    assert "_process_child_wallet_payment" in kids_source
+    assert "payment_lock" in kids_source
+
+    assert "linked_child_user_id" in gps_source
+    assert "Kein Zugriff auf dieses Kind" in gps_source
+
+    assert "async def _require_child_access" in app_source
+    assert "kids_quiz_sessions" in app_source
+    assert "answer_map" in app_source
+    assert "reward_currency" in app_source
+    assert "BLZ_POINTS" in app_source
+
+    assert "X-Child-ID" not in legacy_source
+    assert "bidblitz-kids-secret-2026" not in legacy_source
+    assert "canonical_child_login" in legacy_source
+    assert "get_child_from_token" in legacy_source
+    assert 'idempotency_key=f"kids-task-reward:{task_id}"' in legacy_source
+
+    assert "quiz_id: quizId" in app_page
+    assert "answers: nextAnswers" in app_page
+    assert ".answer ===" not in app_page
+    assert "BLZ-Punkte verdient" in app_page
