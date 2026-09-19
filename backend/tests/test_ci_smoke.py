@@ -1610,3 +1610,21 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "BlitzMine Preview" in mining_page
     assert "blitzmine-provider-unavailable" in blitz_page
     assert "valueActionsEnabled" in blitz_page
+
+
+def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete():
+    profile = (BACKEND_DIR / "routes" / "profile.py").read_text(encoding="utf-8")
+    sessions = (BACKEND_DIR / "routes" / "sessions.py").read_text(encoding="utf-8")
+
+    assert 'privacy_doc_id = f"account-deletion:{user_id}"' in profile
+    assert '"$setOnInsert": privacy_request' in profile
+    assert '"account_closure_status": {"$ne": "requested"}' in profile
+    assert '"$inc": {"auth_version": 1}' in profile
+    assert "await revoke_all_sessions(user_id)" in profile
+    assert "login_disabled" in profile
+    assert "retention_review_required" in profile
+    assert "replayed = closure_update.modified_count == 0" in profile
+    assert "delete_one({\"_id\": user[\"_id\"]})" not in profile
+
+    assert '"$inc": {"auth_version": 1}' in sessions
+    assert "await revoke_all_sessions(user_id)" in sessions
