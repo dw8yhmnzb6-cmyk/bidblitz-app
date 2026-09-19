@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/bills", tags=["bills"])
 
@@ -160,8 +161,13 @@ async def get_category_details(category_id: str):
 
 @router.post("/pay")
 async def pay_bill(req: BillPaymentRequest, request: Request):
-    """Pay a bill from wallet."""
+    """Utility-payment simulation is test-only until a verified bill provider is integrated."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Versorgerzahlungen sind noch nicht mit einem verifizierten Provider verbunden. Es wird kein Wallet-Geld abgebucht.",
+        )
     user_id = str(user["_id"])
     
     # Validate category and provider
@@ -361,8 +367,13 @@ async def get_esim_packages():
 
 @router.post("/esim/purchase")
 async def purchase_esim(request: Request, package_id: str, country_code: str = "DE"):
-    """Purchase an eSIM data package."""
+    """Mock eSIM issuance is test-only until a real eSIM provider is integrated."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="eSIM-Kauf ist noch nicht mit einem echten Provider verbunden. Es wird kein Wallet-Geld abgebucht.",
+        )
     user_id = str(user["_id"])
     
     # Get package (mock data)
