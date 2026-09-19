@@ -256,3 +256,31 @@ def test_quick_topup_compliance_uses_authenticated_user_id():
     assert 'user_id = str(user["_id"])' in quick_topup
     assert 'run_compliance_check(user_id, "topup", amount)' in quick_topup
     assert 'run_compliance_check(user, "topup", amount)' not in quick_topup
+
+
+def test_taxi_customer_driver_wallet_flow_stays_unified():
+    taxi_source = (BACKEND_DIR / "routes" / "taxi.py").read_text(encoding="utf-8")
+    driver_source = (BACKEND_DIR / "routes" / "driver_dashboard.py").read_text(encoding="utf-8")
+    taxi_api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "taxiApi.js").read_text(encoding="utf-8")
+    taxi_page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "TaxiPage.jsx").read_text(encoding="utf-8")
+    driver_page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "DriverDashboardPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def _pending_customer_rides" in driver_source
+    assert "requests = await _pending_customer_rides(driver" in driver_source
+    assert '"ride_id": request_id' in driver_source
+    assert '"driver_id": None' in driver_source
+    assert "from routes.taxi import driver_arriving, driver_start_ride, driver_end_ride, cancel_ride" in driver_source
+    assert "result = await driver_end_ride(action, request)" in driver_source
+
+    assert '"payment_status": "reserved"' in taxi_source
+    assert '"payment_reserved_amount": round(fare_total, 2)' in taxi_source
+    assert 'payment_source = "reserved_at_booking"' in taxi_source
+    assert 'pricing_source = "locked_booking_quote"' in taxi_source
+    assert "fare_estimate = apply_multi_tariff" in taxi_source
+    assert "claim.modified_count != 1" in taxi_source
+
+    assert "/api/taxi/rides/${rideId}" in taxi_api_source
+    assert "/api/taxi/ride/${rideId}" not in taxi_api_source
+    assert "Math.max(mapDrivers.length, 1)" not in taxi_page_source
+    assert "UberX" not in taxi_page_source
+    assert "() => setLocation({ lat: 52.52, lng: 13.405 })" not in driver_page_source
