@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import mapboxgl from 'mapbox-gl';
@@ -358,6 +358,17 @@ const FitBounds = ({ bounds }) => {
   return null;
 };
 
+const MapClickHandler = ({ onMapClick }) => {
+  useMapEvents({
+    click: (event) => {
+      if (onMapClick) {
+        onMapClick({ lat: event.latlng.lat, lng: event.latlng.lng });
+      }
+    },
+  });
+  return null;
+};
+
 // Main Map Component
 export const RealMap = ({
   center = [52.52, 13.405], // Berlin default
@@ -400,6 +411,8 @@ export const RealMap = ({
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
+
+        {onMapClick ? <MapClickHandler onMapClick={onMapClick} /> : null}
         
         <MapUpdater center={currentLocation || center} zoom={zoom} />
         
