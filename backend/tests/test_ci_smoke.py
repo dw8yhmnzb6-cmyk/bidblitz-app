@@ -1465,3 +1465,24 @@ def test_savings_goals_are_planning_only_and_never_move_wallet_money():
     assert "goalAttemptKeyRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "savings-planning-only" in page
+
+
+def test_crypto_market_is_read_only_until_custody_and_exchange_are_live():
+    backend = (BACKEND_DIR / "routes" / "crypto.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "CryptoWalletPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/capabilities")' in backend
+    assert '"custody_connected": False' in backend
+    assert '"exchange_connected": False' in backend
+    assert '"trading_available": bool(TEST_MODE)' in backend
+    assert "Live-Krypto-Marktdaten sind momentan nicht verfügbar" in backend
+    assert "Krypto-Handel ist deaktiviert" in backend
+    assert "legacy_demo_holdings" in backend
+    assert "legacy_demo_transactions" in backend
+    assert '"routes.crypto", "router"' in registry
+
+    assert "/api/crypto/capabilities" in page
+    assert "crypto-provider-unavailable" in page
+    assert "capabilities.trading_available" in page
+    assert "Live-Kurse · Handel noch nicht aktiviert" in page
