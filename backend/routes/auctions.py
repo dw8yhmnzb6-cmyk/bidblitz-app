@@ -909,34 +909,37 @@ async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
 # ── Buy bid credits directly with saved Stripe card ──
 class BuyCreditsDirectRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits-direct")
 async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Request):
-    """Buy bid credits directly charging saved Stripe card (1-click)."""
+    """Buy bid credits with a saved Stripe card, idempotently."""
     import stripe as stripe_mod
     from core.config import STRIPE_API_KEY
     stripe_mod.api_key = STRIPE_API_KEY
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-card")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
 
     pkg = CREDIT_PACKAGES[req.package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
+    price = float(pkg["price"])
+    credits = int(pkg["credits"])
+    had_previous_purchase = await _has_previous_credit_purchase(user_id)
 
     cust_id = user.get("stripe_customer_id")
     pm_id = user.get("stripe_pm_id")
     if not cust_id or not pm_id:
         raise HTTPException(status_code=400, detail="No saved payment method")
 
-    # Charge saved card off-session
+    stripe_idempotency = f"bidcredits-{hashlib.sha256(idempotency_key.encode('utf-8')).hexdigest()[:32]}"
     try:
         intent = stripe_mod.PaymentIntent.create(
-            amount=int(price * 100),
+            amount=int(round(price * 100)),
             currency="eur",
             customer=cust_id,
             payment_method=pm_id,
@@ -947,10 +950,11 @@ async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Req
                 "type": "bid_credits_direct",
                 "package_id": req.package_id,
                 "credits": str(credits),
+                "client_idempotency_hash": hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16],
             },
+            idempotency_key=stripe_idempotency,
         )
     except stripe_mod.error.CardError:
-        # Card declined — remove saved method
         await db.users.update_one(
             {"_id": user["_id"]},
             {"$unset": {
@@ -965,44 +969,55 @@ async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Req
     if intent.status != "succeeded":
         raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
 
-    # Add credits
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": credits}},
+    _, grant_ok = await _grant_bid_credits_once(
+        user["_id"],
+        credits=credits,
+        grant_key=idempotency_key,
+        source="saved_card_purchase",
+        metadata={"package_id": req.package_id, "stripe_pi_id": intent.id},
     )
+    if not grant_ok:
+        raise HTTPException(status_code=500, detail="Kartenzahlung erfolgreich, Credit-Gutschrift muss manuell geprüft werden.")
 
-    # Create transaction
-    ref = f"BIDS-D-{secrets.token_hex(4).upper()}"
+    bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
+    ref_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16].upper()
+    ref = f"BIDS-D-{ref_hash}"
     txn = {
-        "id": secrets.token_hex(8),
+        "id": f"AUC-CARD-{hashlib.sha256(intent.id.encode('utf-8')).hexdigest()[:20]}",
         "user_id": user_id,
         "type": "purchase",
         "amount": -price,
-        "description": f"Bid Credits ({credits}x) — Card",
+        "description": f"Bid Credits ({credits}x) — Card" + (f" + {bonus} Bonus" if bonus else ""),
         "status": "completed",
         "reference": ref,
         "payment_method": "saved_card",
         "category": "auction",
         "stripe_pi_id": intent.id,
+        "idempotency_key": idempotency_key,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
+    await db.transactions.update_one(
+        {"user_id": user_id, "stripe_pi_id": intent.id, "type": "purchase"},
+        {"$setOnInsert": txn},
+        upsert=True,
+    )
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
-
     return {
         "credits_added": credits,
+        "bonus_credits": bonus,
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
         "method": "card",
         "reference": ref,
+        "stripe_pi_id": intent.id,
     }
 
 
 # ── Buy bid credits via Stripe Checkout (new card) ──
 class BuyCreditsStripeRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits-stripe")
@@ -1013,6 +1028,7 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-stripe")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
@@ -1021,17 +1037,33 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
     price = float(pkg["price"])
     credits_amount = pkg["credits"]
 
-    # Store pending purchase info
-    pending_id = secrets.token_hex(8)
-    await db.pending_credit_purchases.insert_one({
-        "pending_id": pending_id,
-        "user_id": user_id,
-        "package_id": req.package_id,
-        "credits": credits_amount,
-        "price": price,
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    # One local pending purchase per client attempt.
+    pending_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    pending_id = f"ACP-{pending_hash}"
+    existing_pending = await db.pending_credit_purchases.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing_pending and existing_pending.get("session_id") and existing_pending.get("checkout_url"):
+        return {
+            "checkout_url": existing_pending["checkout_url"],
+            "session_id": existing_pending["session_id"],
+            "pending_id": pending_id,
+        }
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$setOnInsert": {
+            "pending_id": pending_id,
+            "user_id": user_id,
+            "package_id": req.package_id,
+            "credits": credits_amount,
+            "price": price,
+            "status": "pending",
+            "idempotency_key": idempotency_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
 
     # Build success/cancel URLs from frontend origin (security: never trust client amount)
     origin = request.headers.get("origin") or request.headers.get("referer") or "https://bidblitz.ae"
@@ -1064,7 +1096,9 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"Stripe-Fehler: {str(e)[:200]}")
 
     # Persist payment_transactions row (mandatory per playbook)
-    await db.payment_transactions.insert_one({
+    await db.payment_transactions.update_one(
+        {"session_id": session.session_id, "user_id": user_id},
+        {"$setOnInsert": {
         "session_id": session.session_id,
         "pending_id": pending_id,
         "user_id": user_id,
@@ -1072,63 +1106,56 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         "currency": "eur",
         "metadata": {
             "type": "bid_credits",
+            "pending_id": pending_id,
             "package_id": req.package_id,
             "credits": str(credits_amount),
+            "idempotency_key": idempotency_key,
         },
         "payment_status": "initiated",
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+        }},
+        upsert=True,
+    )
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$set": {"session_id": session.session_id, "checkout_url": session.url}},
+    )
 
     return {"checkout_url": session.url, "session_id": session.session_id, "pending_id": pending_id}
 
 
 @router.post("/buy-credits-confirm/{pending_id}")
 async def confirm_credit_purchase(pending_id: str, request: Request):
-    """Confirm a pending Stripe credit purchase after successful checkout."""
+    """Compatibility endpoint: never grants credits without a verified Stripe settlement."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    pending = await db.pending_credit_purchases.find_one({"pending_id": pending_id, "user_id": user_id})
+    pending = await db.pending_credit_purchases.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
+    )
     if not pending:
         raise HTTPException(status_code=404, detail="Purchase not found")
-    if pending["status"] == "completed":
-        # Already processed
-        updated_user = await db.users.find_one({"_id": user["_id"]})
-        return {"credits_added": pending["credits"], "total_credits": updated_user.get("bid_credits", 0)}
 
-    credits_amount = pending["credits"]
-    price = pending["price"]
-
-    # Mark as completed
-    await db.pending_credit_purchases.update_one(
-        {"pending_id": pending_id},
-        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    txn = await db.payment_transactions.find_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"_id": 0},
     )
+    if not txn or txn.get("payment_status") != "credited":
+        raise HTTPException(
+            status_code=409,
+            detail="Stripe-Zahlung ist noch nicht verifiziert. Bitte Zahlungsstatus erneut prüfen.",
+        )
 
-    # Add credits
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_amount}})
-
-    # Create transaction
-    ref = f"BIDS-S-{secrets.token_hex(4).upper()}"
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "amount": -price,
-        "description": f"Bid Credits ({credits_amount}x) — Stripe",
-        "status": "completed",
-        "reference": ref,
-        "payment_method": "stripe_checkout",
-        "category": "auction",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.transactions.insert_one(txn)
-
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id, "user_id": user_id},
+        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
     updated_user = await db.users.find_one({"_id": user["_id"]})
     return {
-        "credits_added": credits_amount,
+        "credits_added": int(pending.get("credits") or 0),
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
+        "verified": True,
     }
 
 
@@ -1152,7 +1179,7 @@ async def get_credits_purchase_status(session_id: str, request: Request):
         return {
             "status": "completed",
             "payment_status": "paid",
-            "credits_added": int(txn.get("metadata", {}).get("credits", 0)),
+            "credits_added": int(txn.get("metadata", {}).get("credits", 0)) + int(txn.get("bonus_credits") or 0),
             "amount": txn.get("amount", 0),
         }
 
@@ -1163,30 +1190,75 @@ async def get_credits_purchase_status(session_id: str, request: Request):
         stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
         status = await stripe_checkout.get_checkout_status(session_id)
 
-        # Manually credit if Stripe confirms paid + not yet credited (idempotent)
+        # Credit only after Stripe confirms paid. Credit grant is exactly-once and
+        # the payment row is marked credited only after that grant is confirmed.
         if status.payment_status == "paid":
-            updated = await db.payment_transactions.find_one_and_update(
-                {"session_id": session_id, "payment_status": {"$ne": "credited"}},
+            fresh_txn = await db.payment_transactions.find_one(
+                {"session_id": session_id, "user_id": user_id},
+                {"_id": 0},
+            ) or txn
+            m = fresh_txn.get("metadata", {}) or {}
+            credits_to_add = int(m.get("credits", 0))
+            grant_key = f"stripe-session:{session_id}"
+            _, grant_ok = await _grant_bid_credits_once(
+                user["_id"],
+                credits=credits_to_add,
+                grant_key=grant_key,
+                source="stripe_checkout_purchase",
+                metadata={"session_id": session_id, "package_id": m.get("package_id")},
+            )
+            if not grant_ok:
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id, "user_id": user_id},
+                    {"$set": {"payment_status": "reconciliation_required", "reconciliation_required_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(status_code=500, detail="Stripe bezahlt, Credit-Gutschrift muss manuell geprüft werden.")
+
+            had_previous_purchase = await _has_previous_credit_purchase(user_id)
+            bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
+            now_completed = datetime.now(timezone.utc).isoformat()
+            await db.payment_transactions.update_one(
+                {"session_id": session_id, "user_id": user_id},
                 {"$set": {
                     "payment_status": "credited",
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": now_completed,
+                    "bonus_credits": bonus,
                 }},
             )
-            if updated:
-                m = updated.get("metadata", {}) or {}
-                credits_to_add = int(m.get("credits", 0))
-                if credits_to_add:
-                    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_to_add}})
-                    if m.get("pending_id"):
-                        await db.pending_credit_purchases.update_one(
-                            {"pending_id": m["pending_id"]},
-                            {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
-                        )
+            pending_id = fresh_txn.get("pending_id") or m.get("pending_id")
+            if pending_id:
+                await db.pending_credit_purchases.update_one(
+                    {"pending_id": pending_id, "user_id": user_id},
+                    {"$set": {"status": "completed", "completed_at": now_completed}},
+                )
+
+            purchase_ref = f"BIDS-S-{hashlib.sha256(session_id.encode('utf-8')).hexdigest()[:16].upper()}"
+            purchase_doc = {
+                "id": f"AUC-STRIPE-{hashlib.sha256(session_id.encode('utf-8')).hexdigest()[:20]}",
+                "user_id": user_id,
+                "type": "purchase",
+                "amount": -float(fresh_txn.get("amount") or 0),
+                "description": f"Bid Credits ({credits_to_add}x) — Stripe" + (f" + {bonus} Bonus" if bonus else ""),
+                "status": "completed",
+                "reference": purchase_ref,
+                "payment_method": "stripe_checkout",
+                "category": "auction",
+                "stripe_session_id": session_id,
+                "created_at": now_completed,
+            }
+            await db.transactions.update_one(
+                {"user_id": user_id, "stripe_session_id": session_id, "type": "purchase"},
+                {"$setOnInsert": purchase_doc},
+                upsert=True,
+            )
 
         return {
             "status": "completed" if status.payment_status == "paid" else "pending",
             "payment_status": status.payment_status,
-            "credits_added": int(txn.get("metadata", {}).get("credits", 0)) if status.payment_status == "paid" else 0,
+            "credits_added": (
+                int(txn.get("metadata", {}).get("credits", 0))
+                + int((await db.payment_transactions.find_one({"session_id": session_id, "user_id": user_id}, {"bonus_credits": 1, "_id": 0}) or {}).get("bonus_credits") or 0)
+            ) if status.payment_status == "paid" else 0,
             "amount": txn.get("amount", 0),
         }
     except Exception as e:
