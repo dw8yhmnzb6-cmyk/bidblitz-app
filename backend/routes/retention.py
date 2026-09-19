@@ -14,9 +14,18 @@ import secrets
 import string
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["retention"])
+
+
+def _require_retention_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Dieser wertbewegende Retention-Pfad ist in Production deaktiviert.",
+        )
 
 
 def _oid(s):
@@ -123,6 +132,7 @@ async def streak_status(request: Request):
 @router.post("/streak/claim/{days}")
 async def claim_streak_milestone(days: int, request: Request):
     user = await get_current_user(request)
+    _require_retention_value_mode()
     uid = str(user.get("_id") or user.get("id"))
     if days not in STREAK_MILESTONES:
         raise HTTPException(400, "Unbekanntes Streak-Ziel")
@@ -289,8 +299,9 @@ async def exchange_rates(request: Request):
     ]):
         used_today = float(r.get("total", 0))
     return {
-        "buy_rate": RATE_BLZ_PER_EUR_BUY,   # 1€ gives you X BLZ
-        "sell_rate": RATE_BLZ_PER_EUR_SELL, # X BLZ gives you 1€
+        "value_actions_enabled": bool(TEST_MODE),
+        "buy_rate": RATE_BLZ_PER_EUR_BUY if TEST_MODE else None,
+        "sell_rate": RATE_BLZ_PER_EUR_SELL if TEST_MODE else None,
         "min_eur": MIN_EXCHANGE_EUR,
         "max_per_day": MAX_EXCHANGE_EUR_DAY,
         "used_today": round(used_today, 2),
@@ -308,6 +319,7 @@ class ExchangeRequest(BaseModel):
 @router.post("/exchange/execute")
 async def execute_exchange(req: ExchangeRequest, request: Request):
     user = await get_current_user(request)
+    _require_retention_value_mode()
     uid = str(user.get("_id") or user.get("id"))
     eur = float(req.amount)
     if eur < MIN_EXCHANGE_EUR:
@@ -486,6 +498,7 @@ class GiftCreateRequest(BaseModel):
 @router.post("/gift/create")
 async def create_gift_code(req: GiftCreateRequest, request: Request):
     user = await get_current_user(request)
+    _require_retention_value_mode()
     uid = str(user.get("_id") or user.get("id"))
     bal = float(user.get("balance", 0) or 0)
     if bal < req.amount_eur:
@@ -532,6 +545,7 @@ class GiftRedeemRequest(BaseModel):
 @router.post("/gift/redeem")
 async def redeem_gift_code(req: GiftRedeemRequest, request: Request):
     user = await get_current_user(request)
+    _require_retention_value_mode()
     uid = str(user.get("_id") or user.get("id"))
     code = req.code.strip().upper()
     gift = await db.gift_codes.find_one({"code": code})
