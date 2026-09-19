@@ -1511,3 +1511,56 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert 'redemption_id = f"RWD-{marker_hash.upper()}"' in store
     assert '"$setOnInsert": history' in store
     assert '"$inc": {"balance": amount}' not in store
+
+
+def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
+    backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ResellingPage.jsx").read_text(encoding="utf-8")
+
+    assert "Idempotency-Key erforderlich" in backend
+    assert '"status": "processing"' in backend
+    assert 'purchase_id = f"RSL-{marker.upper()}"' in backend
+    assert 'idempotency_key=f"resell:escrow:{purchase_id}"' in backend
+    assert 'idempotency_key=f"resell:seller:{purchase_id}"' in backend
+    assert '"type": "resell"' in backend
+    assert 'user.get("kyc_status") != "approved"' in backend
+    assert '"routes.reselling", "router"' in registry
+
+    assert "purchaseAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
+
+
+def test_premium_page_uses_canonical_subscription_backend():
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "PremiumPage.jsx").read_text(encoding="utf-8")
+    subscription = (BACKEND_DIR / "routes" / "subscription_system.py").read_text(encoding="utf-8")
+
+    assert "/api/subscription/plans" in page
+    assert "/api/subscription/my" in page
+    assert "/api/subscription/buy" in page
+    assert "/api/subscription/cancel" in page
+    assert "/api/subscription/toggle-auto-renew" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert 'plan: "premium"' in page
+    assert "price_monthly" in page
+    assert "price_yearly" in page
+    assert "/api/premium/" not in page
+
+    assert "idempotency_key=idempotency_key" in subscription
+    assert "subscription_purchase_lock" in subscription
+
+
+def test_unverified_cashback_insurance_roundup_and_lottery_are_not_live_flows():
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+
+    for route in ["/cashback", "/insurance", "/roundup", "/lottery"]:
+        assert f'case "{route}"' in app
+    assert 'title="Cashback"' in app
+    assert 'title="Versicherungen"' in app
+    assert 'title="Round-up Savings"' in app
+    assert 'title="Lotterie"' in app
+
+    for module in ["routes.cashback", "routes.insurance", "routes.roundup"]:
+        assert f'("{module}", "router")' not in registry
