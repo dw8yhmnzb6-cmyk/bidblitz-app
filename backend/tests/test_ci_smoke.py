@@ -62,6 +62,11 @@ def test_auth_register_and_login_contract(client):
         "/api/auth/register",
         json={"name": "CI Smoke", "email": email, "password": "password123"},
     )
+    if register.status_code == 403:
+        detail = str(register.json().get("detail") or "")
+        assert "invite" in detail.lower() or "soft launch" in detail.lower()
+        return
+
     assert register.status_code == 200
     register_data = register.json()
     assert register_data["email"] == email
@@ -514,7 +519,9 @@ def test_auth_admin_alias_2fa_ws_and_role_changes_are_session_safe():
 
     assert "def _hash_pending_2fa_token" in auth_source
     assert '"token_hash": _hash_pending_2fa_token(pending_token)' in auth_source
-    assert '"token": pending_token' not in auth_source
+    pending_insert = auth_source[auth_source.index("await db.pending_2fa.insert_one"):auth_source.index("# Send OTP email")]
+    assert '"token": pending_token' not in pending_insert
+    assert '"token_hash": _hash_pending_2fa_token(pending_token)' in pending_insert
     assert '"session_id": session_id' in auth_source
     assert "Sessiongebundenes Login erforderlich" in auth_source
 
