@@ -273,10 +273,44 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         elif str(claim_doc.get("session_id") or "") != session_id:
             raise HTTPException(status_code=409, detail="Stecker wurde gerade von einem anderen Nutzer reserviert")
 
-    # Wallet balance check (we will deduct after session ends; here only verify)
-    balance = float(user.get("balance") or 0)
-    if balance < req.max_amount:
-        raise HTTPException(402, f"Wallet-Guthaben unzureichend (€{balance:.2f} < €{req.max_amount:.2f})")
+    # Real wallet pre-authorization: move the cap into the configured BidBlitz
+    # platform wallet so other purchases cannot spend the same funds.
+    escrow_user_id = await _platform_pool_user_id()
+    if not escrow_user_id:
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
+        raise HTTPException(503, "EV Preauthorization-Wallet ist nicht konfiguriert")
+    if escrow_user_id == user_id:
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
+        raise HTTPException(409, "Plattform-Wallet darf nicht identisch mit Kunden-Wallet sein")
+
+    preauth = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=escrow_user_id,
+        amount=round(float(req.max_amount), 2),
+        tx_type=TransactionType.EV_CHARGING,
+        description=f"EV Preauthorization {req.charge_point_id}",
+        reference=f"EV-HOLD-{session_id[-12:].upper()}",
+        metadata={
+            "session_id": session_id,
+            "charge_point_id": req.charge_point_id,
+            "connector_id": req.connector_id,
+            "kind": "ev_preauthorization",
+        },
+        idempotency_key=f"ev:preauth:{session_id}",
+    )
+    if not preauth.success:
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
+        status_code = 409 if preauth.status.value in {"pending", "reconciliation_required"} else 402
+        raise HTTPException(status_code, preauth.error or "EV Preauthorization fehlgeschlagen")
 
     # Create authorization (id_tag = user-specific OCPP token)
     id_tag = f"BB{secrets.token_hex(8).upper()}"
@@ -307,7 +341,10 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             "currency": tariff.get("currency", "EUR"),
             "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
         },
-        "reserved_amount": req.max_amount,
+        "reserved_amount": round(float(req.max_amount), 2),
+        "preauth_status": "held",
+        "preauth_transaction_id": preauth.transaction_id,
+        "preauth_escrow_user_id": escrow_user_id,
         "currency": "EUR",
         "kwh_charged": 0.0,
         "current_cost": 0.0,
@@ -334,6 +371,20 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             {"session_id": session_id},
             {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
         )
+        refund = await _refund_ev_preauthorization(
+            session_id=session_id,
+            user_id=user_id,
+            escrow_user_id=escrow_user_id,
+            amount=req.max_amount,
+            reason="remote_start_failed",
+        )
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "preauth_status": "refunded" if refund and refund.success else "reconciliation_required",
+                "preauth_refund_transaction_id": refund.transaction_id if refund and refund.success else None,
+            }},
+        )
         raise HTTPException(502, f"Hardware-Kommunikation fehlgeschlagen: {exc}")
 
     accepted = (result or {}).get("status") == "Accepted"
@@ -345,6 +396,20 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         await db.ev_connector_claims.update_one(
             {"session_id": session_id},
             {"$set": {"status": "failed", "released_at": _utcnow_iso()}},
+        )
+        refund = await _refund_ev_preauthorization(
+            session_id=session_id,
+            user_id=user_id,
+            escrow_user_id=escrow_user_id,
+            amount=req.max_amount,
+            reason="remote_start_rejected",
+        )
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "preauth_status": "refunded" if refund and refund.success else "reconciliation_required",
+                "preauth_refund_transaction_id": refund.transaction_id if refund and refund.success else None,
+            }},
         )
         raise HTTPException(409, "Ladestation hat den Start abgelehnt")
 
@@ -418,6 +483,29 @@ async def my_history(request: Request, limit: int = 50) -> Dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 # Final settlement — called by ocpp_csms after StopTransaction
 # ══════════════════════════════════════════════════════════════════════════════
+async def _refund_ev_preauthorization(
+    *,
+    session_id: str,
+    user_id: str,
+    escrow_user_id: str,
+    amount: float,
+    reason: str,
+):
+    if amount <= 0:
+        return None
+    result = await transfer_between_wallets(
+        from_user_id=escrow_user_id,
+        to_user_id=user_id,
+        amount=round(float(amount), 2),
+        tx_type=TransactionType.REFUND,
+        description=f"EV Preauthorization Rückzahlung: {reason}",
+        reference=f"EV-HOLD-REF-{session_id[-12:].upper()}",
+        metadata={"session_id": session_id, "kind": "ev_preauth_refund", "reason": reason},
+        idempotency_key=f"ev:preauth-refund:{session_id}:{reason}",
+    )
+    return result
+
+
 async def _settlement_failed(session_id: str, error: str, status: str = "reconciliation_required") -> None:
     await db.ev_charging_sessions.update_one(
         {"session_id": session_id, "settlement_status": {"$ne": "completed"}},
