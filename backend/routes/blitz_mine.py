@@ -19,9 +19,34 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/blitz-mine", tags=["blitz-mine"])
+
+
+def _require_blitz_mine_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "BlitzMine ist in Production nur Preview. "
+                "Ohne verifizierten Mining-/Settlement-Provider werden keine BLZ erzeugt, gesperrt oder ausgezahlt."
+            ),
+        )
+
+
+def _blitz_mine_capabilities() -> dict:
+    return {
+        "live_mining_provider_connected": False,
+        "value_actions_enabled": bool(TEST_MODE),
+        "claim_enabled": bool(TEST_MODE),
+        "lockup_enabled": bool(TEST_MODE),
+        "production_message": (
+            None if TEST_MODE else
+            "BlitzMine Preview: Tap/Claim/Bonus/Lockup sind bis zur Live-Provider-Anbindung deaktiviert."
+        ),
+    }
 
 # ── Economic constants (BLZ-based) ──
 BASE_RATE_PER_HOUR = 0.02           # 0.02 BLZ/h → ~0.48 BLZ/day for a pure Pioneer
@@ -350,6 +375,11 @@ class ReminderTestReq(BaseModel):
 
 
 # ── Endpoints ──
+@router.get("/capabilities")
+async def blitz_mine_capabilities():
+    return _blitz_mine_capabilities()
+
+
 @router.get("/status")
 async def status(request: Request):
     user = await get_current_user(request)
@@ -387,7 +417,13 @@ async def status(request: Request):
     role_idx = ROLE_ORDER.index(profile.get("role", "pioneer"))
     next_role = ROLE_ORDER[role_idx + 1] if role_idx + 1 < len(ROLE_ORDER) else None
 
+    if not TEST_MODE:
+        session_info = None
+        blz_balance = 0.0
+        rate = {**rate, "rate_per_hour": 0.0, "estimated_session_earnings": 0.0}
+
     return {
+        "capabilities": _blitz_mine_capabilities(),
         "profile": {
             "user_id": user_id,
             "role": profile["role"],
@@ -418,6 +454,7 @@ async def status(request: Request):
 
 @router.post("/tap")
 async def tap(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -476,6 +513,7 @@ async def tap(request: Request):
 
 @router.post("/claim")
 async def claim(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -583,6 +621,7 @@ async def claim(request: Request):
 
 @router.post("/boost-tap")
 async def boost_tap(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -638,6 +677,7 @@ async def boost_tap(request: Request):
 
 @router.post("/quick-bonus/claim")
 async def claim_quick_bonus(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     state = await _get_quick_bonus_state(user_id)
@@ -826,6 +866,7 @@ async def get_lockups(request: Request):
 
 @router.post("/lockup")
 async def create_lockup(req: LockupReq, request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -863,6 +904,7 @@ async def create_lockup(req: LockupReq, request: Request):
 
 @router.post("/lockup/{lockup_id}/release")
 async def release_lockup(lockup_id: str, request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     from bson import ObjectId
