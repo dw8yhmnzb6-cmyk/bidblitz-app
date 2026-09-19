@@ -231,9 +231,6 @@ async def get_child_location(child_id: str, request: Request):
     """Get child's current location with precise address via reverse geocoding."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
-    if not TEST_MODE and user.get("role") != "admin":
-        raise HTTPException(status_code=404, detail="Route nicht verfügbar")
-    
     child = await verify_parent_child_access(parent_id, child_id)
     
     lat = child.get("current_lat")
@@ -421,7 +418,7 @@ async def update_zone(zone_id: str, update: ZoneUpdate, request: Request):
     update_data = {k: v for k, v in update.dict().items() if v is not None}
     if update_data:
         await db.kids_zones.update_one(
-            {"zone_id": zone_id},
+            {"zone_id": zone_id, "parent_id": parent_id},
             {"$set": update_data}
         )
     
@@ -477,6 +474,8 @@ async def simulate_location(child_id: str, request: Request, lat: float = 52.52,
     """Simulate a child's location (for testing). Reverse geocodes address."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
+    if not TEST_MODE and user.get("role") != "admin":
+        raise HTTPException(status_code=404, detail="Route nicht verfügbar")
     
     child = await verify_parent_child_access(parent_id, child_id)
     
