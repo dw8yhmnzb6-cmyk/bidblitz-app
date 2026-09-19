@@ -1495,6 +1495,7 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     store = (BACKEND_DIR / "routes" / "rewards_store.py").read_text(encoding="utf-8")
     rewards = (BACKEND_DIR / "routes" / "rewards.py").read_text(encoding="utf-8")
     quests = (BACKEND_DIR / "routes" / "quests.py").read_text(encoding="utf-8")
+    gamification = (BACKEND_DIR / "routes" / "gamification.py").read_text(encoding="utf-8")
     rewards_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RewardsPage.jsx").read_text(encoding="utf-8")
     app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
 
@@ -1545,6 +1546,14 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert "if not TEST_MODE:" in quests
     assert 'case "/quests":' in app
     assert 'title="Quests"' in app
+
+    assert "BLZ-Gamification-Rewards sind in Production deaktiviert." in gamification
+    assert "BLZ-Achievement-Rewards sind in Production deaktiviert." in gamification
+    assert gamification.count("if not TEST_MODE:") >= 4
+    assert 'case "/challenges":' in app
+    assert 'title="Challenges"' in app
+    assert 'case "/achievements":' in app
+    assert 'title="Achievements"' in app
 
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
