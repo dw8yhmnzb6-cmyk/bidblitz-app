@@ -1105,3 +1105,22 @@ def test_ev_preauthorization_is_real_escrow_and_hardware_stops_at_cap():
     assert "await request_stop_transaction" in v201
     assert "price_per_minute" in v201
     assert "minimum_fee" in v201
+
+
+def test_appointment_bookings_are_atomic_retry_safe_and_demo_free_in_production():
+    backend = (BACKEND_DIR / "routes" / "bookings.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BookingsPage.jsx").read_text(encoding="utf-8")
+
+    assert "if not TEST_MODE:" in backend
+    assert 'q["is_demo"] = {"$ne": True}' in backend
+    assert 'pid in {p["id"] for p in SEED_PROVIDERS}' in backend
+    assert "async def _claim_appointment_slots" in backend
+    assert "db.appointment_slot_claims.insert_one" in backend
+    assert "async def _release_appointment_slots" in backend
+    assert "Idempotency-Key erforderlich" in backend
+    assert 'appointment_id = f"appt_{key_hash}"' in backend
+    assert '"$setOnInsert": booking' in backend
+
+    assert "bookingAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
