@@ -20,14 +20,14 @@ from core.admin_financial_metrics import (
     revenue_pipeline,
 )
 from typing import Optional
-from routes.admin_management import _canonical_admin_balances, _normalize_admin_user_row
+from routes.admin_management import _canonical_admin_balances, _normalize_admin_user_row, _can_manage_privileged_roles
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
@@ -211,14 +211,49 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
 
 @router.put("/users/{user_id}/role")
 async def update_user_role(user_id: str, request: Request):
-    await require_admin(request)
+    admin = await require_admin(request)
     body = await request.json()
     new_role = body.get("role", "")
     if new_role not in ["user", "merchant", "admin", "driver"]:
         raise HTTPException(status_code=400, detail="Ungueltige Rolle")
-    result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": new_role}})
-    if result.matched_count == 0:
+
+    target = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not target:
         raise HTTPException(status_code=404, detail="User nicht gefunden")
+
+    current_role = str(target.get("role") or "user")
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    if target_email == "admin@bidblitz.ae" and new_role != "admin":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann über diese Route nicht herabgestuft werden")
+    if (new_role == "admin" or current_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.users.update_one(
+        {"_id": target["_id"], "role": current_role},
+        {
+            "$set": {
+                "role": new_role,
+                "role_changed_at": now,
+                "role_changed_by": str(admin.get("_id") or admin.get("id") or ""),
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    if result.modified_count != 1 and current_role != new_role:
+        raise HTTPException(status_code=409, detail="Rolle wurde parallel geändert")
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(target["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        details={"action": "role_change", "target_user_id": user_id, "old_role": current_role, "new_role": new_role},
+    )
     return {"ok": True, "message": f"Rolle auf '{new_role}' geaendert!"}
 
 
