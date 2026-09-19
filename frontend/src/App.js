@@ -923,7 +923,7 @@ function AppContent() {
       case "/affiliate":
         return <AffiliatePage onBack={() => handleNavigate("/")} />;
       case "/lottery":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LotteryPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Lotterie" description="Ticketverkauf und Ziehungen sind in Production deaktiviert, bis ein verifizierter, zulässiger Lotterie-/Gewinnspielbetrieb technisch und regulatorisch freigegeben ist." onBack={() => handleNavigate("/more")} />;
       case "/ai/content":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AIContentGeneratorPage onBack={() => handleNavigate("/more")} />;
       case "/kids-premium":
@@ -1130,7 +1130,7 @@ function AppContent() {
       case "/restaurants":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantReservationPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/insurance":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Versicherungen" description="Versicherungsabschluss, Policen und Schadenauszahlungen werden erst nach Live-Anbindung eines verifizierten Versicherungs-/Underwriting-Partners freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/appointments":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/social":
@@ -1210,7 +1210,7 @@ function AppContent() {
       case "/blitzjobs":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzJobsPage onBack={() => handleNavigate("/more")} />;
       case "/cashback":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CashbackPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Cashback" description="Cashback wird erst aktiviert, wenn Käufe über verifizierte Affiliate-/Merchant-Events bestätigt werden. Nutzer können keine Einkaufsbeträge selbst melden und dadurch Wallet-Gutschriften erzeugen." onBack={() => handleNavigate("/more")} />;
       case "/premium":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PremiumPage onBack={() => handleNavigate("/more")} />;
       case "/stories":
@@ -1284,7 +1284,7 @@ function AppContent() {
       case "/groupchat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GroupChatPage onNavigate={handleNavigate} />;
       case "/roundup":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RoundupPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Round-up Savings" description="Automatisches Aufrunden bleibt deaktiviert, bis die Rundungsbuchung atomar in den zentralen Wallet-Engine integriert ist. Es werden keine virtuellen Sparbeträge vorgespiegelt." onBack={() => handleNavigate("/more")} />;
       case "/apartments":
         return <ApartmentsPage onNavigate={handleNavigate} />;
       case "/skills-market":
