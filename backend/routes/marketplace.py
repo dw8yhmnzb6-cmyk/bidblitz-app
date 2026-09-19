@@ -16,10 +16,25 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 from core.payment_engine import debit_wallet, credit_wallet, transfer_between_wallets, TransactionType
 
 router = APIRouter(prefix="/api/marketplace", tags=["Marketplace"])
 logger = logging.getLogger("bidblitz.marketplace")
+
+
+def _require_marketplace_kyc(user: dict, *, action: str) -> None:
+    if TEST_MODE or user.get("role") == "admin":
+        return
+    if user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": f"KYC-Verifizierung erforderlich, um im Marketplace {action}.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -220,6 +235,7 @@ async def get_categories():
 async def create_listing(req: CreateListingRequest, request: Request):
     """Create a new marketplace listing."""
     user = await get_current_user(request)
+    _require_marketplace_kyc(user, action="zu verkaufen")
     user_id = str(user["_id"])
     
     # Validate category
@@ -474,6 +490,7 @@ async def delete_listing(listing_id: str, request: Request):
 async def buy_item(req: BuyRequest, request: Request):
     """Buy one listing exactly once with atomic reservation and rollback-safe settlement."""
     user = await get_current_user(request)
+    _require_marketplace_kyc(user, action="zu kaufen")
     buyer_id = str(user["_id"])
     idempotency_key = _require_marketplace_idempotency_key(req.idempotency_key, request)
     key_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
