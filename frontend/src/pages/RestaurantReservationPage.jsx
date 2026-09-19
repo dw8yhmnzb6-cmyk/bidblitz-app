@@ -2,7 +2,7 @@
  * BidBlitz V2 - Restaurant-Reservierung
  * Tisch reservieren, mit Wallet bezahlen
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, MapPin, Star, Users, Clock, Calendar,
@@ -32,6 +32,7 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
   const [reserving, setReserving] = useState(false);
   const [resResult, setResResult] = useState(null);
   const [error, setError] = useState("");
+  const reservationAttemptKeyRef = useRef(null);
 
   const loadRestaurants = useCallback(async () => {
     const params = new URLSearchParams();
@@ -52,18 +53,42 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
   }, []);
 
   useEffect(() => { loadRestaurants(); loadReservations(); }, [loadRestaurants, loadReservations]);
+  useEffect(() => {
+    reservationAttemptKeyRef.current = null;
+  }, [selectedRest?.restaurant_id, resDate, resTime, resGuests, specialReq]);
 
   const reserve = async () => {
     if (!resDate || !resTime || !selectedRest) return;
+    if (!reservationAttemptKeyRef.current) {
+      reservationAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `restaurant-reservation-${crypto.randomUUID()}`
+        : `restaurant-reservation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = reservationAttemptKeyRef.current;
     setReserving(true); setError("");
     try {
       const res = await fetch(`${API}/api/restaurants/reserve`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurant_id: selectedRest.restaurant_id, date: resDate, time: resTime, guests: resGuests, special_requests: specialReq }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          restaurant_id: selectedRest.restaurant_id,
+          date: resDate,
+          time: resTime,
+          guests: resGuests,
+          special_requests: specialReq,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await res.json();
-      if (res.ok && d.ok) { setResResult(d.reservation); loadReservations(); }
-      else setError(d.detail || "Reservierung fehlgeschlagen");
+      if (res.ok && d.ok) {
+        reservationAttemptKeyRef.current = null;
+        setResResult(d.reservation);
+        loadReservations();
+      } else {
+        if (res.status < 500 && res.status !== 409) reservationAttemptKeyRef.current = null;
+        setError(typeof d.detail === "string" ? d.detail : d.detail?.message || "Reservierung fehlgeschlagen");
+      }
     } catch { setError("Netzwerkfehler"); }
     setReserving(false);
   };
@@ -183,6 +208,11 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
               {selectedRest.phone && <span className="flex items-center gap-1"><Phone size={11} /> {selectedRest.phone}</span>}
             </div>
             <p className="text-[11px] text-gray-500 mb-2">{selectedRest.description}</p>
+            {Number(selectedRest.reservation_deposit || 0) > 0 && (
+              <p className="text-[10px] text-[#F59E0B] font-semibold">
+                Reservierungskaution: €{Number(selectedRest.reservation_deposit).toFixed(2)} · bei Storno wird sie automatisch zurückgebucht.
+              </p>
+            )}
             {selectedRest.reviews?.length > 0 && (
               <div className="mt-3 space-y-2">
                 <p className="text-[10px] text-gray-500 font-semibold">Bewertungen</p>
@@ -237,7 +267,11 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
             <motion.button whileTap={{ scale: 0.97 }} onClick={reserve} disabled={!resDate || !resTime || reserving}
               className="w-full py-3.5 rounded-xl bg-[#F59E0B] text-black font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2"
               data-testid="rest-reserve-btn">
-              {reserving ? <Loader2 size={18} className="animate-spin" /> : <><Calendar size={16} /> Tisch reservieren</>}
+              {reserving ? <Loader2 size={18} className="animate-spin" /> : (
+                <><Calendar size={16} /> {Number(selectedRest?.reservation_deposit || 0) > 0
+                  ? `Reservieren · €${Number(selectedRest.reservation_deposit).toFixed(2)} Kaution`
+                  : "Tisch reservieren"}</>
+              )}
             </motion.button>
           </div>
         </div>
