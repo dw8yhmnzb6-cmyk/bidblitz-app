@@ -137,7 +137,7 @@ class LocationUpdate(BaseModel):
 
 
 class RideStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(accepted|arriving|started|completed|canceled)$")
+    status: str = Field(..., pattern="^(accepted|arriving|started|completed|canceled|cancelled)$")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -559,136 +559,77 @@ async def get_active_ride(request: Request):
 
 @router.post("/rides/{ride_id}/status")
 async def update_ride_status(ride_id: str, update: RideStatusUpdate, request: Request):
-    """Update ride status."""
+    """Update ride status through the canonical Taxi lifecycle."""
     driver, _ = await get_verified_driver(request)
-    
     ride = await db.taxi_rides.find_one({
         "ride_id": ride_id,
-        "driver_id": driver["driver_id"]
-    })
-    
+        "driver_id": driver["driver_id"],
+    }, {"_id": 0})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    now = datetime.now(timezone.utc)
-    update_data = {"status": update.status}
-    
-    if update.status == "arriving":
-        update_data["arriving_at"] = now.isoformat()
+
+    normalized = "cancelled" if update.status == "canceled" else update.status
+
+    from models.taxi import RideActionRequest
+    from routes.taxi import driver_arriving, driver_start_ride, driver_end_ride, cancel_ride
+
+    action = RideActionRequest(ride_id=ride_id)
+
+    if normalized == "arriving":
+        result = await driver_arriving(action, request)
         await create_notification(
             ride["customer_id"],
             "Fahrer kommt an",
             "Dein Fahrer ist gleich da!",
-            "driver_arriving"
+            "driver_arriving",
         )
-    
-    elif update.status == "started":
-        update_data["started_at"] = now.isoformat()
+    elif normalized == "started":
+        result = await driver_start_ride(action, request)
         await create_notification(
             ride["customer_id"],
             "Fahrt gestartet",
             "Gute Fahrt!",
-            "ride_started"
+            "ride_started",
         )
-    
-    elif update.status == "completed":
-        update_data["completed_at"] = now.isoformat()
-        
-        # Calculate final fare (use estimated or actual)
-        final_fare = ride.get("estimated_fare", 10.0)
-        driver_earnings = round(final_fare * 0.80, 2)  # Driver gets 80%
-        
-        update_data["final_fare"] = final_fare
-        update_data["driver_earnings"] = driver_earnings
-        
-        # Credit driver earnings to their WALLET (users.balance) — not driver-only field
-        from bson import ObjectId
-        driver_user_id = driver.get("user_id")
-        if driver_user_id:
-            try:
-                await db.users.update_one(
-                    {"_id": ObjectId(driver_user_id)},
-                    {"$inc": {"balance": driver_earnings}}
-                )
-            except Exception:
-                pass
-            # Log driver earnings transaction in wallet
-            await db.transactions.insert_one({
-                "tx_id": secrets.token_hex(8),
-                "user_id": driver_user_id,
-                "type": "TAXI_EARNING",
-                "amount": driver_earnings,
-                "currency": "EUR",
-                "status": "completed",
-                "description": f"Taxi-Verdienst Fahrt #{ride_id[:8]}",
-                "merchant_name": "BidBlitz Taxi",
-                "category": "taxi",
-                "reference": ride_id,
-                "date": now.isoformat(),
-                "created_at": now.isoformat()
-            })
-        
-        # Update driver stats (cumulative counter + no longer busy)
+    elif normalized == "completed":
+        result = await driver_end_ride(action, request)
         await db.drivers.update_one(
             {"driver_id": driver["driver_id"]},
-            {
-                "$inc": {"balance": driver_earnings, "total_rides": 1},
-                "$set": {"is_busy": False}
-            }
+            {"$set": {"is_busy": False}},
         )
-        
-        # Deduct from customer wallet
-        try:
-            await db.users.update_one(
-                {"_id": ObjectId(ride["customer_id"])},
-                {"$inc": {"balance": -final_fare}}
-            )
-        except Exception:
-            pass
-        
-        # Create customer transaction
-        await db.transactions.insert_one({
-            "tx_id": secrets.token_hex(8),
-            "user_id": ride["customer_id"],
-            "type": "TAXI_RIDE",
-            "amount": -final_fare,
-            "currency": "EUR",
-            "status": "completed",
-            "description": f"Taxi Fahrt #{ride_id[:8]}",
-            "merchant_name": "BidBlitz Taxi",
-            "category": "taxi",
-            "reference": ride_id,
-            "date": now.isoformat(),
-            "created_at": now.isoformat()
-        })
-        
+        fare = (result.get("ride_summary") or {}).get("fare") or {}
         await create_notification(
             ride["customer_id"],
             "Fahrt beendet",
-            f"Vielen Dank! Fahrpreis: €{final_fare:.2f}",
-            "ride_completed"
+            f"Vielen Dank! Fahrpreis: €{float(fare.get('total') or 0):.2f}",
+            "ride_completed",
         )
-    
-    elif update.status == "canceled":
-        update_data["canceled_at"] = now.isoformat()
+    elif normalized == "cancelled":
+        if ride.get("status") == "started":
+            raise HTTPException(
+                status_code=400,
+                detail="Eine gestartete Fahrt kann nicht normal storniert werden. Bitte nutze Support/SOS.",
+            )
+        result = await cancel_ride(action, request)
         await db.drivers.update_one(
             {"driver_id": driver["driver_id"]},
-            {"$set": {"is_busy": False}}
+            {"$set": {"is_busy": False}},
         )
         await create_notification(
             ride["customer_id"],
             "Fahrt storniert",
-            "Die Fahrt wurde storniert.",
-            "ride_canceled"
+            "Die Fahrt wurde storniert. Eine reservierte Zahlung wird automatisch freigegeben.",
+            "ride_canceled",
         )
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": ride_id},
-        {"$set": update_data}
-    )
-    
-    return {"ok": True, "status": update.status}
+    elif normalized == "accepted":
+        # Acceptance happens atomically through /ride-requests/{id}/accept.
+        if ride.get("status") != "accepted":
+            raise HTTPException(status_code=400, detail="Fahrt muss über die Anfrage angenommen werden")
+        result = {"ok": True, "status": "accepted"}
+    else:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
 
+    return {"ok": True, "status": normalized, "result": result}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RIDE HISTORY
