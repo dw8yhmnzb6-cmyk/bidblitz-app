@@ -753,3 +753,20 @@ def test_restaurant_reservations_are_capacity_and_payment_safe():
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "reservationAttemptKeyRef" in page
     assert "Reservierungskaution" in page
+
+
+def test_unverified_provider_and_client_declared_money_flows_fail_closed():
+    crypto_source = (BACKEND_DIR / "routes" / "crypto_wallet.py").read_text(encoding="utf-8")
+    flight_source = (BACKEND_DIR / "routes" / "flights.py").read_text(encoding="utf-8")
+    gaming_source = (BACKEND_DIR / "routes" / "gaming.py").read_text(encoding="utf-8")
+
+    assert "Crypto-Einzahlungen sind bis zur verifizierten Blockchain-/Custody-Anbindung deaktiviert." in crypto_source
+    assert "Crypto-Auszahlungen sind bis zur verifizierten Blockchain-/Custody-Anbindung deaktiviert." in crypto_source
+    assert '"$inc": {"balance": req.amount}' not in crypto_source
+
+    assert "Flugbuchungen sind bis zur verifizierten Live-Provider-Anbindung deaktiviert." in flight_source
+    assert '"$inc": {"balance": -total}' not in flight_source
+
+    assert "Legacy client-declared winnings are unsafe" in gaming_source
+    assert "Cashback wird automatisch aus verifizierten Transaktionen gutgeschrieben." in gaming_source
+    assert '"gaming_coins": {"$gte": amount}' in gaming_source
