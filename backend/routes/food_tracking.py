@@ -308,19 +308,18 @@ async def update_order_status_internal(order_id: str, new_status: str, actor_id:
     
     now = datetime.now(timezone.utc)
     
-    # Update status
-    update_data = {
-        "status": new_status,
-        "updated_at": now.isoformat(),
-    }
-    
     if new_status == "delivered":
-        update_data["delivered_at"] = now.isoformat()
-    
-    await db.food_orders.update_one(
-        {"order_id": order_id},
-        {"$set": update_data},
-    )
+        from routes.food import _settle_food_delivery
+        await _settle_food_delivery(order_id)
+    else:
+        update_data = {
+            "status": new_status,
+            "updated_at": now.isoformat(),
+        }
+        await db.food_orders.update_one(
+            {"order_id": order_id, "status": old_status},
+            {"$set": update_data},
+        )
     
     # Log status change
     await db.food_order_status_log.insert_one({
@@ -359,17 +358,41 @@ async def update_order_status(req: UpdateStatusRequest, request: Request):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Permission check
-    is_driver = order.get("driver_id") == user_id
-    is_restaurant = order.get("restaurant_id") in (user.get("restaurant_ids", []) or [])
-    is_admin = role == "admin"
+    # Permission check against canonical Food ownership fields.
+    is_driver = (order.get("courier") or {}).get("user_id") == user_id
+    restaurant = await db.food_restaurants.find_one(
+        {"restaurant_id": order.get("restaurant_id")},
+        {"_id": 0, "owner_id": 1, "user_id": 1},
+    )
+    is_restaurant = user_id in {
+        str((restaurant or {}).get("owner_id") or ""),
+        str((restaurant or {}).get("user_id") or ""),
+    }
+    is_admin = role in {"admin", "super_admin"}
     
     if not (is_driver or is_restaurant or is_admin):
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    old_status = order.get("status")
+    allowed_transitions = {
+        "pending": {"preparing"},
+        "confirmed": {"preparing"},
+        "preparing": {"ready"},
+        "picked_up": {"nearby", "delivered"},
+        "nearby": {"delivered"},
+    }
+    if req.status not in allowed_transitions.get(old_status, set()):
+        if old_status == req.status:
+            return {"ok": True, "new_status": req.status, "replayed": True}
+        raise HTTPException(status_code=409, detail=f"Ungültiger Statuswechsel: {old_status} → {req.status}")
+
+    if req.status in {"preparing", "ready"} and not (is_restaurant or is_admin):
+        raise HTTPException(status_code=403, detail="Nur Restaurant/Admin darf diesen Status setzen")
+    if req.status in {"nearby", "delivered"} and not (is_driver or is_admin):
+        raise HTTPException(status_code=403, detail="Nur Fahrer/Admin darf diesen Status setzen")
     
     await update_order_status_internal(req.order_id, req.status, user_id)
-    
-    return {"ok": True, "new_status": req.status}
+    return {"ok": True, "new_status": req.status, "replayed": False}
 
 
 # ═══════════════════════════════════════════════════════════════
