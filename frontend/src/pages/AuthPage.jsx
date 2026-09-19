@@ -344,9 +344,9 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={6}
+                  maxLength={8}
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                   placeholder="000000"
                   autoFocus
                   className="w-full text-center text-[28px] font-mono font-bold tracking-[0.5em] py-4 px-4 bg-white/[0.02] border border-white/[0.05] rounded-[14px] text-white placeholder:text-[#1a1a1a] outline-none focus:border-[#00C2FF]/25"
