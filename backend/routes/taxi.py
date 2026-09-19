@@ -1214,6 +1214,13 @@ class RideMessageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=400)
 
 
+def NumberErrorSafe(lat, lng) -> bool:
+    try:
+        return lat is not None and lng is not None and math.isfinite(float(lat)) and math.isfinite(float(lng))
+    except (TypeError, ValueError):
+        return False
+
+
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance in km using Haversine formula."""
     R = 6371
@@ -1678,36 +1685,45 @@ async def get_nearby_drivers(
 ):
     """Get online drivers near location (public)."""
     
-    query = {"online": True, "verified": True, "status": "approved"}
-    if car_type:
-        query["car.type"] = car_type
-    if with_pet:
-        query["car.pet_friendly"] = True
-    if luggage == "much_combi":
-        query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
-    elif luggage == "much":
-        query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
-    if assistance:
-        query["car.assistance"] = True
-    
     drivers = await db.drivers.find(
-        query,
-        {"_id": 0, "license_number": 0, "user_email": 0}  # Hide sensitive data
+        {
+            "$or": [
+                {"online": True, "verified": True, "status": "approved"},
+                {"is_online": True, "is_verified": True, "status": "active"},
+            ]
+        },
+        {"_id": 0, "license_number": 0, "user_email": 0}
     ).to_list(100)
     
-    # Filter by distance
     nearby = []
     for d in drivers:
-        loc = d.get("location", {})
-        dlat, dlng = loc.get("lat", 0), loc.get("lng", 0)
-        if dlat == 0 and dlng == 0:
+        loc = d.get("location") or d.get("current_location") or {}
+        car = d.get("car") or d.get("vehicle") or {}
+        effective_type = car.get("type") or car.get("vehicle_type") or "standard"
+        if car_type and effective_type != car_type:
+            continue
+        if with_pet and not car.get("pet_friendly"):
+            continue
+        luggage_class = car.get("luggage_class")
+        if luggage == "much_combi" and luggage_class not in ["much_combi", "combi", "wagon", "much"]:
+            continue
+        if luggage == "much" and luggage_class not in ["much", "much_combi", "combi", "wagon", "large"]:
+            continue
+        if assistance and not car.get("assistance"):
+            continue
+
+        dlat, dlng = loc.get("lat"), loc.get("lng")
+        if not NumberErrorSafe(dlat, dlng):
             continue
         
-        dist = haversine_distance(lat, lng, dlat, dlng)
+        dist = haversine_distance(lat, lng, float(dlat), float(dlng))
         if dist <= radius:
-            d["distance_km"] = round(dist, 2)
-            d["eta_minutes"] = max(2, round(dist * 2.5))  # Rough ETA
-            nearby.append(d)
+            normalized = dict(d)
+            normalized["location"] = {"lat": float(dlat), "lng": float(dlng)}
+            normalized["car"] = {**car, "type": effective_type}
+            normalized["distance_km"] = round(dist, 2)
+            normalized["eta_minutes"] = max(2, round(dist * 2.5))
+            nearby.append(normalized)
     
     nearby.sort(key=lambda x: x["distance_km"])
     
@@ -2661,7 +2677,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     d = await db.drivers.find_one({"driver_id": drv_id}, {"_id": 0})
     if not d:
         return ride
-    loc = d.get("location") or {}
+    loc = d.get("location") or d.get("current_location") or {}
     pickup = ride.get("pickup") or {}
     eta = None
     try:
@@ -2678,7 +2694,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
             eta = max(1, round(km / 30 * 60))
     except Exception:
         eta = None
-    car = d.get("car") or {}
+    car = d.get("car") or d.get("vehicle") or {}
     target = ride.get("dropoff") if ride.get("status") == RideStatus.STARTED.value else ride.get("pickup")
     driver_bearing = None
     try:
@@ -2688,7 +2704,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
         driver_bearing = None
     ride["driver"] = {
         "driver_id": d.get("driver_id"),
-        "name": d.get("user_name") or ride.get("driver_name") or "",
+        "name": d.get("user_name") or d.get("name") or ride.get("driver_name") or "",
         "photo_url": d.get("photo_url", ""),
         "phone": d.get("phone", ""),
         "rating": d.get("rating", 5.0),
