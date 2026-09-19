@@ -234,6 +234,37 @@ def _is_real_approved_restaurant_query(restaurant_id: Optional[str] = None) -> d
     return query
 
 
+async def _require_food_restaurant_owner(user: dict, restaurant_id: str) -> dict:
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    user_id = str(user["_id"])
+    owner_ids = {str(restaurant.get("owner_id") or ""), str(restaurant.get("user_id") or "")}
+    if user.get("role") != "admin" and user_id not in owner_ids:
+        raise HTTPException(status_code=403, detail="Nicht berechtigt, dieses Restaurant zu verwalten")
+    return restaurant
+
+
+def _normalize_food_menu_options(raw_items, *, prefix: str) -> list[dict]:
+    normalized = []
+    for raw in list(raw_items or [])[:30]:
+        if not isinstance(raw, dict):
+            continue
+        name = str(raw.get("name") or "").strip()[:80]
+        if not name:
+            continue
+        try:
+            price = round(float(raw.get("price") or 0), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Ungültiger Preis für {name}")
+        if price < 0 or price > 1000:
+            raise HTTPException(status_code=400, detail=f"Ungültiger Preis für {name}")
+        option_id = str(raw.get("id") or f"{prefix}{secrets.token_hex(4)}")[:80]
+        normalized.append({"id": option_id, "name": name, "price": price})
+    return normalized
+
+
+
 def _price_food_line(menu_item: dict, cart_item: CartItem) -> dict:
     if menu_item.get("available") is False:
         raise HTTPException(status_code=400, detail=f"Artikel {cart_item.item_id} ist derzeit nicht verfügbar")
@@ -475,8 +506,8 @@ async def get_restaurant(restaurant_id: str):
     """Get restaurant details with menu."""
     
     restaurant = await db.food_restaurants.find_one(
-        {"restaurant_id": restaurant_id, "$or": [{"status": "approved"}, {"status": {"$exists": False}}]}, 
-        {"_id": 0}
+        _is_real_approved_restaurant_query(restaurant_id),
+        {"_id": 0},
     )
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
@@ -1051,7 +1082,13 @@ async def get_active_order(request: Request):
     user_id = str(user["_id"])
     
     order = await db.food_orders.find_one(
-        {"user_id": user_id, "status": {"$nin": ["delivered", "cancelled"]}},
+        {
+            "user_id": user_id,
+            "status": {"$nin": [
+                "delivered", "cancelled", "rejected", "payment_failed",
+                "refund_reconciliation_required"
+            ]},
+        },
         {"_id": 0}
     )
     
@@ -1073,8 +1110,10 @@ async def reorder(req: OrderAction, request: Request):
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
     
     # Check if restaurant still exists and is open
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": old_order["restaurant_id"]})
-    if not restaurant or not restaurant.get("is_open", True):
+    restaurant_query = _is_real_approved_restaurant_query(old_order["restaurant_id"])
+    restaurant_query["is_open"] = True
+    restaurant = await db.food_restaurants.find_one(restaurant_query)
+    if not restaurant:
         raise HTTPException(status_code=400, detail="Restaurant nicht verfügbar")
     
     # Recalculate prices (they might have changed)
@@ -1084,17 +1123,22 @@ async def reorder(req: OrderAction, request: Request):
     
     for item in old_order["items"]:
         menu_item = menu_map.get(item["item_id"])
-        if menu_item:
-            item_total = menu_item["price"] * item["quantity"]
-            subtotal += item_total
-            order_items.append({
-                "item_id": item["item_id"],
-                "name": menu_item["name"],
-                "price": menu_item["price"],
-                "quantity": item["quantity"],
-                "total": item_total,
-                "notes": item.get("notes", ""),
-            })
+        if not menu_item:
+            continue
+        cart_item = CartItem(
+            item_id=item["item_id"],
+            quantity=int(item.get("quantity") or 1),
+            size_id=((item.get("size") or {}).get("id") if isinstance(item.get("size"), dict) else None),
+            extra_ids=[
+                str(extra.get("id"))
+                for extra in (item.get("extras") or [])
+                if isinstance(extra, dict) and extra.get("id") is not None
+            ],
+            notes=item.get("notes", ""),
+        )
+        priced = _price_food_line(menu_item, cart_item)
+        subtotal += priced["total"]
+        order_items.append(priced)
     
     if not order_items:
         raise HTTPException(status_code=400, detail="Keine Artikel verfügbar")
@@ -1114,7 +1158,9 @@ async def reorder(req: OrderAction, request: Request):
 
 @router.post("/restaurant/register")
 async def register_restaurant(request: Request):
-    """Register a new restaurant (requires admin approval)."""
+    """Register a real restaurant application owned by the authenticated account."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
     body = await request.json()
     
     required = ["name", "category", "address", "phone", "email"]
@@ -1122,9 +1168,15 @@ async def register_restaurant(request: Request):
         if not body.get(field):
             raise HTTPException(status_code=400, detail=f"{field} erforderlich")
     
-    existing = await db.food_restaurants.find_one({"email": body["email"].lower()})
+    existing = await db.food_restaurants.find_one({
+        "$or": [
+            {"email": body["email"].lower()},
+            {"owner_id": user_id},
+            {"user_id": user_id},
+        ]
+    })
     if existing:
-        raise HTTPException(status_code=400, detail="Restaurant bereits registriert")
+        raise HTTPException(status_code=400, detail="Für dieses Konto/E-Mail existiert bereits eine Restaurant-Anmeldung")
     
     now = datetime.now(timezone.utc).isoformat()
     
@@ -1135,6 +1187,9 @@ async def register_restaurant(request: Request):
         "address": body["address"],
         "phone": body["phone"],
         "email": body["email"].lower(),
+        "owner_id": user_id,
+        "user_id": user_id,
+        "owner_name": user.get("name", "") or body.get("owner_name", ""),
         "description": body.get("description", ""),
         "rating": 0,
         "review_count": 0,
@@ -1149,7 +1204,6 @@ async def register_restaurant(request: Request):
         "min_order": body.get("min_order", MIN_ORDER_AMOUNT),
         "delivery_fee": body.get("delivery_fee", DELIVERY_FEE_BASE),
         "location": body.get("location", {"lat": 52.52, "lng": 13.405}),
-        "owner_name": body.get("owner_name", ""),
         "tax_id": body.get("tax_id", ""),
         "bank_details": body.get("bank_details", {}),
         "documents": {
@@ -1177,75 +1231,93 @@ async def register_restaurant(request: Request):
 
 @router.post("/restaurant/{restaurant_id}/menu/add")
 async def add_menu_item(restaurant_id: str, request: Request):
-    """Restaurant owner adds menu item."""
+    """Owner/admin adds a server-priced menu item."""
+    user = await get_current_user(request)
+    restaurant = await _require_food_restaurant_owner(user, restaurant_id)
     body = await request.json()
-    
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
-    
-    # TODO: Verify owner authentication
-    
+
+    name = str(body.get("name") or "").strip()[:120]
+    if not name:
+        raise HTTPException(status_code=400, detail="Artikelname erforderlich")
+    try:
+        price = round(float(body.get("price")), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Gültiger Preis erforderlich")
+    if price <= 0 or price > 10000:
+        raise HTTPException(status_code=400, detail="Ungültiger Artikelpreis")
+
     menu_item = {
         "id": f"m{secrets.token_hex(4)}",
-        "name": body.get("name"),
-        "price": body.get("price"),
-        "description": body.get("description", ""),
-        "category": body.get("category", "main"),
-        "image": body.get("image", ""),
+        "name": name,
+        "price": price,
+        "description": str(body.get("description") or "")[:1000],
+        "category": str(body.get("category") or "main")[:80],
+        "image": str(body.get("image") or "")[:1000],
+        "sizes": _normalize_food_menu_options(body.get("sizes"), prefix="size_"),
+        "extras": _normalize_food_menu_options(body.get("extras"), prefix="extra_"),
         "available": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    
     await db.food_restaurants.update_one(
-        {"restaurant_id": restaurant_id},
-        {"$push": {"menu": menu_item}}
+        {"_id": restaurant["_id"]},
+        {"$push": {"menu": menu_item}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
     )
-    
     return {"ok": True, "item": menu_item}
 
 
 @router.post("/restaurant/{restaurant_id}/menu/update")
 async def update_menu_item(restaurant_id: str, request: Request):
-    """Restaurant owner updates menu item."""
+    """Owner/admin updates a menu item."""
+    user = await get_current_user(request)
+    restaurant = await _require_food_restaurant_owner(user, restaurant_id)
     body = await request.json()
-    item_id = body.get("item_id")
-    
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
-    
-    updates = {}
+    item_id = str(body.get("item_id") or "")
+    if not item_id:
+        raise HTTPException(status_code=400, detail="item_id erforderlich")
+
+    updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if "name" in body:
-        updates["menu.$.name"] = body["name"]
+        name = str(body["name"] or "").strip()[:120]
+        if not name:
+            raise HTTPException(status_code=400, detail="Artikelname erforderlich")
+        updates["menu.$.name"] = name
     if "price" in body:
-        updates["menu.$.price"] = body["price"]
+        try:
+            price = round(float(body["price"]), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Ungültiger Preis")
+        if price <= 0 or price > 10000:
+            raise HTTPException(status_code=400, detail="Ungültiger Preis")
+        updates["menu.$.price"] = price
     if "description" in body:
-        updates["menu.$.description"] = body["description"]
+        updates["menu.$.description"] = str(body["description"] or "")[:1000]
     if "available" in body:
-        updates["menu.$.available"] = body["available"]
-    
-    if updates:
-        await db.food_restaurants.update_one(
-            {"restaurant_id": restaurant_id, "menu.id": item_id},
-            {"$set": updates}
-        )
-    
+        updates["menu.$.available"] = bool(body["available"])
+    if "sizes" in body:
+        updates["menu.$.sizes"] = _normalize_food_menu_options(body.get("sizes"), prefix="size_")
+    if "extras" in body:
+        updates["menu.$.extras"] = _normalize_food_menu_options(body.get("extras"), prefix="extra_")
+
+    result = await db.food_restaurants.update_one(
+        {"_id": restaurant["_id"], "menu.id": item_id},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
     return {"ok": True}
 
 
 @router.delete("/restaurant/{restaurant_id}/menu/{item_id}")
 async def delete_menu_item(restaurant_id: str, item_id: str, request: Request):
-    """Restaurant owner deletes menu item."""
-    
+    """Owner/admin deletes a menu item."""
+    user = await get_current_user(request)
+    restaurant = await _require_food_restaurant_owner(user, restaurant_id)
     result = await db.food_restaurants.update_one(
-        {"restaurant_id": restaurant_id},
-        {"$pull": {"menu": {"id": item_id}}}
+        {"_id": restaurant["_id"], "menu.id": item_id},
+        {"$pull": {"menu": {"id": item_id}}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
     )
-    
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
-    
     return {"ok": True}
 
 
@@ -1256,12 +1328,10 @@ async def delete_menu_item(restaurant_id: str, item_id: str, request: Request):
 @router.post("/restaurant/{restaurant_id}/toggle-open")
 async def toggle_restaurant_open(restaurant_id: str, request: Request):
     """Restaurant toggles open/closed status."""
+    user = await get_current_user(request)
     body = await request.json()
-    is_open = body.get("is_open", False)
-    
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    is_open = bool(body.get("is_open", False))
+    restaurant = await _require_food_restaurant_owner(user, restaurant_id)
     
     if restaurant.get("status") != "approved":
         raise HTTPException(status_code=403, detail="Restaurant nicht genehmigt")
