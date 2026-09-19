@@ -28,7 +28,7 @@ KIDS_PLANS = {
     "yearly": {"amount": 49.99, "label": "Yearly", "interval": "year"},
 }
 
-TRIAL_DAYS = 7
+TRIAL_DAYS = 30
 
 
 def _require_kids_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
@@ -60,6 +60,45 @@ def _kids_pin_matches(pin: str, child: dict) -> bool:
 def _hash_child_session_token(token: str) -> str:
     return hashlib.sha256(f"kids-session:{token}".encode("utf-8")).hexdigest()
 
+
+async def require_kids_entitlement(parent_id: str, parent_role: Optional[str] = None) -> dict:
+    """Require an active Kids subscription/trial for every protected Kids surface."""
+    if parent_role == "admin":
+        return {"status": "active", "plan": "admin_unlimited"}
+
+    if parent_role is None and ObjectId.is_valid(str(parent_id)):
+        parent = await db.users.find_one({"_id": ObjectId(str(parent_id))}, {"role": 1}) or {}
+        if parent.get("role") == "admin":
+            return {"status": "active", "plan": "admin_unlimited"}
+
+    sub = await db.kids_subscriptions.find_one({"user_id": str(parent_id)}, {"_id": 0})
+    if not sub or sub.get("status") not in {"active", "trial"}:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "kids_subscription_required", "message": "BidBlitz Kids Abo oder aktiver Testzeitraum erforderlich."},
+        )
+
+    expires_at = sub.get("expires_at")
+    if expires_at:
+        try:
+            expires = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) >= expires:
+                await db.kids_subscriptions.update_one(
+                    {"user_id": str(parent_id)},
+                    {"$set": {"status": "expired", "expired_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(
+                    status_code=402,
+                    detail={"error": "kids_subscription_expired", "message": "BidBlitz Kids Abo ist abgelaufen."},
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=500, detail="Kids subscription expiry is invalid")
+
+    return sub
 
 
 async def _wallet_spend_allowed(child: dict) -> tuple[bool, Optional[str]]:
@@ -505,6 +544,7 @@ async def list_children(request: Request):
     """List all children for the current parent."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     children = await db.kids_children.find(
         {"parent_id": user_id}, {"_id": 0}
     ).sort("created_at", 1).to_list(20)
@@ -517,6 +557,7 @@ async def create_child(req: CreateChildRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
+    await require_kids_entitlement(user_id, user.get("role"))
 
     # Limit to 6 children per parent
     count = await db.kids_children.count_documents({"parent_id": user_id})
@@ -565,6 +606,7 @@ async def update_child(child_id: str, req: UpdateChildRequest, request: Request)
     """Update a child's name or weekly limit."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
 
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
@@ -596,6 +638,7 @@ async def delete_child(child_id: str, request: Request):
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
         raise HTTPException(status_code=404, detail="Child not found")
@@ -782,6 +825,7 @@ async def transfer_to_child(child_id: str, req: TransferToChildRequest, request:
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
@@ -884,6 +928,7 @@ async def get_child_wallet(child_id: str, request: Request):
     """Get child's wallet balance and recent transactions."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id}, {"_id": 0})
     if not child:
@@ -931,6 +976,7 @@ async def set_child_limits(child_id: str, req: SetLimitRequest, request: Request
     """Set daily/weekly spending limits for a child."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
@@ -963,6 +1009,7 @@ async def freeze_child_wallet(child_id: str, request: Request):
     """Freeze a child's wallet - disables all payments."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
@@ -1357,6 +1404,7 @@ async def set_child_pin(child_id: str, req: SetChildPinRequest, request: Request
     """Parent sets PIN for child access."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    await require_kids_entitlement(user_id, user.get("role"))
     
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
     if not child:
@@ -1383,6 +1431,7 @@ async def child_login(req: ChildLoginRequest):
     child = await db.kids_children.find_one({"child_id": req.child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    await require_kids_entitlement(str(child.get("parent_id") or ""))
     
     if not child.get("pin_hash_v2") and not child.get("pin_hash"):
         raise HTTPException(status_code=400, detail="Kein PIN gesetzt. Frage deine Eltern.")
@@ -1470,6 +1519,7 @@ async def get_child_from_token(request: Request):
     child = await db.kids_children.find_one({"child_id": session["child_id"]}, {"_id": 0})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    await require_kids_entitlement(str(child.get("parent_id") or ""))
     if child.get("is_frozen", False):
         await db.kids_sessions.delete_many({"child_id": child["child_id"]})
         raise HTTPException(status_code=403, detail="Wallet ist gesperrt")
