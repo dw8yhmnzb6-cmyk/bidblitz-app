@@ -139,23 +139,24 @@ async def get_all_tickets(request: Request, status: Optional[str] = None):
 
 @router.post("/admin/{ticket_id}/status")
 async def update_ticket_status(ticket_id: str, status: str, request: Request):
-    """Admin: Update ticket status."""
+    """Legacy admin status endpoint backed by the canonical ticket record."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
-    
-    valid_statuses = ["open", "in_progress", "resolved", "closed"]
+
+    valid_statuses = {"open", "in_progress", "resolved", "closed"}
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
-    
-    await db.support_tickets.update_one(
+
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"status": status, "updated_at": now}
+    if status == "resolved":
+        updates.update({"resolved_at": now, "resolved_by": str(user["_id"])})
+
+    result = await db.support_tickets.update_one(
         {"ticket_id": ticket_id},
-        {
-            "$set": {
-                "status": status,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        },
+        {"$set": updates},
     )
-    
-    return {"ok": True, "status": status}
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"ok": True, "status": status, "canonical": True}
