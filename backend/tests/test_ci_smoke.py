@@ -999,3 +999,16 @@ def test_support_ticket_lifecycle_is_canonical_and_closed_tickets_are_immutable(
     assert 'user.get("role") in ("admin", "super_admin")' in legacy
     assert 'activeTicket.status !== "closed"' in page
     assert 'activeTicket.status !== "resolved" || true' not in page
+
+
+def test_totp_backup_codes_are_atomic_one_time_factors():
+    source = (BACKEND_DIR / "routes" / "two_factor.py").read_text(encoding="utf-8")
+
+    assert "async def _consume_totp_backup_code" in source
+    assert '"$pull": {"totp_backup_code_hashes": candidate_hash}' in source
+    assert '"totp_backup_codes": legacy_code' in source
+    assert "valid = await _consume_totp_backup_code(user_id, req.code)" in source
+    assert "is_backup_code = await _consume_totp_backup_code(user_id, otp.code)" in source
+    assert "attempts >= 5" in source
+    assert '"$inc": {"attempts": 1}' in source
+    assert "Zu viele 2FA-Versuche" in source
