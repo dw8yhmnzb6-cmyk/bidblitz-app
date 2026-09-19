@@ -1026,7 +1026,15 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     return () => clearInterval(iv);
   }, [load]);
 
+  const valueActionsEnabled = !!data?.capabilities?.value_actions_enabled;
+  const requireValueAction = () => {
+    if (valueActionsEnabled) return true;
+    toast.error(data?.capabilities?.production_message || "BlitzMine ist noch nicht live verbunden.");
+    return false;
+  };
+
   const onTap = async () => {
+    if (!requireValueAction()) return;
     setLoading(true);
     try {
       const res = await api("/api/blitz-mine/tap", { method: "POST" });
@@ -1037,6 +1045,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onClaim = async () => {
+    if (!requireValueAction()) return;
     setLoading(true);
     try {
       const res = await api("/api/blitz-mine/claim", { method: "POST" });
@@ -1065,6 +1074,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onCreateLockup = async (amount, duration_days) => {
+    if (!requireValueAction()) return;
     await api("/api/blitz-mine/lockup", {
       method: "POST",
       body: JSON.stringify({ amount, duration_days }),
@@ -1073,6 +1083,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onReleaseLockup = async (id) => {
+    if (!requireValueAction()) return;
     if (!id) return;
     if (typeof window !== "undefined" && !window.confirm("Lockup jetzt auflösen? Es kann eine Strafe anfallen.")) return;
     try {
@@ -1083,6 +1094,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onBoostTap = async () => {
+    if (!requireValueAction()) return;
     setBoostBusy(true);
     try {
       const res = await api("/api/blitz-mine/boost-tap", { method: "POST" });
@@ -1093,6 +1105,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onQuickClaim = async () => {
+    if (!requireValueAction()) return;
     setQuickBusy(true);
     try {
       const res = await api("/api/blitz-mine/quick-bonus/claim", { method: "POST" });
@@ -1119,6 +1132,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const sendReminderTest = async (kind) => {
+    if (!requireValueAction()) return;
     try {
       await api("/api/blitz-mine/reminders/test", { method: "POST", body: JSON.stringify({ kind }) });
       toast.success("Test-Push gesendet");
@@ -1134,8 +1148,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onShare = () => {
     const text = referralCode
-      ? `Mine kostenlos BLZ auf BidBlitz! Nutze meinen Code: ${referralCode}`
-      : "Mine kostenlos BLZ auf BidBlitz!";
+      ? `BlitzMine Preview auf BidBlitz – mein Code: ${referralCode}`
+      : "BlitzMine Preview auf BidBlitz";
     if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({ title: "BlitzMine", text, url: refLink }).catch((error) => { void error; });
     } else {
@@ -1168,7 +1182,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         </motion.button>
         <div className="flex-1">
           <p className="text-[11px] text-white/50 uppercase tracking-[0.2em] font-bold">BlitzMine</p>
-          <p className="text-[16px] font-bold">Tap-to-Earn</p>
+          <p className="text-[16px] font-bold">{valueActionsEnabled ? "Tap-to-Earn" : "Preview"}</p>
         </div>
         <div className="text-right">
           <p className="text-[9px] text-white/40 uppercase">Balance</p>
@@ -1177,6 +1191,14 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
       </div>
 
       <div className="px-5 pb-24 space-y-5">
+        {!valueActionsEnabled && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="blitzmine-provider-unavailable">
+            <p className="text-[13px] font-bold text-amber-300">BlitzMine nur als Preview</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">
+              {data?.capabilities?.production_message || "Tap, Claim, Bonus und Lockup werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
+            </p>
+          </div>
+        )}
         <RewardCtaCard
           data={data}
           quickBonus={data?.quick_bonus}
@@ -1190,14 +1212,18 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           }}
         />
 
-        {/* Tap button */}
-        <div className="flex flex-col items-center pt-4 pb-2">
-          <TapButton data={data} onTap={onTap} onClaim={onClaim} loading={loading} />
-        </div>
+        {valueActionsEnabled ? (
+          <>
+            {/* Tap button */}
+            <div className="flex flex-col items-center pt-4 pb-2">
+              <TapButton data={data} onTap={onTap} onClaim={onClaim} loading={loading} />
+            </div>
 
-        <QuickBonusWidget quickBonus={data?.quick_bonus} onClaim={onQuickClaim} busy={quickBusy} />
+            <QuickBonusWidget quickBonus={data?.quick_bonus} onClaim={onQuickClaim} busy={quickBusy} />
 
-        <TurboTapWidget boost={data?.session?.boost} onTap={onBoostTap} busy={boostBusy} />
+            <TurboTapWidget boost={data?.session?.boost} onTap={onBoostTap} busy={boostBusy} />
+          </>
+        ) : null}
 
         {topQuests.length > 0 && (
           <div data-testid="blitz-missions-widget" className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
