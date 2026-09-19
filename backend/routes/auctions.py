@@ -297,19 +297,37 @@ DAILY_REWARD_CREDITS = 3
 
 @router.post("/daily-reward")
 async def claim_daily_reward(request: Request):
-    """Claim daily free bid credits."""
+    """Claim daily free bid credits exactly once per 24h window."""
     user = await get_current_user(request)
     now = datetime.now(timezone.utc)
-    last_claim = user.get("last_daily_claim")
-    if last_claim:
-        last_dt = datetime.fromisoformat(last_claim)
-        if (now - last_dt).total_seconds() < 86400:
-            remaining_secs = int(86400 - (now - last_dt).total_seconds())
-            raise HTTPException(status_code=400, detail=f"Already claimed. Next in {remaining_secs}s")
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": DAILY_REWARD_CREDITS}, "$set": {"last_daily_claim": now.isoformat()}},
+    cutoff = (now - timedelta(hours=24)).isoformat()
+
+    result = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"last_daily_claim": {"$exists": False}},
+                {"last_daily_claim": None},
+                {"last_daily_claim": {"$lte": cutoff}},
+            ],
+        },
+        {
+            "$inc": {"bid_credits": DAILY_REWARD_CREDITS},
+            "$set": {"last_daily_claim": now.isoformat()},
+        },
     )
+    if result.modified_count != 1:
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"last_daily_claim": 1, "_id": 0}) or {}
+        last_claim = fresh.get("last_daily_claim")
+        remaining_secs = 86400
+        if last_claim:
+            try:
+                elapsed = (now - datetime.fromisoformat(last_claim)).total_seconds()
+                remaining_secs = max(1, int(86400 - elapsed))
+            except Exception:
+                pass
+        raise HTTPException(status_code=400, detail=f"Already claimed. Next in {remaining_secs}s")
+
     updated = await db.users.find_one({"_id": user["_id"]})
     return {"credits_awarded": DAILY_REWARD_CREDITS, "total_credits": updated.get("bid_credits", 0)}
 
