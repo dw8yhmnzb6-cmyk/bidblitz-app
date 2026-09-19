@@ -25,6 +25,11 @@ async def _require_admin(request: Request):
     return user
 
 
+def _can_manage_privileged_roles(admin: dict) -> bool:
+    email = str(admin.get("canonical_email") or admin.get("email") or "").strip().lower()
+    return admin.get("role") == "super_admin" or email == "admin@bidblitz.ae"
+
+
 def _oid(s):
     try:
         return ObjectId(s)
@@ -218,14 +223,47 @@ class KYCDecisionRequest(BaseModel):
 
 @router.post("/customers/{user_id}/role")
 async def change_role(user_id: str, req: RoleRequest, request: Request):
-    """Rolle eines Kunden ändern."""
-    await _require_admin(request)
-    result = await db.users.update_one(
-        {"_id": _oid(user_id)},
-        {"$set": {"role": req.role}},
-    )
-    if result.matched_count == 0:
+    """Change a role and immediately revoke stale authorization sessions."""
+    admin = await _require_admin(request)
+    target = await db.users.find_one({"_id": _oid(user_id)})
+    if not target:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    current_role = str(target.get("role") or "user")
+    privileged_change = req.role in {"admin", "super_admin"} or current_role in {"admin", "super_admin"}
+
+    if target_email == "admin@bidblitz.ae" and req.role != "admin":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann über diese Route nicht herabgestuft werden")
+    if privileged_change and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.users.update_one(
+        {"_id": target["_id"], "role": current_role},
+        {
+            "$set": {
+                "role": req.role,
+                "role_changed_at": now,
+                "role_changed_by": str(admin.get("_id") or admin.get("id") or ""),
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    if result.modified_count != 1 and current_role != req.role:
+        raise HTTPException(status_code=409, detail="Rolle wurde parallel geändert")
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(target["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        details={"action": "role_change", "target_user_id": user_id, "old_role": current_role, "new_role": req.role},
+    )
     return {"ok": True, "role": req.role}
 
 
