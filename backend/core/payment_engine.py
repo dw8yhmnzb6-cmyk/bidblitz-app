@@ -307,6 +307,7 @@ async def transfer_between_wallets(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
