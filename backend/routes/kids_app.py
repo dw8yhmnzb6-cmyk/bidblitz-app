@@ -13,6 +13,19 @@ import secrets
 router = APIRouter(prefix="/api/kids-app", tags=["kids-app"])
 
 
+async def _require_child_access(user: dict, child_id: str) -> dict:
+    uid = str(user["_id"])
+    child = await db.kids_children.find_one(
+        {"child_id": child_id},
+        {"_id": 0},
+    )
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    if child.get("parent_id") != uid and child.get("user_id") != uid and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
+    return child
+
+
 class KidsMessage(BaseModel):
     child_id: str
     text: str
@@ -29,9 +42,7 @@ class KidsCall(BaseModel):
 @router.get("/dashboard/{child_id}")
 async def kids_dashboard(child_id: str, request: Request):
     user = await get_current_user(request)
-    child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    child = await _require_child_access(user, child_id)
 
     # Tasks
     tasks = await db.kids_tasks.find(
@@ -57,7 +68,8 @@ async def kids_dashboard(child_id: str, request: Request):
 
 @router.get("/chat/{child_id}")
 async def get_chat(child_id: str, request: Request, limit: int = 50):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_child_access(user, child_id)
     messages = await db.kids_messages.find(
         {"child_id": child_id}, {"_id": 0}
     ).sort("created_at", 1).limit(limit).to_list(limit)
@@ -72,11 +84,14 @@ async def get_chat(child_id: str, request: Request, limit: int = 50):
 @router.post("/chat/send")
 async def send_message(req: KidsMessage, request: Request):
     user = await get_current_user(request)
+    child = await _require_child_access(user, req.child_id)
+    uid = str(user["_id"])
+    sender_role = "parent" if child.get("parent_id") == uid or user.get("role") == "admin" else "child"
     now = datetime.now(timezone.utc).isoformat()
     msg = {
         "message_id": secrets.token_hex(8),
         "child_id": req.child_id,
-        "sender": req.sender,
+        "sender": sender_role,
         "sender_name": user.get("name", ""),
         "text": req.text,
         "read": False,
@@ -92,9 +107,7 @@ async def send_message(req: KidsMessage, request: Request):
 @router.post("/call")
 async def initiate_call(req: KidsCall, request: Request):
     user = await get_current_user(request)
-    child = await db.kids_children.find_one({"child_id": req.child_id}, {"_id": 0})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    child = await _require_child_access(user, req.child_id)
 
     parent = await db.users.find_one({"_id": __import__("bson").ObjectId(child["parent_id"])}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
 
@@ -141,25 +154,44 @@ async def get_quiz():
 async def submit_quiz(request: Request):
     user = await get_current_user(request)
     body = await request.json()
-    child_id = body.get("child_id", "")
-    score = body.get("score", 0)
-    total = body.get("total", 5)
+    child_id = str(body.get("child_id") or "")
+    child = await _require_child_access(user, child_id)
 
-    # Award coins for correct answers
-    reward = score * 0.50  # €0.50 per correct answer
-    if reward > 0 and child_id:
-        await db.kids_children.update_one({"child_id": child_id}, {"$inc": {"balance": reward}})
+    try:
+        score = max(0, min(int(body.get("score", 0)), 5))
+        total = max(1, min(int(body.get("total", 5)), 5))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültiges Quiz-Ergebnis")
+    score = min(score, total)
+
+    # Quiz rewards are non-cash BLZ points. Never mint EUR child wallet balance.
+    reward_points = score * 5
+    result_id = f"KQZ-{secrets.token_hex(8)}"
+    await db.kids_children.update_one(
+        {"child_id": child_id},
+        {"$inc": {"balance_blz": reward_points, "quiz_points_total": reward_points}},
+    )
 
     now = datetime.now(timezone.utc).isoformat()
     await db.kids_quiz_results.insert_one({
+        "result_id": result_id,
         "child_id": child_id,
+        "parent_id": child.get("parent_id"),
         "score": score,
         "total": total,
-        "reward": reward,
+        "reward_points": reward_points,
+        "reward_currency": "BLZ_POINTS",
         "created_at": now,
     })
 
-    return {"ok": True, "score": score, "total": total, "reward": reward}
+    return {
+        "ok": True,
+        "score": score,
+        "total": total,
+        "reward": reward_points,
+        "reward_points": reward_points,
+        "reward_currency": "BLZ_POINTS",
+    }
 
 
 # ─── Savings Goal ───
@@ -168,14 +200,26 @@ async def submit_quiz(request: Request):
 async def set_savings_goal(request: Request):
     user = await get_current_user(request)
     body = await request.json()
-    child_id = body.get("child_id", "")
-    goal_name = body.get("goal_name", "")
-    goal_amount = body.get("goal_amount", 0)
+    child_id = str(body.get("child_id") or "")
+    child = await _require_child_access(user, child_id)
+    goal_name = str(body.get("goal_name") or "").strip()[:80]
+    try:
+        goal_amount = round(float(body.get("goal_amount") or 0), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültiger Zielbetrag")
+    if goal_amount < 0 or goal_amount > 10000:
+        raise HTTPException(status_code=400, detail="Ungültiger Zielbetrag")
 
     now = datetime.now(timezone.utc).isoformat()
     await db.kids_savings.update_one(
-        {"child_id": child_id},
-        {"$set": {"goal_name": goal_name, "goal_amount": goal_amount, "updated_at": now}},
+        {"child_id": child_id, "parent_id": child.get("parent_id")},
+        {"$set": {
+            "child_id": child_id,
+            "parent_id": child.get("parent_id"),
+            "goal_name": goal_name,
+            "goal_amount": goal_amount,
+            "updated_at": now,
+        }},
         upsert=True,
     )
     return {"ok": True}
@@ -187,7 +231,8 @@ async def set_savings_goal(request: Request):
 @router.get("/chat/{child_id}/poll")
 async def poll_chat(child_id: str, request: Request, after: str = ""):
     """Long-poll: Return new messages since 'after' timestamp."""
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_child_access(user, child_id)
     q = {"child_id": child_id}
     if after:
         q["created_at"] = {"$gt": after}
@@ -200,8 +245,10 @@ async def poll_chat(child_id: str, request: Request, after: str = ""):
 async def set_typing(child_id: str, request: Request):
     """Set typing indicator."""
     user = await get_current_user(request)
+    child = await _require_child_access(user, child_id)
     body = await request.json()
-    sender = body.get("sender", "child")
+    uid = str(user["_id"])
+    sender = "parent" if child.get("parent_id") == uid or user.get("role") == "admin" else "child"
     await db.kids_typing.update_one(
         {"child_id": child_id, "sender": sender},
         {"$set": {"typing": True, "name": user.get("name", ""), "updated_at": datetime.now(timezone.utc).isoformat()}},
@@ -213,7 +260,8 @@ async def set_typing(child_id: str, request: Request):
 @router.get("/chat/{child_id}/typing")
 async def get_typing(child_id: str, request: Request):
     """Check who is typing."""
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_child_access(user, child_id)
     indicators = await db.kids_typing.find({"child_id": child_id}, {"_id": 0}).to_list(5)
     # Auto-expire typing after 5 seconds
     now = datetime.now(timezone.utc)
