@@ -551,24 +551,57 @@ async def _ensure_user_loyalty(user_id: str):
 
 async def _credit_bidcoins(user_id: str, amount: int, source_type: str, description: str, source_id: str | None = None):
     if amount <= 0:
-        return
-    loyalty = await _ensure_user_loyalty(user_id)
-    new_total = int(loyalty.get("total_coins_earned", 0) or 0) + amount
-    new_badge = _badge_for_points(new_total)
-    await db.user_loyalty.update_one(
-        {"user_id": user_id},
-        {"$inc": {"coins_balance": amount, "total_coins_earned": amount}, "$set": {"level": new_badge, "updated_at": _now_iso()}},
+        return {"credited": False, "replayed": False}
+
+    await _ensure_user_loyalty(user_id)
+    marker_hash = hashlib.sha256(f"{source_type}:{source_id or description}".encode("utf-8")).hexdigest()[:24]
+    marker_field = f"grant_markers.{marker_hash}"
+
+    if source_id:
+        update = await db.user_loyalty.update_one(
+            {"user_id": user_id, marker_field: {"$exists": False}},
+            {
+                "$inc": {"coins_balance": amount, "total_coins_earned": amount},
+                "$set": {
+                    marker_field: {
+                        "source_type": source_type,
+                        "source_id": source_id,
+                        "amount": amount,
+                        "created_at": _now_iso(),
+                    },
+                    "updated_at": _now_iso(),
+                },
+            },
+            upsert=True,
+        )
+        replayed = update.modified_count != 1 and update.upserted_id is None
+    else:
+        await db.user_loyalty.update_one(
+            {"user_id": user_id},
+            {"$inc": {"coins_balance": amount, "total_coins_earned": amount}, "$set": {"updated_at": _now_iso()}},
+            upsert=True,
+        )
+        replayed = False
+
+    loyalty = await db.user_loyalty.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    new_badge = _badge_for_points(int(loyalty.get("total_coins_earned", 0) or 0))
+    await db.user_loyalty.update_one({"user_id": user_id}, {"$set": {"level": new_badge, "updated_at": _now_iso()}})
+
+    event_id = f"RWD-{marker_hash.upper()}"
+    await db.reward_events.update_one(
+        {"event_id": event_id},
+        {"$setOnInsert": {
+            "event_id": event_id,
+            "user_id": user_id,
+            "source_type": source_type,
+            "source_id": source_id,
+            "bidcoins": amount,
+            "description": description,
+            "created_at": _now_iso(),
+        }},
         upsert=True,
     )
-    await db.reward_events.insert_one({
-        "event_id": f"RWD-{source_type[:3].upper()}-{datetime.now(timezone.utc).strftime('%H%M%S%f')}",
-        "user_id": user_id,
-        "source_type": source_type,
-        "source_id": source_id,
-        "bidcoins": amount,
-        "description": description,
-        "created_at": _now_iso(),
-    })
+    return {"credited": not replayed, "replayed": replayed}
 
 
 async def _build_rewards_history(uid: str, reward_type: str | None = None, limit: int = 100):
@@ -660,34 +693,25 @@ async def _build_rewards_dashboard(user: dict):
 
 @router.post("/daily-claim")
 async def claim_daily_reward(request: Request):
-    """Claim daily login reward with streak tracking."""
+    """Claim one daily login reward exactly once."""
     user = await get_current_user(request)
     uid = user["_id"]
+    uid_str = str(uid)
     now = datetime.now(timezone.utc)
     today = today_str()
-
     last_claim = user.get("reward_last_claim")
-    streak = user.get("reward_streak", 0)
-
-    # Already claimed today?
-    if last_claim == today:
-        raise HTTPException(status_code=400, detail="Already claimed today")
-
+    streak = int(user.get("reward_streak", 0) or 0)
     yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
     if last_claim == yesterday:
-        # Consecutive day
         streak = min(streak + 1, 7)
-    else:
-        # Streak broken or first claim
+    elif last_claim != today:
         streak = 1
 
     reward = STREAK_REWARDS.get(streak, STREAK_REWARDS[7])
-
-    # Check comeback bonus
     comeback = 0
     comeback_message = None
-    if last_claim:
+    if last_claim and last_claim != today:
         last_dt = parse_date(last_claim)
         if last_dt:
             days_away = (now - last_dt).days
@@ -696,38 +720,66 @@ async def claim_daily_reward(request: Request):
                 comeback_message = f"Welcome back! +{COMEBACK_BONUS} bonus credits"
 
     total_add = reward + comeback
-
-    await db.users.update_one(
-        {"_id": uid},
+    claim = await db.users.update_one(
+        {"_id": uid, "reward_last_claim": {"$ne": today}},
         {
             "$inc": {"bid_credits": total_add, "total_reward_credits": total_add},
             "$set": {
                 "reward_last_claim": today,
                 "reward_streak": streak,
                 "last_active_date": today,
+                "reward_last_claim_reward": reward,
+                "reward_last_claim_comeback": comeback,
             },
         },
     )
-    await _credit_bidcoins(str(uid), total_add, "daily_login", f"Daily Login Reward ({streak} Tage)")
+
+    replayed = claim.modified_count != 1
+    if replayed:
+        current = await db.users.find_one({"_id": uid}, {"_id": 0, "reward_last_claim": 1, "reward_streak": 1, "reward_last_claim_reward": 1, "reward_last_claim_comeback": 1, "bid_credits": 1, "total_reward_credits": 1}) or {}
+        if current.get("reward_last_claim") != today:
+            raise HTTPException(status_code=409, detail="Daily Reward wurde parallel geändert")
+        streak = int(current.get("reward_streak") or streak)
+        reward = int(current.get("reward_last_claim_reward") or STREAK_REWARDS.get(streak, 0))
+        comeback = int(current.get("reward_last_claim_comeback") or 0)
+        total_add = reward + comeback
+
+    await _credit_bidcoins(
+        uid_str,
+        total_add,
+        "daily_login",
+        f"Daily Login Reward ({streak} Tage)",
+        source_id=f"daily:{today}",
+    )
+
     if streak in REWARDS_V3_STREAKS:
         cfg = await _get_rewards_v3_config()
         streak_bonus = int(cfg.get(f"streak_bonus_{streak}", 0) or 0)
-        already = await db.reward_events.find_one({"user_id": str(uid), "source_type": f"streak_{streak}"})
-        if streak_bonus > 0 and not already:
-            await _credit_bidcoins(str(uid), streak_bonus, f"streak_{streak}", f"Streak Bonus {streak} Tage")
+        if streak_bonus > 0:
+            await _credit_bidcoins(
+                uid_str,
+                streak_bonus,
+                f"streak_{streak}",
+                f"Streak Bonus {streak} Tage",
+                source_id=f"streak:{streak}:{today}",
+            )
 
-    # Create reward notification
-    await db.reward_notifications.insert_one({
-        "user_id": str(uid),
-        "type": "daily_reward",
-        "credits": reward,
-        "streak_day": streak,
-        "comeback_bonus": comeback,
-        "read": False,
-        "created_at": now.isoformat(),
-    })
+    await db.reward_notifications.update_one(
+        {"user_id": uid_str, "type": "daily_reward", "date": today},
+        {"$setOnInsert": {
+            "user_id": uid_str,
+            "type": "daily_reward",
+            "date": today,
+            "credits": reward,
+            "streak_day": streak,
+            "comeback_bonus": comeback,
+            "read": False,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
 
-    updated = await db.users.find_one({"_id": uid})
+    updated = await db.users.find_one({"_id": uid}) or {}
     return {
         "credits_awarded": reward,
         "streak_day": streak,
@@ -735,6 +787,7 @@ async def claim_daily_reward(request: Request):
         "comeback_message": comeback_message,
         "total_credits": updated.get("bid_credits", 0),
         "total_reward_credits": updated.get("total_reward_credits", 0),
+        "replayed": replayed,
     }
 
 
@@ -790,45 +843,52 @@ async def _get_milestones(user, uid):
 
 @router.post("/milestone/{milestone_id}")
 async def claim_milestone(milestone_id: str, request: Request):
-    """Claim a completed milestone reward."""
+    """Claim a completed milestone reward exactly once."""
     user = await get_current_user(request)
     uid = str(user["_id"])
 
     if milestone_id not in MILESTONES:
         raise HTTPException(status_code=400, detail="Invalid milestone")
 
-    claimed = user.get("milestones_claimed", {})
-    if claimed.get(milestone_id):
-        raise HTTPException(status_code=400, detail="Already claimed")
-
     milestones = await _get_milestones(user, uid)
     ms = next((m for m in milestones if m["id"] == milestone_id), None)
     if not ms or not ms["completed"]:
         raise HTTPException(status_code=400, detail="Milestone not completed yet")
 
-    credits = MILESTONES[milestone_id]["credits"]
-    await db.users.update_one(
-        {"_id": user["_id"]},
+    credits = int(MILESTONES[milestone_id]["credits"])
+    marker = f"milestones_claimed.{milestone_id}"
+    claim = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$ne": True}},
         {
             "$inc": {"bid_credits": credits, "total_reward_credits": credits},
-            "$set": {f"milestones_claimed.{milestone_id}": True},
+            "$set": {marker: True},
         },
     )
+    replayed = claim.modified_count != 1
+    if replayed:
+        current = await db.users.find_one({"_id": user["_id"], marker: True}, {"_id": 1})
+        if not current:
+            raise HTTPException(status_code=409, detail="Milestone wurde parallel geändert")
 
-    await db.reward_notifications.insert_one({
-        "user_id": uid,
-        "type": "milestone",
-        "milestone_id": milestone_id,
-        "credits": credits,
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await db.reward_notifications.update_one(
+        {"user_id": uid, "type": "milestone", "milestone_id": milestone_id},
+        {"$setOnInsert": {
+            "user_id": uid,
+            "type": "milestone",
+            "milestone_id": milestone_id,
+            "credits": credits,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
 
-    updated = await db.users.find_one({"_id": user["_id"]})
+    updated = await db.users.find_one({"_id": user["_id"]}) or {}
     return {
         "credits_awarded": credits,
         "milestone_id": milestone_id,
         "total_credits": updated.get("bid_credits", 0),
+        "replayed": replayed,
     }
 
 
