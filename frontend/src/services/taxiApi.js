@@ -331,15 +331,29 @@ export async function forwardGeocode(query) {
 }
 
 export async function reverseGeocode(lat, lng, signal) {
-  if (!MAPBOX_TOKEN) return null;
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const directUrl = MAPBOX_TOKEN
+    ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`
+    : null;
+
   try {
-    const res = await safeFetch(url, { signal });
-    if (!res) return null;
-    if (!res.ok) return null;
-    const data = await readJson(res);
-    const f = data?.features?.[0];
-    return f?.place_name || null;
+    if (directUrl) {
+      const direct = await safeFetch(directUrl, { signal });
+      if (direct?.ok) {
+        const data = await readJson(direct);
+        const feature = data?.features?.[0];
+        if (feature?.place_name) return feature.place_name;
+      }
+    }
+
+    const proxy = await safeFetch(
+      `${API}/api/taxi/geocode/reverse?lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&lang=de`,
+      { ...cred, signal },
+    );
+    if (!proxy?.ok) return null;
+    const data = await readJson(proxy);
+    return data?.address || null;
   } catch {
     return null;
   }
