@@ -5,6 +5,7 @@ Email OTP + TOTP Authenticator App based 2FA system.
 
 import secrets
 import logging
+import hashlib
 import io
 import base64
 from datetime import datetime, timezone, timedelta
@@ -16,6 +17,7 @@ import qrcode
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/2fa", tags=["2FA"])
 logger = logging.getLogger("bidblitz.2fa")
@@ -39,6 +41,27 @@ def generate_otp() -> str:
     return ''.join([str(secrets.randbelow(10)) for _ in range(OTP_LENGTH)])
 
 
+def _hash_otp_code(code: str) -> str:
+    return hashlib.sha256(f"2fa-otp:{code}".encode("utf-8")).hexdigest()
+
+
+def _hash_pending_token(token: str) -> str:
+    return hashlib.sha256(f"2fa:{token}".encode("utf-8")).hexdigest()
+
+
+def _otp_matches(doc: dict, code: str) -> bool:
+    stored_hash = doc.get("code_hash")
+    if stored_hash:
+        return secrets.compare_digest(stored_hash, _hash_otp_code(code))
+    legacy = str(doc.get("code") or "")
+    return bool(legacy) and secrets.compare_digest(legacy, code)
+
+
+def _backup_code_hash(code: str) -> str:
+    return hashlib.sha256(f"2fa-backup:{code.upper()}".encode("utf-8")).hexdigest()
+
+
+
 async def send_otp_email(email: str, otp: str, purpose: str = "verification", user_name: str = ""):
     """
     Send OTP via email using core email service.
@@ -60,10 +83,14 @@ async def get_2fa_status(request: Request):
     is_enabled = user.get("two_factor_enabled", False)
     method = user.get("two_factor_method", None)
     
+    backup_hashes = user.get("totp_backup_code_hashes") or []
+    legacy_backup_codes = user.get("totp_backup_codes") or []
     return {
         "enabled": is_enabled,
         "method": method,
         "verified": user.get("two_factor_verified", False),
+        "enabled_at": user.get("two_factor_enabled_at"),
+        "backup_codes_remaining": len(backup_hashes) if backup_hashes else len(legacy_backup_codes),
     }
 
 
@@ -92,7 +119,7 @@ async def enable_2fa(req: Enable2FARequest, request: Request):
     await db.otp_codes.delete_many({"user_id": user_id, "purpose": "enable_2fa"})
     await db.otp_codes.insert_one({
         "user_id": user_id,
-        "code": otp,
+        "code_hash": _hash_otp_code(otp),
         "purpose": "enable_2fa",
         "method": req.method,
         "attempts": 0,
@@ -102,15 +129,19 @@ async def enable_2fa(req: Enable2FARequest, request: Request):
     
     # Send OTP
     sent = await send_otp_email(email, otp, "2FA Aktivierung")
+    if not sent and not TEST_MODE:
+        await db.otp_codes.delete_many({"user_id": user_id, "purpose": "enable_2fa"})
+        raise HTTPException(status_code=503, detail="2FA-Code konnte nicht zugestellt werden")
     
-    return {
+    response = {
         "ok": True,
         "message": f"Bestätigungscode an {email[:3]}***{email[-10:]} gesendet",
         "expires_in_minutes": OTP_EXPIRY_MINUTES,
         "email_sent": sent,
-        # For testing only - remove in production
-        "_test_otp": otp if not sent else None,
     }
+    if TEST_MODE and not sent:
+        response["_test_otp"] = otp
+    return response
 
 
 @router.post("/verify-enable")
@@ -136,7 +167,7 @@ async def verify_enable_2fa(req: VerifyOTPRequest, request: Request):
         raise HTTPException(status_code=400, detail="Zu viele Versuche. Bitte neu anfordern.")
     
     # Check code
-    if otp_doc["code"] != req.code:
+    if not _otp_matches(otp_doc, req.code):
         await db.otp_codes.update_one(
             {"_id": otp_doc["_id"]},
             {"$inc": {"attempts": 1}}
@@ -179,73 +210,106 @@ async def verify_enable_2fa(req: VerifyOTPRequest, request: Request):
 
 @router.post("/disable")
 async def disable_2fa(req: VerifyOTPRequest, request: Request):
-    """Disable 2FA (requires current OTP verification)."""
+    """Disable 2FA only after verifying the user's current second factor."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     if not user.get("two_factor_enabled"):
         raise HTTPException(status_code=400, detail="2FA nicht aktiviert")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Verify OTP
-    otp_doc = await db.otp_codes.find_one({
-        "user_id": user_id,
-        "purpose": "disable_2fa",
-        "expires_at": {"$gt": now.isoformat()}
-    })
-    
-    if not otp_doc or otp_doc["code"] != req.code:
-        raise HTTPException(status_code=400, detail="Falscher Code")
-    
-    # Disable 2FA
-    await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$set": {
+
+    method = user.get("two_factor_method") or "email"
+    valid = False
+    used_backup_hash = None
+
+    if method == "totp":
+        secret = user.get("totp_secret")
+        if secret:
+            valid = pyotp.TOTP(secret).verify(req.code, valid_window=1)
+        if not valid:
+            candidate_hash = _backup_code_hash(req.code)
+            hashes = list(user.get("totp_backup_code_hashes") or [])
+            if candidate_hash in hashes:
+                valid = True
+                used_backup_hash = candidate_hash
+            elif req.code.upper() in (user.get("totp_backup_codes") or []):
+                # One-time migration support for legacy plaintext backup codes.
+                valid = True
+    else:
+        now = datetime.now(timezone.utc)
+        otp_doc = await db.otp_codes.find_one({
+            "user_id": user_id,
+            "purpose": "disable_2fa",
+            "expires_at": {"$gt": now.isoformat()},
+        })
+        if otp_doc and otp_doc.get("attempts", 0) < OTP_MAX_ATTEMPTS:
+            valid = _otp_matches(otp_doc, req.code)
+            if not valid:
+                await db.otp_codes.update_one({"_id": otp_doc["_id"]}, {"$inc": {"attempts": 1}})
+            else:
+                await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+
+    if not valid:
+        raise HTTPException(status_code=400, detail="Ungültiger 2FA-Code")
+
+    update = {
+        "$set": {
             "two_factor_enabled": False,
             "two_factor_method": None,
             "two_factor_verified": False,
-        }}
-    )
-    
-    await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
-    
-    logger.info(f"2FA disabled for user {user_id}")
-    
+            "two_factor_disabled_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "$unset": {
+            "totp_secret": "",
+            "totp_secret_pending": "",
+            "totp_backup_codes": "",
+            "totp_backup_code_hashes": "",
+        },
+        "$inc": {"auth_version": 1},
+    }
+    await db.users.update_one({"_id": user["_id"]}, update)
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(user_id)
+    await db.pending_2fa.delete_many({"user_id": user_id})
+    await db.otp_codes.delete_many({"user_id": user_id})
+
+    logger.info("2FA disabled for user %s", user_id)
     return {"ok": True, "message": "2FA deaktiviert"}
 
 
 @router.post("/send-disable-code")
 async def send_disable_code(request: Request):
-    """Send OTP to disable 2FA."""
+    """Send an email OTP for disabling email-based 2FA."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     email = user.get("email")
-    
+
     if not user.get("two_factor_enabled"):
         raise HTTPException(status_code=400, detail="2FA nicht aktiviert")
-    
+    if (user.get("two_factor_method") or "email") != "email":
+        raise HTTPException(status_code=400, detail="Nutze den aktuellen Authenticator-Code zum Deaktivieren")
+
     otp = generate_otp()
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=OTP_EXPIRY_MINUTES)
-    
     await db.otp_codes.delete_many({"user_id": user_id, "purpose": "disable_2fa"})
     await db.otp_codes.insert_one({
         "user_id": user_id,
-        "code": otp,
+        "code_hash": _hash_otp_code(otp),
         "purpose": "disable_2fa",
         "attempts": 0,
         "created_at": now.isoformat(),
         "expires_at": expires.isoformat(),
     })
-    
+
     sent = await send_otp_email(email, otp, "2FA Deaktivierung")
-    
-    return {
-        "ok": True,
-        "message": "Code gesendet",
-        "_test_otp": otp if not sent else None,
-    }
+    if not sent and not TEST_MODE:
+        await db.otp_codes.delete_many({"user_id": user_id, "purpose": "disable_2fa"})
+        raise HTTPException(status_code=503, detail="2FA-Code konnte nicht zugestellt werden")
+
+    response = {"ok": True, "message": "Code gesendet", "expires_in_minutes": OTP_EXPIRY_MINUTES}
+    if TEST_MODE and not sent:
+        response["_test_otp"] = otp
+    return response
 
 
 @router.post("/login-verify")
@@ -258,7 +322,12 @@ async def verify_login_otp(req: VerifyOTPRequest, request: Request):
     if not session_token:
         raise HTTPException(status_code=400, detail="Keine ausstehende Anmeldung")
     
-    pending = await db.pending_2fa.find_one({"token": session_token})
+    pending = await db.pending_2fa.find_one({
+        "$or": [
+            {"token_hash": _hash_pending_token(session_token)},
+            {"token": session_token},
+        ]
+    })
     if not pending:
         raise HTTPException(status_code=400, detail="Session abgelaufen")
     
@@ -277,10 +346,10 @@ async def verify_login_otp(req: VerifyOTPRequest, request: Request):
     
     if otp_doc.get("attempts", 0) >= OTP_MAX_ATTEMPTS:
         await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
-        await db.pending_2fa.delete_one({"token": session_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Zu viele Versuche")
     
-    if otp_doc["code"] != req.code:
+    if not _otp_matches(otp_doc, req.code):
         await db.otp_codes.update_one(
             {"_id": otp_doc["_id"]},
             {"$inc": {"attempts": 1}}
@@ -289,7 +358,7 @@ async def verify_login_otp(req: VerifyOTPRequest, request: Request):
     
     # Clean up
     await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
-    await db.pending_2fa.delete_one({"token": session_token})
+    await db.pending_2fa.delete_one({"_id": pending["_id"]})
     
     # Return success - auth route will complete login
     return {
@@ -369,21 +438,23 @@ async def verify_and_enable_totp(otp: VerifyOTPRequest, request: Request):
     if not totp.verify(otp.code, valid_window=1):  # Allow 30s window
         raise HTTPException(status_code=400, detail="Ungültiger Code")
     
-    # Generate backup codes (10 codes)
+    # Generate one-time backup codes; store only hashes.
     backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
+    backup_code_hashes = [_backup_code_hash(code) for code in backup_codes]
     
-    # Enable 2FA
     await db.users.update_one(
         {"_id": user["_id"]},
         {
             "$set": {
                 "two_factor_enabled": True,
                 "two_factor_method": "totp",
+                "two_factor_verified": True,
                 "totp_secret": totp_secret,
-                "totp_backup_codes": backup_codes,
+                "totp_backup_code_hashes": backup_code_hashes,
                 "two_factor_enabled_at": datetime.now(timezone.utc).isoformat(),
             },
-            "$unset": {"totp_secret_pending": ""},
+            "$unset": {"totp_secret_pending": "", "totp_backup_codes": ""},
+            "$inc": {"auth_version": 1},
         },
     )
     
@@ -404,7 +475,12 @@ async def verify_totp_login(otp: VerifyOTPRequest, session_token: str):
     Called after successful username/password login when 2FA is enabled.
     """
     # Get pending 2FA session
-    pending = await db.pending_2fa.find_one({"token": session_token})
+    pending = await db.pending_2fa.find_one({
+        "$or": [
+            {"token_hash": _hash_pending_token(session_token)},
+            {"token": session_token},
+        ]
+    })
     if not pending:
         raise HTTPException(status_code=400, detail="Ungültige oder abgelaufene Session")
     
@@ -414,7 +490,7 @@ async def verify_totp_login(otp: VerifyOTPRequest, session_token: str):
         created_at = created_at.replace(tzinfo=timezone.utc)
     
     if (datetime.now(timezone.utc) - created_at).total_seconds() > 600:
-        await db.pending_2fa.delete_one({"token": session_token})
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Session abgelaufen")
     
     user_id = pending["user_id"]
@@ -430,61 +506,40 @@ async def verify_totp_login(otp: VerifyOTPRequest, session_token: str):
     totp = pyotp.TOTP(totp_secret)
     code_valid = totp.verify(otp.code, valid_window=1)
     
-    # Check backup codes
-    backup_codes = user.get("totp_backup_codes", [])
-    is_backup_code = otp.code.upper() in backup_codes
-    
+    # Check one-time backup codes by hash, with legacy migration fallback.
+    candidate_hash = _backup_code_hash(otp.code)
+    backup_hashes = list(user.get("totp_backup_code_hashes") or [])
+    legacy_backup_codes = list(user.get("totp_backup_codes") or [])
+    is_backup_code = candidate_hash in backup_hashes or otp.code.upper() in legacy_backup_codes
+
     if not code_valid and not is_backup_code:
         raise HTTPException(status_code=400, detail="Ungültiger Code")
-    
-    # If backup code was used, remove it
+
     if is_backup_code:
-        backup_codes.remove(otp.code.upper())
+        if candidate_hash in backup_hashes:
+            backup_hashes.remove(candidate_hash)
+        if otp.code.upper() in legacy_backup_codes:
+            legacy_backup_codes.remove(otp.code.upper())
         await db.users.update_one(
             {"_id": user["_id"]},
-            {"$set": {"totp_backup_codes": backup_codes}},
+            {
+                "$set": {"totp_backup_code_hashes": backup_hashes},
+                "$unset": {"totp_backup_codes": ""},
+            },
         )
-        logger.info(f"User {user_id} used backup code for TOTP login")
+        logger.info("User %s used backup code for TOTP login", user_id)
     
     # Clean up pending session
-    await db.pending_2fa.delete_one({"token": session_token})
+    await db.pending_2fa.delete_one({"_id": pending["_id"]})
     
     return {
         "ok": True,
         "user_id": user_id,
         "verified": True,
         "backup_code_used": is_backup_code,
-        "remaining_backup_codes": len(backup_codes) if is_backup_code else None,
+        "remaining_backup_codes": len(backup_hashes) if is_backup_code else None,
     }
 
 
-@router.post("/disable")
-async def disable_2fa(request: Request):
-    """Disable 2FA (requires re-authentication)."""
-    user = await get_current_user(request)
-    
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": {"two_factor_enabled": False},
-            "$unset": {"totp_secret": "", "totp_backup_codes": "", "two_factor_method": ""},
-        },
-    )
-    
-    logger.info(f"User {str(user['_id'])} disabled 2FA")
-    
-    return {"ok": True, "message": "2FA deaktiviert"}
 
-
-@router.get("/status")
-async def get_2fa_status(request: Request):
-    """Get user's 2FA status."""
-    user = await get_current_user(request)
-    
-    return {
-        "enabled": user.get("two_factor_enabled", False),
-        "method": user.get("two_factor_method", None),
-        "enabled_at": user.get("two_factor_enabled_at"),
-        "backup_codes_remaining": len(user.get("totp_backup_codes", [])) if user.get("two_factor_enabled") else 0,
-    }
 
