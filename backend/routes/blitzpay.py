@@ -2,13 +2,14 @@
 from datetime import datetime, timezone
 import hashlib
 import secrets
+import os
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.canonical_wallet_service import request_hash_for
 from core.database import db
-from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+from core.payment_engine import credit_wallet, debit_wallet, transfer_between_wallets, TransactionType
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/blitzpay", tags=["blitzpay-nfc"])
@@ -30,6 +31,7 @@ class MerchantCharge(BaseModel):
     customer_nfc_token: str
     amount: float = Field(..., gt=0, le=10000)
     description: str = ""
+    pin: str = Field(default="", max_length=32)
     idempotency_key: str = ""
 
 
@@ -41,6 +43,21 @@ def _intent_key(req, request: Request, operation: str, actor_id: str) -> str:
 
 def _tx_id(operation: str, actor_id: str, intent: str) -> str:
     return "nfc_" + request_hash_for(operation, {"actor_id": actor_id, "intent": intent})[:16]
+
+
+async def _blitzpay_platform_user_id():
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
+    pool = await db.users.find_one({"email": email}, {"_id": 1})
+    return str(pool["_id"]) if pool else None
+
+
+def _verify_token_pin(token_doc: dict, supplied_pin: str) -> None:
+    pin_hash = token_doc.get("pin_hash")
+    if not pin_hash:
+        return
+    candidate = hashlib.sha256(str(supplied_pin or "").encode()).hexdigest()
+    if not secrets.compare_digest(candidate, str(pin_hash)):
+        raise HTTPException(status_code=403, detail="NFC-PIN erforderlich oder ungültig")
 
 
 async def _record_token_use(token: str, tx_id: str, amount: float):
@@ -79,91 +96,171 @@ async def get_my_token(request: Request):
 
 @router.post("/pay")
 async def nfc_payment(req: NFCPayment, request: Request):
-    token_doc = await db.nfc_tokens.find_one({"nfc_token": req.nfc_token, "active": True})
-    if not token_doc: raise HTTPException(404, "NFC-Token ungültig")
-    user = await db.users.find_one({"email": token_doc["user_email"]})
-    if not user: raise HTTPException(404, "User nicht gefunden")
-    user_id = str(user["_id"])
-    intent = _intent_key(req, request, "blitzpay_payment", user_id)
-    tx_id = _tx_id("blitzpay_payment", user_id, intent)
-    existing = await db.nfc_transactions.find_one({"_id": tx_id}, {"_id": 0})
-    if existing:
-        fresh = await db.users.find_one({"_id": user["_id"]}, {"balance": 1}) or {}
-        return {"ok": True, "amount": req.amount, "new_balance": float(fresh.get("balance", 0)),
-                "tx_id": tx_id, "message": f"€{req.amount:.2f} bezahlt via BlitzPay NFC!", "idempotent_replay": True}
-    debit = await debit_wallet(
-        user_id=user_id, amount=req.amount, tx_type=TransactionType.PAYMENT,
-        description=req.description or "NFC Kontaktlos-Zahlung", reference=tx_id,
-        metadata={"merchant_id": req.merchant_id, "nfc_token": req.nfc_token},
-        idempotency_key=f"blitzpay:{tx_id}:debit",
+    """Deprecated unsafe token-only debit path."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Token-only NFC-Debit ist deaktiviert. Nutze den authentifizierten Händlerpfad /api/blitzpay/merchant-charge.",
     )
-    if not debit.success:
-        code = 409 if str(getattr(debit.status, "value", debit.status)) in {"pending", "reconciliation_required"} else 400
-        raise HTTPException(code, debit.error or "Nicht genug Guthaben")
-    await _record_token_use(req.nfc_token, tx_id, req.amount)
-    tx = {"_id": tx_id, "tx_id": tx_id, "type": "nfc_payment", "user_email": token_doc["user_email"],
-          "merchant_id": req.merchant_id, "amount": req.amount, "description": req.description or "NFC Kontaktlos-Zahlung",
-          "nfc_token": req.nfc_token, "wallet_transaction_id": debit.transaction_id,
-          "status": "completed", "created_at": datetime.now(timezone.utc).isoformat()}
-    await db.nfc_transactions.update_one({"_id": tx_id}, {"$setOnInsert": tx}, upsert=True)
-    return {"ok": True, "amount": req.amount, "new_balance": debit.new_balance, "tx_id": tx_id,
-            "message": f"€{req.amount:.2f} bezahlt via BlitzPay NFC!", "idempotent_replay": debit.idempotent_replay}
-
 
 @router.post("/merchant-charge")
 async def merchant_charge(req: MerchantCharge, request: Request):
+    """Authenticated merchant charge through platform escrow, exactly once."""
     merchant = await get_current_user(request)
-    if merchant.get("role") not in ["merchant", "admin"]: raise HTTPException(403, "Nur Händler können Zahlungen anfordern")
+    if merchant.get("role") not in ["merchant", "admin"]:
+        raise HTTPException(403, "Nur Händler können Zahlungen anfordern")
+    if merchant.get("role") != "admin" and merchant.get("kyc_status") != "approved":
+        raise HTTPException(status_code=403, detail="KYC-Verifizierung für Händler erforderlich")
+
     token_doc = await db.nfc_tokens.find_one({"nfc_token": req.customer_nfc_token, "active": True})
-    if not token_doc: raise HTTPException(404, "Kunden-NFC-Token ungültig")
+    if not token_doc:
+        raise HTTPException(404, "Kunden-NFC-Token ungültig")
+    _verify_token_pin(token_doc, req.pin)
+
     customer = await db.users.find_one({"email": token_doc["user_email"]})
     merchant_doc = await db.users.find_one({"email": merchant.get("email", "")})
-    if not customer: raise HTTPException(404, "Kunde nicht gefunden")
-    if not merchant_doc: raise HTTPException(404, "Händler-Wallet nicht gefunden")
-    customer_id, merchant_id = str(customer["_id"]), str(merchant_doc["_id"])
+    if not customer:
+        raise HTTPException(404, "Kunde nicht gefunden")
+    if not merchant_doc:
+        raise HTTPException(404, "Händler-Wallet nicht gefunden")
+
+    customer_id = str(customer["_id"])
+    merchant_id = str(merchant_doc["_id"])
+    if customer_id == merchant_id:
+        raise HTTPException(status_code=400, detail="Eigene NFC-Zahlung ist nicht erlaubt")
+
     intent = _intent_key(req, request, "blitzpay_merchant_charge", merchant_id)
     tx_id = _tx_id("blitzpay_merchant_charge", merchant_id, intent)
     existing = await db.nfc_transactions.find_one({"_id": tx_id}, {"_id": 0})
     if existing:
-        return {"ok": True, "amount": req.amount, "fee": existing["fee"], "tx_id": tx_id,
-                "message": f"€{req.amount:.2f} von Kunde eingezogen!", "idempotent_replay": True}
-    debit = await debit_wallet(
-        user_id=customer_id, amount=req.amount, tx_type=TransactionType.MERCHANT_PAYMENT,
-        description=req.description or "Händler NFC-Zahlung", reference=tx_id,
-        metadata={"merchant_id": merchant_id, "merchant_email": merchant.get("email", "")},
-        idempotency_key=f"blitzpay:{tx_id}:debit",
-    )
-    if not debit.success:
-        code = 409 if str(getattr(debit.status, "value", debit.status)) in {"pending", "reconciliation_required"} else 400
-        raise HTTPException(code, debit.error or "Kunde hat nicht genug Guthaben")
-    merchant_amount = round(req.amount * 0.97, 2)
-    credit = await credit_wallet(
-        user_id=merchant_id, amount=merchant_amount, tx_type=TransactionType.MERCHANT_PAYMENT_RECEIVED,
-        description=req.description or "Händler NFC-Zahlung", reference=tx_id,
-        metadata={"customer_id": customer_id, "customer_email": token_doc["user_email"]},
-        idempotency_key=f"blitzpay:{tx_id}:credit",
-    )
-    if not credit.success:
-        status = str(getattr(credit.status, "value", credit.status))
-        if status in {"pending", "reconciliation_required"}:
-            raise HTTPException(409, credit.error or "Händler-Gutschrift wird geprüft")
-        refund = await credit_wallet(
-            user_id=customer_id, amount=req.amount, tx_type=TransactionType.REFUND,
-            description="BlitzPay Händlergutschrift fehlgeschlagen", reference=tx_id,
-            metadata={"merchant_id": merchant_id}, idempotency_key=f"blitzpay:{tx_id}:refund",
-        )
-        raise HTTPException(409, "Zahlung konnte nicht abgeschlossen werden" if refund.success else "Zahlung benötigt manuelle Abstimmung")
-    await _record_token_use(req.customer_nfc_token, tx_id, req.amount)
-    fee = round(req.amount - merchant_amount, 2)
-    tx = {"_id": tx_id, "tx_id": tx_id, "type": "merchant_nfc_charge", "user_email": token_doc["user_email"],
-          "merchant_email": merchant.get("email", ""), "amount": req.amount, "fee": fee,
-          "merchant_amount": merchant_amount, "description": req.description or "Händler NFC-Zahlung",
-          "customer_wallet_transaction_id": debit.transaction_id, "merchant_wallet_transaction_id": credit.transaction_id,
-          "status": "completed", "created_at": datetime.now(timezone.utc).isoformat()}
-    await db.nfc_transactions.update_one({"_id": tx_id}, {"$setOnInsert": tx}, upsert=True)
-    return {"ok": True, "amount": req.amount, "fee": fee, "tx_id": tx_id,
-            "message": f"€{req.amount:.2f} von Kunde eingezogen!", "idempotent_replay": debit.idempotent_replay or credit.idempotent_replay}
+        return {
+            "ok": True,
+            "amount": req.amount,
+            "fee": existing["fee"],
+            "tx_id": tx_id,
+            "message": f"€{req.amount:.2f} von Kunde eingezogen!",
+            "idempotent_replay": True,
+        }
 
+    platform_id = await _blitzpay_platform_user_id()
+    if not platform_id:
+        raise HTTPException(status_code=503, detail="BlitzPay Settlement-Wallet ist nicht konfiguriert")
+    if platform_id == customer_id:
+        raise HTTPException(status_code=409, detail="Plattform-Wallet darf nicht Kunden-Wallet sein")
+
+    gross = round(float(req.amount), 2)
+    fee = round(gross * 0.03, 2)
+    merchant_amount = round(gross - fee, 2)
+
+    escrow = await transfer_between_wallets(
+        from_user_id=customer_id,
+        to_user_id=platform_id,
+        amount=gross,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=req.description or "Händler NFC-Zahlung",
+        reference=tx_id,
+        metadata={
+            "kind": "blitzpay_nfc_escrow",
+            "merchant_id": merchant_id,
+            "customer_id": customer_id,
+            "gross_amount": gross,
+            "fee_amount": fee,
+            "net_amount": merchant_amount,
+        },
+        idempotency_key=f"blitzpay:{tx_id}:escrow",
+    )
+    if not escrow.success:
+        status = str(getattr(escrow.status, "value", escrow.status))
+        raise HTTPException(
+            409 if status in {"pending", "reconciliation_required"} else 400,
+            escrow.error or "Kunde hat nicht genug Guthaben",
+        )
+
+    merchant_credit = None
+    if merchant_id != platform_id and merchant_amount > 0:
+        merchant_credit = await transfer_between_wallets(
+            from_user_id=platform_id,
+            to_user_id=merchant_id,
+            amount=merchant_amount,
+            tx_type=TransactionType.MERCHANT_PAYMENT_RECEIVED,
+            description=req.description or "Händler NFC-Zahlung",
+            reference=tx_id,
+            metadata={
+                "kind": "blitzpay_nfc_merchant_settlement",
+                "customer_id": customer_id,
+                "customer_email": token_doc["user_email"],
+                "gross_amount": gross,
+                "fee_amount": fee,
+                "net_amount": merchant_amount,
+            },
+            idempotency_key=f"blitzpay:{tx_id}:merchant",
+        )
+        if not merchant_credit.success:
+            await db.nfc_transactions.update_one(
+                {"_id": tx_id},
+                {"$setOnInsert": {
+                    "_id": tx_id,
+                    "tx_id": tx_id,
+                    "type": "merchant_nfc_charge",
+                    "user_email": token_doc["user_email"],
+                    "merchant_email": merchant.get("email", ""),
+                    "merchant_id": merchant_id,
+                    "amount": gross,
+                    "fee": fee,
+                    "merchant_amount": merchant_amount,
+                    "customer_wallet_transaction_id": escrow.transaction_id,
+                    "status": "reconciliation_required",
+                    "error": merchant_credit.error,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            raise HTTPException(status_code=409, detail=merchant_credit.error or "Händler-Gutschrift wird geprüft")
+
+    await _record_token_use(req.customer_nfc_token, tx_id, gross)
+    now = datetime.now(timezone.utc).isoformat()
+    tx = {
+        "_id": tx_id,
+        "tx_id": tx_id,
+        "type": "merchant_nfc_charge",
+        "user_email": token_doc["user_email"],
+        "customer_id": customer_id,
+        "merchant_email": merchant.get("email", ""),
+        "merchant_id": merchant_id,
+        "amount": gross,
+        "fee": fee,
+        "merchant_amount": merchant_amount,
+        "description": req.description or "Händler NFC-Zahlung",
+        "customer_wallet_transaction_id": escrow.transaction_id,
+        "merchant_wallet_transaction_id": merchant_credit.transaction_id if merchant_credit else None,
+        "status": "completed",
+        "created_at": now,
+    }
+    await db.nfc_transactions.update_one({"_id": tx_id}, {"$set": tx}, upsert=True)
+    await db.platform_fees.update_one(
+        {"_id": f"blitzpay:{tx_id}"},
+        {"$setOnInsert": {
+            "_id": f"blitzpay:{tx_id}",
+            "type": "blitzpay_nfc",
+            "tx_id": tx_id,
+            "gross": gross,
+            "merchant_amount": merchant_amount,
+            "platform_fee": fee,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "amount": gross,
+        "fee": fee,
+        "tx_id": tx_id,
+        "message": f"€{gross:.2f} von Kunde eingezogen!",
+        "idempotent_replay": bool(
+            escrow.idempotent_replay
+            or (merchant_credit and merchant_credit.idempotent_replay)
+        ),
+    }
 
 @router.get("/history")
 async def nfc_history(request: Request):
