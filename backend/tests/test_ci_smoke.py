@@ -1182,3 +1182,35 @@ def test_car_rental_money_dates_deposits_and_payouts_are_exactly_once():
     assert "bookingAttemptKeyRef" in detail
     assert "payoutAttemptKeyRef" in payouts
     assert "idempotency_key: idempotencyKey" in api
+
+
+def test_credit_bnpl_uses_funded_pool_and_exactly_once_repayments():
+    source = (BACKEND_DIR / "routes" / "credit_system.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "CreditScorePage.jsx").read_text(encoding="utf-8")
+
+    assert "CREDIT_LIVE_ENABLED" in source
+    assert "CREDIT_POOL_EMAIL" in source
+    assert "def _require_credit_live" in source
+    assert "async def _credit_pool_user_id" in source
+    assert 'user.get("kyc_status") != "approved"' in source
+
+    assert "idempotency_key: str = Field(..., min_length=8" in source
+    assert 'credit_id = f"CR-{key_hash.upper()}"' in source
+    assert '"status": {"$in": ["pending", "approving", "active", "reconciliation_required"]}' in source
+
+    assert 'idempotency_key=f"credit:disbursement:{credit[\'credit_id\']}:{attempt}"' in source
+    assert "transfer_between_wallets(" in source
+    assert '"kind": "credit_disbursement"' in source
+    assert "async def _reserve_credit_repayment" in source
+    assert "async def _rollback_credit_repayment" in source
+    assert "async def _complete_credit_repayment_marker" in source
+    assert "async def _finalize_credit_if_paid" in source
+    assert 'op_key = f"credit:auto-repay:' in source
+    assert 'op_key = f"credit:manual-repay:' in source
+
+    assert 'db.users.update_one(\n                        {"_id": user["_id"]},\n                        {"$inc": {"balance": -rate}}' not in source
+    assert 'db.users.update_one(\n        {"_id": user["_id"]},\n        {"$inc": {"balance": -payment_amount}}' not in source
+
+    assert "creditAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
