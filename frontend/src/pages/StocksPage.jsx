@@ -17,8 +17,17 @@ export default function StocksPage({ onBack }) {
   const [trading, setTrading] = useState(false);
   const [balance, setBalance] = useState(0);
   const [trades, setTrades] = useState([]);
+  const [capabilities, setCapabilities] = useState({
+    live_market_data: true,
+    broker_connected: false,
+    trading_available: false,
+    message: "",
+  });
 
-  useEffect(() => { loadMarket(); loadPortfolio(); loadWatchlist(); loadBalance(); }, [typeFilter]);
+  useEffect(() => {
+    loadMarket(); loadPortfolio(); loadWatchlist(); loadBalance();
+    fetch(`${API}/api/stocks/capabilities`).then(r => r.json()).then(setCapabilities).catch(() => {});
+  }, [typeFilter]);
   useEffect(() => { if (tab === "trades") loadTrades(); }, [tab]);
 
   const loadMarket = async () => { try { const p = typeFilter ? `?type=${typeFilter}` : ""; const r = await fetch(`${API}/api/stocks/market${p}`); if (r.ok) { const d = await r.json(); setAssets(d.assets || []); } } catch {} setLoading(false); };
@@ -30,6 +39,10 @@ export default function StocksPage({ onBack }) {
   const toggleWatch = async (sym) => { try { await fetch(`${API}/api/stocks/watchlist/toggle`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: sym }) }); setWatchlist(p => { const n = new Set(p); n.has(sym) ? n.delete(sym) : n.add(sym); return n; }); } catch {} };
 
   const executeTrade = async () => {
+    if (!capabilities.trading_available) {
+      alert(capabilities.message || "Ein verifizierter Broker ist noch nicht verbunden.");
+      return;
+    }
     if (!tradeModal || !shares || parseFloat(shares) <= 0) return;
     setTrading(true);
     try {
@@ -69,8 +82,8 @@ export default function StocksPage({ onBack }) {
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setTradeModal({ symbol: a.symbol, side: "buy", price: a.price })} className="flex-1 py-3 rounded-xl font-semibold text-sm text-black bg-green-500" data-testid="stock-buy"><ArrowUpRight size={16} className="inline mr-1" />Kaufen</button>
-          <button onClick={() => setTradeModal({ symbol: a.symbol, side: "sell", price: a.price })} className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-red-500" data-testid="stock-sell"><ArrowDownRight size={16} className="inline mr-1" />Verkaufen</button>
+          <button onClick={() => capabilities.trading_available && setTradeModal({ symbol: a.symbol, side: "buy", price: a.price })} disabled={!capabilities.trading_available} className="flex-1 py-3 rounded-xl font-semibold text-sm text-black bg-green-500 disabled:opacity-40" data-testid="stock-buy"><ArrowUpRight size={16} className="inline mr-1" />{capabilities.trading_available ? "Kaufen" : "Broker fehlt"}</button>
+          <button onClick={() => capabilities.trading_available && setTradeModal({ symbol: a.symbol, side: "sell", price: a.price })} disabled={!capabilities.trading_available} className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-red-500 disabled:opacity-40" data-testid="stock-sell"><ArrowDownRight size={16} className="inline mr-1" />{capabilities.trading_available ? "Verkaufen" : "Broker fehlt"}</button>
         </div>
       </div>
     </div>
@@ -81,7 +94,7 @@ export default function StocksPage({ onBack }) {
       <div className="sticky top-0 z-30 px-4 pt-4 pb-3" style={{ background: "var(--bg-primary,#030303)" }}>
         <div className="flex items-center gap-3 mb-3">
           <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--bg-card,#111)" }} data-testid="stock-back"><ArrowLeft size={20} style={{ color: "var(--text-primary,#fff)" }} /></button>
-          <div className="flex-1"><h1 className="text-lg font-bold" style={{ color: "var(--text-primary,#fff)" }}>Aktien & ETFs</h1><p className="text-[10px]" style={{ color: "var(--text-secondary,#888)" }}>Handeln mit BidBlitz Wallet</p></div>
+          <div className="flex-1"><h1 className="text-lg font-bold" style={{ color: "var(--text-primary,#fff)" }}>Aktien & ETFs</h1><p className="text-[10px]" style={{ color: "var(--text-secondary,#888)" }}>{capabilities.broker_connected ? "Broker verbunden" : "Live-Marktdaten · Handel noch nicht aktiviert"}</p></div>
           <div className="text-right"><div className="text-xs font-bold" style={{ color: "#00C2FF" }}>{balance.toFixed(2)}€</div><div className="text-[9px]" style={{ color: "var(--text-secondary,#888)" }}>Guthaben</div></div>
         </div>
         {/* Tabs */}
@@ -98,6 +111,12 @@ export default function StocksPage({ onBack }) {
       </div>
 
       <div className="px-4 space-y-2">
+        {!capabilities.broker_connected && (
+          <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3" data-testid="stocks-broker-unavailable">
+            <p className="text-xs font-bold text-amber-300">Nur Marktinformation</p>
+            <p className="mt-1 text-[10px] text-amber-100/70">{capabilities.message || "Echte Orders werden erst nach Broker-Anbindung freigeschaltet."}</p>
+          </div>
+        )}
         {/* ═══ MARKET ═══ */}
         {tab === "market" && (loading ? <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#00C2FF", borderTopColor: "transparent" }} /></div> : filtered.map(a => {
           const isPos = a.change_pct >= 0;
@@ -127,7 +146,7 @@ export default function StocksPage({ onBack }) {
             <div className="text-2xl font-bold mt-1" style={{ color: "var(--text-primary,#fff)" }}>{portfolio.total_value.toFixed(2)}€</div>
             <div className={`text-sm font-medium mt-1 ${portfolio.total_pnl >= 0 ? "text-green-400" : "text-red-400"}`}>{portfolio.total_pnl >= 0 ? "+" : ""}{portfolio.total_pnl.toFixed(2)}€</div>
           </div>
-          {(portfolio.holdings || []).length === 0 ? (<div className="text-center py-10"><PieChart size={40} className="mx-auto mb-3" style={{ color: "var(--text-secondary,#444)" }} /><p className="text-sm" style={{ color: "var(--text-secondary,#888)" }}>Noch keine Positionen</p><button onClick={() => setTab("market")} className="text-xs mt-2" style={{ color: "#00C2FF" }}>Jetzt investieren</button></div>
+          {(portfolio.holdings || []).length === 0 ? (<div className="text-center py-10"><PieChart size={40} className="mx-auto mb-3" style={{ color: "var(--text-secondary,#444)" }} /><p className="text-sm" style={{ color: "var(--text-secondary,#888)" }}>{capabilities.broker_connected ? "Noch keine Positionen" : "Portfolio wird nach Broker-Anbindung verfügbar"}</p><button onClick={() => setTab("market")} className="text-xs mt-2" style={{ color: "#00C2FF" }}>Marktdaten ansehen</button></div>
           ) : (portfolio.holdings || []).map(h => (
             <div key={h.symbol} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--bg-card,#111)" }}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: h.pnl >= 0 ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)" }}><span className="text-xs font-bold" style={{ color: h.pnl >= 0 ? "#10B981" : "#EF4444" }}>{h.symbol.slice(0, 2)}</span></div>
