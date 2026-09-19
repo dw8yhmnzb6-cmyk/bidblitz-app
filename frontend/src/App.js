@@ -308,7 +308,6 @@ const TermsPage = lazy(() => import("./pages/TermsPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const StoreSupportPage = lazy(() => import("./pages/StoreSupportPage"));
-const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 const CreatorsPage = lazy(() => import("./pages/CreatorsPage"));
 const P2PPage = lazy(() => import("./pages/P2PPage"));
 const CardPage = lazy(() => import("./pages/CardPage"));
@@ -1272,7 +1271,7 @@ function AppContent() {
       case "/wallet-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletPage {...pageProps} />;
       case "/super-marketplace":
-        return <SuperAppMarketplace />;
+        return <MarketplacePage onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/creators":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
       case "/p2p":
