@@ -12,7 +12,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import debit_wallet, TransactionType
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/mobility/payments", tags=["Mobility Payments"])
 
@@ -32,6 +32,24 @@ PAYOUT_CONFIG = {
     "hold_hours": 24,        # Hold period before payout available
     "max_daily_payout": 1000.00,
 }
+
+PAYOUT_RESERVED_STATUSES = {"pending", "approved", "processing", "paid"}
+
+
+def _require_mobility_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+async def _committed_payout_total(user_id: str) -> float:
+    rows = await db.mobility_payouts.find(
+        {"user_id": user_id, "status": {"$in": list(PAYOUT_RESERVED_STATUSES)}},
+        {"_id": 0, "amount": 1},
+    ).to_list(5000)
+    return round(sum(float(row.get("amount") or 0) for row in rows), 2)
+
 
 PAYMENT_TYPES = [
     "taxi_payment",
@@ -74,6 +92,7 @@ class PayoutRequest(BaseModel):
     earning_type: str
     payout_method: str = "bank_transfer"
     bank_details: Optional[dict] = None
+    idempotency_key: Optional[str] = None
 
 
 class CommissionUpdate(BaseModel):
@@ -276,17 +295,48 @@ async def process_refund(
     payment_id: str,
     reason: str = "",
 ) -> dict:
-    """Process a refund back to user's wallet."""
-    now = datetime.now(timezone.utc)
-    refund_id = secrets.token_hex(8)
-    
-    # Credit user
-    await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$inc": {"balance": amount}}
+    """Refund one mobility payment exactly once through the canonical wallet."""
+    payment = await db.mobility_payments.find_one(
+        {"payment_id": payment_id, "user_id": user_id},
+        {"_id": 0},
     )
-    
-    # Record refund
+    if not payment:
+        raise HTTPException(status_code=404, detail="Original payment not found")
+
+    original_amount = round(float(payment.get("amount") or 0), 2)
+    amount = round(float(amount or 0), 2)
+    if amount <= 0 or amount > original_amount:
+        raise HTTPException(status_code=400, detail="Invalid refund amount")
+
+    existing = await db.mobility_refunds.find_one(
+        {"original_payment_id": payment_id, "user_id": user_id, "status": "completed"},
+        {"_id": 0},
+    )
+    if existing:
+        fresh_user = await db.users.find_one({"_id": ObjectId(user_id)}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "refund_id": existing["refund_id"],
+            "amount": existing["amount"],
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "replayed": True,
+        }
+
+    refund_key = f"mobility-refund:{payment_id}"
+    result = await credit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Rückerstattung: {reason}" if reason else "Mobility Rückerstattung",
+        reference=f"REFUND-{payment_id[:8].upper()}",
+        source="mobility_refund",
+        metadata={"original_payment_id": payment_id, "reason": reason},
+        idempotency_key=refund_key,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Refund failed")
+
+    refund_id = f"MRF-{payment_id[:16]}"
     refund_record = {
         "refund_id": refund_id,
         "user_id": user_id,
@@ -294,31 +344,25 @@ async def process_refund(
         "original_payment_id": payment_id,
         "reason": reason,
         "status": "completed",
-        "created_at": now.isoformat(),
+        "wallet_transaction_id": result.transaction_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    
-    await db.mobility_refunds.insert_one(refund_record)
-    
-    # Record in transactions
-    await db.transactions.insert_one({
-        "id": refund_id,
-        "user_id": user_id,
-        "type": "refund",
-        "amount": amount,
-        "description": f"Rückerstattung: {reason}" if reason else "Rückerstattung",
-        "status": "completed",
-        "reference": f"REFUND-{refund_id[:8].upper()}",
-        "category": "refund",
-        "created_at": now.isoformat(),
-    })
-    
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
-    
+    await db.mobility_refunds.update_one(
+        {"original_payment_id": payment_id, "user_id": user_id},
+        {"$setOnInsert": refund_record},
+        upsert=True,
+    )
+    await db.mobility_payments.update_one(
+        {"payment_id": payment_id, "user_id": user_id},
+        {"$set": {"refund_status": "refunded", "refunded_amount": amount, "refunded_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
     return {
         "ok": True,
         "refund_id": refund_id,
         "amount": amount,
-        "new_balance": user.get("balance", 0),
+        "new_balance": result.new_balance,
+        "replayed": result.idempotent_replay,
     }
 
 
@@ -355,15 +399,16 @@ async def get_earnings(request: Request):
             by_type[etype] = 0
         by_type[etype] += e["amount"]
     
-    # Get pending payouts
-    pending_payouts = await db.mobility_payouts.find(
-        {"user_id": user_id, "status": "pending"}
-    ).to_list(100)
-    pending_amount = sum(p["amount"] for p in pending_payouts)
+    committed_amount = await _committed_payout_total(user_id)
+    active_payouts = await db.mobility_payouts.find(
+        {"user_id": user_id, "status": {"$in": ["pending", "approved", "processing"]}},
+        {"_id": 0, "amount": 1},
+    ).to_list(1000)
+    pending_amount = sum(float(p.get("amount") or 0) for p in active_payouts)
     
     return {
         "total_earned": round(total_earned, 2),
-        "available_balance": round(available - pending_amount, 2),
+        "available_balance": round(max(0.0, available - committed_amount), 2),
         "held_balance": round(held, 2),
         "pending_payout": round(pending_amount, 2),
         "by_type": {k: round(v, 2) for k, v in by_type.items()},
@@ -394,81 +439,88 @@ async def get_earnings_history(request: Request, earning_type: str = "", limit: 
 
 @router.post("/payout/request")
 async def request_payout(req: PayoutRequest, request: Request):
-    """Request a payout from earnings."""
+    """Request a payout once and reserve the earnings immediately."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Validate amount
-    if req.amount < PAYOUT_CONFIG["min_payout"]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Mindestbetrag: €{PAYOUT_CONFIG['min_payout']:.2f}"
-        )
-    
-    # Check available balance
-    earnings = await db.mobility_earnings.find({"user_id": user_id}).to_list(1000)
-    now = datetime.now(timezone.utc)
-    available = sum(
-        e["amount"] for e in earnings 
-        if e["status"] == "available" or datetime.fromisoformat(e["available_at"]) <= now
+    idempotency_key = _require_mobility_idempotency_key(req.idempotency_key, request, prefix="mobility-payout")
+
+    existing_same = await db.mobility_payouts.find_one(
+        {"user_id": user_id, "idempotency_key": idempotency_key},
+        {"_id": 0},
     )
-    
-    # Subtract pending payouts
-    pending = await db.mobility_payouts.find(
-        {"user_id": user_id, "status": "pending"}
-    ).to_list(100)
-    pending_amount = sum(p["amount"] for p in pending)
-    
-    available_for_payout = available - pending_amount
-    
-    if req.amount > available_for_payout:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Verfügbar: €{available_for_payout:.2f}"
+    if existing_same:
+        return {"ok": True, "payout": existing_same, "message": f"Auszahlung von €{existing_same['net_amount']:.2f} beantragt", "replayed": True}
+
+    if req.amount < PAYOUT_CONFIG["min_payout"]:
+        raise HTTPException(status_code=400, detail=f"Mindestbetrag: €{PAYOUT_CONFIG['min_payout']:.2f}")
+
+    lock_token = secrets.token_hex(8)
+    lock = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"mobility_payout_lock": {"$exists": False}},
+                {"mobility_payout_lock": None},
+                {"mobility_payout_lock": False},
+            ],
+        },
+        {"$set": {"mobility_payout_lock": lock_token, "mobility_payout_lock_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if lock.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Eine Auszahlungsanfrage wird bereits verarbeitet")
+
+    try:
+        earnings = await db.mobility_earnings.find({"user_id": user_id}).to_list(5000)
+        now = datetime.now(timezone.utc)
+        available = sum(
+            float(e.get("amount") or 0) for e in earnings
+            if e.get("status") == "available" or (
+                e.get("available_at") and datetime.fromisoformat(e["available_at"]) <= now
+            )
         )
-    
-    # Check daily limit
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_payouts = await db.mobility_payouts.find({
-        "user_id": user_id,
-        "status": {"$in": ["pending", "approved", "paid"]},
-        "created_at": {"$gte": today_start.isoformat()}
-    }).to_list(100)
-    today_total = sum(p["amount"] for p in today_payouts)
-    
-    if today_total + req.amount > PAYOUT_CONFIG["max_daily_payout"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Tageslimit: €{PAYOUT_CONFIG['max_daily_payout']:.2f}"
+        committed_amount = await _committed_payout_total(user_id)
+        available_for_payout = max(0.0, available - committed_amount)
+        if req.amount > available_for_payout:
+            raise HTTPException(status_code=400, detail=f"Verfügbar: €{available_for_payout:.2f}")
+
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_payouts = await db.mobility_payouts.find({
+            "user_id": user_id,
+            "status": {"$in": ["pending", "approved", "processing", "paid"]},
+            "created_at": {"$gte": today_start.isoformat()},
+        }).to_list(1000)
+        today_total = sum(float(p.get("amount") or 0) for p in today_payouts)
+        if today_total + req.amount > PAYOUT_CONFIG["max_daily_payout"]:
+            raise HTTPException(status_code=400, detail=f"Tageslimit: €{PAYOUT_CONFIG['max_daily_payout']:.2f}")
+
+        net_amount = round(req.amount - PAYOUT_CONFIG["payout_fee"], 2)
+        if net_amount <= 0:
+            raise HTTPException(status_code=400, detail="Auszahlungsbetrag liegt unter der Gebühr")
+
+        payout_id = f"MPO-{secrets.token_hex(8)}"
+        payout = {
+            "payout_id": payout_id,
+            "user_id": user_id,
+            "user_name": user.get("name", ""),
+            "user_email": user.get("email", ""),
+            "amount": round(float(req.amount), 2),
+            "fee": PAYOUT_CONFIG["payout_fee"],
+            "net_amount": net_amount,
+            "earning_type": req.earning_type,
+            "payout_method": req.payout_method,
+            "bank_details": req.bank_details,
+            "status": "pending",
+            "idempotency_key": idempotency_key,
+            "created_at": now.isoformat(),
+        }
+        await db.mobility_payouts.insert_one(payout)
+        payout.pop("_id", None)
+        return {"ok": True, "payout": payout, "message": f"Auszahlung von €{net_amount:.2f} beantragt", "replayed": False}
+    finally:
+        await db.users.update_one(
+            {"_id": user["_id"], "mobility_payout_lock": lock_token},
+            {"$set": {"mobility_payout_lock": None, "mobility_payout_lock_released_at": datetime.now(timezone.utc).isoformat()}},
         )
-    
-    # Calculate net amount after fee
-    net_amount = req.amount - PAYOUT_CONFIG["payout_fee"]
-    
-    payout_id = secrets.token_hex(8)
-    payout = {
-        "payout_id": payout_id,
-        "user_id": user_id,
-        "user_name": user.get("name", ""),
-        "user_email": user.get("email", ""),
-        "amount": req.amount,
-        "fee": PAYOUT_CONFIG["payout_fee"],
-        "net_amount": net_amount,
-        "earning_type": req.earning_type,
-        "payout_method": req.payout_method,
-        "bank_details": req.bank_details,
-        "status": "pending",
-        "created_at": now.isoformat(),
-    }
-    
-    await db.mobility_payouts.insert_one(payout)
-    payout.pop("_id", None)
-    
-    return {
-        "ok": True,
-        "payout": payout,
-        "message": f"Auszahlung von €{net_amount:.2f} beantragt",
-    }
 
 
 @router.get("/payout/history")
@@ -569,14 +621,16 @@ async def admin_approve_payout(request: Request):
     
     now = datetime.now(timezone.utc)
     
-    await db.mobility_payouts.update_one(
-        {"payout_id": payout_id},
+    transition = await db.mobility_payouts.update_one(
+        {"payout_id": payout_id, "status": "pending"},
         {"$set": {
             "status": "approved",
             "approved_at": now.isoformat(),
             "approved_by": str(user["_id"]),
         }}
     )
+    if transition.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Payout wurde parallel geändert")
     
     return {"ok": True, "message": "Auszahlung genehmigt"}
 
@@ -596,8 +650,8 @@ async def admin_reject_payout(request: Request):
     if not payout:
         raise HTTPException(status_code=404, detail="Payout not found")
     
-    await db.mobility_payouts.update_one(
-        {"payout_id": payout_id},
+    transition = await db.mobility_payouts.update_one(
+        {"payout_id": payout_id, "status": "pending"},
         {"$set": {
             "status": "rejected",
             "rejected_at": datetime.now(timezone.utc).isoformat(),
@@ -605,60 +659,73 @@ async def admin_reject_payout(request: Request):
             "rejection_reason": reason,
         }}
     )
+    if transition.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Payout wurde parallel geändert")
     
     return {"ok": True, "message": "Auszahlung abgelehnt"}
 
 
 @router.post("/admin/payout/mark-paid")
 async def admin_mark_payout_paid(request: Request):
-    """Admin: Mark payout as paid."""
+    """Admin: mark an approved payout paid exactly once."""
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    
+
     body = await request.json()
     payout_id = body.get("payout_id")
-    transaction_ref = body.get("transaction_ref", "")
-    
-    payout = await db.mobility_payouts.find_one({
-        "payout_id": payout_id,
-        "status": {"$in": ["pending", "approved"]}
-    })
+    transaction_ref = (body.get("transaction_ref") or "").strip()
+    if not transaction_ref:
+        raise HTTPException(status_code=400, detail="Bank-/Provider-Referenz erforderlich")
+
+    payout = await db.mobility_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
     if not payout:
         raise HTTPException(status_code=404, detail="Payout not found")
-    
+    if payout.get("status") == "paid":
+        return {"ok": True, "message": "Auszahlung war bereits als bezahlt markiert", "replayed": True}
+    if payout.get("status") != "approved":
+        raise HTTPException(status_code=409, detail=f"Payout muss zuerst genehmigt werden (Status: {payout.get('status')})")
+
     now = datetime.now(timezone.utc)
-    
-    # Deduct from user's earnings
-    await db.users.update_one(
-        {"_id": ObjectId(payout["user_id"])},
-        {"$inc": {"total_earnings": -payout["amount"]}}
-    )
-    
-    await db.mobility_payouts.update_one(
-        {"payout_id": payout_id},
+    transition = await db.mobility_payouts.update_one(
+        {"payout_id": payout_id, "status": "approved"},
         {"$set": {
             "status": "paid",
             "paid_at": now.isoformat(),
             "paid_by": str(user["_id"]),
             "transaction_ref": transaction_ref,
-        }}
+        }},
     )
-    
-    # Record payout transaction
-    await db.transactions.insert_one({
+    if transition.modified_count != 1:
+        fresh = await db.mobility_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
+        if fresh and fresh.get("status") == "paid":
+            return {"ok": True, "message": "Auszahlung war bereits als bezahlt markiert", "replayed": True}
+        raise HTTPException(status_code=409, detail="Payout wurde parallel geändert")
+
+    await db.users.update_one(
+        {"_id": ObjectId(payout["user_id"])},
+        {"$inc": {"total_earnings": -float(payout["amount"])}, "$set": {"last_earnings_payout_at": now.isoformat()}},
+    )
+
+    payout_tx = {
         "id": payout_id,
         "user_id": payout["user_id"],
         "type": "payout",
-        "amount": -payout["amount"],
-        "description": f"Auszahlung (Netto: €{payout['net_amount']:.2f})",
+        "amount": -float(payout["amount"]),
+        "description": f"Auszahlung (Netto: €{float(payout['net_amount']):.2f})",
         "status": "completed",
         "reference": f"PAYOUT-{payout_id[:8].upper()}",
         "category": "payout",
+        "provider_reference": transaction_ref,
         "created_at": now.isoformat(),
-    })
-    
-    return {"ok": True, "message": "Auszahlung als bezahlt markiert"}
+    }
+    await db.transactions.update_one(
+        {"id": payout_id, "user_id": payout["user_id"], "type": "payout"},
+        {"$setOnInsert": payout_tx},
+        upsert=True,
+    )
+
+    return {"ok": True, "message": "Auszahlung als bezahlt markiert", "replayed": False}
 
 
 @router.get("/admin/revenue")
