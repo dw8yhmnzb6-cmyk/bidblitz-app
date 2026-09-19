@@ -662,6 +662,7 @@ async def ws_token(request: Request):
         "email": user.get("email", ""),
         "exp": datetime.now(timezone.utc) + timedelta(seconds=300),
         "type": "access",
+        "auth_version": int(user.get("auth_version", 0) or 0),
     }
     token = _jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return {"token": token, "expires_in": 300}
@@ -669,14 +670,45 @@ async def ws_token(request: Request):
 
 @router.post("/logout")
 async def logout(request: Request, response: Response):
+    user = None
     try:
         user = await get_current_user(request)
         ip, ua = get_client_info(request)
-        await log_audit(AuditEvent.LOGOUT, user_id=str(user["_id"]), email=user.get("email", ""),
-                        ip=ip, user_agent=ua)
+        await log_audit(
+            AuditEvent.LOGOUT,
+            user_id=str(user["_id"]),
+            email=user.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+        )
     except Exception:
         pass
+
+    # Revoke the concrete session from either access or refresh token.
+    try:
+        import jwt as pyjwt
+        from core.config import JWT_SECRET, JWT_ALGORITHM
+        from routes.sessions import revoke_session
+        candidates = [
+            request.cookies.get("access_token"),
+            request.cookies.get("refresh_token"),
+        ]
+        for raw in candidates:
+            if not raw:
+                continue
+            try:
+                payload = pyjwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                session_id = payload.get("session_id")
+                if session_id:
+                    await revoke_session(session_id)
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
     clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
     return {"message": "Logged out"}
 
 
@@ -692,17 +724,41 @@ async def refresh_token(request: Request, response: Response):
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
+
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        new_access = create_access_token(str(user["_id"]), user["email"], payload.get("login_email") or payload.get("email") or user["email"])
-        user["login_email"] = payload.get("login_email") or payload.get("email") or user["email"]
+
+        await validate_auth_state(user, payload)
+
+        session_id = str(payload.get("session_id") or "")
+        auth_version = int(user.get("auth_version", 0) or 0)
+        login_email = payload.get("login_email") or payload.get("email") or user["email"]
+        new_access = create_access_token(
+            str(user["_id"]),
+            user["email"],
+            login_email,
+            session_id=session_id,
+            auth_version=auth_version,
+        )
+        user["login_email"] = login_email
+
         from core.config import COOKIE_SECURE, COOKIE_SAMESITE, ACCESS_TOKEN_EXPIRE_MINUTES
-        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE,
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/",
+        )
         return serialize_user(_canonical_admin_identity(user))
     except pyjwt.ExpiredSignatureError:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except pyjwt.InvalidTokenError:
+        clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
@@ -778,16 +834,25 @@ async def reset_password(request: Request):
     # Hash new password - MUST use password_hash (same field as registration)
     hashed = hash_password(new_password)
     
+    reset_at = datetime.now(timezone.utc).isoformat()
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {
-            "password_hash": hashed,
-            "password_reset_at": datetime.now(timezone.utc).isoformat(),
-            "force_password_change": False,
-            "force_password_change_reason": None,
-            "force_password_change_requested_at": None,
-        }, "$unset": {"password": ""}}
+        {
+            "$set": {
+                "password_hash": hashed,
+                "password_reset_at": reset_at,
+                "force_password_change": False,
+                "force_password_change_reason": None,
+                "force_password_change_requested_at": None,
+            },
+            "$inc": {"auth_version": 1},
+            "$unset": {"password": ""},
+        },
     )
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(user["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(user["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(user["_id"])})
 
     await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "password_reset_completed"}})
 
@@ -852,8 +917,14 @@ async def verify_2fa_login(request: Request, response: Response):
         await db.pending_2fa.delete_one({"token": pending_token})
         raise HTTPException(status_code=400, detail="Zu viele Versuche. Bitte erneut einloggen.")
     
-    # Verify code
-    if otp_doc["code"] != code:
+    # Verify code without storing OTP plaintext.
+    stored_hash = otp_doc.get("code_hash")
+    valid_code = (
+        secrets.compare_digest(stored_hash, _hash_otp(code))
+        if stored_hash
+        else secrets.compare_digest(str(otp_doc.get("code") or ""), code)
+    )
+    if not valid_code:
         await db.otp_codes.update_one(
             {"_id": otp_doc["_id"]},
             {"$inc": {"attempts": 1}}
@@ -874,9 +945,24 @@ async def verify_2fa_login(request: Request, response: Response):
     email = user["email"]
     ip, ua = get_client_info(request)
     
-    access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id, user.get("login_email") or user.get("email", ""))
-    set_auth_cookies(response, access_token, refresh_token, remember=True)
+    from routes.sessions import create_session
+    session_id = await create_session(user_id, email, ip, ua)
+    auth_version = int(user.get("auth_version", 0) or 0)
+    login_email = pending.get("login_email") or user.get("login_email") or user.get("email", "")
+    access_token = create_access_token(
+        user_id,
+        email,
+        login_email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    refresh_token = create_refresh_token(
+        user_id,
+        login_email,
+        session_id=session_id,
+        auth_version=auth_version,
+    )
+    set_auth_cookies(response, access_token, refresh_token, remember_me=bool(pending.get("remember_me", True)))
     await _record_login_success(user_id, ip, ua)
     
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
