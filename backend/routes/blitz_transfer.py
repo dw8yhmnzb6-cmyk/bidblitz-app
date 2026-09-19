@@ -16,6 +16,7 @@ from typing import Optional
 from typing import Optional
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/transfer", tags=["transfer"])
 
@@ -62,6 +63,18 @@ def determine_tier(total_size: int) -> dict:
     return {"tier": "pro", **TRANSFER_TIERS["pro"]}
 
 
+def _require_transfer_idempotency_key(request: Request) -> str:
+    key = (request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"blitz-transfer:{key}"
+
+
+def _transfer_key_hash(key: str) -> str:
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:20]
+
+
+
 # ── Get Pricing Info ──
 @router.get("/pricing")
 async def get_pricing():
@@ -88,27 +101,56 @@ async def create_transfer(
     password: str = Form(""),
 ):
     user = await get_current_user(request)
+    user_id = str(user["_id"])
     user_email = user.get("email", "")
 
     if len(files) > MAX_FILES_PER_TRANSFER:
         raise HTTPException(400, f"Maximal {MAX_FILES_PER_TRANSFER} Dateien pro Transfer")
 
-    # Validate tier
     if tier not in TRANSFER_TIERS:
         tier = "free"
     tier_info = TRANSFER_TIERS[tier]
-    price = tier_info["price"]
+    price = float(tier_info["price"])
 
-    # Check wallet balance if paid tier
+    idempotency_key = None
+    key_hash = None
     if price > 0:
-        balance = user.get("balance", user.get("bids_balance", 0))
-        if balance < price:
-            raise HTTPException(400, f"Nicht genug Guthaben. Benoetig: EUR {price:.2f}, Verfuegbar: EUR {balance:.2f}")
+        idempotency_key = _require_transfer_idempotency_key(request)
+        key_hash = _transfer_key_hash(idempotency_key)
 
-    # Cap expires_days to tier limit
+        refunded = await db.blitz_transfer_payment_attempts.find_one({
+            "user_id": user_id,
+            "idempotency_key_hash": key_hash,
+            "status": "refunded",
+        }, {"_id": 0, "idempotency_key_hash": 1})
+        if refunded:
+            raise HTTPException(
+                status_code=409,
+                detail="Vorheriger Transfer-Versuch wurde zurückgebucht. Bitte erneut senden.",
+            )
+
+        existing = await db.transfers.find_one(
+            {"sender_user_id": user_id, "wallet_idempotency_key_hash": key_hash},
+            {"_id": 0},
+        )
+        if existing and existing.get("status") in {"active", "payment_pending"}:
+            return {
+                "ok": True,
+                "transfer_id": existing["transfer_id"],
+                "download_code": existing["download_code"],
+                "download_url": f"/transfer/download/{existing['transfer_id']}/{existing['download_code']}",
+                "share_link": f"/blitz-transfer/{existing['transfer_id']}/{existing['download_code']}",
+                "status": existing.get("status"),
+                "price_paid": existing.get("price_paid", price),
+                "replayed": True,
+            }
+
     expires_days = min(max(1, expires_days), tier_info["max_days"])
-
-    transfer_id = str(uuid.uuid4())[:12]
+    transfer_id = (
+        f"BTF-{key_hash[:12]}"
+        if key_hash
+        else str(uuid.uuid4())[:12]
+    )
     download_code = secrets.token_urlsafe(16)
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=expires_days)
@@ -118,68 +160,74 @@ async def create_transfer(
 
     saved_files = []
     total_size = 0
+    try:
+        for upload in files:
+            ext = get_ext(upload.filename)
+            if ext not in ALLOWED_EXTENSIONS:
+                raise HTTPException(400, f"Dateityp .{ext} nicht erlaubt")
 
-    for f in files:
-        ext = get_ext(f.filename)
-        if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(400, f"Dateityp .{ext} nicht erlaubt")
+            safe_name = f"{uuid.uuid4().hex[:8]}_{Path(upload.filename or 'file').name}"
+            file_path = transfer_dir / safe_name
+            file_size = 0
 
-        safe_name = f"{uuid.uuid4().hex[:8]}_{f.filename}"
-        file_path = transfer_dir / safe_name
+            with open(file_path, "wb") as out:
+                while True:
+                    chunk = await upload.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    file_size += len(chunk)
+                    if total_size + file_size > MAX_FILE_SIZE:
+                        raise HTTPException(400, f"Gesamtgroesse ueberschreitet {human_size(MAX_FILE_SIZE)}")
 
-        # Stream to disk in chunks (don't load entire file to RAM)
-        file_size = 0
-        with open(file_path, "wb") as out:
-            while True:
-                chunk = await f.read(CHUNK_SIZE)
-                if not chunk:
-                    break
-                out.write(chunk)
-                file_size += len(chunk)
-                if total_size + file_size > MAX_FILE_SIZE:
-                    out.close()
-                    file_path.unlink(missing_ok=True)
-                    raise HTTPException(400, f"Gesamtgroesse ueberschreitet {human_size(MAX_FILE_SIZE)}")
+            total_size += file_size
+            saved_files.append({
+                "original_name": Path(upload.filename or "file").name,
+                "stored_name": safe_name,
+                "size": file_size,
+                "size_human": human_size(file_size),
+                "ext": ext,
+                "content_type": upload.content_type or "application/octet-stream",
+            })
 
-        total_size += file_size
-
-        saved_files.append({
-            "original_name": f.filename,
-            "stored_name": safe_name,
-            "size": file_size,
-            "size_human": human_size(file_size),
-            "ext": ext,
-            "content_type": f.content_type or "application/octet-stream",
-        })
-
-    # Check size vs tier limit
-    if total_size > tier_info["max_bytes"]:
-        # Cleanup uploaded files
+        if total_size > tier_info["max_bytes"]:
+            raise HTTPException(
+                400,
+                f"Dateigroesse ({human_size(total_size)}) ueberschreitet {tier_info['label']} Limit ({human_size(tier_info['max_bytes'])}). Waehle ein hoeheres Paket.",
+            )
+    except Exception:
         import shutil
         if transfer_dir.exists():
             shutil.rmtree(transfer_dir)
-        raise HTTPException(400, f"Dateigroesse ({human_size(total_size)}) ueberschreitet {tier_info['label']} Limit ({human_size(tier_info['max_bytes'])}). Waehle ein hoeheres Paket.")
+        raise
 
-    # Charge wallet if paid tier
+    payment_result = None
     if price > 0:
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -price}})
-        await db.transactions.insert_one({
-            "transaction_id": f"transfer_{secrets.token_hex(6)}",
-            "user_id": user.get("id") or str(user["_id"]),
-            "user_email": user_email,
-            "type": "blitz_transfer",
-            "amount": -price,
-            "description": f"BlitzTransfer {tier_info['label']} — {human_size(total_size)}",
-            "status": "completed",
-            "created_at": now.isoformat(),
-        })
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=price,
+            tx_type=TransactionType.PAYMENT,
+            description=f"BlitzTransfer {tier_info['label']} — {human_size(total_size)}",
+            reference=f"BTF-{key_hash[:12].upper()}",
+            metadata={
+                "kind": "blitz_transfer",
+                "tier": tier,
+                "transfer_id": transfer_id,
+                "total_size": total_size,
+            },
+            idempotency_key=idempotency_key,
+        )
+        if not payment_result.success:
+            import shutil
+            if transfer_dir.exists():
+                shutil.rmtree(transfer_dir)
+            raise HTTPException(status_code=400, detail=payment_result.error or "Wallet-Zahlung fehlgeschlagen")
 
-    # Hash password if set
     pw_hash = hashlib.sha256(password.encode()).hexdigest() if password else None
-
     transfer = {
         "transfer_id": transfer_id,
         "download_code": download_code,
+        "sender_user_id": user_id,
         "sender_email": user_email,
         "sender_name": user.get("name", ""),
         "recipient_email": recipient_email,
@@ -194,15 +242,72 @@ async def create_transfer(
         "password_hash": pw_hash,
         "tier": tier,
         "price_paid": price,
+        "wallet_idempotency_key_hash": key_hash,
+        "wallet_transaction_id": payment_result.transaction_id if payment_result else None,
+        "payment_status": "paid" if payment_result else "free",
         "expires_at": expires_at.isoformat(),
         "expires_days": expires_days,
         "status": "active",
         "created_at": now.isoformat(),
     }
 
-    await db.transfers.insert_one(transfer)
+    try:
+        if key_hash:
+            await db.transfers.update_one(
+                {"sender_user_id": user_id, "wallet_idempotency_key_hash": key_hash},
+                {"$setOnInsert": transfer},
+                upsert=True,
+            )
+            stored = await db.transfers.find_one(
+                {"sender_user_id": user_id, "wallet_idempotency_key_hash": key_hash},
+                {"_id": 0},
+            )
+            if not stored:
+                raise RuntimeError("transfer_not_persisted")
+            transfer = stored
+        else:
+            await db.transfers.insert_one(transfer)
+            transfer.pop("_id", None)
+    except Exception as exc:
+        import shutil
+        if transfer_dir.exists():
+            shutil.rmtree(transfer_dir)
 
-    # 📧 Send email notification to recipient (if email provided)
+        if payment_result and payment_result.success:
+            await db.blitz_transfer_payment_attempts.update_one(
+                {"user_id": user_id, "idempotency_key_hash": key_hash},
+                {"$set": {
+                    "user_id": user_id,
+                    "idempotency_key_hash": key_hash,
+                    "transfer_id": transfer_id,
+                    "status": "refund_pending",
+                    "error": str(exc)[:500],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=price,
+                tx_type=TransactionType.REFUND,
+                description="BlitzTransfer Rückbuchung",
+                reference=f"BTF-REF-{key_hash[:10].upper()}",
+                source="blitz_transfer_rollback",
+                metadata={"transfer_id": transfer_id, "original_transaction_id": payment_result.transaction_id},
+                idempotency_key=f"blitz-transfer-refund:{idempotency_key}",
+            )
+            await db.blitz_transfer_payment_attempts.update_one(
+                {"user_id": user_id, "idempotency_key_hash": key_hash},
+                {"$set": {
+                    "status": "refunded" if refund.success else "reconciliation_required",
+                    "refund_transaction_id": refund.transaction_id if refund.success else None,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            if not refund.success:
+                raise HTTPException(status_code=500, detail="Transfer-Speicherung und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+        raise HTTPException(status_code=500, detail="Transfer konnte nicht gespeichert werden. Zahlung wurde zurückgebucht.")
+
     if recipient_email and "@" in recipient_email:
         try:
             from core.email import send_transfer_notification
@@ -215,10 +320,10 @@ async def create_transfer(
                 file_count=len(saved_files),
                 total_size=human_size(total_size),
                 share_url=share_url,
-                expires_days=expires_days
+                expires_days=expires_days,
             )
-        except Exception as e:
-            logger.error(f"Failed to send transfer email: {e}")
+        except Exception as exc:
+            logger.error("Failed to send transfer email: %s", exc)
 
     return {
         "ok": True,
@@ -226,13 +331,9 @@ async def create_transfer(
         "download_code": download_code,
         "download_url": f"/transfer/download/{transfer_id}/{download_code}",
         "share_link": f"/blitz-transfer/{transfer_id}/{download_code}",
-        "file_count": len(saved_files),
-        "total_size": human_size(total_size),
-        "tier": tier,
         "price_paid": price,
-        "expires_at": expires_at.isoformat(),
-        "expires_days": expires_days,
-        "message": f"{len(saved_files)} Datei(en) hochgeladen ({human_size(total_size)}). Link gueltig fuer {expires_days} Tage." + (f" EUR {price:.2f} abgezogen." if price > 0 else ""),
+        "new_balance": payment_result.new_balance if payment_result else float(user.get("balance") or 0),
+        "replayed": bool(payment_result.idempotent_replay) if payment_result else False,
     }
 
 
