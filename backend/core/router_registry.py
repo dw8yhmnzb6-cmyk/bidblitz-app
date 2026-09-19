@@ -195,6 +195,7 @@ def register_all_routers(app):
         ("routes.gift_cards", "router"),
         ("routes.stocks", "router"),
         ("routes.savings", "router"),
+        ("routes.reselling", "router"),
         ("routes.credit_system", "router"),
         ("routes.bills", "router"),
         ("routes.receipts", "router"),
