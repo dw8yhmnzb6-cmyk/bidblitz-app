@@ -34,7 +34,7 @@ from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
-from core.payment_engine import process_stripe_payment, PaymentResult
+from core.payment_engine import process_stripe_payment, PaymentResult, credit_wallet, TransactionType
 from core.stripe_wallet_settlement import (
     WalletSettlementNeedsReview,
     settle_stripe_wallet_topup,
@@ -327,27 +327,40 @@ async def checkout_status(session_id: str, request: Request):
         except Exception:
             pass
 
-        # Apply a top-up promotion only from the single process that performed the
-        # wallet increment, preventing polling/webhook races from duplicating bonus.
+        # Apply top-up promotion through the canonical wallet engine.
+        # The Stripe session + promotion name form a stable idempotency identity.
         try:
             promo = await check_applicable_promotion(user_id, "topup", settlement["amount"])
             if promo:
                 bonus = round(settlement["amount"] * promo["value"] / 100, 2)
                 if bonus > 0:
-                    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": bonus}})
-                    await db.transactions.insert_one({
-                        "id": secrets.token_hex(8),
-                        "user_id": user_id,
-                        "type": "reward",
-                        "amount": bonus,
-                        "description": f"Top-up bonus: {promo['name']} ({promo['value']}%)",
-                        "status": "completed",
-                        "reference": f"PROMO-{secrets.token_hex(4).upper()}",
-                        "category": "promotion",
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    })
-                    await apply_promotion(user_id, promo["name"], settlement["amount"])
-                    topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
+                    promo_key = f"topup-promo:{session_id}:{promo['name']}"
+                    promo_hash = hashlib.sha256(promo_key.encode("utf-8")).hexdigest()[:16].upper()
+                    bonus_result = await credit_wallet(
+                        user_id=user_id,
+                        amount=bonus,
+                        tx_type=TransactionType.REWARD,
+                        description=f"Top-up bonus: {promo['name']} ({promo['value']}%)",
+                        reference=f"PROMO-{promo_hash}",
+                        source="stripe_topup_promotion",
+                        metadata={
+                            "session_id": session_id,
+                            "promotion": promo["name"],
+                            "promotion_value": promo["value"],
+                            "topup_amount": settlement["amount"],
+                        },
+                        idempotency_key=promo_key,
+                    )
+                    if bonus_result.success:
+                        await apply_promotion(user_id, promo["name"], settlement["amount"])
+                        topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
+                    else:
+                        import logging as _logging
+                        _logging.getLogger("bidblitz.stripe").error(
+                            "Top-up promotion settlement failed for session %s: %s",
+                            session_id,
+                            bonus_result.error,
+                        )
         except Exception:
             pass
 
