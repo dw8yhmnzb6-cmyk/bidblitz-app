@@ -13,7 +13,7 @@ import { useUser } from '../store/UserContext';
 import * as api from '../services/taxiApi';
 
 const VEHICLES = [
-  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', badge: 'Empfohlen' },
+  { id: 'standard', label: 'Standard', subtitle: 'Schnell & günstig', badge: 'Empfohlen' },
   { id: 'premium', label: 'Comfort', subtitle: 'Mehr Komfort & Ruhe' },
   { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck' },
 ];
@@ -325,6 +325,10 @@ export default function TaxiPage({ onNavigate }) {
   const [bookingMode, setBookingMode] = useState('now');
   const [scheduledAt, setScheduledAt] = useState('');
   const [pricingConfig, setPricingConfig] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatSending, setChatSending] = useState(false);
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -528,8 +532,8 @@ export default function TaxiPage({ onNavigate }) {
   }, [activeRide]);
 
   const driverGpsLabel = useMemo(() => {
-    if (!activeRide?.driver_lat || !activeRide?.driver_lng) return 'GPS wird synchronisiert';
-    return `Live bei ${Number(activeRide.driver_lat).toFixed(4)}, ${Number(activeRide.driver_lng).toFixed(4)}`;
+    if (!Number.isFinite(activeRide?.driver_lat) || !Number.isFinite(activeRide?.driver_lng)) return 'GPS wird synchronisiert';
+    return 'Fahrerposition live verbunden';
   }, [activeRide?.driver_lat, activeRide?.driver_lng]);
 
   const selectedEstimate = useMemo(
@@ -588,9 +592,45 @@ export default function TaxiPage({ onNavigate }) {
     await loadActiveRide();
   }, [activeRide?.ride_id, loadActiveRide]);
 
-  const handleOpenChat = useCallback(() => {
-    toast.info('Live-Chat öffnet im nächsten Schritt.');
-  }, []);
+  const loadChat = useCallback(async () => {
+    if (!activeRide?.ride_id) return;
+    const result = await api.fetchRideMessages(activeRide.ride_id);
+    if (result?.ok) {
+      setChatMessages(result.messages || []);
+    }
+  }, [activeRide?.ride_id]);
+
+  useEffect(() => {
+    if (!chatOpen || !activeRide?.ride_id) return undefined;
+    loadChat();
+    const interval = setInterval(loadChat, 3000);
+    return () => clearInterval(interval);
+  }, [activeRide?.ride_id, chatOpen, loadChat]);
+
+  const handleOpenChat = useCallback(async () => {
+    if (!activeRide?.ride_id) return;
+    if (!activeRide?.driver_id && !activeRide?.driver?.driver_id) {
+      toast.info('Der Chat wird verfügbar, sobald ein Fahrer die Fahrt angenommen hat.');
+      return;
+    }
+    setChatOpen(true);
+    await loadChat();
+  }, [activeRide, loadChat]);
+
+  const handleSendChat = useCallback(async (event) => {
+    event?.preventDefault?.();
+    const text = chatDraft.trim();
+    if (!text || !activeRide?.ride_id || chatSending) return;
+    setChatSending(true);
+    const result = await api.sendRideMessage(activeRide.ride_id, text);
+    setChatSending(false);
+    if (!result?.ok) {
+      toast.error(result?.error || 'Nachricht konnte nicht gesendet werden');
+      return;
+    }
+    setChatDraft('');
+    setChatMessages((prev) => [...prev, result.message].filter(Boolean));
+  }, [activeRide?.ride_id, chatDraft, chatSending]);
 
   const handleCallDriver = useCallback(() => {
     const phone = activeRide?.driver?.phone || activeRide?.driver_phone;
@@ -906,12 +946,12 @@ export default function TaxiPage({ onNavigate }) {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
-                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Driver Lat</div>
-                    <div className="mt-1 font-black text-white">{Number(activeRide?.driver_lat || 0).toFixed(4)}</div>
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Aktualisierung</div>
+                    <div className="mt-1 font-black text-white">ca. 3 Sek.</div>
                   </div>
                   <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
-                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Driver Lng</div>
-                    <div className="mt-1 font-black text-white">{Number(activeRide?.driver_lng || 0).toFixed(4)}</div>
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Verbindung</div>
+                    <div className="mt-1 font-black text-white">{Number.isFinite(activeRide?.driver_lat) ? 'Live' : 'Wird aufgebaut'}</div>
                   </div>
                 </div>
               </div>
@@ -933,6 +973,77 @@ export default function TaxiPage({ onNavigate }) {
           ) : null}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {chatOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[90] flex items-end bg-black/60 backdrop-blur-sm sm:items-center sm:justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-testid="taxi-chat-overlay"
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              className="flex max-h-[78vh] w-full flex-col rounded-t-[28px] border border-white/10 bg-[#07101D] p-4 shadow-2xl sm:max-w-md sm:rounded-[28px]"
+              data-testid="taxi-chat-dialog"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Fahrt-Chat</div>
+                  <div className="mt-1 text-lg font-black text-white">{activeRide?.driver?.name || activeRide?.driver_name || 'Fahrer'}</div>
+                </div>
+                <button
+                  onClick={() => setChatOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-white"
+                  data-testid="taxi-chat-close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="min-h-[220px] flex-1 space-y-3 overflow-y-auto py-4" data-testid="taxi-chat-messages">
+                {chatMessages.length ? chatMessages.map((message) => {
+                  const mine = message.sender_role === 'customer';
+                  return (
+                    <div key={message.message_id || message.sent_at} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm ${mine ? 'bg-[var(--bb-accent-cyan)] text-[#08111D]' : 'bg-white/8 text-white'}`}>
+                        <div className="font-semibold">{message.text}</div>
+                        <div className={`mt-1 text-[10px] ${mine ? 'text-[#08111D]/60' : 'text-[var(--bb-text-muted)]'}`}>{message.sender_name || (mine ? 'Du' : 'Fahrer')}</div>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="rounded-2xl bg-white/6 px-4 py-4 text-center text-sm text-[var(--bb-text-secondary)]">
+                    Noch keine Nachrichten. Du kannst dem Fahrer jetzt direkt schreiben.
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSendChat} className="flex items-center gap-2 border-t border-white/10 pt-3">
+                <input
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  maxLength={400}
+                  placeholder="Nachricht an Fahrer"
+                  className="min-h-[48px] min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/6 px-4 text-sm text-white outline-none placeholder:text-[var(--bb-text-muted)]"
+                  data-testid="taxi-chat-input"
+                />
+                <button
+                  type="submit"
+                  disabled={chatSending || !chatDraft.trim()}
+                  className="min-h-[48px] rounded-2xl bg-[var(--bb-accent-cyan)] px-4 text-sm font-black text-[#08111D] disabled:opacity-50"
+                  data-testid="taxi-chat-send"
+                >
+                  {chatSending ? '...' : 'Senden'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
