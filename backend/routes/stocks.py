@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 import secrets, logging, random, asyncio, threading
 
@@ -138,6 +139,20 @@ def get_change(symbol):
     return round((random.random() - 0.45) * 3, 2)
 
 
+@router.get("/capabilities")
+async def stock_capabilities():
+    return {
+        "live_market_data": True,
+        "broker_connected": False,
+        "trading_available": bool(TEST_MODE),
+        "portfolio_is_simulated": bool(TEST_MODE),
+        "message": (
+            None if TEST_MODE else
+            "Aktienkurse sind nur Marktinformation. Ein verifizierter Broker ist noch nicht verbunden; echte Orders sind deaktiviert."
+        ),
+    }
+
+
 @router.get("/market")
 async def get_market(type: Optional[str] = None, sector: Optional[str] = None, search: Optional[str] = None):
     import math
@@ -151,12 +166,20 @@ async def get_market(type: Optional[str] = None, sector: Optional[str] = None, s
         if search and search.lower() not in a["name"].lower() and search.lower() not in a["symbol"].lower():
             continue
         cd = cache.get(a["symbol"], {})
+        if not cd and not TEST_MODE:
+            continue
         price = cd.get("price_eur", FALLBACK.get(a["symbol"], 100))
         price_orig = cd.get("price", FALLBACK.get(a["symbol"], 100))
         change = cd.get("change_pct", 0)
-        # Guard NaN/Inf
-        if math.isnan(price) or math.isinf(price): price = FALLBACK.get(a["symbol"], 100)
-        if math.isnan(price_orig) or math.isinf(price_orig): price_orig = price
+        # Guard NaN/Inf. Production omits unavailable live quotes.
+        if math.isnan(price) or math.isinf(price):
+            if not TEST_MODE:
+                continue
+            price = FALLBACK.get(a["symbol"], 100)
+        if math.isnan(price_orig) or math.isinf(price_orig):
+            if not TEST_MODE:
+                continue
+            price_orig = price
         if math.isnan(change) or math.isinf(change): change = 0
         results.append({
             "symbol": a["symbol"],
@@ -168,9 +191,17 @@ async def get_market(type: Optional[str] = None, sector: Optional[str] = None, s
             "price_original": round(price_orig, 2),
             "change_pct": round(change, 2),
         })
-    source = "yahoo_finance" if _cache_time else "fallback"
-    return {"assets": results, "total": len(results), "source": source,
-            "updated_at": (_cache_time or datetime.now(timezone.utc)).isoformat()}
+    if not results and not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Live-Marktdaten sind momentan nicht verfügbar")
+    source = "yahoo_finance" if _cache_time else "test_fallback"
+    return {
+        "assets": results,
+        "total": len(results),
+        "source": source,
+        "trading_available": bool(TEST_MODE),
+        "broker_connected": False,
+        "updated_at": (_cache_time or datetime.now(timezone.utc)).isoformat(),
+    }
 
 
 @router.get("/asset/{symbol}")
@@ -183,9 +214,14 @@ async def get_asset(symbol: str):
     
     cache = await fetch_live_prices()
     cd = cache.get(symbol, {})
+    if not cd and not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Live-Kurs für dieses Asset ist momentan nicht verfügbar")
     price = cd.get("price_eur", FALLBACK.get(symbol, 100))
     change = cd.get("change_pct", 0)
-    if _math.isnan(price) or _math.isinf(price): price = FALLBACK.get(symbol, 100)
+    if _math.isnan(price) or _math.isinf(price):
+        if not TEST_MODE:
+            raise HTTPException(status_code=503, detail="Live-Kurs ist ungültig")
+        price = FALLBACK.get(symbol, 100)
     if _math.isnan(change) or _math.isinf(change): change = 0
     
     def safe_float(v, default=0):
@@ -209,12 +245,14 @@ async def get_asset(symbol: str):
             elif asset["currency"] == "GBP":
                 p = p * 1.17
             chart.append({"day": len(chart) + 1, "price": round(p, 2), "date": idx.strftime("%d.%m")})
-    except:
-        p = price * 0.95
-        for i in range(30):
-            p = p * (1 + (random.random() - 0.48) * 0.03)
-            chart.append({"day": i + 1, "price": round(p, 2)})
-        chart[-1]["price"] = round(price, 2)
+    except Exception:
+        if TEST_MODE:
+            p = price * 0.95
+            for i in range(30):
+                p = p * (1 + (random.random() - 0.48) * 0.03)
+                chart.append({"day": i + 1, "price": round(p, 2)})
+            if chart:
+                chart[-1]["price"] = round(price, 2)
     
     # Get real info from yfinance
     info = {}
@@ -232,16 +270,26 @@ async def get_asset(symbol: str):
             "sector_detail": fi.get("sector", asset["sector"]),
             "description": (fi.get("longBusinessSummary", "") or "")[:200],
         }
-    except:
-        info = {"volume": random.randint(1_000_000, 50_000_000), "market_cap": round(price * random.randint(500_000_000, 3_000_000_000)),
-                "pe_ratio": round(random.uniform(12, 45), 1), "dividend_yield": round(random.uniform(0, 3.5), 2),
-                "high_52w": round(price * 1.15, 2), "low_52w": round(price * 0.78, 2)}
+    except Exception:
+        info = (
+            {
+                "volume": random.randint(1_000_000, 50_000_000),
+                "market_cap": round(price * random.randint(500_000_000, 3_000_000_000)),
+                "pe_ratio": round(random.uniform(12, 45), 1),
+                "dividend_yield": round(random.uniform(0, 3.5), 2),
+                "high_52w": round(price * 1.15, 2),
+                "low_52w": round(price * 0.78, 2),
+            }
+            if TEST_MODE else {}
+        )
     
     return {
         "symbol": symbol, "name": asset["name"], "type": asset["type"],
         "sector": asset["sector"], "currency": asset["currency"],
         "price": price, "change_pct": change, "chart": chart,
-        "source": "yahoo_finance" if _cache_time else "fallback",
+        "source": "yahoo_finance" if _cache_time else "test_fallback",
+        "trading_available": bool(TEST_MODE),
+        "broker_connected": False,
         **info,
     }
 
@@ -257,6 +305,16 @@ async def get_sectors():
 @router.get("/portfolio")
 async def get_portfolio(request: Request):
     user = await get_current_user(request)
+    if not TEST_MODE:
+        legacy_count = await db.stock_holdings.count_documents({"user_email": user.get("email", "")})
+        return {
+            "holdings": [],
+            "total_value": 0,
+            "total_invested": 0,
+            "total_pnl": 0,
+            "broker_connected": False,
+            "legacy_demo_holdings": legacy_count,
+        }
     holdings = await db.stock_holdings.find({"user_email": user.get("email", "")}, {"_id": 0}).to_list(50)
     total_value = 0
     total_invested = 0
@@ -286,6 +344,11 @@ class TradeReq(BaseModel):
 @router.post("/trade")
 async def execute_trade(req: TradeReq, request: Request):
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Echter Aktienhandel ist deaktiviert, bis ein verifizierter Broker live verbunden ist. Das Wallet wurde nicht belastet.",
+        )
     email = user.get("email", "")
     symbol = req.symbol.upper()
     asset = next((a for a in ASSETS if a["symbol"] == symbol), None)
@@ -342,6 +405,9 @@ async def execute_trade(req: TradeReq, request: Request):
 @router.get("/trades")
 async def get_trades(request: Request):
     user = await get_current_user(request)
+    if not TEST_MODE:
+        legacy_count = await db.stock_trades.count_documents({"user_email": user.get("email", "")})
+        return {"trades": [], "broker_connected": False, "legacy_demo_trades": legacy_count}
     trades = await db.stock_trades.find({"user_email": user.get("email", "")}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return {"trades": trades}
 
