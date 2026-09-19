@@ -1493,6 +1493,8 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     casino = (BACKEND_DIR / "routes" / "casino.py").read_text(encoding="utf-8")
     arcade = (BACKEND_DIR / "routes" / "arcade.py").read_text(encoding="utf-8")
     store = (BACKEND_DIR / "routes" / "rewards_store.py").read_text(encoding="utf-8")
+    rewards = (BACKEND_DIR / "routes" / "rewards.py").read_text(encoding="utf-8")
+    rewards_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RewardsPage.jsx").read_text(encoding="utf-8")
     app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
 
     assert "Gaming-Coins mit EUR kaufen ist in Production deaktiviert" in gaming
@@ -1524,18 +1526,19 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert '"$inc": {"balance": amount}' not in store
     assert 'daily_field = f"daily_redemption_limits.{day_key}.{reward_type}"' in store
     assert '"$expr": {' in store
-    assert '{"$ifNull": [f"    rewards_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RewardsPage.jsx").read_text(encoding="utf-8")
-    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    assert '{"$ifNull": [f"${daily_field}", 0]}' in store
+    assert '"$inc": {"coins_balance": -cost, daily_field: 1}' in store
+    assert store.count('"$inc": {"coins_balance": cost, daily_field: -1}') == 2
+    assert 'detail="Einlösung wird bereits verarbeitet"' in store
+
     assert "def _require_random_value_rewards_test_mode" in rewards
     assert "Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert." in rewards
     assert rewards.count("_require_random_value_rewards_test_mode()") >= 3
     assert '"value_random_rewards_enabled": bool(TEST_MODE)' in rewards
-    assert '"remaining": remaining' in rewards
     assert "remaining = max(0, limit - spins_today) if TEST_MODE else 0" in rewards
     assert "valueRandomRewardsEnabled = hub?.value_random_rewards_enabled === true" in rewards_page
     assert "reward-value-games-unavailable" in rewards_page
     assert 'title="Reward Plinko"' in app
-
 
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     backend = (BACKEND_DIR / "routes" / "reselling.py").read_text(encoding="utf-8")
