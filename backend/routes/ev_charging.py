@@ -378,9 +378,18 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
 
     txn_id = sess.get("ocpp_transaction_id")
     if txn_id is None:
+        stopped_at = _utcnow_iso()
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "cancelled", "stopped_at": _utcnow_iso()}},
+            {"$set": {"status": "cancelled", "stopped_at": stopped_at}},
+        )
+        await db.ev_connector_claims.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "released", "released_at": stopped_at}},
+        )
+        await db.ev_authorizations.update_one(
+            {"id_tag": sess.get("id_tag")},
+            {"$set": {"active": False, "cancelled_at": stopped_at}},
         )
         return {"session_id": session_id, "status": "cancelled"}
 
@@ -1403,34 +1412,89 @@ async def admin_payout_decision(payout_id: str, body: PayoutDecisionBody, reques
         raise HTTPException(403, "Admin only")
     if body.decision not in ("approved", "rejected", "paid"):
         raise HTTPException(400, "Ungültige Entscheidung")
+
     payout = await db.ev_operator_payouts.find_one({"payout_id": payout_id})
     if not payout:
         raise HTTPException(404, "Payout nicht gefunden")
-    update = {
-        "status": body.decision, "admin_note": body.note,
-        "external_ref": body.external_ref, "decided_at": _utcnow_iso(),
-        "decided_by": str(user["_id"]),
-    }
-    if body.decision == "paid":
-        from bson import ObjectId
-        try:
-            uid = ObjectId(payout["user_id"])
-        except Exception:
-            uid = payout["user_id"]
-        bal_user = await db.users.find_one({"_id": uid}, {"balance": 1})
-        if (bal_user or {}).get("balance", 0) < payout["amount"]:
-            raise HTTPException(402, "Operator-Wallet hat nicht genug Guthaben")
-        await db.users.update_one({"_id": uid}, {"$inc": {"balance": -payout["amount"]}})
-        await db.transactions.insert_one({
-            "user_id": payout["user_id"], "type": "payout",
-            "amount": -payout["amount"], "currency": "EUR",
-            "description": f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
-            "reference": payout_id, "status": "completed",
-            "created_at": _utcnow_iso(),
-        })
-    await db.ev_operator_payouts.update_one({"payout_id": payout_id}, {"$set": update})
-    return {"ok": True, "payout_id": payout_id, **update}
 
+    current_status = str(payout.get("status") or "requested")
+    if current_status == "paid":
+        if body.decision == "paid":
+            return {
+                "ok": True,
+                "payout_id": payout_id,
+                "status": "paid",
+                "external_ref": payout.get("external_ref"),
+                "replayed": True,
+            }
+        raise HTTPException(409, "Bereits ausgezahlter Payout kann nicht geändert werden")
+    if current_status == "rejected" and body.decision != "rejected":
+        raise HTTPException(409, "Abgelehnter Payout kann nicht erneut freigegeben werden")
+
+    now = _utcnow_iso()
+    if body.decision in {"approved", "rejected"}:
+        result = await db.ev_operator_payouts.update_one(
+            {"payout_id": payout_id, "status": current_status},
+            {"$set": {
+                "status": body.decision,
+                "admin_note": body.note,
+                "decided_at": now,
+                "decided_by": str(user["_id"]),
+            }},
+        )
+        if result.modified_count != 1 and current_status != body.decision:
+            raise HTTPException(409, "Payout-Status wurde parallel geändert")
+        return {
+            "ok": True,
+            "payout_id": payout_id,
+            "status": body.decision,
+            "replayed": current_status == body.decision,
+        }
+
+    external_ref = str(body.external_ref or "").strip()
+    if len(external_ref) < 4:
+        raise HTTPException(400, "Externe Auszahlungsreferenz ist für 'paid' erforderlich")
+    if current_status not in {"requested", "approved"}:
+        raise HTTPException(409, f"Payout kann aus Status {current_status} nicht bezahlt werden")
+
+    payment = await debit_wallet(
+        user_id=str(payout["user_id"]),
+        amount=round(float(payout["amount"]), 2),
+        tx_type=TransactionType.PAYOUT,
+        description=f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
+        reference=payout_id,
+        metadata={
+            "payout_id": payout_id,
+            "operator_id": payout.get("operator_id"),
+            "iban": payout.get("iban"),
+            "external_ref": external_ref,
+            "approved_by": str(user["_id"]),
+        },
+        idempotency_key=f"ev:payout:{payout_id}",
+    )
+    if not payment.success:
+        status_code = 409 if payment.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code, payment.error or "Payout-Walletabbuchung fehlgeschlagen")
+
+    update = {
+        "status": "paid",
+        "admin_note": body.note,
+        "external_ref": external_ref,
+        "decided_at": now,
+        "paid_at": now,
+        "decided_by": str(user["_id"]),
+        "wallet_transaction_id": payment.transaction_id,
+    }
+    await db.ev_operator_payouts.update_one(
+        {"payout_id": payout_id, "status": {"$in": ["requested", "approved", "paid"]}},
+        {"$set": update},
+    )
+    return {
+        "ok": True,
+        "payout_id": payout_id,
+        **update,
+        "replayed": bool(payment.idempotent_replay),
+    }
 
 # ── Tariff: extend with VAT + time rules ─────────────────────────────────────
 @router.put("/admin/tariffs/{tariff_id}")
