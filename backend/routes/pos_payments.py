@@ -75,6 +75,12 @@ def generate_barcode_token(user_id: str) -> str:
     return f"BLZ-{token}"
 
 
+def deterministic_payment_reference(prefix: str, *parts) -> str:
+    raw = ":".join(str(part or "") for part in parts)
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest().upper()[:12]
+    return f"{prefix}-{digest}"
+
+
 async def detect_payment_type(method: str) -> dict:
     """Detect payment type and return fee rate + label."""
     rates = await get_fee_rates()
@@ -235,7 +241,9 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method or "barcode")
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
-    reference = f"BRC-{secrets.token_hex(4).upper()}"
+    reference = deterministic_payment_reference(
+        "BRC", merchant_uid, req.barcode, f"{req.amount:.2f}", pt["category"]
+    )
 
     customer_debit = await debit_wallet(
         user_id=customer_uid,
@@ -263,23 +271,8 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
 
     now_iso = now.isoformat()
 
-    if mp:
-        await db.merchant_profiles.update_one(
-            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
-        )
-        if merchant_owner_id:
-            await db.merchants.update_one(
-                {"user_id": merchant_owner_id},
-                {"$inc": {
-                    "gross_earnings": req.amount,
-                    "total_earnings": net,
-                    "total_fees": fee,
-                    "total_transactions": 1,
-                    "available_payout": net,
-                }},
-                upsert=True,
-            )
-        
+    merchant_credit_result = None
+    if mp and merchant_owner_id:
         merchant_credit_result = await _credit_merchant_wallet(
             merchant_owner_id,
             net,
@@ -295,8 +288,8 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             customer_name=customer.get("name", ""),
             customer_email=customer.get("email", ""),
         )
-        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
-            await credit_wallet(
+        if not merchant_credit_result or not merchant_credit_result.success:
+            refund = await credit_wallet(
                 user_id=customer_uid,
                 amount=req.amount,
                 tx_type=TransactionType.REFUND,
@@ -306,13 +299,16 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
                 metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.barcode_pay.rollback"}},
                 idempotency_key=f"refund:{customer_debit.transaction_id}",
             )
-            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
+            if not refund.success:
+                logger.error("POS barcode rollback requires reconciliation: %s", reference)
+                raise HTTPException(status_code=500, detail="Händlergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed; customer refunded"))
 
-    await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-
+    stats_written = False
     if mid:
-        await db.merchant_transactions.insert_one({
+        merchant_tx = {
             "merchant_id": mid, "branch_id": "", "device_id": "barcode",
+            "reference": reference,
             "amount": req.amount, "fee": fee, "net": net,
             "commission_rate": pt["fee_rate"] * 100,
             "description": req.description,
@@ -321,7 +317,32 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             "payment_method": pt["category"],
             "payment_type_label": pt["label"],
             "status": "completed", "created_at": now_iso,
-        })
+        }
+        write = await db.merchant_transactions.update_one(
+            {"reference": reference},
+            {"$setOnInsert": merchant_tx},
+            upsert=True,
+        )
+        stats_written = write.upserted_id is not None
+
+    if mp and stats_written:
+        await db.merchant_profiles.update_one(
+            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+        )
+        if merchant_owner_id:
+            await db.merchants.update_one(
+                {"user_id": merchant_owner_id},
+                {"$inc": {
+                    "gross_earnings": req.amount,
+                    "total_earnings": net,
+                    "total_fees": fee,
+                    "total_transactions": 1,
+                    "available_payout": net,
+                }},
+                upsert=True,
+            )
+
+    await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
 
     updated_customer = await db.users.find_one({"_id": ObjectId(customer_uid)})
 
@@ -431,9 +452,18 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method)
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
-    reference = f"NFC-{secrets.token_hex(4).upper()}"
+    reference = deterministic_payment_reference(
+        "NFC", merchant_uid, req.customer_id or "external", f"{req.amount:.2f}",
+        req.device_id or "default", pt["category"]
+    )
     customer_name = ""
     customer_doc = None
+
+    if req.payment_method not in ("nfc_wallet", "wallet"):
+        raise HTTPException(
+            status_code=503,
+            detail="Externe Karten-/NFC-Zahlung ist in diesem Endpoint nicht provider-verifiziert. Nutze BidBlitz Wallet oder einen zertifizierten Terminal-Provider.",
+        )
 
     if req.payment_method in ("nfc_wallet", "wallet"):
         if not req.customer_id:
@@ -468,11 +498,59 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
 
     merchant_owner_id = mp.get("user_id", "") if mp else ""
 
-    if mid:
-        await db.merchant_profiles.update_one(
-            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+    if mid and merchant_owner_id:
+        merchant_credit_result = await _credit_merchant_wallet(
+            merchant_owner_id,
+            net,
+            reference=reference,
+            source_user_id=req.customer_id or "wallet",
+            description=f"NFC Zahlung: {req.description or 'Payment'}",
+            merchant_name=merchant_name,
+            merchant_id=mid,
+            gross_amount=req.amount,
+            fee_amount=fee,
+            payment_method=pt["category"],
+            route_name="pos_payments.nfc_pay",
+            customer_name=customer_name,
+            customer_email=(customer_doc or {}).get("email", ""),
         )
-        if merchant_owner_id:
+        if not merchant_credit_result or not merchant_credit_result.success:
+            refund = await credit_wallet(
+                user_id=req.customer_id,
+                amount=req.amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Refund: NFC payment failed ({req.description or 'Payment'})",
+                reference=f"REF-{reference}",
+                source="pos_payments.nfc_pay.rollback",
+                metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.nfc_pay.rollback"}},
+                idempotency_key=f"refund:{reference}:{req.customer_id}",
+            )
+            if not refund.success:
+                logger.error("POS NFC rollback requires reconciliation: %s", reference)
+                raise HTTPException(status_code=500, detail="Händlergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed; customer refunded"))
+
+        merchant_tx = {
+            "merchant_id": mid, "branch_id": "", "device_id": req.device_id or "nfc",
+            "reference": reference,
+            "amount": req.amount, "fee": fee, "net": net,
+            "commission_rate": pt["fee_rate"] * 100,
+            "description": req.description,
+            "customer_ref": req.customer_id or "wallet",
+            "customer_name": customer_name,
+            "payment_method": pt["category"],
+            "payment_type_label": pt["label"],
+            "status": "completed", "created_at": now_iso,
+        }
+        write = await db.merchant_transactions.update_one(
+            {"reference": reference},
+            {"$setOnInsert": merchant_tx},
+            upsert=True,
+        )
+        if write.upserted_id is not None:
+            await db.merchant_profiles.update_one(
+                {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
+            )
             await db.merchants.update_one(
                 {"user_id": merchant_owner_id},
                 {"$inc": {
@@ -484,46 +562,6 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
                 }},
                 upsert=True,
             )
-        await db.merchant_transactions.insert_one({
-            "merchant_id": mid, "branch_id": "", "device_id": req.device_id or "nfc",
-            "amount": req.amount, "fee": fee, "net": net,
-            "commission_rate": pt["fee_rate"] * 100,
-            "description": req.description,
-            "customer_ref": req.customer_id or "card",
-            "customer_name": customer_name,
-            "payment_method": pt["category"],
-            "payment_type_label": pt["label"],
-            "status": "completed", "created_at": now_iso,
-        })
-        
-        merchant_credit_result = await _credit_merchant_wallet(
-            merchant_owner_id,
-            net,
-            reference=reference,
-            source_user_id=req.customer_id or "card",
-            description=f"NFC Zahlung: {req.description or 'Payment'}",
-            merchant_name=merchant_name,
-            merchant_id=mid,
-            gross_amount=req.amount,
-            fee_amount=fee,
-            payment_method=pt["category"],
-            route_name="pos_payments.nfc_pay",
-            customer_name=customer_name,
-            customer_email=(customer_doc or {}).get("email", ""),
-        )
-        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
-            if req.customer_id:
-                await credit_wallet(
-                    user_id=req.customer_id,
-                    amount=req.amount,
-                    tx_type=TransactionType.REFUND,
-                    description=f"Refund: NFC payment failed ({req.description or 'Payment'})",
-                    reference=f"REF-{reference}",
-                    source="pos_payments.nfc_pay.rollback",
-                    metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.nfc_pay.rollback"}},
-                    idempotency_key=f"refund:{reference}:{req.customer_id}",
-                )
-            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
 
     receipt = generate_receipt(
         (customer_debit.transaction_id if req.customer_id and req.payment_method in ("nfc_wallet", "wallet") else secrets.token_hex(8)), req.amount, fee, net, pt,
