@@ -98,15 +98,13 @@ async def add_coins(user_id: str, amount: int, reason: str, game: str = None):
 
 
 async def deduct_coins(user_id: str, amount: int, reason: str, game: str = None):
-    """Deduct coins from user balance. Returns False if insufficient."""
-    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"gaming_coins": 1})
-    current = user.get("gaming_coins", 0) if user else 0
-    if current < amount:
-        return False
-    await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$inc": {"gaming_coins": -amount}}
+    """Atomically deduct coins without allowing concurrent negative balances."""
+    result = await db.users.update_one(
+        {"_id": ObjectId(user_id), "gaming_coins": {"$gte": amount}},
+        {"$inc": {"gaming_coins": -amount}},
     )
+    if result.modified_count != 1:
+        return False
     await db.gaming_coin_log.insert_one({
         "user_id": user_id,
         "amount": -amount,
@@ -388,23 +386,12 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
 
 @router.post("/earn-cashback")
 async def earn_cashback_coins(request: Request):
-    """Award coins from cashback (called after transactions)."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    body = await request.json()
-    amount_eur = body.get("amount", 0)
-
-    if amount_eur <= 0:
-        raise HTTPException(status_code=400, detail="Invalid amount")
-
-    coins = int(amount_eur * CASHBACK_COIN_RATE)
-    if coins < 1:
-        coins = 1
-
-    await add_coins(user_id, coins, f"Cashback: €{amount_eur:.2f} → {coins} Coins")
-
-    new_balance = await get_user_coins(user_id)
-    return {"ok": True, "coins_earned": coins, "new_balance": new_balance}
+    """Cashback is awarded by verified transaction processors, never by client-declared amounts."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Cashback wird automatisch aus verifizierten Transaktionen gutgeschrieben.",
+    )
 
 
 @router.post("/buy-coins")
@@ -531,39 +518,18 @@ async def play_game(user_id: str, game_type: str, bet: int, coins_won: int, meta
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/wheel/spin")
-async def wheel_spin(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "wheel", req.bet, req.points_won)
-
-
 @router.post("/scratch/win")
-async def scratch_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "scratch", req.bet, req.points_won)
-
-
 @router.post("/slots/win")
-async def slots_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "slots", req.bet, req.points_won)
-
-
 @router.post("/quiz/complete")
-async def quiz_complete(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "quiz", req.bet, req.points_won)
-
-
 @router.post("/memory/complete")
-async def memory_complete(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "memory", req.bet, req.points_won, {"moves": req.moves})
-
-
 @router.post("/dice/win")
-async def dice_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "dice", req.bet, req.points_won)
+async def legacy_client_scored_game_disabled(req: GamePlayRequest, request: Request):
+    """Legacy client-declared winnings are unsafe because the client controls points_won."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser alte Spiel-Endpunkt ist deaktiviert. Gewinne müssen serverseitig berechnet werden.",
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
