@@ -104,6 +104,41 @@ class CommissionUpdate(BaseModel):
 # PAYMENT PROCESSING
 # ══════════════════════════════════════
 
+async def _credit_platform_revenue_once(*, payment_id: str, amount: float, category: str, now: datetime) -> None:
+    """Increment daily platform revenue once for one canonical mobility payment."""
+    if amount <= 0:
+        return
+    revenue_date = now.date().isoformat()
+    existing = await db.platform_revenue.find_one(
+        {"date": revenue_date},
+        {"_id": 0, "processed_payment_ids": 1},
+    )
+    if not existing:
+        try:
+            await db.platform_revenue.insert_one({
+                "revenue_id": secrets.token_hex(8),
+                "date": revenue_date,
+                "amount": amount,
+                "by_category": {category: amount},
+                "processed_payment_ids": [payment_id],
+                "last_payment_id": payment_id,
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            })
+            return
+        except Exception:
+            pass
+
+    await db.platform_revenue.update_one(
+        {"date": revenue_date, "processed_payment_ids": {"$ne": payment_id}},
+        {
+            "$set": {"updated_at": now.isoformat(), "last_payment_id": payment_id},
+            "$inc": {"amount": amount, f"by_category.{category}": amount},
+            "$addToSet": {"processed_payment_ids": payment_id},
+        },
+    )
+
+
 async def process_payment(
     user_id: str,
     amount: float,
@@ -115,18 +150,13 @@ async def process_payment(
     commission_category: str = None,
     idempotency_key: str = None,
 ) -> dict:
-    """
-    Process a payment with automatic commission split.
-    Returns payment result with breakdown.
-    """
+    """Process one canonical debit and safely finish its split side effects on retry."""
     user = await db.users.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    # Use the canonical wallet service so retries cannot debit the wallet twice.
     idempotency_key = idempotency_key or f"mobility:payment:{payment_type}:{reference_id}:{round(amount, 2):.2f}"
     debit_result = await debit_wallet(
         user_id=user_id,
@@ -146,39 +176,21 @@ async def process_payment(
     if not debit_result.success:
         raise HTTPException(status_code=400, detail=debit_result.error or "Payment could not be debited")
 
-    # A replay must not create a second earning, revenue row, or payment record.
-    if debit_result.idempotent_replay:
-        existing = await db.mobility_payments.find_one(
-            {"user_id": user_id, "reference_id": reference_id, "payment_type": payment_type},
-            {"_id": 0},
-        )
-        return {
-            "ok": True,
-            "reused": True,
-            "payment": existing or {
-                "payment_id": debit_result.transaction_id,
-                "user_id": user_id,
-                "amount": amount,
-                "payment_type": payment_type,
-                "reference_id": reference_id,
-                "status": "completed",
-            },
-            "new_balance": debit_result.new_balance,
-        }
-
     now = datetime.now(timezone.utc)
-    payment_id = secrets.token_hex(8)
-    
-    # Calculate commission split
+    existing = await db.mobility_payments.find_one(
+        {"user_id": user_id, "reference_id": reference_id, "payment_type": payment_type},
+        {"_id": 0},
+    )
+
+    payment_id = (existing or {}).get("payment_id") or debit_result.transaction_id or f"MOB-{secrets.token_hex(8)}"
     commission_rate = DEFAULT_COMMISSIONS.get(commission_category, 0.20)
     platform_commission = round(amount * commission_rate, 2)
     recipient_earning = round(amount - platform_commission, 2)
-    
-    # Wallet debit is already persisted by the canonical service above.
-    
-    # Record payment transaction
+
     payment_record = {
         "payment_id": payment_id,
+        "wallet_transaction_id": debit_result.transaction_id,
+        "wallet_idempotency_key": idempotency_key,
         "user_id": user_id,
         "recipient_id": recipient_id,
         "amount": amount,
@@ -190,62 +202,51 @@ async def process_payment(
         "commission_rate": commission_rate,
         "platform_commission": platform_commission,
         "recipient_earning": recipient_earning,
-        "status": "completed",
-        "created_at": now.isoformat(),
+        "status": "processing",
+        "created_at": (existing or {}).get("created_at") or now.isoformat(),
     }
-    
-    await db.mobility_payments.insert_one(payment_record)
-    
-    # Record in transactions for user
-    await db.transactions.insert_one({
-        "id": payment_id,
-        "user_id": user_id,
-        "type": "payment",
-        "amount": -amount,
-        "description": description,
-        "status": "completed",
-        "reference": f"{reference_type.upper()}-{reference_id[:8].upper()}",
-        "category": commission_category or payment_type,
-        "created_at": now.isoformat(),
-    })
-    
-    # Credit recipient if specified
-    if recipient_id:
+    await db.mobility_payments.update_one(
+        {"payment_id": payment_id},
+        {"$setOnInsert": payment_record},
+        upsert=True,
+    )
+
+    if recipient_id and recipient_earning > 0:
         await credit_earning(
             user_id=recipient_id,
             amount=recipient_earning,
             earning_type=f"{commission_category}_earning" if commission_category else "earning",
             source=payment_type,
-            reference_id=reference_id,
+            reference_id=payment_id,
             hold_hours=PAYOUT_CONFIG["hold_hours"],
         )
-    
-    # Credit platform commission to admin/system (daily aggregate to avoid duplicate-key collisions)
-    revenue_date = now.date().isoformat()
+
     revenue_category = commission_category or payment_type
-    await db.platform_revenue.update_one(
-        {"date": revenue_date},
-        {
-            "$setOnInsert": {
-                "revenue_id": secrets.token_hex(8),
-                "date": revenue_date,
-                "created_at": now.isoformat(),
-            },
-            "$set": {
-                "updated_at": now.isoformat(),
-                "last_payment_id": payment_id,
-            },
-            "$inc": {
-                "amount": platform_commission,
-                f"by_category.{revenue_category}": platform_commission,
-            },
-        },
-        upsert=True,
+    await _credit_platform_revenue_once(
+        payment_id=payment_id,
+        amount=platform_commission,
+        category=revenue_category,
+        now=now,
     )
-    
-    payment_record.pop("_id", None)
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.mobility_payments.update_one(
+        {"payment_id": payment_id},
+        {"$set": {
+            "status": "completed",
+            "completed_at": completed_at,
+            "recipient_earning_settled": bool(recipient_id and recipient_earning > 0),
+            "platform_revenue_settled": platform_commission > 0,
+        }},
+    )
+    payment_record = await db.mobility_payments.find_one(
+        {"payment_id": payment_id},
+        {"_id": 0},
+    ) or payment_record
+
     return {
         "ok": True,
+        "reused": bool(debit_result.idempotent_replay),
         "payment": payment_record,
         "new_balance": debit_result.new_balance,
     }
@@ -259,12 +260,15 @@ async def credit_earning(
     reference_id: str = None,
     hold_hours: int = 0,
 ) -> dict:
-    """Credit earning to user's earning wallet."""
+    """Credit one earning exactly once."""
+    import hashlib
+
     now = datetime.now(timezone.utc)
-    earning_id = secrets.token_hex(8)
-    
+    identity = f"{user_id}:{earning_type}:{source}:{reference_id or ''}:{round(float(amount), 2):.2f}"
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
+    earning_id = f"ERN-{digest}"
     available_at = now + timedelta(hours=hold_hours) if hold_hours > 0 else now
-    
+
     earning_record = {
         "earning_id": earning_id,
         "user_id": user_id,
@@ -276,17 +280,32 @@ async def credit_earning(
         "available_at": available_at.isoformat(),
         "created_at": now.isoformat(),
     }
-    
-    await db.mobility_earnings.insert_one(earning_record)
-    
-    # Update user's earning balance
+    await db.mobility_earnings.update_one(
+        {"earning_id": earning_id},
+        {"$setOnInsert": earning_record},
+        upsert=True,
+    )
+
+    marker_field = f"mobility_earning_markers.{digest}"
     earning_field = f"{earning_type.replace('_earning', '')}_earnings"
     await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$inc": {earning_field: amount, "total_earnings": amount}}
+        {"_id": ObjectId(user_id), marker_field: {"$exists": False}},
+        {
+            "$inc": {earning_field: amount, "total_earnings": amount},
+            "$set": {
+                marker_field: {
+                    "earning_id": earning_id,
+                    "amount": amount,
+                    "credited_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
     )
-    
-    return earning_record
+
+    return await db.mobility_earnings.find_one(
+        {"earning_id": earning_id},
+        {"_id": 0},
+    ) or earning_record
 
 
 async def process_refund(
