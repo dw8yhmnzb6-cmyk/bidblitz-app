@@ -6,6 +6,7 @@ Users buy bid credits, each bid costs 1 credit, increases price by €0.01, exte
 import secrets
 import asyncio
 import random
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -30,6 +31,64 @@ CREDIT_PACKAGES = {
     "100": {"credits": 100, "price": 29.00},    # 0.29/bid (42% off)
     "250": {"credits": 250, "price": 62.50},    # 0.25/bid (50% off)
 }
+
+def _require_auction_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+def _auction_grant_field(kind: str, key: str) -> str:
+    digest = hashlib.sha256(f"{kind}:{key}".encode("utf-8")).hexdigest()[:32]
+    return f"auction_credit_grants.{digest}"
+
+
+async def _grant_bid_credits_once(user_object_id, *, credits: int, grant_key: str, source: str, metadata: Optional[dict] = None) -> tuple[bool, bool]:
+    field = _auction_grant_field(source, grant_key)
+    marker = {
+        "credits": int(credits),
+        "source": source,
+        "grant_key_hash": hashlib.sha256(grant_key.encode("utf-8")).hexdigest()[:16],
+        "metadata": metadata or {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.users.update_one(
+        {"_id": user_object_id, field: {"$exists": False}},
+        {"$inc": {"bid_credits": int(credits)}, "$set": {field: marker}},
+    )
+    if result.modified_count == 1:
+        return True, True
+    existing = await db.users.find_one({"_id": user_object_id, field: {"$exists": True}}, {"_id": 1})
+    return False, bool(existing)
+
+
+async def _grant_first_purchase_bonus_once(user_object_id, *, eligible: bool) -> int:
+    if not eligible:
+        return 0
+    result = await db.users.update_one(
+        {"_id": user_object_id, "auction_first_purchase_bonus_awarded": {"$ne": True}},
+        {
+            "$inc": {"bid_credits": 5},
+            "$set": {
+                "auction_first_purchase_bonus_awarded": True,
+                "auction_first_purchase_bonus_awarded_at": datetime.now(timezone.utc).isoformat(),
+            },
+        },
+    )
+    return 5 if result.modified_count == 1 else 0
+
+
+async def _has_previous_credit_purchase(user_id: str) -> bool:
+    previous = await db.transactions.find_one({
+        "user_id": user_id,
+        "$or": [
+            {"category": "auction", "type": "purchase"},
+            {"type": "auction_bid", "metadata.purchase_kind": "bid_credits"},
+        ],
+    }, {"_id": 1})
+    return bool(previous)
+
 
 
 # ── List auctions ──
@@ -224,54 +283,13 @@ async def get_credit_packages(request: Request):
 # ── Buy Credits ──
 @router.post("/credits/buy")
 async def buy_credits(request: Request):
-    """Buy bid credits using wallet balance."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
+    """Backward-compatible alias for the canonical wallet credit purchase."""
     body = await request.json()
-    package_id = body.get("package_id")
-    
-    if package_id not in CREDIT_PACKAGES:
-        raise HTTPException(status_code=400, detail="Invalid package")
-    
-    pkg = CREDIT_PACKAGES[package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
-    
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
-        )
-    
-    # Deduct balance and add credits
-    new_balance = round(balance - price, 2)
-    new_credits = user.get("bid_credits", 0) + credits
-    
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"balance": new_balance, "bid_credits": new_credits}}
+    req = BuyCreditsRequest(
+        package_id=body.get("package_id", ""),
+        idempotency_key=body.get("idempotency_key"),
     )
-    
-    # Log transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "category": "auction",
-        "amount": -price,
-        "description": f"{credits} Bid Credits",
-        "status": "completed",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "credits_added": credits,
-        "total_credits": new_credits,
-        "new_balance": new_balance,
-    }
+    return await buy_credits_direct(req, request)
 
 
 # ── Daily Reward ──
@@ -317,8 +335,9 @@ async def check_first_purchase(request: Request):
     """Check if user qualifies for first-purchase bonus."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    has_purchased = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
-    return {"is_first_purchase": not bool(has_purchased), "bonus_credits": 5}
+    has_purchased = await _has_previous_credit_purchase(user_id)
+    bonus_already_awarded = bool(user.get("auction_first_purchase_bonus_awarded"))
+    return {"is_first_purchase": not has_purchased and not bonus_already_awarded, "bonus_credits": 5}
 
 
 # ── Referral Leaderboard ──
@@ -818,68 +837,61 @@ async def get_auto_bid(auction_id: str, request: Request):
 # ── Buy bid credits ──
 class BuyCreditsRequest(BaseModel):
     package_id: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-credits")
 async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
-    """Buy bid credits using wallet balance - Uses Payment Engine for safety."""
+    """Buy bid credits from the canonical wallet with exactly-once credit grants."""
     from core.payment_engine import debit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    ip, ua = get_client_info(request)
+    idempotency_key = _require_auction_idempotency_key(req.idempotency_key, request, prefix="auction-wallet")
 
     if req.package_id not in CREDIT_PACKAGES:
         raise HTTPException(status_code=400, detail="Invalid package")
 
     pkg = CREDIT_PACKAGES[req.package_id]
-    price = pkg["price"]
-    credits = pkg["credits"]
+    price = float(pkg["price"])
+    credits = int(pkg["credits"])
+    had_previous_purchase = await _has_previous_credit_purchase(user_id)
 
-    # Check first purchase bonus
-    has_prev = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
-    bonus = 5 if not has_prev else 0
-    total_credits_add = credits + bonus
-
-    # Use Payment Engine for atomic wallet deduction
+    ref_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16].upper()
     result = await debit_wallet(
         user_id=user_id,
         amount=price,
         tx_type=TransactionType.AUCTION_BID,
-        description=f"Auction Credits: {credits} credits" + (f" (+{bonus} bonus)" if bonus else ""),
-        metadata={"package_id": req.package_id, "credits": credits, "bonus": bonus}
+        description=f"Auction Credits: {credits} credits",
+        reference=f"BIDS-W-{ref_hash}",
+        metadata={
+            "purchase_kind": "bid_credits",
+            "category": "auction",
+            "package_id": req.package_id,
+            "credits": credits,
+        },
+        idempotency_key=idempotency_key,
     )
-    
     if not result.success:
-        raise HTTPException(status_code=400, detail=result.error)
-    
-    # Add credits after successful payment
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": total_credits_add}}
+        status_code = 409 if result.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code=status_code, detail=result.error or "Credit purchase failed")
+
+    _, grant_ok = await _grant_bid_credits_once(
+        user["_id"],
+        credits=credits,
+        grant_key=idempotency_key,
+        source="wallet_purchase",
+        metadata={"package_id": req.package_id, "payment_transaction_id": result.transaction_id},
     )
+    if not grant_ok:
+        raise HTTPException(status_code=500, detail="Credit-Gutschrift konnte nicht bestätigt werden. Manuelle Prüfung erforderlich.")
 
-    # Create transaction
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "amount": -price,
-        "description": f"Bid Credits ({credits}x)" + (f" + {bonus} Bonus" if bonus else ""),
-        "status": "completed",
-        "reference": f"BIDS-{secrets.token_hex(4).upper()}",
-        "category": "auction",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
-
+    bonus = await _grant_first_purchase_bonus_once(user["_id"], eligible=not had_previous_purchase)
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
-    # Process influencer commission
     try:
         from routes.influencer import process_commission
-        asyncio.create_task(process_commission(user_id, price, txn["reference"]))
+        asyncio.create_task(process_commission(user_id, price, result.reference or f"BIDS-W-{ref_hash}"))
     except Exception:
         pass
 
@@ -889,6 +901,8 @@ async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
         "is_first_purchase": bool(bonus),
+        "transaction_id": result.transaction_id,
+        "reference": result.reference,
     }
 
 
