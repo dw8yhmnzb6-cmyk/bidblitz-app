@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 import secrets
 
 router = APIRouter(prefix="/api/crypto-wallet", tags=["crypto-wallet"])
@@ -88,55 +89,17 @@ class CryptoDepositRequest(BaseModel):
 
 @router.post("/deposit")
 async def deposit_crypto(req: CryptoDepositRequest, request: Request):
-    """
-    Deposit REAL crypto to wallet.
-    In production, this would verify blockchain transaction.
-    """
-    user = await get_current_user(request)
-    user_id = str(user.get("_id"))
-    
-    coin = req.coin.upper()
-    if coin not in SUPPORTED_COINS:
-        raise HTTPException(400, f"Coin {coin} not supported")
-    
-    if req.amount <= 0:
-        raise HTTPException(400, "Amount must be > 0")
-    
-    # Update wallet balance
-    await db.crypto_wallets.update_one(
-        {"user_id": user_id, "coin": coin},
-        {
-            "$inc": {"balance": req.amount},
-            "$setOnInsert": {
-                "user_id": user_id,
-                "coin": coin,
-                "locked_balance": 0.0,
-                "total_earned": 0.0,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-        },
-        upsert=True
+    """Crypto deposits require verified blockchain/provider confirmation."""
+    await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Crypto-Einzahlungen sind bis zur verifizierten Blockchain-/Custody-Anbindung deaktiviert.",
+        )
+    raise HTTPException(
+        status_code=503,
+        detail="Test-Crypto-Gutschriften über den öffentlichen Deposit-Endpunkt sind deaktiviert.",
     )
-    
-    # Log transaction
-    await db.crypto_transactions.insert_one({
-        "transaction_id": f"ctxn_{secrets.token_hex(8)}",
-        "user_id": user_id,
-        "type": "deposit",
-        "coin": coin,
-        "amount": req.amount,
-        "txn_hash": req.txn_hash,
-        "status": "completed",
-        "description": f"Crypto Deposit: {req.amount} {coin}",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "message": f"✅ {req.amount} {coin} deposited!",
-        "coin": coin,
-        "amount": req.amount,
-    }
 
 
 class CryptoWithdrawRequest(BaseModel):
@@ -147,58 +110,12 @@ class CryptoWithdrawRequest(BaseModel):
 
 @router.post("/withdraw")
 async def withdraw_crypto(req: CryptoWithdrawRequest, request: Request):
-    """
-    Withdraw REAL crypto from wallet.
-    In production, this would send to blockchain.
-    """
-    user = await get_current_user(request)
-    user_id = str(user.get("_id"))
-    
-    coin = req.coin.upper()
-    if coin not in SUPPORTED_COINS:
-        raise HTTPException(400, f"Coin {coin} not supported")
-    
-    if req.amount <= 0:
-        raise HTTPException(400, "Amount must be > 0")
-    
-    # Check balance
-    wallet = await db.crypto_wallets.find_one(
-        {"user_id": user_id, "coin": coin}
+    """Crypto withdrawals fail closed until a real custody/blockchain provider is connected."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=503,
+        detail="Crypto-Auszahlungen sind bis zur verifizierten Blockchain-/Custody-Anbindung deaktiviert.",
     )
-    
-    if not wallet or wallet.get("balance", 0) < req.amount:
-        available = wallet.get("balance", 0) if wallet else 0
-        raise HTTPException(
-            400,
-            f"❌ Not enough {coin}! Available: {available:.8f} {coin}"
-        )
-    
-    # Deduct from wallet
-    await db.crypto_wallets.update_one(
-        {"user_id": user_id, "coin": coin},
-        {"$inc": {"balance": -req.amount}}
-    )
-    
-    # Log transaction
-    await db.crypto_transactions.insert_one({
-        "transaction_id": f"ctxn_{secrets.token_hex(8)}",
-        "user_id": user_id,
-        "type": "withdrawal",
-        "coin": coin,
-        "amount": req.amount,
-        "address": req.address,
-        "status": "pending",  # Would be "completed" after blockchain confirmation
-        "description": f"Crypto Withdrawal: {req.amount} {coin} to {req.address[:10]}...",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "message": f"✅ Withdrawal initiated: {req.amount} {coin}",
-        "coin": coin,
-        "amount": req.amount,
-        "address": req.address,
-    }
 
 
 @router.get("/transactions")
