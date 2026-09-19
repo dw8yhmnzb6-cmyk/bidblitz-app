@@ -2,7 +2,7 @@
  * BidBlitz V2 - Hotel & Unterkunft Buchung
  * Eigener Marktplatz: Unterkünfte suchen, buchen, verwalten
  */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, MapPin, Star, Users, Calendar, Bed, Bath,
