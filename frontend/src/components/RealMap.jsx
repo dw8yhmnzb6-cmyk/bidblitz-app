@@ -263,6 +263,19 @@ export const TaxiMapbox = ({
     }
   }, [driverLocation?.lat, driverLocation?.lng, dropoff?.lat, dropoff?.lng, nearbyDrivers, pickup?.lat, pickup?.lng]);
 
+  if (!mapboxgl.accessToken) {
+    return (
+      <TaxiMap
+        pickup={pickup}
+        dropoff={dropoff}
+        driverLocation={driverLocation}
+        nearbyDrivers={nearbyDrivers}
+        height={height}
+        onMapClick={pickupMoveMode && onPickupChange ? onPickupChange : null}
+      />
+    );
+  }
+
   return (
     <div className="relative h-full w-full overflow-hidden" style={{ height }} data-testid="taxi-mapbox-view">
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
@@ -444,6 +457,7 @@ export const TaxiMap = ({
   driverPath = [],
   nearbyDrivers = [],
   height = '250px',
+  onMapClick = null,
 }) => {
   const markers = [];
   
@@ -486,10 +500,14 @@ export const TaxiMap = ({
 
   return (
     <RealMap
+      center={pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng) ? [pickup.lat, pickup.lng] : [48.5, 15.0]}
+      zoom={pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng) ? 14 : 5}
       height={height}
       markers={markers}
       route={route}
       fitBounds={fitBounds.length >= 2 ? fitBounds : null}
+      onMapClick={onMapClick}
+      showUserLocation={false}
     >
       {driverPath.length >= 2 ? (
         <Polyline
