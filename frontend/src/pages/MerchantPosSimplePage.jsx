@@ -197,8 +197,10 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       const featureKey = `merchant.pos.payment.${key === "card" ? "card" : key}`;
       const enabledByFeature = meta ? isEnabled(featureKey, user, { platform: "web", country: setup?.progress?.business_info?.country || "DE" }) : true;
       const enabledBySetup = paymentMethods[key] === "enabled" || paymentMethods[key] === true;
-      const certified = key !== "tap_to_pay";
-      const enabled = Boolean(enabledByFeature && enabledBySetup && certified);
+      const externalCardCertified = process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED === "true";
+      const correctlyWired = !["voucher", "invoice"].includes(key);
+      const certified = key !== "tap_to_pay" && (key !== "card" || externalCardCertified);
+      const enabled = Boolean(enabledByFeature && enabledBySetup && certified && correctlyWired);
       return { key, label: meta.label, apiMethod: meta.apiMethod, description: copy[meta.descriptionKey], enabled };
     });
   }, [copy, isEnabled, setup, user]);
@@ -317,7 +319,9 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       const cartId = await ensureCartSession();
       const body = { cart_id: cartId, method: method.apiMethod };
       if (method.apiMethod === "cash") body.cash_received = totals.total;
-      if (method.apiMethod === "card_external") body.card_reference = `CARD-${Date.now()}`;
+      if (method.apiMethod === "card_external") {
+        throw new Error("Kartenzahlung benötigt eine verifizierte Terminal-Provider-Referenz.");
+      }
       broadcastState(method.apiMethod === "card_external" ? "processing" : "awaiting", method.apiMethod === "card_external" ? copy.processing : copy.choosePayment, method.description);
       const response = await api.createPosPayment(body);
 
