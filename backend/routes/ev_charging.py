@@ -444,9 +444,31 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
     txn_id = sess.get("ocpp_transaction_id")
     if txn_id is None:
         stopped_at = _utcnow_iso()
+        refund = None
+        if sess.get("preauth_status") == "held" and sess.get("preauth_escrow_user_id"):
+            refund = await _refund_ev_preauthorization(
+                session_id=session_id,
+                user_id=str(sess.get("user_id") or ""),
+                escrow_user_id=str(sess.get("preauth_escrow_user_id")),
+                amount=float(sess.get("reserved_amount") or 0),
+                reason="cancelled_before_start",
+            )
+            if not refund or not refund.success:
+                await _settlement_failed(
+                    session_id,
+                    refund.error if refund else "Preauthorization refund failed",
+                    refund.status.value if refund else "reconciliation_required",
+                )
+                raise HTTPException(409, "Preauthorization-Rückzahlung muss abgestimmt werden")
+
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "cancelled", "stopped_at": stopped_at}},
+            {"$set": {
+                "status": "cancelled",
+                "stopped_at": stopped_at,
+                "preauth_status": "refunded" if refund else sess.get("preauth_status"),
+                "preauth_refund_transaction_id": refund.transaction_id if refund else None,
+            }},
         )
         await db.ev_connector_claims.update_one(
             {"session_id": session_id},
