@@ -307,7 +307,7 @@ export default function TaxiPage({ onNavigate }) {
   const { search } = useTaxiGeocoder({ debounceMs: 100 });
   const { savedPlaces, recentAddresses } = useTaxiSimpleData(user);
 
-  const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
+  const [pickup, setPickup] = useState({ lat: null, lng: null, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
   const [sheetMode, setSheetMode] = useState('summary');
   const [searchValue, setSearchValue] = useState('');
@@ -332,19 +332,30 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
+    const requireManualPickup = () => {
+      setPickup({ lat: null, lng: null, address: 'Abholpunkt auswählen' });
+      setPickupMoveMode(true);
+      setError('Standort konnte nicht ermittelt werden. Bitte wähle den Abholpunkt auf der Karte.');
+    };
+
     if (!navigator.geolocation) {
-      setPickup((prev) => ({ ...prev, address: 'Dein Standort' }));
+      requireManualPickup();
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const next = { lat: position.coords.latitude, lng: position.coords.longitude, address: 'Dein Standort' };
+        const next = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          address: 'Aktueller Standort',
+        };
         setPickup(next);
         const address = await api.reverseGeocode(next.lat, next.lng);
         if (address) setPickup((prev) => ({ ...prev, address }));
       },
-      () => setPickup((prev) => ({ ...prev, address: 'Dein Standort' })),
-      { enableHighAccuracy: true, timeout: 10000 },
+      requireManualPickup,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
     );
   }, []);
 
@@ -379,12 +390,12 @@ export default function TaxiPage({ onNavigate }) {
       const data = await api.fetchRide(activeRide.ride_id);
       const nextRide = data?.ride || data;
       if (nextRide?.ride_id) setActiveRide(nextRide);
-    }, 10000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [activeRide?.ride_id]);
 
   useEffect(() => {
-    if (!pickup?.lat || activeRide) return;
+    if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || activeRide) return;
     let cancelled = false;
     const loadDrivers = async () => {
       const result = await api.fetchNearbyDriversCount({ lat: pickup.lat, lng: pickup.lng, carType: selectedVehicle });
@@ -428,7 +439,10 @@ export default function TaxiPage({ onNavigate }) {
   }, [pickup?.lat, pickup?.lng, searchValue]);
 
   const estimateRide = useCallback(async (nextDropoff) => {
-    if (!pickup?.lat || !nextDropoff?.lat) return;
+    if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || !Number.isFinite(nextDropoff?.lat) || !Number.isFinite(nextDropoff?.lng)) {
+      setError('Bitte zuerst einen gültigen Abhol- und Zielpunkt wählen.');
+      return;
+    }
     setEstimating(true);
     setError('');
     const result = await api.estimateRide({ pickup, dropoff: nextDropoff });
@@ -536,7 +550,10 @@ export default function TaxiPage({ onNavigate }) {
   const regionLabel = useMemo(() => detectRegion(pickup.address), [pickup.address]);
 
   const handleBookRide = useCallback(async () => {
-    if (!selectedEstimate) return;
+    if (!selectedEstimate) {
+      setError('Preis konnte noch nicht berechnet werden. Bitte Ziel oder Abholpunkt erneut wählen.');
+      return;
+    }
     const normalizedScheduledAt = bookingMode === 'later' && scheduledAt ? new Date(scheduledAt).toISOString() : null;
     if (bookingMode === 'later' && !normalizedScheduledAt) {
       toast.error('Bitte Zeit für spätere Buchung auswählen.');
@@ -606,7 +623,7 @@ export default function TaxiPage({ onNavigate }) {
       <div className="relative h-dvh w-full overflow-hidden bg-[#02050B]">
         <div className="absolute inset-0 z-0" data-testid="taxi-simple-map-view">
           <TaxiMapbox
-            pickup={pickup?.lat ? pickup : null}
+            pickup={Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) ? pickup : null}
             dropoff={dropoff?.lat ? dropoff : null}
             driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
             nearbyDrivers={mapDrivers}
@@ -825,7 +842,7 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Verfügbarkeit</div>
-                      <div className="mt-1 text-sm font-black text-white">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
+                      <div className="mt-1 text-sm font-black text-white">{mapDrivers.length > 0 ? `${mapDrivers.length} Fahrer nahebei` : 'Aktuell kein Fahrer nahebei'}</div>
                     </div>
                   </div>
                   <PricingOverviewCard selectedEstimate={selectedEstimate} bookingMode={bookingMode} regionFallback={regionLabel} />
