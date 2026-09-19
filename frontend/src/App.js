@@ -1191,7 +1191,7 @@ function AppContent() {
       case "/reiseplaner":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
       case "/ladesaeulen":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/admin/email-marketing":
         return user.role === "admin"
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
@@ -1352,6 +1352,20 @@ function AppContent() {
           return <AdminPage onNavigate={handleNavigate} defaultTab={tab} />;
         }
         // Handle dynamic routes
+        if (currentPath.startsWith("/ev/start/")) {
+          const parts = currentPath.split("/");
+          const chargePointId = decodeURIComponent(parts[3] || "");
+          const connectorId = Number(parts[4] || 1);
+          return (isGuest && !isDemoMode)
+            ? <HomePage {...homeProps} />
+            : <EVStartChargingPage chargePointId={chargePointId} connectorId={connectorId} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/ev/session/")) {
+          const sessionId = decodeURIComponent(currentPath.split("/ev/session/")[1] || "");
+          return (isGuest && !isDemoMode)
+            ? <HomePage {...homeProps} />
+            : <EVLiveSessionPage sessionId={sessionId} onNavigate={handleNavigate} />;
+        }
         if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
           const bId = currentPath.split("/car-rental/vendor/bookings/")[1];
           return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/vendor/bookings")} onNavigate={handleNavigate} />;
