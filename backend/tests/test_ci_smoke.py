@@ -932,3 +932,32 @@ def test_scooter_live_operations_fail_closed_without_verified_iot():
     assert '"end_lock_status": "failed"' in source
     assert '"end_lock_status": "confirmed"' in source
     assert "Scooter konnte nicht sicher verriegelt werden" in source
+
+
+def test_kids_subscription_wallet_gps_and_rewards_fail_safe():
+    kids = (BACKEND_DIR / "routes" / "kids.py").read_text(encoding="utf-8")
+    gps = (BACKEND_DIR / "routes" / "kids_gps.py").read_text(encoding="utf-8")
+    controls = (BACKEND_DIR / "routes" / "kids_controls.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR / "routes" / "kids_app.py").read_text(encoding="utf-8")
+    premium = (BACKEND_DIR / "routes" / "kids_premium.py").read_text(encoding="utf-8")
+    gps_ui = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "KidsGPSModal.jsx").read_text(encoding="utf-8")
+
+    assert "TRIAL_DAYS = 30" in kids
+    assert "async def require_kids_entitlement" in kids
+    assert 'sub.get("status") not in {"active", "trial"}' in kids
+    assert 'idempotency_key=f"kids-delete-refund:{child_id}"' in kids
+    assert '"status": "deleting"' in kids
+    assert 'await db.kids_location_history.delete_many' in kids
+    assert '"status": "active"' in kids and '"is_frozen": {"$ne": True}' in kids
+
+    assert "await require_kids_entitlement(parent_id)" in gps
+    assert 'if not TEST_MODE and user.get("role") != "admin":' in gps
+    assert '@router.post("/simulate/{child_id}")' in gps
+    assert "canSimulateLocation" in gps_ui
+    assert 'process.env.NODE_ENV !== "production"' in gps_ui
+
+    assert "await require_kids_entitlement(parent_id)" in controls
+    assert "await require_kids_entitlement(str(child.get("parent_id") or ""))" in app
+    assert "async def _grant_child_blz_once" in premium
+    assert "reward_new, grant_ok = await _grant_child_blz_once" in premium
+    assert 'raise HTTPException(403, "Keine Berechtigung für diese Aufgabe")' in premium
