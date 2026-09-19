@@ -564,3 +564,12 @@ def test_kyc_and_role_verification_fail_closed_in_production():
     assert "File {key} is not a valid image" in verification_source
     assert '"$inc": {"auth_version": 1}' in verification_source
     assert "revoke_all_sessions" in verification_source
+
+
+def test_csv_exports_neutralize_formulas_and_disable_caching():
+    export_source = (BACKEND_DIR / "routes" / "export.py").read_text(encoding="utf-8")
+
+    assert "def _safe_csv_cell" in export_source
+    assert 'trimmed.startswith(("=", "+", "-", "@"))' in export_source
+    assert '"Cache-Control": "no-store, private"' in export_source
+    assert '"X-Content-Type-Options": "nosniff"' in export_source
