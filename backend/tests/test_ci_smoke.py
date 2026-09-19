@@ -1077,3 +1077,31 @@ def test_ev_ocpp_start_and_payout_paths_fail_closed():
     assert "tx_type=TransactionType.PAYOUT" in ev
     assert "Externe Auszahlungsreferenz" in ev
     assert '"$inc": {"balance": -payout["amount"]}' not in ev
+
+
+def test_ev_preauthorization_is_real_escrow_and_hardware_stops_at_cap():
+    ev = (BACKEND_DIR / "routes" / "ev_charging.py").read_text(encoding="utf-8")
+    v16 = (BACKEND_DIR / "services" / "ocpp_csms.py").read_text(encoding="utf-8")
+    v201 = (BACKEND_DIR / "services" / "ocpp_v201.py").read_text(encoding="utf-8")
+
+    assert '"kind": "ev_preauthorization"' in ev
+    assert 'idempotency_key=f"ev:preauth:{session_id}"' in ev
+    assert '"preauth_status": "held"' in ev
+    assert '"preauth_escrow_user_id": escrow_user_id' in ev
+    assert 'reason="session_persistence_failed"' in ev
+    assert 'reason="cancelled_before_start"' in ev
+    assert 'preauthorized = bool(terms.get("preauthorized"))' in ev
+    assert 'idempotency_key=f"ev:settlement:{session_id}:refund"' in ev
+    assert '"preauth_status": "settled"' in ev
+
+    assert '"auto_stop_reason": "preauthorization_limit"' in v16
+    assert "current_cost >= reserved" in v16
+    assert "await remote_stop(charge_point_id, transaction_id)" in v16
+    assert "price_per_minute" in v16
+    assert "minimum_fee" in v16
+
+    assert '"auto_stop_reason": "preauthorization_limit"' in v201
+    assert "current_cost >= reserved" in v201
+    assert "await request_stop_transaction" in v201
+    assert "price_per_minute" in v201
+    assert "minimum_fee" in v201
