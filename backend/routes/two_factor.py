@@ -454,7 +454,6 @@ async def verify_and_enable_totp(otp: VerifyOTPRequest, request: Request):
                 "two_factor_enabled_at": datetime.now(timezone.utc).isoformat(),
             },
             "$unset": {"totp_secret_pending": "", "totp_backup_codes": ""},
-            "$inc": {"auth_version": 1},
         },
     )
     
