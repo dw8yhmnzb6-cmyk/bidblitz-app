@@ -69,6 +69,7 @@ export default function ScooterPage({ onNavigate }) {
   const pollingRef = useRef(null);
   const unlockAttemptKeyRef = useRef(null);
   const endAttemptKeyRef = useRef(null);
+  const subscriptionAttemptKeyRef = useRef(null);
 
   useEffect(() => {
     fetchUserData();
@@ -153,7 +154,6 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/active`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        unlockAttemptKeyRef.current = null;
         const ride = data.rental || data.ride;
         if ((data.has_active_rental || data.has_active) && ride) {
           setActiveRental(ride);
@@ -174,12 +174,16 @@ export default function ScooterPage({ onNavigate }) {
     
     timerRef.current = setInterval(() => {
       const now = new Date();
-      const seconds = Math.floor((now - started) / 1000);
+      const seconds = Math.max(0, Math.floor((now - started) / 1000));
       setRideTimer(seconds);
-      
+
       const minutes = seconds / 60;
-      const cost = pricing.unlock_fee + (minutes * pricing.per_minute);
-      setRideCost(Math.min(cost, pricing.daily_cap || 15));
+      const unlockFee = Number(rental.unlock_fee ?? pricing.unlock_fee ?? 1);
+      const rate = Number(rental.per_minute_rate ?? pricing.per_minute ?? 0.20);
+      const freeMinutes = Number(rental.free_minutes_remaining_at_start ?? 0);
+      const billableMinutes = Math.max(0, minutes - freeMinutes);
+      const cost = unlockFee + (billableMinutes * rate);
+      setRideCost(Math.min(cost, Number(pricing.daily_cap ?? 20)));
     }, 1000);
   };
 
@@ -403,7 +407,7 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/history`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setRentalHistory(data.rentals || []);
+        setRentalHistory(data.rentals || data.rides || []);
       }
     } catch (err) {}
   };
@@ -430,18 +434,27 @@ export default function ScooterPage({ onNavigate }) {
   const subscribePlan = async (planId) => {
     setSubLoading(true);
     try {
+      if (!subscriptionAttemptKeyRef.current) {
+        subscriptionAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `scooter-sub-${crypto.randomUUID()}`
+          : `scooter-sub-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = subscriptionAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/subscribe`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: planId }),
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ plan_id: planId, idempotency_key: idempotencyKey }),
       });
       if (res.ok) {
         const data = await res.json();
+        subscriptionAttemptKeyRef.current = null;
         setMySub(data.subscription);
-        fetchUserData();
+        if (data.new_balance !== undefined) setUserBalance(Number(data.new_balance));
+        else fetchUserData();
         alert(`${data.subscription.plan_name} aktiviert!`);
       } else {
         const err = await res.json();
+        if (res.status < 500 && res.status !== 409) subscriptionAttemptKeyRef.current = null;
         alert(err.detail || 'Fehler beim Abschließen');
       }
     } catch {} finally { setSubLoading(false); }
@@ -797,11 +810,21 @@ export default function ScooterPage({ onNavigate }) {
               <div className="p-4 bg-[#111] rounded-xl border border-white/10 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Entsperrgebühr</span>
-                  <span>€{pricing.unlock_fee?.toFixed(2)}</span>
+                  <span>€{Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 1).toFixed(2)}</span>
+                </div>
+                {Number(activeRental.free_minutes_remaining_at_start || 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Freiminuten verfügbar</span>
+                    <span className="text-cyan-400">{Number(activeRental.free_minutes_remaining_at_start || 0).toFixed(0)} Min</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Minutenpreis</span>
+                  <span>€{Number(activeRental.per_minute_rate ?? pricing.per_minute ?? 0.20).toFixed(2)}/Min</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Fahrzeit ({Math.floor(rideTimer / 60)} Min)</span>
-                  <span>€{(rideCost - pricing.unlock_fee).toFixed(2)}</span>
+                  <span>€{Math.max(0, rideCost - Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 1)).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold pt-2 border-t border-white/10">
                   <span>Gesamt</span>
