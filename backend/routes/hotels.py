@@ -9,6 +9,7 @@ from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 import secrets
 import hashlib
@@ -74,12 +75,14 @@ def _hotel_night_keys(property_id: str, check_in: str, check_out: str) -> list[s
 async def _claim_hotel_nights(property_id: str, check_in: str, check_out: str, booking_id: str) -> list[str]:
     keys = _hotel_night_keys(property_id, check_in, check_out)
     now = datetime.now(timezone.utc).isoformat()
+    day = datetime.strptime(check_in, "%Y-%m-%d").date()
     for key in keys:
         try:
             await db.hotel_night_claims.insert_one({
                 "_id": key,
                 "property_id": property_id,
                 "booking_id": booking_id,
+                "date": day.isoformat(),
                 "created_at": now,
             })
         except DuplicateKeyError:
@@ -87,6 +90,7 @@ async def _claim_hotel_nights(property_id: str, check_in: str, check_out: str, b
             if not existing or existing.get("booking_id") != booking_id:
                 await db.hotel_night_claims.delete_many({"booking_id": booking_id})
                 raise HTTPException(status_code=409, detail="Unterkunft ist in diesem Zeitraum nicht verfügbar")
+        day += timedelta(days=1)
     return keys
 
 
@@ -241,6 +245,17 @@ async def get_availability(property_id: str, days: int = 90):
                 d += timedelta(days=1)
         except (ValueError, KeyError):
             continue
+
+    claims = await db.hotel_night_claims.find(
+        {
+            "property_id": property_id,
+            "date": {"$gte": today.isoformat(), "$lte": end.isoformat()},
+        },
+        {"_id": 0, "date": 1},
+    ).to_list(1000)
+    for claim in claims:
+        if claim.get("date"):
+            blocked.add(claim["date"])
 
     return {
         "property_id": property_id,
@@ -531,6 +546,16 @@ async def cancel_booking(booking_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
 
     if booking.get("status") == "cancelled" and booking.get("refund_status") == "completed":
+        release = await db.hotel_bookings.update_one(
+            {"booking_id": booking_id, "night_claims_released": {"$ne": True}},
+            {"$set": {"night_claims_released": True, "night_claims_released_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        if release.modified_count == 1:
+            await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+            await db.properties.update_one(
+                {"property_id": booking["property_id"], "booking_count": {"$gt": 0}},
+                {"$inc": {"booking_count": -1}},
+            )
         fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
         return {
             "ok": True,
@@ -586,11 +611,16 @@ async def cancel_booking(booking_id: str, request: Request):
             "settlement_status": "cancelled",
         }},
     )
-    await db.hotel_night_claims.delete_many({"booking_id": booking_id})
-    await db.properties.update_one(
-        {"property_id": booking["property_id"], "booking_count": {"$gt": 0}},
-        {"$inc": {"booking_count": -1}},
+    release = await db.hotel_bookings.update_one(
+        {"booking_id": booking_id, "night_claims_released": {"$ne": True}},
+        {"$set": {"night_claims_released": True, "night_claims_released_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if release.modified_count == 1:
+        await db.hotel_night_claims.delete_many({"booking_id": booking_id})
+        await db.properties.update_one(
+            {"property_id": booking["property_id"], "booking_count": {"$gt": 0}},
+            {"$inc": {"booking_count": -1}},
+        )
     return {"ok": True, "refund": refund_amount, "new_balance": refund.new_balance, "replayed": bool(refund.idempotent_replay)}
 
 
