@@ -881,3 +881,23 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert 'grant_key=f"{grant_scope}:referrer"' in source
     assert 'notification_id = f"auction-referral:{user_id}:{referrer_id}"' in source
     assert '"replayed": replayed or not invitee_new or not referrer_new' in source
+
+
+def test_scooter_live_operations_fail_closed_without_verified_iot():
+    source = (BACKEND_DIR / "routes" / "scooter.py").read_text(encoding="utf-8")
+
+    assert 'IOT_PROVIDER_URL = os.environ.get("IOT_PROVIDER_URL", "")' in source
+    assert "if TEST_MODE:" in source
+    assert 'return DeviceCommandResult(False, "IoT provider not configured")' in source
+    assert "_require_iot_device_ingest_auth(request)" in source
+    assert 'request.headers.get("X-IoT-Key"' in source
+    assert "secrets.compare_digest(provided, expected)" in source
+
+    assert "lat: Optional[float] = None, lng: Optional[float] = None" in source
+    assert '"location_required": True' in source
+    assert 'user.get("kyc_status") != "approved"' in source
+    assert 'raise HTTPException(status_code=503, detail="Scooter hat keine verbundene IoT-Geräte-ID")' in source
+
+    assert '"end_lock_status": "failed"' in source
+    assert '"end_lock_status": "confirmed"' in source
+    assert "Scooter konnte nicht sicher verriegelt werden" in source
