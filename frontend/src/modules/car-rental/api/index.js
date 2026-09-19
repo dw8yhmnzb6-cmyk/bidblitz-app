@@ -57,8 +57,10 @@ export const checkCarAvailability = async (carId, startDate, endDate) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const createBooking = async (data) => {
+  const idempotencyKey = data?.idempotency_key;
   return api("/api/car-rental/bookings", {
     method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
     body: JSON.stringify(data),
   });
 };
