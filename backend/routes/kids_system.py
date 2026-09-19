@@ -46,10 +46,12 @@ class TransferRequest(BaseModel):
 
 
 class ChildPayRequest(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0, le=100)
     description: str = Field(..., min_length=2)
+    merchant_id: Optional[str] = None
     merchant_name: Optional[str] = None
     category: Optional[str] = "general"
+    idempotency_key: Optional[str] = None
 
 
 class CreateTaskRequest(BaseModel):
@@ -392,81 +394,47 @@ async def transfer_to_child(req: TransferRequest, request: Request):
 
 @router.post("/pay")
 async def child_pay(req: ChildPayRequest, request: Request):
-    """Child makes a payment (authenticated as child via PIN session)."""
-    # Get child_id from session/token
-    child_session = request.state.child_session if hasattr(request.state, 'child_session') else None
-    
-    if not child_session:
-        # Try to get from header
-        child_id = request.headers.get("X-Child-ID")
-        if not child_id:
-            raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    else:
-        child_id = child_session.get("child_id")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    # Check limits
-    limit_check = await check_spending_limits(child_id, req.amount)
-    if not limit_check["allowed"]:
-        # Alert parent
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": child["parent_id"],
-            "type": "kids_limit_reached",
-            "title": "Limit erreicht!",
-            "message": f"{child.get('name')} hat versucht €{req.amount:.2f} auszugeben: {limit_check['reason']}",
-            "data": {"child_id": child_id, "amount": req.amount},
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        raise HTTPException(status_code=400, detail=limit_check["reason"])
-    
-    now = datetime.now(timezone.utc)
-    tx_id = secrets.token_hex(8)
-    
-    # Deduct from child
-    new_balance = child.get("balance", 0) - req.amount
-    await db.children.update_one(
-        {"child_id": child_id},
-        {"$set": {"balance": new_balance}, "$inc": {"total_spent": req.amount}}
+    """Compatibility route using the canonical child-token payment lifecycle."""
+    from routes.kids import (
+        get_child_from_token,
+        _process_child_wallet_payment,
+        _require_kids_idempotency_key,
+        create_parent_notification,
     )
-    
-    # Record transaction
-    await db.child_transactions.insert_one({
-        "tx_id": tx_id,
-        "child_id": child_id,
-        "parent_id": child["parent_id"],
-        "amount": -req.amount,
-        "type": "spend",
-        "description": req.description,
-        "merchant_name": req.merchant_name,
-        "category": req.category,
-        "balance_after": new_balance,
-        "created_at": now.isoformat(),
-    })
-    
-    # Notify parent
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": child["parent_id"],
-        "type": "kids_spending",
-        "title": f"{child.get('name')} hat ausgegeben",
-        "message": f"€{req.amount:.2f} - {req.description}",
-        "data": {"child_id": child_id, "amount": req.amount, "tx_id": tx_id},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "new_balance": new_balance,
-        "daily_remaining": limit_check.get("daily_remaining", 0),
-        "weekly_remaining": limit_check.get("weekly_remaining", 0),
-        "tx_id": tx_id,
-    }
+
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+    idempotency_key = _require_kids_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix=f"kids-legacy-payment:{child_id}",
+    )
+
+    result = await _process_child_wallet_payment(
+        child=child,
+        amount=round(float(req.amount), 2),
+        merchant_id=req.merchant_id,
+        merchant_name=req.merchant_name,
+        description=req.description,
+        idempotency_key=idempotency_key,
+        initiated_by="child_legacy_compat",
+    )
+
+    if not result.get("replayed"):
+        tx = result.get("transaction") or {}
+        await create_parent_notification(
+            parent_id=child.get("parent_id"),
+            child_id=child_id,
+            child_name=child.get("name"),
+            event_type="child_payment",
+            title=f"{child.get('name')} hat bezahlt",
+            message=f"€{req.amount:.2f} bei {tx.get('merchant_name', 'Händler')}",
+            amount=req.amount,
+            merchant_name=tx.get("merchant_name"),
+            severity="info",
+        )
+
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
