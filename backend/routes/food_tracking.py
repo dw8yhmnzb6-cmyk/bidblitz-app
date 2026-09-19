@@ -515,13 +515,12 @@ async def get_tip_status(order_id: str, request: Request):
     can_tip = False
     hours_remaining = 0
     
-    if order.get("status") == "delivered" and not tip:
+    if order.get("status") == "delivered" and not tip and (order.get("courier") or {}).get("user_id"):
         delivered_at = order.get("delivered_at")
-        payment_method = order.get("payment_method", "")
-        if delivered_at and "card" in payment_method.lower():
+        if delivered_at:
             try:
                 now = datetime.now(timezone.utc)
-                delivered_dt = datetime.fromisoformat(delivered_at.replace("Z", "+00:00"))
+                delivered_dt = datetime.fromisoformat(str(delivered_at).replace("Z", "+00:00"))
                 if delivered_dt.tzinfo is None:
                     delivered_dt = delivered_dt.replace(tzinfo=timezone.utc)
                 hours_since = (now - delivered_dt).total_seconds() / 3600
