@@ -2519,6 +2519,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         {"$set": {
             "status": RideStatus.COMPLETED.value,
             "ended_at": now.isoformat(),
+            "completed_at": now.isoformat(),
             "end_location": end_loc,
             "actual_distance_km": round(distance_km, 2),
             "actual_duration_minutes": round(duration_minutes),
