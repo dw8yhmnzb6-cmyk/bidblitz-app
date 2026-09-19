@@ -308,13 +308,11 @@ async def reject_refund(req: ApprovalDecision, request: Request):
     rr = await db.pos_refund_requests.find_one({"request_id": req.request_id})
     if not rr:
         raise HTTPException(status_code=404, detail="Anfrage nicht gefunden")
-    if rr["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Bereits {rr['status']}")
     await _require_store_access(user, rr["store_id"], {"merchant_admin", "store_manager", "accountant"})
 
     user_id = str(user["_id"])
-    await db.pos_refund_requests.update_one(
-        {"request_id": req.request_id},
+    transition = await db.pos_refund_requests.update_one(
+        {"request_id": req.request_id, "status": "pending"},
         {"$set": {
             "status": "rejected",
             "decided_by": user_id,
@@ -322,18 +320,28 @@ async def reject_refund(req: ApprovalDecision, request: Request):
             "decision_note": req.note or "",
         }},
     )
-    await db.pos_chat_messages.insert_one({
-        "msg_id": short_id("MSG", 8),
-        "store_id": rr["store_id"],
-        "thread": f"refund:{req.request_id}",
-        "sender_id": user_id,
-        "sender_name": user.get("name", ""),
-        "text": f"✗ Refund €{rr['amount']:.2f} abgelehnt: {req.note or ''}",
-        "system": True,
-        "created_at": now_iso(),
-    })
+    if transition.modified_count != 1:
+        fresh = await db.pos_refund_requests.find_one({"request_id": req.request_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "rejected":
+            return {"ok": True, "replayed": True}
+        raise HTTPException(status_code=409, detail=f"Anfrage ist bereits {fresh.get('status', 'bearbeitet')}")
+
+    await db.pos_chat_messages.update_one(
+        {"msg_id": f"MSG-REFUND-REJECT-{req.request_id}"},
+        {"$setOnInsert": {
+            "msg_id": f"MSG-REFUND-REJECT-{req.request_id}",
+            "store_id": rr["store_id"],
+            "thread": f"refund:{req.request_id}",
+            "sender_id": user_id,
+            "sender_name": user.get("name", ""),
+            "text": f"✗ Refund €{rr['amount']:.2f} abgelehnt: {req.note or ''}",
+            "system": True,
+            "created_at": now_iso(),
+        }},
+        upsert=True,
+    )
     await _audit(user_id, "refund.reject", {"request_id": req.request_id})
-    return {"ok": True}
+    return {"ok": True, "replayed": False}
 
 
 # ───────────────────────────────────────────────────────────────────────
