@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 import secrets
 
@@ -25,12 +26,37 @@ class DepositSupercharger(BaseModel):
 
 @router.get("/pools")
 async def get_pools():
-    return {"pools": POOLS}
+    return {
+        "pools": [{**pool, "is_demo": True, "deposit_available": bool(TEST_MODE)} for pool in POOLS],
+        "live_staking_provider_connected": False,
+        "deposit_available": bool(TEST_MODE),
+    }
+
+
+@router.get("/capabilities")
+async def supercharger_capabilities():
+    return {
+        "live_staking_provider_connected": False,
+        "deposit_available": bool(TEST_MODE),
+        "simulation_available": bool(TEST_MODE),
+        "message": (
+            None if TEST_MODE else
+            "Supercharger-Staking ist noch nicht mit einem verifizierten Staking-/Custody-Provider verbunden. Es werden keine BLZ eingezogen."
+        ),
+    }
 
 
 @router.post("/deposit")
 async def deposit(req: DepositSupercharger, request: Request):
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Supercharger-Staking ist noch nicht live verbunden. "
+                "Es wurden keine BLZ abgezogen und keine Rewards erzeugt."
+            ),
+        )
     pool = next((p for p in POOLS if p["id"] == req.pool_id), None)
     if not pool:
         raise HTTPException(404, "Pool nicht gefunden")
@@ -41,7 +67,8 @@ async def deposit(req: DepositSupercharger, request: Request):
         "reward_coin": pool["reward_coin"],
         "amount_blz": req.amount,
         "estimated_reward": round(req.amount * pool["apy_est"] / 100 / 12, 4),
-        "status": "staked",
+        "status": "test_staked",
+        "is_demo": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.supercharger_deposits.insert_one(dep)
@@ -52,7 +79,21 @@ async def deposit(req: DepositSupercharger, request: Request):
 @router.get("/my-stakes")
 async def my_stakes(request: Request):
     user = await get_current_user(request)
+    query = {"user_email": user.get("email", "")}
+    if not TEST_MODE:
+        legacy_demo_count = await db.supercharger_deposits.count_documents(query)
+        return {
+            "stakes": [],
+            "count": 0,
+            "legacy_demo_count": legacy_demo_count,
+            "live_staking_provider_connected": False,
+        }
+
     stakes = await db.supercharger_deposits.find(
-        {"user_email": user.get("email", "")}, {"_id": 0}
+        query, {"_id": 0}
     ).sort("created_at", -1).to_list(50)
-    return {"stakes": stakes, "count": len(stakes)}
+    return {
+        "stakes": stakes,
+        "count": len(stakes),
+        "live_staking_provider_connected": False,
+    }
