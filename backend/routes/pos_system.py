@@ -8,6 +8,7 @@ Roles: merchant_admin, store_manager, cashier, accountant, bidblitz_admin
 """
 
 import secrets
+import hashlib
 import logging
 import io
 import os
@@ -243,6 +244,11 @@ class CartCreate(BaseModel):
     items: List[CartItemModel] = Field(..., min_length=1, max_length=500)
     discount_pct: float = Field(default=0, ge=0, le=100)           # whole-cart discount %
     customer_note: Optional[str] = Field(default="", max_length=500)
+    # Offline cash sales reuse the same durable client identity on every retry.
+    client_sale_id: Optional[str] = Field(default=None, min_length=8, max_length=100)
+    captured_shift_id: Optional[str] = Field(default=None, max_length=80)
+    offline_captured_at: Optional[str] = Field(default=None, max_length=80)
+    expected_total: Optional[float] = Field(default=None, ge=0, le=1_000_000)
 
 
 class PaymentCreate(BaseModel):
@@ -740,7 +746,29 @@ async def create_cart(req: CartCreate, request: Request):
     if not reg:
         raise HTTPException(status_code=404, detail="Kasse nicht gefunden")
     await _require_store_access(user, reg["store_id"])
-    if not reg.get("current_shift_id"):
+
+    shift_id = reg.get("current_shift_id")
+    captured_shift = None
+    if req.client_sale_id:
+        existing_offline_cart = await db.pos_carts.find_one(
+            {"client_sale_id": req.client_sale_id, "cashier_id": str(user["_id"])},
+            {"_id": 0},
+        )
+        if existing_offline_cart:
+            return {"ok": True, "cart": existing_offline_cart, "idempotent_replay": True}
+
+        if not req.captured_shift_id:
+            raise HTTPException(status_code=400, detail="Offline-Verkauf braucht die ursprüngliche Schicht")
+        captured_shift = await db.pos_shifts.find_one({
+            "shift_id": req.captured_shift_id,
+            "register_id": req.register_id,
+            "cashier_id": str(user["_id"]),
+        })
+        if not captured_shift:
+            raise HTTPException(status_code=409, detail="Ursprüngliche Offline-Schicht konnte nicht verifiziert werden")
+        shift_id = captured_shift["shift_id"]
+
+    if not shift_id:
         raise HTTPException(status_code=400, detail="Bitte erst Schicht öffnen")
 
     if not req.items:
@@ -752,14 +780,28 @@ async def create_cart(req: CartCreate, request: Request):
     cart_disc = round(cart_total * cart_disc_pct / 100, 2)
     final_total = round(cart_total - cart_disc, 2)
 
-    cart_id = short_id("CRT", 10)
+    if req.expected_total is not None and abs(final_total - round(float(req.expected_total), 2)) > 0.01:
+        raise HTTPException(
+            status_code=409,
+            detail="Offline-Verkauf kann nicht automatisch synchronisiert werden: Preis oder Rabatt hat sich geändert.",
+        )
+
+    cart_id = (
+        f"CRT-OFF-{hashlib.sha256(req.client_sale_id.encode('utf-8')).hexdigest()[:12].upper()}"
+        if req.client_sale_id
+        else short_id("CRT", 10)
+    )
     doc = {
+        "_id": f"offline:{req.client_sale_id}" if req.client_sale_id else ObjectId(),
         "cart_id": cart_id,
         "register_id": req.register_id,
         "store_id": reg["store_id"],
         "merchant_id": reg["merchant_id"],
-        "shift_id": reg["current_shift_id"],
+        "shift_id": shift_id,
         "cashier_id": str(user["_id"]),
+        "client_sale_id": req.client_sale_id,
+        "offline_captured_at": req.offline_captured_at,
+        "offline_synced_after_shift_close": bool(req.client_sale_id and captured_shift and captured_shift.get("status") != "open"),
         "items": resolved["items"],
         "subtotal": resolved["subtotal"],
         "net_total": resolved["net_total"],
@@ -771,9 +813,19 @@ async def create_cart(req: CartCreate, request: Request):
         "customer_note": req.customer_note,
         "created_at": now_iso(),
     }
-    await db.pos_carts.insert_one(doc)
+    try:
+        await db.pos_carts.insert_one(doc)
+    except Exception:
+        if req.client_sale_id:
+            existing_offline_cart = await db.pos_carts.find_one(
+                {"_id": f"offline:{req.client_sale_id}", "cashier_id": str(user["_id"])},
+                {"_id": 0},
+            )
+            if existing_offline_cart:
+                return {"ok": True, "cart": existing_offline_cart, "idempotent_replay": True}
+        raise
     doc.pop("_id", None)
-    return {"ok": True, "cart": doc}
+    return {"ok": True, "cart": doc, "idempotent_replay": False}
 
 
 @router.get("/cart/{cart_id}")
