@@ -284,3 +284,23 @@ def test_taxi_customer_driver_wallet_flow_stays_unified():
     assert "Math.max(mapDrivers.length, 1)" not in taxi_page_source
     assert "UberX" not in taxi_page_source
     assert "() => setLocation({ lat: 52.52, lng: 13.405 })" not in driver_page_source
+
+
+def test_p2p_money_sends_require_kyc_and_idempotency():
+    transfer_source = (BACKEND_DIR / "routes" / "p2p_transfer.py").read_text(encoding="utf-8")
+    handle_source = (BACKEND_DIR / "routes" / "p2p.py").read_text(encoding="utf-8")
+    send_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "SendMoneyPage.jsx").read_text(encoding="utf-8")
+    handle_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "P2PPage.jsx").read_text(encoding="utf-8")
+
+    assert "_ensure_wallet_write_allowed(user)" in transfer_source
+    assert "_require_idempotency_key(req.idempotency_key, request)" in transfer_source
+    assert "idempotency_key=client_idempotency_key" in transfer_source
+
+    assert "_ensure_wallet_write_allowed(user)" in handle_source
+    assert "_require_idempotency_key(req.idempotency_key, request)" in handle_source
+    assert "idempotency_key=idempotency_key" in handle_source
+
+    assert '"Idempotency-Key": idempotencyKey' in send_page
+    assert "idempotency_key: idempotencyKey" in send_page
+    assert "'Idempotency-Key': idempotencyKey" in handle_page
+    assert "idempotency_key: idempotencyKey" in handle_page
