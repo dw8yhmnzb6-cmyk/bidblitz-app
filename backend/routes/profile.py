@@ -31,69 +31,30 @@ class KYCSubmitRequest(BaseModel):
 
 @router.get("/kyc")
 async def get_kyc_status(request: Request):
-    """Get current user's KYC data and verification status."""
+    """Compatibility view backed by the canonical /api/kyc status fields."""
     user = await get_current_user(request)
-    kyc = user.get("kyc")
-    if not kyc:
-        return {"status": "not_submitted", "data": None}
+    raw = str(user.get("kyc_status") or "not_started").strip().lower()
+    status = "approved" if raw == "verified" else "rejected" if raw in {"failed", "error"} else raw
+    verified = status == "approved" and bool(user.get("kyc_verified", True))
     return {
-        "status": kyc.get("status", "not_submitted"),
-        "data": {
-            "full_name": kyc.get("full_name", ""),
-            "date_of_birth": kyc.get("date_of_birth", ""),
-            "street": kyc.get("street", ""),
-            "city": kyc.get("city", ""),
-            "postal_code": kyc.get("postal_code", ""),
-            "country": kyc.get("country", ""),
-        },
-        "submitted_at": kyc.get("submitted_at"),
-        "reviewed_at": kyc.get("reviewed_at"),
+        "status": status,
+        "kyc_status": status,
+        "kyc_verified": verified,
+        "submitted_at": user.get("kyc_submitted_at"),
+        "reviewed_at": user.get("kyc_reviewed_at"),
+        "rejection_reason": user.get("kyc_rejection_reason"),
+        "canonical_endpoint": "/api/kyc/status",
     }
 
 
 @router.post("/kyc")
 async def submit_kyc(req: KYCSubmitRequest, request: Request):
-    """Submit KYC data for verification."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    ip, ua = get_client_info(request)
-
-    # Validate date of birth format
-    try:
-        dob = datetime.strptime(req.date_of_birth, "%Y-%m-%d")
-        age = (datetime.now() - dob).days // 365
-        if age < 16:
-            raise HTTPException(status_code=400, detail="You must be at least 16 years old")
-        if age > 120:
-            raise HTTPException(status_code=400, detail="Invalid date of birth")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-
-    kyc_data = {
-        "full_name": req.full_name.strip(),
-        "date_of_birth": req.date_of_birth,
-        "street": req.street.strip(),
-        "city": req.city.strip(),
-        "postal_code": req.postal_code.strip(),
-        "country": req.country.strip(),
-        "status": "pending",
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
-        "reviewed_at": None,
-    }
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"kyc": kyc_data, "kyc_level": "pending"}},
+    """Retired text-only KYC path; document KYC is required for financial access."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser alte KYC-Pfad ist deaktiviert. Bitte nutze die Dokument-Verifizierung unter /api/kyc/submit.",
     )
-
-    await log_audit(AuditEvent.PROFILE_UPDATE, user_id=user_id, email=user["email"],
-                    ip=ip, user_agent=ua,
-                    details={"action": "kyc_submitted"})
-
-    return {
-        "status": "pending",
-        "message": "KYC data submitted successfully. Verification in progress.",
-    }
 
 
 class ProfileUpdate(BaseModel):
@@ -124,7 +85,8 @@ async def get_profile(request: Request):
         **serialize_user(user),
         "language": user.get("language", "de"),
         "kyc_level": user.get("kyc_level", "basic"),
-        "kyc_verified": user.get("kyc_level", "basic") in ("verified", "premium"),
+        "kyc_status": user.get("kyc_status", "not_started"),
+        "kyc_verified": bool(user.get("kyc_status") in ("approved", "verified") and user.get("kyc_verified", True)),
         "notifications_enabled": user.get("notifications_enabled", True),
         "email_notifications": user.get("email_notifications", True),
         "biometric_enabled": user.get("biometric_enabled", False),
@@ -168,7 +130,8 @@ async def update_profile(req: ProfileUpdate, request: Request):
         **serialize_user(updated_user),
         "language": updated_user.get("language", "de"),
         "kyc_level": updated_user.get("kyc_level", "basic"),
-        "kyc_verified": updated_user.get("kyc_level", "basic") in ("verified", "premium"),
+        "kyc_status": updated_user.get("kyc_status", "not_started"),
+        "kyc_verified": bool(updated_user.get("kyc_status") in ("approved", "verified") and updated_user.get("kyc_verified", True)),
         "notifications_enabled": updated_user.get("notifications_enabled", True),
         "email_notifications": updated_user.get("email_notifications", True),
         "biometric_enabled": updated_user.get("biometric_enabled", False),
