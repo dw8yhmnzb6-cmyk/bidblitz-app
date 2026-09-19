@@ -344,3 +344,38 @@ def test_merchant_payout_balance_and_state_machine_contracts():
     assert 'payout.status === "processing"' in admin_page
     assert 'payout.status === "paid"' in admin_page
     assert 'actionPayout(payout.payout_id, "returned")' in admin_page
+
+
+def test_auction_financial_flows_are_idempotent_and_race_safe():
+    auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    detail_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
+    credits_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "BuyCreditsModal.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_auction_idempotency_key" in auctions_source
+    assert "async def _grant_bid_credits_once" in auctions_source
+    assert "async def _reserve_bid_credit_once" in auctions_source
+    assert "async def _refund_reserved_bid_credit" in auctions_source
+    assert 'result_field = f"bid_operation_results.{op_hash}"' in auctions_source
+    assert '"current_price": snapshot.get("current_price")' in auctions_source
+    assert '"$inc": {"total_bids": 1}' in auctions_source
+    assert "Gebot konnte wegen gleichzeitiger Gebote nicht sicher gesetzt werden. Credit wurde zurückgegeben." in auctions_source
+
+    assert "idempotency_key=idempotency_key" in auctions_source
+    assert "Stripe-Zahlung ist noch nicht verifiziert" in auctions_source
+    assert 'payment_status": "credited"' in auctions_source
+    assert "auction_first_purchase_bonus_awarded" in auctions_source
+
+    assert "idempotency_key: idempotencyKey" in credits_source
+    assert "idempotency_key: idempotencyKey" in detail_source
+    assert "+20s" in detail_source
+    assert "+10s" not in detail_source
+
+
+def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
+    auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert "Bitte verifiziere zuerst deinen Ausweis, um Auto-Bid zu aktivieren." in auctions_source
+    assert 'disabled_reason": "kyc_required"' in auctions_source
+    assert "credit_state = await _reserve_bid_credit_once" in auctions_source
+    assert "processing_until" in auctions_source
+    assert "processing_slot" in auctions_source
