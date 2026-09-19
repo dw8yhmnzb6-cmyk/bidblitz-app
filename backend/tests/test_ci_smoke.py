@@ -1042,3 +1042,32 @@ def test_hotel_platform_fees_and_reviews_are_server_enforced():
     assert 'review_id = f"HTR-' in source
     assert '"$setOnInsert": review' in source
     assert "Diese Buchung wurde bereits bewertet" in source
+
+
+def test_ev_ocpp_start_and_payout_paths_fail_closed():
+    ev = (BACKEND_DIR / "routes" / "ev_charging.py").read_text(encoding="utf-8")
+    v16 = (BACKEND_DIR / "services" / "ocpp_csms.py").read_text(encoding="utf-8")
+    v201 = (BACKEND_DIR / "services" / "ocpp_v201.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "EVStartChargingPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def _authorize_ocpp_websocket" in ev
+    assert '"ocpp_auth_hash": _hash_ocpp_token(ocpp_token)' in ev
+    assert "rotate-ocpp-token" in ev
+    assert '"ocpp_auth_hash": 0' in ev
+
+    assert "idempotency_key: str = Field(..., min_length=8" in ev
+    assert "db.ev_connector_claims.insert_one" in ev
+    assert '"status": "released"' in ev
+    assert "startAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+
+    assert "Rejected unmatched StartTransaction" in v16
+    assert '"status": "Invalid"' in v16
+    assert '"active": False' in v16
+    assert "Rejected unmatched OCPP2 Started" in v201
+    assert '"active": False' in v201
+
+    assert "idempotency_key=f\"ev:payout:{payout_id}\"" in ev
+    assert "tx_type=TransactionType.PAYOUT" in ev
+    assert "Externe Auszahlungsreferenz" in ev
+    assert '"$inc": {"balance": -payout["amount"]}' not in ev
