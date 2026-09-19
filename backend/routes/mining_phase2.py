@@ -465,7 +465,7 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
     debit = await debit_wallet(
         user_id=user_id,
         amount=price,
-        tx_type=TransactionType.MINING_PAYMENT,
+        tx_type=TransactionType.MINING_PURCHASE,
         description=f"Launchpad: {project['name']} (Launch Edition)",
         reference=f"MIN-LAUNCH-{purchase_hash[:12].upper()}",
         metadata={"project_id": req.project_id, "purchase_id": purchase_id, "kind": "mining_launchpad"},
