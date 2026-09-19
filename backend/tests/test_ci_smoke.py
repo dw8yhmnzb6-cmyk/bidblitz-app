@@ -525,3 +525,20 @@ def test_auth_admin_alias_2fa_ws_and_role_changes_are_session_safe():
 
     assert "Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen" in admin_source
     assert "revoke_all_sessions" in admin_source
+
+
+def test_kyc_production_is_fail_closed_and_uploads_are_real_images():
+    source = (BACKEND_DIR / "routes" / "kyc.py").read_text(encoding="utf-8")
+
+    assert "def _final_kyc_decision" in source
+    assert "KYC_AUTOMATED_PROVIDER_CERTIFIED" in source
+    assert 'return "pending"' in source
+    assert '"kyc_ai_decision": ai_decision' in source
+    assert '"kyc_requires_manual_review"' in source
+    assert '"ai_recommendation": ai_decision' in source
+
+    assert "def _validate_saved_image_signature" in source
+    assert 'head[:3] == b"\\xff\\xd8\\xff"' in source
+    assert 'head.startswith(b"\\x89PNG' in source
+    assert 'head[8:12] == b"WEBP"' in source
+    assert 'head[4:8] == b"ftyp"' in source
