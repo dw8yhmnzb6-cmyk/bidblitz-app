@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from core.database import db
+from core.config import TEST_MODE
 from core.payment_engine import credit_wallet, TransactionType
 import csv
 import io
@@ -18,6 +19,15 @@ from bson import ObjectId
 
 router = APIRouter(prefix="/api/rewards", tags=["Rewards"])
 logger = logging.getLogger("bidblitz.rewards")
+
+
+def _require_random_value_rewards_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert.",
+        )
+
 
 # Streak reward table (day 1-7, then repeats day 7)
 STREAK_REWARDS = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 10}
@@ -453,7 +463,7 @@ async def _get_spin_status(user: dict, config: dict):
     is_premium = await _has_active_premium(uid)
     limit = int(config.get("premium_daily_spins", 3) if is_premium else config.get("free_daily_spins", 1))
     spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    remaining = max(0, limit - spins_today)
+    remaining = max(0, limit - spins_today) if TEST_MODE else 0
     next_reset = (datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
     return {
         "spins_today": spins_today,
@@ -461,7 +471,8 @@ async def _get_spin_status(user: dict, config: dict):
         "remaining": remaining,
         "is_premium": is_premium,
         "next_reset": next_reset,
-        "prizes": config.get("spin_rewards", []),
+        "prizes": config.get("spin_rewards", []) if TEST_MODE else [],
+        "value_random_rewards_enabled": bool(TEST_MODE),
     }
 
 
@@ -476,8 +487,8 @@ async def _build_mystery_boxes_payload(user: dict, config: dict):
     for box in config.get("mystery_boxes", []):
         boxes.append({
             **box,
-            "can_open_with_bidcoins": int(loyalty.get("coins_balance", 0) or 0) >= int(box.get("price_bidcoins", 0) or 0),
-            "premium_can_open_free": bool(is_premium and monthly_free < int(box.get("premium_free_opens_per_month", 0) or 0)),
+            "can_open_with_bidcoins": bool(TEST_MODE and int(loyalty.get("coins_balance", 0) or 0) >= int(box.get("price_bidcoins", 0) or 0)),
+            "premium_can_open_free": bool(TEST_MODE and is_premium and monthly_free < int(box.get("premium_free_opens_per_month", 0) or 0)),
         })
     return {
         "boxes": boxes,
@@ -485,6 +496,7 @@ async def _build_mystery_boxes_payload(user: dict, config: dict):
         "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
         "premium_free_used_this_month": monthly_free,
         "is_premium": is_premium,
+        "value_random_rewards_enabled": bool(TEST_MODE),
     }
 
 
@@ -510,6 +522,7 @@ async def _build_reward_hub_dashboard(user: dict):
     recent_activity = await db.reward_events.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     open_count = await db.reward_box_openings.count_documents({"user_id": uid})
     return {
+        "value_random_rewards_enabled": bool(TEST_MODE),
         "overview": {
             "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
             "bid_credits": int(user.get("bid_credits", 0) or 0),
@@ -526,7 +539,8 @@ async def _build_reward_hub_dashboard(user: dict):
         "recent_activity": recent_activity,
         "reward_status": reward_status,
         "config": {
-            "spin_enabled": config.get("spin_enabled", True),
+            "spin_enabled": bool(TEST_MODE and config.get("spin_enabled", True)),
+            "value_random_rewards_enabled": bool(TEST_MODE),
             "premium_cashback_multiplier": config.get("premium_cashback_multiplier", 1.5),
         },
     }
@@ -941,6 +955,7 @@ async def get_mystery_boxes(request: Request):
 @router.post("/mystery-boxes/open")
 async def open_mystery_box(req: MysteryBoxOpenRequest, request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     box = next((item for item in config.get("mystery_boxes", []) if item.get("box_key") == req.box_key), None)
@@ -1053,16 +1068,17 @@ async def _get_plinko_status(user: dict, config: dict):
     premium_multiplier = float(config.get("premium_cashback_multiplier", 1.5) or 1.5) if is_premium else 1.0
     last_drop = reward_profile.get("last_plinko_drop_at")
     return {
-        "enabled": bool(config.get("plinko_enabled", True)),
+        "enabled": bool(TEST_MODE and config.get("plinko_enabled", True)),
+        "value_random_rewards_enabled": bool(TEST_MODE),
         "is_premium": is_premium,
         "free_limit": free_limit,
-        "free_remaining": max(0, free_limit - free_used),
-        "ticket_balance": tickets,
-        "bidcoin_cost": int(config.get("plinko_bidcoin_cost", 40) or 0),
+        "free_remaining": max(0, free_limit - free_used) if TEST_MODE else 0,
+        "ticket_balance": tickets if TEST_MODE else 0,
+        "bidcoin_cost": int(config.get("plinko_bidcoin_cost", 40) or 0) if TEST_MODE else 0,
         "premium_multiplier": premium_multiplier,
         "energy_cost": int(config.get("plinko_energy_cost", 0) or 0),
         "next_reset": next_reset,
-        "payouts": config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"]),
+        "payouts": config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"]) if TEST_MODE else [],
         "last_drop_at": last_drop,
     }
 
@@ -1120,6 +1136,7 @@ async def reward_plinko_history(request: Request, limit: int = 20):
 @router.post("/plinko/drop")
 async def reward_plinko_drop(req: RewardPlinkoDropRequest, request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     if not config.get("plinko_enabled", True):
@@ -1221,6 +1238,7 @@ async def reward_plinko_drop(req: RewardPlinkoDropRequest, request: Request):
 @router.post("/spin-wheel/spin")
 async def reward_spin(request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     if not config.get("spin_enabled", True):
