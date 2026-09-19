@@ -403,6 +403,21 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     ride_unlock_fee = float((subscription or {}).get("unlock_fee", UNLOCK_FEE))
     ride_rate = float((subscription or {}).get("per_minute_rate", PER_MINUTE_RATE))
     free_minutes_per_day = int((subscription or {}).get("free_minutes_per_day", 0) or 0)
+    free_minutes_remaining_at_start = 0.0
+    if subscription and free_minutes_per_day > 0:
+        now_for_quota = datetime.now(timezone.utc)
+        day_start = now_for_quota.replace(hour=0, minute=0, second=0, microsecond=0)
+        prior_rides = await db.scooter_rides.find(
+            {
+                "user_id": user_id,
+                "subscription_id": subscription.get("sub_id"),
+                "status": "completed",
+                "start_time": {"$gte": day_start.isoformat(), "$lt": now_for_quota.isoformat()},
+            },
+            {"_id": 0, "duration_minutes": 1},
+        ).to_list(200)
+        used_minutes = sum(float(item.get("duration_minutes") or 0) for item in prior_rides)
+        free_minutes_remaining_at_start = max(0.0, free_minutes_per_day - used_minutes)
 
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     balance = float(fresh_user.get("balance") or 0)
@@ -487,6 +502,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         "unlock_fee": ride_unlock_fee,
         "per_minute_rate": ride_rate,
         "free_minutes_per_day": free_minutes_per_day,
+        "free_minutes_remaining_at_start": round(free_minutes_remaining_at_start, 2),
         "subscription_id": (subscription or {}).get("sub_id"),
         "subscription_plan_id": (subscription or {}).get("plan_id"),
         "current_cost": ride_unlock_fee,
@@ -621,20 +637,23 @@ async def end_ride(req: EndRideRequest, request: Request):
         rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)
         unlock_fee = float(ride.get("unlock_fee") if ride.get("unlock_fee") is not None else UNLOCK_FEE)
         free_minutes_per_day = int(ride.get("free_minutes_per_day") or 0)
-        free_minutes_remaining = 0.0
-        if free_minutes_per_day > 0 and ride.get("subscription_id"):
-            day_start = start_time.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-            prior_rides = await db.scooter_rides.find(
-                {
-                    "user_id": user_id,
-                    "subscription_id": ride.get("subscription_id"),
-                    "status": "completed",
-                    "start_time": {"$gte": day_start.isoformat(), "$lt": start_time.isoformat()},
-                },
-                {"_id": 0, "duration_minutes": 1},
-            ).to_list(200)
-            used_minutes = sum(float(item.get("duration_minutes") or 0) for item in prior_rides)
-            free_minutes_remaining = max(0.0, free_minutes_per_day - used_minutes)
+        if ride.get("free_minutes_remaining_at_start") is not None:
+            free_minutes_remaining = max(0.0, float(ride.get("free_minutes_remaining_at_start") or 0))
+        else:
+            free_minutes_remaining = 0.0
+            if free_minutes_per_day > 0 and ride.get("subscription_id"):
+                day_start = start_time.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+                prior_rides = await db.scooter_rides.find(
+                    {
+                        "user_id": user_id,
+                        "subscription_id": ride.get("subscription_id"),
+                        "status": "completed",
+                        "start_time": {"$gte": day_start.isoformat(), "$lt": start_time.isoformat()},
+                    },
+                    {"_id": 0, "duration_minutes": 1},
+                ).to_list(200)
+                used_minutes = sum(float(item.get("duration_minutes") or 0) for item in prior_rides)
+                free_minutes_remaining = max(0.0, free_minutes_per_day - used_minutes)
 
         free_minutes_used = min(duration_minutes, free_minutes_remaining)
         billable_minutes = max(0.0, duration_minutes - free_minutes_used)
@@ -789,27 +808,35 @@ async def get_active_ride(request: Request):
     user_id = str(user["_id"])
     
     ride = await db.scooter_rides.find_one(
-        {"user_id": user_id, "status": "active"},
+        {"user_id": user_id, "status": {"$in": ["active", "paused"]}},
         {"_id": 0}
     )
     
     if not ride:
         return {"has_active": False, "ride": None}
     
-    # Calculate live cost
     start_time = datetime.fromisoformat(ride["start_time"])
-    elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
+    elapsed_seconds = max(0, (datetime.now(timezone.utc) - start_time).total_seconds())
     elapsed_minutes = elapsed_seconds / 60
-    
-    current_cost = UNLOCK_FEE + round(elapsed_minutes * PER_MINUTE_RATE, 2)
-    current_cost = min(current_cost, MAX_DAILY_CAP)
+    unlock_fee = float(ride.get("unlock_fee") if ride.get("unlock_fee") is not None else UNLOCK_FEE)
+    rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)
+    free_remaining = max(0.0, float(ride.get("free_minutes_remaining_at_start") or 0))
+    billable_minutes = max(0.0, elapsed_minutes - free_remaining)
+    current_cost = min(round(unlock_fee + (billable_minutes * rate), 2), MAX_DAILY_CAP)
+
+    ride["rental_id"] = ride.get("ride_id")
+    ride["started_at"] = ride.get("start_time")
     
     return {
         "has_active": True,
+        "has_active_rental": True,
         "ride": ride,
+        "rental": ride,
         "live": {
             "elapsed_seconds": round(elapsed_seconds),
             "elapsed_minutes": round(elapsed_minutes, 1),
+            "free_minutes_remaining_at_start": round(free_remaining, 1),
+            "billable_minutes": round(billable_minutes, 1),
             "current_cost": current_cost,
             "max_cost": MAX_DAILY_CAP,
         }
@@ -830,8 +857,13 @@ async def get_ride_history(request: Request, limit: int = 20):
     total_spent = sum(r.get("total_cost", 0) for r in rides)
     total_distance = sum(r.get("distance_km", 0) for r in rides)
     
+    for ride in rides:
+        ride["rental_id"] = ride.get("ride_id")
+        ride["total_minutes"] = ride.get("duration_minutes", 0)
+
     return {
         "rides": rides,
+        "rentals": rides,
         "total": len(rides),
         "stats": {
             "total_spent": round(total_spent, 2),
