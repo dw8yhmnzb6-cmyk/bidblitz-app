@@ -33,21 +33,35 @@ async def _get_blz_balance(uid: str) -> float:
     return float((user or {}).get("balance_blz", 0) or 0)
 
 
-async def _adjust_blz(uid: str, delta: float, description: str, ref_prefix: str):
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": delta}})
+async def _settle_blz_game(uid: str, *, bet: float, payout: float, description: str, ref_prefix: str) -> float:
+    """Atomically settle one BLZ game without allowing concurrent over-spend."""
+    bet = round(float(bet), 2)
+    payout = round(float(payout), 2)
+    net = round(payout - bet, 2)
+    result = await db.users.update_one(
+        {"_id": _oid(uid), "balance_blz": {"$gte": bet}},
+        {"$inc": {"balance_blz": net}},
+    )
+    if result.modified_count != 1:
+        raise HTTPException(status_code=400, detail="Nicht genug BLZ")
+
+    now = datetime.now(timezone.utc)
     await db.transactions.insert_one({
         "user_id": uid,
-        "type": "game" if delta < 0 else "reward",
-        "amount": abs(delta),
+        "type": "game",
+        "amount": bet,
+        "payout_amount": payout,
+        "net_amount": net,
         "currency": "BLZ",
         "status": "completed",
         "description": description,
         "merchant_name": "BidBlitz Casino",
         "category": "casino",
-        "reference": f"{ref_prefix}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')[:18]}",
-        "date": datetime.now(timezone.utc).isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "reference": f"{ref_prefix}-{now.strftime('%Y%m%d%H%M%S%f')[:18]}",
+        "date": now.isoformat(),
+        "created_at": now.isoformat(),
     })
+    return await _get_blz_balance(uid)
 
 
 # ═══ SLOTS ═══
@@ -83,10 +97,6 @@ async def slots_spin(req: SpinRequest, request: Request):
     uid = str(user.get("_id") or user.get("id"))
     if req.bet < MIN_BET or req.bet > MAX_BET:
         raise HTTPException(400, f"Einsatz muss zwischen {MIN_BET} und {MAX_BET} BLZ liegen")
-    bal = await _get_blz_balance(uid)
-    if bal < req.bet:
-        raise HTTPException(400, "Nicht genug BLZ")
-
     reels = [_spin_reel() for _ in range(3)]
     # Check win: 3-of-a-kind
     payout = 0.0
@@ -103,9 +113,14 @@ async def slots_spin(req: SpinRequest, request: Request):
     if win_type and reels[0]["id"] != "jackpot":
         payout = round(payout * (1 - HOUSE_EDGE), 2)
 
-    net = payout - req.bet
-    await _adjust_blz(uid, net, f"Slots: {req.bet} BLZ Einsatz, {payout} BLZ Gewinn", "SLOTS")
-    new_bal = bal + net
+    net = round(payout - req.bet, 2)
+    new_bal = await _settle_blz_game(
+        uid,
+        bet=req.bet,
+        payout=payout,
+        description=f"Slots: {req.bet} BLZ Einsatz, {payout} BLZ Gewinn",
+        ref_prefix="SLOTS",
+    )
     return {
         "reels": [{"icon": r["icon"], "id": r["id"]} for r in reels],
         "bet": req.bet,
@@ -129,10 +144,6 @@ async def crash_play(req: CrashBetRequest, request: Request):
     uid = str(user.get("_id") or user.get("id"))
     if req.bet < MIN_BET or req.bet > MAX_BET:
         raise HTTPException(400, f"Einsatz {MIN_BET}-{MAX_BET} BLZ")
-    bal = await _get_blz_balance(uid)
-    if bal < req.bet:
-        raise HTTPException(400, "Nicht genug BLZ")
-
     # Generate crash point: exponential distribution with house edge
     # 3% instant crash (house edge), else crash_point = 1 / random(0, 0.97)
     r = random.random()
@@ -144,8 +155,14 @@ async def crash_play(req: CrashBetRequest, request: Request):
 
     won = crash_point >= req.cashout_multiplier
     payout = round(req.bet * req.cashout_multiplier, 2) if won else 0.0
-    net = payout - req.bet
-    await _adjust_blz(uid, net, f"Crash: {req.cashout_multiplier}x, crashed@{crash_point}x", "CRASH")
+    net = round(payout - req.bet, 2)
+    new_bal = await _settle_blz_game(
+        uid,
+        bet=req.bet,
+        payout=payout,
+        description=f"Crash: {req.cashout_multiplier}x, crashed@{crash_point}x",
+        ref_prefix="CRASH",
+    )
     return {
         "bet": req.bet,
         "cashout_multiplier": req.cashout_multiplier,
@@ -153,7 +170,7 @@ async def crash_play(req: CrashBetRequest, request: Request):
         "won": won,
         "payout": payout,
         "net": net,
-        "new_balance": round(bal + net, 2),
+        "new_balance": round(new_bal, 2),
     }
 
 
@@ -173,10 +190,6 @@ async def plinko_drop(req: PlinkoBetRequest, request: Request):
     uid = str(user.get("_id") or user.get("id"))
     if req.bet < MIN_BET or req.bet > MAX_BET:
         raise HTTPException(400, f"Einsatz {MIN_BET}-{MAX_BET} BLZ")
-    bal = await _get_blz_balance(uid)
-    if bal < req.bet:
-        raise HTTPException(400, "Nicht genug BLZ")
-
     # Simulate 9 bounces, each left/right. Final position determines slot.
     path = [random.choice([-1, 1]) for _ in range(9)]
     right_count = sum(1 for p in path if p == 1)
@@ -190,8 +203,14 @@ async def plinko_drop(req: PlinkoBetRequest, request: Request):
     if multiplier > 1.0:
         multiplier = round(multiplier * (1 - HOUSE_EDGE), 2)
     payout = round(req.bet * multiplier, 2)
-    net = payout - req.bet
-    await _adjust_blz(uid, net, f"Plinko: {multiplier}x Multiplikator", "PLINKO")
+    net = round(payout - req.bet, 2)
+    new_bal = await _settle_blz_game(
+        uid,
+        bet=req.bet,
+        payout=payout,
+        description=f"Plinko: {multiplier}x Multiplikator",
+        ref_prefix="PLINKO",
+    )
     return {
         "bet": req.bet,
         "path": path,
@@ -199,7 +218,7 @@ async def plinko_drop(req: PlinkoBetRequest, request: Request):
         "multiplier": multiplier,
         "payout": payout,
         "net": net,
-        "new_balance": round(bal + net, 2),
+        "new_balance": round(new_bal, 2),
     }
 
 
