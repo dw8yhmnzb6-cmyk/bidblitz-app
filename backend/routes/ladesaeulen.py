@@ -227,13 +227,38 @@ async def my_sessions(request: Request):
         ).sort("started_at", -1).to_list(50)
         return {"sessions": sessions, "mode": "test_demo"}
 
-    sessions = await db.ev_charging_sessions.find(
+    raw_sessions = await db.ev_charging_sessions.find(
         {
             "user_id": str(user["_id"]),
             "status": {"$in": ["completed", "cancelled", "failed", "settle_failed"]},
         },
         {"_id": 0},
     ).sort("created_at", -1).to_list(50)
+
+    sessions = []
+    for session in raw_sessions:
+        cp = await db.ev_charge_points.find_one(
+            {"charge_point_id": session.get("charge_point_id")},
+            {"_id": 0, "name": 1, "operator_name": 1, "operator": 1},
+        ) or {}
+        connector = await db.ev_connectors.find_one(
+            {
+                "charge_point_id": session.get("charge_point_id"),
+                "connector_id": session.get("connector_id"),
+            },
+            {"_id": 0, "type": 1, "connector_type": 1, "max_power_kw": 1},
+        ) or {}
+        tariff = session.get("tariff") or {}
+        sessions.append({
+            **session,
+            "station_name": cp.get("name") or session.get("charge_point_id") or "Ladestation",
+            "operator": cp.get("operator_name") or cp.get("operator") or "BidBlitz EV",
+            "connector": connector.get("type") or connector.get("connector_type") or f"Stecker {session.get('connector_id', 1)}",
+            "power_kw": float(connector.get("max_power_kw") or 0),
+            "price_per_kwh": float(tariff.get("price_per_kwh") or 0),
+            "cost": round(float(session.get("final_cost") or session.get("current_cost") or 0), 2),
+            "cashback": 0.0,
+        })
     return {"sessions": sessions, "mode": "live_ocpp"}
 
 @router.get("/active-session")
