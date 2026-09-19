@@ -86,10 +86,10 @@ async def _claim_reservation_seats(rest: dict, date: str, time: str, guests: int
     return slot_id
 
 
-async def _release_reservation_seats_once(reservation: dict) -> None:
+async def _release_reservation_seats_once(reservation: dict) -> bool:
     slot_id = reservation.get("slot_id")
     if not slot_id or reservation.get("capacity_released"):
-        return
+        return False
     released = await db.reservations.update_one(
         {
             "reservation_id": reservation["reservation_id"],
@@ -108,6 +108,8 @@ async def _release_reservation_seats_once(reservation: dict) -> None:
                 "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
             },
         )
+        return True
+    return False
 
 
 # ─── Restaurants ───
@@ -348,6 +350,12 @@ async def cancel_reservation(reservation_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Reservierung nicht gefunden")
 
     if reservation.get("status") == "cancelled" and reservation.get("refund_status") in {"completed", "not_required"}:
+        released = await _release_reservation_seats_once(reservation)
+        if released:
+            await db.restaurants.update_one(
+                {"restaurant_id": reservation["restaurant_id"], "reservation_count": {"$gt": 0}},
+                {"$inc": {"reservation_count": -1}},
+            )
         fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
         return {
             "ok": True,
@@ -409,11 +417,12 @@ async def cancel_reservation(reservation_id: str, request: Request):
         }},
     )
     final_reservation = await db.reservations.find_one({"reservation_id": reservation_id}) or reservation
-    await _release_reservation_seats_once(final_reservation)
-    await db.restaurants.update_one(
-        {"restaurant_id": reservation["restaurant_id"], "reservation_count": {"$gt": 0}},
-        {"$inc": {"reservation_count": -1}},
-    )
+    released = await _release_reservation_seats_once(final_reservation)
+    if released:
+        await db.restaurants.update_one(
+            {"restaurant_id": reservation["restaurant_id"], "reservation_count": {"$gt": 0}},
+            {"$inc": {"reservation_count": -1}},
+        )
 
     return {
         "ok": True,
