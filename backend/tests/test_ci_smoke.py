@@ -429,3 +429,43 @@ def test_mobility_payments_refunds_and_payouts_are_exactly_once():
 
     assert 'db.mobility_payments, "payment_id", unique=True, critical=True' in database_source
     assert 'db.mobility_earnings, "earning_id", unique=True, critical=True' in database_source
+
+
+def test_kids_wallet_payments_parental_controls_and_sessions_are_safe():
+    kids_source = (BACKEND_DIR / "routes" / "kids.py").read_text(encoding="utf-8")
+    kids_app_source = (BACKEND_DIR / "routes" / "kids_app.py").read_text(encoding="utf-8")
+    gps_source = (BACKEND_DIR / "routes" / "kids_gps.py").read_text(encoding="utf-8")
+    legacy_source = (BACKEND_DIR / "routes" / "kids_system.py").read_text(encoding="utf-8")
+    database_source = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
+    child_mode = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ChildModePage.jsx").read_text(encoding="utf-8")
+    wallet_modal = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "ChildWalletModal.jsx").read_text(encoding="utf-8")
+
+    assert "def _kids_pin_hash" in kids_source
+    assert "hashlib.pbkdf2_hmac" in kids_source
+    assert "kids_login_attempts" in kids_source
+    assert "async def _wallet_spend_allowed" in kids_source
+    assert "async def _process_child_wallet_payment" in kids_source
+    assert "payment_lock" in kids_source
+    assert "kids-merchant-credit:" in kids_source
+    assert "Gültiger Händler erforderlich" in kids_source
+    assert "idempotency_key=idempotency_key" in kids_source
+
+    assert "async def _require_child_access" in kids_app_source
+    assert "reward_currency" in kids_app_source
+    assert "BLZ_POINTS" in kids_app_source
+    assert '"$inc": {"balance": reward}' not in kids_app_source
+
+    assert "Kein Zugriff auf dieses Kind" in gps_source
+    assert "if not TEST_MODE and user.get(\"role\") != \"admin\"" in gps_source
+    assert '@router.post("/legacy/child-login")' in legacy_source
+    assert '@router.post("/child-login")' not in legacy_source
+
+    assert 'db.kids_transactions, "id", unique=True' in database_source
+    assert 'db.kids_subscriptions, "user_id", unique=True' in database_source
+    assert 'db.kids_sessions, "token", unique=True' in database_source
+
+    assert "'Idempotency-Key': idempotencyKey" in child_mode
+    assert "merchant_id: merchantId" in child_mode
+    assert "daily_limit: Number(dailyLimit)" in wallet_modal
+    assert "weekly_limit: Number(weeklyLimit)" in wallet_modal
+    assert "daily_screen_limit" not in wallet_modal
