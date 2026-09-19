@@ -358,7 +358,11 @@ export const api = {
   getCommerceMerchantDashboard: () => request("/api/commerce-center/merchant-dashboard"),
   createCommerceFlashSale: (body) => request("/api/commerce-center/flash-sales", { method: "POST", body: JSON.stringify(body) }),
   cancelCommerceFlashSale: (saleId) => request(`/api/commerce-center/flash-sales/${saleId}`, { method: "DELETE" }),
-  buyCommerceFlashSale: (saleId, body = {}) => request(`/api/commerce-center/flash-sales/${saleId}/buy`, { method: "POST", body: JSON.stringify(body) }),
+  buyCommerceFlashSale: (saleId, body = {}, idempotencyKey = "") => request(`/api/commerce-center/flash-sales/${saleId}/buy`, {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify({ ...body, idempotency_key: idempotencyKey || body.idempotency_key || null }),
+  }),
 
   // POS Security V2
   posResolveCustomer: (body) => request("/api/pos/customer/resolve", { method: "POST", body: JSON.stringify(body) }),
