@@ -344,10 +344,29 @@ def test_merchant_payout_balance_and_state_machine_contracts():
     assert 'existing_return = await db.merchant_balance_entries.find_one' in settlement_source
     assert '"type": "payout_return"' in settlement_source
     assert '"payout_lock": lock_token' in settlement_source
+    assert 'status == "paid" and len(clean_provider_reference) < 6' in settlement_source
+    assert 'updates["provider_reference"] = clean_provider_reference' in settlement_source
+
+    payout_routes = (BACKEND_DIR / "routes" / "merchant_settlements.py").read_text(encoding="utf-8")
+    payout_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MerchantPayoutsPage.jsx").read_text(encoding="utf-8")
+    assert "def _merchant_payout_capability" in payout_routes
+    assert 'user.get("kyc_status") != "approved"' in payout_routes
+    assert 'merchant.get("status") != "approved"' in payout_routes
+    assert 'merchant.get("payout_destination_verified")' in payout_routes
+    assert 'idempotency_key: str = Field(..., min_length=8' in payout_routes
+    assert 'destination_type=capability["destination_type"]' in payout_routes
+    assert 'destination_reference_masked=capability["destination_reference_masked"]' in payout_routes
+
+    assert '"DE••••••1234"' not in payout_page
+    assert "payoutAttemptKeyRef" in payout_page
+    assert "balance.payout_ready" in payout_page
+    assert "idempotency_key: payoutAttemptKeyRef.current" in payout_page
 
     assert 'payout.status === "pending_approval"' in admin_page
     assert 'payout.status === "processing"' in admin_page
     assert 'payout.status === "paid"' in admin_page
+    assert "Bank-/Providerreferenz" in admin_page
+    assert 'provider_reference: action === "paid"' in admin_page
     assert 'onAction(payout.payout_id, "returned")' in admin_page
 
 
