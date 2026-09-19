@@ -1904,7 +1904,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     if not TAXI_MODULE_ENABLED:
         raise HTTPException(status_code=503, detail="Taxi-Modul ist derzeit nicht verfügbar")
     
-    from core.payment_engine import TransactionType
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
     
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -1991,6 +1991,21 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
+
+    reservation = await debit_wallet(
+        user_id=user_id,
+        amount=fare_total,
+        tx_type=TransactionType.TAXI_PAYMENT,
+        description=f"Taxi-Reservierung: {p_addr or 'Abholung'} → {d_addr or 'Ziel'}",
+        reference=f"TAXI-HOLD-{ride_id[:8].upper()}",
+        metadata={"ride_id": ride_id, "kind": "taxi_reservation"},
+        idempotency_key=f"taxi-reserve:{ride_id}",
+    )
+    if not reservation.success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fahrbetrag konnte nicht reserviert werden: {reservation.error or 'Wallet nicht verfügbar'}",
+        )
     
     ride = {
         "ride_id": ride_id,
@@ -2019,6 +2034,10 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "fare_estimate": fare_total,
         "fare_estimate_original": fare_estimate["total"],
         "fare_breakdown": fare_estimate,
+        "payment_status": "reserved",
+        "payment_reserved_amount": round(fare_total, 2),
+        "payment_reserved_transaction_id": reservation.transaction_id,
+        "payment_reserved_reference": reservation.reference,
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
         "fixed_fare": fixed if fixed else None,
@@ -2042,7 +2061,24 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
     
-    await db.taxi_rides.insert_one(ride)
+    try:
+        await db.taxi_rides.insert_one(ride)
+    except Exception as exc:
+        logger.exception("Taxi ride insert failed after wallet reservation: %s", exc)
+        try:
+            await credit_wallet(
+                user_id=user_id,
+                amount=fare_total,
+                tx_type=TransactionType.REFUND,
+                description="Rückerstattung fehlgeschlagene Taxi-Buchung",
+                reference=f"TAXI-HOLD-ROLLBACK-{ride_id[:8].upper()}",
+                source="taxi_booking_rollback",
+                metadata={"ride_id": ride_id, "reservation_transaction_id": reservation.transaction_id},
+                idempotency_key=f"taxi-reserve-rollback:{ride_id}",
+            )
+        except Exception as refund_exc:
+            logger.exception("Taxi booking reservation rollback failed: %s", refund_exc)
+        raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wird zurückgebucht.")
     ride.pop("_id", None)
 
     # Promo redemption tracking (idempotent per ride)
@@ -2385,18 +2421,25 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
         pricing_source = "legacy_meter_fallback"
     
-    # Deduct from customer wallet
-    customer_payment = await debit_wallet(
-        user_id=ride["customer_id"],
-        amount=fare["total"],
-        tx_type=TransactionType.TAXI_PAYMENT,
-        description=f"Taxi: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
-        reference=f"TAXI-{req.ride_id[:8].upper()}",
-        metadata={"ride_id": req.ride_id, "driver_id": driver["driver_id"]}
-    )
-    
-    if not customer_payment.success:
-        raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
+    # Consume the amount reserved at booking. Legacy rides without a reservation
+    # still use the atomic debit path.
+    reserved_amount = float(ride.get("payment_reserved_amount") or 0)
+    customer_payment_id = ride.get("payment_reserved_transaction_id")
+    payment_source = "reserved_at_booking"
+    if reserved_amount + 0.001 < fare["total"]:
+        customer_payment = await debit_wallet(
+            user_id=ride["customer_id"],
+            amount=fare["total"],
+            tx_type=TransactionType.TAXI_PAYMENT,
+            description=f"Taxi: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
+            reference=f"TAXI-{req.ride_id[:8].upper()}",
+            metadata={"ride_id": req.ride_id, "driver_id": driver["driver_id"]},
+            idempotency_key=f"taxi-settle:{req.ride_id}",
+        )
+        if not customer_payment.success:
+            raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
+        customer_payment_id = customer_payment.transaction_id
+        payment_source = "legacy_end_of_ride_debit"
     
     # Credit driver wallet
     driver_credit = await credit_wallet(
@@ -2422,7 +2465,9 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             "pricing_source": pricing_source,
             "driver_earnings": fare["driver_earnings"],
             "platform_fee": fare["platform_fee"],
-            "customer_payment_id": customer_payment.transaction_id,
+            "customer_payment_id": customer_payment_id,
+            "payment_status": "settled",
+            "payment_source": payment_source,
             "driver_payment_id": driver_credit.transaction_id if driver_credit.success else None,
         },
         "$push": {"status_history": {"status": "completed", "at": now.isoformat()}}}
@@ -2483,33 +2528,63 @@ async def cancel_ride(req: RideActionRequest, request: Request):
     
     if ride["status"] in [RideStatus.COMPLETED.value, RideStatus.CANCELLED.value]:
         raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
+    if ride["status"] == RideStatus.STARTED.value:
+        raise HTTPException(status_code=400, detail="Eine bereits gestartete Fahrt kann nicht normal storniert werden. Bitte nutze Support/SOS.")
     
     now = datetime.now(timezone.utc)
     cancelled_by = "customer" if is_customer else "driver"
     
-    # Cancellation fee if ride was already accepted
+    # Cancellation fee if ride was already accepted.
     cancel_fee = 0
     if ride["status"] in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value] and is_customer:
         cancel_fee = CANCELLATION_FEE
-        # Charge customer
-        await debit_wallet(
+
+    reserved_amount = float(ride.get("payment_reserved_amount") or 0)
+    refund_amount = 0.0
+    refund_transaction_id = None
+
+    if reserved_amount > 0:
+        refund_amount = round(max(0.0, reserved_amount - cancel_fee), 2)
+        if refund_amount > 0:
+            refund = await credit_wallet(
+                user_id=ride["customer_id"],
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description="Taxi-Reservierung zurückgezahlt",
+                reference=f"TAXI-REFUND-{req.ride_id[:8].upper()}",
+                source="taxi_cancellation",
+                metadata={"ride_id": req.ride_id, "cancel_fee": cancel_fee},
+                idempotency_key=f"taxi-cancel-refund:{req.ride_id}",
+            )
+            if not refund.success:
+                raise HTTPException(status_code=500, detail=f"Rückerstattung fehlgeschlagen: {refund.error}")
+            refund_transaction_id = refund.transaction_id
+    elif cancel_fee > 0:
+        # Legacy rides created before booking reservations existed.
+        fee_payment = await debit_wallet(
             user_id=ride["customer_id"],
             amount=cancel_fee,
             tx_type=TransactionType.TAXI_PAYMENT,
             description="Stornierungsgebühr",
             reference=f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
-            metadata={"ride_id": req.ride_id}
+            metadata={"ride_id": req.ride_id},
+            idempotency_key=f"taxi-cancel-fee:{req.ride_id}",
         )
-        # Pay driver compensation (half of cancel fee)
-        if ride.get("driver_id"):
-            driver_user_id = (await db.drivers.find_one({"driver_id": ride["driver_id"]}))["user_id"]
+        if not fee_payment.success:
+            raise HTTPException(status_code=400, detail=f"Stornierungsgebühr konnte nicht abgerechnet werden: {fee_payment.error}")
+
+    # Pay driver compensation from the retained cancellation fee.
+    if cancel_fee > 0 and ride.get("driver_id"):
+        assigned_driver = await db.drivers.find_one({"driver_id": ride["driver_id"]})
+        if assigned_driver and assigned_driver.get("user_id"):
             await credit_wallet(
-                user_id=driver_user_id,
+                user_id=assigned_driver["user_id"],
                 amount=cancel_fee * 0.5,
                 tx_type=TransactionType.DRIVER_EARNINGS,
                 description="Stornierungsentschädigung",
                 reference=f"TAXI-COMP-{req.ride_id[:8].upper()}",
                 source="cancellation",
+                idempotency_key=f"taxi-cancel-comp:{req.ride_id}",
             )
     
     await db.taxi_rides.update_one(
@@ -2519,6 +2594,9 @@ async def cancel_ride(req: RideActionRequest, request: Request):
             "cancelled_at": now.isoformat(),
             "cancelled_by": cancelled_by,
             "cancellation_fee": cancel_fee,
+            "refund_amount": refund_amount,
+            "refund_transaction_id": refund_transaction_id,
+            "payment_status": "cancelled_refunded" if reserved_amount > 0 else "cancelled",
             "cancellation_reason": req.reason or None,
         },
         "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by, "reason": req.reason or None}}}
