@@ -163,6 +163,69 @@ export const TaxiMapbox = ({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map) return undefined;
+
+    const validPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng);
+    const validDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng);
+    const removeRoute = () => {
+      if (!map.getStyle()) return;
+      if (map.getLayer('taxi-route-line')) map.removeLayer('taxi-route-line');
+      if (map.getSource('taxi-route')) map.removeSource('taxi-route');
+    };
+
+    if (!validPickup || !validDropoff || !mapboxgl.accessToken) {
+      if (map.isStyleLoaded()) removeRoute();
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const drawRoute = async () => {
+      try {
+        const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
+        const response = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?access_token=${mapboxgl.accessToken}&geometries=geojson&overview=full&steps=false&alternatives=false`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const geometry = data?.routes?.[0]?.geometry;
+        if (!geometry || controller.signal.aborted) return;
+
+        const applyRoute = () => {
+          if (controller.signal.aborted || mapRef.current !== map) return;
+          removeRoute();
+          map.addSource('taxi-route', {
+            type: 'geojson',
+            data: { type: 'Feature', properties: {}, geometry },
+          });
+          map.addLayer({
+            id: 'taxi-route-line',
+            type: 'line',
+            source: 'taxi-route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': '#2563EB',
+              'line-width': 5,
+              'line-opacity': 0.82,
+            },
+          });
+        };
+
+        if (map.isStyleLoaded()) applyRoute();
+        else map.once('load', applyRoute);
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          console.warn('Taxi route preview unavailable', error);
+        }
+      }
+    };
+
+    drawRoute();
+    return () => controller.abort();
+  }, [dropoff?.lat, dropoff?.lng, pickup?.lat, pickup?.lng]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map) return;
 
     markersRef.current.forEach((marker) => marker.remove());
