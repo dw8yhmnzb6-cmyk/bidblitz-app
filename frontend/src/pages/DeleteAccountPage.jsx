@@ -1,4 +1,5 @@
-import { ArrowLeft, ShieldAlert, Trash2, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ShieldAlert, Trash2, CheckCircle2, Loader2 } from "lucide-react";
 
 const STEPS = [
   "Öffne in der App: Mehr → Einstellungen → Datenschutz.",
@@ -8,6 +9,49 @@ const STEPS = [
 ];
 
 export default function DeleteAccountPage({ onBack }) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const requestDeletion = async () => {
+    if (!password || !["DELETE", "LÖSCHEN", "LOESCHEN"].includes(confirmation.trim().toUpperCase())) {
+      setError("Bitte Passwort eingeben und mit DELETE oder LÖSCHEN bestätigen.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/user/deletion-request`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: password,
+          confirmation,
+          reason: reason.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const detail = typeof data.detail === "string" ? data.detail : data.detail?.message;
+        throw new Error(detail || "Löschanfrage konnte nicht erstellt werden.");
+      }
+      setResult(data);
+      setPassword("");
+      setConfirmation("");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1200);
+    } catch (e) {
+      setError(e.message || "Löschanfrage konnte nicht erstellt werden.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24" data-testid="delete-account-page">
       <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center gap-3">
@@ -45,6 +89,55 @@ export default function DeleteAccountPage({ onBack }) {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#FF6B6B]/20 bg-[#FF6B6B]/[0.04] p-4" data-testid="delete-account-action-card">
+          <div className="flex items-center gap-2 mb-3">
+            <Trash2 size={16} className="text-[#FF6B6B]" />
+            <p className="text-sm font-bold">Löschanfrage senden</p>
+          </div>
+          <p className="text-xs text-white/55 leading-5 mb-4">
+            Aus Sicherheitsgründen bestätigst du die Anfrage mit deinem aktuellen Passwort. Dein Login wird danach sofort deaktiviert; gesetzlich aufzubewahrende Zahlungs-/KYC-Daten bleiben bis zum Ablauf der jeweiligen Frist gesperrt erhalten.
+          </p>
+
+          <div className="space-y-3">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Aktuelles Passwort"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-[#FF6B6B]/40"
+              data-testid="delete-account-password"
+            />
+            <input
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              placeholder="DELETE oder LÖSCHEN eingeben"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-[#FF6B6B]/40"
+              data-testid="delete-account-confirmation"
+            />
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={500}
+              placeholder="Grund (optional)"
+              className="min-h-24 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-[#FF6B6B]/40"
+              data-testid="delete-account-reason"
+            />
+          </div>
+
+          {error ? <p className="mt-3 text-sm text-[#FF6B6B]" data-testid="delete-account-error">{error}</p> : null}
+          {result ? <p className="mt-3 text-sm text-[#00E89D]" data-testid="delete-account-success">Anfrage {result.request_id} wurde erstellt. Du wirst abgemeldet.</p> : null}
+
+          <button
+            onClick={requestDeletion}
+            disabled={loading || Boolean(result)}
+            className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B6B] px-4 text-sm font-black text-black disabled:opacity-50"
+            data-testid="delete-account-submit"
+          >
+            {loading ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
+            Konto deaktivieren & Löschung beantragen
+          </button>
         </div>
 
         <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4" data-testid="delete-account-contact-card">
