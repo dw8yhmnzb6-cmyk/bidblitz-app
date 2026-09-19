@@ -11,6 +11,7 @@ import random
 import secrets
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/quests", tags=["quests"])
@@ -145,6 +146,11 @@ async def track(req: TrackRequest, request: Request):
 @router.post("/claim/{quest_id}")
 async def claim_quest(quest_id: str, request: Request):
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="BLZ-Quest-Belohnungen sind in Production deaktiviert.",
+        )
     uid = str(user.get("_id") or user.get("id"))
     day = _today()
     doc = await db.user_quests.find_one({"user_id": uid, "date": day})
