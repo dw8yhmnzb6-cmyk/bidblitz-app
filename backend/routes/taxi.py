@@ -1936,6 +1936,12 @@ async def book_ride(req: FlexBookRequest, request: Request):
                 }
         except Exception:
             promo_applied = None
+
+    if balance < fare_total:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nicht genug Guthaben für diese Fahrt. Benötigt: €{fare_total:.2f}, verfügbar: €{balance:.2f}"
+        )
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
@@ -1970,6 +1976,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
         "fixed_fare": fixed if fixed else None,
         "promo": promo_applied,
+        "scheduled_at": req.scheduled_at,
         "status": RideStatus.REQUESTED.value,
         "recipient": {
             "name": (req.recipient_name or "").strip(),
@@ -2081,10 +2088,18 @@ async def get_driver_requests(request: Request):
     if not loc.get("lat"):
         return {"requests": [], "message": "Standort nicht verfügbar"}
     
-    # Find requested rides for driver's car type
+    # Find requested rides for driver's car type.
+    # Scheduled rides only enter dispatch shortly before pickup.
+    dispatch_cutoff = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
     rides = await db.taxi_rides.find({
         "status": RideStatus.REQUESTED.value,
         "car_type": driver.get("car", {}).get("type", "standard"),
+        "$or": [
+            {"scheduled_at": None},
+            {"scheduled_at": {"$lte": dispatch_cutoff}},
+            {"scheduled_at": {"$exists": False}, "options.scheduled_at": None},
+            {"options.scheduled_at": {"$lte": dispatch_cutoff}},
+        ],
     }, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Filter by distance
@@ -2149,19 +2164,35 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
     if active:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
-    # Get ride
+    # Read once for validation, then claim atomically below.
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
     if ride["status"] != RideStatus.REQUESTED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
-    
+
     now = datetime.now(timezone.utc)
-    
-    # Update ride
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    scheduled_at = ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at")
+    if scheduled_at:
+        try:
+            scheduled_dt = datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+            if scheduled_dt > now + timedelta(minutes=15):
+                raise HTTPException(status_code=400, detail="Diese Vorbestellung ist noch nicht zur Fahrerannahme freigegeben")
+        except HTTPException:
+            raise
+        except Exception:
+            logger.warning("Invalid scheduled_at on ride %s: %s", req.ride_id, scheduled_at)
+
+    # Atomic claim: exactly one driver can transition requested -> accepted.
+    claim = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": RideStatus.REQUESTED.value,
+            "driver_id": None,
+        },
         {"$set": {
             "driver_id": driver["driver_id"],
             "driver_name": driver.get("user_name", ""),
@@ -2174,6 +2205,8 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         },
         "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}}}
     )
+    if claim.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Fahrt wurde gerade von einem anderen Fahrer angenommen")
     
     updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
     
@@ -2290,8 +2323,20 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         # Use at least the estimate if actual is much less (short route taken)
         distance_km = max(distance_km, ride.get("distance_km_estimate", 0) * 0.8)
     
-    # Calculate final fare
-    fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
+    # Settle against the price that was shown and accepted at booking.
+    # This keeps fixed fares, regional pricing, tariff zones and promos consistent.
+    quoted_total = float(ride.get("fare_estimate") or 0)
+    if quoted_total > 0:
+        fare = {
+            "total": round(quoted_total, 2),
+            "driver_earnings": round(quoted_total * DRIVER_COMMISSION, 2),
+            "platform_fee": round(quoted_total * PLATFORM_COMMISSION, 2),
+        }
+        pricing_source = "locked_booking_quote"
+    else:
+        # Legacy rides without a stored quote keep a safe fallback.
+        fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
+        pricing_source = "legacy_meter_fallback"
     
     # Deduct from customer wallet
     customer_payment = await debit_wallet(
@@ -2327,6 +2372,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             "actual_distance_km": round(distance_km, 2),
             "actual_duration_minutes": round(duration_minutes),
             "final_fare": fare["total"],
+            "pricing_source": pricing_source,
             "driver_earnings": fare["driver_earnings"],
             "platform_fee": fare["platform_fee"],
             "customer_payment_id": customer_payment.transaction_id,
