@@ -6,11 +6,13 @@ All rewards based on REAL completed transactions only.
 
 import secrets
 import logging
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.security import get_current_user
@@ -233,54 +235,78 @@ async def process_loyalty_rewards(
     amount: float,
     tx_id: str,
 ) -> Dict:
-    """
-    Process loyalty rewards for a completed transaction.
-    Called by payment engine after successful payment.
-    
-    Returns:
-        Dict with coins_earned, cashback_earned, level_up info
-    """
+    """Apply one loyalty reward exactly once for one completed source transaction."""
+    from core.payment_engine import credit_wallet, TransactionType
+
     config = await get_loyalty_config()
-    
     if not config.get("coins_enabled") and not config.get("cashback_enabled"):
         return {"coins_earned": 0, "cashback_earned": 0, "level_changed": False}
-    
-    # Prevent duplicate rewards
-    existing = await db.coins_transactions.find_one({
-        "source_type": source_type,
-        "source_id": source_id,
-    })
-    if existing:
-        logger.warning(f"Duplicate reward attempt: {source_type}/{source_id}")
-        return {"coins_earned": 0, "cashback_earned": 0, "level_changed": False, "duplicate": True}
-    
+
     loyalty = await get_user_loyalty(user_id)
     old_level = loyalty.get("level", "bronze")
     level_config = LEVELS.get(old_level, LEVELS["bronze"])
-    
-    now = datetime.now(timezone.utc)
+    amount = round(float(amount or 0), 2)
+
     coins_earned = 0
-    cashback_earned = 0.0
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # COINS REWARD
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    multiplier = float(level_config.get("coin_multiplier", 1.0))
     if config.get("coins_enabled"):
-        coin_rates = config.get("coin_rates", DEFAULT_COIN_RATES)
-        base_rate = coin_rates.get(source_type, 1)
-        
-        # Apply level multiplier
-        multiplier = level_config.get("coin_multiplier", 1.0)
-        
-        # Calculate coins (rate is per €1)
+        base_rate = (config.get("coin_rates", DEFAULT_COIN_RATES) or {}).get(source_type, 1)
         raw_coins = int(amount * base_rate * multiplier)
-        coins_earned = max(1, raw_coins) if amount >= 0.50 else 0  # Min 50 cents for coins
-        
-        if coins_earned > 0:
-            # Record coin transaction
-            await db.coins_transactions.insert_one({
-                "id": secrets.token_hex(8),
+        coins_earned = max(1, raw_coins) if amount >= 0.50 else 0
+
+    cashback_earned = 0.0
+    total_rate = 0.0
+    if config.get("cashback_enabled"):
+        base_cashback = (config.get("cashback_rates", DEFAULT_CASHBACK_RATES) or {}).get(source_type, 0)
+        total_rate = float(base_cashback) + float(level_config.get("cashback_bonus", 0))
+        cashback_earned = round(amount * total_rate, 2)
+
+    claim_hash = hashlib.sha256(f"{user_id}:{source_type}:{source_id}".encode("utf-8")).hexdigest()[:24]
+    claim_id = f"LR-{claim_hash.upper()}"
+    now = datetime.now(timezone.utc)
+    claim_doc = {
+        "claim_id": claim_id,
+        "user_id": user_id,
+        "source_type": source_type,
+        "source_id": source_id,
+        "tx_id": tx_id,
+        "amount": amount,
+        "old_level": old_level,
+        "coins_earned": coins_earned,
+        "cashback_earned": cashback_earned,
+        "cashback_rate": total_rate,
+        "coin_multiplier": multiplier,
+        "status": "processing",
+        "created_at": now.isoformat(),
+    }
+
+    try:
+        await db.loyalty_reward_claims.insert_one(claim_doc)
+        claim = claim_doc
+    except DuplicateKeyError:
+        claim = await db.loyalty_reward_claims.find_one({"claim_id": claim_id}, {"_id": 0}) or claim_doc
+
+    if claim.get("status") == "completed":
+        return {
+            "coins_earned": int(claim.get("coins_earned") or 0),
+            "cashback_earned": float(claim.get("cashback_earned") or 0),
+            "level_changed": bool(claim.get("level_changed")),
+            "new_level": claim.get("new_level"),
+            "duplicate": True,
+        }
+
+    # Use the values frozen in the original claim, never recalculate on retries.
+    coins_earned = int(claim.get("coins_earned") or 0)
+    cashback_earned = round(float(claim.get("cashback_earned") or 0), 2)
+    old_level = claim.get("old_level") or old_level
+    multiplier = float(claim.get("coin_multiplier") or multiplier)
+    total_rate = float(claim.get("cashback_rate") or total_rate)
+
+    if coins_earned > 0:
+        await db.coins_transactions.update_one(
+            {"id": f"LCOIN-{claim_hash}"},
+            {"$setOnInsert": {
+                "id": f"LCOIN-{claim_hash}",
                 "user_id": user_id,
                 "source_type": source_type,
                 "source_id": source_id,
@@ -289,112 +315,102 @@ async def process_loyalty_rewards(
                 "amount_spent": amount,
                 "level_at_time": old_level,
                 "multiplier": multiplier,
-                "created_at": now.isoformat(),
-            })
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CASHBACK REWARD
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    if config.get("cashback_enabled"):
-        cashback_rates = config.get("cashback_rates", DEFAULT_CASHBACK_RATES)
-        base_cashback = cashback_rates.get(source_type, 0)
-        
-        # Add level bonus
-        level_bonus = level_config.get("cashback_bonus", 0)
-        total_rate = base_cashback + level_bonus
-        
-        cashback_earned = round(amount * total_rate, 2)
-        
-        if cashback_earned >= 0.01:
-            # Credit wallet
-            await db.users.update_one(
-                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-                {"$inc": {"balance": cashback_earned}}
-            )
-            
-            # Record cashback transaction
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": user_id,
-                "type": "loyalty_cashback",
-                "amount": cashback_earned,
-                "description": f"Cashback ({total_rate*100:.1f}%)",
-                "reference": f"CB-{tx_id[:8].upper()}",
+                "created_at": claim.get("created_at") or now.isoformat(),
+            }},
+            upsert=True,
+        )
+
+    cashback_tx_id = claim.get("cashback_transaction_id")
+    if cashback_earned >= 0.01 and not cashback_tx_id:
+        cashback = await credit_wallet(
+            user_id=user_id,
+            amount=cashback_earned,
+            tx_type=TransactionType.LOYALTY_CASHBACK,
+            description=f"Cashback ({total_rate*100:.1f}%)",
+            reference=f"CB-{claim_hash[:12].upper()}",
+            source=f"loyalty:{source_type}",
+            metadata={
+                "claim_id": claim_id,
                 "source_type": source_type,
+                "source_id": source_id,
                 "source_tx": tx_id,
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # UPDATE USER LOYALTY RECORD
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    update = {
-        "$inc": {
-            "coins_balance": coins_earned,
-            "total_coins_earned": coins_earned,
-            "total_cashback_earned": cashback_earned,
-            "total_spend": amount,
-            "total_transactions": 1,
+                "cashback_rate": total_rate,
+            },
+            idempotency_key=f"loyalty-cashback:{claim_id}",
+        )
+        if not cashback.success:
+            await db.loyalty_reward_claims.update_one(
+                {"claim_id": claim_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": cashback.error or "cashback_credit_failed",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            logger.error("Loyalty cashback reconciliation required for %s: %s", claim_id, cashback.error)
+            return {
+                "coins_earned": 0,
+                "cashback_earned": 0,
+                "level_changed": False,
+                "reconciliation_required": True,
+            }
+        cashback_tx_id = cashback.transaction_id
+        await db.loyalty_reward_claims.update_one(
+            {"claim_id": claim_id},
+            {"$set": {"cashback_transaction_id": cashback_tx_id}},
+        )
+
+    marker_field = f"reward_markers.{claim_hash}"
+    await db.user_loyalty.update_one(
+        {"user_id": user_id, marker_field: {"$exists": False}},
+        {
+            "$inc": {
+                "coins_balance": coins_earned,
+                "total_coins_earned": coins_earned,
+                "total_cashback_earned": cashback_earned,
+                "total_spend": amount,
+                "total_transactions": 1,
+            },
+            "$set": {
+                "last_coin_activity_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                marker_field: {
+                    "claim_id": claim_id,
+                    "coins": coins_earned,
+                    "cashback": cashback_earned,
+                    "applied_at": datetime.now(timezone.utc).isoformat(),
+                },
+            },
         },
-        "$set": {
-            "last_coin_activity_at": now.isoformat(),
-            "updated_at": now.isoformat(),
-        }
-    }
-    
-    await db.user_loyalty.update_one({"user_id": user_id}, update)
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CHECK LEVEL UP
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    )
+
     new_level = await calculate_user_level(user_id)
     level_changed = new_level != old_level
-    
     if level_changed:
         await db.user_loyalty.update_one(
             {"user_id": user_id},
-            {"$set": {"level": new_level}}
+            {"$set": {"level": new_level}},
         )
-        
-        # Record level up event
-        await db.loyalty_events.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "event_type": "level_up",
-            "old_level": old_level,
-            "new_level": new_level,
-            "created_at": now.isoformat(),
-        })
-        
-        # Send notification
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "level_up",
-            "title": f"Level Up: {LEVELS[new_level]['name']}!",
-            "message": f"Glückwunsch! Du hast {LEVELS[new_level]['name']}-Level erreicht. Genieße {LEVELS[new_level]['coin_multiplier']}x Coins und {LEVELS[new_level]['cashback_bonus']*100:.0f}% extra Cashback!",
-            "data": {"old_level": old_level, "new_level": new_level},
-            "read": False,
-            "created_at": now.isoformat(),
-        })
-        
-        logger.info(f"User {user_id} leveled up: {old_level} -> {new_level}")
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SEND REWARD NOTIFICATIONS
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+        event_id = f"LEV-{claim_hash}"
+        await db.loyalty_events.update_one(
+            {"id": event_id},
+            {"$setOnInsert": {
+                "id": event_id,
+                "user_id": user_id,
+                "event_type": "level_up",
+                "old_level": old_level,
+                "new_level": new_level,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+
     if coins_earned > 0 or cashback_earned > 0:
         parts = []
         if coins_earned > 0:
             parts.append(f"{coins_earned} Coins")
         if cashback_earned > 0:
             parts.append(f"€{cashback_earned:.2f} Cashback")
-        
         source_names = {
             "taxi_payment": "Taxi-Fahrt",
             "scooter_payment": "Scooter-Fahrt",
@@ -405,18 +421,31 @@ async def process_loyalty_rewards(
             "mining_payment": "Mining",
             "subscription_payment": "Abo",
         }
-        
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "loyalty_reward",
-            "title": "Belohnung erhalten!",
-            "message": f"Du hast {' und '.join(parts)} für deine {source_names.get(source_type, 'Transaktion')} erhalten!",
-            "data": {"coins": coins_earned, "cashback": cashback_earned, "source": source_type},
-            "read": False,
-            "created_at": now.isoformat(),
-        })
-    
+        await db.notifications.update_one(
+            {"id": f"LOY-{claim_hash}", "user_id": user_id},
+            {"$setOnInsert": {
+                "id": f"LOY-{claim_hash}",
+                "user_id": user_id,
+                "type": "loyalty_reward",
+                "title": "Belohnung erhalten!",
+                "message": f"Du hast {' und '.join(parts)} für deine {source_names.get(source_type, 'Transaktion')} erhalten!",
+                "data": {"coins": coins_earned, "cashback": cashback_earned, "source": source_type},
+                "read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+
+    await db.loyalty_reward_claims.update_one(
+        {"claim_id": claim_id},
+        {"$set": {
+            "status": "completed",
+            "level_changed": level_changed,
+            "new_level": new_level if level_changed else None,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
     return {
         "coins_earned": coins_earned,
         "cashback_earned": cashback_earned,
