@@ -845,6 +845,20 @@ async def track_commerce_center_event(req: CommerceEventTrackRequest, request: R
     return {"ok": True}
 
 
+async def _release_flash_claim(sale_id: str, listing_id: str, key_hash: str) -> None:
+    await db.commerce_flash_sales.update_one(
+        {"sale_id": sale_id, "reservation_key": key_hash, "status": "processing"},
+        {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""}},
+    )
+    await db.marketplace_listings.update_one(
+        {"listing_id": listing_id, "flash_purchase_key": key_hash, "status": "processing_flash"},
+        {
+            "$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()},
+            "$unset": {"flash_purchase_key": ""},
+        },
+    )
+
+
 @router.post("/flash-sales/{sale_id}/buy")
 async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: Request):
     """Buy one flash-sale unit exactly once and resume safely after retries."""
@@ -911,6 +925,7 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
 
     listing = await db.marketplace_listings.find_one({"listing_id": sale["listing_id"]}, {"_id": 0})
     if not listing:
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
         raise HTTPException(status_code=400, detail="Produkt ist nicht mehr verfügbar")
 
     if not (
@@ -940,6 +955,7 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
         seller_query = {"_id": ObjectId(sale["seller_id"])} if ObjectId.is_valid(str(sale.get("seller_id") or "")) else {"_id": sale.get("seller_id")}
         seller = await db.users.find_one(seller_query, {"_id": 1, "name": 1})
         if not seller:
+            await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
             raise HTTPException(status_code=400, detail="Verkäuferkonto nicht gefunden")
 
     shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0.0
@@ -996,14 +1012,7 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
             {"order_id": order_id},
             {"$set": {"status": "payment_failed", "failure_reason": debit_result.error, "updated_at": datetime.now(timezone.utc).isoformat()}},
         )
-        await db.commerce_flash_sales.update_one(
-            {"sale_id": sale_id, "reservation_key": key_hash},
-            {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""}},
-        )
-        await db.marketplace_listings.update_one(
-            {"listing_id": sale["listing_id"], "flash_purchase_key": key_hash},
-            {"$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}, "$unset": {"flash_purchase_key": ""}},
-        )
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
         raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
 
     credit_result = None
