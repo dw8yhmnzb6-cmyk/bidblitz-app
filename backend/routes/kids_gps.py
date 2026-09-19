@@ -145,7 +145,9 @@ async def check_zones_for_child(parent_id: str, child_id: str, child_name: str, 
 
 
 async def verify_parent_child_access(parent_id: str, child_id: str):
-    """Verify parent has access to this child."""
+    """Verify an entitled parent has access to this child."""
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(parent_id)
     child = await db.kids_children.find_one({
         "child_id": child_id,
         "parent_id": parent_id
@@ -173,6 +175,8 @@ async def update_child_location(loc: LocationUpdate, request: Request):
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
 
     parent_id = str(child["parent_id"])
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(parent_id)
     linked_child_user_id = str(child.get("user_id") or "")
     if user_id not in {parent_id, linked_child_user_id}:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
@@ -451,6 +455,8 @@ async def get_all_children_locations(request: Request):
     """Get current locations of all children."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(parent_id, user.get("role"))
     
     children = await db.kids_children.find(
         {"parent_id": parent_id},
