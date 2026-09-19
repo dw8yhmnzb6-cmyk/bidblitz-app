@@ -18,24 +18,25 @@ from pymongo.errors import DuplicateKeyError
 router = APIRouter(prefix="/api/hotels", tags=["hotels"])
 
 CASHBACK_RATE = 0.03  # 3% cashback on hotel bookings
+HOTEL_SERVICE_FEE_RATE = 0.10  # Platform-owned; hosts cannot change checkout fees
 
 
 class PropertyCreate(BaseModel):
-    title: str
-    description: str = ""
-    property_type: str = "apartment"  # apartment, house, room, villa, hotel
-    city: str = ""
-    address: str = ""
-    price_per_night: float = Field(..., gt=0)
-    max_guests: int = 2
-    bedrooms: int = 1
-    bathrooms: int = 1
-    amenities: List[str] = []
-    images: List[str] = []
-    rules: str = ""
-    cleaning_fee: float = 0          # one-time fee per booking
-    service_fee_pct: float = 0.10    # 10% platform service fee
-    cancellation_policy: str = "flexible"  # flexible | moderate | strict
+    title: str = Field(..., min_length=2, max_length=140)
+    description: str = Field(default="", max_length=5000)
+    property_type: str = Field(default="apartment", pattern="^(apartment|house|room|villa|hotel)$")
+    city: str = Field(default="", max_length=120)
+    address: str = Field(default="", max_length=300)
+    price_per_night: float = Field(..., gt=0, le=100000)
+    max_guests: int = Field(default=2, ge=1, le=100)
+    bedrooms: int = Field(default=1, ge=0, le=100)
+    bathrooms: int = Field(default=1, ge=0, le=100)
+    amenities: List[str] = Field(default_factory=list, max_length=100)
+    images: List[str] = Field(default_factory=list, max_length=50)
+    rules: str = Field(default="", max_length=5000)
+    cleaning_fee: float = Field(default=0, ge=0, le=100000)
+    service_fee_pct: float = Field(default=HOTEL_SERVICE_FEE_RATE, exclude=True)
+    cancellation_policy: str = Field(default="flexible", pattern="^(flexible|moderate|strict)$")
     instant_book: bool = True
 
 
@@ -287,7 +288,7 @@ async def get_price_quote(property_id: str, check_in: str, check_out: str, guest
     rate = float(prop["price_per_night"])
     subtotal = round(rate * nights, 2)
     cleaning = float(prop.get("cleaning_fee", 0) or 0)
-    service_pct = float(prop.get("service_fee_pct", 0.10) or 0)
+    service_pct = HOTEL_SERVICE_FEE_RATE
     service_fee = round(subtotal * service_pct, 2)
     total = round(subtotal + cleaning + service_fee, 2)
     cashback = round(total * CASHBACK_RATE, 2)
@@ -318,6 +319,15 @@ async def get_price_quote(property_id: str, check_in: str, check_out: str, guest
 async def create_property(req: PropertyCreate, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "KYC-Verifizierung erforderlich, bevor eine Unterkunft veröffentlicht werden kann.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
     now = datetime.now(timezone.utc).isoformat()
     prop_id = secrets.token_hex(8)
 
@@ -339,7 +349,7 @@ async def create_property(req: PropertyCreate, request: Request):
         "images": req.images,
         "rules": req.rules,
         "cleaning_fee": req.cleaning_fee,
-        "service_fee_pct": req.service_fee_pct,
+        "service_fee_pct": HOTEL_SERVICE_FEE_RATE,
         "cancellation_policy": req.cancellation_policy,
         "instant_book": req.instant_book,
         "rating": 0,
@@ -655,31 +665,44 @@ async def complete_booking(booking_id: str, request: Request):
 @router.post("/review")
 async def add_review(req: ReviewCreate, request: Request):
     user = await get_current_user(request)
-    b = await db.hotel_bookings.find_one({"booking_id": req.booking_id})
-    if not b or b["guest_id"] != str(user["_id"]):
-        raise HTTPException(status_code=403, detail="Nur Gäste können bewerten")
+    user_id = str(user["_id"])
+    b = await db.hotel_bookings.find_one({"booking_id": req.booking_id, "guest_id": user_id})
+    if not b:
+        raise HTTPException(status_code=403, detail="Nur der Gast dieser Buchung kann bewerten")
+    if b.get("status") != "completed" or b.get("settlement_status") != "completed":
+        raise HTTPException(status_code=400, detail="Bewertung ist erst nach abgeschlossenem Aufenthalt möglich")
 
     now = datetime.now(timezone.utc).isoformat()
+    review_id = f"HTR-{hashlib.sha256(req.booking_id.encode('utf-8')).hexdigest()[:20].upper()}"
     review = {
-        "review_id": secrets.token_hex(8),
+        "_id": review_id,
+        "review_id": review_id,
         "booking_id": req.booking_id,
         "property_id": b["property_id"],
-        "guest_id": str(user["_id"]),
+        "guest_id": user_id,
         "guest_name": user.get("name", ""),
         "rating": req.rating,
-        "comment": req.comment,
+        "comment": req.comment.strip()[:2000],
         "created_at": now,
     }
-    await db.property_reviews.insert_one(review)
+    write = await db.property_reviews.update_one(
+        {"_id": review_id},
+        {"$setOnInsert": review},
+        upsert=True,
+    )
+    if write.upserted_id is None:
+        existing = await db.property_reviews.find_one({"_id": review_id}, {"_id": 0}) or {}
+        if int(existing.get("rating") or 0) != int(req.rating) or str(existing.get("comment") or "") != review["comment"]:
+            raise HTTPException(status_code=409, detail="Diese Buchung wurde bereits bewertet")
+        return {"ok": True, "replayed": True}
 
-    # Update property average rating
-    all_reviews = await db.property_reviews.find({"property_id": b["property_id"]}).to_list(500)
-    avg = sum(r["rating"] for r in all_reviews) / len(all_reviews)
+    all_reviews = await db.property_reviews.find({"property_id": b["property_id"]}, {"_id": 0, "rating": 1}).to_list(5000)
+    avg = sum(float(r["rating"]) for r in all_reviews) / len(all_reviews)
     await db.properties.update_one(
         {"property_id": b["property_id"]},
         {"$set": {"rating": round(avg, 1), "review_count": len(all_reviews)}},
     )
-    return {"ok": True}
+    return {"ok": True, "replayed": False}
 
 
 
