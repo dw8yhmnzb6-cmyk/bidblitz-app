@@ -773,7 +773,7 @@ async def _settle_food_delivery(order_id: str) -> dict:
         }
 
     delivery_type = order.get("delivery_type") or "delivery"
-    allowed_statuses = {"ready"} if delivery_type == "pickup" else {"picked_up"}
+    allowed_statuses = {"ready"} if delivery_type == "pickup" else {"picked_up", "nearby"}
     if order.get("status") not in allowed_statuses and order.get("status") != "delivered":
         raise HTTPException(status_code=400, detail="Bestellung ist noch nicht lieferbereit/zugestellt")
 
@@ -1203,7 +1203,7 @@ async def register_restaurant(request: Request):
         "status": "pending",  # pending, approved, rejected, suspended
         "min_order": body.get("min_order", MIN_ORDER_AMOUNT),
         "delivery_fee": body.get("delivery_fee", DELIVERY_FEE_BASE),
-        "location": body.get("location", {"lat": 52.52, "lng": 13.405}),
+        "location": body.get("location") if isinstance(body.get("location"), dict) else {},
         "tax_id": body.get("tax_id", ""),
         "bank_details": body.get("bank_details", {}),
         "documents": {
@@ -1502,7 +1502,7 @@ async def restaurant_dashboard(request: Request):
     preparing_orders = [o for o in orders if o.get("status") == "preparing"]
     completed_orders = [o for o in orders if o.get("status") == "delivered"]
     
-    total_revenue = sum(o.get("total", 0) for o in completed_orders)
+    total_revenue = sum(float(o.get("restaurant_share") or 0) for o in completed_orders)
     
     return {
         "restaurant": {
@@ -1531,7 +1531,10 @@ async def restaurant_accept_order(request: Request):
     """Restaurant accepts an incoming order."""
     body = await request.json()
     order_id = body.get("order_id")
-    prep_time = body.get("prep_time", 20)  # minutes
+    try:
+        prep_time = max(5, min(int(body.get("prep_time", 20)), 120))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültige Zubereitungszeit")
     
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -1558,8 +1561,12 @@ async def restaurant_accept_order(request: Request):
     now = datetime.now(timezone.utc)
     estimated_ready = now + timedelta(minutes=prep_time)
     
-    await db.food_orders.update_one(
-        {"order_id": order_id},
+    transition = await db.food_orders.update_one(
+        {
+            "order_id": order_id,
+            "restaurant_id": restaurant.get("restaurant_id"),
+            "status": {"$in": ["pending", "confirmed"]},
+        },
         {"$set": {
             "status": "preparing",
             "accepted_at": now.isoformat(),
@@ -1568,6 +1575,11 @@ async def restaurant_accept_order(request: Request):
             "updated_at": now.isoformat(),
         }}
     )
+    if transition.modified_count != 1:
+        current = await db.food_orders.find_one({"order_id": order_id}, {"_id": 0}) or {}
+        if current.get("status") == "preparing":
+            return {"ok": True, "status": "preparing", "estimated_ready_at": current.get("estimated_ready_at"), "replayed": True}
+        raise HTTPException(status_code=409, detail="Bestellstatus wurde parallel geändert")
     
     # Notify customer
     await db.notifications.insert_one({
@@ -1613,14 +1625,23 @@ async def restaurant_order_ready(request: Request):
     
     now = datetime.now(timezone.utc)
     
-    await db.food_orders.update_one(
-        {"order_id": order_id},
+    transition = await db.food_orders.update_one(
+        {
+            "order_id": order_id,
+            "restaurant_id": restaurant.get("restaurant_id"),
+            "status": "preparing",
+        },
         {"$set": {
             "status": "ready",
             "ready_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }}
     )
+    if transition.modified_count != 1:
+        current = await db.food_orders.find_one({"order_id": order_id}, {"_id": 0}) or {}
+        if current.get("status") == "ready":
+            return {"ok": True, "status": "ready", "replayed": True}
+        raise HTTPException(status_code=409, detail="Bestellstatus wurde parallel geändert")
     
     # Notify customer
     await db.notifications.insert_one({
@@ -1715,7 +1736,8 @@ async def get_available_deliveries(request: Request):
     # Get orders ready for pickup without assigned courier
     orders = await db.food_orders.find({
         "status": "ready",
-        "courier": None,
+        "delivery_type": {"$ne": "pickup"},
+        "$or": [{"courier": None}, {"courier": {"$exists": False}}],
     }, {"_id": 0}).sort("ready_at", 1).to_list(20)
     
     return {"orders": orders, "total": len(orders)}
