@@ -1327,53 +1327,55 @@ async def delete_car_image(car_id: str, request: Request):
 
 @router.post("/reviews")
 async def create_review(request: Request):
-    """Create a review for a completed booking."""
+    """Create exactly one review for one completed customer booking."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
     body = await request.json()
-    booking_id = body.get("booking_id")
-    rating = body.get("rating")
-    comment = body.get("comment", "")
+    booking_id = str(body.get("booking_id") or "").strip()
+    try:
+        rating = int(body.get("rating"))
+    except (TypeError, ValueError):
+        rating = 0
+    comment = str(body.get("comment") or "").strip()
     
-    if not booking_id or not rating:
-        raise HTTPException(status_code=400, detail="booking_id und rating erforderlich")
+    if not booking_id or not (1 <= rating <= 5):
+        raise HTTPException(status_code=400, detail="booking_id und Bewertung 1-5 erforderlich")
+    if len(comment) > 2000:
+        raise HTTPException(status_code=400, detail="Kommentar ist zu lang")
     
-    if not (1 <= int(rating) <= 5):
-        raise HTTPException(status_code=400, detail="Bewertung muss 1-5 sein")
-    
-    # Verify booking
     booking = await BookingRepository.get_by_id(booking_id)
     if not booking or booking["customer_id"] != user_id:
         raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
-    
-    if booking["status"] != "completed":
+    if booking["status"] != BookingStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Nur abgeschlossene Buchungen können bewertet werden")
     
-    # Check if already reviewed
-    existing = await db.car_rental_reviews.find_one({"booking_id": booking_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Bereits bewertet")
-    
-    from .models import generate_review_id
-    review_id = generate_review_id()
+    review_id = f"REV-{booking_id}"
     now = datetime.now(timezone.utc).isoformat()
-    
     review = {
+        "_id": review_id,
         "review_id": review_id,
         "booking_id": booking_id,
         "car_id": booking["car_id"],
         "vendor_id": booking["vendor_id"],
         "customer_id": user_id,
         "customer_name": user.get("name", ""),
-        "rating": int(rating),
+        "rating": rating,
         "comment": comment,
         "created_at": now,
     }
+
+    write = await db.car_rental_reviews.update_one(
+        {"_id": review_id},
+        {"$setOnInsert": review},
+        upsert=True,
+    )
+    if write.upserted_id is None:
+        existing = await db.car_rental_reviews.find_one({"_id": review_id}, {"_id": 0}) or {}
+        if int(existing.get("rating") or 0) != rating or str(existing.get("comment") or "") != comment:
+            raise HTTPException(status_code=409, detail="Diese Buchung wurde bereits bewertet")
+        return {"ok": True, "review": sanitize_doc(existing), "replayed": True}
     
-    await db.car_rental_reviews.insert_one(review)
-    
-    # Update car rating
     pipeline = [
         {"$match": {"car_id": booking["car_id"]}},
         {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}
@@ -1385,7 +1387,6 @@ async def create_review(request: Request):
             {"$set": {"rating": round(stats[0]["avg"], 1), "review_count": stats[0]["count"]}}
         )
     
-    # Update vendor rating
     pipeline2 = [
         {"$match": {"vendor_id": booking["vendor_id"]}},
         {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}
@@ -1397,7 +1398,7 @@ async def create_review(request: Request):
             {"$set": {"rating": round(vstats[0]["avg"], 1), "review_count": vstats[0]["count"]}}
         )
     
-    return {"ok": True, "review": sanitize_doc(review)}
+    return {"ok": True, "review": sanitize_doc(review), "replayed": False}
 
 
 @router.get("/cars/{car_id}/reviews")
