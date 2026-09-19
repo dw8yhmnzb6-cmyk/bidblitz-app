@@ -119,7 +119,9 @@ async def _credit_platform_revenue_once(*, payment_id: str, amount: float, categ
                 "revenue_id": secrets.token_hex(8),
                 "date": revenue_date,
                 "amount": amount,
+                "total": amount,
                 "by_category": {category: amount},
+                "by_source": {category: amount},
                 "processed_payment_ids": [payment_id],
                 "last_payment_id": payment_id,
                 "created_at": now.isoformat(),
@@ -133,7 +135,12 @@ async def _credit_platform_revenue_once(*, payment_id: str, amount: float, categ
         {"date": revenue_date, "processed_payment_ids": {"$ne": payment_id}},
         {
             "$set": {"updated_at": now.isoformat(), "last_payment_id": payment_id},
-            "$inc": {"amount": amount, f"by_category.{category}": amount},
+            "$inc": {
+                "amount": amount,
+                "total": amount,
+                f"by_category.{category}": amount,
+                f"by_source.{category}": amount,
+            },
             "$addToSet": {"processed_payment_ids": payment_id},
         },
     )
