@@ -22,20 +22,29 @@ const CryptoWalletPage = ({ onBack }) => {
   const [tradeAmount, setTradeAmount] = useState("");
   const [trading, setTrading] = useState(false);
   const [balance, setBalance] = useState(0);
+  const [capabilities, setCapabilities] = useState({
+    live_market_data: true,
+    custody_connected: false,
+    exchange_connected: false,
+    trading_available: false,
+    message: "",
+  });
 
   const load = useCallback(async () => {
     try {
-      const [p, pf, t, u] = await Promise.all([
+      const [p, pf, t, u, caps] = await Promise.all([
         fetch(`${API}/api/crypto/prices`, { credentials: "include" }).then(r => r.json()),
         fetch(`${API}/api/crypto/portfolio`, { credentials: "include" }).then(r => r.json()),
         fetch(`${API}/api/crypto/transactions`, { credentials: "include" }).then(r => r.json()),
         fetch(`${API}/api/auth/me`, { credentials: "include" }).then(r => r.json()),
+        fetch(`${API}/api/crypto/capabilities`).then(r => r.json()),
       ]);
       setPrices(p.prices || []);
       setPortfolio(pf.portfolio || []);
       setTotalValue(pf.total_value_eur || 0);
       setTxns(t.transactions || []);
       setBalance(u.balance || 0);
+      setCapabilities(caps);
     } catch {}
     setLoading(false);
   }, []);
@@ -43,6 +52,10 @@ const CryptoWalletPage = ({ onBack }) => {
   useEffect(() => { load(); }, [load]);
 
   const executeTrade = async () => {
+    if (!capabilities.trading_available) {
+      alert(capabilities.message || "Custody/Exchange sind noch nicht live verbunden.");
+      return;
+    }
     if (!tradeModal || !tradeAmount || parseFloat(tradeAmount) <= 0) return;
     setTrading(true);
     try {
@@ -81,8 +94,8 @@ const CryptoWalletPage = ({ onBack }) => {
               <ArrowLeft size={18} />
             </motion.button>
             <div>
-              <h1 className="text-[15px] font-bold">Krypto Wallet</h1>
-              <p className="text-[10px] text-gray-500">Kaufen, Verkaufen, Halten</p>
+              <h1 className="text-[15px] font-bold">Krypto Markt</h1>
+              <p className="text-[10px] text-gray-500">{capabilities.exchange_connected ? "Exchange verbunden" : "Live-Kurse · Handel noch nicht aktiviert"}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -117,13 +130,19 @@ const CryptoWalletPage = ({ onBack }) => {
       </div>
 
       <div className="p-4">
+        {!capabilities.exchange_connected && (
+          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="crypto-provider-unavailable">
+            <p className="text-sm font-bold text-amber-300">Nur Marktinformation</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/70">{capabilities.message || "Custody/Exchange sind noch nicht live verbunden."}</p>
+          </div>
+        )}
         {tab === "portfolio" && (
           <div className="space-y-3">
             {portfolio.length === 0 ? (
               <div className="text-center py-16">
                 <BarChart3 size={48} className="mx-auto text-[#333] mb-4" />
-                <p className="text-white/70 font-semibold">Kein Krypto-Bestand</p>
-                <p className="text-xs text-gray-500 mt-1">Wechsle zu "Kurse" um deine erste Kryptowährung zu kaufen.</p>
+                <p className="text-white/70 font-semibold">{capabilities.custody_connected ? "Kein Krypto-Bestand" : "Custody noch nicht verbunden"}</p>
+                <p className="text-xs text-gray-500 mt-1">{capabilities.custody_connected ? 'Wechsle zu "Kurse" um deine erste Kryptowährung zu kaufen.' : 'Du kannst Live-Kurse ansehen. Echte Bestände erscheinen erst nach Custody-/Exchange-Anbindung.'}</p>
               </div>
             ) : portfolio.map((h, i) => (
               <motion.div key={h.symbol} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -149,14 +168,16 @@ const CryptoWalletPage = ({ onBack }) => {
                 </div>
                 <div className="flex gap-2 mt-3">
                   <motion.button whileTap={{ scale: 0.95 }}
-                    onClick={() => setTradeModal({ symbol: h.symbol, side: "buy" })}
-                    className="flex-1 py-2 rounded-xl bg-green-500/10 text-green-400 text-xs font-semibold flex items-center justify-center gap-1">
-                    <ArrowDownRight size={12} /> Kaufen
+                    onClick={() => capabilities.trading_available && setTradeModal({ symbol: h.symbol, side: "buy" })}
+                    disabled={!capabilities.trading_available}
+                    className="flex-1 py-2 rounded-xl bg-green-500/10 text-green-400 text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40">
+                    <ArrowDownRight size={12} /> {capabilities.trading_available ? "Kaufen" : "Exchange fehlt"}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }}
-                    onClick={() => setTradeModal({ symbol: h.symbol, side: "sell" })}
-                    className="flex-1 py-2 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold flex items-center justify-center gap-1">
-                    <ArrowUpRight size={12} /> Verkaufen
+                    onClick={() => capabilities.trading_available && setTradeModal({ symbol: h.symbol, side: "sell" })}
+                    disabled={!capabilities.trading_available}
+                    className="flex-1 py-2 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40">
+                    <ArrowUpRight size={12} /> {capabilities.trading_available ? "Verkaufen" : "Exchange fehlt"}
                   </motion.button>
                 </div>
               </motion.div>
@@ -188,10 +209,11 @@ const CryptoWalletPage = ({ onBack }) => {
                   </div>
                 </div>
                 <motion.button whileTap={{ scale: 0.9 }}
-                  onClick={() => setTradeModal({ symbol: p.symbol, side: "buy" })}
-                  className="ml-3 px-3 py-2 rounded-xl bg-[#F7931A]/10 text-[#F7931A] text-xs font-semibold"
+                  onClick={() => capabilities.trading_available && setTradeModal({ symbol: p.symbol, side: "buy" })}
+                  disabled={!capabilities.trading_available}
+                  className="ml-3 px-3 py-2 rounded-xl bg-[#F7931A]/10 text-[#F7931A] text-xs font-semibold disabled:opacity-40"
                   data-testid={`buy-${p.symbol}`}>
-                  Kaufen
+                  {capabilities.trading_available ? "Kaufen" : "Nur Kurs"}
                 </motion.button>
               </motion.div>
             ))}
@@ -274,10 +296,10 @@ const CryptoWalletPage = ({ onBack }) => {
                 <span className="text-sm font-bold" style={{ color: "#00C2FF" }}>€{balance.toFixed(2)}</span>
               </div>
 
-              <div className="text-center text-[9px] text-gray-600 mb-3">Simulierte Preise · Keine echte Börse</div>
+              <div className="text-center text-[9px] text-gray-600 mb-3">{capabilities.exchange_connected ? "Live Exchange" : "Kein Live-Exchange-Handel"}</div>
 
               <motion.button whileTap={{ scale: 0.97 }} onClick={executeTrade}
-                disabled={!tradeAmount || parseFloat(tradeAmount) <= 0 || trading}
+                disabled={!capabilities.trading_available || !tradeAmount || parseFloat(tradeAmount) <= 0 || trading}
                 className={`w-full py-3.5 rounded-xl font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2 ${
                   tradeModal.side === "buy" ? "bg-green-500 text-black" : "bg-red-500 text-white"
                 }`} data-testid="confirm-trade">
