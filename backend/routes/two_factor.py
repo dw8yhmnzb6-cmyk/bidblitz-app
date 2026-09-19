@@ -61,6 +61,30 @@ def _backup_code_hash(code: str) -> str:
     return hashlib.sha256(f"2fa-backup:{code.upper()}".encode("utf-8")).hexdigest()
 
 
+async def _consume_totp_backup_code(user_id: str, code: str) -> bool:
+    """Consume one backup code atomically so concurrent requests cannot reuse it."""
+    candidate_hash = _backup_code_hash(code)
+    target_id = ObjectId(user_id)
+
+    hashed = await db.users.update_one(
+        {"_id": target_id, "totp_backup_code_hashes": candidate_hash},
+        {
+            "$pull": {"totp_backup_code_hashes": candidate_hash},
+            "$unset": {"totp_backup_codes": ""},
+        },
+    )
+    if hashed.modified_count == 1:
+        return True
+
+    legacy_code = code.upper()
+    legacy = await db.users.update_one(
+        {"_id": target_id, "totp_backup_codes": legacy_code},
+        {
+            "$pull": {"totp_backup_codes": legacy_code},
+        },
+    )
+    return legacy.modified_count == 1
+
 
 async def send_otp_email(email: str, otp: str, purpose: str = "verification", user_name: str = ""):
     """
@@ -218,21 +242,13 @@ async def disable_2fa(req: VerifyOTPRequest, request: Request):
 
     method = user.get("two_factor_method") or "email"
     valid = False
-    used_backup_hash = None
 
     if method == "totp":
         secret = user.get("totp_secret")
         if secret:
             valid = pyotp.TOTP(secret).verify(req.code, valid_window=1)
         if not valid:
-            candidate_hash = _backup_code_hash(req.code)
-            hashes = list(user.get("totp_backup_code_hashes") or [])
-            if candidate_hash in hashes:
-                valid = True
-                used_backup_hash = candidate_hash
-            elif req.code.upper() in (user.get("totp_backup_codes") or []):
-                # One-time migration support for legacy plaintext backup codes.
-                valid = True
+            valid = await _consume_totp_backup_code(user_id, req.code)
     else:
         now = datetime.now(timezone.utc)
         otp_doc = await db.otp_codes.find_one({
@@ -501,42 +517,44 @@ async def verify_totp_login(otp: VerifyOTPRequest, session_token: str):
     if not totp_secret:
         raise HTTPException(status_code=400, detail="TOTP nicht aktiviert")
     
-    # Verify code (allow backup codes)
+    attempts = int(pending.get("attempts") or 0)
+    if attempts >= 5:
+        await db.pending_2fa.delete_one({"_id": pending["_id"]})
+        raise HTTPException(status_code=429, detail="Zu viele 2FA-Versuche. Bitte erneut anmelden.")
+
+    # Verify TOTP first. If it is not a TOTP, try to atomically consume a one-time backup code.
     totp = pyotp.TOTP(totp_secret)
     code_valid = totp.verify(otp.code, valid_window=1)
-    
-    # Check one-time backup codes by hash, with legacy migration fallback.
-    candidate_hash = _backup_code_hash(otp.code)
-    backup_hashes = list(user.get("totp_backup_code_hashes") or [])
-    legacy_backup_codes = list(user.get("totp_backup_codes") or [])
-    is_backup_code = candidate_hash in backup_hashes or otp.code.upper() in legacy_backup_codes
+    is_backup_code = False
+    if not code_valid:
+        is_backup_code = await _consume_totp_backup_code(user_id, otp.code)
 
     if not code_valid and not is_backup_code:
+        failed = await db.pending_2fa.update_one(
+            {"_id": pending["_id"], "attempts": attempts},
+            {"$inc": {"attempts": 1}, "$set": {"last_failed_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        if failed.modified_count != 1:
+            raise HTTPException(status_code=409, detail="2FA-Session wurde parallel geändert")
+        if attempts + 1 >= 5:
+            await db.pending_2fa.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=400, detail="Ungültiger Code")
 
-    if is_backup_code:
-        if candidate_hash in backup_hashes:
-            backup_hashes.remove(candidate_hash)
-        if otp.code.upper() in legacy_backup_codes:
-            legacy_backup_codes.remove(otp.code.upper())
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {
-                "$set": {"totp_backup_code_hashes": backup_hashes},
-                "$unset": {"totp_backup_codes": ""},
-            },
-        )
-        logger.info("User %s used backup code for TOTP login", user_id)
-    
-    # Clean up pending session
+    # Clean up pending session only after successful second-factor verification.
     await db.pending_2fa.delete_one({"_id": pending["_id"]})
-    
+
+    remaining_backup_codes = None
+    if is_backup_code:
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"totp_backup_code_hashes": 1, "totp_backup_codes": 1}) or {}
+        remaining_backup_codes = len(fresh.get("totp_backup_code_hashes") or []) + len(fresh.get("totp_backup_codes") or [])
+        logger.info("User %s used backup code for TOTP login", user_id)
+
     return {
         "ok": True,
         "user_id": user_id,
         "verified": True,
         "backup_code_used": is_backup_code,
-        "remaining_backup_codes": len(backup_hashes) if is_backup_code else None,
+        "remaining_backup_codes": remaining_backup_codes,
     }
 
 
