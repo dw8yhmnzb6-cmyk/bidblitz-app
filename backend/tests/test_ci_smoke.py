@@ -1145,3 +1145,40 @@ def test_apartment_bookings_use_real_escrow_availability_and_retry_safety():
     assert "bookingAttemptKeyRef" in page
     assert "'Idempotency-Key': idempotencyKey" in page
     assert "idempotency_key: idempotencyKey" in page
+
+
+def test_car_rental_money_dates_deposits_and_payouts_are_exactly_once():
+    schemas = (BACKEND_DIR / "modules" / "car_rental" / "schemas.py").read_text(encoding="utf-8")
+    repo_source = (BACKEND_DIR / "modules" / "car_rental" / "repository.py").read_text(encoding="utf-8")
+    services = (BACKEND_DIR / "modules" / "car_rental" / "services.py").read_text(encoding="utf-8")
+    routes = (BACKEND_DIR / "modules" / "car_rental" / "routes.py").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "modules" / "car-rental" / "api" / "index.js").read_text(encoding="utf-8")
+    detail = (BACKEND_DIR.parent / "frontend" / "src" / "modules" / "car-rental" / "pages" / "CarDetailPage.jsx").read_text(encoding="utf-8")
+    payouts = (BACKEND_DIR.parent / "frontend" / "src" / "modules" / "car-rental" / "pages" / "VendorPayoutsPage.jsx").read_text(encoding="utf-8")
+
+    assert "idempotency_key: str = Field(..., min_length=8" in schemas
+    assert "payment_status" in repo_source and "PaymentStatus.PAID.value" in repo_source
+    assert '"$setOnInsert": booking' in repo_source
+
+    assert "async def _claim_car_rental_days" in services
+    assert "db.car_rental_day_claims.insert_one" in services
+    assert 'idempotency_key=f"car-rental:payment:{booking_id}"' in services
+    assert "async def _ensure_vendor_pending_payout" in services
+    assert "async def _reverse_vendor_pending_payout_once" in services
+    assert 'idempotency_key=f"car-rental:reject-refund:{booking_id}"' in services
+    assert 'idempotency_key=f"car-rental:cancel-refund:{booking_id}"' in services
+    assert 'idempotency_key=f"car-rental:deposit-refund:{booking_id}"' in services
+    assert "Aktive Miete kann nicht normal storniert werden" in services
+    assert "async def _ensure_vendor_deposit_keep" in services
+
+    assert "reserve_marker = f\"payout_reservations.{key_hash}\"" in services
+    assert 'payout_id = f"PO-{key_hash.upper()}"' in services
+    assert "Externe Auszahlungsreferenz erforderlich" in services
+    assert 'user.get("kyc_status") != "approved"' in routes
+    assert '"$setOnInsert": review' in routes
+    assert "Diese Buchung wurde bereits bewertet" in routes
+
+    assert '"Idempotency-Key": idempotencyKey' in api
+    assert "bookingAttemptKeyRef" in detail
+    assert "payoutAttemptKeyRef" in payouts
+    assert "idempotency_key: idempotencyKey" in api
