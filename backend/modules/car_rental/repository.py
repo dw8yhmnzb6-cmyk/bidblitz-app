@@ -256,6 +256,7 @@ class BookingRepository:
         now = datetime.now(timezone.utc).isoformat()
         
         booking = {
+            "_id": booking_id,
             "booking_id": booking_id,
             **payload,
             "status": BookingStatus.PENDING.value,
@@ -266,9 +267,14 @@ class BookingRepository:
             "created_at": now,
             "updated_at": now,
         }
-        
-        await cls.collection.insert_one(booking)
-        return sanitize_doc(booking)
+
+        await cls.collection.update_one(
+            {"_id": booking_id},
+            {"$setOnInsert": booking},
+            upsert=True,
+        )
+        saved = await cls.collection.find_one({"_id": booking_id}) or booking
+        return sanitize_doc(saved)
     
     @classmethod
     async def get_by_id(cls, booking_id: str) -> Optional[dict]:
