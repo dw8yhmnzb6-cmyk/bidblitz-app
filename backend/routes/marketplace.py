@@ -7,6 +7,7 @@ Premium listings with boost functionality.
 
 import secrets
 import logging
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -57,6 +58,43 @@ VIP_PRICE = 4.99
 PLATFORM_COMMISSION = 0.05  # 5%
 
 
+def _require_marketplace_idempotency_key(body_key: Optional[str], request: Request) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"marketplace-buy:{key}"
+
+
+async def _credit_marketplace_revenue_once(order_id: str, amount: float, now: datetime) -> None:
+    if amount <= 0:
+        return
+    day = now.strftime("%Y-%m-%d")
+    existing = await db.platform_revenue.find_one({"date": day}, {"_id": 0, "marketplace_order_ids": 1})
+    if not existing:
+        try:
+            await db.platform_revenue.insert_one({
+                "revenue_id": secrets.token_hex(8),
+                "date": day,
+                "total": amount,
+                "by_source": {"marketplace_commission": amount},
+                "marketplace_order_ids": [order_id],
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            })
+            return
+        except Exception:
+            pass
+
+    await db.platform_revenue.update_one(
+        {"date": day, "marketplace_order_ids": {"$ne": order_id}},
+        {
+            "$inc": {"total": amount, "by_source.marketplace_commission": amount},
+            "$addToSet": {"marketplace_order_ids": order_id},
+            "$set": {"updated_at": now.isoformat()},
+        },
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SCHEMAS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -92,6 +130,7 @@ class BuyRequest(BaseModel):
     listing_id: str
     use_shipping: bool = False
     message: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class ContactSellerRequest(BaseModel):
@@ -391,87 +430,72 @@ async def delete_listing(listing_id: str, request: Request):
 
 @router.post("/buy")
 async def buy_item(req: BuyRequest, request: Request):
-    """
-    Buy item with wallet balance.
-    
-    Flow:
-    1. Validate listing available
-    2. Check buyer balance
-    3. Deduct from buyer
-    4. Credit seller (minus commission)
-    5. Mark as sold
-    """
+    """Buy one listing exactly once with atomic reservation and rollback-safe settlement."""
     user = await get_current_user(request)
     buyer_id = str(user["_id"])
-    
+    idempotency_key = _require_marketplace_idempotency_key(req.idempotency_key, request)
+    key_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    order_id = f"MKO-{key_hash}"
+
+    existing_order = await db.marketplace_orders.find_one(
+        {"order_id": order_id, "buyer_id": buyer_id},
+        {"_id": 0},
+    )
+    if existing_order:
+        if existing_order.get("status") == "completed":
+            await _credit_marketplace_revenue_once(
+                order_id,
+                float(existing_order.get("commission") or 0),
+                datetime.fromisoformat(existing_order["created_at"]),
+            )
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": existing_order.get("status") == "completed",
+            "order": existing_order,
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Kauf bereits verarbeitet.",
+            "replayed": True,
+        }
+
     listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id})
     if not listing:
         raise HTTPException(status_code=404, detail="Anzeige nicht gefunden")
-    
-    if listing["status"] != "active":
-        raise HTTPException(status_code=400, detail="Anzeige nicht mehr verfügbar")
-    
-    seller_id = listing["seller_id"]
-    
-    if seller_id == buyer_id:
+    if listing.get("seller_id") == buyer_id:
         raise HTTPException(status_code=400, detail="Du kannst deine eigene Anzeige nicht kaufen")
-    
-    # Calculate total price
-    item_price = listing["price"]
-    shipping_cost = listing.get("shipping_cost", 0) if req.use_shipping else 0
-    total_price = item_price + shipping_cost
-    
-    # Check buyer balance
-    buyer_balance = user.get("balance", 0)
-    if buyer_balance < total_price:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Nicht genug Guthaben. Benötigt: €{total_price:.2f}, Verfügbar: €{buyer_balance:.2f}"
-        )
-    
-    now = datetime.now(timezone.utc)
-    order_id = secrets.token_hex(8)
-    
-    # Calculate commission
+
+    claim = await db.marketplace_listings.update_one(
+        {"listing_id": req.listing_id, "status": "active"},
+        {"$set": {
+            "status": "processing",
+            "purchase_claim_key": key_hash,
+            "purchase_claim_buyer_id": buyer_id,
+            "purchase_claimed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if claim.modified_count != 1:
+        current = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0})
+        if current and current.get("order_id") == order_id and current.get("sold_to") == buyer_id:
+            order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
+            if order:
+                fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+                return {"ok": True, "order": order, "new_balance": round(float(fresh_user.get("balance") or 0), 2), "message": "Kauf bereits verarbeitet.", "replayed": True}
+        raise HTTPException(status_code=409, detail="Anzeige wird gerade gekauft oder ist nicht mehr verfügbar")
+
+    listing = await db.marketplace_listings.find_one(
+        {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
+        {"_id": 0},
+    )
+    if not listing:
+        raise HTTPException(status_code=409, detail="Kaufreservierung konnte nicht bestätigt werden")
+
+    seller_id = listing["seller_id"]
+    item_price = round(float(listing["price"]), 2)
+    shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0.0
+    total_price = round(item_price + shipping_cost, 2)
     commission = round(item_price * PLATFORM_COMMISSION, 2)
-    seller_amount = round(item_price - commission, 2)
-    
-    # Debit buyer
-    debit_result = await debit_wallet(
-        user_id=buyer_id,
-        amount=total_price,
-        tx_type=TransactionType.PAYMENT,
-        description=f"Marketplace: {listing['title'][:50]}",
-        reference=f"MKT-{order_id[:8].upper()}",
-        merchant_name=listing.get("seller_name", "Verkäufer"),
-        metadata={
-            "listing_id": req.listing_id,
-            "order_id": order_id,
-            "item_price": item_price,
-            "shipping_cost": shipping_cost,
-        }
-    )
-    
-    if not debit_result.success:
-        raise HTTPException(status_code=400, detail=debit_result.error)
-    
-    # Credit seller (minus commission)
-    credit_result = await credit_wallet(
-        user_id=seller_id,
-        amount=seller_amount,
-        tx_type=TransactionType.MERCHANT_CREDIT,
-        description=f"Verkauf: {listing['title'][:50]}",
-        reference=f"MKT-SELL-{order_id[:8].upper()}",
-        source="marketplace",
-        metadata={
-            "listing_id": req.listing_id,
-            "order_id": order_id,
-            "original_price": item_price,
-            "commission": commission,
-        }
-    )
-    
-    # Record order
+    seller_amount = round(item_price - commission + shipping_cost, 2)
+    now = datetime.now(timezone.utc)
+
     order = {
         "order_id": order_id,
         "listing_id": req.listing_id,
@@ -487,61 +511,148 @@ async def buy_item(req: BuyRequest, request: Request):
         "seller_amount": seller_amount,
         "use_shipping": req.use_shipping,
         "message": req.message,
-        "status": "completed",
-        "buyer_payment_id": debit_result.transaction_id,
-        "seller_payment_id": credit_result.transaction_id if credit_result.success else None,
+        "status": "processing",
+        "idempotency_key": idempotency_key,
         "created_at": now.isoformat(),
     }
-    await db.marketplace_orders.insert_one(order)
-    order.pop("_id", None)
-    
-    # Mark listing as sold
-    await db.marketplace_listings.update_one(
-        {"listing_id": req.listing_id},
-        {"$set": {
-            "status": "sold",
-            "sold_at": now.isoformat(),
-            "sold_to": buyer_id,
+    await db.marketplace_orders.update_one(
+        {"order_id": order_id},
+        {"$setOnInsert": order},
+        upsert=True,
+    )
+
+    debit_result = await debit_wallet(
+        user_id=buyer_id,
+        amount=total_price,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Marketplace: {listing['title'][:50]}",
+        reference=f"MKT-{key_hash[:12].upper()}",
+        merchant_name=listing.get("seller_name", "Verkäufer"),
+        metadata={
+            "listing_id": req.listing_id,
             "order_id": order_id,
-        }}
+            "item_price": item_price,
+            "shipping_cost": shipping_cost,
+        },
+        idempotency_key=idempotency_key,
     )
-    
-    # Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": commission, "by_source.marketplace_commission": commission}},
-        upsert=True
+    if not debit_result.success:
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"status": "payment_failed", "failure_reason": debit_result.error, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        await db.marketplace_listings.update_one(
+            {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
+            {"$set": {"status": "active"}, "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""}},
+        )
+        raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
+
+    credit_result = await credit_wallet(
+        user_id=seller_id,
+        amount=seller_amount,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Verkauf: {listing['title'][:50]}",
+        reference=f"MKT-SELL-{key_hash[:12].upper()}",
+        source="marketplace",
+        metadata={
+            "listing_id": req.listing_id,
+            "order_id": order_id,
+            "original_price": item_price,
+            "shipping_cost": shipping_cost,
+            "commission": commission,
+        },
+        idempotency_key=f"marketplace-seller:{idempotency_key}",
     )
-    
-    # Send notification to seller
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": seller_id,
-        "type": "marketplace_sale",
-        "title": "Artikel verkauft!",
-        "message": f"Dein Artikel '{listing['title'][:30]}' wurde für €{item_price:.2f} verkauft.",
-        "data": {"order_id": order_id, "listing_id": req.listing_id},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    logger.info(f"Marketplace sale: {order_id} - {listing['title'][:30]} - €{total_price:.2f}")
-    
-    # ── Loyalty / Coins reward for marketplace purchase ──
+
+    if not credit_result.success:
+        refund = await credit_wallet(
+            user_id=buyer_id,
+            amount=total_price,
+            tx_type=TransactionType.REFUND,
+            description=f"Marketplace Rückbuchung: {listing['title'][:50]}",
+            reference=f"MKT-REF-{key_hash[:12].upper()}",
+            source="marketplace_settlement_rollback",
+            metadata={"listing_id": req.listing_id, "order_id": order_id},
+            idempotency_key=f"marketplace-refund:{idempotency_key}",
+        )
+        status = "refunded" if refund.success else "reconciliation_required"
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "status": status,
+                "buyer_payment_id": debit_result.transaction_id,
+                "refund_payment_id": refund.transaction_id if refund.success else None,
+                "failure_reason": credit_result.error or "seller_credit_failed",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        await db.marketplace_listings.update_one(
+            {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
+            {"$set": {"status": "active"}, "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""}},
+        )
+        if not refund.success:
+            raise HTTPException(status_code=500, detail="Verkäufergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+        raise HTTPException(status_code=400, detail="Verkäufergutschrift fehlgeschlagen. Käuferbetrag wurde zurückgebucht.")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.marketplace_orders.update_one(
+        {"order_id": order_id},
+        {"$set": {
+            "status": "completed",
+            "buyer_payment_id": debit_result.transaction_id,
+            "seller_payment_id": credit_result.transaction_id,
+            "completed_at": completed_at,
+        }},
+    )
+    await db.marketplace_listings.update_one(
+        {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
+        {
+            "$set": {
+                "status": "sold",
+                "sold_at": completed_at,
+                "sold_to": buyer_id,
+                "order_id": order_id,
+            },
+            "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""},
+        },
+    )
+    await _credit_marketplace_revenue_once(order_id, commission, now)
+
+    notification_id = f"MKT-SALE-{order_id}"
+    await db.notifications.update_one(
+        {"id": notification_id},
+        {"$setOnInsert": {
+            "id": notification_id,
+            "user_id": seller_id,
+            "type": "marketplace_sale",
+            "title": "Artikel verkauft!",
+            "message": f"Dein Artikel '{listing['title'][:30]}' wurde für €{item_price:.2f} verkauft.",
+            "data": {"order_id": order_id, "listing_id": req.listing_id},
+            "read": False,
+            "created_at": completed_at,
+        }},
+        upsert=True,
+    )
+
     try:
         from routes.loyalty_system import process_loyalty_rewards
         await process_loyalty_rewards(
-            user_id=buyer_id, source_type="marketplace", source_id=order_id,
-            amount=total_price, tx_id=debit_result.transaction_id or order_id,
+            user_id=buyer_id,
+            source_type="marketplace",
+            source_id=order_id,
+            amount=total_price,
+            tx_id=debit_result.transaction_id or order_id,
         )
     except Exception:
         pass
-    
+
+    final_order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
     return {
         "ok": True,
-        "order": order,
+        "order": final_order,
         "new_balance": debit_result.new_balance,
         "message": f"Kauf erfolgreich! €{total_price:.2f} bezahlt.",
+        "replayed": debit_result.idempotent_replay,
     }
 
 
