@@ -57,6 +57,11 @@ def _kids_pin_matches(pin: str, child: dict) -> bool:
     return hmac.compare_digest(hashlib.sha256(pin.encode()).hexdigest(), legacy)
 
 
+def _hash_child_session_token(token: str) -> str:
+    return hashlib.sha256(f"kids-session:{token}".encode("utf-8")).hexdigest()
+
+
+
 async def _wallet_spend_allowed(child: dict) -> tuple[bool, Optional[str]]:
     settings = await db.kids_controls.find_one({"child_id": child["child_id"]}, {"_id": 0}) or {}
     if settings.get("lock_all"):
@@ -1324,12 +1329,15 @@ async def child_login(req: ChildLoginRequest):
     
     await db.kids_sessions.update_one(
         {"child_id": req.child_id},
-        {"$set": {
-            "child_id": req.child_id,
-            "token": child_token,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
-        }},
+        {
+            "$set": {
+                "child_id": req.child_id,
+                "token_hash": _hash_child_session_token(child_token),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+            },
+            "$unset": {"token": ""},
+        },
         upsert=True
     )
     
@@ -1349,14 +1357,20 @@ async def get_child_from_token(request: Request):
     if not auth:
         raise HTTPException(status_code=401, detail="Kein Child-Token")
     
-    session = await db.kids_sessions.find_one({"token": auth})
+    token_hash = _hash_child_session_token(auth)
+    session = await db.kids_sessions.find_one({
+        "$or": [
+            {"token_hash": token_hash},
+            {"token": auth},
+        ]
+    })
     if not session:
         raise HTTPException(status_code=401, detail="Ungültige Session")
     
     # Check expiry
     expires = datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00"))
     if datetime.now(timezone.utc) > expires:
-        await db.kids_sessions.delete_one({"token": auth})
+        await db.kids_sessions.delete_one({"_id": session["_id"]})
         raise HTTPException(status_code=401, detail="Session abgelaufen")
     
     child = await db.kids_children.find_one({"child_id": session["child_id"]}, {"_id": 0})
@@ -1503,7 +1517,12 @@ async def child_mode_logout(request: Request):
     """Child logs out of child mode."""
     auth = request.headers.get("X-Child-Token")
     if auth:
-        await db.kids_sessions.delete_one({"token": auth})
+        await db.kids_sessions.delete_one({
+            "$or": [
+                {"token_hash": _hash_child_session_token(auth)},
+                {"token": auth},
+            ]
+        })
     return {"ok": True}
 
 
