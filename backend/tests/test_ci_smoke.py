@@ -1402,3 +1402,23 @@ def test_supercharger_staking_is_fail_closed_without_live_provider():
     assert "capabilities.deposit_available" in page
     assert "supercharger-provider-unavailable" in page
     assert "Noch nicht verfügbar" in page
+
+
+def test_stocks_are_live_market_data_only_until_broker_is_connected():
+    backend = (BACKEND_DIR / "routes" / "stocks.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "StocksPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/capabilities")' in backend
+    assert '"broker_connected": False' in backend
+    assert '"trading_available": bool(TEST_MODE)' in backend
+    assert "Live-Marktdaten sind momentan nicht verfügbar" in backend
+    assert "Echter Aktienhandel ist deaktiviert" in backend
+    assert "legacy_demo_holdings" in backend
+    assert "legacy_demo_trades" in backend
+    assert '"routes.stocks", "router"' in registry
+
+    assert "/api/stocks/capabilities" in page
+    assert "stocks-broker-unavailable" in page
+    assert "capabilities.trading_available" in page
+    assert "Live-Marktdaten · Handel noch nicht aktiviert" in page
