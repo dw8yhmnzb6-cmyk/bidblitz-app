@@ -5,7 +5,7 @@ Einmal-Karten für sicheres Online-Shopping
 """
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
@@ -14,6 +14,7 @@ from core.security import get_current_user
 from core.config import TEST_MODE
 import secrets
 import random
+import hashlib
 
 router = APIRouter(prefix="/api/cards", tags=["virtual-cards"])
 
@@ -33,22 +34,72 @@ def generate_card_id():
     return f"CARD-{secrets.token_hex(4).upper()}"
 
 
+def _require_virtual_card_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Virtuelle Karten sind noch nicht mit einem verifizierten Karten-Issuer verbunden. "
+                "Es werden in Production keine selbst erzeugten PAN/CVV ausgegeben."
+            ),
+        )
+
+
+async def _refund_legacy_card_reservation_once(card: dict, amount: float, reason: str) -> bool:
+    amount = round(max(0.0, float(amount or 0)), 2)
+    if amount <= 0:
+        return True
+    user_id = str(card.get("user_id") or "")
+    if not ObjectId.is_valid(user_id):
+        return False
+    marker = hashlib.sha256(
+        f"virtual-card-refund:{card.get('card_id')}:{reason}".encode("utf-8")
+    ).hexdigest()[:24]
+    marker_field = f"virtual_card_refund_markers.{marker}"
+    result = await db.users.update_one(
+        {
+            "_id": ObjectId(user_id),
+            marker_field: {"$exists": False},
+            "reserved_balance": {"$gte": amount},
+        },
+        {
+            "$inc": {"balance": amount, "reserved_balance": -amount},
+            "$set": {
+                marker_field: {
+                    "card_id": card.get("card_id"),
+                    "amount": amount,
+                    "reason": reason,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if result.modified_count == 1:
+        return True
+    user = await db.users.find_one(
+        {"_id": ObjectId(user_id), marker_field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(user)
+
+
 class CreateCardRequest(BaseModel):
-    name: str  # "Amazon Einkauf", "Netflix", etc.
-    limit: float
+    name: str = Field(..., min_length=1, max_length=120)
+    limit: float = Field(..., ge=1, le=5000, allow_inf_nan=False)
     single_use: bool = True
-    expires_hours: int = 24  # Auto-expire after X hours
+    expires_hours: int = Field(default=24, ge=1, le=720)
 
 
 class CardPaymentRequest(BaseModel):
     card_id: str
-    amount: float
-    merchant: str
+    amount: float = Field(..., gt=0, le=5000, allow_inf_nan=False)
+    merchant: str = Field(..., min_length=1, max_length=180)
 
 
 @router.post("/create")
 async def create_virtual_card(req: CreateCardRequest, request: Request):
-    """Create a new virtual card"""
+    """Legacy virtual-card simulator; unavailable in production until issuer integration exists."""
+    _require_virtual_card_test_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -145,7 +196,8 @@ async def get_my_cards(request: Request, include_inactive: bool = False):
 
 @router.get("/{card_id}")
 async def get_card_details(card_id: str, request: Request):
-    """Get full card details including CVV"""
+    """Return simulator PAN/CVV only in test mode."""
+    _require_virtual_card_test_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -169,50 +221,78 @@ async def freeze_card(card_id: str, request: Request):
 
 @router.delete("/{card_id}")
 async def delete_card(card_id: str, request: Request):
-    """Delete card and refund remaining balance"""
+    """Delete a legacy simulated card and release its reserved wallet amount exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+
     card = await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id})
     if not card:
         raise HTTPException(status_code=404, detail="Karte nicht gefunden")
-    
-    remaining = card.get("remaining", 0)
-    
-    # Refund remaining balance
-    if remaining > 0:
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": remaining, "reserved_balance": -remaining}}
-        )
-    
-    await db.virtual_cards.update_one(
-        {"card_id": card_id},
-        {"$set": {"status": "deleted", "remaining": 0}}
-    )
-    
-    return {"success": True, "refunded": remaining}
+    if card.get("status") == "deleted":
+        return {"success": True, "refunded": float(card.get("refunded_amount") or 0), "replayed": True}
 
+    claim = await db.virtual_cards.find_one_and_update(
+        {
+            "card_id": card_id,
+            "user_id": user_id,
+            "status": {"$nin": ["deleted", "deleting"]},
+        },
+        {"$set": {
+            "status": "deleting",
+            "delete_started_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        return_document=True,
+    )
+    card = claim or await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id}) or card
+    remaining = round(max(0.0, float(card.get("remaining") or 0)), 2)
+
+    if remaining > 0:
+        if not await _refund_legacy_card_reservation_once(card, remaining, "delete"):
+            raise HTTPException(status_code=409, detail="Kartenreservierung benötigt Abstimmung")
+
+    await db.virtual_cards.update_one(
+        {"card_id": card_id, "user_id": user_id, "status": "deleting"},
+        {"$set": {
+            "status": "deleted",
+            "remaining": 0.0,
+            "refunded_amount": remaining,
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {"success": True, "refunded": remaining, "replayed": claim is None}
 
 async def expire_card(card_id: str, user_id: str):
-    """Internal: Expire card and refund"""
-    card = await db.virtual_cards.find_one({"card_id": card_id})
-    if not card or card["status"] != "active":
+    """Expire a legacy simulated card and release reserved funds exactly once."""
+    card = await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id})
+    if not card or card.get("status") in {"expired", "deleted"}:
         return
-    
-    remaining = card.get("remaining", 0)
-    
-    if remaining > 0:
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$inc": {"balance": remaining, "reserved_balance": -remaining}}
-        )
-    
-    await db.virtual_cards.update_one(
-        {"card_id": card_id},
-        {"$set": {"status": "expired", "remaining": 0}}
-    )
 
+    claimed = await db.virtual_cards.find_one_and_update(
+        {
+            "card_id": card_id,
+            "user_id": user_id,
+            "status": {"$in": ["active", "frozen", "used", "expiring"]},
+        },
+        {"$set": {
+            "status": "expiring",
+            "expire_started_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        return_document=True,
+    )
+    card = claimed or card
+    remaining = round(max(0.0, float(card.get("remaining") or 0)), 2)
+    if remaining > 0 and not await _refund_legacy_card_reservation_once(card, remaining, "expiry"):
+        raise RuntimeError(f"Virtual card {card_id} reservation requires reconciliation")
+
+    await db.virtual_cards.update_one(
+        {"card_id": card_id, "user_id": user_id, "status": "expiring"},
+        {"$set": {
+            "status": "expired",
+            "remaining": 0.0,
+            "refunded_amount": remaining,
+            "expired_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
 
 # Simulated payment endpoint (in production, this would be a webhook from card processor)
 @router.post("/payment")
