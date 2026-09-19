@@ -189,8 +189,14 @@ async def create_indexes():
     
     await safe_create_index(db.kids_children, "child_id", unique=True)
     await safe_create_index(db.kids_children, "parent_id")
+    await safe_create_index(db.kids_transactions, "id", unique=True, sparse=True, critical=True)
     await safe_create_index(db.kids_transactions, [("child_id", 1), ("created_at", -1)])
     await safe_create_index(db.kids_transactions, [("parent_id", 1), ("created_at", -1)])
+    await safe_create_index(db.kids_subscriptions, "user_id", unique=True, critical=True)
+    await safe_create_index(db.kids_checkout_sessions, "session_id", unique=True, critical=True)
+    await safe_create_index(db.kids_sessions, "child_id", unique=True, critical=True)
+    await safe_create_index(db.kids_sessions, "token", unique=True, critical=True)
+    await safe_create_index(db.kids_login_attempts, "child_id", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # SUBSCRIPTIONS
