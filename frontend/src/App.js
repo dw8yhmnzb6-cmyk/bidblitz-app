@@ -1018,7 +1018,11 @@ function AppContent() {
       case "/move-earn":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
       case "/reward-plinko":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Reward Plinko" description="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert. Es werden keine BidCoins oder Wallet-Werte durch Plinko erzeugt." onBack={() => handleNavigate("/rewards")} />;
       case "/rewards-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/marketing-hub":
