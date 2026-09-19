@@ -1185,47 +1185,107 @@ class PayoutService:
     
     @classmethod
     async def request_payout(cls, vendor_id: str, amount: float) -> Tuple[dict, str]:
-        """Request vendor payout."""
+        """Reserve pending vendor earnings atomically and create a payout request."""
+        amount = round(float(amount or 0), 2)
+        if amount < 50:
+            return None, "Mindestbetrag für Auszahlung: €50"
+
         vendor = await VendorRepository.get_by_id(vendor_id)
         if not vendor:
             return None, "Vermieter nicht gefunden"
-        
-        if amount > vendor.get("pending_payout", 0):
-            return None, "Nicht genügend Guthaben"
-        
-        if amount < 50:  # Minimum payout
-            return None, "Mindestbetrag für Auszahlung: €50"
-        
-        payout = await PayoutRepository.create(vendor_id, amount, {
-            "bank_name": vendor["company"].get("bank_name"),
-            "iban": vendor["company"].get("iban"),
-            "bic": vendor["company"].get("bic"),
-        })
-        
-        # Reduce pending payout
-        await VendorRepository.increment_stats(vendor_id, "pending_payout", -amount)
-        
+        if vendor.get("status") != VendorStatus.APPROVED.value:
+            return None, "Vermieter ist nicht freigeschaltet"
+        company = vendor.get("company") or {}
+        if not company.get("iban"):
+            return None, "IBAN nicht hinterlegt"
+
+        reserve = await db.car_rental_vendors.update_one(
+            {
+                "vendor_id": vendor_id,
+                "status": VendorStatus.APPROVED.value,
+                "pending_payout": {"$gte": amount},
+            },
+            {
+                "$inc": {"pending_payout": -amount},
+                "$set": {"last_payout_request_at": datetime.now(timezone.utc).isoformat()},
+            },
+        )
+        if reserve.modified_count != 1:
+            return None, "Nicht genügend verfügbares Guthaben"
+
+        try:
+            payout = await PayoutRepository.create(vendor_id, amount, {
+                "bank_name": company.get("bank_name"),
+                "iban": company.get("iban"),
+                "bic": company.get("bic"),
+                "reserved_from_pending_payout": True,
+            })
+        except Exception:
+            await db.car_rental_vendors.update_one(
+                {"vendor_id": vendor_id},
+                {"$inc": {"pending_payout": amount}},
+            )
+            raise
+
         return payout, None
     
     @classmethod
     async def process_payout(cls, payout_id: str, status: str, transaction_ref: str = None) -> Tuple[bool, str]:
-        """Admin processes payout."""
+        """Move payout through a CAS state machine; failed payouts restore funds once."""
+        if status not in {"processing", "completed", "failed"}:
+            return False, "Ungültiger Auszahlungsstatus"
+
         payout = await PayoutRepository.get_by_id(payout_id)
         if not payout:
             return False, "Auszahlung nicht gefunden"
-        
-        if payout["status"] != "pending":
+
+        current = str(payout.get("status") or "pending")
+        if current == status:
+            return True, None
+        if current in {"completed", "failed"}:
             return False, "Auszahlung bereits verarbeitet"
-        
-        update = {"transaction_ref": transaction_ref}
-        
-        if status == "completed":
-            update["completed_at"] = datetime.now(timezone.utc).isoformat()
-        elif status == "failed":
-            # Return amount to vendor pending payout
-            await VendorRepository.increment_stats(
-                payout["vendor_id"], "pending_payout", payout["amount"]
+
+        now = datetime.now(timezone.utc).isoformat()
+        if status == "processing":
+            result = await db.car_rental_payouts.update_one(
+                {"payout_id": payout_id, "status": "pending"},
+                {"$set": {"status": "processing", "updated_at": now}},
             )
-        
-        await PayoutRepository.update_status(payout_id, status, update)
+            if result.modified_count != 1:
+                fresh = await PayoutRepository.get_by_id(payout_id)
+                return (True, None) if fresh and fresh.get("status") == "processing" else (False, "Auszahlung wurde parallel geändert")
+            return True, None
+
+        if status == "completed":
+            transaction_ref = str(transaction_ref or "").strip()
+            if len(transaction_ref) < 4:
+                return False, "Externe Auszahlungsreferenz erforderlich"
+            result = await db.car_rental_payouts.update_one(
+                {"payout_id": payout_id, "status": {"$in": ["pending", "processing"]}},
+                {"$set": {
+                    "status": "completed",
+                    "transaction_ref": transaction_ref,
+                    "completed_at": now,
+                    "updated_at": now,
+                }},
+            )
+            if result.modified_count != 1:
+                fresh = await PayoutRepository.get_by_id(payout_id)
+                return (True, None) if fresh and fresh.get("status") == "completed" else (False, "Auszahlung wurde parallel geändert")
+            return True, None
+
+        # failed
+        result = await db.car_rental_payouts.update_one(
+            {"payout_id": payout_id, "status": {"$in": ["pending", "processing"]}},
+            {"$set": {"status": "failed", "failed_at": now, "updated_at": now}},
+        )
+        if result.modified_count != 1:
+            fresh = await PayoutRepository.get_by_id(payout_id)
+            return (True, None) if fresh and fresh.get("status") == "failed" else (False, "Auszahlung wurde parallel geändert")
+
+        if payout.get("reserved_from_pending_payout", True):
+            await db.car_rental_vendors.update_one(
+                {"vendor_id": payout["vendor_id"]},
+                {"$inc": {"pending_payout": round(float(payout["amount"]), 2)}},
+            )
         return True, None
