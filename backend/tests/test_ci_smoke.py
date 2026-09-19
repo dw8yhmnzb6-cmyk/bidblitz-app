@@ -982,3 +982,20 @@ def test_admin_account_actions_preserve_sessions_ledgers_and_refund_safety():
     assert '"p2p_send"' in source
     assert "Bitte den modulspezifischen Refund verwenden" in source
     assert '"replayed": result.idempotent_replay' in source
+
+
+def test_support_ticket_lifecycle_is_canonical_and_closed_tickets_are_immutable():
+    support = (BACKEND_DIR / "routes" / "support.py").read_text(encoding="utf-8")
+    legacy = (BACKEND_DIR / "routes" / "support_tickets.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "SupportChatPage.jsx").read_text(encoding="utf-8")
+
+    assert '@limiter.limit("10/hour")' in support
+    assert '@limiter.limit("60/minute")' in support
+    assert 'ticket.get("status") == "closed"' in support
+    assert '"status": "closed"' in support
+    assert 'ticket["status"] == "resolved" and not is_admin' in support
+    assert 'status not in {"open", "in_progress", "resolved", "closed"}' in support
+    assert "canonical_close_ticket" in legacy
+    assert 'user.get("role") in ("admin", "super_admin")' in legacy
+    assert 'activeTicket.status !== "closed"' in page
+    assert 'activeTicket.status !== "resolved" || true' not in page
