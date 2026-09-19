@@ -3,7 +3,7 @@
  * Complete child wallet management and detail view for parents
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Wallet, Send, Lock, Unlock, Settings, Clock,
@@ -32,6 +32,7 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
   const [transferAmount, setTransferAmount] = useState('');
   const [transferNote, setTransferNote] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  const transferAttemptKeyRef = useRef(null);
   
   // Limits state - ZEITLIMITS (Bildschirmzeit in Minuten)
   const [dailyLimit, setDailyLimit] = useState(120); // 2 Stunden default
@@ -104,6 +105,10 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
     }
   }, [error]);
 
+  useEffect(() => {
+    transferAttemptKeyRef.current = null;
+  }, [child.child_id, transferAmount, transferNote]);
+
   // Transfer money to child
   const handleTransfer = async () => {
     const amount = parseFloat(transferAmount);
@@ -126,11 +131,19 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
     setError(null);
     setShowConfirm(false);
     try {
+      if (!transferAttemptKeyRef.current) {
+        transferAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `kids-transfer-${crypto.randomUUID()}`
+          : `kids-transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = transferAttemptKeyRef.current;
       const result = await api.transferToChild(child.child_id, {
         child_id: child.child_id,
         amount,
-        note: transferNote || undefined
-      });
+        note: transferNote || undefined,
+        idempotency_key: idempotencyKey
+      }, idempotencyKey);
+      transferAttemptKeyRef.current = null;
       setSuccess(result.message || `€${amount.toFixed(2)} gesendet!`);
       setTransferAmount('');
       setTransferNote('');
