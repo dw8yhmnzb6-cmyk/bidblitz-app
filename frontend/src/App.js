@@ -1353,9 +1353,17 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       
       case "/challenges":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChallengesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <ChallengesPage onBack={() => handleNavigate("/more")} />
+            : <ProviderUnavailablePage title="Challenges" description="BLZ-Gamification-Rewards sind in Production deaktiviert. Challenges bleiben gesperrt, bis ein freigegebenes Reward-Modell verwendet wird." onBack={() => handleNavigate("/more")} />;
       case "/achievements":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AchievementsPage onBack={() => handleNavigate("/gaming")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <AchievementsPage onBack={() => handleNavigate("/gaming")} />
+            : <ProviderUnavailablePage title="Achievements" description="BLZ-Achievement-Rewards sind in Production deaktiviert. Es werden keine Token-Rewards aus Achievements erzeugt." onBack={() => handleNavigate("/more")} />;
       case "/friends":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FriendsPage onBack={() => handleNavigate("/more")} />;
       case "/settings/2fa":
