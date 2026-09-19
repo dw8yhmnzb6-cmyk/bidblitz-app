@@ -201,7 +201,8 @@ async def create_indexes():
     await safe_create_index(db.kids_subscriptions, "user_id", unique=True, critical=True)
     await safe_create_index(db.kids_checkout_sessions, "session_id", unique=True, critical=True)
     await safe_create_index(db.kids_sessions, "child_id", unique=True, critical=True)
-    await safe_create_index(db.kids_sessions, "token", unique=True, critical=True)
+    await safe_create_index(db.kids_sessions, "token_hash", unique=True, sparse=True, critical=True)
+    await safe_create_index(db.kids_sessions, "token", unique=True, sparse=True)
     await safe_create_index(db.kids_login_attempts, "child_id", unique=True, critical=True)
     
     # ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +223,11 @@ async def create_indexes():
     await safe_create_index(db.scooter_rides, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mobility_payments, "payment_id", unique=True, critical=True)
     await safe_create_index(db.mobility_earnings, "earning_id", unique=True, critical=True)
+
+    # POS financial identities
+    await safe_create_index(db.pos_payments, "payment_id", unique=True, critical=True)
+    await safe_create_index(db.pos_sales, "payment_id", unique=True, sparse=True, critical=True)
+    await safe_create_index(db.pos_refunds, "refund_id", unique=True, sparse=True, critical=True)
     
     await safe_create_index(db.food_orders, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.food_orders, [("restaurant_id", 1), ("status", 1)])
