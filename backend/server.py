@@ -145,6 +145,8 @@ def validate_runtime_safety():
         errors.append("TEST_MODE=true is forbidden in production")
     if os.environ.get("DEMO_MODE", "false").lower() == "true":
         errors.append("DEMO_MODE=true is forbidden in production")
+    if os.environ.get("STAFF_DEMO_ENABLED", "false").lower() == "true":
+        errors.append("STAFF_DEMO_ENABLED=true is forbidden in production")
     if os.environ.get("MOCK_PAYMENTS", "false").lower() == "true":
         errors.append("MOCK_PAYMENTS=true is forbidden in production")
     if os.environ.get("ALLOW_FAKE_TOPUP", "false").lower() == "true":
