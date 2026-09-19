@@ -731,3 +731,25 @@ def test_food_orders_are_server_priced_retry_safe_and_settle_once():
     assert "extra_ids: i.extra_ids || []" in food_page
     assert "promo_code: promoApplied?.code || null" in food_page
     assert "/api/food/promo/validate" in checkout
+
+
+def test_restaurant_reservations_are_capacity_and_payment_safe():
+    source = (BACKEND_DIR / "routes" / "restaurants.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "RestaurantReservationPage.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_reservation_idempotency_key" in source
+    assert "def _reservation_slot_id" in source
+    assert "async def _claim_reservation_seats" in source
+    assert '"remaining_seats": {"$gte": guests}' in source
+    assert "async def _release_reservation_seats_once" in source
+    assert 'reservation_deposit' in source
+    assert 'amount=deposit' in source
+    assert 'idempotency_key=idempotency_key' in source
+    assert 'idempotency_key=f"restaurant-reservation-refund:{reservation_id}"' in source
+    assert '"cashback": 0.0' in source
+    assert '"$inc": {"balance": -deposit}' not in source
+    assert '"$inc": {"balance": r["deposit"]}' not in source
+
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "reservationAttemptKeyRef" in page
+    assert "Reservierungskaution" in page
