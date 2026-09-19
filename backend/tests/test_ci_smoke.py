@@ -1361,3 +1361,27 @@ def test_event_ticket_inventory_and_wallet_settlement_are_exactly_once():
     assert "purchaseAttemptKeyRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
+
+
+def test_legacy_ev_finder_routes_production_users_into_live_ocpp_flow():
+    backend = (BACKEND_DIR / "routes" / "ladesaeulen.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "LadesaeulenPage.jsx").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert "if not TEST_MODE:" in backend
+    assert '"mode": "live_ocpp"' in backend
+    assert "async def _live_station_doc" in backend
+    assert "Legacy-Ladevorgang ist deaktiviert" in backend
+    assert "random.uniform(5, 60)" not in backend
+    assert 'db.ev_charging_sessions.find(' in backend
+    assert '"cost": round(float(session.get("final_cost")' in backend
+
+    assert "station?.live_ocpp" in page
+    assert "/ev/start/" in page
+    assert 'mode==="live_ocpp"' in page
+    assert "Live OCPP · BidBlitz Wallet" in page
+
+    assert 'currentPath.startsWith("/ev/start/")' in app
+    assert 'currentPath.startsWith("/ev/session/")' in app
+    assert "<EVStartChargingPage" in app
+    assert "<EVLiveSessionPage" in app
