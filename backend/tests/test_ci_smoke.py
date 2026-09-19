@@ -1422,3 +1422,46 @@ def test_stocks_are_live_market_data_only_until_broker_is_connected():
     assert "stocks-broker-unavailable" in page
     assert "capabilities.trading_available" in page
     assert "Live-Marktdaten · Handel noch nicht aktiviert" in page
+
+
+def test_unconnected_financial_products_render_fail_closed_provider_page():
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ProviderUnavailablePage.jsx").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+
+    assert "ProviderUnavailablePage" in app
+    for route in [
+        "/bnpl", "/crypto-earn", "/crypto-baskets", "/derivatives", "/predictions",
+        "/defi-wallet", "/crypto-loans", "/p2p-lending", "/trading-bot",
+    ]:
+        assert f'case "{route}"' in app
+    assert "Keine Fake-Transaktionen" in page
+    assert "keine Wallet-Guthaben noch Krypto-Bestände bewegt" in page
+
+    # Unsafe local financial simulators stay unregistered in production runtime.
+    for module in [
+        "routes.bnpl", "routes.crypto_earn", "routes.crypto_baskets", "routes.derivatives",
+        "routes.predictions", "routes.defi_wallet", "routes.crypto_loans",
+        "routes.p2p_lending", "routes.trading_bot",
+    ]:
+        assert f'("{module}", "router")' not in registry
+
+
+def test_savings_goals_are_planning_only_and_never_move_wallet_money():
+    backend = (BACKEND_DIR / "routes" / "savings.py").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "SavingsPage.jsx").read_text(encoding="utf-8")
+
+    assert '"planning_only": True' in backend
+    assert '"automatic_transfers_enabled": False' in backend
+    assert "Idempotency-Key erforderlich" in backend
+    assert '"$setOnInsert": goal' in backend
+    assert "debit_wallet" not in backend
+    assert "credit_wallet" not in backend
+    assert "transfer_between_wallets" not in backend
+    assert '"routes.savings", "router"' in registry
+
+    assert "/api/savings/capabilities" in page
+    assert "goalAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "savings-planning-only" in page
