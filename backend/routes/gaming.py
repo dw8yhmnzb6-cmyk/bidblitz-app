@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 import secrets
 import random
+import hashlib
 
 from core.database import db
 from core.security import get_current_user
@@ -30,6 +31,7 @@ class GamePlayRequest(BaseModel):
 
 class RedeemRequest(BaseModel):
     coins: int
+    idempotency_key: Optional[str] = None
 
 
 class SeasonClaimRequest(BaseModel):
@@ -70,6 +72,14 @@ GAME_CONFIG = {
 
 def coins_to_eur(coins: int) -> float:
     return round(coins * COINS_TO_EUR_RATE, 2)
+
+
+def _require_gaming_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -437,35 +447,94 @@ async def earn_cashback_coins(request: Request):
 
 @router.post("/buy-coins")
 async def buy_coins_with_wallet(request: Request):
-    """Buy coins using wallet balance. 1 EUR = 1000 Coins."""
+    """Buy gaming coins from wallet exactly once."""
+    from core.payment_engine import debit_wallet
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
     body = await request.json()
-    eur_amount = body.get("amount", 0)
+    try:
+        eur_amount = round(float(body.get("amount", 0)), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag")
 
     if eur_amount < 1 or eur_amount > 100:
         raise HTTPException(status_code=400, detail="Betrag: €1-€100")
 
-    eur_amount = round(eur_amount, 2)
+    idempotency_key = _require_gaming_idempotency_key(
+        body.get("idempotency_key"),
+        request,
+        prefix="gaming-buy",
+    )
     coins = int(eur_amount / COINS_TO_EUR_RATE)
+    marker_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"gaming_coin_purchase_markers.{marker_hash}"
 
-    # Deduct from wallet
-    from core.payment_engine import debit_wallet
+    existing_user = await db.users.find_one(
+        {"_id": user["_id"], marker_field: {"$exists": True}},
+        {"gaming_coins": 1, "_id": 0},
+    )
+    if existing_user:
+        return {
+            "ok": True,
+            "coins_added": coins,
+            "eur_spent": eur_amount,
+            "new_balance": int(existing_user.get("gaming_coins") or 0),
+            "replayed": True,
+        }
+
     result = await debit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
         description=f"Gaming Coins gekauft: {coins} Coins",
+        reference=f"GAMEBUY-{marker_hash[:12].upper()}",
         metadata={"type": "buy_coins", "coins": coins},
+        idempotency_key=idempotency_key,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Nicht genug Guthaben")
+
+    grant = await db.users.update_one(
+        {"_id": user["_id"], marker_field: {"$exists": False}},
+        {
+            "$inc": {"gaming_coins": coins},
+            "$set": {
+                marker_field: {
+                    "coins": coins,
+                    "eur_amount": eur_amount,
+                    "wallet_transaction_id": result.transaction_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if grant.modified_count != 1:
+        already = await db.users.find_one({"_id": user["_id"], marker_field: {"$exists": True}}, {"_id": 1})
+        if not already:
+            raise HTTPException(status_code=500, detail="Wallet belastet, Coin-Gutschrift muss geprüft werden")
+
+    await db.gaming_coin_log.update_one(
+        {"user_id": user_id, "idempotency_key": idempotency_key, "reason": "buy_coins"},
+        {"$setOnInsert": {
+            "user_id": user_id,
+            "amount": coins,
+            "reason": "buy_coins",
+            "description": f"Coins gekauft: €{eur_amount:.2f} → {coins} Coins",
+            "idempotency_key": idempotency_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
     )
 
-    if not result.success:
-        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
-
-    await add_coins(user_id, coins, f"Coins gekauft: €{eur_amount:.2f} → {coins} Coins")
-
-    new_balance = await get_user_coins(user_id)
-    return {"ok": True, "coins_added": coins, "eur_spent": eur_amount, "new_balance": new_balance}
+    updated = await db.users.find_one({"_id": user["_id"]}, {"gaming_coins": 1, "_id": 0}) or {}
+    return {
+        "ok": True,
+        "coins_added": coins,
+        "eur_spent": eur_amount,
+        "new_balance": int(updated.get("gaming_coins") or 0),
+        "replayed": result.idempotent_replay,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -579,43 +648,115 @@ async def legacy_client_scored_game_disabled(req: GamePlayRequest, request: Requ
 
 @router.post("/redeem")
 async def redeem_coins(req: RedeemRequest, request: Request):
-    """Convert coins to EUR wallet balance."""
+    """Convert gaming coins to EUR exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
     if req.coins < MIN_REDEEM:
         raise HTTPException(status_code=400, detail=f"Mindestens {MIN_REDEEM} Coins zum Einlösen")
 
-    current = await get_user_coins(user_id)
-    if req.coins > current:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Coins. Verfügbar: {current}")
-
+    idempotency_key = _require_gaming_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix="gaming-redeem",
+    )
+    marker_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    reserve_field = f"gaming_coin_redemption_reservations.{marker_hash}"
+    completed_field = f"gaming_coin_redemption_markers.{marker_hash}"
     eur_amount = coins_to_eur(req.coins)
 
-    # Deduct coins
-    await deduct_coins(user_id, req.coins, f"Eingelöst: {req.coins} Coins → €{eur_amount:.2f}")
+    completed = await db.users.find_one(
+        {"_id": user["_id"], completed_field: {"$exists": True}},
+        {"gaming_coins": 1, "_id": 0},
+    )
+    if completed:
+        return {
+            "success": True,
+            "coins_redeemed": req.coins,
+            "eur_credited": eur_amount,
+            "remaining_coins": int(completed.get("gaming_coins") or 0),
+            "message": f"{req.coins} Coins → €{eur_amount:.2f} auf dein Wallet!",
+            "replayed": True,
+        }
 
-    # Credit wallet
+    reserve = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "gaming_coins": {"$gte": req.coins},
+            reserve_field: {"$exists": False},
+            completed_field: {"$exists": False},
+        },
+        {
+            "$inc": {"gaming_coins": -req.coins},
+            "$set": {
+                reserve_field: {
+                    "coins": req.coins,
+                    "eur_amount": eur_amount,
+                    "reserved_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if reserve.modified_count != 1:
+        existing_reservation = await db.users.find_one(
+            {"_id": user["_id"], reserve_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not existing_reservation:
+            current = await get_user_coins(user_id)
+            raise HTTPException(status_code=400, detail=f"Nicht genug Coins. Verfügbar: {current}")
+
     result = await credit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
         description=f"Gaming Coins eingelöst: {req.coins} Coins",
+        reference=f"GAMERED-{marker_hash[:12].upper()}",
         metadata={"type": "coin_redemption", "coins": req.coins},
+        idempotency_key=idempotency_key,
     )
-
     if not result.success:
-        # Refund coins if wallet credit fails
-        await add_coins(user_id, req.coins, "Rückerstattung: Einlösung fehlgeschlagen")
+        rollback_field = f"gaming_coin_redemption_rollbacks.{marker_hash}"
+        await db.users.update_one(
+            {
+                "_id": user["_id"],
+                reserve_field: {"$exists": True},
+                rollback_field: {"$exists": False},
+            },
+            {
+                "$inc": {"gaming_coins": req.coins},
+                "$unset": {reserve_field: ""},
+                "$set": {rollback_field: {"created_at": datetime.now(timezone.utc).isoformat(), "reason": result.error}},
+            },
+        )
         raise HTTPException(status_code=500, detail="Einlösung fehlgeschlagen")
 
-    new_balance = await get_user_coins(user_id)
+    finalized = await db.users.update_one(
+        {"_id": user["_id"], reserve_field: {"$exists": True}},
+        {
+            "$unset": {reserve_field: ""},
+            "$set": {
+                completed_field: {
+                    "coins": req.coins,
+                    "eur_amount": eur_amount,
+                    "wallet_transaction_id": result.transaction_id,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        already = await db.users.find_one({"_id": user["_id"], completed_field: {"$exists": True}}, {"_id": 1})
+        if not already:
+            raise HTTPException(status_code=500, detail="EUR gutgeschrieben, Coin-Abrechnung muss geprüft werden")
+
+    updated = await db.users.find_one({"_id": user["_id"]}, {"gaming_coins": 1, "_id": 0}) or {}
     return {
         "success": True,
         "coins_redeemed": req.coins,
         "eur_credited": eur_amount,
-        "remaining_coins": new_balance,
+        "remaining_coins": int(updated.get("gaming_coins") or 0),
         "message": f"{req.coins} Coins → €{eur_amount:.2f} auf dein Wallet!",
+        "replayed": result.idempotent_replay,
     }
 
 
