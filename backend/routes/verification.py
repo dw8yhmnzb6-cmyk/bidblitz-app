@@ -37,6 +37,14 @@ def save_upload(file_bytes: bytes, ext: str) -> str:
     return fname
 
 
+def _valid_image_signature(data: bytes) -> bool:
+    head = data[:32]
+    is_jpeg = len(head) >= 3 and head[:3] == b"\xff\xd8\xff"
+    is_png = head.startswith(b"\x89PNG\r\n\x1a\n")
+    is_webp = len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    return is_jpeg or is_png or is_webp
+
+
 # ══════════════════════════════════════
 # USER: Upload verification documents
 # ══════════════════════════════════════
@@ -73,6 +81,8 @@ async def upload_verification(
         data = await f.read()
         if len(data) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"File {key} too large (max 5MB)")
+        if not _valid_image_signature(data):
+            raise HTTPException(status_code=400, detail=f"File {key} is not a valid image")
         saved[key] = save_upload(data, ext)
 
     doc = {
@@ -215,8 +225,13 @@ async def admin_decide_verification(request: Request):
         role = ver.get("requested_role", "user")
         await db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": {"role": role, "role_approved_at": now, "verification_status": "approved"}},
+            {
+                "$set": {"role": role, "role_approved_at": now, "verification_status": "approved"},
+                "$inc": {"auth_version": 1},
+            },
         )
+        from routes.sessions import revoke_all_sessions
+        await revoke_all_sessions(user_id)
         await db.role_requests.update_one(
             {"user_id": user_id, "status": "pending"},
             {"$set": {"status": "approved", "assigned_role": role, "decided_at": now}},
