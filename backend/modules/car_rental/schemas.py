@@ -188,9 +188,10 @@ class BookingCreateRequest(BaseModel):
     end_date: str  # ISO format
     pickup_time: str = "10:00"
     return_time: str = "10:00"
-    extras: List[str] = []  # List of extra_ids
-    notes: Optional[str] = None
-    promo_code: Optional[str] = None
+    extras: List[str] = Field(default_factory=list)  # List of extra_ids
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    promo_code: Optional[str] = Field(default=None, max_length=80)
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 class BookingStatusUpdate(BaseModel):
