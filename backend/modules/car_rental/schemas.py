@@ -335,6 +335,7 @@ class AdminSettingsUpdate(BaseModel):
 class PayoutRequest(BaseModel):
     amount: float = Field(..., gt=0, le=1_000_000)
     bank_reference: Optional[str] = Field(default=None, max_length=200)
+    idempotency_key: str = Field(..., min_length=8, max_length=200)
 
 
 class PayoutStatusUpdate(BaseModel):
