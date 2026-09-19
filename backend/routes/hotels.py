@@ -711,7 +711,9 @@ class SabreSearchRequest(BaseModel):
 
 @router.post("/sabre/search")
 async def sabre_search_hotels(req: SabreSearchRequest, request: Request):
-    """Sabre-Hotelsuche (Mock)."""
+    """Sabre demo search; production fails closed until a live provider is connected."""
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Sabre-Liveprovider ist noch nicht verbunden. Keine Demo-Hotels in Production.")
     from datetime import datetime as dt
 
     check_in_dt = dt.fromisoformat(req.check_in)
@@ -770,7 +772,9 @@ class SabreBookingRequest(BaseModel):
 
 @router.post("/sabre/book")
 async def sabre_create_booking(req: SabreBookingRequest, request: Request):
-    """Sabre-Buchung."""
+    """Sabre demo booking; never persist mock bookings in production."""
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Sabre-Livebuchung ist noch nicht verbunden.")
     user = await get_current_user(request)
     
     hotel = next((h for h in MOCK_CHAIN_HOTELS if h["id"] == req.hotel_id), None)
@@ -833,7 +837,9 @@ async def my_sabre_bookings(request: Request):
 
 @router.post("/sabre/bookings/{booking_id}/cancel")
 async def sabre_cancel_booking_endpoint(booking_id: str, request: Request):
-    """Sabre-Buchung stornieren."""
+    """Sabre demo cancellation; production requires the live provider."""
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Sabre-Livestorno ist noch nicht verbunden.")
     user = await get_current_user(request)
     
     booking = await db.hotel_bookings_sabre.find_one({
