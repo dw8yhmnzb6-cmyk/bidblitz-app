@@ -46,7 +46,7 @@ CREDIT_SCORES = {
     "C": {"color": "#EF4444", "label": "Gesperrt", "can_borrow": False, "max_amount": 0},
 }
 
-CREDIT_LIVE_ENABLED = TEST_MODE or os.environ.get("CREDIT_LIVE_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+CREDIT_LIVE_ENABLED = bool(TEST_MODE)  # No production override until a verified financing provider is integrated.
 
 
 def _require_credit_live() -> None:
@@ -253,9 +253,10 @@ async def get_credit_status(request: Request):
         "score": profile["score"],
         "score_label": score_info["label"],
         "score_color": score_info["color"],
-        "can_borrow": score_info["can_borrow"] and available_credit > 0 and len(pending_credits) == 0,
-        "max_credit": score_info["max_amount"],
-        "available_credit": round(available_credit, 2),
+        "live_enabled": bool(CREDIT_LIVE_ENABLED),
+        "can_borrow": bool(CREDIT_LIVE_ENABLED and score_info["can_borrow"] and available_credit > 0 and len(pending_credits) == 0),
+        "max_credit": score_info["max_amount"] if CREDIT_LIVE_ENABLED else 0,
+        "available_credit": round(available_credit, 2) if CREDIT_LIVE_ENABLED else 0,
         "current_debt": round(total_debt, 2),
         "active_credit": round(total_debt, 2),
         "active_credits": active_credits,
