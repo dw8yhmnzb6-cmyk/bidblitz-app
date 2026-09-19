@@ -590,31 +590,86 @@ async def get_auction_referral(request: Request):
 
 @router.post("/user/apply-referral")
 async def apply_auction_referral(request: Request):
-    """Apply a referral code to get bonus credits."""
+    """Apply an auction referral exactly once and recover safely after partial retries."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     body = await request.json()
-    code = body.get("code", "").strip().upper()
+    code = str(body.get("code") or "").strip().upper()
     if not code:
         raise HTTPException(status_code=400, detail="No code provided")
-    if user.get("referred_by"):
-        raise HTTPException(status_code=400, detail="Already used a referral code")
+
     referrer = await db.users.find_one({"referral_code": code})
     if not referrer:
         raise HTTPException(status_code=404, detail="Invalid referral code")
-    if str(referrer["_id"]) == user_id:
+    referrer_id = str(referrer["_id"])
+    if referrer_id == user_id:
         raise HTTPException(status_code=400, detail="Cannot use your own code")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": 5}, "$set": {"referred_by": str(referrer["_id"])}})
-    await db.users.update_one({"_id": referrer["_id"]}, {"$inc": {"bid_credits": 5}})
-    await db.auction_notifications.insert_one({
-        "user_id": str(referrer["_id"]),
-        "type": "referral",
-        "message": f"{user.get('name', 'Someone')} joined using your code! +5 credits",
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    updated = await db.users.find_one({"_id": user["_id"]})
-    return {"credits_awarded": 5, "total_credits": updated.get("bid_credits", 0)}
+
+    current_referrer = str(user.get("referred_by") or "")
+    replayed = False
+    if current_referrer:
+        if current_referrer != referrer_id:
+            raise HTTPException(status_code=400, detail="Already used a referral code")
+        replayed = True
+    else:
+        claim = await db.users.update_one(
+            {
+                "_id": user["_id"],
+                "$or": [
+                    {"referred_by": {"$exists": False}},
+                    {"referred_by": None},
+                    {"referred_by": ""},
+                ],
+            },
+            {"$set": {
+                "referred_by": referrer_id,
+                "referred_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            fresh = await db.users.find_one({"_id": user["_id"]}, {"referred_by": 1}) or {}
+            if str(fresh.get("referred_by") or "") != referrer_id:
+                raise HTTPException(status_code=409, detail="Referral code was already claimed")
+            replayed = True
+
+    grant_scope = f"auction-referral:{user_id}:{referrer_id}"
+    invitee_new, invitee_ok = await _grant_bid_credits_once(
+        user["_id"],
+        credits=5,
+        grant_key=f"{grant_scope}:invitee",
+        source="referral_invitee",
+        metadata={"referrer_id": referrer_id, "code": code},
+    )
+    referrer_new, referrer_ok = await _grant_bid_credits_once(
+        referrer["_id"],
+        credits=5,
+        grant_key=f"{grant_scope}:referrer",
+        source="referral_referrer",
+        metadata={"invitee_id": user_id, "code": code},
+    )
+    if not invitee_ok or not referrer_ok:
+        raise HTTPException(status_code=500, detail="Referral bonus requires reconciliation")
+
+    notification_id = f"auction-referral:{user_id}:{referrer_id}"
+    await db.auction_notifications.update_one(
+        {"_id": notification_id},
+        {"$setOnInsert": {
+            "_id": notification_id,
+            "user_id": referrer_id,
+            "type": "referral",
+            "message": f"{user.get('name', 'Someone')} joined using your code! +5 credits",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+    updated = await db.users.find_one({"_id": user["_id"]}, {"bid_credits": 1, "_id": 0}) or {}
+    return {
+        "credits_awarded": 5,
+        "total_credits": updated.get("bid_credits", 0),
+        "replayed": replayed or not invitee_new or not referrer_new,
+    }
 
 
 # ── Get single auction with bids ──
