@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, X, Zap, Loader2, Coins, Check, CreditCard, Wallet,
@@ -23,6 +23,7 @@ export default function BuyCreditsModal({ open, onClose, onPurchased, balance: p
   const [msg, setMsg] = useState(null);
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
   const [liveBalance, setLiveBalance] = useState(propBalance);
+  const purchaseAttemptKeyRef = useRef(null);
 
   useEffect(() => {
     if (!open) { setStep("select"); setSelectedPkg(null); setMsg(null); return; }
@@ -42,21 +43,32 @@ export default function BuyCreditsModal({ open, onClose, onPurchased, balance: p
   const balance = liveBalance;
   const selectPkg = (p) => { setSelectedPkg(p); setMsg(null); setStep("confirm"); };
 
+  useEffect(() => {
+    purchaseAttemptKeyRef.current = null;
+  }, [selectedPkg?.id, payMethod]);
+
   const confirmPay = async () => {
     if (!selectedPkg) return;
     setStep("processing");
     setMsg(null);
     try {
+      if (!purchaseAttemptKeyRef.current) {
+        purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `auction-credit-${crypto.randomUUID()}`
+          : `auction-credit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = purchaseAttemptKeyRef.current;
       let r;
       if (payMethod === "card" && savedCard) {
-        r = await api.buyBidCreditsDirect({ package_id: selectedPkg.id });
+        r = await api.buyBidCreditsDirect({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
       } else if (payMethod === "stripe") {
-        r = await api.buyBidCreditsStripe({ package_id: selectedPkg.id });
+        r = await api.buyBidCreditsStripe({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
         if (r.checkout_url) { window.location.href = r.checkout_url; return; }
       } else {
         if (balance < selectedPkg.price) { setMsg({ ok: false, text: t("checkout.insufficient_wallet") }); setStep("confirm"); return; }
-        r = await api.buyBidCredits({ package_id: selectedPkg.id });
+        r = await api.buyBidCredits({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
       }
+      purchaseAttemptKeyRef.current = null;
       setStep("success");
       setTimeout(() => { onPurchased(r); onClose(); setStep("select"); setSelectedPkg(null); setMsg(null); }, 1200);
     } catch (e) {
