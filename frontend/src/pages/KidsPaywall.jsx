@@ -81,7 +81,6 @@ const KidsDashboard = ({ onBack, onNavigate, t, subStatus }) => {
   const [success, setSuccess] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('wallet'); // wallet | tracking
-  const walletSubscriptionAttemptKeyRef = useRef(null);
   const [activeFeature, setActiveFeature] = useState(null);
   const [tasksChild, setTasksChild] = useState(null); // Für Aufgaben-Modal
   const [childTasks, setChildTasks] = useState([]); // Aufgaben für das aktuell ausgewählte Kind
@@ -1388,6 +1387,7 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
   const [trialLoading, setTrialLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [showDashboard, setShowDashboard] = useState(false);
+  const walletSubscriptionAttemptKeyRef = useRef(null);
 
   useEffect(() => {
     api.getKidsSubscription().then(d => {
