@@ -44,7 +44,7 @@ function PayBtn({ icon: Icon, label, active, onClick, testid }) {
   );
 }
 
-function SaleCompleteCard({ sale, onClose }) {
+function SaleCompleteCard({ sale, onClose, offline = false }) {
   const [printing, setPrinting] = useState(false);
   const print = async () => {
     setPrinting(true);
@@ -59,16 +59,23 @@ function SaleCompleteCard({ sale, onClose }) {
   };
   const btSupported = "bluetooth" in navigator;
   return (
-    <Card title="✓ Zahlung erfolgreich" testid="pos-sale-success">
+    <Card title={offline ? "✓ Offline-Verkauf gespeichert" : "✓ Zahlung erfolgreich"} testid="pos-sale-success">
       <div className="text-center py-3">
         <Check size={36} className="text-[#10B981] mx-auto mb-2" />
         <p className="text-2xl font-black mb-1">€{sale.total.toFixed(2)}</p>
-        <p className="text-[11px] text-white/60">Beleg: {sale.receipt_id}</p>
+        <p className="text-[11px] text-white/60">
+          {offline ? "Lokale Referenz" : "Beleg"}: {sale.receipt_id}
+        </p>
+        {offline && (
+          <p className="mt-2 text-[10px] text-amber-300">
+            Noch nicht mit dem Server synchronisiert. Nicht erneut als neuen Verkauf erfassen.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2 mt-3">
-          <a href={`${API}/api/pos/receipts/${sale.receipt_id}/pdf`} target="_blank" rel="noopener noreferrer"
+          {!offline && <a href={`${API}/api/pos/receipts/${sale.receipt_id}/pdf`} target="_blank" rel="noopener noreferrer"
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1">
             <Download size={12} /> PDF
-          </a>
+          </a>}
           <button onClick={print} disabled={!btSupported || printing}
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-30"
             title={btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt"}
@@ -124,11 +131,19 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
       try {
         const c = await apiCall("/api/pos/cart/create", {
           method: "POST",
-          body: { register_id: q.register_id, items: q.items, discount_pct: q.discount_pct || 0 },
+          body: {
+            register_id: q.register_id,
+            items: q.items,
+            discount_pct: q.discount_pct || 0,
+            client_sale_id: q.offline_sale_id,
+            captured_shift_id: q.shift_id,
+            offline_captured_at: q.captured_at || q.queued_at,
+            expected_total: q.total,
+          },
         });
         await apiCall("/api/pos/payment/create", {
           method: "POST",
-          body: { cart_id: c.cart.cart_id, method: "cash", cash_received: q.total },
+          body: { cart_id: c.cart.cart_id, method: "cash", cash_received: q.cash_received ?? q.total },
         });
         synced++;
       } catch {
@@ -265,19 +280,36 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   const pay = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
 
-    // Offline-Modus: Cash-Verkauf in Queue speichern
+    // Offline-Modus: Cash-Verkauf lokal erfassen und später exakt einmal synchronisieren.
     if (!online) {
       if (paymentMethod !== "cash") return toast.error("Offline nur Bar möglich");
+      if (!shift?.shift_id) return toast.error("Offline-Verkauf braucht eine geöffnete Schicht");
+      if (appliedVouchers.length > 0) {
+        return toast.error("Gutscheine können offline nicht sicher eingelöst werden. Bitte online synchronisieren.");
+      }
+      const received = cashReceived === "" ? totals.total : Number(cashReceived);
+      if (!Number.isFinite(received) || received < totals.total) {
+        return toast.error(`Bargeld zu wenig (€${totals.total.toFixed(2)} nötig)`);
+      }
+      const offlineSaleId = typeof crypto?.randomUUID === "function"
+        ? `OFF-${crypto.randomUUID()}`
+        : `OFF-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const capturedAt = new Date().toISOString();
       queueOfflineSale({
+        offline_sale_id: offlineSaleId,
+        shift_id: shift.shift_id,
         register_id: registerId,
         items: buildItems(),
         discount_pct: discountPct,
         total: totals.total,
+        cash_received: received,
+        captured_at: capturedAt,
         cart_snapshot: cart,
       });
       const fakeSale = {
-        receipt_id: `OFFLINE-${Date.now().toString(36).toUpperCase()}`,
+        receipt_id: offlineSaleId,
         total: totals.total,
+        offline_pending_sync: true,
       };
       setCart([]); setDiscountPct(0); setAppliedVouchers([]); setCashReceived("");
       setActivePayment({ status: "paid", sale: fakeSale, is_offline: true });
@@ -464,7 +496,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   }
 
   if (activePayment && activePayment.status === "paid" && activePayment.sale) {
-    return <SaleCompleteCard sale={activePayment.sale} onClose={() => setActivePayment(null)} />;
+    return <SaleCompleteCard sale={activePayment.sale} offline={Boolean(activePayment.is_offline)} onClose={() => setActivePayment(null)} />;
   }
 
   return (
