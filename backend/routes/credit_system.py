@@ -144,6 +144,32 @@ async def update_credit_score(user_id: str, new_score: str, reason: str):
     })
 
 
+async def _record_credit_disbursement_profile_once(credit: dict) -> bool:
+    marker = hashlib.sha256(f"credit-disbursement:{credit['credit_id']}".encode("utf-8")).hexdigest()[:24]
+    field = f"disbursement_markers.{marker}"
+    result = await db.credit_profiles.update_one(
+        {"user_id": credit["user_id"], field: {"$exists": False}},
+        {
+            "$inc": {"current_debt": round(float(credit["amount"]), 2)},
+            "$set": {
+                field: {
+                    "credit_id": credit["credit_id"],
+                    "amount": round(float(credit["amount"]), 2),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+        upsert=True,
+    )
+    if result.modified_count == 1 or result.upserted_id is not None:
+        return True
+    profile = await db.credit_profiles.find_one(
+        {"user_id": credit["user_id"], field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(profile)
+
+
 async def check_and_update_overdue_credits():
     """Background task: Check for overdue credits and update scores."""
     now = datetime.now(timezone.utc)
@@ -429,132 +455,221 @@ class CreditDecision(BaseModel):
 
 @router.post("/admin/decide")
 async def admin_decide_credit(req: CreditDecision, request: Request):
-    """Admin: Approve or reject a credit application."""
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
+    """Admin credit decision with canonical, resumable wallet disbursement."""
+    _require_credit_live()
+    admin = await get_current_user(request)
+    if admin.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(403, "Nur für Admins")
-    
+    if req.action not in {"approve", "reject"}:
+        raise HTTPException(400, "action muss 'approve' oder 'reject' sein")
+
     credit = await db.credits.find_one({"credit_id": req.credit_id})
     if not credit:
         raise HTTPException(404, "Kredit nicht gefunden")
-    if credit["status"] != "pending":
-        raise HTTPException(400, f"Kredit ist nicht mehr 'pending', aktuell: {credit['status']}")
-    
+
     now = datetime.now(timezone.utc)
-    applicant = await db.users.find_one({"id": credit["user_id"]})
-    if not applicant:
-        # Try by _id string
-        from bson import ObjectId
-        try:
-            applicant = await db.users.find_one({"_id": ObjectId(credit["user_id"])})
-        except Exception:
-            pass
-    
-    if req.action == "approve":
-        # Activate credit + pay out to wallet
-        # Recalculate schedule from TODAY (approval date)
-        term = credit["term_months"]
-        schedule = []
-        remaining = credit["total_repayment"]
-        rate = credit["monthly_rate"]
-        for i in range(term):
-            payment_date = now + timedelta(days=30 * (i + 1))
-            remaining = round(remaining - rate, 2)
-            if remaining < 0:
-                remaining = 0
-            schedule.append({
-                "month": i + 1,
-                "date": payment_date.strftime("%Y-%m-%d"),
-                "amount": rate,
-                "remaining": remaining,
-                "status": "pending",
-            })
-        
-        due_date = now + timedelta(days=30 * term)
-        
-        await db.credits.update_one(
-            {"credit_id": req.credit_id},
-            {"$set": {
-                "status": "active",
-                "approved_at": now.isoformat(),
-                "approved_by": str(user["_id"]),
-                "schedule": schedule,
-                "due_date": due_date.isoformat(),
-                "next_payment_date": schedule[0]["date"],
-                "next_payment_month": 1,
-            }}
-        )
-        
-        # Credit wallet
-        if applicant:
-            await db.users.update_one(
-                {"_id": applicant["_id"]},
-                {"$inc": {"balance": credit["amount"]}}
-            )
-            
-            # Update credit profile
-            await db.credit_profiles.update_one(
-                {"user_id": credit["user_id"]},
-                {"$inc": {"current_debt": credit["amount"]}}
-            )
-            
-            # Transaction record
-            await db.transactions.insert_one({
-                "tx_id": secrets.token_hex(8),
-                "user_id": credit["user_id"],
-                "type": "CREDIT_RECEIVED",
-                "amount": credit["amount"],
-                "description": f"Kredit genehmigt und ausgezahlt (ID: {credit['credit_id'][:8]})",
-                "credit_id": credit["credit_id"],
-                "created_at": now.isoformat(),
-            })
-        
-        # Notify user
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": credit["user_id"],
-            "type": "credit_approved",
-            "title": "Kredit genehmigt!",
-            "message": f"Dein Kredit über €{credit['amount']:.2f} wurde genehmigt und deinem Wallet gutgeschrieben. Erste Rate: €{rate:.2f} am {schedule[0]['date']}.",
-            "read": False,
-            "created_at": now.isoformat(),
-        })
-        
-        return {
-            "ok": True,
-            "action": "approved",
-            "message": f"Kredit €{credit['amount']:.2f} genehmigt und an {credit.get('user_email','')} ausgezahlt.",
-        }
-    
-    elif req.action == "reject":
-        await db.credits.update_one(
-            {"credit_id": req.credit_id},
+
+    if req.action == "reject":
+        if credit.get("status") == "rejected":
+            return {"ok": True, "action": "rejected", "replayed": True}
+        if credit.get("status") != "pending":
+            raise HTTPException(409, f"Kredit kann aus Status {credit.get('status')} nicht abgelehnt werden")
+        update = await db.credits.update_one(
+            {"credit_id": req.credit_id, "status": "pending"},
             {"$set": {
                 "status": "rejected",
                 "rejected_at": now.isoformat(),
-                "rejected_by": str(user["_id"]),
+                "rejected_by": str(admin["_id"]),
                 "rejection_reason": req.reason or "Antrag abgelehnt",
-            }}
+            }},
         )
-        
-        # Notify user
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": credit["user_id"],
-            "type": "credit_rejected",
-            "title": "Kreditantrag abgelehnt",
-            "message": f"Dein Kreditantrag über €{credit['amount']:.2f} wurde leider abgelehnt. Grund: {req.reason or 'Nicht angegeben'}",
-            "read": False,
-            "created_at": now.isoformat(),
-        })
-        
+        if update.modified_count != 1:
+            fresh = await db.credits.find_one({"credit_id": req.credit_id}) or {}
+            if fresh.get("status") != "rejected":
+                raise HTTPException(409, "Kreditentscheidung wurde parallel geändert")
+
+        await db.notifications.update_one(
+            {"_id": f"credit-rejected:{req.credit_id}"},
+            {"$setOnInsert": {
+                "_id": f"credit-rejected:{req.credit_id}",
+                "id": f"credit-rejected:{req.credit_id}",
+                "user_id": credit["user_id"],
+                "type": "credit_rejected",
+                "title": "Kreditantrag abgelehnt",
+                "message": f"Dein Kreditantrag über €{credit['amount']:.2f} wurde abgelehnt. Grund: {req.reason or 'Nicht angegeben'}",
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+        return {"ok": True, "action": "rejected", "replayed": False}
+
+    # Approve: resume an interrupted 'approving' operation or claim a fresh pending application.
+    if credit.get("status") == "active":
         return {
             "ok": True,
-            "action": "rejected",
-            "message": f"Kredit €{credit['amount']:.2f} abgelehnt.",
+            "action": "approved",
+            "transaction_id": credit.get("disbursement_transaction_id"),
+            "replayed": True,
         }
-    
-    raise HTTPException(400, "action muss 'approve' oder 'reject' sein")
+    if credit.get("status") == "reconciliation_required":
+        raise HTTPException(409, "Kreditauszahlung benötigt manuelle Abstimmung")
+    if credit.get("status") not in {"pending", "approving"}:
+        raise HTTPException(409, f"Kredit kann aus Status {credit.get('status')} nicht genehmigt werden")
+
+    pool_user_id = await _credit_pool_user_id()
+    if not pool_user_id:
+        raise HTTPException(503, "CREDIT_POOL_EMAIL ist nicht konfiguriert")
+    if pool_user_id == str(credit["user_id"]):
+        raise HTTPException(409, "Credit Pool darf nicht identisch mit dem Kreditnehmer sein")
+
+    attempt = int(credit.get("approval_attempt") or 0)
+    if credit.get("status") == "pending":
+        attempt += 1
+        claim = await db.credits.update_one(
+            {"credit_id": req.credit_id, "status": "pending"},
+            {"$set": {
+                "status": "approving",
+                "approval_attempt": attempt,
+                "approval_started_at": now.isoformat(),
+                "approval_started_by": str(admin["_id"]),
+            }},
+        )
+        if claim.modified_count != 1:
+            credit = await db.credits.find_one({"credit_id": req.credit_id}) or {}
+            if credit.get("status") == "active":
+                return {
+                    "ok": True,
+                    "action": "approved",
+                    "transaction_id": credit.get("disbursement_transaction_id"),
+                    "replayed": True,
+                }
+            if credit.get("status") != "approving":
+                raise HTTPException(409, "Kreditentscheidung wurde parallel geändert")
+            attempt = int(credit.get("approval_attempt") or 0)
+    else:
+        attempt = max(1, attempt)
+
+    credit = await db.credits.find_one({"credit_id": req.credit_id}) or credit
+    disbursement = await transfer_between_wallets(
+        from_user_id=pool_user_id,
+        to_user_id=str(credit["user_id"]),
+        amount=round(float(credit["amount"]), 2),
+        tx_type=TransactionType.TRANSFER,
+        description=f"BidBlitz Credit Auszahlung {credit['credit_id']}",
+        reference=f"CREDIT-{credit['credit_id']}",
+        metadata={
+            "credit_id": credit["credit_id"],
+            "kind": "credit_disbursement",
+            "approved_by": str(admin["_id"]),
+            "term_months": credit.get("term_months"),
+            "total_repayment": credit.get("total_repayment"),
+        },
+        idempotency_key=f"credit:disbursement:{credit['credit_id']}:{attempt}",
+    )
+    if not disbursement.success:
+        status_value = str(getattr(disbursement.status, "value", disbursement.status))
+        if status_value in {"pending", "reconciliation_required"}:
+            await db.credits.update_one(
+                {"credit_id": req.credit_id, "status": "approving", "approval_attempt": attempt},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "disbursement_status": status_value,
+                    "disbursement_error": disbursement.error,
+                    "disbursement_checked_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(409, disbursement.error or "Kreditauszahlung benötigt Abstimmung")
+
+        await db.credits.update_one(
+            {"credit_id": req.credit_id, "status": "approving", "approval_attempt": attempt},
+            {"$set": {
+                "status": "pending",
+                "last_disbursement_error": disbursement.error,
+                "last_disbursement_failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(400, disbursement.error or "Kreditauszahlung fehlgeschlagen")
+
+    approval_time = datetime.now(timezone.utc)
+    term = int(credit["term_months"])
+    total_repayment = round(float(credit["total_repayment"]), 2)
+    rate = round(float(credit["monthly_rate"]), 2)
+    schedule = []
+    remaining = total_repayment
+    for i in range(term):
+        payment_date = approval_time + timedelta(days=30 * (i + 1))
+        installment_amount = rate if i < term - 1 else round(max(0.0, remaining), 2)
+        remaining = round(max(0.0, remaining - installment_amount), 2)
+        schedule.append({
+            "month": i + 1,
+            "date": payment_date.strftime("%Y-%m-%d"),
+            "amount": installment_amount,
+            "remaining": remaining,
+            "status": "pending",
+        })
+
+    if not await _record_credit_disbursement_profile_once(credit):
+        await db.credits.update_one(
+            {"credit_id": req.credit_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "disbursement_transaction_id": disbursement.transaction_id,
+                "disbursement_error": "Credit profile debt marker could not be persisted",
+            }},
+        )
+        raise HTTPException(500, "Kreditauszahlung erfolgt; Profil benötigt Abstimmung")
+
+    activated = await db.credits.update_one(
+        {"credit_id": req.credit_id, "status": "approving", "approval_attempt": attempt},
+        {"$set": {
+            "status": "active",
+            "approved_at": approval_time.isoformat(),
+            "approved_by": str(admin["_id"]),
+            "schedule": schedule,
+            "due_date": (approval_time + timedelta(days=30 * term)).isoformat(),
+            "next_payment_date": schedule[0]["date"],
+            "next_payment_month": 1,
+            "disbursement_status": "completed",
+            "disbursement_transaction_id": disbursement.transaction_id,
+            "disbursement_reference": disbursement.reference,
+            "credit_pool_user_id": pool_user_id,
+        }},
+    )
+    if activated.modified_count != 1:
+        fresh = await db.credits.find_one({"credit_id": req.credit_id}) or {}
+        if fresh.get("status") != "active" or fresh.get("disbursement_transaction_id") != disbursement.transaction_id:
+            await db.credits.update_one(
+                {"credit_id": req.credit_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "disbursement_transaction_id": disbursement.transaction_id,
+                    "disbursement_error": "Activation state changed after wallet disbursement",
+                }},
+            )
+            raise HTTPException(500, "Kreditauszahlung erfolgt; Aktivierung benötigt Abstimmung")
+
+    await db.notifications.update_one(
+        {"_id": f"credit-approved:{req.credit_id}"},
+        {"$setOnInsert": {
+            "_id": f"credit-approved:{req.credit_id}",
+            "id": f"credit-approved:{req.credit_id}",
+            "user_id": credit["user_id"],
+            "type": "credit_approved",
+            "title": "Kredit genehmigt!",
+            "message": f"Dein Kredit über €{credit['amount']:.2f} wurde genehmigt. Erste Rate: €{schedule[0]['amount']:.2f} am {schedule[0]['date']}.",
+            "read": False,
+            "created_at": approval_time.isoformat(),
+        }},
+        upsert=True,
+    )
+
+    return {
+        "ok": True,
+        "action": "approved",
+        "transaction_id": disbursement.transaction_id,
+        "replayed": bool(disbursement.idempotent_replay),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
