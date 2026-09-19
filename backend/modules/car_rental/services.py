@@ -1184,11 +1184,22 @@ class ContractService:
 class PayoutService:
     
     @classmethod
-    async def request_payout(cls, vendor_id: str, amount: float) -> Tuple[dict, str]:
-        """Reserve pending vendor earnings atomically and create a payout request."""
+    async def request_payout(cls, vendor_id: str, amount: float, idempotency_key: str) -> Tuple[dict, str]:
+        """Reserve pending vendor earnings exactly once and create a deterministic payout."""
         amount = round(float(amount or 0), 2)
+        key = str(idempotency_key or "").strip()
+        if len(key) < 8:
+            return None, "Idempotency-Key erforderlich"
         if amount < 50:
             return None, "Mindestbetrag für Auszahlung: €50"
+
+        key_hash = hashlib.sha256(f"{vendor_id}:{key}".encode("utf-8")).hexdigest()[:20]
+        payout_id = f"PO-{key_hash.upper()}"
+        existing = await PayoutRepository.get_by_id(payout_id)
+        if existing:
+            if round(float(existing.get("amount") or 0), 2) != amount or existing.get("vendor_id") != vendor_id:
+                return None, "Idempotency-Key wurde bereits für eine andere Auszahlung verwendet"
+            return existing, None
 
         vendor = await VendorRepository.get_by_id(vendor_id)
         if not vendor:
@@ -1199,31 +1210,54 @@ class PayoutService:
         if not company.get("iban"):
             return None, "IBAN nicht hinterlegt"
 
+        reserve_marker = f"payout_reservations.{key_hash}"
         reserve = await db.car_rental_vendors.update_one(
             {
                 "vendor_id": vendor_id,
                 "status": VendorStatus.APPROVED.value,
                 "pending_payout": {"$gte": amount},
+                reserve_marker: {"$exists": False},
             },
             {
                 "$inc": {"pending_payout": -amount},
-                "$set": {"last_payout_request_at": datetime.now(timezone.utc).isoformat()},
+                "$set": {
+                    "last_payout_request_at": datetime.now(timezone.utc).isoformat(),
+                    reserve_marker: {
+                        "payout_id": payout_id,
+                        "amount": amount,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
             },
         )
         if reserve.modified_count != 1:
+            existing = await PayoutRepository.get_by_id(payout_id)
+            if existing:
+                return existing, None
+            vendor_now = await db.car_rental_vendors.find_one(
+                {"vendor_id": vendor_id, reserve_marker: {"$exists": True}},
+                {"_id": 0, reserve_marker: 1},
+            )
+            if vendor_now:
+                return None, "Auszahlungsanforderung wird bereits verarbeitet"
             return None, "Nicht genügend verfügbares Guthaben"
 
         try:
             payout = await PayoutRepository.create(vendor_id, amount, {
+                "payout_id": payout_id,
                 "bank_name": company.get("bank_name"),
                 "iban": company.get("iban"),
                 "bic": company.get("bic"),
                 "reserved_from_pending_payout": True,
+                "idempotency_key_hash": key_hash,
             })
         except Exception:
             await db.car_rental_vendors.update_one(
-                {"vendor_id": vendor_id},
-                {"$inc": {"pending_payout": amount}},
+                {"vendor_id": vendor_id, reserve_marker: {"$exists": True}},
+                {
+                    "$inc": {"pending_payout": amount},
+                    "$unset": {reserve_marker: ""},
+                },
             )
             raise
 
