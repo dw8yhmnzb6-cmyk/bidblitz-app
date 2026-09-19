@@ -146,19 +146,21 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/active`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        if (data.has_active_rental && data.rental) {
-          setActiveRental(data.rental);
+        const ride = data.rental || data.ride;
+        if ((data.has_active_rental || data.has_active) && ride) {
+          setActiveRental(ride);
           setView('riding');
-          startRideTimer(data.rental);
+          startRideTimer(ride);
         }
       }
     } catch (err) {}
   };
 
   const startRideTimer = (rental) => {
-    if (!rental.started_at) return;
+    const startedAt = rental.started_at || rental.start_time;
+    if (!startedAt) return;
     
-    const started = new Date(rental.started_at);
+    const started = new Date(startedAt);
     
     if (timerRef.current) clearInterval(timerRef.current);
     
@@ -199,11 +201,12 @@ export default function ScooterPage({ onNavigate }) {
       
       if (res.ok) {
         const data = await res.json();
-        setActiveRental(data.rental);
+        const ride = data.rental || data.ride;
+        setActiveRental(ride);
         setSelectedScooter(null);
         setView('riding');
-        setUserBalance(prev => prev - pricing.unlock_fee);
-        startRideTimer(data.rental);
+        setUserBalance(Number(data.new_balance ?? userBalance));
+        startRideTimer(ride);
       } else {
         const err = await res.json();
         setError(err.detail || 'Entsperren fehlgeschlagen');
@@ -267,8 +270,11 @@ export default function ScooterPage({ onNavigate }) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
           scooter_id: activeRental.scooter_id,
-          end_location: userLocation,
+          end_lat: userLocation?.lat,
+          end_lng: userLocation?.lng,
+          end_location: userLocation || null,
         }),
       });
       
@@ -283,7 +289,7 @@ export default function ScooterPage({ onNavigate }) {
         fetchNearbyScooters(userLocation.lat, userLocation.lng);
         
         // Show summary
-        alert(`Fahrt beendet!\nGesamt: €${data.summary.total_cost.toFixed(2)}\nDauer: ${data.summary.total_minutes} Min`);
+        alert(`Fahrt beendet!\nGesamt: €${data.summary.total_cost.toFixed(2)}\nDauer: ${data.summary.duration_minutes ?? data.summary.total_minutes} Min`);
       } else {
         const err = await res.json();
         setError(err.detail || 'Beenden fehlgeschlagen');
