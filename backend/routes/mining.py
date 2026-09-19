@@ -658,8 +658,17 @@ async def claim_daily(request: Request):
     user_id = str(user["_id"])
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    existing = await db.mining_claims.find_one({"user_id": user_id, "date": today})
-    if existing:
+    claim_marker = await db.mining_claims.update_one(
+        {"user_id": user_id, "date": today},
+        {"$setOnInsert": {
+            "user_id": user_id,
+            "date": today,
+            "status": "processing",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    if claim_marker.upserted_id is None:
         raise HTTPException(status_code=400, detail="Already claimed today")
 
     miners = await db.mining_miners.find(
@@ -686,13 +695,11 @@ async def claim_daily(request: Request):
         upsert=True,
     )
 
-    # Record claim
-    await db.mining_claims.insert_one({
-        "user_id": user_id,
-        "date": today,
-        "amount": earnings,
-        "claimed_at": now,
-    })
+    # Finalise the atomic daily claim marker.
+    await db.mining_claims.update_one(
+        {"user_id": user_id, "date": today, "status": "processing"},
+        {"$set": {"status": "completed", "amount": earnings, "claimed_at": now}},
+    )
 
     # Transaction
     await db.mining_transactions.insert_one({
@@ -738,40 +745,68 @@ class WithdrawRequest(BaseModel):
 
 @router.post("/withdraw")
 async def withdraw_blz(req: WithdrawRequest, request: Request):
-    """Convert BLZ to EUR and add to main wallet."""
+    """Atomically convert BLZ to EUR through the canonical wallet ledger."""
+    from core.payment_engine import credit_wallet, TransactionType
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    eur_amount = round(req.amount * BLZ_TO_EUR, 2)
+    if eur_amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount too small")
 
-    wallet = await get_or_create_wallet(user_id)
-    if wallet["blz_balance"] < req.amount:
+    operation_id = secrets.token_hex(10)
+    debit = await db.mining_wallets.update_one(
+        {"user_id": user_id, "blz_balance": {"$gte": req.amount}},
+        {
+            "$inc": {"blz_balance": -req.amount, "total_withdrawn": req.amount},
+            "$set": {f"withdraw_operations.{operation_id}": {"amount_blz": req.amount, "amount_eur": eur_amount}},
+        },
+    )
+    if debit.modified_count != 1:
         raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
 
-    eur_amount = round(req.amount * BLZ_TO_EUR, 2)
-
-    await db.mining_wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"blz_balance": -req.amount, "total_withdrawn": req.amount}},
+    result = await credit_wallet(
+        user_id=user_id,
+        amount=eur_amount,
+        tx_type=TransactionType.REWARD,
+        description=f"Mining BLZ eingelöst: {req.amount:.4f} BLZ",
+        reference=f"MINE-WD-{operation_id[:12].upper()}",
+        source="mining.withdraw",
+        metadata={"amount_blz": req.amount, "operation_id": operation_id},
+        idempotency_key=f"mining-withdraw:{user_id}:{operation_id}",
     )
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": eur_amount}})
+    if not result.success:
+        await db.mining_wallets.update_one(
+            {"user_id": user_id, f"withdraw_operations.{operation_id}": {"$exists": True}},
+            {
+                "$inc": {"blz_balance": req.amount, "total_withdrawn": -req.amount},
+                "$unset": {f"withdraw_operations.{operation_id}": ""},
+            },
+        )
+        raise HTTPException(status_code=500, detail=result.error or "Wallet-Gutschrift fehlgeschlagen")
 
     now = datetime.now(timezone.utc).isoformat()
-    await db.mining_transactions.insert_one({
-        "txn_id": secrets.token_hex(6),
-        "user_id": user_id,
-        "type": "withdraw",
-        "amount_blz": -req.amount,
-        "amount_eur": eur_amount,
-        "description": f"Converted {req.amount:.4f} BLZ → €{eur_amount:.2f}",
-        "created_at": now,
-    })
+    await db.mining_transactions.update_one(
+        {"txn_id": f"MINE-WD-{operation_id}"},
+        {"$setOnInsert": {
+            "txn_id": f"MINE-WD-{operation_id}",
+            "user_id": user_id,
+            "type": "withdraw",
+            "amount_blz": -req.amount,
+            "amount_eur": eur_amount,
+            "wallet_transaction_id": result.transaction_id,
+            "description": f"Converted {req.amount:.4f} BLZ → €{eur_amount:.2f}",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
 
-    updated = await db.users.find_one({"_id": user["_id"]})
     updated_wallet = await get_or_create_wallet(user_id)
     return {
         "withdrawn_blz": req.amount,
         "received_eur": eur_amount,
         "new_blz_balance": updated_wallet["blz_balance"],
-        "new_eur_balance": updated.get("balance", 0),
+        "new_eur_balance": result.new_balance,
     }
 
 
@@ -783,57 +818,65 @@ class SendBLZRequest(BaseModel):
 
 @router.post("/send")
 async def send_blz(req: SendBLZRequest, request: Request):
-    """Send BLZ to another user."""
+    """Transfer BLZ without allowing concurrent overspending."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
     if req.recipient_email.lower() == user.get("email", "").lower():
         raise HTTPException(status_code=400, detail="Cannot send to yourself")
-
     recipient = await db.users.find_one({"email": req.recipient_email.lower()})
     if not recipient:
         raise HTTPException(status_code=404, detail="Recipient not found")
+    recipient_id = str(recipient["_id"])
 
-    wallet = await get_or_create_wallet(user_id)
-    if wallet["blz_balance"] < req.amount:
+    transfer_id = secrets.token_hex(10)
+    debit = await db.mining_wallets.update_one(
+        {"user_id": user_id, "blz_balance": {"$gte": req.amount}},
+        {"$inc": {"blz_balance": -req.amount}, "$set": {f"transfer_out.{transfer_id}": req.amount}},
+    )
+    if debit.modified_count != 1:
         raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
 
-    recipient_id = str(recipient["_id"])
+    try:
+        credit = await db.mining_wallets.update_one(
+            {"user_id": recipient_id, f"transfer_in.{transfer_id}": {"$exists": False}},
+            {
+                "$inc": {"blz_balance": req.amount},
+                "$set": {f"transfer_in.{transfer_id}": req.amount},
+                "$setOnInsert": {"user_id": recipient_id, "total_mined": 0.0, "total_withdrawn": 0.0},
+            },
+            upsert=True,
+        )
+        if credit.modified_count != 1 and credit.upserted_id is None:
+            raise RuntimeError("recipient credit not applied")
+    except Exception:
+        await db.mining_wallets.update_one(
+            {"user_id": user_id, f"transfer_out.{transfer_id}": {"$exists": True}},
+            {"$inc": {"blz_balance": req.amount}, "$unset": {f"transfer_out.{transfer_id}": ""}},
+        )
+        raise HTTPException(status_code=500, detail="BLZ-Transfer fehlgeschlagen; Betrag wurde zurückgegeben")
+
     now = datetime.now(timezone.utc).isoformat()
-
-    # Debit sender
-    await db.mining_wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"blz_balance": -req.amount}},
-    )
-    # Credit recipient
-    await db.mining_wallets.update_one(
-        {"user_id": recipient_id},
-        {"$inc": {"blz_balance": req.amount}},
-        upsert=True,
-    )
-
-    ref = secrets.token_hex(4).upper()
-    for uid, amt, desc in [
-        (user_id, -req.amount, f"Sent {req.amount:.4f} BLZ to {req.recipient_email}"),
-        (recipient_id, req.amount, f"Received {req.amount:.4f} BLZ from {user.get('email', '')}"),
+    for uid, amt, desc, direction in [
+        (user_id, -req.amount, f"Sent {req.amount:.4f} BLZ to {req.recipient_email}", "send"),
+        (recipient_id, req.amount, f"Received {req.amount:.4f} BLZ from {user.get('email', '')}", "receive"),
     ]:
-        await db.mining_transactions.insert_one({
-            "txn_id": secrets.token_hex(6),
-            "user_id": uid,
-            "type": "send" if amt < 0 else "receive",
-            "amount_blz": amt,
-            "description": desc,
-            "reference": ref,
-            "created_at": now,
-        })
+        await db.mining_transactions.update_one(
+            {"txn_id": f"MINE-TX-{transfer_id}-{direction}"},
+            {"$setOnInsert": {
+                "txn_id": f"MINE-TX-{transfer_id}-{direction}",
+                "user_id": uid,
+                "type": direction,
+                "amount_blz": amt,
+                "description": desc,
+                "reference": transfer_id,
+                "created_at": now,
+            }},
+            upsert=True,
+        )
 
     updated_wallet = await get_or_create_wallet(user_id)
-    return {
-        "sent": req.amount,
-        "to": req.recipient_email,
-        "new_balance": updated_wallet["blz_balance"],
-    }
+    return {"ok": True, "sent": req.amount, "recipient": req.recipient_email, "new_balance": updated_wallet["blz_balance"]}
 
 
 # ── Apply Referral ──
@@ -843,44 +886,56 @@ class MiningReferralRequest(BaseModel):
 
 @router.post("/apply-referral")
 async def apply_mining_referral(req: MiningReferralRequest, request: Request):
-    """Apply a mining referral code."""
+    """Apply one referral code exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    existing = await db.mining_referrals.find_one({"referred_id": user_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Already used a referral code")
-
     code = req.code.strip().upper()
     referrer = await db.users.find_one({"mining_ref_code": code})
     if not referrer:
         raise HTTPException(status_code=404, detail="Invalid referral code")
-    if str(referrer["_id"]) == user_id:
+    referrer_id = str(referrer["_id"])
+    if referrer_id == user_id:
         raise HTTPException(status_code=400, detail="Cannot use your own code")
 
-    await db.mining_referrals.insert_one({
-        "referrer_id": str(referrer["_id"]),
-        "referred_id": user_id,
-        "bonus_rate": REFERRAL_BONUS_RATE,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    now = datetime.now(timezone.utc).isoformat()
+    claim = await db.mining_referrals.update_one(
+        {"referred_id": user_id},
+        {"$setOnInsert": {
+            "referrer_id": referrer_id,
+            "referred_id": user_id,
+            "bonus_rate": REFERRAL_BONUS_RATE,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    if claim.upserted_id is None:
+        raise HTTPException(status_code=400, detail="Already used a referral code")
 
-    # Bonus: give both users some BLZ
     bonus = 0.5
-    for uid in [user_id, str(referrer["_id"])]:
-        await db.mining_wallets.update_one(
-            {"user_id": uid},
-            {"$inc": {"blz_balance": bonus}},
+    for uid, role in [(user_id, "referred"), (referrer_id, "referrer")]:
+        marker = f"referral_bonus_markers.{user_id}"
+        result = await db.mining_wallets.update_one(
+            {"user_id": uid, marker: {"$exists": False}},
+            {
+                "$inc": {"blz_balance": bonus},
+                "$set": {marker: {"amount": bonus, "role": role, "created_at": now}},
+                "$setOnInsert": {"user_id": uid, "total_mined": 0.0, "total_withdrawn": 0.0},
+            },
             upsert=True,
         )
-        await db.mining_transactions.insert_one({
-            "txn_id": secrets.token_hex(6),
-            "user_id": uid,
-            "type": "referral_bonus",
-            "amount_blz": bonus,
-            "description": "Mining referral welcome bonus",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        if result.modified_count == 1 or result.upserted_id is not None:
+            await db.mining_transactions.update_one(
+                {"txn_id": f"MINE-REF-{user_id}-{role}"},
+                {"$setOnInsert": {
+                    "txn_id": f"MINE-REF-{user_id}-{role}",
+                    "user_id": uid,
+                    "type": "referral_bonus",
+                    "amount_blz": bonus,
+                    "description": "Mining referral welcome bonus",
+                    "created_at": now,
+                }},
+                upsert=True,
+            )
 
     return {"ok": True, "bonus_blz": bonus}
 
