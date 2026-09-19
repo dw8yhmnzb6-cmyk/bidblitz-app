@@ -337,6 +337,57 @@ def _reward_pick(catalog: list[dict]) -> dict:
     return random.choices(catalog, weights=weights, k=1)[0]
 
 
+def _move_claim_scope(source_code: str) -> str:
+    return "lifetime" if source_code.startswith("mission:") else _today()
+
+
+def _move_claim_id(user_id: str, source_code: str) -> str:
+    raw = f"{user_id}:{_move_claim_scope(source_code)}:{source_code}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+async def _begin_move_reward_claim(user_id: str, source_code: str, reward: Optional[dict] = None) -> tuple[str, Optional[dict]]:
+    claim_id = _move_claim_id(user_id, source_code)
+    existing = await db.move_reward_claims.find_one({"_id": claim_id}, {"_id": 0})
+    if existing:
+        if existing.get("status") == "completed":
+            return claim_id, existing.get("result") or {}
+        raise HTTPException(status_code=409, detail="Dieser Reward wird bereits verarbeitet")
+
+    doc = {
+        "_id": claim_id,
+        "user_id": user_id,
+        "source_code": source_code,
+        "scope": _move_claim_scope(source_code),
+        "reward": reward,
+        "status": "processing",
+        "created_at": _iso(),
+    }
+    try:
+        await db.move_reward_claims.insert_one(doc)
+    except Exception:
+        existing = await db.move_reward_claims.find_one({"_id": claim_id}, {"_id": 0})
+        if existing and existing.get("status") == "completed":
+            return claim_id, existing.get("result") or {}
+        raise HTTPException(status_code=409, detail="Dieser Reward wird bereits verarbeitet")
+    return claim_id, None
+
+
+async def _complete_move_reward_claim(claim_id: str, result: dict) -> None:
+    await db.move_reward_claims.update_one(
+        {"_id": claim_id, "status": "processing"},
+        {"$set": {"status": "completed", "result": result, "completed_at": _iso()}},
+    )
+
+
+async def _fail_move_reward_claim(claim_id: str, reason: str) -> None:
+    await db.move_reward_claims.update_one(
+        {"_id": claim_id, "status": "processing"},
+        {"$set": {"status": "failed_review", "failure_reason": reason[:500], "failed_at": _iso()}},
+    )
+
+
+
 async def _record_reward_tx(user_id: str, reward_type: str, amount: float, description: str, metadata: Optional[dict] = None):
     await db.reward_transactions.insert_one({
         "reward_tx_id": _code("MRW"),
@@ -375,11 +426,20 @@ async def _record_reward_event(user_id: str, source_type: str, amount: int, desc
     })
 
 
-async def _issue_coupon(user: dict, amount: float, label: str, source_id: str) -> dict:
-    code = _code("MOVECPN")
+async def _issue_coupon(user: dict, amount: float, label: str, source_id: str, claim_id: str) -> dict:
+    existing = await db.reward_coupons.find_one(
+        {"assigned_user_id": str(user["_id"]), "claim_id": claim_id},
+        {"_id": 0},
+    )
+    if existing:
+        return {"code": existing["code"], "value": existing["value"], "expires_at": existing["expires_at"]}
+
+    suffix = claim_id[:10].upper()
+    code = f"MOVECPN-{suffix}"
     coupon = {
-        "coupon_id": _code("MCP"),
+        "coupon_id": f"MCP-{suffix}",
         "code": code,
+        "claim_id": claim_id,
         "coupon_type": "move_earn_reward",
         "value": round(float(amount or 0), 2),
         "description": label,
@@ -394,66 +454,150 @@ async def _issue_coupon(user: dict, amount: float, label: str, source_id: str) -
         "created_at": _iso(),
         "source_id": source_id,
     }
-    await db.coupons.insert_one(dict(coupon))
-    await db.reward_coupons.insert_one({**coupon, "status": "available"})
+    await db.coupons.update_one(
+        {"coupon_id": coupon["coupon_id"]},
+        {"$setOnInsert": coupon},
+        upsert=True,
+    )
+    await db.reward_coupons.update_one(
+        {"coupon_id": coupon["coupon_id"]},
+        {"$setOnInsert": {**coupon, "status": "available"}},
+        upsert=True,
+    )
     return {"code": code, "value": coupon["value"], "expires_at": coupon["expires_at"]}
 
 
 async def _grant_reward(user: dict, profile: dict, reward: dict, source_code: str) -> dict:
+    from core.payment_engine import credit_wallet, TransactionType
+
     uid = str(user["_id"])
+    claim_id, replay = await _begin_move_reward_claim(uid, source_code, reward)
+    if replay is not None:
+        return replay
+
     reward_type = reward["type"]
     value = reward["value"]
     label = reward["label"]
     result: dict[str, Any] = {"reward_type": reward_type, "reward_value": value, "label": label}
-    if reward_type == "bid_credits":
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": int(value), "total_reward_credits": int(value)}})
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"reward_stats.bid_credits": int(value)}, "$set": {"updated_at": _iso()}})
-        await _record_reward_event(uid, "move_earn", int(value), label, source_code)
-        await _record_reward_tx(uid, "bid_credits", int(value), label, {"source": source_code})
-    elif reward_type == "cashback":
-        eur_value = round(float(value or 0), 2)
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": eur_value}})
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"reward_stats.cashback_eur": eur_value}, "$set": {"updated_at": _iso()}})
-        await db.cashback_claims.insert_one({
-            "claim_id": _code("MCB"),
-            "user_id": uid,
-            "user_email": user.get("email", ""),
-            "cashback_amount": eur_value,
-            "description": label,
-            "source": "move_earn",
-            "source_id": source_code,
-            "created_at": _iso(),
-        })
-        await _record_wallet_tx(uid, eur_value, label, {"source": source_code})
-        await _record_reward_tx(uid, "cashback", eur_value, label, {"source": source_code})
-    elif reward_type == "coupon":
-        coupon = await _issue_coupon(user, float(value), label, source_code)
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"reward_stats.coupons": 1}, "$set": {"updated_at": _iso()}})
-        await _record_reward_tx(uid, "coupon", float(value), label, {"source": source_code, "coupon": coupon["code"]})
-        result["coupon"] = coupon
-    elif reward_type == "mystery_box_ticket":
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"inventory.mystery_box_tickets": int(value)}, "$set": {"updated_at": _iso()}})
-        await _record_reward_tx(uid, reward_type, int(value), label, {"source": source_code})
-    elif reward_type == "spin_ticket":
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"inventory.spin_wheel_tickets": int(value)}, "$set": {"updated_at": _iso()}})
-        await _record_reward_tx(uid, reward_type, int(value), label, {"source": source_code})
-    elif reward_type == "plinko_ticket":
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"inventory.plinko_tickets": int(value)}, "$set": {"updated_at": _iso()}})
-        await _record_reward_tx(uid, reward_type, int(value), label, {"source": source_code})
-    else:
-        raise HTTPException(status_code=400, detail="Unbekannter Reward-Typ")
-    await db.move_rewards.insert_one({
-        "reward_id": _code("MOVR"),
-        "user_id": uid,
-        "reward_type": reward_type,
-        "reward_value": value,
-        "label": label,
-        "source_code": source_code,
-        "cost_estimate_eur": reward.get("cost_estimate_eur", 0),
-        "created_at": _iso(),
-    })
-    await _audit("move_reward_claimed", uid, {"source_code": source_code, "reward_type": reward_type, "reward_value": value})
-    return result
+    marker = claim_id[:24]
+    user_marker = f"move_reward_grants.{marker}"
+    profile_marker = f"reward_grant_markers.{marker}"
+
+    try:
+        if reward_type == "bid_credits":
+            grant = await db.users.update_one(
+                {"_id": user["_id"], user_marker: {"$exists": False}},
+                {
+                    "$inc": {"bid_credits": int(value), "total_reward_credits": int(value)},
+                    "$set": {user_marker: {"type": reward_type, "value": int(value), "created_at": _iso()}},
+                },
+            )
+            if grant.modified_count == 0:
+                already = await db.users.find_one({"_id": user["_id"], user_marker: {"$exists": True}}, {"_id": 1})
+                if not already:
+                    raise RuntimeError("bid_credit_grant_failed")
+            await db.move_profiles.update_one(
+                {"user_id": uid, profile_marker: {"$exists": False}},
+                {
+                    "$inc": {"reward_stats.bid_credits": int(value)},
+                    "$set": {profile_marker: True, "updated_at": _iso()},
+                },
+            )
+            await _record_reward_event(uid, "move_earn", int(value), label, source_code)
+            await _record_reward_tx(uid, "bid_credits", int(value), label, {"source": source_code, "claim_id": claim_id})
+
+        elif reward_type == "cashback":
+            eur_value = round(float(value or 0), 2)
+            wallet_result = await credit_wallet(
+                user_id=uid,
+                amount=eur_value,
+                tx_type=TransactionType.REWARD,
+                description=label,
+                reference=f"MOVE-{claim_id[:12].upper()}",
+                source="move_earn",
+                metadata={"source_code": source_code, "claim_id": claim_id},
+                idempotency_key=f"move-reward:{claim_id}",
+            )
+            if not wallet_result.success:
+                raise RuntimeError(wallet_result.error or "cashback_wallet_credit_failed")
+            await db.move_profiles.update_one(
+                {"user_id": uid, profile_marker: {"$exists": False}},
+                {
+                    "$inc": {"reward_stats.cashback_eur": eur_value},
+                    "$set": {profile_marker: True, "updated_at": _iso()},
+                },
+            )
+            await db.cashback_claims.update_one(
+                {"claim_id": f"MCB-{claim_id[:16].upper()}"},
+                {"$setOnInsert": {
+                    "claim_id": f"MCB-{claim_id[:16].upper()}",
+                    "user_id": uid,
+                    "user_email": user.get("email", ""),
+                    "cashback_amount": eur_value,
+                    "description": label,
+                    "source": "move_earn",
+                    "source_id": source_code,
+                    "wallet_transaction_id": wallet_result.transaction_id,
+                    "created_at": _iso(),
+                }},
+                upsert=True,
+            )
+            await _record_reward_tx(uid, "cashback", eur_value, label, {"source": source_code, "claim_id": claim_id})
+
+        elif reward_type == "coupon":
+            coupon = await _issue_coupon(user, float(value), label, source_code, claim_id)
+            await db.move_profiles.update_one(
+                {"user_id": uid, profile_marker: {"$exists": False}},
+                {
+                    "$inc": {"reward_stats.coupons": 1},
+                    "$set": {profile_marker: True, "updated_at": _iso()},
+                },
+            )
+            await _record_reward_tx(uid, "coupon", float(value), label, {"source": source_code, "coupon": coupon["code"], "claim_id": claim_id})
+            result["coupon"] = coupon
+
+        elif reward_type in {"mystery_box_ticket", "spin_ticket", "plinko_ticket"}:
+            inventory_field = {
+                "mystery_box_ticket": "inventory.mystery_box_tickets",
+                "spin_ticket": "inventory.spin_wheel_tickets",
+                "plinko_ticket": "inventory.plinko_tickets",
+            }[reward_type]
+            await db.move_profiles.update_one(
+                {"user_id": uid, profile_marker: {"$exists": False}},
+                {
+                    "$inc": {inventory_field: int(value)},
+                    "$set": {profile_marker: True, "updated_at": _iso()},
+                },
+            )
+            await _record_reward_tx(uid, reward_type, int(value), label, {"source": source_code, "claim_id": claim_id})
+        else:
+            raise HTTPException(status_code=400, detail="Unbekannter Reward-Typ")
+
+        reward_id = f"MOVR-{claim_id[:20].upper()}"
+        await db.move_rewards.update_one(
+            {"reward_id": reward_id},
+            {"$setOnInsert": {
+                "reward_id": reward_id,
+                "claim_id": claim_id,
+                "user_id": uid,
+                "reward_type": reward_type,
+                "reward_value": value,
+                "label": label,
+                "source_code": source_code,
+                "cost_estimate_eur": reward.get("cost_estimate_eur", 0),
+                "created_at": _iso(),
+            }},
+            upsert=True,
+        )
+        await _audit("move_reward_claimed", uid, {"source_code": source_code, "reward_type": reward_type, "reward_value": value, "claim_id": claim_id})
+        await _complete_move_reward_claim(claim_id, result)
+        return result
+    except HTTPException:
+        await _fail_move_reward_claim(claim_id, "http_error")
+        raise
+    except Exception as exc:
+        await _fail_move_reward_claim(claim_id, str(exc))
+        raise HTTPException(status_code=500, detail="Reward konnte nicht sicher abgeschlossen werden. Manuelle Prüfung erforderlich.")
 
 
 async def _sync_external_rewards(user: dict, profile: dict, daily: dict, settings: dict):
@@ -1223,7 +1367,15 @@ async def claim_move_reward(request: Request, req: ClaimRewardRequest):
     result: dict[str, Any]
 
     if reward_code == "checkin":
-        if daily.get("daily_checkin_claimed"):
+        claim_id, replay = await _begin_move_reward_claim(uid, reward_code)
+        if replay is not None:
+            return {"ok": True, "reward": replay, "status": await _status_payload(user)}
+        claim = await db.move_daily_steps.update_one(
+            {"user_id": uid, "date": _today(), "daily_checkin_claimed": {"$ne": True}},
+            {"$set": {"daily_checkin_claimed": True, "updated_at": _iso()}},
+        )
+        if claim.modified_count != 1:
+            await _fail_move_reward_claim(claim_id, "already_claimed")
             raise HTTPException(status_code=400, detail="Daily Check-in bereits beansprucht")
         streak = int(profile.get("streak_days", 0) or 0)
         last_checkin = profile.get("last_checkin_date")
@@ -1239,13 +1391,13 @@ async def claim_move_reward(request: Request, req: ClaimRewardRequest):
         energy = int(settings.get("daily_checkin_energy", 2))
         total_xp = int(profile.get("total_xp", 0) or 0) + xp
         level = _level_for_xp(total_xp)
-        await db.move_daily_steps.update_one({"user_id": uid, "date": _today()}, {"$set": {"daily_checkin_claimed": True, "updated_at": _iso()}})
         await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"total_xp": xp, "energy_balance": energy, "total_move_coins": coins}, "$set": {"streak_days": streak, "last_checkin_date": _today(), "level": level["id"], "updated_at": _iso()}})
         result = {"reward_type": "checkin", "reward_value": {"xp": xp, "coins": coins, "energy": energy}, "label": "Daily Check-in"}
         await db.move_rewards.insert_one({"reward_id": _code("MCHK"), "user_id": uid, "reward_type": "checkin", "reward_value": xp, "label": "Daily Check-in", "source_code": reward_code, "cost_estimate_eur": 0, "created_at": _iso()})
         await _record_reward_tx(uid, "checkin", xp, "Daily Check-in", {"coins": coins, "energy": energy})
         await _notify_user(user, "Daily Check-in geschafft", f"+{xp} XP · +{coins} Coins · +{energy} Energy", "/move", "promo")
         await _audit("move_checkin_claimed", uid, {"streak_days": streak, "xp": xp, "coins": coins, "energy": energy})
+        await _complete_move_reward_claim(claim_id, result)
     elif reward_code.startswith("slot:"):
         if reward_code in set(daily.get("claimed_slot_codes", [])):
             raise HTTPException(status_code=400, detail="Dieser Reward wurde heute bereits beansprucht")
@@ -1261,9 +1413,22 @@ async def claim_move_reward(request: Request, req: ClaimRewardRequest):
         if not eligible:
             raise HTTPException(status_code=400, detail="Keine Rewards für diesen Slot konfiguriert")
         reward = _reward_pick(eligible)
-        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"energy_balance": -int(slot.get("energy_cost", 0) or 0)}, "$set": {"updated_at": _iso()}})
-        await db.move_daily_steps.update_one({"user_id": uid, "date": _today()}, {"$push": {"claimed_slot_codes": reward_code}, "$set": {"updated_at": _iso()}})
-        result = await _grant_reward(user, profile, reward, reward_code)
+        energy_cost = int(slot.get("energy_cost", 0) or 0)
+        energy_debit = await db.move_profiles.update_one(
+            {"user_id": uid, "energy_balance": {"$gte": energy_cost}},
+            {"$inc": {"energy_balance": -energy_cost}, "$set": {"updated_at": _iso()}},
+        )
+        if energy_debit.modified_count != 1:
+            raise HTTPException(status_code=400, detail="Nicht genug Energy verfügbar")
+        try:
+            result = await _grant_reward(user, profile, reward, reward_code)
+        except Exception:
+            await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"energy_balance": energy_cost}, "$set": {"updated_at": _iso()}})
+            raise
+        await db.move_daily_steps.update_one(
+            {"user_id": uid, "date": _today()},
+            {"$addToSet": {"claimed_slot_codes": reward_code}, "$set": {"updated_at": _iso()}},
+        )
         await _notify_user(user, "Move Reward erhalten", result["label"], "/move", "promo")
     elif reward_code.startswith("mission:"):
         missions = await _build_missions(user, profile, daily, settings)
