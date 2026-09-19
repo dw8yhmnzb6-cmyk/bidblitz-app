@@ -599,7 +599,11 @@ export const api = {
   deleteChild: (childId) => request(`/api/kids/children/${childId}`, { method: "DELETE" }),
   
   // Kids Wallet System
-  transferToChild: (childId, body) => request(`/api/kids/children/${childId}/transfer`, { method: "POST", body: JSON.stringify(body) }),
+  transferToChild: (childId, body, idempotencyKey = "") => request(`/api/kids/children/${childId}/transfer`, {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    body: JSON.stringify(body),
+  }),
   getChildWallet: (childId) => request(`/api/kids/children/${childId}/wallet`),
   setChildLimits: (childId, body) => request(`/api/kids/children/${childId}/limits`, { method: "POST", body: JSON.stringify(body) }),
   freezeChild: (childId) => request(`/api/kids/children/${childId}/freeze`, { method: "POST" }),
