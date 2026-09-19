@@ -3,6 +3,7 @@ BidBlitz V2 — Full Investor & Revenue Distribution System
 Real profit sharing, revenue tracking, automated payouts.
 """
 import secrets
+import hashlib
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -270,142 +271,223 @@ async def get_revenue_stats(request: Request):
 
 @router.post("/admin/distribute-profits")
 async def distribute_profits(request: Request):
-    """Admin: Distribute profits to investors based on their share."""
+    """Admin: create one deterministic profit distribution per accounting scope."""
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    
+
     body = await request.json()
-    period = body.get("period", "today")  # today | week | month | custom
-    custom_amount = body.get("amount")  # For manual distribution
-    
+    period = str(body.get("period") or "today")
+    custom_amount = body.get("amount")
     now = datetime.now(timezone.utc)
-    
-    if custom_amount:
-        profit_to_distribute = float(custom_amount)
+
+    if period not in {"today", "week", "month", "custom"}:
+        raise HTTPException(status_code=400, detail="Invalid distribution period")
+
+    if custom_amount is not None:
+        try:
+            profit_to_distribute = round(float(custom_amount), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid distribution amount")
     else:
-        # Calculate from revenue
         if period == "today":
             date_filter = now.strftime("%Y-%m-%d")
             revenue = await db.platform_revenue.find_one({"date": date_filter})
-            profit_to_distribute = revenue.get("total", 0) if revenue else 0
+            profit_to_distribute = float((revenue or {}).get("total", (revenue or {}).get("amount", 0)) or 0)
         elif period == "week":
-            week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-            revenues = await db.platform_revenue.find({"date": {"$gte": week_ago}}).to_list(7)
-            profit_to_distribute = sum(r.get("total", 0) for r in revenues)
+            iso_year, iso_week, _ = now.isocalendar()
+            week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+            revenues = await db.platform_revenue.find({"date": {"$gte": week_start}}).to_list(7)
+            profit_to_distribute = sum(float(r.get("total", r.get("amount", 0)) or 0) for r in revenues)
         elif period == "month":
             month_start = now.replace(day=1).strftime("%Y-%m-%d")
             revenues = await db.platform_revenue.find({"date": {"$gte": month_start}}).to_list(31)
-            profit_to_distribute = sum(r.get("total", 0) for r in revenues)
+            profit_to_distribute = sum(float(r.get("total", r.get("amount", 0)) or 0) for r in revenues)
         else:
-            profit_to_distribute = 0
-    
+            raise HTTPException(status_code=400, detail="Custom distribution requires amount")
+
     if profit_to_distribute <= 0:
         return {"ok": False, "message": "No profit to distribute"}
-    
-    # Get profit split config
+
+    client_key = str(body.get("idempotency_key") or request.headers.get("Idempotency-Key") or "").strip()
+    if period == "today":
+        scope = now.strftime("%Y-%m-%d")
+    elif period == "week":
+        iso_year, iso_week, _ = now.isocalendar()
+        scope = f"{iso_year}-W{iso_week:02d}"
+    elif period == "month":
+        scope = now.strftime("%Y-%m")
+    else:
+        if len(client_key) < 8:
+            raise HTTPException(status_code=400, detail="Idempotency-Key required for custom distribution")
+        scope = f"custom-{hashlib.sha256(client_key.encode('utf-8')).hexdigest()[:16]}"
+
+    distribution_key = f"{period}:{scope}:{profit_to_distribute:.2f}"
+    distribution_id = f"INVD-{hashlib.sha256(distribution_key.encode('utf-8')).hexdigest()[:20].upper()}"
+
+    existing_distribution = await db.profit_distributions.find_one({"distribution_id": distribution_id}, {"_id": 0})
+    if existing_distribution:
+        existing_payouts = await db.investor_payouts.find(
+            {"distribution_id": distribution_id},
+            {"_id": 0},
+        ).to_list(500)
+        return {
+            "ok": True,
+            "replayed": True,
+            "distribution_id": distribution_id,
+            "total_profit": existing_distribution.get("total_profit", profit_to_distribute),
+            "investor_pool": existing_distribution.get("investor_pool", 0),
+            "payouts_created": len(existing_payouts),
+            "payouts": existing_payouts,
+        }
+
     config = await get_profit_config()
-    investor_pool = profit_to_distribute * (config.get("investors_percent", 30) / 100)
-    
-    # Get active investors
+    investor_pool = round(profit_to_distribute * (config.get("investors_percent", 30) / 100), 2)
     investors = await db.investors.find({"status": "active"}).to_list(100)
     if not investors:
         return {"ok": False, "message": "No active investors"}
-    
-    # Calculate total shares
-    total_shares = sum(inv.get("share_percent", 0) for inv in investors)
+
+    total_shares = sum(float(inv.get("share_percent", 0) or 0) for inv in investors)
     if total_shares <= 0:
         return {"ok": False, "message": "No investor shares configured"}
-    
+
+    distribution_doc = {
+        "distribution_id": distribution_id,
+        "distribution_key": distribution_key,
+        "period": period,
+        "scope": scope,
+        "total_profit": round(profit_to_distribute, 2),
+        "investor_pool": investor_pool,
+        "status": "creating",
+        "created_at": now.isoformat(),
+        "created_by": str(user["_id"]),
+    }
+    try:
+        await db.profit_distributions.insert_one(distribution_doc)
+    except Exception:
+        replay = await db.profit_distributions.find_one({"distribution_id": distribution_id}, {"_id": 0})
+        if replay:
+            existing_payouts = await db.investor_payouts.find({"distribution_id": distribution_id}, {"_id": 0}).to_list(500)
+            return {
+                "ok": True,
+                "replayed": True,
+                "distribution_id": distribution_id,
+                "total_profit": replay.get("total_profit", profit_to_distribute),
+                "investor_pool": replay.get("investor_pool", investor_pool),
+                "payouts_created": len(existing_payouts),
+                "payouts": existing_payouts,
+            }
+        raise
+
     payouts = []
     for inv in investors:
-        share = inv.get("share_percent", 0)
+        share = float(inv.get("share_percent", 0) or 0)
         if share <= 0:
             continue
-        
-        # Each investor gets their proportion of the investor pool
-        payout_amount = (share / total_shares) * investor_pool
-        payout_amount = round(payout_amount, 2)
-        
+
+        payout_amount = round((share / total_shares) * investor_pool, 2)
         if payout_amount < 0.01:
             continue
-        
-        # Create payout record
+
+        investor_id = str(inv["user_id"])
+        payout_id = f"INVP-{hashlib.sha256(f'{distribution_id}:{investor_id}'.encode('utf-8')).hexdigest()[:20].upper()}"
         payout = {
-            "payout_id": secrets.token_hex(8),
-            "investor_id": inv["user_id"],
+            "payout_id": payout_id,
+            "distribution_id": distribution_id,
+            "investor_id": investor_id,
             "investor_email": inv.get("user_email", ""),
             "amount": payout_amount,
             "share_percent": share,
             "period": period,
-            "profit_pool": round(investor_pool, 2),
+            "scope": scope,
+            "profit_pool": investor_pool,
             "status": "pending",
             "created_at": now.isoformat(),
         }
-        await db.investor_payouts.insert_one(payout)
-        payouts.append(payout)
-    
-    # Record distribution event
-    await db.profit_distributions.insert_one({
-        "distribution_id": secrets.token_hex(8),
-        "period": period,
-        "total_profit": round(profit_to_distribute, 2),
-        "investor_pool": round(investor_pool, 2),
-        "payouts_count": len(payouts),
-        "created_at": now.isoformat(),
-        "created_by": str(user["_id"]),
-    })
-    
+        await db.investor_payouts.update_one(
+            {"payout_id": payout_id},
+            {"$setOnInsert": payout},
+            upsert=True,
+        )
+        payouts.append(await db.investor_payouts.find_one({"payout_id": payout_id}, {"_id": 0}) or payout)
+
+    await db.profit_distributions.update_one(
+        {"distribution_id": distribution_id},
+        {"$set": {"status": "ready", "payouts_count": len(payouts), "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
     return {
         "ok": True,
+        "replayed": False,
+        "distribution_id": distribution_id,
         "total_profit": round(profit_to_distribute, 2),
-        "investor_pool": round(investor_pool, 2),
+        "investor_pool": investor_pool,
         "payouts_created": len(payouts),
-        "payouts": [{k: v for k, v in p.items() if k != "_id"} for p in payouts],
+        "payouts": payouts,
     }
 
 
 @router.post("/admin/credit-payouts")
 async def credit_pending_payouts(request: Request):
-    """Admin: Credit pending investor payouts to their wallets."""
+    """Admin: credit each investor payout exactly once."""
     from core.payment_engine import credit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    
+
     pending = await db.investor_payouts.find({"status": "pending"}).to_list(500)
     if not pending:
         return {"ok": False, "message": "No pending payouts"}
-    
+
     credited = 0
     failed = 0
-    now = datetime.now(timezone.utc)
-    
+
     for payout in pending:
+        payout_id = payout["payout_id"]
+        claim = await db.investor_payouts.update_one(
+            {"payout_id": payout_id, "status": "pending"},
+            {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat(), "processing_by": str(user["_id"])}},
+        )
+        if claim.modified_count != 1:
+            continue
+
         try:
             result = await credit_wallet(
                 user_id=payout["investor_id"],
-                amount=payout["amount"],
+                amount=float(payout["amount"]),
                 tx_type=TransactionType.INVESTOR_PROFIT,
                 description=f"Investor Profit ({payout.get('period', 'manual')})",
-                reference=f"INV-{payout['payout_id'][:8].upper()}",
+                reference=f"INV-{payout_id[:12].upper()}",
                 source="profit_distribution",
-                metadata={"payout_id": payout["payout_id"]}
+                metadata={"payout_id": payout_id, "distribution_id": payout.get("distribution_id")},
+                idempotency_key=f"investor-payout:{payout_id}",
             )
-            
+
             if result.success:
                 await db.investor_payouts.update_one(
-                    {"payout_id": payout["payout_id"]},
-                    {"$set": {"status": "credited", "credited_at": now.isoformat(), "transaction_id": result.transaction_id}}
+                    {"payout_id": payout_id, "status": "processing"},
+                    {"$set": {
+                        "status": "credited",
+                        "credited_at": datetime.now(timezone.utc).isoformat(),
+                        "transaction_id": result.transaction_id,
+                    }},
                 )
                 credited += 1
             else:
+                await db.investor_payouts.update_one(
+                    {"payout_id": payout_id, "status": "processing"},
+                    {"$set": {"status": "pending", "last_error": result.error, "last_failed_at": datetime.now(timezone.utc).isoformat()}},
+                )
                 failed += 1
         except Exception as e:
-            logger.error(f"Failed to credit payout {payout['payout_id']}: {e}")
+            await db.investor_payouts.update_one(
+                {"payout_id": payout_id, "status": "processing"},
+                {"$set": {"status": "pending", "last_error": str(e)[:500], "last_failed_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            logger.error(f"Failed to credit payout {payout_id}: {e}")
             failed += 1
-    
+
     return {"ok": True, "credited": credited, "failed": failed}
 
 
