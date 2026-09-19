@@ -92,18 +92,26 @@ async def get_recent_merchant_contacts(request: Request):
             "user_id": user_id,
             "type": "merchant_payment",
             "status": "completed",
+            "direction": "debit",
         },
-        {"_id": 0, "recipient_id": 1}
-    ).sort("created_at", -1).limit(10).to_list(10)
+        {"_id": 0, "metadata.recipient_id": 1, "metadata.counterparty_user_id": 1}
+    ).sort("created_at", -1).limit(20).to_list(20)
     
-    recipient_ids = list(set([tx["recipient_id"] for tx in recent_txs if "recipient_id" in tx]))
+    recipient_ids = []
+    for tx in recent_txs:
+        meta = tx.get("metadata") or {}
+        recipient_id = meta.get("recipient_id") or meta.get("counterparty_user_id")
+        if recipient_id and recipient_id not in recipient_ids:
+            recipient_ids.append(recipient_id)
+        if len(recipient_ids) >= 10:
+            break
     
     if not recipient_ids:
         return {"merchants": [], "count": 0}
     
     # Hole Händler-Details
     merchants = await db.users.find(
-        {"_id": {"$in": [db.ObjectId(rid) for rid in recipient_ids]}},
+        {"_id": {"$in": [ObjectId(rid) for rid in recipient_ids if ObjectId.is_valid(rid)]}},
         {
             "_id": 0,
             "id": {"$toString": "$_id"},
