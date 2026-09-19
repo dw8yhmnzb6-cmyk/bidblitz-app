@@ -519,7 +519,9 @@ def test_auth_admin_alias_2fa_ws_and_role_changes_are_session_safe():
 
     assert "def _hash_pending_2fa_token" in auth_source
     assert '"token_hash": _hash_pending_2fa_token(pending_token)' in auth_source
-    pending_insert = auth_source[auth_source.index("await db.pending_2fa.insert_one"):auth_source.index("# Send OTP email")]
+    pending_start = auth_source.index("await db.pending_2fa.insert_one")
+    pending_end = auth_source.index('if method == "totp":', pending_start)
+    pending_insert = auth_source[pending_start:pending_end]
     assert '"token": pending_token' not in pending_insert
     assert '"token_hash": _hash_pending_2fa_token(pending_token)' in pending_insert
     assert '"session_id": session_id' in auth_source
@@ -681,7 +683,8 @@ def test_referral_and_promotion_rewards_are_exactly_once():
     assert 'TransactionType.REWARD' in referral_source
 
     assert 'usage_id = f"promo:{promo_name}:{user_id}"' in promotions_source
-    assert '"current_uses": {"$lt": max_uses}' in promotions_source
+    assert 'claim_query["current_uses"] = {"$lt": max_uses}' in promotions_source
+    assert '"$inc": {"current_uses": 1}' in promotions_source
     assert 'await db.promo_usage.delete_one({"_id": usage_id})' in promotions_source
 
 
