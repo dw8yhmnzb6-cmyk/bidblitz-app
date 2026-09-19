@@ -452,6 +452,19 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not SCOOTER_MODULE_ENABLED:
+        raise HTTPException(status_code=503, detail="Scooter-Modul ist deaktiviert")
+    if not TEST_MODE and not _iot_live_configured():
+        raise HTTPException(status_code=503, detail="Scooter-IoT ist noch nicht für Livebetrieb verbunden")
+    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um einen Scooter zu mieten.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
     idempotency_key = _require_scooter_idempotency_key(req.idempotency_key, request, prefix="scooter-unlock")
     claim_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
     ride_id = f"SCR-{claim_hash[:16]}"
@@ -522,6 +535,9 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
     if scooter.get("battery", 100) < 10:
         raise HTTPException(status_code=400, detail="Scooter Akku zu niedrig")
+    device_id = scooter.get("device_id")
+    if not device_id:
+        raise HTTPException(status_code=503, detail="Scooter hat keine verbundene IoT-Geräte-ID")
 
     scooter_id = scooter["scooter_id"]
     original_status = scooter.get("status") or "available"
@@ -544,7 +560,6 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         if current.get("unlock_claim_key") != claim_hash or current.get("unlock_claim_user_id") != user_id:
             raise HTTPException(status_code=409, detail="Scooter wurde gerade von einem anderen Nutzer reserviert")
 
-    device_id = scooter.get("device_id")
     if device_id:
         cmd_result = await send_device_command(device_id, DeviceCommand.UNLOCK)
         if not cmd_result.success:
@@ -679,6 +694,8 @@ async def end_ride(req: EndRideRequest, request: Request):
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE and not _iot_live_configured():
+        raise HTTPException(status_code=503, detail="Scooter-IoT ist nicht verfügbar; Fahrt kann nicht sicher beendet werden")
 
     lookup = {"user_id": user_id}
     if req.ride_id:
@@ -776,10 +793,48 @@ async def end_ride(req: EndRideRequest, request: Request):
             ride = await db.scooter_rides.find_one({"ride_id": ride_id, "user_id": user_id}) or ride
             settlement = ride.get("end_settlement") or settlement
 
-    if device_id:
-        cmd_result = await send_device_command(device_id, DeviceCommand.LOCK)
-        if not cmd_result.success:
-            logger.warning("Lock command failed for %s: %s", scooter_id, cmd_result.message)
+    if not device_id:
+        await db.scooter_rides.update_one(
+            {"ride_id": ride_id, "user_id": user_id},
+            {"$set": {
+                "end_lock_status": "failed",
+                "end_lock_error": "missing_device_id",
+                "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden. Fahrt bleibt aktiv; Support wurde erforderlich.")
+
+    cmd_result = await send_device_command(device_id, DeviceCommand.LOCK)
+    if not cmd_result.success:
+        logger.error("Lock command failed for %s: %s", scooter_id, cmd_result.message)
+        await db.scooter_rides.update_one(
+            {"ride_id": ride_id, "user_id": user_id},
+            {"$set": {
+                "end_lock_status": "failed",
+                "end_lock_error": cmd_result.message,
+                "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        await db.scooters.update_one(
+            {"scooter_id": scooter_id, "current_ride_id": ride_id},
+            {"$set": {
+                "status": "in_use",
+                "lock_error": cmd_result.message,
+                "lock_error_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Scooter konnte nicht sicher verriegelt werden. Fahrt wurde noch nicht abgeschlossen; bitte erneut versuchen oder Support nutzen.",
+        )
+
+    await db.scooter_rides.update_one(
+        {"ride_id": ride_id, "user_id": user_id},
+        {"$set": {
+            "end_lock_status": "confirmed",
+            "end_lock_confirmed_at": datetime.now(timezone.utc).isoformat(),
+        }, "$unset": {"end_lock_error": "", "end_lock_failed_at": ""}},
+    )
 
     amount_to_debit = round(float(settlement.get("ride_cost_to_deduct") or 0), 2)
     payment_result = None
