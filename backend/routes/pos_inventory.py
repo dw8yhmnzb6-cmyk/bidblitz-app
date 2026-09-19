@@ -936,42 +936,36 @@ class ItemReturnRequest(BaseModel):
 
 @router.post("/refund/items")
 async def refund_with_items(req: ItemReturnRequest, request: Request):
-    """Partial / item-level refund with optional stock return."""
+    """Partial/item refund through the canonical refund engine with idempotent restock."""
     user = await get_current_user(request)
     payment = await db.pos_payments.find_one({"payment_id": req.payment_id})
     if not payment:
         raise HTTPException(status_code=404, detail="Zahlung nicht gefunden")
     if payment["status"] not in {PAYMENT_STATUS_PAID, "partial_refund"}:
         raise HTTPException(status_code=400, detail="Zahlung nicht erstattbar")
+
     await _require_store_access(user, payment["store_id"], {"merchant_admin", "store_manager", "accountant"})
-
     refund_total = round(sum(float(i.get("refund_amount", 0)) for i in req.items), 2)
-    if refund_total <= 0 or refund_total > float(payment["amount"]):
-        raise HTTPException(status_code=400, detail="Erstattungsbetrag ungültig")
+    remaining = round(float(payment.get("amount") or 0) - float(payment.get("refunded_total") or 0), 2)
+    if refund_total <= 0 or refund_total > remaining:
+        raise HTTPException(status_code=400, detail=f"Erstattungsbetrag ungültig. Verfügbar: €{max(0, remaining):.2f}")
 
-    refund_id = short_id("RFD", 10)
+    from services.pos_security import get_actor_context, execute_refund_action
+    actor = await get_actor_context(user, payment["store_id"], payment.get("register_id", ""))
+    refund_doc = await execute_refund_action(
+        {
+            "payment_id": req.payment_id,
+            "amount": refund_total,
+            "reason": req.reason or "",
+            "idempotency_key": request.headers.get("Idempotency-Key") or "",
+        },
+        actor,
+        request=request,
+    )
+    refund_id = refund_doc["refund_id"]
 
-    # Wallet reverse if BidBlitz wallet payment
-    if payment["method"] in ("wallet_qr", "barcode") and payment.get("customer_id"):
-        merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
-        if merchant:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": -refund_total}}
-            )
-            await db.pos_merchants.update_one(
-                {"merchant_id": payment["merchant_id"]},
-                {"$inc": {"settlement_balance": -refund_total}},
-            )
-        await credit_wallet(
-            user_id=payment["customer_id"],
-            amount=refund_total,
-            tx_type=TransactionType.REFUND,
-            description=f"POS Item-Refund {payment['payment_id']}",
-            reference=refund_id,
-        )
-
-    # Restock items + log movement
     if req.restock:
+        refund_marker = refund_id.replace(".", "_")
         for it in req.items:
             pid = it.get("product_id")
             qty = float(it.get("quantity", 0) or 0)
@@ -980,37 +974,52 @@ async def refund_with_items(req: ItemReturnRequest, request: Request):
             product = await db.pos_products.find_one({"product_id": pid})
             if not product:
                 continue
+
+            marker_field = f"return_markers.{refund_marker}"
             before = float(product.get("stock", 0))
-            after = round(before + qty, 3)
-            await db.pos_products.update_one(
-                {"product_id": pid}, {"$set": {"stock": after, "updated_at": now_iso()}}
+            stock_update = await db.pos_products.update_one(
+                {"product_id": pid, marker_field: {"$exists": False}},
+                {
+                    "$inc": {"stock": qty},
+                    "$set": {marker_field: {"quantity": qty, "refund_id": refund_id}, "updated_at": now_iso()},
+                },
             )
-            await _record_movement(
-                product=product, store_id=payment["store_id"], merchant_id=payment["merchant_id"],
-                type_="return", qty=qty, before=before, after=after,
-                reference_id=refund_id, actor_id=str(user["_id"]),
-                note=f"Refund {payment['payment_id']}",
+            if stock_update.modified_count != 1:
+                continue
+            fresh_product = await db.pos_products.find_one({"product_id": pid}, {"stock": 1, "_id": 0}) or {}
+            after = float(fresh_product.get("stock", before + qty))
+            movement_id = f"MOV-{refund_id}-{pid}"
+            await db.pos_stock_movements.update_one(
+                {"movement_id": movement_id},
+                {"$setOnInsert": {
+                    "movement_id": movement_id,
+                    "product_id": pid,
+                    "product_name": product["name"],
+                    "merchant_id": payment["merchant_id"],
+                    "store_id": payment["store_id"],
+                    "type": "return",
+                    "quantity": qty,
+                    "before_stock": before,
+                    "after_stock": after,
+                    "reference_id": refund_id,
+                    "created_by": str(user["_id"]),
+                    "note": f"Refund {payment['payment_id']}",
+                    "created_at": now_iso(),
+                }},
+                upsert=True,
             )
 
-    await db.pos_refunds.insert_one({
-        "refund_id": refund_id,
-        "payment_id": payment["payment_id"],
-        "store_id": payment["store_id"],
-        "merchant_id": payment["merchant_id"],
-        "amount": refund_total,
-        "items": req.items,
-        "method": payment["method"],
-        "reason": req.reason,
-        "restocked": req.restock,
-        "issued_by": str(user["_id"]),
-        "issued_at": now_iso(),
-    })
-    new_status = "refunded" if refund_total >= float(payment["amount"]) else "partial_refund"
-    await db.pos_payments.update_one(
-        {"payment_id": payment["payment_id"]},
-        {"$set": {"status": new_status}, "$inc": {"refunded_total": refund_total}},
+    await db.pos_refunds.update_one(
+        {"refund_id": refund_id},
+        {"$set": {"items": req.items, "restocked": bool(req.restock)}},
     )
-    return {"ok": True, "refund_id": refund_id, "amount": refund_total, "status": new_status}
+    return {
+        "ok": True,
+        "refund_id": refund_id,
+        "amount": refund_doc["amount"],
+        "status": "refunded" if float(refund_doc.get("refunded_total_after") or 0) >= float(payment.get("amount") or 0) else "partial_refund",
+        "replayed": bool(await db.pos_refunds.count_documents({"refund_id": refund_id}) and False),
+    }
 
 
 # ───────────────────────────────────────────────────────────────────────
