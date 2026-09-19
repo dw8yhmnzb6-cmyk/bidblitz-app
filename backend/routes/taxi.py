@@ -1223,6 +1223,53 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+async def get_driving_route_metrics(points: List[tuple]) -> tuple:
+    """Return (distance_km, duration_minutes, source).
+
+    Uses Mapbox Directions when configured; falls back to a conservative
+    Haversine estimate so booking still works if the provider is unavailable.
+    """
+    if len(points) < 2:
+        return 0.0, 5.0, "fallback_haversine"
+
+    fallback_distance = 0.0
+    for idx in range(len(points) - 1):
+        fallback_distance += haversine_distance(*points[idx], *points[idx + 1])
+    fallback_duration = max(5.0, (fallback_distance / 30.0) * 60.0)
+
+    import os
+    token = os.environ.get("MAPBOX_TOKEN") or os.environ.get("REACT_APP_MAPBOX_TOKEN") or ""
+    if not token:
+        return fallback_distance, fallback_duration, "fallback_haversine"
+
+    coordinates = ";".join(f"{lng},{lat}" for lat, lng in points)
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            response = await client.get(
+                f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}",
+                params={
+                    "access_token": token,
+                    "overview": "false",
+                    "steps": "false",
+                    "alternatives": "false",
+                },
+            )
+        if response.status_code == 200:
+            routes = response.json().get("routes") or []
+            if routes:
+                route = routes[0]
+                distance_km = max(0.0, float(route.get("distance") or 0.0) / 1000.0)
+                duration_minutes = max(1.0, float(route.get("duration") or 0.0) / 60.0)
+                if distance_km > 0:
+                    return distance_km, duration_minutes, "mapbox_directions"
+        logger.warning("Taxi directions provider returned status %s", response.status_code)
+    except Exception as exc:
+        logger.warning("Taxi directions lookup failed: %s", exc)
+
+    return fallback_distance, fallback_duration, "fallback_haversine"
+
+
 def calculate_bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Return visual bearing in degrees for rotating the taxi marker."""
     start_lat = math.radians(lat1)
@@ -1690,7 +1737,9 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     if not p_lat or not d_lat:
         raise HTTPException(400, "Koordinaten fehlen")
     
-    distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
+    distance_km, duration_minutes, route_source = await get_driving_route_metrics(
+        [(p_lat, p_lng), (d_lat, d_lng)]
+    )
     # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
     MAX_RIDE_KM = 250
     if distance_km > MAX_RIDE_KM:
@@ -1699,7 +1748,6 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             f"Diese Strecke ({distance_km:.0f} km) übersteigt unsere maximale Fahrtdistanz von {MAX_RIDE_KM} km. "
             "Bitte buche stattdessen einen Langstreckentransfer.",
         )
-    duration_minutes = max(5, (distance_km / 30) * 60)
     
     # Detect pricing region from pickup coordinates
     region = detect_region(p_lat, p_lng)
@@ -1771,6 +1819,7 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "eta_minutes": max(3, round(duration_minutes * 0.05)),
             "distance_km": round(distance_km, 2),
             "duration_minutes": round(duration_minutes),
+            "route_source": route_source,
             "fare_breakdown": fare,
         }
         # Apply promo on top of computed fare (per-vehicle so user sees the impact)
@@ -1882,9 +1931,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         for s in (req.stops or [])
     ]
     route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
-    distance_km = 0.0
-    for i in range(len(route_pts) - 1):
-        distance_km += haversine_distance(*route_pts[i], *route_pts[i + 1])
+    distance_km, duration_minutes, route_source = await get_driving_route_metrics(route_pts)
     # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
     MAX_RIDE_KM = 250
     if distance_km > MAX_RIDE_KM:
@@ -1892,7 +1939,6 @@ async def book_ride(req: FlexBookRequest, request: Request):
             status_code=400,
             detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
         )
-    duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
     fare_estimate = await calculate_fare_with_overrides(
         pickup_address=p_addr,
@@ -1969,6 +2015,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "car_type": car_type,
         "distance_km_estimate": round(distance_km, 2),
         "duration_estimate_minutes": round(duration_minutes),
+        "route_source": route_source,
         "fare_estimate": fare_total,
         "fare_estimate_original": fare_estimate["total"],
         "fare_breakdown": fare_estimate,
@@ -2655,6 +2702,20 @@ async def get_ride_history(request: Request, limit: int = 20):
         "total": len(rides),
         "stats": {"total_spent": round(total_spent, 2)},
     }
+
+
+@router.get("/rides/{ride_id}")
+async def get_ride_detail(ride_id: str, request: Request):
+    """Return one ride to its customer, assigned driver or an admin."""
+    user = await get_current_user(request)
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    role = await _get_ride_party_role(ride, user)
+    if not role:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Fahrt")
+    ride = await _enrich_ride_with_driver(ride)
+    return {"ok": True, "role": role, "ride": ride}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
