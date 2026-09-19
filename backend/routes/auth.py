@@ -8,7 +8,7 @@ from core.security import (
     set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user, validate_auth_state
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
-from core.rate_limit import limiter, RATE_REGISTER
+from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN, RATE_PASSWORD
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.payment_engine import credit_wallet, TransactionType
 from core.soft_launch import is_email_whitelisted, is_registration_open, validate_invite_code, redeem_invite_code
@@ -485,6 +485,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
 
 @router.post("/login")
+@limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
     email_candidates = _auth_email_candidates(req.email)
     email = email_candidates[0]
@@ -768,6 +769,7 @@ async def refresh_token(request: Request, response: Response):
 # ═══════════════════════════════════════════════════
 
 @router.post("/forgot-password")
+@limiter.limit(RATE_PASSWORD)
 async def forgot_password(request: Request):
     """Request password reset link."""
     body = await request.json()
@@ -787,7 +789,8 @@ async def forgot_password(request: Request):
 
 
 @router.get("/reset-password/verify")
-async def verify_password_reset_token(token: str):
+@limiter.limit(RATE_PASSWORD)
+async def verify_password_reset_token(request: Request, token: str):
     token_hash = _hash_reset_token(token.strip())
     entry = await db.password_resets.find_one({"token_hash": token_hash, "used_at": None})
     if not entry:
@@ -801,6 +804,7 @@ async def verify_password_reset_token(token: str):
 
 
 @router.post("/reset-password")
+@limiter.limit(RATE_PASSWORD)
 async def reset_password(request: Request):
     """Reset password using token."""
     body = await request.json()
@@ -816,14 +820,21 @@ async def reset_password(request: Request):
     if len(new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    reset_entry = await db.password_resets.find_one({"token_hash": _hash_reset_token(token), "used_at": None})
+    token_hash = _hash_reset_token(token)
+    claimed_at = datetime.now(timezone.utc)
+    reset_entry = await db.password_resets.find_one_and_update(
+        {"token_hash": token_hash, "used_at": None},
+        {"$set": {"used_at": claimed_at.isoformat(), "used_reason": "password_reset_processing"}},
+    )
     if not reset_entry:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
-    
-    # Check expiry
+
     expires = _parse_reset_expiry(reset_entry["expires_at"])
-    if datetime.now(timezone.utc) > expires:
-        await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "expired"}})
+    if claimed_at > expires:
+        await db.password_resets.update_one(
+            {"_id": reset_entry["_id"]},
+            {"$set": {"used_reason": "expired"}},
+        )
         raise HTTPException(status_code=400, detail="Token expired")
     
     email = reset_entry["email"]
@@ -854,7 +865,10 @@ async def reset_password(request: Request):
     await db.pending_2fa.delete_many({"user_id": str(user["_id"])})
     await db.otp_codes.delete_many({"user_id": str(user["_id"])})
 
-    await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "password_reset_completed"}})
+    await db.password_resets.update_one(
+        {"_id": reset_entry["_id"]},
+        {"$set": {"used_reason": "password_reset_completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
 
     ip, ua = get_client_info(request)
     await log_audit(
@@ -877,6 +891,7 @@ async def reset_password(request: Request):
 # ═══════════════════════════════════════════════════
 
 @router.post("/verify-2fa")
+@limiter.limit(RATE_PASSWORD)
 async def verify_2fa_login(request: Request, response: Response):
     """Complete login after 2FA OTP verification."""
     body = await request.json()
