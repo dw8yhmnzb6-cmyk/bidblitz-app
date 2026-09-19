@@ -1058,6 +1058,12 @@ def test_ev_ocpp_start_and_payout_paths_fail_closed():
     assert "idempotency_key: str = Field(..., min_length=8" in ev
     assert "db.ev_connector_claims.insert_one" in ev
     assert '"status": "released"' in ev
+    assert 'idempotency_key=f"ev:preauth:{session_id}"' in ev
+    assert '"preauth_status": "held"' in ev
+    assert 'from_user_id=escrow_user_id' in ev
+    assert 'idempotency_key=f"ev:settlement:{session_id}:refund"' in ev
+    assert '"preauth_status": "settled"' in ev
+    assert '"label": "Autorisierungslimit"' in ev
     assert "startAttemptKeyRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
 
