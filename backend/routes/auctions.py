@@ -236,6 +236,16 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
 
     if published_now:
         try:
+            from routes.web_push import send_push_to_user
+            asyncio.create_task(send_push_to_user(
+                user_id=winner_id,
+                title="🎉 Du hast gewonnen!",
+                body=f"{auction.get('title', 'Auktion')} für €{float(auction.get('current_price') or 0):.2f}",
+                data={"url": f"/auction/{auction_id}", "type": "auction_won", "auction_id": auction_id},
+            ))
+        except Exception:
+            pass
+        try:
             from routes.email_service import notify_win
             winner_user = await db.users.find_one({"_id": ObjectId(winner_id)})
             if winner_user and winner_user.get("email"):
@@ -2235,44 +2245,27 @@ async def auction_maintenance_loop():
             ).to_list(100)
 
             for ex in expired:
-                update = {"status": "ended", "ended_at": now_iso}
-                if ex.get("last_bidder_id"):
-                    update["winner_id"] = ex["last_bidder_id"]
-                    update["winner_name"] = ex.get("last_bidder_name")
-                await db.auctions.update_one({"auction_id": ex["auction_id"]}, {"$set": update})
+                finalized, _ = await _finalize_auction_once(ex["auction_id"], now=now)
+                if not finalized or finalized.get("status") != "ended":
+                    continue
 
-                # Push winner notification
-                if ex.get("last_bidder_id"):
-                    try:
-                        from routes.web_push import send_push_to_user
-                        asyncio.create_task(send_push_to_user(
-                            user_id=ex["last_bidder_id"],
-                            title="🎉 Du hast gewonnen!",
-                            body=f"{ex['title']} für €{ex.get('current_price', 0):.2f}",
-                            data={"url": f"/auction/{ex['auction_id']}", "type": "auction_won"},
-                        ))
-                    except Exception:
-                        pass
-
-                # Push to watchlist users (auction ended)
+                # Push to watchlist users (auction ended). The auction leaves the
+                # active set immediately, so this branch runs once per auction.
                 try:
                     from routes.web_push import send_push_to_user
                     watchers = await db.watchlist.find(
                         {"auction_id": ex["auction_id"]}, {"_id": 0, "user_id": 1}
                     ).to_list(50)
                     for w in watchers:
-                        if w["user_id"] != ex.get("last_bidder_id"):
+                        if w["user_id"] != finalized.get("winner_id"):
                             asyncio.create_task(send_push_to_user(
                                 user_id=w["user_id"],
                                 title="⏱ Auktion beendet",
-                                body=f"{ex['title']} ist beendet — Endpreis €{ex.get('current_price', 0):.2f}",
-                                data={"type": "watchlist_ended"},
+                                body=f"{finalized.get('title', 'Auktion')} ist beendet — Endpreis €{float(finalized.get('current_price') or 0):.2f}",
+                                data={"type": "watchlist_ended", "auction_id": ex["auction_id"]},
                             ))
                 except Exception:
                     pass
-
-            if expired:
-                logger.info(f"🎰 Ended {len(expired)} expired auctions")
 
             # 2) Auto-restart: ensure TARGET_ACTIVE_AUCTIONS are running
             #    User-spec: SAME product respawns ~5 min after end → enforce
@@ -3223,47 +3216,59 @@ async def resume_auction(auction_id: str, request: Request):
 
 @router.post("/admin/auction/{auction_id}/end")
 async def force_end_auction(auction_id: str, request: Request):
-    """Admin: Force end an auction immediately."""
+    """Admin: force-end an auction without racing a concurrent bid."""
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    
-    auction = await db.auctions.find_one({"auction_id": auction_id})
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auction not found")
-    
-    if auction["status"] == "ended":
-        raise HTTPException(status_code=400, detail="Auction already ended")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Find winner
-    last_bid = await db.auction_bids.find_one(
-        {"auction_id": auction_id},
-        sort=[("created_at", -1)]
-    )
-    winner_id = last_bid["user_id"] if last_bid and not last_bid.get("is_bot") else None
-    winner_name = last_bid["user_name"] if last_bid and not last_bid.get("is_bot") else None
-    
-    await db.auctions.update_one(
-        {"auction_id": auction_id},
-        {"$set": {
-            "status": "ended",
-            "ended_at": now.isoformat(),
-            "winner_id": winner_id,
-            "winner_name": winner_name,
-            "force_ended_by": str(user["_id"]),
-        }}
-    )
-    
+
+    finalized = None
+    for _ in range(8):
+        auction = await db.auctions.find_one({"auction_id": auction_id})
+        if not auction:
+            raise HTTPException(status_code=404, detail="Auction not found")
+        if auction.get("status") == "ended":
+            finalized = auction
+            break
+
+        winner_id = auction.get("last_bidder_id")
+        winner_name = auction.get("last_bidder_name")
+        if str(winner_id or "").startswith("bot_"):
+            winner_id = None
+            winner_name = None
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        claim = await db.auctions.update_one(
+            {
+                "auction_id": auction_id,
+                "status": auction.get("status"),
+                "current_price": auction.get("current_price"),
+                "ends_at": auction.get("ends_at"),
+                "last_bidder_id": auction.get("last_bidder_id"),
+            },
+            {"$set": {
+                "status": "ended",
+                "ended_at": now_iso,
+                "winner_id": winner_id,
+                "winner_name": winner_name,
+                "force_ended_by": str(user["_id"]),
+            }},
+        )
+        if claim.modified_count == 1:
+            finalized = await db.auctions.find_one({"auction_id": auction_id})
+            break
+
+    if not finalized or finalized.get("status") != "ended":
+        raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Bitte erneut versuchen.")
+
+    # Publish the same deterministic winner notification used by natural expiry.
+    finalized, _ = await _finalize_auction_once(auction_id)
     return {
         "ok": True,
         "status": "ended",
-        "winner_id": winner_id,
-        "winner_name": winner_name,
-        "final_price": auction.get("current_price", 0),
+        "winner_id": finalized.get("winner_id") if finalized else None,
+        "winner_name": finalized.get("winner_name") if finalized else None,
+        "final_price": float((finalized or {}).get("current_price") or 0),
     }
-
 
 @router.post("/admin/auction/{auction_id}/extend")
 async def extend_auction(auction_id: str, request: Request):
