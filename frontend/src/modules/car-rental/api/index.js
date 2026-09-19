@@ -358,10 +358,11 @@ export const getVendorPayouts = async (status = null) => {
   return api(`/api/car-rental/vendor/payouts${params}`);
 };
 
-export const requestPayout = async (amount) => {
+export const requestPayout = async (amount, idempotencyKey) => {
   return api("/api/car-rental/vendor/payouts/request", {
     method: "POST",
-    body: JSON.stringify({ amount }),
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify({ amount, idempotency_key: idempotencyKey }),
   });
 };
 
