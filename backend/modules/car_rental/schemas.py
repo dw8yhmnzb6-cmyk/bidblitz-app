@@ -52,13 +52,13 @@ class VendorUpdateRequest(BaseModel):
 
 class VendorSettingsUpdate(BaseModel):
     auto_approve_bookings: Optional[bool] = None
-    min_booking_hours: Optional[int] = None
-    max_booking_days: Optional[int] = None
-    cancellation_hours: Optional[int] = None
-    cancellation_fee_percent: Optional[float] = None
-    late_return_fee_per_hour: Optional[float] = None
-    cleaning_fee: Optional[float] = None
-    fuel_fee_per_liter: Optional[float] = None
+    min_booking_hours: Optional[int] = Field(default=None, ge=0, le=168)
+    max_booking_days: Optional[int] = Field(default=None, ge=1, le=365)
+    cancellation_hours: Optional[int] = Field(default=None, ge=0, le=720)
+    cancellation_fee_percent: Optional[float] = Field(default=None, ge=0, le=100)
+    late_return_fee_per_hour: Optional[float] = Field(default=None, ge=0, le=10000)
+    cleaning_fee: Optional[float] = Field(default=None, ge=0, le=10000)
+    fuel_fee_per_liter: Optional[float] = Field(default=None, ge=0, le=1000)
     require_deposit: Optional[bool] = None
     require_documents: Optional[bool] = None
 
@@ -201,9 +201,9 @@ class BookingStatusUpdate(BaseModel):
 
 
 class BookingExtraCharge(BaseModel):
-    description: str
-    amount: float
-    charge_type: str  # late_return, fuel, damage, cleaning, other
+    description: str = Field(..., min_length=1, max_length=300)
+    amount: float = Field(..., gt=0, le=100000)
+    charge_type: str = Field(..., pattern="^(late_return|fuel|damage|cleaning|other)$")
 
 
 class HandoverRequest(BaseModel):
@@ -217,15 +217,15 @@ class HandoverRequest(BaseModel):
 
 
 class ReturnRequest(BaseModel):
-    mileage: int
+    mileage: int = Field(..., ge=0)
     fuel_level: int = Field(..., ge=0, le=100)
-    photos: List[str] = []
-    new_damages: List[str] = []
-    notes: Optional[str] = None
-    signature_customer: Optional[str] = None
-    late_return_hours: Optional[float] = None
+    photos: List[str] = Field(default_factory=list, max_length=50)
+    new_damages: List[str] = Field(default_factory=list, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    signature_customer: Optional[str] = Field(default=None, max_length=5000)
+    late_return_hours: Optional[float] = Field(default=None, ge=0, le=720)
     cleaning_needed: bool = False
-    fuel_difference: Optional[int] = None
+    fuel_difference: Optional[int] = Field(default=None, ge=0, le=100)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -333,14 +333,14 @@ class AdminSettingsUpdate(BaseModel):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PayoutRequest(BaseModel):
-    amount: float = Field(..., gt=0)
-    bank_reference: Optional[str] = None
+    amount: float = Field(..., gt=0, le=1_000_000)
+    bank_reference: Optional[str] = Field(default=None, max_length=200)
 
 
 class PayoutStatusUpdate(BaseModel):
-    status: str  # processing, completed, failed
-    transaction_ref: Optional[str] = None
-    notes: Optional[str] = None
+    status: str = Field(..., pattern="^(processing|completed|failed)$")
+    transaction_ref: Optional[str] = Field(default=None, max_length=200)
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
