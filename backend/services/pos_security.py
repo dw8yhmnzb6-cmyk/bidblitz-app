@@ -875,7 +875,7 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
     customer_credit = None
 
     try:
-        if method in {"wallet_qr", "barcode", "secure_wallet"} and payment.get("customer_id"):
+        if method in {"wallet_qr", "barcode", "secure_wallet", "self_checkout"} and payment.get("customer_id"):
             merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
             if merchant and merchant.get("owner_id"):
                 owner_id = str(merchant["owner_id"])
