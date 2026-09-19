@@ -1027,3 +1027,18 @@ def test_notification_settings_match_push_backend_contract():
     assert "/api/push/subscription-status" in page
     assert 'method: "DELETE"' in page
     assert "/api/push/unsubscribe" in page
+
+
+def test_hotel_platform_fees_and_reviews_are_server_enforced():
+    source = (BACKEND_DIR / "routes" / "hotels.py").read_text(encoding="utf-8")
+
+    assert "HOTEL_SERVICE_FEE_RATE = 0.10" in source
+    assert "service_pct = HOTEL_SERVICE_FEE_RATE" in source
+    assert '"service_fee_pct": HOTEL_SERVICE_FEE_RATE' in source
+    assert 'user.get("kyc_status") != "approved"' in source
+
+    assert 'b.get("status") != "completed"' in source
+    assert 'b.get("settlement_status") != "completed"' in source
+    assert 'review_id = f"HTR-' in source
+    assert '"$setOnInsert": review' in source
+    assert "Diese Buchung wurde bereits bewertet" in source
