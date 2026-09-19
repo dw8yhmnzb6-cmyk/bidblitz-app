@@ -683,3 +683,18 @@ def test_referral_and_promotion_rewards_are_exactly_once():
     assert 'usage_id = f"promo:{promo_name}:{user_id}"' in promotions_source
     assert '"current_uses": {"$lt": max_uses}' in promotions_source
     assert 'await db.promo_usage.delete_one({"_id": usage_id})' in promotions_source
+
+
+def test_notifications_unify_legacy_and_canonical_schemas():
+    source = (BACKEND_DIR / "routes" / "notifications.py").read_text(encoding="utf-8")
+
+    assert '@router.get("")' in source
+    assert '@router.get("/")' in source
+    assert 'def _notification_identity_query' in source
+    assert '{"user_id": user_id}' in source
+    assert '"user_email": {"$in": list(emails)}' in source
+    assert 'def _normalize_notification' in source
+    assert 'normalized["body"] = body' in source
+    assert 'normalized["message"] = normalized.get("message") or body' in source
+    assert 'if not TEST_MODE:' in source
+    assert 'return' in source
