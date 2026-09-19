@@ -300,6 +300,7 @@ const DeFiWalletPage = lazy(() => import("./pages/DeFiWalletPage"));
 const CryptoLoansPage = lazy(() => import("./pages/CryptoLoansPage"));
 const P2PLendingPage = lazy(() => import("./pages/P2PLendingPage"));
 const TradingBotPage = lazy(() => import("./pages/TradingBotPage"));
+const ProviderUnavailablePage = lazy(() => import("./pages/ProviderUnavailablePage"));
 const LiveShoppingPage = lazy(() => import("./pages/LiveShoppingPage"));
 const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
@@ -1105,7 +1106,7 @@ function AppContent() {
       case "/savings":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SavingsPage onBack={() => handleNavigate("/more")} />;
       case "/bnpl":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Buy Now Pay Later" description="BNPL wird erst aktiviert, wenn Kreditprüfung, Finanzierungspartner und Rückzahlungs-Settlement live verbunden sind." onBack={() => handleNavigate("/more")} />;
       case "/gift-cards":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
       case "/ai-assistant":
@@ -1227,27 +1228,27 @@ function AppContent() {
       case "/blitzpay":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzPayPage onBack={() => handleNavigate("/more")} />;
       case "/crypto-earn":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoEarnPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Earn" description="Crypto Earn wird erst nach Live-Anbindung eines verifizierten Custody-/Earn-Providers freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/crypto-baskets":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoBasketsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Baskets" description="Krypto-Baskets werden erst nach Live-Custody, Order-Routing und echter Asset-Abwicklung freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/derivatives":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DerivativesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Derivatives" description="Derivate/Futures bleiben deaktiviert, bis ein regulierter Handels- und Margin-Provider live integriert ist." onBack={() => handleNavigate("/more")} />;
       case "/levelup":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LevelUpPage onBack={() => handleNavigate("/more")} />;
       case "/predictions":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PredictionsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Prediction Markets" description="Prediction-Market-Einsätze sind deaktiviert. Es werden keine Wetten oder Wallet-Einsätze angenommen." onBack={() => handleNavigate("/more")} />;
       case "/blitzcard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzCardPage onBack={() => handleNavigate("/more")} />;
       case "/supercharger":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
       case "/defi-wallet":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="DeFi Wallet" description="Self-Custody und DApp-Signing werden erst nach echter Wallet-/Key-Management-Integration freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/crypto-loans":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoLoansPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Loans" description="Krypto-besicherte Kredite bleiben deaktiviert, bis Collateral-Custody, Liquidation und Kredit-Settlement live sind." onBack={() => handleNavigate("/more")} />;
       case "/p2p-lending":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <P2PLendingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="P2P Lending" description="Privatkredite werden erst nach Kreditprüfung, Vertrags-/Rückzahlungslogik und regulatorischer Freigabe aktiviert." onBack={() => handleNavigate("/more")} />;
       case "/trading-bot":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Trading Bot" description="Automatisierter Handel bleibt deaktiviert, bis ein echter Exchange-/Broker-Orderkanal und Risikosteuerung live integriert sind." onBack={() => handleNavigate("/more")} />;
       case "/live-shopping":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
       case "/livekit-stream":
