@@ -96,6 +96,20 @@ class CardPaymentRequest(BaseModel):
     merchant: str = Field(..., min_length=1, max_length=180)
 
 
+@router.get("/capabilities")
+async def virtual_card_capabilities():
+    """Expose whether a real issuer is available without exposing card secrets."""
+    return {
+        "live_issuer_connected": False,
+        "card_creation_available": bool(TEST_MODE),
+        "simulation_available": bool(TEST_MODE),
+        "production_message": (
+            None if TEST_MODE else
+            "Virtuelle Karten werden erst aktiviert, wenn ein verifizierter Karten-Issuer live verbunden ist."
+        ),
+    }
+
+
 @router.post("/create")
 async def create_virtual_card(req: CreateCardRequest, request: Request):
     """Legacy virtual-card simulator; unavailable in production until issuer integration exists."""
@@ -178,7 +192,7 @@ async def get_my_cards(request: Request, include_inactive: bool = False):
     
     cards = await db.virtual_cards.find(
         query,
-        {"_id": 0, "cvv": 0}  # Don't return CVV in list
+        {"_id": 0, "cvv": 0, "card_number": 0}  # List is always masked
     ).sort("created_at", -1).to_list(50)
     
     # Check for expired cards
@@ -191,7 +205,11 @@ async def get_my_cards(request: Request, include_inactive: bool = False):
                 await expire_card(card["card_id"], user_id)
                 card["status"] = "expired"
     
-    return {"cards": cards}
+    return {
+        "cards": cards,
+        "live_issuer_connected": False,
+        "card_creation_available": bool(TEST_MODE),
+    }
 
 
 @router.get("/{card_id}")
