@@ -591,15 +591,103 @@ async def update_child(child_id: str, req: UpdateChildRequest, request: Request)
 
 @router.delete("/children/{child_id}")
 async def delete_child(child_id: str, request: Request):
-    """Remove a child account."""
+    """Safely remove a child and refund any remaining child-wallet balance."""
+    from core.payment_engine import credit_wallet, TransactionType
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    result = await db.kids_children.delete_one({"child_id": child_id, "parent_id": user_id})
-    if result.deleted_count == 0:
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
+    if not child:
         raise HTTPException(status_code=404, detail="Child not found")
 
-    return {"ok": True}
+    if child.get("status") != "deleting":
+        if child.get("payment_lock"):
+            raise HTTPException(status_code=409, detail="Eine Kinderzahlung wird gerade verarbeitet. Bitte erneut versuchen.")
+
+        refund_amount = round(max(0.0, float(child.get("balance") or 0)), 2)
+        claim = await db.kids_children.update_one(
+            {
+                "child_id": child_id,
+                "parent_id": user_id,
+                "status": {"$ne": "deleting"},
+                "$or": [
+                    {"payment_lock": {"$exists": False}},
+                    {"payment_lock": None},
+                    {"payment_lock": False},
+                ],
+            },
+            {"$set": {
+                "status": "deleting",
+                "is_frozen": True,
+                "deletion_started_at": datetime.now(timezone.utc).isoformat(),
+                "deletion_refund_amount": refund_amount,
+                "deletion_previous_frozen": bool(child.get("is_frozen", False)),
+                "balance": 0.0,
+            }},
+        )
+        if claim.modified_count != 1:
+            child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id}) or {}
+            if child.get("status") != "deleting":
+                raise HTTPException(status_code=409, detail="Kindkonto änderte sich gleichzeitig. Bitte erneut versuchen.")
+        else:
+            child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id}) or child
+
+    refund_amount = round(max(0.0, float(child.get("deletion_refund_amount") or 0)), 2)
+    refund_result = None
+    if refund_amount > 0:
+        refund_result = await credit_wallet(
+            user_id=user_id,
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Restguthaben von Kindkonto {child.get('name', child_id)}",
+            reference=f"KIDS-DELETE-{hashlib.sha256(child_id.encode('utf-8')).hexdigest()[:12].upper()}",
+            source="kids_child_deletion",
+            metadata={"child_id": child_id, "kind": "child_wallet_refund"},
+            idempotency_key=f"kids-delete-refund:{child_id}",
+        )
+        if not refund_result.success:
+            previous_frozen = bool(child.get("deletion_previous_frozen", False))
+            await db.kids_children.update_one(
+                {"child_id": child_id, "parent_id": user_id, "status": "deleting", "balance": 0.0},
+                {"$set": {
+                    "status": "active",
+                    "is_frozen": previous_frozen,
+                    "balance": refund_amount,
+                    "deletion_refund_error": refund_result.error,
+                },
+                 "$unset": {
+                    "deletion_started_at": "",
+                    "deletion_refund_amount": "",
+                    "deletion_previous_frozen": "",
+                 }},
+            )
+            raise HTTPException(status_code=500, detail="Restguthaben konnte nicht sicher zurückgezahlt werden")
+
+    # Remove sensitive/non-financial child data. Financial transaction history is
+    # retained for audit but no active child account/session remains.
+    await db.kids_sessions.delete_many({"child_id": child_id})
+    await db.kids_login_attempts.delete_many({"child_id": child_id})
+    await db.kids_location_history.delete_many({"child_id": child_id, "parent_id": user_id})
+    await db.kids_zones.delete_many({"child_id": child_id, "parent_id": user_id})
+    await db.kids_controls.delete_many({"child_id": child_id, "parent_id": user_id})
+    await db.kids_usage.delete_many({"child_id": child_id})
+    await db.kids_activity.delete_many({"child_id": child_id, "parent_id": user_id})
+    await db.kids_typing.delete_many({"child_id": child_id})
+
+    result = await db.kids_children.delete_one({
+        "child_id": child_id,
+        "parent_id": user_id,
+        "status": "deleting",
+        "balance": 0.0,
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=409, detail="Kindkonto konnte noch nicht endgültig entfernt werden")
+
+    return {
+        "ok": True,
+        "refunded_amount": refund_amount,
+        "refund_transaction_id": refund_result.transaction_id if refund_result else None,
+    }
 
 
 
@@ -726,7 +814,13 @@ async def transfer_to_child(child_id: str, req: TransferToChildRequest, request:
         raise HTTPException(status_code=400, detail=result.error or "Transfer fehlgeschlagen")
 
     child_update = await db.kids_children.update_one(
-        {"child_id": child_id, "parent_id": user_id, marker_field: {"$exists": False}},
+        {
+            "child_id": child_id,
+            "parent_id": user_id,
+            "status": "active",
+            "is_frozen": {"$ne": True},
+            marker_field: {"$exists": False},
+        },
         {
             "$inc": {"balance": req.amount},
             "$set": {
@@ -851,11 +945,11 @@ async def set_child_limits(child_id: str, req: SetLimitRequest, request: Request
     if updates:
         updates["limits_updated_at"] = datetime.now(timezone.utc).isoformat()
         await db.kids_children.update_one(
-            {"child_id": child_id},
+            {"child_id": child_id, "parent_id": user_id},
             {"$set": updates}
         )
     
-    updated = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
+    updated = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id}, {"_id": 0})
     return {
         "ok": True,
         "child": updated,
@@ -878,7 +972,7 @@ async def freeze_child_wallet(child_id: str, request: Request):
     new_status = not is_frozen
     
     await db.kids_children.update_one(
-        {"child_id": child_id},
+        {"child_id": child_id, "parent_id": user_id},
         {"$set": {
             "is_frozen": new_status,
             "frozen_at": datetime.now(timezone.utc).isoformat() if new_status else None,
