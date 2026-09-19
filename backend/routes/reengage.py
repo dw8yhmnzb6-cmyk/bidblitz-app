@@ -9,6 +9,7 @@ from bson import ObjectId
 import logging
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from routes.email_service import send_email
 
@@ -143,6 +144,11 @@ async def run_reengage(req: RunReengageRequest, request: Request):
 
     if req.dry_run:
         return {"dry_run": True, "would_process": len(eligible), "total_cost": len(eligible) * REWARD_EUR}
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Re-Engagement-Wallet-Gutschriften und E-Mails sind in Production deaktiviert.",
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     credited = 0
