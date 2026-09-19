@@ -191,11 +191,12 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
 }
 
 function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip, liveMovementLabel }) {
-  const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
-  const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
-  const driver = ride?.driver?.name || ride?.driver_name || 'Fahrer';
+  const etaValue = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 0);
+  const eta = Number.isFinite(etaValue) && etaValue > 0 ? etaValue : null;
+  const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || null;
+  const driver = ride?.driver?.name || ride?.driver_name || null;
   const price = Number(ride?.estimated_price || ride?.fare_estimate || ride?.final_fare || 0);
-  const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Dein Standort';
+  const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Abholpunkt';
   const dropoffAddress = ride?.dropoff?.address || ride?.dropoff_address || 'Ziel';
   const status = ride?.status || 'requested';
   const statusLabel = status === 'accepted'
@@ -206,22 +207,53 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
         ? 'Fahrt läuft'
         : status === 'completed'
           ? 'Abgeschlossen'
-          : 'Suche Fahrer…';
+          : status === 'cancelled'
+            ? 'Storniert'
+            : 'Suche Fahrer…';
+  const heroTitle = status === 'requested'
+    ? 'Fahrer wird gesucht'
+    : status === 'accepted'
+      ? 'Fahrer bestätigt'
+      : status === 'arriving'
+        ? 'Fahrer kommt zu dir'
+        : status === 'started'
+          ? 'Fahrt läuft'
+          : status === 'completed'
+            ? 'Fahrt abgeschlossen'
+            : 'Fahrt storniert';
+  const heroValue = status === 'requested'
+    ? 'Suche…'
+    : status === 'started'
+      ? 'Unterwegs'
+      : status === 'completed'
+        ? 'Fertig'
+        : status === 'cancelled'
+          ? 'Beendet'
+          : eta
+            ? `${eta} Min.`
+            : 'Wird berechnet';
+  const heroSubtitle = status === 'requested'
+    ? 'Wir suchen einen passenden verfügbaren Fahrer.'
+    : driver
+      ? `${driver} ${status === 'started' ? 'fährt dich zum Ziel.' : 'ist deiner Fahrt zugeteilt.'}`
+      : 'Fahrtdaten werden aktualisiert.';
   const canCancel = ['requested', 'accepted', 'arriving'].includes(status);
 
   return (
     <div className="space-y-4" data-testid="booking-status-view">
       <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 text-center shadow-sm">
-        <div className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--bb-text-muted)]">Fahrer unterwegs</div>
-        <div className="mt-3 text-5xl font-black tracking-tight text-white">{eta} Min.</div>
-        <div className="mt-2 text-sm text-[var(--bb-text-secondary)]">{driver} ist auf dem Weg zu dir.</div>
-        <div className="mt-5 flex items-center justify-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bb-bg-card)] text-xl font-black text-white">{driver.charAt(0)}</div>
-          <div className="text-left">
-            <div className="text-base font-bold text-white">{driver}</div>
-            <div className="mt-1 inline-flex rounded-full bg-[var(--bb-bg-card)] px-3.5 py-1.5 text-sm font-black text-white">{plate}</div>
+        <div className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--bb-text-muted)]">{heroTitle}</div>
+        <div className="mt-3 text-5xl font-black tracking-tight text-white">{heroValue}</div>
+        <div className="mt-2 text-sm text-[var(--bb-text-secondary)]">{heroSubtitle}</div>
+        {driver ? (
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bb-bg-card)] text-xl font-black text-white">{driver.charAt(0)}</div>
+            <div className="text-left">
+              <div className="text-base font-bold text-white">{driver}</div>
+              {plate ? <div className="mt-1 inline-flex rounded-full bg-[var(--bb-bg-card)] px-3.5 py-1.5 text-sm font-black text-white">{plate}</div> : null}
+            </div>
           </div>
-        </div>
+        ) : null}
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--bb-bg-card)] p-3 text-left">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Preis</div>
@@ -389,14 +421,14 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
-    if (!activeRide?.ride_id) return undefined;
+    if (!activeRide?.ride_id || ['completed', 'cancelled'].includes(activeRide?.status)) return undefined;
     const interval = setInterval(async () => {
       const data = await api.fetchRide(activeRide.ride_id);
       const nextRide = data?.ride || data;
       if (nextRide?.ride_id) setActiveRide(nextRide);
     }, 3000);
     return () => clearInterval(interval);
-  }, [activeRide?.ride_id]);
+  }, [activeRide?.ride_id, activeRide?.status]);
 
   useEffect(() => {
     if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || activeRide) return;
@@ -704,7 +736,7 @@ export default function TaxiPage({ onNavigate }) {
                   <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Wohin soll&apos;s gehen?</h1>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/6 px-3.5 py-2.5 text-sm font-bold text-[var(--bb-text-secondary)]" data-testid="taxi-driver-count-pill">
-                  {mapDrivers.length} Fahrer
+                  {nearbyDrivers.length} Fahrer
                 </div>
               </div>
 
@@ -882,7 +914,7 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Verfügbarkeit</div>
-                      <div className="mt-1 text-sm font-black text-white">{mapDrivers.length > 0 ? `${mapDrivers.length} Fahrer nahebei` : 'Aktuell kein Fahrer nahebei'}</div>
+                      <div className="mt-1 text-sm font-black text-white">{nearbyDrivers.length > 0 ? `${nearbyDrivers.length} Fahrer nahebei` : 'Aktuell kein Fahrer nahebei'}</div>
                     </div>
                   </div>
                   <PricingOverviewCard selectedEstimate={selectedEstimate} bookingMode={bookingMode} regionFallback={regionLabel} />
