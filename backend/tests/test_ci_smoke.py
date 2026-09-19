@@ -1486,3 +1486,28 @@ def test_crypto_market_is_read_only_until_custody_and_exchange_are_live():
     assert "crypto-provider-unavailable" in page
     assert "capabilities.trading_available" in page
     assert "Live-Kurse · Handel noch nicht aktiviert" in page
+
+
+def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
+    gaming = (BACKEND_DIR / "routes" / "gaming.py").read_text(encoding="utf-8")
+    casino = (BACKEND_DIR / "routes" / "casino.py").read_text(encoding="utf-8")
+    arcade = (BACKEND_DIR / "routes" / "arcade.py").read_text(encoding="utf-8")
+    store = (BACKEND_DIR / "routes" / "rewards_store.py").read_text(encoding="utf-8")
+
+    assert "Gaming-Coins mit EUR kaufen ist in Production deaktiviert" in gaming
+    assert "Gaming-Coins können in Production nicht in EUR umgewandelt werden" in gaming
+
+    assert "def _require_value_game_test_mode" in casino
+    assert "Wertbasierte Casino-Spiele sind in Production deaktiviert" in casino
+    assert '"wagering_enabled": bool(TEST_MODE)' in casino
+
+    assert "BLZ-Einsatzspiele sind in Production deaktiviert" in arcade
+    assert "BLZ-Spielbelohnungen sind in Production deaktiviert" in arcade
+    assert '"value_game_enabled": bool(TEST_MODE)' in arcade
+
+    assert "def _require_reward_idempotency_key" in store
+    assert "credit_wallet(" in store
+    assert 'idempotency_key=f"rewards-store:cashback:{redemption_id}"' in store
+    assert 'redemption_id = f"RWD-{marker_hash.upper()}"' in store
+    assert '"$setOnInsert": history' in store
+    assert '"$inc": {"balance": amount}' not in store
