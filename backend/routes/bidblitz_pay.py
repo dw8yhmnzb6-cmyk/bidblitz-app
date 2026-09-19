@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from core.audit import AuditEvent, get_client_info, log_audit
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/bidblitz-pay", tags=["bidblitz-pay"])
 
@@ -62,7 +63,9 @@ def _cfg() -> Dict[str, str]:
 
 def _mode(cfg: Dict[str, str]) -> str:
     required = (cfg["api_url"], cfg["api_key"], cfg["merchant_id"], cfg["webhook_secret"])
-    return "live" if all(required) else "mock"
+    if all(required):
+        return "live"
+    return "mock" if TEST_MODE else "unavailable"
 
 
 def _signature(secret: str, payload: Dict[str, Any]) -> str:
@@ -530,6 +533,11 @@ async def create_bidblitz_pay_payment(
 ):
     cfg = _cfg()
     mode = _mode(cfg)
+    if mode == "unavailable":
+        raise HTTPException(
+            status_code=503,
+            detail="BidBlitz Pay ist nicht vollständig konfiguriert. Production-Zahlungen werden nicht simuliert.",
+        )
     actor = await _optional_current_user(request)
     _validate_merchant_webhook_url(req.webhook_url, actor)
     await _ensure_bidblitz_pay_idempotency_indexes()
@@ -725,6 +733,8 @@ async def confirm_bidblitz_pay_mock(payment_id: str, req: BidBlitzPayMockDecisio
     payment = await _get_payment_or_404(payment_id)
     user = await get_current_user(request)
     _require_payment_access(payment, user)
+    if not TEST_MODE:
+        raise HTTPException(status_code=403, detail="Mock-Freigabe ist außerhalb des Testmodus deaktiviert")
     if payment.get("mode") != "mock":
         raise HTTPException(status_code=400, detail="Mock-Freigabe ist nur im Sandbox-Modus erlaubt")
     if payment.get("status") != "pending":
@@ -798,6 +808,8 @@ async def create_bidblitz_pay_refund(
     _require_payment_access(payment, user)
     if payment.get("status") not in {"paid", "partially_refunded", "refunded"}:
         raise HTTPException(status_code=400, detail="Refund ist nur für bezahlte Zahlungen möglich")
+    if payment.get("mode") == "mock" and not TEST_MODE:
+        raise HTTPException(status_code=403, detail="Mock-Refund ist außerhalb des Testmodus deaktiviert")
     if payment.get("mode") == "live":
         await _write_gateway_audit(
             "live_refund_blocked_no_provider_api",
