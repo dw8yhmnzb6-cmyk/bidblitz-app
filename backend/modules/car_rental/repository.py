@@ -627,20 +627,27 @@ class PayoutRepository:
     
     @classmethod
     async def create(cls, vendor_id: str, amount: float, data: dict = None) -> dict:
-        payout_id = generate_payout_id()
+        payload = dict(data or {})
+        payout_id = payload.pop("payout_id", None) or generate_payout_id()
         now = datetime.now(timezone.utc).isoformat()
         
         payout = {
+            "_id": payout_id,
             "payout_id": payout_id,
             "vendor_id": vendor_id,
             "amount": amount,
             "status": "pending",
-            **(data or {}),
+            **payload,
             "created_at": now,
         }
         
-        await cls.collection.insert_one(payout)
-        return sanitize_doc(payout)
+        await cls.collection.update_one(
+            {"_id": payout_id},
+            {"$setOnInsert": payout},
+            upsert=True,
+        )
+        saved = await cls.collection.find_one({"_id": payout_id}) or payout
+        return sanitize_doc(saved)
     
     @classmethod
     async def get_by_id(cls, payout_id: str) -> Optional[dict]:
