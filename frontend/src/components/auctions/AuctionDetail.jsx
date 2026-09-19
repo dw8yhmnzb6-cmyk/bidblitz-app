@@ -92,6 +92,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
   const [showLocalCredits, setShowLocalCredits] = useState(false);
   const pollRef = useRef(null);
+  const bidAttemptKeyRef = useRef(null);
   const fallbackImage = getAuctionFallbackImage(auction || {});
   const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url, fallbackImage]).filter(Boolean)));
   const descriptionLines = (auction?.description || "")
@@ -121,20 +122,33 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
     if (userCredits < 1) {
-      // Zeige Fehler + öffne Credits-Kauf-Modal automatisch
       setBidMsg({ ok: false, text: t("auction.no_credits") });
-      setTimeout(() => {
-        setShowLocalCredits(true); // Öffnet Credits-Kauf-Modal
-      }, 800);
+      setTimeout(() => setShowLocalCredits(true), 800);
       return;
     }
+    if (!bidAttemptKeyRef.current) {
+      bidAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `auction-bid-${crypto.randomUUID()}`
+        : `auction-bid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bidAttemptKeyRef.current;
     setBidding(true); setBidMsg(null);
     try {
-      const r = await api.placeBid({ auction_id: auctionId });
+      const r = await api.placeBid({ auction_id: auctionId, idempotency_key: idempotencyKey });
+      bidAttemptKeyRef.current = null;
       setAuction(p => ({ ...p, current_price: r.new_price, ends_at: r.ends_at, total_bids: r.total_bids, last_bidder_id: user.id, last_bidder_name: user.name }));
-      setBids(p => [{ bid_id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() }, ...p].slice(0, 30));
+      setBids(p => {
+        const bid = r.bid || { bid_id: `opt-${Date.now()}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() };
+        if (p.some((item) => item.bid_id === bid.bid_id)) return p;
+        return [bid, ...p].slice(0, 30);
+      });
       onCreditsChanged(r.remaining_credits);
-    } catch (e) { setBidMsg({ ok: false, text: e.message }); }
+    } catch (e) {
+      if (!e?.retryable && !["timeout", "network", "server", "unknown"].includes(e?.code)) {
+        bidAttemptKeyRef.current = null;
+      }
+      setBidMsg({ ok: false, text: e.message });
+    }
     setBidding(false);
   };
 
