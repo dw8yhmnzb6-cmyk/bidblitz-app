@@ -77,3 +77,17 @@ def test_taxi_frontend_keeps_shared_zone_time_and_fixed_fare_context():
     assert "fixed_fares: item?.fixed_fares || sharedPricing.fixed_fares" in api
     assert "typeof fixedFareConfig === 'object'" in page
     assert "fixedFareConfig?.fixed_fare" in page
+
+
+def test_admin_can_control_taxi_premium_and_van_city_factors():
+    backend = read("backend/routes/mobility_platform.py")
+    taxi = read("backend/routes/taxi.py")
+    admin = read("frontend/src/pages/AdminMobilityPricingPage.jsx")
+
+    assert '"premium_multiplier"' in backend
+    assert '"van_multiplier"' in backend
+    assert '0.1 <= number <= 10' in backend
+    assert 'mode.get("premium_multiplier", 1.35)' in taxi
+    assert 'mode.get("van_multiplier", 1.20)' in taxi
+    assert '["premium_multiplier", "Premium Faktor"]' in admin
+    assert '["van_multiplier", "Van Faktor"]' in admin
