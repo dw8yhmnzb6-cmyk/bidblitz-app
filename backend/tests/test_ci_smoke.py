@@ -1899,13 +1899,22 @@ def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete()
 def test_revenue2_legacy_value_flows_fail_closed_in_production():
     source = (BACKEND_DIR / "routes" / "revenue2.py").read_text(encoding="utf-8")
 
-    assert "def _require_legacy_marketplace_test_mode" in source
-    assert "Der alte Marketplace-Transfer ist in Production deaktiviert" in source
-    assert "_require_legacy_marketplace_test_mode()" in source
+    assert "Legacy marketplace transfer is permanently disabled" in source
+    assert "Dieser Legacy-Marketplace-Transfer ist deaktiviert" in source
+    assert 'status_code=410' in source
+    assert 'await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -total}})' not in source
+    assert 'await db.users.update_one({"_id": _oid(rid)}, {"$inc": {"balance": net}})' not in source
 
     assert "def _require_revenue2_lottery_test_mode" in source
     assert "Die Legacy-Lotterie ist in Production deaktiviert" in source
     assert source.count("_require_revenue2_lottery_test_mode()") >= 4
+    assert 'key = _require_revenue2_idempotency_key(req.idempotency_key, request, "lottery-buy")' in source
+    assert 'purchase_id = "LOTBUY-" + hashlib.sha256(' in source
+    assert 'idempotency_key=f"lottery:{purchase_id}:debit"' in source
+    assert 'idempotency_key=f"lottery:{purchase_id}:refund"' in source
+    assert '"status": "drawing"' in source
+    assert 'idempotency_key=f"lottery-win:{draw[\'draw_date\']}:{t[\'number\']}:{tier_name}"' in source
+    assert source.count('"$inc": {"balance_blz":') == 1
 
 def test_growth_rewards_and_classified_boost_use_verified_retry_safe_value_flows():
     backend = (BACKEND_DIR / "routes" / "growth.py").read_text(encoding="utf-8")
@@ -1913,8 +1922,11 @@ def test_growth_rewards_and_classified_boost_use_verified_retry_safe_value_flows
     birthday = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "BirthdayBonusBanner.jsx").read_text(encoding="utf-8")
 
     assert "from core.config import TEST_MODE" in backend
-    assert "Das alte Growth-Glücksrad ist in Production deaktiviert" in backend
-    assert '"value_rewards_enabled": bool(TEST_MODE)' in backend
+    assert 'canonical_path": "/api/rewards/spin-wheel/status"' in backend
+    assert "Legacy-Glücksrad deaktiviert. Verwende /api/rewards/spin-wheel/spin." in backend
+    assert '"value_rewards_enabled": False' in backend
+    assert 'await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": prize["value"]}})' not in backend
+    assert 'await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": prize["value"]}})' not in backend
 
     assert 'claim_id = f"birthday:{uid}:{now.year}"' in backend
     assert 'user.get("kyc_status") != "approved"' in backend
