@@ -168,15 +168,25 @@ export default function ChargeProductDetailPage({ productId, onBack, onNavigate 
               <MetaRow icon={Tag} value={product.category || "Charge Zubehör"} />
             </div>
 
-            <button
-              type="button"
-              onClick={openMerchant}
-              disabled={!merchant.public_slug}
-              className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1626] text-sm font-black text-[#D8FCFF] disabled:opacity-40"
-              data-testid="charge-product-detail-merchant-button"
-            >
-              <ShoppingBag size={15} />Zum Händler
-            </button>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => onNavigate?.(`/charge-app?activate_product_id=${encodeURIComponent(product.product_id)}`)}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#6EE7F9] text-sm font-black text-slate-950"
+                data-testid="charge-product-detail-activate-warranty"
+              >
+                <ShieldCheck size={15} />Garantie aktivieren
+              </button>
+              <button
+                type="button"
+                onClick={openMerchant}
+                disabled={!merchant.public_slug}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#0A1626] text-sm font-black text-[#D8FCFF] disabled:opacity-40"
+                data-testid="charge-product-detail-merchant-button"
+              >
+                <ShoppingBag size={15} />Zum Händler
+              </button>
+            </div>
           </section>
 
           <section className="rounded-[30px] border border-[#D9CFC0] bg-[#F8F3EA] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]" data-testid="charge-product-detail-related-card">
