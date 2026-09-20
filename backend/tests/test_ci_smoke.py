@@ -2628,3 +2628,14 @@ def test_coinbase_confirmed_charge_settlement_is_retry_recoverable():
     assert '"wallet_credited_charge_finalize_failed"' in source
     assert "finalized.modified_count != 1" in source
 
+def test_pos_feature_stripe_activation_is_exactly_once_and_recoverable():
+    source = (BACKEND_DIR / "routes" / "pos_features.py").read_text(encoding="utf-8")
+
+    assert '"status": "activating"' in source
+    assert '"activation_lock": activation_token' in source
+    assert '"activation_started_at": {"$lte": stale_before}' in source
+    assert 'existing.get("last_purchase_session") == session_id' in source
+    assert '"last_purchase_session": {"$ne": session_id}' in source
+    assert '"status": "reconciliation_required"' in source
+    assert '"feature-purchase:{session_id}"' in source
+
