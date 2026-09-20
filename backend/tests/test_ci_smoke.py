@@ -1911,3 +1911,14 @@ def test_growth_rewards_and_classified_boost_use_verified_retry_safe_value_flows
     assert '"Idempotency-Key": idempotencyKey' in classifieds
     assert "idempotency_key: idempotencyKey" in classifieds
 
+def test_live_shopping_uses_livekit_and_legacy_mock_router_is_unregistered():
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    legacy_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "LiveShoppingPage.jsx").read_text(encoding="utf-8")
+
+    assert '("routes.live_shopping", "router")' not in registry
+    assert '("routes.livekit_streaming", "router")' in registry
+    assert 'case "/live-shopping":' in app
+    assert "<LiveKitStreamPage" in app
+    assert "window.location.replace('/livekit-stream')" in legacy_page
+
