@@ -96,3 +96,14 @@ def test_charge_api_service_exposes_document_crud():
         "deleteChargeInvoiceAttachment",
     ):
         assert token in src
+
+
+def test_charge_warranty_period_is_configurable_and_expiry_aware():
+    route = _py_source(CHARGE_ROUTE)
+    page = _text(CHARGE_PAGE)
+    assert "warranty_months" in route
+    assert "def _add_months" in route
+    assert "def _warranty_terms" in route
+    assert 'effective_status = "expired"' in route
+    assert "warranty_months" in page
+    assert "charge-app-warranty-months-input" in page
