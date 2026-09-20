@@ -39,6 +39,7 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
           sort_order: Number(item.sort_order || 100),
           manual_url: item.manual_url || "",
           support_url: item.support_url || "",
+          support_steps_text: (item.support_steps || []).join("\n"),
         };
       }
       setDrafts(next);
@@ -79,9 +80,14 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
     if (!draft) return;
     setBusyId(productId);
     try {
+      const { support_steps_text = "", ...rest } = draft;
       await api.updateChargeCatalogProductAdmin(productId, {
-        ...draft,
+        ...rest,
         sort_order: Number(draft.sort_order) || 100,
+        support_steps: support_steps_text
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
       });
       toast.success("Charge-Katalog aktualisiert");
       await load("");
@@ -179,6 +185,7 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
                 sort_order: Number(item.sort_order || 100),
                 manual_url: item.manual_url || "",
                 support_url: item.support_url || "",
+                support_steps_text: (item.support_steps || []).join("\n"),
               };
               const busy = busyId === item.product_id;
               return (
@@ -250,6 +257,14 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
                         className="h-11 rounded-2xl border border-[#D9CFC0] bg-white px-3 text-xs font-bold text-slate-700 sm:col-span-2"
                         placeholder="Support URL (https://...)"
                         data-testid={`admin-charge-catalog-support-${index}`}
+                      />
+                      <textarea
+                        value={draft.support_steps_text || ""}
+                        onChange={(e) => setDraft(item.product_id, { support_steps_text: e.target.value })}
+                        rows={4}
+                        className="rounded-2xl border border-[#D9CFC0] bg-white px-3 py-3 text-xs font-bold text-slate-700 sm:col-span-2"
+                        placeholder={"Schnellhilfe – ein Schritt pro Zeile\nGerät vom Strom trennen\nAnderes Kabel testen\n30 Sekunden warten"}
+                        data-testid={`admin-charge-catalog-support-steps-${index}`}
                       />
                     </div>
                   </div>
