@@ -76,89 +76,24 @@ async def _has_premium(user_id: str) -> bool:
 
 @router.get("/spin-wheel/status")
 async def spin_status(request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    today = datetime.now(timezone.utc).date().isoformat()
-    spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    is_premium = await _has_premium(uid)
-    limit = PREMIUM_SPINS_PER_DAY if is_premium else FREE_SPINS_PER_DAY
-    remaining = max(0, limit - spins_today) if TEST_MODE else 0
-    # Next reset at UTC midnight
-    now = datetime.now(timezone.utc)
-    next_reset = (now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
+    await get_current_user(request)
     return {
-        "spins_today": spins_today,
-        "limit": limit,
-        "remaining": remaining,
-        "is_premium": is_premium,
-        "next_reset": next_reset,
-        "prizes": [{"label": p["label"], "type": p["type"], "value": p["value"]} for p in SPIN_PRIZES] if TEST_MODE else [],
-        "value_rewards_enabled": bool(TEST_MODE),
+        "deprecated": True,
+        "remaining": 0,
+        "limit": 0,
+        "prizes": [],
+        "value_rewards_enabled": False,
+        "canonical_path": "/api/rewards/spin-wheel/status",
     }
 
 
 @router.post("/spin-wheel/spin")
 async def spin_wheel(request: Request):
-    user = await get_current_user(request)
-    if not TEST_MODE:
-        raise HTTPException(
-            status_code=503,
-            detail="Das alte Growth-Glücksrad ist in Production deaktiviert. Es werden keine BLZ- oder EUR-Rewards erzeugt.",
-        )
-    uid = str(user.get("_id") or user.get("id"))
-    today = datetime.now(timezone.utc).date().isoformat()
-    spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    is_premium = await _has_premium(uid)
-    limit = PREMIUM_SPINS_PER_DAY if is_premium else FREE_SPINS_PER_DAY
-    if spins_today >= limit:
-        raise HTTPException(400, f"Kein Spin mehr heute (Limit: {limit}). Komm morgen wieder!")
-
-    # Weighted random
-    total = sum(p["weight"] for p in SPIN_PRIZES)
-    roll = random.uniform(0, total)
-    acc = 0
-    prize_idx = 0
-    for i, p in enumerate(SPIN_PRIZES):
-        acc += p["weight"]
-        if roll <= acc:
-            prize_idx = i
-            break
-    prize = SPIN_PRIZES[prize_idx]
-
-    now = datetime.now(timezone.utc)
-    # Credit prize
-    if prize["type"] == "blz":
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": prize["value"]}})
-        currency = "BLZ"
-    else:
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": prize["value"]}})
-        currency = "EUR"
-
-    # Log spin
-    await db.spin_wheel_log.insert_one({
-        "user_id": uid, "date": today,
-        "prize_type": prize["type"], "prize_value": prize["value"], "prize_label": prize["label"],
-        "prize_index": prize_idx,
-        "created_at": now.isoformat(),
-    })
-    # Transaction log
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus",
-        "amount": prize["value"], "currency": currency,
-        "status": "completed", "description": f"Glücksrad: {prize['label']}",
-        "merchant_name": "BidBlitz", "category": "spin_wheel",
-        "reference": f"SPIN-{now.strftime('%Y%m%d%H%M%S')}",
-        "date": now.isoformat(), "created_at": now.isoformat(),
-    })
-    # Quest tracking
-    try: await _quest_track(uid, "spin_wheel", 1)
-    except Exception: pass
-    return {
-        "ok": True,
-        "prize_index": prize_idx,
-        "prize": {"label": prize["label"], "type": prize["type"], "value": prize["value"]},
-        "remaining": max(0, limit - spins_today - 1),
-    }
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Glücksrad deaktiviert. Verwende /api/rewards/spin-wheel/spin.",
+    )
 
 
 async def _spin_wheel_post_hook(uid: str):
