@@ -182,17 +182,38 @@ async def secure_wallet_topup(req: PosWalletTopUpRequest, request: Request):
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "wallet.topup")
     customer = await get_resolution_customer(actor, req.resolution_id, req.customer_user_number)
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-topup")
     limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
     policy = evaluate_transaction_limits(actor, "topup", req.amount, limits)
     if policy["hard_limit"] and req.amount > policy["hard_limit"]:
         raise HTTPException(status_code=403, detail="Top-up überschreitet das zulässige Limit")
     await audit_pos_security_event("pos_topup_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": req.amount, "customer_number": customer.get("user_number", ""), "store_id": req.store_id, "register_id": req.register_id, "payment_method": req.payment_method}, severity="info")
     if policy["needs_approval"]:
-        approval = await request_manager_approval(actor, "wallet_topup", req.amount, {"store_id": req.store_id, "register_id": req.register_id, "customer_id": str(customer["_id"]), "payment_method": req.payment_method}, "Large top-up requires manager approval")
+        approval = await request_manager_approval(
+            actor,
+            "wallet_topup",
+            req.amount,
+            {
+                "store_id": req.store_id,
+                "register_id": req.register_id,
+                "customer_id": str(customer["_id"]),
+                "payment_method": req.payment_method,
+                "idempotency_key": idem_key,
+            },
+            "Large top-up requires manager approval",
+            idempotency_key=idem_key,
+        )
         return {"ok": True, "status": "approval_required", "approval": approval, "customer": build_customer_public_view(customer), "message": "Top-up wartet auf Manager-Freigabe"}
     if req.amount >= 300:
         await create_security_alert(actor["merchant_id"], actor["store_id"], "unusual_topup", "Ungewöhnlich hoher POS-Top-up erkannt", {"customer_number": customer.get("user_number", ""), "amount": req.amount}, "medium", actor["user_id"], str(customer["_id"]))
-    return await execute_secure_topup(actor, customer, req.amount, req.payment_method, request=request)
+    return await execute_secure_topup(
+        actor,
+        customer,
+        req.amount,
+        req.payment_method,
+        request=request,
+        idempotency_key=idem_key,
+    )
 
 
 @router.post("/pos/payment/prepare")
@@ -201,37 +222,112 @@ async def secure_payment_prepare(req: PosPaymentPrepareRequest, request: Request
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "payment.collect")
     customer = await get_resolution_customer(actor, req.resolution_id, req.customer_user_number)
-    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
-    policy = evaluate_transaction_limits(actor, "payment", req.amount, limits)
-    if policy["hard_limit"] and req.amount > policy["hard_limit"]:
-        raise HTTPException(status_code=403, detail="Zahlung überschreitet das zulässige Limit")
-    await audit_pos_security_event("pos_payment_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": req.amount, "customer_number": customer.get("user_number", ""), "store_id": req.store_id, "register_id": req.register_id, "cart_id": req.cart_id or ""}, severity="info")
-    if policy["needs_approval"]:
-        approval = await request_manager_approval(actor, "secure_payment", req.amount, {"store_id": req.store_id, "register_id": req.register_id, "customer_id": str(customer["_id"]), "cart_id": req.cart_id or "", "description": req.description}, "Large payment requires manager approval")
-        return {"ok": True, "status": "approval_required", "approval": approval, "customer": build_customer_public_view(customer, req.lookup_type), "message": "Zahlung wartet auf Manager-Freigabe"}
-    payment_id = f"SPY-{ObjectId()}"[-24:].upper()
-    payment_doc = {
-        "payment_id": payment_id,
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-payment")
+    key_hash = hashlib.sha256(
+        f"{actor['user_id']}:{customer['_id']}:{idem_key}".encode("utf-8")
+    ).hexdigest()[:20]
+    payment_id = f"SPY-{key_hash.upper()}"
+    prepare_payload = {
         "merchant_id": actor["merchant_id"],
         "store_id": actor["store_id"],
         "register_id": req.register_id,
         "employee_id": actor["user_id"],
         "customer_id": str(customer["_id"]),
-        "customer_number": customer.get("user_number", ""),
-        "masked_customer": build_customer_public_view(customer, req.lookup_type),
         "amount": round(float(req.amount), 2),
         "description": req.description,
-        "status": "awaiting_pin",
         "cart_id": req.cart_id or "",
         "payment_method": req.payment_method,
+    }
+
+    existing = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0})
+    if existing:
+        if existing.get("prepare_payload") != prepare_payload:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Zahlungsdaten verwendet")
+        return {
+            "ok": True,
+            "status": existing.get("status", "awaiting_pin"),
+            "payment": existing,
+            "customer": build_customer_public_view(customer, req.lookup_type),
+            "replayed": True,
+        }
+
+    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    policy = evaluate_transaction_limits(actor, "payment", req.amount, limits)
+    if policy["hard_limit"] and req.amount > policy["hard_limit"]:
+        raise HTTPException(status_code=403, detail="Zahlung überschreitet das zulässige Limit")
+
+    await audit_pos_security_event(
+        "pos_payment_attempt",
+        request=request,
+        user_id=actor["user_id"],
+        email=user.get("email", ""),
+        details={
+            "amount": req.amount,
+            "customer_number": customer.get("user_number", ""),
+            "store_id": req.store_id,
+            "register_id": req.register_id,
+            "cart_id": req.cart_id or "",
+            "payment_id": payment_id,
+        },
+        severity="info",
+    )
+
+    if policy["needs_approval"]:
+        approval_payload = {
+            **prepare_payload,
+            "payment_id": payment_id,
+            "customer_number": customer.get("user_number", ""),
+            "masked_customer": build_customer_public_view(customer, req.lookup_type),
+            "requires_pin": True,
+            "requires_app_confirmation": bool(policy["requires_app_confirmation"]),
+            "lookup_type": req.lookup_type,
+            "idempotency_key": idem_key,
+        }
+        approval = await request_manager_approval(
+            actor,
+            "secure_payment",
+            req.amount,
+            approval_payload,
+            "Large payment requires manager approval",
+            idempotency_key=idem_key,
+        )
+        return {
+            "ok": True,
+            "status": "approval_required",
+            "approval": approval,
+            "customer": build_customer_public_view(customer, req.lookup_type),
+            "payment_id": payment_id,
+            "message": "Zahlung wartet auf Manager-Freigabe",
+        }
+
+    payment_doc = {
+        "payment_id": payment_id,
+        **prepare_payload,
+        "customer_number": customer.get("user_number", ""),
+        "masked_customer": build_customer_public_view(customer, req.lookup_type),
+        "status": "awaiting_pin",
         "requires_pin": True,
         "requires_app_confirmation": bool(policy["requires_app_confirmation"]),
+        "prepare_payload": prepare_payload,
+        "idempotency_key": idem_key,
         "expires_at": (now_utc() + timedelta(minutes=10)).isoformat(),
         "created_at": now_iso(),
     }
-    await db.pos_secure_payments.insert_one(payment_doc)
-    payment_doc.pop("_id", None)
-    return {"ok": True, "status": "awaiting_pin", "payment": payment_doc, "customer": build_customer_public_view(customer, req.lookup_type)}
+    await db.pos_secure_payments.update_one(
+        {"payment_id": payment_id},
+        {"$setOnInsert": payment_doc},
+        upsert=True,
+    )
+    persisted = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0}) or payment_doc
+    if persisted.get("prepare_payload") != prepare_payload:
+        raise HTTPException(status_code=409, detail="Zahlungskonflikt bei wiederholter Vorbereitung")
+    return {
+        "ok": True,
+        "status": persisted.get("status", "awaiting_pin"),
+        "payment": persisted,
+        "customer": build_customer_public_view(customer, req.lookup_type),
+        "replayed": persisted.get("created_at") != payment_doc["created_at"],
+    }
 
 
 @router.post("/pos/payment/confirm-pin")
@@ -328,12 +424,42 @@ async def request_gift_card_creation(req: GiftCardApprovalRequest, request: Requ
     user = await get_current_user(request)
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "giftcard.create")
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-gift-card")
     limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    payload = {
+        "store_id": req.store_id,
+        "register_id": req.register_id,
+        "amount": round(float(req.amount), 2),
+        "payment_method": req.payment_method,
+        "recipient_email": req.recipient_email,
+        "message": req.message,
+        "idempotency_key": idem_key,
+    }
     if req.amount >= limits.get("gift_card_approval_limit", 0):
-        approval = await request_manager_approval(actor, "gift_card_create", req.amount, req.model_dump(), "Gift card creation requires manager approval")
+        approval = await request_manager_approval(
+            actor,
+            "gift_card_create",
+            req.amount,
+            payload,
+            "Gift card creation requires manager approval",
+            idempotency_key=idem_key,
+        )
         return {"ok": True, "status": "approval_required", "approval": approval}
-    result = await execute_gift_card_action(req.model_dump(), actor, request=request)
-    return {"ok": True, "status": "approved", "gift_card": result}
+    operation_hash = hashlib.sha256(
+        f"{actor['user_id']}:{req.store_id}:{idem_key}".encode("utf-8")
+    ).hexdigest()[:24]
+    result = await execute_gift_card_action(
+        payload,
+        actor,
+        request=request,
+        operation_id=f"DIRECT-GIFT-{operation_hash.upper()}",
+    )
+    return {
+        "ok": True,
+        "status": "approved",
+        "gift_card": result,
+        "replayed": bool(result.get("replayed")),
+    }
 
 
 @router.post("/pos/security/manual-wallet-adjustment/request")
