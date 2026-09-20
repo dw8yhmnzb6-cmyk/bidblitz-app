@@ -2395,3 +2395,18 @@ def test_destructive_demo_cleanup_is_disabled_in_production():
     assert "Demo-Daten-Bereinigung ist in Production deaktiviert." in source
     assert "if not TEST_MODE:" in source
 
+def test_dating_demo_escalations_are_test_mode_only():
+    backend = (BACKEND_DIR / "routes" / "dating.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "DatingPage.jsx").read_text(encoding="utf-8")
+
+    assert "from core.config import STRIPE_API_KEY, TEST_MODE" in backend
+    assert "def _require_dating_demo_mode" in backend
+    assert "Dating-Demoaktionen sind in Production deaktiviert." in backend
+    assert backend.count("_require_dating_demo_mode()") >= 2
+    assert "if not TEST_MODE:" in backend
+    assert "async def maybe_seed_demo_like" in backend
+    assert "seed-lina" in backend
+    assert 'import { TEST_MODE } from "../config/testMode";' in page
+    assert "TEST_MODE && !userProfile.verified" in page
+    assert "dating-verify-demo-button" in page
+
