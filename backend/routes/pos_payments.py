@@ -1062,70 +1062,12 @@ class RedeemVoucherRequest(BaseModel):
 # ── MERCHANT: Create Voucher ──
 @router.post("/voucher/create")
 async def create_voucher(req: CreateVoucherRequest, request: Request):
-    """Händler erstellt einen Gutschein (wird vom Händler-Wallet abgezogen)."""
-    merchant_user = await get_current_user(request)
-    merchant_uid = str(merchant_user["_id"])
-    
-    # Check merchant role
-    if merchant_user.get("role") not in ("merchant", "admin"):
-        mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
-        if not mp:
-            raise HTTPException(status_code=403, detail="Nur Händler können Gutscheine erstellen")
-    
-    # WALLET-ONLY: Check merchant balance
-    merchant_balance = merchant_user.get("balance", 0)
-    if merchant_balance < req.amount:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Verfügbar: €{merchant_balance:.2f}, Benötigt: €{req.amount:.2f}"
-        )
-    
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=req.valid_days)
-    
-    # Generate unique voucher code
-    voucher_code = f"BLZ-{secrets.token_hex(4).upper()}-{secrets.token_hex(2).upper()}"
-    
-    debit_result = await debit_wallet(
-        user_id=merchant_uid,
-        amount=req.amount,
-        tx_type=TransactionType.VOUCHER_CREATION,
-        description=f"Gutschein erstellt: {voucher_code}",
-        reference=voucher_code,
-        metadata={"voucher_code": voucher_code, "audit_metadata": {"route": "pos_payments.voucher.create"}},
-        idempotency_key=f"voucher-create:{merchant_uid}:{voucher_code}",
+    """Legacy voucher value route; canonical POS voucher issuance lives in routes.pos_vouchers."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Gutschein-Erstellung deaktiviert. Verwende /api/pos/vouchers/create.",
     )
-    if not debit_result.success:
-        raise HTTPException(status_code=400, detail=debit_result.error or "Gutschein konnte nicht erstellt werden")
-    
-    # Create voucher record
-    voucher = {
-        "voucher_code": voucher_code,
-        "merchant_id": merchant_uid,
-        "merchant_name": merchant_user.get("name", ""),
-        "amount": req.amount,
-        "original_amount": req.amount,
-        "description": req.description,
-        "single_use": req.single_use,
-        "status": "active",  # active, redeemed, expired, cancelled
-        "created_at": now.isoformat(),
-        "expires_at": expires_at.isoformat(),
-        "redeemed_by": None,
-        "redeemed_at": None,
-    }
-    await db.vouchers.insert_one(voucher)
-    voucher.pop("_id", None)
-    
-    # Optional: Send to recipient
-    if req.recipient_email:
-        voucher["sent_to"] = req.recipient_email
-        # TODO: Send email with voucher code
-    
-    return {
-        "ok": True,
-        "voucher": voucher,
-        "message": f"Gutschein {voucher_code} über €{req.amount:.2f} erstellt",
-    }
 
 
 # ── MERCHANT: List Vouchers ──
@@ -1182,111 +1124,23 @@ async def check_voucher(voucher_code: str, request: Request):
 # ── CUSTOMER: Redeem Voucher ──
 @router.post("/voucher/redeem")
 async def redeem_voucher(req: RedeemVoucherRequest, request: Request):
-    """Kunde löst Gutschein ein - Betrag wird auf Wallet gutgeschrieben."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    voucher = await db.vouchers.find_one({"voucher_code": req.voucher_code.upper()})
-    if not voucher:
-        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
-    
-    now = datetime.now(timezone.utc)
-    expires = datetime.fromisoformat(voucher["expires_at"])
-    
-    if voucher["status"] == "redeemed":
-        raise HTTPException(status_code=400, detail="Gutschein bereits eingelöst")
-    if voucher["status"] == "cancelled":
-        raise HTTPException(status_code=400, detail="Gutschein storniert")
-    if expires < now:
-        await db.vouchers.update_one({"_id": voucher["_id"]}, {"$set": {"status": "expired"}})
-        raise HTTPException(status_code=400, detail="Gutschein abgelaufen")
-    
-    amount = voucher["amount"]
-    
-    credit_result = await credit_wallet(
-        user_id=user_id,
-        amount=amount,
-        tx_type=TransactionType.VOUCHER_REDEMPTION,
-        description=f"Gutschein eingelöst: {req.voucher_code.upper()}",
-        reference=req.voucher_code.upper(),
-        source=voucher.get("merchant_id", "voucher"),
-        metadata={
-            "voucher_code": req.voucher_code.upper(),
-            "merchant_name": voucher.get("merchant_name", ""),
-            "audit_metadata": {"route": "pos_payments.voucher.redeem"},
-        },
-        idempotency_key=f"voucher-redeem:{user_id}:{req.voucher_code.upper()}",
+    """Legacy voucher redemption; canonical wallet redemption lives in routes.pos_vouchers."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Gutschein-Einlösung deaktiviert. Verwende /api/pos/vouchers/redeem/{voucher_code}.",
     )
-    if not credit_result.success:
-        raise HTTPException(status_code=400, detail=credit_result.error or "Gutschein konnte nicht eingelöst werden")
-    
-    # Update voucher status
-    await db.vouchers.update_one(
-        {"_id": voucher["_id"]},
-        {"$set": {
-            "status": "redeemed",
-            "redeemed_by": user_id,
-            "redeemed_by_name": user.get("name", ""),
-            "redeemed_at": now.isoformat(),
-        }}
-    )
-    
-    return {
-        "ok": True,
-        "amount": amount,
-        "new_balance": round(float(credit_result.new_balance or 0), 2),
-        "message": f"€{amount:.2f} auf dein Wallet gutgeschrieben!",
-    }
 
 
 # ── MERCHANT: Cancel Voucher ──
 @router.post("/voucher/cancel/{voucher_code}")
 async def cancel_voucher(voucher_code: str, request: Request):
-    """Händler storniert einen nicht eingelösten Gutschein - Betrag zurück auf Wallet."""
-    merchant_user = await get_current_user(request)
-    merchant_uid = str(merchant_user["_id"])
-    
-    voucher = await db.vouchers.find_one({
-        "voucher_code": voucher_code.upper(),
-        "merchant_id": merchant_uid
-    })
-    
-    if not voucher:
-        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
-    
-    if voucher["status"] == "redeemed":
-        raise HTTPException(status_code=400, detail="Eingelöster Gutschein kann nicht storniert werden")
-    if voucher["status"] == "cancelled":
-        raise HTTPException(status_code=400, detail="Gutschein bereits storniert")
-    
-    now = datetime.now(timezone.utc)
-    amount = voucher["amount"]
-    
-    refund_result = await credit_wallet(
-        user_id=merchant_uid,
-        amount=amount,
-        tx_type=TransactionType.REFUND,
-        description=f"Gutschein storniert: {voucher_code.upper()}",
-        reference=voucher_code.upper(),
-        source="voucher_cancel",
-        metadata={"voucher_code": voucher_code.upper(), "audit_metadata": {"route": "pos_payments.voucher.cancel"}},
-        idempotency_key=f"voucher-cancel:{merchant_uid}:{voucher_code.upper()}",
+    """Legacy voucher cancellation is retired with the legacy issuance flow."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Gutschein-Storno deaktiviert. Verwende den kanonischen POS-Gutscheinpfad.",
     )
-    if not refund_result.success:
-        raise HTTPException(status_code=400, detail=refund_result.error or "Gutschein konnte nicht storniert werden")
-    
-    # Update voucher status
-    await db.vouchers.update_one(
-        {"_id": voucher["_id"]},
-        {"$set": {"status": "cancelled", "cancelled_at": now.isoformat()}}
-    )
-    
-    return {
-        "ok": True,
-        "refunded": amount,
-        "new_balance": round(float(refund_result.new_balance or 0), 2),
-        "message": f"Gutschein storniert. €{amount:.2f} zurück auf dein Wallet.",
-    }
 
 
 # ── MERCHANT: Voucher Stats ──
