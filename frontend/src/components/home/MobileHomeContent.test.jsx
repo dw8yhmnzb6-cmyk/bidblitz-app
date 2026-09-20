@@ -77,6 +77,27 @@ test("shows only the three latest real transactions without mutating wallet stat
   expect(props.onNavigate).toHaveBeenLastCalledWith("/wallet");
 });
 
+test("recent transactions open the owning BidBlitz module", () => {
+  mockWallet.transactions = [
+    { id: "mining", date: "2026-09-20T10:03:00Z", amount: -199, description: "Mining: Pro Miner" },
+    { id: "auction", date: "2026-09-20T10:02:00Z", amount: -0.5, description: "Auktion Gebot: Laptop Pro" },
+    { id: "mobility", date: "2026-09-20T10:01:00Z", amount: -4.5, description: "E-Scooter Ride" },
+  ];
+  renderComponent({ isGuest: false });
+
+  const rows = [...container.querySelectorAll('[data-testid="mobile-recent-transaction"]')];
+  expect(rows).toHaveLength(3);
+
+  act(() => rows[0].click());
+  expect(props.onNavigate).toHaveBeenLastCalledWith("/mining");
+
+  act(() => rows[1].click());
+  expect(props.onNavigate).toHaveBeenLastCalledWith("/auctions");
+
+  act(() => rows[2].click());
+  expect(props.onNavigate).toHaveBeenLastCalledWith("/mobility-center");
+});
+
 test("hidden balance also hides recent transaction amounts", () => {
   mockWallet.transactions = [{ id: "1", date: "2026-09-17", amount: 1234.56, merchantName: "Shop" }];
   renderComponent({ isGuest: false, balanceHidden: true });
