@@ -1144,6 +1144,14 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                       <ShieldAlert size={11} />Reklamation
                     </button>
                     <button
+                      onClick={() => onNavigate?.(`/charge-app/claims?registration_id=${encodeURIComponent(item.registration_id)}&resolution=replacement`)}
+                      disabled={item.status !== "active"}
+                      className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-black text-violet-700 disabled:opacity-40"
+                      data-testid={`charge-app-warranty-replacement-${index}`}
+                    >
+                      <Package size={11} />Austausch
+                    </button>
+                    <button
                       onClick={() => openWarrantyTransfer(item)}
                       disabled={item.status !== "active" || pendingTransferRegistrationIds.has(item.registration_id)}
                       className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-black text-cyan-800 disabled:opacity-40"
