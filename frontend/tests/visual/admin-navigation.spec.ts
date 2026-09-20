@@ -194,7 +194,7 @@ test('all admin cards have working mobile destinations', async ({ page }) => {
 });
 
 
-test('admin grid mode keeps mobile admin destinations aligned', async ({ page }) => {
+test('admin grid mode keeps the same canonical mobile destinations', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     localStorage.setItem('bidblitz_lang', 'de');
@@ -204,22 +204,19 @@ test('admin grid mode keeps mobile admin destinations aligned', async ({ page })
   await mockAdminApi(page);
 
   await page.goto('/admin');
-  await expect(page.getByTestId('admin-page')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('admin-panel-full')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('bottom-nav')).toHaveCount(0);
   await expect(page.getByText('Zur START zurück', { exact: true })).toHaveCount(0);
 
-  const menuToggle = page.getByRole('button', { name: /Admin-Bereiche|Menü schließen/ });
-  if (await page.getByTestId('admin-grid-audi-ticket-system').count() === 0) {
-    await menuToggle.click();
-  }
+  const items = readAdminItems();
+  await expect(page.locator('[data-testid^="admin-item-"]')).toHaveCount(items.length);
+  await expect(page.getByTestId('admin-item-admin-audi-tickets')).toBeVisible();
+  await expect(page.getByTestId('admin-item-admin-mobility-pricing')).toBeVisible();
 
-  await expect(page.getByTestId('admin-grid-audi-ticket-system')).toBeVisible();
-  await expect(page.getByTestId('admin-grid-mobility-pricing')).toBeVisible();
-
-  const first = await page.getByTestId('admin-grid-scooter-fleet').boundingBox();
-  const second = await page.getByTestId('admin-grid-scooter-add').boundingBox();
-  const third = await page.getByTestId('admin-grid-taxi-drivers').boundingBox();
-  const fourth = await page.getByTestId('admin-grid-mobility-pricing').boundingBox();
+  const first = await page.getByTestId('admin-item-users').boundingBox();
+  const second = await page.getByTestId('admin-item-kyc').boundingBox();
+  const third = await page.getByTestId('admin-item-roles').boundingBox();
+  const fourth = await page.getByTestId('admin-item-staff').boundingBox();
   expect(first).not.toBeNull();
   expect(second).not.toBeNull();
   expect(third).not.toBeNull();
@@ -227,17 +224,16 @@ test('admin grid mode keeps mobile admin destinations aligned', async ({ page })
   expect(Math.abs(first!.y - second!.y)).toBeLessThan(3);
   expect(Math.abs(first!.y - third!.y)).toBeLessThan(3);
   expect(fourth!.y).toBeGreaterThan(first!.y + 20);
+  expect(first!.height).toBeLessThanOrEqual(82);
 
-  await page.getByTestId('admin-grid-audi-ticket-system').click();
+  await page.getByTestId('admin-item-admin-audi-tickets').click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/audi-ticket-system');
   await assertMobileDestinationHealthy(page, '/admin/audi-ticket-system');
 
   await page.goto('/admin');
-  await expect(page.getByTestId('admin-page')).toBeVisible();
-  if (await page.getByTestId('admin-grid-mobility-pricing').count() === 0) {
-    await page.getByRole('button', { name: /Admin-Bereiche|Menü schließen/ }).click();
-  }
-  await page.getByTestId('admin-grid-mobility-pricing').click();
+  await expect(page.getByTestId('admin-panel-full')).toBeVisible();
+  await page.getByTestId('admin-item-admin-mobility-pricing').scrollIntoViewIfNeeded();
+  await page.getByTestId('admin-item-admin-mobility-pricing').click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/mobility-pricing');
   await assertMobileDestinationHealthy(page, '/admin/mobility-pricing');
 
