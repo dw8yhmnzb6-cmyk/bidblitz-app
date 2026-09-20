@@ -167,7 +167,7 @@ async def _build_growth_snapshot() -> Dict[str, Any]:
 # GET MY REFERRAL CODE
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/my-code")
+@router.get("/program/my-code")
 async def get_my_referral_code(request: Request):
     """Get or generate user's referral code."""
     user = await get_current_user(request)
