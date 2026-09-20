@@ -18,6 +18,7 @@ from core.database import db
 from core.security import get_current_user
 import secrets
 from routes.invoicing import _invoice_reminder_map, _now
+from services.charge_notifications import safe_create_charge_notification
 
 load_dotenv()
 
@@ -2339,6 +2340,20 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
         if push_ops:
             mongo_update["$push"] = push_ops
         await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
+        notification_hash = secrets.token_hex(4) if note else requested_status
+        await safe_create_charge_notification(
+            event_key=f"charge_claim_merchant_update:{claim_id}:{customer_status}:{notification_hash}",
+            user_id=str(claim.get("customer_user_id") or ""),
+            user_email=str(claim.get("customer_email") or ""),
+            title="Händler hat Charge Care aktualisiert",
+            message=note or f"Dein Garantiefall ist jetzt: {customer_status}.",
+            action_url=f"/charge-app/claims?claim_id={claim_id}",
+            metadata={
+                "claim_id": claim_id,
+                "status": customer_status,
+                "dealer_status": requested_status,
+            },
+        )
         return {
             "ok": True,
             "status": customer_status,
