@@ -2743,3 +2743,128 @@ def test_pos_barcode_and_nfc_wallet_payments_are_retry_and_race_safe():
     assert 'idempotency_key=f"refund:{customer_debit.transaction_id}"' in source
     assert "replayed = bool(customer_debit.idempotent_replay and merchant_credit_result.idempotent_replay)" in source
 
+def test_registered_router_method_path_pairs_are_unique():
+    import ast
+    import re
+
+    registry_path = BACKEND_DIR / "core" / "router_registry.py"
+    registry_tree = ast.parse(registry_path.read_text(encoding="utf-8"))
+
+    router_refs = []
+    for node in ast.walk(registry_tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name != "register_all_routers":
+            continue
+        for stmt in node.body:
+            if not isinstance(stmt, ast.Assign):
+                continue
+            if not any(isinstance(target, ast.Name) and target.id == "routers" for target in stmt.targets):
+                continue
+            if not isinstance(stmt.value, (ast.List, ast.Tuple)):
+                continue
+            for item in stmt.value.elts:
+                if (
+                    isinstance(item, ast.Tuple)
+                    and len(item.elts) == 2
+                    and all(isinstance(part, ast.Constant) and isinstance(part.value, str) for part in item.elts)
+                ):
+                    router_refs.append((item.elts[0].value, item.elts[1].value))
+
+    assert router_refs, "router_registry.py did not expose any statically registered routers"
+
+    verbs = {"get", "post", "put", "patch", "delete", "options", "head"}
+    route_defs = {}
+    unresolved = []
+
+    def string_value(expr, constants):
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+        if isinstance(expr, ast.Name):
+            return constants.get(expr.id)
+        if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
+            left = string_value(expr.left, constants)
+            right = string_value(expr.right, constants)
+            if left is not None and right is not None:
+                return left + right
+        return None
+
+    for module_path, router_attr in router_refs:
+        if not module_path.startswith("routes."):
+            continue
+
+        route_file = BACKEND_DIR / (module_path.replace(".", "/") + ".py")
+        assert route_file.exists(), f"registered router module missing: {module_path}"
+
+        tree = ast.parse(route_file.read_text(encoding="utf-8"))
+        constants = {}
+        for stmt in tree.body:
+            if (
+                isinstance(stmt, ast.Assign)
+                and len(stmt.targets) == 1
+                and isinstance(stmt.targets[0], ast.Name)
+            ):
+                value = string_value(stmt.value, constants)
+                if value is not None:
+                    constants[stmt.targets[0].id] = value
+
+        router_prefix = None
+        for stmt in tree.body:
+            if not isinstance(stmt, ast.Assign):
+                continue
+            if not any(isinstance(target, ast.Name) and target.id == router_attr for target in stmt.targets):
+                continue
+            if not isinstance(stmt.value, ast.Call):
+                continue
+            func = stmt.value.func
+            func_name = func.id if isinstance(func, ast.Name) else (func.attr if isinstance(func, ast.Attribute) else "")
+            if func_name != "APIRouter":
+                continue
+            router_prefix = ""
+            for keyword in stmt.value.keywords:
+                if keyword.arg == "prefix":
+                    router_prefix = string_value(keyword.value, constants)
+                    break
+            break
+
+        if router_prefix is None:
+            unresolved.append(f"{module_path}.{router_attr}: APIRouter prefix could not be resolved")
+            continue
+
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for decorator in node.decorator_list:
+                if not isinstance(decorator, ast.Call) or not isinstance(decorator.func, ast.Attribute):
+                    continue
+                owner = decorator.func.value
+                if not isinstance(owner, ast.Name) or owner.id != router_attr:
+                    continue
+                method = decorator.func.attr.lower()
+                if method not in verbs:
+                    continue
+
+                route_path = None
+                if decorator.args:
+                    route_path = string_value(decorator.args[0], constants)
+                if route_path is None:
+                    for keyword in decorator.keywords:
+                        if keyword.arg in {"path", "route"}:
+                            route_path = string_value(keyword.value, constants)
+                            break
+                if route_path is None:
+                    unresolved.append(f"{module_path}.{router_attr}.{node.name}: route path could not be resolved")
+                    continue
+
+                full_path = f"{router_prefix}{route_path}"
+                normalized_path = re.sub(r"\{[^{}]+\}", "{}", full_path)
+                key = (method.upper(), normalized_path)
+                route_defs.setdefault(key, []).append(
+                    f"{module_path}.{router_attr}.{node.name} -> {method.upper()} {full_path}"
+                )
+
+    duplicates = {key: defs for key, defs in route_defs.items() if len(defs) > 1}
+    assert not unresolved, "Unresolved registered routes:\n" + "\n".join(unresolved)
+    assert not duplicates, "Duplicate registered routes:\n" + "\n".join(
+        f"{method} {path}: " + " | ".join(defs)
+        for (method, path), defs in sorted(duplicates.items())
+    )
+
