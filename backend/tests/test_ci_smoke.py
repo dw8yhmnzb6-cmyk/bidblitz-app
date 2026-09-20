@@ -1980,3 +1980,42 @@ def test_super_app_legacy_value_routes_are_retired():
     assert '"$inc": {"balance": -tier["monthly_price"]}' not in source
     assert '"$inc": {"balance": tier["monthly_price"] * 0.85}' not in source
 
+def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
+    backend = (BACKEND_DIR / "routes" / "blitz_mine.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzMinePage.jsx").read_text(encoding="utf-8")
+
+    assert "def _require_blitz_idempotency_key" in backend
+    assert "async def _mutate_blitz_wallet_once" in backend
+    assert "blitz_mine_value_markers" in backend
+
+    assert "claim_lock_until" in backend
+    assert 'profile_marker = f"claim_markers.{claim_id}"' in backend
+    assert 'idempotency_key=f"blitz-session-claim:{claim_id}:earnings"' in backend
+    assert 'idempotency_key=f"blitz-session-claim:{claim_id}:milestone"' in backend
+    assert '"claim_state": "reconciliation_required"' in backend
+    assert '"claim_result": claim_result' in backend
+
+    assert 'idempotency_key=f"blitz-quick-bonus:{claim_id}"' in backend
+    assert '"pending_claim_id": claim_id' in backend
+    assert '"claim_state": "processing"' in backend
+    assert "Quick Bonus wird bereits verarbeitet." in backend
+
+    assert "idempotency_key: Optional[str] = None" in backend
+    assert 'lockup_key = f"BLK-{digest.upper()}"' in backend
+    assert 'idempotency_key=f"blitz-lockup-create:{lockup_key}:debit"' in backend
+    assert 'idempotency_key=f"blitz-lockup-release:{stable_id}"' in backend
+    assert 'item["id"] = item.get("lockup_id") or str(item.get("_id"))' in backend
+    assert '"status": "releasing"' in backend
+
+    assert 'createAttemptKeyRef' not in page
+    assert "lockupAttemptKeyRef" in page
+    assert "quickBonusAttemptKeyRef" in page
+    assert "claimAttemptKeyRef" in page
+    assert page.count('"Idempotency-Key": idempotencyKey') >= 3
+
+    assert '{"$inc": {"balance_blz": earnings}' not in backend
+    assert '{"$inc": {"balance_blz": milestone_bonus}' not in backend
+    assert '{"$inc": {"balance_blz": reward}' not in backend
+    assert '{"$inc": {"balance_blz": -req.amount}' not in backend
+    assert '{"$inc": {"balance_blz": refund}' not in backend
+
