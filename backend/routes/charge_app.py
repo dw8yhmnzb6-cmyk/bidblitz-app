@@ -47,6 +47,8 @@ class ChargeWarrantyRegistrationRequest(BaseModel):
     merchant_name: str = ""
     invoice_id: str = ""
     invoice_number: str = ""
+    source_sale_id: str = ""
+    source_receipt_id: str = ""
     warranty_months: int = Field(default=24, ge=1, le=120)
 
 
@@ -1007,7 +1009,122 @@ async def get_charge_catalog(
     }
 
 
-@router.get("/product-lookup")
+@router.get("/purchase-candidates")
+async def get_charge_purchase_candidates(request: Request, limit: int = 100):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    safe_limit = min(max(int(limit or 100), 1), 300)
+
+    sales = await db.pos_sales.find(
+        {"customer_id": user_id, "status": "completed"},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(safe_limit).to_list(safe_limit)
+
+    if not sales:
+        return {"candidates": [], "total": 0}
+
+    product_ids = list({
+        str(item.get("product_id"))
+        for sale in sales
+        for item in (sale.get("items") or [])
+        if item.get("product_id")
+    })
+    products = await db.pos_products.find(
+        {"product_id": {"$in": product_ids}, "active": True},
+        {"_id": 0},
+    ).to_list(1000) if product_ids else []
+    product_by_id = {
+        str(product.get("product_id")): product
+        for product in products
+        if _charge_catalog_categories(product)
+    }
+
+    sale_ids = [str(sale.get("sale_id")) for sale in sales if sale.get("sale_id")]
+    existing_warranties = await db.charge_app_warranties.find(
+        {
+            "user_id": user_id,
+            "source_sale_id": {"$in": sale_ids},
+        },
+        {"_id": 0, "source_sale_id": 1, "product_id": 1, "registration_id": 1},
+    ).to_list(1000) if sale_ids else []
+    registered_counts: Dict[str, int] = {}
+    for warranty in existing_warranties:
+        key = f"{warranty.get('source_sale_id')}:{warranty.get('product_id')}"
+        registered_counts[key] = registered_counts.get(key, 0) + 1
+
+    merchant_ids = list({str(sale.get("merchant_id")) for sale in sales if sale.get("merchant_id")})
+    merchants = await db.merchants.find(
+        {"merchant_id": {"$in": merchant_ids}},
+        {"_id": 0},
+    ).to_list(500) if merchant_ids else []
+    merchant_by_id = {str(item.get("merchant_id")): item for item in merchants}
+
+    pos_merchants = await db.pos_merchants.find(
+        {"merchant_id": {"$in": merchant_ids}},
+        {"_id": 0},
+    ).to_list(500) if merchant_ids else []
+    pos_merchant_by_id = {str(item.get("merchant_id")): item for item in pos_merchants}
+
+    candidates: List[Dict[str, Any]] = []
+    for sale in sales:
+        grouped: Dict[str, Dict[str, Any]] = {}
+        for line in sale.get("items") or []:
+            product_id = str(line.get("product_id") or "")
+            product = product_by_id.get(product_id)
+            if not product:
+                continue
+            row = grouped.setdefault(product_id, {
+                "product": product,
+                "quantity": 0.0,
+                "line_total": 0.0,
+                "unit_price": _safe_float(line.get("unit_price") or product.get("price")),
+            })
+            row["quantity"] += float(line.get("quantity") or 1)
+            row["line_total"] += float(line.get("line_total") or 0)
+
+        for product_id, row in grouped.items():
+            quantity = max(1, int(round(row["quantity"])))
+            registration_key = f"{sale.get('sale_id')}:{product_id}"
+            registered = registered_counts.get(registration_key, 0)
+            remaining = max(0, quantity - registered)
+            if remaining <= 0:
+                continue
+
+            merchant_id = str(sale.get("merchant_id") or "")
+            merchant = merchant_by_id.get(merchant_id) or {}
+            pos_merchant = pos_merchant_by_id.get(merchant_id) or {}
+            product = row["product"]
+            candidates.append({
+                "candidate_id": f"{sale.get('sale_id')}:{product_id}",
+                "sale_id": sale.get("sale_id"),
+                "receipt_id": sale.get("receipt_id"),
+                "product_id": product_id,
+                "product_name": product.get("name") or "BidBlitz Charge Produkt",
+                "brand": product.get("brand") or "BidBlitz Charge",
+                "image_url": product.get("image_url") or "",
+                "merchant_id": merchant_id,
+                "merchant_name": (
+                    merchant.get("business_name")
+                    or pos_merchant.get("business_name")
+                    or pos_merchant.get("name")
+                    or "BidBlitz Charge Händler"
+                ),
+                "purchase_date": sale.get("created_at") or "",
+                "unit_price": round(float(row["unit_price"] or 0), 2),
+                "line_total": round(float(row["line_total"] or 0), 2),
+                "quantity": quantity,
+                "registered_quantity": registered,
+                "remaining_quantity": remaining,
+                "warranty_months": int(product.get("warranty_months") or 24),
+            })
+
+    return {
+        "candidates": candidates[:safe_limit],
+        "total": min(len(candidates), safe_limit),
+    }
+
+
+@router.get("/product-lookup")@router.get("/product-lookup")
 async def lookup_charge_product(code: str, request: Request):
     await get_current_user(request)
     value = str(code or "").strip()
@@ -1393,6 +1510,26 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if req.invoice_id.strip():
         linked_invoice = await _find_user_invoice(user_id, req.invoice_id.strip())
 
+    source_sale = None
+    if req.source_sale_id.strip():
+        source_sale = await db.pos_sales.find_one(
+            {
+                "sale_id": req.source_sale_id.strip(),
+                "customer_id": user_id,
+                "status": "completed",
+            },
+            {"_id": 0},
+        )
+        if not source_sale:
+            raise HTTPException(status_code=404, detail="Zugehöriger BidBlitz-Kauf wurde nicht gefunden")
+        if req.source_receipt_id.strip() and str(source_sale.get("receipt_id") or "") != req.source_receipt_id.strip():
+            raise HTTPException(status_code=409, detail="Kaufbeleg passt nicht zum BidBlitz-Verkauf")
+        if req.product_id.strip() and not any(
+            str(item.get("product_id") or "") == req.product_id.strip()
+            for item in (source_sale.get("items") or [])
+        ):
+            raise HTTPException(status_code=409, detail="Produkt gehört nicht zu diesem BidBlitz-Kauf")
+
     product = None
     merchant_binding: Dict[str, Any] = {}
     if linked_invoice:
@@ -1401,6 +1538,35 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
             "merchant_user_id": linked_invoice.get("merchant_user_id") or "",
             "merchant_slug": linked_invoice.get("merchant_slug") or "",
             "merchant_name": linked_invoice.get("merchant_name") or req.merchant_name.strip(),
+        }
+    if source_sale and source_sale.get("merchant_id"):
+        sale_merchant = await db.merchants.find_one(
+            {"merchant_id": source_sale.get("merchant_id")},
+            {"_id": 0},
+        ) or {}
+        sale_pos_merchant = await db.pos_merchants.find_one(
+            {"merchant_id": source_sale.get("merchant_id")},
+            {"_id": 0},
+        ) or {}
+        owner_user_id = str(
+            sale_merchant.get("user_id")
+            or sale_pos_merchant.get("owner_id")
+            or ""
+        )
+        sale_profile = await db.merchant_profiles.find_one(
+            {"user_id": owner_user_id},
+            {"_id": 0},
+        ) if owner_user_id else {}
+        merchant_binding = {
+            "merchant_id": str(source_sale.get("merchant_id") or ""),
+            "merchant_user_id": owner_user_id,
+            "merchant_slug": sale_merchant.get("public_slug") or (sale_profile or {}).get("public_slug") or "",
+            "merchant_name": (
+                sale_merchant.get("business_name")
+                or sale_pos_merchant.get("business_name")
+                or sale_pos_merchant.get("name")
+                or req.merchant_name.strip()
+            ),
         }
     if req.product_id.strip():
         product, merchant_binding = await _resolve_charge_product(req.product_id)
@@ -1428,13 +1594,23 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
         "product_name": canonical_product_name or (linked_invoice or {}).get("product_name") or "",
         "serial_number": serial,
         "serial_key": _serial_key(serial),
-        "purchase_date": req.purchase_date.strip() or (linked_invoice or {}).get("purchase_date") or "",
+        "purchase_date": (
+            req.purchase_date.strip()
+            or (linked_invoice or {}).get("purchase_date")
+            or str((source_sale or {}).get("created_at") or "")
+        ),
         "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
         "merchant_id": merchant_binding.get("merchant_id") or "",
         "merchant_user_id": merchant_binding.get("merchant_user_id") or "",
         "merchant_slug": merchant_binding.get("merchant_slug") or "",
         "invoice_id": (linked_invoice or {}).get("invoice_id") or req.invoice_id.strip(),
-        "invoice_number": (linked_invoice or {}).get("invoice_number") or req.invoice_number.strip(),
+        "invoice_number": (
+            (linked_invoice or {}).get("invoice_number")
+            or req.invoice_number.strip()
+            or str((source_sale or {}).get("receipt_id") or "")
+        ),
+        "source_sale_id": str((source_sale or {}).get("sale_id") or req.source_sale_id.strip()),
+        "source_receipt_id": str((source_sale or {}).get("receipt_id") or req.source_receipt_id.strip()),
         "warranty_months": int(req.warranty_months),
         "status": "active",
         "created_at": _now_iso(),
