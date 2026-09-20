@@ -913,7 +913,6 @@ async def process_subscription_renewals():
         "status": "active",
         "auto_renew": True,
         "expires_at": {"$lte": renewal_window.isoformat()},
-        "renewed_for_period": {"$ne": now.strftime("%Y-%m")}  # Prevent double renewal
     }).to_list(100)
     
     renewed_count = 0
@@ -954,33 +953,60 @@ async def process_subscription_renewals():
             failed_count += 1
             continue
         
-        # Process payment
+        # Bind one renewal payment to the subscription's current expiry period.
+        old_expires = sub["expires_at"]
+        renewal_key = hashlib.sha256(
+            f"{sub['subscription_id']}:{old_expires}".encode("utf-8")
+        ).hexdigest()[:24]
         payment_result = await debit_wallet(
             user_id=user_id,
             amount=price,
-            tx_type=TransactionType.PAYMENT,
+            tx_type=TransactionType.SUBSCRIPTION_RENEWAL,
             description=f"Abo-Verlängerung: {plan['name']}",
-            reference=f"RENEWAL-{sub['subscription_id'][:8].upper()}",
-            metadata={"subscription_id": sub["subscription_id"], "renewal": True}
+            reference=f"RENEWAL-{sub['subscription_id'][:8].upper()}-{renewal_key[:8].upper()}",
+            metadata={
+                "subscription_id": sub["subscription_id"],
+                "renewal": True,
+                "renewal_key": renewal_key,
+                "old_expires_at": old_expires,
+            },
+            idempotency_key=f"subscription-renewal:{renewal_key}",
         )
         
         if not payment_result.success:
             failed_count += 1
             continue
         
-        # Extend subscription
-        new_expires = datetime.fromisoformat(sub["expires_at"].replace("Z", "+00:00")) + timedelta(days=duration_days)
-        
-        await db.subscriptions.update_one(
-            {"subscription_id": sub["subscription_id"]},
+        # Extend exactly once from the expiry that was actually paid for.
+        new_expires = datetime.fromisoformat(old_expires.replace("Z", "+00:00")) + timedelta(days=duration_days)
+        extended = await db.subscriptions.update_one(
+            {
+                "subscription_id": sub["subscription_id"],
+                "status": "active",
+                "expires_at": old_expires,
+                "last_renewal_key": {"$ne": renewal_key},
+            },
             {"$set": {
                 "expires_at": new_expires.isoformat(),
                 "next_billing_at": new_expires.isoformat(),
                 "last_renewed_at": now.isoformat(),
                 "renewed_for_period": now.strftime("%Y-%m"),
-                "renewal_count": sub.get("renewal_count", 0) + 1,
-            }}
+                "last_renewal_key": renewal_key,
+                "last_renewal_transaction_id": payment_result.transaction_id,
+            }, "$inc": {"renewal_count": 1}}
         )
+        if extended.modified_count != 1:
+            current = await db.subscriptions.find_one(
+                {"subscription_id": sub["subscription_id"]},
+                {"_id": 0, "last_renewal_key": 1, "expires_at": 1},
+            ) or {}
+            if current.get("last_renewal_key") != renewal_key:
+                logger.error(
+                    "Subscription renewal payment completed but extension needs reconciliation: %s",
+                    sub["subscription_id"],
+                )
+                failed_count += 1
+                continue
         
         # Update user subscription info
         await apply_subscription_to_user(user_id, {
@@ -999,24 +1025,29 @@ async def process_subscription_renewals():
             upsert=True
         )
         
-        # Record revenue
-        await db.platform_revenue.update_one(
-            {"date": now.strftime("%Y-%m-%d")},
-            {"$inc": {"total": price, "by_source.subscription_renewals": price}},
-            upsert=True
+        # Record each paid renewal exactly once.
+        await _record_subscription_revenue_once(
+            f"renewal:{sub['subscription_id']}:{renewal_key}",
+            price,
+            now,
         )
         
-        # Notify user
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "subscription_renewed",
-            "title": "Abo verlängert!",
-            "message": f"Dein {plan['name']}-Abo wurde bis {new_expires.strftime('%d.%m.%Y')} verlängert",
-            "data": {"subscription_id": sub["subscription_id"]},
-            "read": False,
-            "created_at": now.isoformat(),
-        })
+        # Notify user exactly once for this renewal period.
+        await db.notifications.update_one(
+            {"_id": f"subscription-renewed:{sub['subscription_id']}:{renewal_key}"},
+            {"$setOnInsert": {
+                "_id": f"subscription-renewed:{sub['subscription_id']}:{renewal_key}",
+                "id": f"subscription-renewed-{renewal_key}",
+                "user_id": user_id,
+                "type": "subscription_renewed",
+                "title": "Abo verlängert!",
+                "message": f"Dein {plan['name']}-Abo wurde bis {new_expires.strftime('%d.%m.%Y')} verlängert",
+                "data": {"subscription_id": sub["subscription_id"], "renewal_key": renewal_key},
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
         
         renewed_count += 1
         logger.info(f"Subscription renewed: {sub['subscription_id']} for {user_id}")
