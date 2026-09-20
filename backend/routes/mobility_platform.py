@@ -296,6 +296,22 @@ CITY_PRICING_PROFILES = {
     },
 }
 
+BALKAN_COUNTRY_CODES = {"AL", "MK", "ME", "RS", "BA"}
+
+
+def _regional_profile_key_for_country(country_code: str) -> str:
+    code = str(country_code or "").upper()
+    if code == "XK":
+        return "XK"
+    if code == "DE":
+        return "DE"
+    if code in BALKAN_COUNTRY_CODES:
+        return "BALKANS"
+    if code == "AE":
+        return "AE"
+    return "EU"
+
+
 CITY_NAME_ALIASES = {
     "pristina": "prishtina",
     "prishtina": "prishtina",
@@ -1165,16 +1181,7 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
     if not country_code and 41.80 <= lat <= 43.35 and 20.00 <= lng <= 21.95:
         country_code = "XK"
         city = city or "Kosovo"
-    if country_code == "XK":
-        profile_key = "XK"
-    elif country_code == "DE":
-        profile_key = "DE"
-    elif country_code in {"AL", "MK", "ME", "RS", "BA"}:
-        profile_key = "BALKANS"
-    elif country_code == "AE":
-        profile_key = "AE"
-    else:
-        profile_key = "EU"
+    profile_key = _regional_profile_key_for_country(country_code)
 
     base_profile = REGIONAL_PRICING_PROFILES[profile_key]
     city_key = _normalize_city_key(city)
@@ -1656,9 +1663,10 @@ async def _nominatim_get(path: str, params: dict):
 def _built_in_pricing_admin_rows() -> list[dict]:
     rows = []
 
-    for country_code, profile in REGIONAL_PRICING_PROFILES.items():
-        if len(country_code) != 2 or not country_code.isalpha():
-            continue
+    admin_country_codes = {"XK", "DE", "AE", *BALKAN_COUNTRY_CODES, *CITY_PRICING_PROFILES.keys()}
+    for country_code in sorted(admin_country_codes):
+        profile_key = _regional_profile_key_for_country(country_code)
+        profile = REGIONAL_PRICING_PROFILES[profile_key]
         rows.append({
             "country_code": country_code,
             "city_key": "*",
