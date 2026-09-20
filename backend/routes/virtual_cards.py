@@ -333,9 +333,9 @@ async def get_card_details(card_id: str, request: Request):
     return {"card": card}
 
 
-@router.post("/{card_id}/freeze")
-async def freeze_card(card_id: str, request: Request):
-    """[DEPRECATED] Freeze a card. Use /api/cards/{id}/freeze (cards_lifecycle.py)."""
+@router.post("/{card_id}/legacy-freeze")
+async def freeze_card_legacy(card_id: str, request: Request):
+    """Deprecated compatibility alias; canonical freeze lives in cards_lifecycle.py."""
     from routes.cards_lifecycle import freeze_card as _new_freeze
     return await _new_freeze(card_id, request)
 
