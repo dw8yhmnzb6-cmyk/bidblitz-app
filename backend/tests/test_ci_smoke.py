@@ -2170,4 +2170,6 @@ def test_auth_does_not_issue_or_expose_fake_card_pan_in_production():
     assert '"card_expiry": user.get("card_expiry", "") if TEST_MODE else ""' in security
     assert "secrets.randbelow(10)" in auth
     assert "random.randint(0, 9)" not in auth
+    assert 'fresh_user = await db.users.find_one({"_id": result.inserted_id}) or user_doc' in auth
+    assert "return serialize_user(fresh_user)" in auth
 
