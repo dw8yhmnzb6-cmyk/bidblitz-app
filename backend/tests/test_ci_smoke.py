@@ -2206,6 +2206,7 @@ def test_auth_does_not_issue_or_expose_fake_card_pan_in_production():
 def test_nft_value_flows_fail_closed_until_live_provider_exists():
     backend = (BACKEND_DIR / "routes" / "nft_generator.py").read_text(encoding="utf-8")
     app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "NFTGeneratorPage.jsx").read_text(encoding="utf-8")
 
     assert "from core.config import TEST_MODE" in backend
     assert "def _require_nft_value_mode" in backend
@@ -2214,7 +2215,23 @@ def test_nft_value_flows_fail_closed_until_live_provider_exists():
     assert '"value_actions_enabled": bool(TEST_MODE)' in backend
     assert '"live_nft_provider_connected": False' in backend
     assert '"prices": NFT_PRICES if TEST_MODE else {}' in backend
-    assert "mining_balance = await get_mining_balance(user_id) if TEST_MODE else 0" in backend
+    assert '"mining_payment_enabled": False' in backend
+    assert "NFT-Zahlung mit Mining-BTC ist deaktiviert" in backend
+    assert "debit_wallet(" in backend
+    assert "credit_wallet(" in backend
+    assert "transfer_between_wallets(" in backend
+    assert 'idempotency_key=f"nft-generate:{operation_id}:payment"' in backend
+    assert 'idempotency_key=f"nft-generate:{operation_id}:rollback"' in backend
+    assert 'idempotency_key=f"nft-buy:{purchase_id}:escrow"' in backend
+    assert 'idempotency_key=f"nft-buy:{purchase_id}:seller"' in backend
+    assert 'idempotency_key=f"nft-buy:{purchase_id}:refund"' in backend
+    assert '"$inc": {"balance": -price_info["eur"]}' not in backend
+    assert '"$inc": {"balance": -price}' not in backend
+    assert '"$inc": {"balance": seller_amount}' not in backend
+    assert "generateAttemptKeyRef" in page
+    assert "buyAttemptKeysRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "config?.mining_payment_enabled" in page
 
     assert 'case "/nft":' in app
     assert 'title="NFT Studio"' in app
