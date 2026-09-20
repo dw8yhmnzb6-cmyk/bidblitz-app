@@ -861,7 +861,7 @@ function AppContent() {
       case "/charge-app/claims":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
-          : <ChargeCareClaimsPage registrationId={routeParams.registration_id} claimId={routeParams.claim_id} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
+          : <ChargeCareClaimsPage registrationId={routeParams.registration_id} claimId={routeParams.claim_id} preferredResolution={routeParams.resolution} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
       case "/charge-app/warranty-verify":
         return <ChargeWarrantyVerifyPage registrationId={routeParams.registration_id} signature={routeParams.sig} onNavigate={handleNavigate} />;
       case "/selfcheckout":
