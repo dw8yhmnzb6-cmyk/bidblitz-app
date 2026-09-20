@@ -1805,16 +1805,74 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         effective_price = float(starter["offer_price_eur"])
         offer_id = starter["offer_id"]
 
+    user_id = str(user["_id"])
+    _, checkout_hash = _dating_checkout_key(
+        payload.idempotency_key,
+        request,
+        user_id,
+        "premium",
+    )
+    intent_id = f"dating-checkout:{checkout_hash}"
     origin = payload.origin_url.rstrip("/")
     success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/dating?premium_cancelled=true"
     metadata = {
         "type": "dating_premium",
         "plan_id": plan["plan_id"],
-        "user_id": str(user["_id"]),
+        "user_id": user_id,
         "user_email": user.get("email", ""),
         "offer_id": offer_id or "",
+        "checkout_intent_id": intent_id,
     }
+    request_payload = {
+        "type": "dating_premium",
+        "user_id": user_id,
+        "plan_id": plan["plan_id"],
+        "amount": round(effective_price, 2),
+        "currency": plan["currency"].upper(),
+        "origin_url": origin,
+        "offer_id": offer_id or "",
+    }
+    intent, claimed_now = await _claim_dating_checkout_intent(
+        intent_id,
+        request_payload,
+        {
+            "checkout_intent_id": intent_id,
+            "user_id": user_id,
+            "user_email": user.get("email", ""),
+            "amount": effective_price,
+            "currency": plan["currency"].upper(),
+            "type": "dating_premium",
+            "status": "creating",
+            "payment_status": "pending",
+            "credited": False,
+            "plan_id": plan["plan_id"],
+            "metadata": metadata,
+            "request_payload": request_payload,
+            "client_idempotency_hash": checkout_hash,
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        },
+    )
+    if intent.get("session_id") and intent.get("checkout_url"):
+        return {
+            "ok": True,
+            "checkout_url": intent["checkout_url"],
+            "session_id": intent["session_id"],
+            "plan": plan,
+            "effective_price_eur": effective_price,
+            "offer_id": offer_id,
+            "replayed": True,
+        }
+    if not claimed_now:
+        state = str(intent.get("status") or "")
+        if state in {"checkout_creation_uncertain", "reconciliation_required"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Checkout-Erstellung benötigt Abstimmung. Bitte keinen neuen Zahlungsversuch starten.",
+            )
+        raise HTTPException(status_code=409, detail="Checkout wird bereits erstellt")
+
     host_url = str(request.base_url).rstrip("/")
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
     checkout_req = CheckoutSessionRequest(
@@ -1825,30 +1883,51 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         metadata=metadata,
         payment_methods=["card"],
     )
-    session = await stripe_checkout.create_checkout_session(checkout_req)
-    tx_doc = {
-        "session_id": session.session_id,
-        "user_id": str(user["_id"]),
-        "user_email": user.get("email", ""),
-        "amount": effective_price,
-        "currency": plan["currency"].upper(),
-        "type": "dating_premium",
-        "status": "initiated",
-        "payment_status": "pending",
-        "credited": False,
-        "plan_id": plan["plan_id"],
-        "metadata": metadata,
-        "created_at": now_iso(),
-        "updated_at": now_iso(),
-    }
     try:
-        await db.payment_transactions.insert_one(tx_doc)
-    except DuplicateKeyError:
+        session = await stripe_checkout.create_checkout_session(checkout_req)
+    except Exception as exc:
         await db.payment_transactions.update_one(
-            {"session_id": session.session_id},
-            {"$set": tx_doc},
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "checkout_creation_uncertain",
+                "provider_error": str(exc)[:300],
+                "updated_at": now_iso(),
+            }},
         )
-    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "plan": plan, "effective_price_eur": effective_price, "offer_id": offer_id}
+        raise HTTPException(
+            status_code=502,
+            detail="Stripe-Checkout konnte nicht eindeutig erstellt werden. Zahlungsstatus muss geprüft werden.",
+        )
+
+    if not getattr(session, "session_id", None) or not getattr(session, "url", None):
+        await db.payment_transactions.update_one(
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "provider_error": "checkout_session_missing_id_or_url",
+                "updated_at": now_iso(),
+            }},
+        )
+        raise HTTPException(status_code=502, detail="Stripe-Checkout benötigt Abstimmung")
+
+    await db.payment_transactions.update_one(
+        {"_id": intent_id, "status": "creating"},
+        {"$set": {
+            "session_id": session.session_id,
+            "checkout_url": session.url,
+            "status": "initiated",
+            "updated_at": now_iso(),
+        }},
+    )
+    return {
+        "ok": True,
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "plan": plan,
+        "effective_price_eur": effective_price,
+        "offer_id": offer_id,
+        "replayed": False,
+    }
 
 
 @router.get("/premium/status/{session_id}")
