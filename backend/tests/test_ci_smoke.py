@@ -2440,6 +2440,10 @@ def test_influencer_bid_credit_commissions_are_exactly_once():
     source = (BACKEND_DIR / "routes" / "influencer.py").read_text(encoding="utf-8")
     auctions = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
 
+    assert "from pydantic import BaseModel, Field" in source
+    assert "ge=0, le=100" in source
+    assert "bonus_rate: float = Field(..., ge=0, le=100" in source
+    assert 'return {"ok": False, "reason": "invalid_purchase"}' in source
     assert "async def _grant_commission_credits_once" in source
     assert 'commission_id = f"COMM-{marker_hash.upper()}"' in source
     assert 'marker_field = f"influencer_commission_markers.{marker_hash}"' in source
