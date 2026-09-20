@@ -2093,10 +2093,13 @@ def test_mobility_kosovo_regional_pricing_matches_local_profile():
     bike = build_option("bike", 3.4, 8, 1.0, 94, profile)
     ev = build_option("ev", 3.4, 8, 1.0, 92, profile)
 
-    assert taxi["price_eur"] == 4.55
-    assert scooter["price_eur"] == 1.70
+    assert taxi["price_eur"] == 4.04
+    assert scooter["price_eur"] == 2.00
     assert bike["price_eur"] == 1.84
     assert ev["price_eur"] == 3.89
+
+    assert taxi["price_range_eur"] == {"low": 3.70, "high": 4.21}
+    assert scooter["price_range_eur"] == {"low": 1.70, "high": 2.20}
 
     for option in (taxi, scooter, bike, ev):
         assert option["pricing_region"] == "Kosovo"
@@ -2204,14 +2207,16 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'formatPrice(paymentOptions.wallet_balance, lang)' in mobility
     assert 'max-w-[44vw]' in mobility
     assert 'data-testid="mobility-pricing-context"' in mobility
+    assert 'mobility-price-range-' in mobility
+    assert 'data-testid="mobility-pricing-source"' in mobility
     assert 'option.pricing_basis' in mobility
     assert '.slice(0, 8).map((item, idx) =>' in mobility
     assert 'const countryCode = pickup.country_code || undefined;' in mobility
     assert 'countryCode,' in mobility
 
-    assert '"scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.15' in mobility_backend
-    assert '"basis": "0,20 € Start + 0,15 €/min"' in mobility_backend
-    assert '"taxi": {"base": 2.0, "per_km": 0.75, "per_min": 0.0' in mobility_backend
+    assert '"scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.18' in mobility_backend
+    assert '"basis": "ca. 0,15–0,20 €/min + mögliche Entsperrgebühr"' in mobility_backend
+    assert '"taxi": {"base": 2.0, "per_km": 0.60, "per_min": 0.0' in mobility_backend
     assert 'async def _resolve_pricing_context' in mobility_backend
     assert 'pricing_context = await _resolve_pricing_context' in mobility_backend
     assert 'country_code: Optional[str] = None' in mobility_backend
