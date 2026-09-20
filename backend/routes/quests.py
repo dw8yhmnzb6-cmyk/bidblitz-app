@@ -9,12 +9,73 @@ from pydantic import BaseModel
 from bson import ObjectId
 import random
 import secrets
+import hashlib
 
 from core.database import db
 from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/quests", tags=["quests"])
+
+
+async def _credit_quest_blz_once(
+    user_id: str,
+    amount: float,
+    reward_key: str,
+    description: str,
+    category: str,
+) -> dict:
+    amount = round(float(amount or 0), 4)
+    if amount <= 0:
+        return {"transaction_id": None, "replayed": True}
+
+    digest = hashlib.sha256(reward_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"quest_reward_markers.{digest}"
+    result = await db.users.update_one(
+        {"_id": _oid(user_id), marker_field: {"$exists": False}},
+        {
+            "$inc": {"balance_blz": amount},
+            "$set": {
+                marker_field: {
+                    "amount": amount,
+                    "category": category,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    replayed = False
+    if result.modified_count != 1:
+        existing = await db.users.find_one(
+            {"_id": _oid(user_id), marker_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not existing:
+            raise HTTPException(status_code=409, detail="Quest-BLZ konnte nicht atomar gutgeschrieben werden")
+        replayed = True
+
+    tx_id = f"QUEST-{digest.upper()}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
+            "user_id": user_id,
+            "type": "bonus",
+            "amount_blz": amount,
+            "amount_eur": 0.0,
+            "currency": "BLZ",
+            "status": "completed",
+            "description": description,
+            "merchant_name": "BidBlitz",
+            "category": category,
+            "reference": tx_id,
+            "idempotency_key": reward_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {"transaction_id": tx_id, "replayed": replayed}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -161,38 +222,91 @@ async def claim_quest(quest_id: str, request: Request):
         raise HTTPException(404, "Quest nicht gefunden")
     if not q.get("completed"):
         raise HTTPException(400, "Quest noch nicht erledigt")
-    if q.get("claimed"):
-        raise HTTPException(400, "Belohnung bereits abgeholt")
 
     reward = int(q.get("reward_blz", 0) or 0)
-    q["claimed"] = True
-    q["claimed_at"] = datetime.now(timezone.utc).isoformat()
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": reward}})
-    await db.user_quests.update_one({"_id": doc["_id"]}, {"$set": {"quests": doc["quests"]}})
-
     now = datetime.now(timezone.utc).isoformat()
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus",
-        "amount": reward, "currency": "BLZ",
-        "status": "completed", "description": f"Quest: {q['title']}",
-        "merchant_name": "BidBlitz", "category": "quest",
-        "reference": f"QUEST-{quest_id}-{day}",
-        "date": now, "created_at": now,
-    })
+    reward_key = f"quest:{uid}:{day}:{quest_id}:reward"
 
-    # Check all_claimed bonus (+20 BLZ extra for completing all 3)
-    all_claimed = all(qq.get("claimed") for qq in doc["quests"])
+    # Claim the quest state atomically. Concurrent/retried requests then converge
+    # on the same deterministic wallet marker instead of double-crediting BLZ.
+    claimed = await db.user_quests.update_one(
+        {
+            "_id": doc["_id"],
+            "quests": {
+                "$elemMatch": {
+                    "id": quest_id,
+                    "completed": True,
+                    "claimed": {"$ne": True},
+                }
+            },
+        },
+        {
+            "$set": {
+                "quests.$.claimed": True,
+                "quests.$.claimed_at": now,
+            }
+        },
+    )
+    if claimed.modified_count != 1:
+        current = await db.user_quests.find_one({"_id": doc["_id"]}, {"_id": 0}) or {}
+        current_q = next((x for x in current.get("quests", []) if x.get("id") == quest_id), None)
+        if not current_q or not current_q.get("claimed"):
+            raise HTTPException(status_code=409, detail="Quest-Claim wird bereits verarbeitet")
+        reward_tx = await _credit_quest_blz_once(
+            user_id=uid,
+            amount=reward,
+            reward_key=reward_key,
+            description=f"Quest: {q['title']}",
+            category="quest",
+        )
+        fresh = current
+        all_claimed = all(qq.get("claimed") for qq in fresh.get("quests", []))
+        bonus = 20 if all_claimed else 0
+        if bonus:
+            await _credit_quest_blz_once(
+                user_id=uid,
+                amount=bonus,
+                reward_key=f"quest:{uid}:{day}:all-claimed",
+                description="Alle Quests erledigt (Bonus)",
+                category="quest_bonus",
+            )
+        return {
+            "ok": True,
+            "reward": reward,
+            "all_claimed_bonus": bonus,
+            "replayed": True,
+            "transaction_id": reward_tx["transaction_id"],
+        }
+
+    reward_tx = await _credit_quest_blz_once(
+        user_id=uid,
+        amount=reward,
+        reward_key=reward_key,
+        description=f"Quest: {q['title']}",
+        category="quest",
+    )
+
+    fresh = await db.user_quests.find_one({"_id": doc["_id"]}, {"_id": 0}) or {}
+    all_claimed = bool(fresh.get("quests")) and all(qq.get("claimed") for qq in fresh.get("quests", []))
     bonus = 0
-    if all_claimed and not doc.get("all_claimed"):
+    if all_claimed:
         bonus = 20
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": bonus}})
-        await db.user_quests.update_one({"_id": doc["_id"]}, {"$set": {"all_claimed": True, "all_claimed_at": now}})
-        await db.transactions.insert_one({
-            "user_id": uid, "type": "bonus", "amount": bonus, "currency": "BLZ",
-            "status": "completed", "description": "🏆 Alle Quests erledigt (Bonus)",
-            "merchant_name": "BidBlitz", "category": "quest_bonus",
-            "reference": f"QUEST-ALL-{day}",
-            "date": now, "created_at": now,
-        })
+        await db.user_quests.update_one(
+            {"_id": doc["_id"], "all_claimed": {"$ne": True}},
+            {"$set": {"all_claimed": True, "all_claimed_at": now}},
+        )
+        await _credit_quest_blz_once(
+            user_id=uid,
+            amount=bonus,
+            reward_key=f"quest:{uid}:{day}:all-claimed",
+            description="Alle Quests erledigt (Bonus)",
+            category="quest_bonus",
+        )
 
-    return {"ok": True, "reward": reward, "all_claimed_bonus": bonus}
+    return {
+        "ok": True,
+        "reward": reward,
+        "all_claimed_bonus": bonus,
+        "replayed": bool(reward_tx["replayed"]),
+        "transaction_id": reward_tx["transaction_id"],
+    }
