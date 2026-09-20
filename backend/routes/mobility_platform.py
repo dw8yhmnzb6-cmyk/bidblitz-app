@@ -135,6 +135,49 @@ CITY_PRICING_PROFILES = {
             },
         },
     },
+    "DE": {
+        "hamburg": {
+            "city": "Hamburg",
+            "region": "Deutschland",
+            "source": "Freie und Hansestadt Hamburg · Taxenordnung",
+            "modes": {
+                "taxi": {
+                    "base": 4.50,
+                    "per_km": 0.0,
+                    "per_min": 0.0,
+                    "minimum": 4.50,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 9.0, "per_km": 2.70},
+                        {"up_to_km": None, "per_km": 2.00},
+                    ],
+                    "basis": "Hamburg · 4,50 € Grundpreis + 2,70 €/km bis 9 km, danach 2,00 €/km",
+                },
+            },
+        },
+    },
+    "AT": {
+        "wien": {
+            "city": "Wien",
+            "region": "Österreich",
+            "source": "Stadt Wien · Wiener Taxitarif",
+            "modes": {
+                "taxi": {
+                    "base": 3.80,
+                    "booking_fee": 2.00,
+                    "per_km": 0.0,
+                    "per_min": 0.58,
+                    "minimum": 3.80,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 5.0, "per_km": 0.95},
+                        {"up_to_km": None, "per_km": 0.58},
+                    ],
+                    "basis": "Wien · 3,80 € Grundbetrag + Strecke + 0,58 €/min + 2,00 € Bestellzuschlag",
+                },
+            },
+        },
+    },
 }
 
 CITY_NAME_ALIASES = {
@@ -156,6 +199,9 @@ CITY_NAME_ALIASES = {
     "djakovica": "gjakova",
     "mitrovica": "mitrovica",
     "mitrovicë": "mitrovica",
+    "hamburg": "hamburg",
+    "vienna": "wien",
+    "wien": "wien",
 }
 
 
@@ -179,6 +225,8 @@ def _merge_pricing_profile(base_profile: dict, city_profile: Optional[dict] = No
         current.update(override)
         profile["modes"][mode] = current
     profile["city"] = city_profile.get("city") or profile.get("city") or ""
+    profile["region"] = city_profile.get("region") or profile.get("region")
+    profile["currency"] = city_profile.get("currency") or profile.get("currency", "EUR")
     profile["source"] = city_profile.get("source") or profile.get("source")
     profile["profile_scope"] = "city"
     return profile
@@ -232,11 +280,32 @@ def build_option(
 ) -> dict:
     base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
     profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
-    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "distance_tiers", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
 
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
     applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
-    raw_fare = base["base"] + distance_km * base["per_km"] + adjusted_duration * base["per_min"]
+
+    distance_charge = distance_km * base["per_km"]
+    if base.get("distance_tiers"):
+        distance_charge = 0.0
+        previous_limit = 0.0
+        remaining = max(0.0, float(distance_km))
+        for tier in base["distance_tiers"]:
+            upper = tier.get("up_to_km")
+            if upper is None:
+                tier_distance = remaining
+            else:
+                tier_capacity = max(0.0, float(upper) - previous_limit)
+                tier_distance = min(remaining, tier_capacity)
+            distance_charge += tier_distance * float(tier.get("per_km") or 0)
+            remaining -= tier_distance
+            if upper is not None:
+                previous_limit = float(upper)
+            if remaining <= 0:
+                break
+
+    booking_fee = float(base.get("booking_fee") or 0)
+    raw_fare = base["base"] + booking_fee + distance_charge + adjusted_duration * base["per_min"]
     fare = round(max(float(base.get("minimum") or 0), raw_fare) * applied_multiplier, 2)
 
     range_low = None
@@ -246,8 +315,8 @@ def build_option(
         high_per_km = float(base.get("range_per_km_high", base["per_km"]))
         low_per_min = float(base.get("range_per_min_low", base["per_min"]))
         high_per_min = float(base.get("range_per_min_high", base["per_min"]))
-        low_raw = base["base"] + distance_km * low_per_km + adjusted_duration * low_per_min
-        high_raw = base["base"] + distance_km * high_per_km + adjusted_duration * high_per_min
+        low_raw = base["base"] + booking_fee + distance_km * low_per_km + adjusted_duration * low_per_min
+        high_raw = base["base"] + booking_fee + distance_km * high_per_km + adjusted_duration * high_per_min
         range_low = round(max(float(base.get("minimum") or 0), low_raw) * applied_multiplier, 2)
         range_high = round(max(float(base.get("minimum") or 0), high_raw) * applied_multiplier, 2)
 
