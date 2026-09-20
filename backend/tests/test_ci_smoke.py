@@ -2166,6 +2166,51 @@ def test_mobility_prizren_uses_city_profile_and_peja_falls_back_to_country():
     assert peja["modes"]["taxi"]["per_km"] == 0.60
 
 
+def test_mobility_hamburg_and_vienna_city_tariffs_use_official_structures():
+    pricing = _load_mobility_pricing_contract()
+    merge_profile = pricing["_merge_pricing_profile"]
+    build_option = pricing["build_option"]
+
+    hamburg_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["DE"],
+        pricing["CITY_PRICING_PROFILES"]["DE"]["hamburg"],
+    )
+    hamburg = build_option("taxi", 4.0, 12, 1.0, 55, hamburg_profile)
+    assert hamburg["price_eur"] == 15.30
+    assert "2,70 €/km bis 9 km" in hamburg["pricing_basis"]
+
+    vienna_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["EU"],
+        pricing["CITY_PRICING_PROFILES"]["AT"]["wien"],
+    )
+    vienna = build_option("taxi", 4.0, 12, 1.0, 55, vienna_profile)
+    assert vienna["price_eur"] == 16.56
+    assert "0,58 €/min" in vienna["pricing_basis"]
+
+
+def test_mobility_resolver_selects_hamburg_and_vienna_city_profiles():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def reverse_hamburg(*args, **kwargs):
+        return {"address": {"country_code": "de", "country": "Deutschland", "city": "Hamburg"}}
+
+    resolver.__globals__["_nominatim_get"] = reverse_hamburg
+    hamburg = asyncio.run(resolver(53.5511, 9.9937, "Hamburg"))
+    assert hamburg["profile_key"] == "DE:hamburg"
+    assert hamburg["profile_scope"] == "city"
+    assert hamburg["city"] == "Hamburg"
+
+    async def reverse_vienna(*args, **kwargs):
+        return {"address": {"country_code": "at", "country": "Österreich", "city": "Wien"}}
+
+    resolver.__globals__["_nominatim_get"] = reverse_vienna
+    vienna = asyncio.run(resolver(48.2082, 16.3738, "Wien"))
+    assert vienna["profile_key"] == "AT:wien"
+    assert vienna["profile_scope"] == "city"
+    assert vienna["region"] == "Österreich"
+
+
 def test_mobility_search_contract_supports_local_first_autocomplete():
     backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
     frontend_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
