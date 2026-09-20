@@ -2406,6 +2406,38 @@ def test_mobility_city_tariffs_support_database_admin_overrides():
     assert "critical=True" in database_source
 
 
+def test_admin_panel_navigation_contracts_are_consistent():
+    sections = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "admin" / "sections.js").read_text(encoding="utf-8")
+    loaders = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "admin" / "dataLoaders.js").read_text(encoding="utf-8")
+    shell = (BACKEND_DIR.parent / "frontend" / "src" / "app" / "appShellFlags.js").read_text(encoding="utf-8")
+    route_map = (BACKEND_DIR.parent / "frontend" / "src" / "app" / "adminRouteMap.js").read_text(encoding="utf-8")
+    panel = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPanelFullPage.jsx").read_text(encoding="utf-8")
+
+    assert 'title: "Partner & Händler", color: "#F59E0B", count: 10' in sections
+    assert 'title: "Marketing", color: "#F59E0B", count: 8' in sections
+    assert 'title: "Lifestyle & Gesundheit", color: "#EC4899", count: 7' in sections
+
+    assert 'nav: "/admin/audi-ticket-system"' in sections
+    assert 'nav: "/admin/coupons"' in sections
+    assert 'nav: "/real-estate"' not in sections
+    assert 'nav: "/freelancer"' not in sections
+    assert 'nav: "/elearning"' not in sections
+
+    assert '"admin-immobilien": {' in loaders
+    assert 'url: "/api/real-estate/listings"' in loaders
+    assert '"admin-freelancer": {' in loaders
+    assert 'url: "/api/freelancer/freelancers"' in loaders
+    assert '"admin-elearning": {' in loaders
+    assert 'url: "/api/elearning/courses"' in loaders
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in loaders
+
+    assert 'function isAdminShellPath(path)' in shell
+    assert '&& !isAdminShell' in shell
+    assert 'coupons: "promos"' in route_map
+
+    assert 'grid grid-cols-3 gap-2 sm:grid-cols-4' in panel
+    assert 'data-testid={`admin-item-${item.key}`}' in panel
+
 def test_admin_mobility_tariff_manager_is_wired_end_to_end():
     backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
     page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminMobilityPricingPage.jsx").read_text(encoding="utf-8")
