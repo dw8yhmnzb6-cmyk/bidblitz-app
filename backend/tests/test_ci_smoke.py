@@ -2544,3 +2544,11 @@ def test_stripe_router_is_single_and_not_duplicated():
     ]:
         assert source.count(route) == 1
 
+def test_food_demo_cleanup_is_disabled_in_production():
+    source = (BACKEND_DIR / "routes" / "food.py").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in source
+    assert '@router.delete("/admin/cleanup-fake")' in source
+    assert "Food-Demo-Daten-Bereinigung ist in Production deaktiviert." in source
+    assert "if not TEST_MODE:" in source
+
