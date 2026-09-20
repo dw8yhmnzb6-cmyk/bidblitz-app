@@ -2178,6 +2178,10 @@ def test_auth_does_not_issue_or_expose_fake_card_pan_in_production():
     assert "random.randint(0, 9)" not in auth
     assert 'fresh_user = await db.users.find_one({"_id": result.inserted_id}) or user_doc' in auth
     assert "return serialize_user(fresh_user)" in auth
+    assert "amount=WELCOME_EUR" in auth
+    assert 'idempotency_key=f"welcome-bonus:{user_id}"' in auth
+    assert '"balance": WELCOME_EUR' not in auth
+    assert '"balance": 0.0' in auth
 
 def test_nft_value_flows_fail_closed_until_live_provider_exists():
     backend = (BACKEND_DIR / "routes" / "nft_generator.py").read_text(encoding="utf-8")
