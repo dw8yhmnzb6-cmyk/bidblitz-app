@@ -2583,3 +2583,12 @@ def test_pool_paid_ticket_issuance_is_crash_recoverable():
     issued_pos = source.index('"ticket_issued": True', issue_pos)
     assert issued_pos > issue_pos
 
+def test_legacy_kids_payment_helpers_fail_closed():
+    source = (BACKEND_DIR / "core" / "payment_engine.py").read_text(encoding="utf-8")
+    kids = (BACKEND_DIR / "routes" / "kids.py").read_text(encoding="utf-8")
+
+    assert "Legacy Kids transfer helper is disabled." in source
+    assert "Legacy Kids payment helper is disabled." in source
+    assert '@router.post("/children/{child_id}/transfer")' in kids
+    assert '@router.post("/children/pay")' in kids
+
