@@ -2014,6 +2014,10 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'idempotency_key=payment_idempotency_key' in mining
 
     assert "db.mining_upgrade_operations.update_one" in mining
+    assert 'if operation.get("from_level") is not None:' in mining
+    assert 'current_level = int(operation.get("from_level"))' in mining
+    assert 'target_level = int(operation.get("to_level"))' in mining
+    assert 'cost = float(operation.get("cost"))' in mining
     assert 'applied_marker = f"upgrade_applied.{operation_hash}"' in mining
     assert 'level_key: current_level' in mining
     assert 'idempotency_key=f"mining-upgrade-refund:{operation_id}"' in mining
