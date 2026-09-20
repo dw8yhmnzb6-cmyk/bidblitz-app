@@ -268,7 +268,7 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
             logger.error("Coinbase wallet settlement failed for charge %s: %s", charge_id, result.error)
             return
 
-        await db.crypto_charges.update_one(
+        finalized = await db.crypto_charges.update_one(
             {"charge_id": charge_id, "settlement_status": "processing", "settlement_attempt": attempt},
             {"$set": {
                 "status": "confirmed",
@@ -280,6 +280,21 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
                 "wallet_reference": result.reference,
             }},
         )
+        if finalized.modified_count != 1:
+            current = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or {}
+            if current.get("settlement_status") != "completed":
+                await db.crypto_charges.update_one(
+                    {"charge_id": charge_id},
+                    {"$set": {
+                        "settlement_status": "reconciliation_required",
+                        "settlement_error": "wallet_credited_charge_finalize_failed",
+                        "wallet_transaction_id": result.transaction_id,
+                        "wallet_reference": result.reference,
+                        "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                logger.error("Coinbase wallet credited but charge finalization needs reconciliation: %s", charge_id)
+                return
         logger.info("Credited %s EUR to user %s from Coinbase charge %s", amount, user_id, charge_id)
         return
 
