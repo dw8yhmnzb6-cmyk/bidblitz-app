@@ -244,6 +244,7 @@ def register_all_routers(app):
         ("routes.food_tracking", "router"),
         ("routes.tierbetreuung", "router"),
         ("routes.ev_charging", "router"),
+        ("routes.ocpi", "router"),
         
         # Support
         ("routes.kyc", "router"),
