@@ -177,9 +177,9 @@ CITY_PRICING_PROFILES = {
                     "minimum": 250.0,
                     "surge": False,
                     "distance_tiers": [
-                        {"up_to_km": 5.0, "per_km": 100.0},
-                        {"up_to_km": 10.0, "per_km": 85.0},
-                        {"up_to_km": 16.5, "per_km": 80.0},
+                        {"up_to_km": 3.5, "per_km": 100.0},
+                        {"up_to_km": 8.5, "per_km": 85.0},
+                        {"up_to_km": 15.0, "per_km": 80.0},
                         {"up_to_km": None, "per_km": 80.0},
                     ],
                     "basis": "Tirana · 250 ALL Start inkl. 1,5 km; danach gestaffelter km-Tarif",
