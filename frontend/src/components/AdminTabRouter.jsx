@@ -102,23 +102,23 @@ tab, t, loading,
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2.5 mb-5">
-                    <StatCard icon={Users} label={t("admin.total_users")} value={overview.total_users} sub={`+${overview.today_new_users} ${t("common.today").toLowerCase()}`} color="#00C2FF" delay={0.06} />
-                    <StatCard icon={Store} label={t("admin.total_merchants")} value={overview.total_merchants} color="#A855F7" delay={0.08} />
-                    <StatCard icon={CreditCard} label={t("admin.payment_volume")} value={`\u20AC${overview.payment_volume.toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions} txns`} color="#00D26A" delay={0.10} />
-                    <StatCard icon={CircleDollarSign} label={t("admin.fee_revenue")} value={`\u20AC${overview.platform_fee_revenue.toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
-                    <StatCard icon={Clock} label={t("admin.pending_payouts")} value={overview.pending_payouts_count} sub={`\u20AC${overview.pending_payouts_amount.toFixed(2)}`} color="#FF6B6B" delay={0.14} />
-                    <StatCard icon={Check} label={t("admin.processed_payouts")} value={overview.processed_payouts_count} sub={`\u20AC${overview.processed_payouts_amount.toFixed(2)}`} color="#00D26A" delay={0.16} />
+                    <StatCard icon={Users} label={t("admin.total_users")} value={overview.total_users ?? 0} sub={`+${overview.today_new_users ?? 0} ${t("common.today").toLowerCase()}`} color="#00C2FF" delay={0.06} />
+                    <StatCard icon={Store} label={t("admin.total_merchants")} value={overview.total_merchants ?? 0} color="#A855F7" delay={0.08} />
+                    <StatCard icon={CreditCard} label={t("admin.payment_volume")} value={`\u20AC${Number(overview.payment_volume || 0).toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions ?? 0} txns`} color="#00D26A" delay={0.10} />
+                    <StatCard icon={CircleDollarSign} label={t("admin.fee_revenue")} value={`\u20AC${Number(overview.platform_fee_revenue || 0).toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
+                    <StatCard icon={Clock} label={t("admin.pending_payouts")} value={overview.pending_payouts_count ?? 0} sub={`\u20AC${Number(overview.pending_payouts_amount || 0).toFixed(2)}`} color="#FF6B6B" delay={0.14} />
+                    <StatCard icon={Check} label={t("admin.processed_payouts")} value={overview.processed_payouts_count ?? 0} sub={`\u20AC${Number(overview.processed_payouts_amount || 0).toFixed(2)}`} color="#00D26A" delay={0.16} />
                   </div>
                   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                     <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-2">{t("admin.today_label")}</h3>
                     <div className="flex items-center justify-between py-2 border-b border-white/[0.03]">
                       <span className="text-[12px] text-white/60">{t("admin.txns")}</span>
-                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_transactions}</span>
+                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_transactions ?? 0}</span>
                     </div>
                     <div className="flex items-center justify-between py-2">
                       <span className="text-[12px] text-white/60">{t("admin.new_users")}</span>
-                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users}</span>
+                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users ?? 0}</span>
                     </div>
                   </motion.div>
                   {/* ── Admin Exports ── */}
