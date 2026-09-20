@@ -595,6 +595,8 @@ async def get_or_create_my_profile(user: dict) -> dict:
 
 
 async def maybe_seed_demo_like(my_profile: dict):
+    if not TEST_MODE:
+        return
     if await db.dating_swipes.find_one({"to_user_id": my_profile["user_id"], "from_user_id": "seed-lina"}):
         return
     await db.dating_swipes.update_one(
