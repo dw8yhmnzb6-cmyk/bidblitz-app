@@ -94,9 +94,9 @@ export const ADMIN_SECTIONS = [
   {
     title: "Marktplätze & Services", color: "#059669", count: 8,
     items: [
-      { key: "admin-immobilien", icon: Home, label: "Immobilien", nav: "/real-estate" },
-      { key: "admin-freelancer", icon: Users, label: "Freelancer", nav: "/freelancer" },
-      { key: "admin-elearning", icon: GraduationCap, label: "E-Learning", nav: "/elearning" },
+      { key: "admin-immobilien", icon: Home, label: "Immobilien" },
+      { key: "admin-freelancer", icon: Users, label: "Freelancer" },
+      { key: "admin-elearning", icon: GraduationCap, label: "E-Learning" },
       { key: "admin-handwerker", icon: Wrench, label: "Handwerker" },
       { key: "admin-gebrauchtwagen", icon: CarFront, label: "Gebrauchtwagen" },
       { key: "admin-reinigung", icon: Sparkles, label: "Reinigung" },
@@ -113,7 +113,7 @@ export const ADMIN_SECTIONS = [
       { key: "admin-fitness", icon: Dumbbell, label: "Fitness" },
       { key: "admin-reiseplaner", icon: Palmtree, label: "Reiseplaner" },
       { key: "admin-pool", icon: Ticket, label: "Schwimmbad", nav: "/admin/pool" },
-      { key: "admin-audi-tickets", icon: Ticket, label: "Audi Tickets", nav: "/audi-tickets" },
+      { key: "admin-audi-tickets", icon: Ticket, label: "Audi Tickets", nav: "/admin/audi-ticket-system" },
     ],
   },
   {
