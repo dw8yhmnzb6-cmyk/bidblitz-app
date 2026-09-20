@@ -93,7 +93,7 @@ for (const viewport of MOBILE_VIEWPORTS) {
 
     const bottomNav = page.getByTestId('bottom-nav');
     await expect(bottomNav).toBeVisible();
-    const support = page.getByRole('button', { name: 'more.support' });
+    const support = page.getByTestId('mobile-home-support-link');
     await support.scrollIntoViewIfNeeded();
     await page.waitForTimeout(100);
 
