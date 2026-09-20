@@ -2104,6 +2104,9 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     mobility = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
     center = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MobilityCenterPage.jsx").read_text(encoding="utf-8")
     shell = (BACKEND_DIR.parent / "frontend" / "src" / "app" / "appShellFlags.js").read_text(encoding="utf-8")
+    mobility_backend = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+    mobility_api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "mobilityPlatformApi.js").read_text(encoding="utf-8")
+    auction_detail = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
 
     assert 'h-[54vh] min-h-[360px] sm:h-[56vh] lg:h-[46vh]' in mobility
     assert 'relative px-3 pt-3 z-[500] pointer-events-none sm:absolute sm:inset-x-0 sm:top-4' in mobility
@@ -2122,6 +2125,22 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'formatCompactPrice(paymentOptions.wallet_balance, lang)' in mobility
     assert 'formatPrice(paymentOptions.wallet_balance, lang)' in mobility
     assert 'max-w-[44vw]' in mobility
+    assert 'data-testid="mobility-pricing-context"' in mobility
+    assert 'option.pricing_basis' in mobility
+    assert '.slice(0, 8).map((item, idx) =>' in mobility
+    assert 'countryCode: pickup.country_code || undefined' in mobility
+
+    assert '"scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.15' in mobility_backend
+    assert '"basis": "0,20 € Start + 0,15 €/min"' in mobility_backend
+    assert '"taxi": {"base": 2.0, "per_km": 0.75, "per_min": 0.0' in mobility_backend
+    assert 'async def _resolve_pricing_context' in mobility_backend
+    assert 'pricing_context = await _resolve_pricing_context' in mobility_backend
+    assert 'country_code: Optional[str] = None' in mobility_backend
+    assert 'qs.set("country_code", String(countryCode).slice(0, 2))' in mobility_api
+
+    assert 'const [showAllBids, setShowAllBids] = useState(false);' in auction_detail
+    assert 'const visibleBids = (showAllBids ? bids.slice(0, 30) : bids.slice(0, 5));' in auction_detail
+    assert 'data-testid="auction-bid-history-toggle"' in auction_detail
 
     assert 'route: "/mobility-map?mode=taxi"' in center
     assert 'route: "/taxi"' not in center
