@@ -1763,77 +1763,197 @@ async def create_child_task(child_id: str, req: TaskCreate, request: Request):
 
 @router.post("/children/{child_id}/tasks/{task_id}/complete")
 async def complete_child_task(child_id: str, task_id: str, request: Request):
-    """Parent marks a task as complete and rewards the child."""
+    """Parent completes one task and credits the child reward exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Verify child belongs to parent
+
     child = await db.kids_children.find_one({
         "child_id": child_id,
-        "parent_id": user_id
+        "parent_id": user_id,
     })
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    # Find the task
+
     task = await db.kids_tasks.find_one({
         "task_id": task_id,
         "child_id": child_id,
-        "parent_id": user_id
+        "parent_id": user_id,
     })
     if not task:
         raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
-    
-    if task.get("completed", False):
-        raise HTTPException(status_code=400, detail="Aufgabe bereits erledigt")
-    
+
+    reward = round(float(task.get("reward", 0.0) or 0.0), 2)
+    marker_hash = hashlib.sha256(
+        f"{user_id}:{child_id}:{task_id}".encode("utf-8")
+    ).hexdigest()[:24]
+    reward_marker = f"task_reward_markers.{marker_hash}"
+
+    if task.get("completed") is True:
+        updated_child = await db.kids_children.find_one(
+            {"child_id": child_id, "parent_id": user_id},
+            {"_id": 0, "balance": 1},
+        ) or {}
+        return {
+            "ok": True,
+            "task_id": task_id,
+            "task_name": task.get("name"),
+            "reward": reward,
+            "new_balance": round(float(updated_child.get("balance", 0) or 0), 2),
+            "message": f"€{reward:.2f} gutgeschrieben!",
+            "replayed": True,
+        }
+
     now = datetime.now(timezone.utc)
-    reward = task.get("reward", 0.0)
-    
-    # Mark task as completed
-    await db.kids_tasks.update_one(
-        {"task_id": task_id},
-        {"$set": {
-            "completed": True,
-            "completed_at": now.isoformat()
-        }}
-    )
-    
-    # Add reward to child's balance
-    if reward > 0:
-        await db.kids_children.update_one(
-            {"child_id": child_id},
-            {"$inc": {"balance": reward}}
-        )
-        
-        # Create transaction record
-        tx = {
-            "tx_id": secrets.token_hex(8),
+    claim = await db.kids_tasks.update_one(
+        {
+            "task_id": task_id,
             "child_id": child_id,
             "parent_id": user_id,
-            "type": "task_reward",
-            "amount": reward,
-            "description": f"Belohnung: {task.get('name')}",
-            "created_at": now.isoformat(),
-        }
-        await db.kids_transactions.insert_one(tx)
-    
-    # Get updated child data
-    updated_child = await db.kids_children.find_one({"child_id": child_id})
-    new_balance = round(updated_child.get("balance", 0), 2)
-    
-    # Create notification
-    await create_parent_notification(
-        parent_id=user_id,
-        child_id=child_id,
-        child_name=child.get("name", "Kind"),
-        event_type="task_completed",
-        title="Aufgabe erledigt!",
-        message=f"{child.get('name')} hat '{task.get('name')}' erledigt und €{reward:.2f} verdient!",
-        amount=reward,
-        severity="info"
+            "completed": {"$ne": True},
+            "completion_state": {"$nin": ["processing", "reconciliation_required"]},
+        },
+        {"$set": {
+            "completion_state": "processing",
+            "completion_claim": marker_hash,
+            "completion_started_at": now.isoformat(),
+        }},
     )
-    
+    if claim.modified_count != 1:
+        current = await db.kids_tasks.find_one(
+            {"task_id": task_id, "child_id": child_id, "parent_id": user_id},
+            {"_id": 0},
+        ) or {}
+        if current.get("completed") is True:
+            updated_child = await db.kids_children.find_one(
+                {"child_id": child_id, "parent_id": user_id},
+                {"_id": 0, "balance": 1},
+            ) or {}
+            return {
+                "ok": True,
+                "task_id": task_id,
+                "task_name": current.get("name") or task.get("name"),
+                "reward": round(float(current.get("reward", reward) or 0), 2),
+                "new_balance": round(float(updated_child.get("balance", 0) or 0), 2),
+                "message": f"€{reward:.2f} gutgeschrieben!",
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Aufgabenbelohnung wird bereits verarbeitet")
+
+    if reward > 0:
+        reward_update = await db.kids_children.update_one(
+            {
+                "child_id": child_id,
+                "parent_id": user_id,
+                reward_marker: {"$exists": False},
+            },
+            {
+                "$inc": {"balance": reward},
+                "$set": {
+                    reward_marker: {
+                        "task_id": task_id,
+                        "amount": reward,
+                        "created_at": now.isoformat(),
+                    }
+                },
+            },
+        )
+        if reward_update.modified_count != 1:
+            already_rewarded = await db.kids_children.find_one(
+                {
+                    "child_id": child_id,
+                    "parent_id": user_id,
+                    reward_marker: {"$exists": True},
+                },
+                {"_id": 1},
+            )
+            if not already_rewarded:
+                await db.kids_tasks.update_one(
+                    {
+                        "task_id": task_id,
+                        "child_id": child_id,
+                        "parent_id": user_id,
+                        "completion_claim": marker_hash,
+                    },
+                    {"$set": {
+                        "completion_state": "reconciliation_required",
+                        "completion_error": "child_reward_credit_failed",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="Aufgabenstatus reserviert; Kinderbelohnung benötigt Abstimmung",
+                )
+
+        tx_id = f"KTX-TASK-{marker_hash}"
+        await db.kids_transactions.update_one(
+            {"tx_id": tx_id},
+            {"$setOnInsert": {
+                "tx_id": tx_id,
+                "child_id": child_id,
+                "parent_id": user_id,
+                "type": "task_reward",
+                "amount": reward,
+                "description": f"Belohnung: {task.get('name')}",
+                "task_id": task_id,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+
+    finalized = await db.kids_tasks.update_one(
+        {
+            "task_id": task_id,
+            "child_id": child_id,
+            "parent_id": user_id,
+            "completion_state": "processing",
+            "completion_claim": marker_hash,
+            "completed": {"$ne": True},
+        },
+        {"$set": {
+            "completed": True,
+            "completed_at": now.isoformat(),
+            "completion_state": "completed",
+            "reward_marker": marker_hash,
+        }, "$unset": {"completion_error": ""}},
+    )
+    if finalized.modified_count != 1:
+        current = await db.kids_tasks.find_one(
+            {"task_id": task_id, "child_id": child_id, "parent_id": user_id},
+            {"_id": 0},
+        ) or {}
+        if current.get("completed") is not True:
+            await db.kids_tasks.update_one(
+                {"task_id": task_id, "child_id": child_id, "parent_id": user_id},
+                {"$set": {
+                    "completion_state": "reconciliation_required",
+                    "completion_error": "task_finalize_failed_after_reward",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Kinderbelohnung gutgeschrieben; Aufgabenabschluss benötigt Abstimmung",
+            )
+
+    updated_child = await db.kids_children.find_one(
+        {"child_id": child_id, "parent_id": user_id},
+        {"_id": 0, "balance": 1},
+    ) or {}
+    new_balance = round(float(updated_child.get("balance", 0) or 0), 2)
+
+    if finalized.modified_count == 1:
+        await create_parent_notification(
+            parent_id=user_id,
+            child_id=child_id,
+            child_name=child.get("name", "Kind"),
+            event_type="task_completed",
+            title="Aufgabe erledigt!",
+            message=f"{child.get('name')} hat '{task.get('name')}' erledigt und €{reward:.2f} verdient!",
+            amount=reward,
+            severity="info",
+        )
+
     return {
         "ok": True,
         "task_id": task_id,
@@ -1841,5 +1961,5 @@ async def complete_child_task(child_id: str, task_id: str, request: Request):
         "reward": reward,
         "new_balance": new_balance,
         "message": f"€{reward:.2f} gutgeschrieben!",
+        "replayed": finalized.modified_count != 1,
     }
-
