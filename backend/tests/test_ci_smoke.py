@@ -2693,3 +2693,13 @@ def test_virtual_card_freeze_route_is_not_duplicated():
     assert '@router.post("/api/cards/{card_id}/freeze")' in lifecycle
     assert '/api/cards/${card.card_id}/${action}' in page
 
+def test_admin_wallet_stepup_otp_is_hashed_and_one_time():
+    source = (BACKEND_DIR / "routes" / "admin_wallet.py").read_text(encoding="utf-8")
+
+    assert "def _hash_admin_stepup_otp" in source
+    assert '"code_hash": _hash_admin_stepup_otp(otp)' in source
+    assert '"user_id": str(admin["_id"]), "code": otp' not in source
+    assert 'stored_hash = str(otp_doc.get("code_hash") or "")' in source
+    assert "hmac.compare_digest(stored_hash, _hash_admin_stepup_otp(str(otp_code)))" in source
+    assert 'consumed = await db.otp_codes.delete_one({"_id": otp_doc["_id"]})' in source
+
