@@ -6,9 +6,8 @@ import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigati
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
-import { useUser } from "../store/UserContext";
 import { isNFCAvailable, writeNFC } from "../utils/nfcService";
-import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking, createMobilityCheckoutSession, deleteSavedMobilityLocation, getMobilityAiRecommendation, getMobilityBookingDetail, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
+import { addRecentMobilityLocation, createMobilityBooking, createMobilityCheckoutSession, deleteSavedMobilityLocation, getMobilityAiRecommendation, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", details: { de: "Direkt, schnell und klassisch wie Uber/Bolt.", en: "Direct, fast and classic like Uber/Bolt.", sq: "Direkt, e shpejtë dhe klasike si Uber/Bolt." } },
@@ -202,8 +201,7 @@ function MobilityDetailSheet({ option, onClose, paymentOptions, ui, lang }) {
 }
 
 export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
-  const { t, lang } = useI18n();
-  const { user } = useUser();
+  const { lang } = useI18n();
   const ui = MOBILITY_COPY[lang] || MOBILITY_COPY.de;
   const preferredMode = typeof window !== "undefined"
     ? ((new URLSearchParams(window.location.search).get("mode") || "")
