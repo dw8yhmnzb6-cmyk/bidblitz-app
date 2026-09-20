@@ -234,6 +234,14 @@ async def create_indexes():
     await safe_create_index(db.scooter_rides, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mobility_payments, "payment_id", unique=True, critical=True)
     await safe_create_index(db.mobility_earnings, "earning_id", unique=True, critical=True)
+    await safe_create_index(
+        db.mobility_pricing_profiles,
+        [("country_code", 1), ("city_key", 1)],
+        unique=True,
+        critical=True,
+    )
+    await safe_create_index(db.mobility_pricing_profiles, [("enabled", 1), ("country_code", 1)])
+    await safe_create_index(db.mobility_pricing_audit, [("created_at", -1), ("country_code", 1)])
 
     # POS financial identities
     await safe_create_index(db.pos_payments, "payment_id", unique=True, critical=True)
