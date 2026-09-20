@@ -3,7 +3,7 @@
  * All functions throw on network errors. HTTP errors return { ok: false, error }.
  * Caller controls UI state (loading, error toasts, etc).
  */
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 
 const credJson = { credentials: "include", headers: { "Content-Type": "application/json" } };
