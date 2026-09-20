@@ -16,6 +16,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/food", tags=["Food Delivery"])
 
@@ -1528,6 +1529,11 @@ async def admin_seed_restaurants(request: Request):
 @router.delete("/admin/cleanup-fake")
 async def admin_cleanup_fake_data(request: Request):
     """Admin: Remove ALL fake/demo data from the system."""
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Food-Demo-Daten-Bereinigung ist in Production deaktiviert.",
+        )
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Nur Admin")
