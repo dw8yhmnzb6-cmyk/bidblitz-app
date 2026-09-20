@@ -1408,6 +1408,12 @@ def test_invoice_wallet_and_stripe_settlements_use_canonical_ledger_once():
     assert '"wallet_transaction_id": credit.transaction_id' in source
     assert "Diese Rechnung wird bereits über einen anderen Zahlungsweg bezahlt" in source
 
+    webhook_block = source.split("async def invoice_payment_webhook", 1)[1]
+    assert 'raise HTTPException(status_code=400, detail="Invalid Stripe webhook")' in webhook_block
+    assert "Invoice webhook settlement failed" in webhook_block
+    assert "from routes.dating import handle_dating_premium_webhook" not in webhook_block
+    assert 'return {"received": True, "processed": False}' not in webhook_block
+
     # Invoice settlement must never bypass the canonical wallet engine.
     assert '"$inc": {"balance": -' not in source
     assert '"$inc": {"balance": amount' not in source
@@ -2656,6 +2662,18 @@ def test_coinbase_confirmed_charge_settlement_is_retry_recoverable():
     assert '"reconciliation_required"' in source
     assert '"wallet_credited_charge_finalize_failed"' in source
     assert "finalized.modified_count != 1" in source
+
+def test_staff_stripe_settlement_is_atomic_and_recoverable():
+    source = (BACKEND_DIR / "routes" / "staff_stripe.py").read_text(encoding="utf-8")
+
+    assert "async def _settle_staff_checkout_once" in source
+    assert '"settlement_processing": True' in source
+    assert '"settlement_started_at": {"$lte": stale_before}' in source
+    assert '"settlement_token": claim_token' in source
+    assert 'existing.get("last_checkout_session_id") == session_id' in source
+    assert "settled = await _settle_staff_checkout_once(session_id, merchant_id, plan)" in source
+    assert 'raise HTTPException(status_code=503, detail="Staff subscription settlement in progress")' in source
+
 
 def test_pos_feature_stripe_activation_is_exactly_once_and_recoverable():
     source = (BACKEND_DIR / "routes" / "pos_features.py").read_text(encoding="utf-8")
