@@ -267,12 +267,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     const layer = nearbyLayerRef.current;
     if (!map || !layer) return;
     layer.clearLayers();
-    (data?.markers || []).forEach((item) => {
+    const visibleMarkers = preferredMode
+      ? (data?.markers || []).filter((item) => item.type === preferredMode)
+      : (data?.markers || []);
+    visibleMarkers.forEach((item) => {
       const marker = L.marker([item.lat, item.lng], { icon: makeServiceIcon(item.type) }).addTo(layer);
       marker.on("click", () => setSelectedNearby(item));
       marker.bindPopup(`<strong>${item.label}</strong><br/>${item.subtitle || ""}<br/>${item.distance_km || 0} km`);
     });
-  }, []);
+  }, [preferredMode]);
 
   const requestAiRecommendation = useCallback(async (routeData, pickupValue = pickup, dropoffValue = dropoff, nextPreferences = preferences) => {
     if (!routeData?.options?.length) return;
