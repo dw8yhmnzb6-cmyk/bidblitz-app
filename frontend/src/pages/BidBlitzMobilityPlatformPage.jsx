@@ -249,6 +249,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const langRef = useRef(lang);
   const loadNearbyRef = useRef(null);
   const calculateRouteRef = useRef(null);
+  const searchTimerRef = useRef(null);
+  const searchSequenceRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -341,6 +343,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       duration_min: result.duration_min,
       options: result.options || [],
       recommendations: result.recommendations || {},
+      pricing_context: result.pricing_context || null,
     });
     await addRecentMobilityLocation({ label: "pickup", address: pickupValue.address, lat: pickupValue.lat, lng: pickupValue.lng, kind: "recent" });
     await addRecentMobilityLocation({ label: "dropoff", address: dropoffValue.address, lat: dropoffValue.lat, lng: dropoffValue.lng, kind: "recent" });
@@ -370,7 +373,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     if (pickupInitializedRef.current) return;
     pickupInitializedRef.current = true;
     const info = await mobilityReverse(lat, lng, lang || "de");
-    const payload = { address: info?.address || fallbackLabel, lat, lng };
+    const payload = {
+      address: info?.address || fallbackLabel,
+      lat,
+      lng,
+      city: info?.city || "",
+      country: info?.country || "",
+      country_code: info?.country_code || "",
+      postcode: info?.postcode || "",
+    };
     setPickup(payload);
     mapRef.current?.setView([lat, lng], 14);
     loadNearby(lat, lng);
@@ -383,7 +394,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     nearbyLayerRef.current = L.layerGroup().addTo(map);
     map.on("click", async (e) => {
       const info = await mobilityReverse(e.latlng.lat, e.latlng.lng, langRef.current || "de");
-      const payload = { address: info?.address || `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`, lat: e.latlng.lat, lng: e.latlng.lng };
+      const payload = {
+        address: info?.address || `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`,
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+        city: info?.city || "",
+        country: info?.country || "",
+        country_code: info?.country_code || "",
+        postcode: info?.postcode || "",
+      };
       if (activeFieldRef.current === "pickup") {
         setPickup(payload);
         await loadNearbyRef.current?.(payload.lat, payload.lng);
@@ -458,11 +477,26 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
 
   const taxiFocusOption = useMemo(() => focusOptions.find((item) => item.type === "taxi") || null, [focusOptions]);
 
-  const triggerSearch = async (kind, value) => {
-    const prox = pickup.lat && pickup.lng ? { lat: pickup.lat, lng: pickup.lng } : undefined;
-    const data = await mobilitySearch(value, { ...prox, lang: lang || "de" });
-    if (kind === "pickup") setPickupSuggestions(data);
-    else setDropoffSuggestions(data);
+  const triggerSearch = (kind, value) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const normalized = String(value || "").trim();
+    if (normalized.length < 2) {
+      if (kind === "pickup") setPickupSuggestions([]);
+      else setDropoffSuggestions([]);
+      return;
+    }
+    const sequence = ++searchSequenceRef.current;
+    searchTimerRef.current = setTimeout(async () => {
+      const prox = pickup.lat && pickup.lng ? { lat: pickup.lat, lng: pickup.lng } : {};
+      const data = await mobilitySearch(normalized, {
+        ...prox,
+        lang: lang || "de",
+        countryCode: pickup.country_code || undefined,
+      });
+      if (sequence !== searchSequenceRef.current) return;
+      if (kind === "pickup") setPickupSuggestions(data);
+      else setDropoffSuggestions(data);
+    }, 220);
   };
 
   const useCurrentLocation = useCallback(() => {
@@ -470,7 +504,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const info = await mobilityReverse(lat, lng, lang || "de");
-      const payload = { address: info?.address || "Aktueller Standort", lat, lng };
+      const payload = {
+        address: info?.address || "Aktueller Standort",
+        lat,
+        lng,
+        city: info?.city || "",
+        country: info?.country || "",
+        country_code: info?.country_code || "",
+        postcode: info?.postcode || "",
+      };
       pickupInitializedRef.current = true;
       setPickup(payload);
       mapRef.current?.setView([lat, lng], 15);
@@ -480,7 +522,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   }, [calculateRoute, dropoff, lang, loadNearby]);
 
   const applyLocation = async (kind, item) => {
-    const payload = { address: item.address, lat: item.lat, lng: item.lng };
+    const payload = {
+      address: item.address,
+      lat: item.lat,
+      lng: item.lng,
+      city: item.city || "",
+      country: item.country || "",
+      country_code: item.country_code || "",
+      postcode: item.postcode || "",
+    };
     if (kind === "pickup") {
       setPickup(payload);
       loadNearby(payload.lat, payload.lng);
