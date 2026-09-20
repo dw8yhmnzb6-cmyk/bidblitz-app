@@ -1,8 +1,8 @@
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, Trash2 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export const ChargeAttachmentActions = ({ attachments = [], onPreview, testidPrefix }) => {
+export const ChargeAttachmentActions = ({ attachments = [], onPreview, onDelete, deletingId, testidPrefix }) => {
   if (!attachments.length) return null;
 
   return (
@@ -26,6 +26,17 @@ export const ChargeAttachmentActions = ({ attachments = [], onPreview, testidPre
           >
             <Download size={12} />{item.original_filename}
           </a>
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={() => onDelete(item)}
+              disabled={deletingId === item.attachment_id}
+              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700 disabled:opacity-50"
+              data-testid={`${testidPrefix}-delete-${index}`}
+            >
+              <Trash2 size={12} />{deletingId === item.attachment_id ? "Löscht..." : "Entfernen"}
+            </button>
+          ) : null}
         </div>
       ))}
     </div>
