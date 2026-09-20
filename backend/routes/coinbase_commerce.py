@@ -8,10 +8,10 @@ import hashlib
 import json
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 import httpx
-from fastapi import APIRouter, Request, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from core.database import db
@@ -130,11 +130,11 @@ async def list_user_charges(user=Depends(get_current_user), limit: int = 20):
 
 
 @router.post("/webhook")
-async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
+async def coinbase_webhook(request: Request):
     """
     Coinbase Commerce Webhook Endpoint.
-    Verifiziert HMAC-SHA256 Signatur, bestätigt sofort mit 200 OK,
-    und verarbeitet Payment asynchron.
+    Verifiziert HMAC-SHA256 und verarbeitet Settlement vor der 2xx-Antwort,
+    damit Provider-Retries einen Prozessabbruch sicher wieder aufnehmen können.
     """
     body = await request.body()
     payload_raw = body.decode("utf-8")
@@ -164,8 +164,8 @@ async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
     charge_id = charge_data.get("id")
 
     logger.info(f"Coinbase webhook: {event_type} for charge {charge_id}")
-    background_tasks.add_task(_process_event, event_type, charge_id, charge_data)
-    return {"status": "received", "event": event_type}
+    await _process_event(event_type, charge_id, charge_data)
+    return {"status": "processed", "event": event_type}
 
 
 async def _process_event(event_type: str, charge_id: str, charge_data: dict):
@@ -198,38 +198,71 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
 
     if event_type == "charge:confirmed":
         current = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or charge
-        if current.get("settlement_status") == "completed":
+        settlement_state = str(current.get("settlement_status") or "")
+        if settlement_state == "completed":
             return
-        if current.get("settlement_status") in {"pending", "reconciliation_required", "processing"}:
+        if settlement_state in {"pending", "reconciliation_required"}:
             return
 
-        claim_filter = {
-            "charge_id": charge_id,
-            "settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]},
-        }
-        if "settlement_status" not in current:
+        if settlement_state == "processing":
+            old_started = current.get("settlement_started_at")
+            started_dt = None
+            if old_started:
+                try:
+                    started_dt = datetime.fromisoformat(str(old_started).replace("Z", "+00:00"))
+                    if started_dt.tzinfo is None:
+                        started_dt = started_dt.replace(tzinfo=timezone.utc)
+                except Exception:
+                    started_dt = None
+            if started_dt and started_dt > datetime.now(timezone.utc) - timedelta(minutes=5):
+                return
+
+            attempt = int(current.get("settlement_attempt", 1) or 1)
+            reclaimed = await db.crypto_charges.update_one(
+                {
+                    "charge_id": charge_id,
+                    "settlement_status": "processing",
+                    "settlement_attempt": attempt,
+                    "settlement_started_at": old_started,
+                },
+                {
+                    "$set": {
+                        "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+                        "settlement_recovered_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "$inc": {"settlement_recovery_count": 1},
+                },
+            )
+            if reclaimed.modified_count != 1:
+                return
+            claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
+        else:
             claim_filter = {
                 "charge_id": charge_id,
-                "$or": [
-                    {"settlement_status": {"$exists": False}},
-                    {"settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]}},
-                ],
+                "settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]},
             }
-        claimed = await db.crypto_charges.update_one(
-            claim_filter,
-            {
-                "$set": {
-                    "settlement_status": "processing",
-                    "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+            if "settlement_status" not in current:
+                claim_filter = {
+                    "charge_id": charge_id,
+                    "$or": [
+                        {"settlement_status": {"$exists": False}},
+                        {"settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]}},
+                    ],
+                }
+            claimed = await db.crypto_charges.update_one(
+                claim_filter,
+                {
+                    "$set": {
+                        "settlement_status": "processing",
+                        "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "$inc": {"settlement_attempt": 1},
                 },
-                "$inc": {"settlement_attempt": 1},
-            },
-        )
-        if claimed.modified_count != 1:
-            return
-
-        claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
-        attempt = int(claimed_charge.get("settlement_attempt", 1) or 1)
+            )
+            if claimed.modified_count != 1:
+                return
+            claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
+            attempt = int(claimed_charge.get("settlement_attempt", 1) or 1)
         user_id = claimed_charge["user_id"]
         amount = float(claimed_charge["amount_eur"])
 
