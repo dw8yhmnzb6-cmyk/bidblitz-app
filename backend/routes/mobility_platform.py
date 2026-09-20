@@ -1638,6 +1638,45 @@ async def _nominatim_get(path: str, params: dict):
         return payload
 
 
+def _built_in_pricing_admin_rows() -> list[dict]:
+    rows = []
+
+    for country_code, profile in REGIONAL_PRICING_PROFILES.items():
+        if len(country_code) != 2 or not country_code.isalpha():
+            continue
+        rows.append({
+            "country_code": country_code,
+            "city_key": "*",
+            "scope": "country",
+            "city": "",
+            "region": profile.get("region") or country_code,
+            "currency": profile.get("currency") or "EUR",
+            "source": profile.get("source") or "Built-in benchmark",
+            "modes": profile.get("modes") or {},
+            "enabled": True,
+            "source_type": "built_in",
+            "can_disable": False,
+        })
+
+    for country_code, cities in CITY_PRICING_PROFILES.items():
+        for city_key, profile in (cities or {}).items():
+            rows.append({
+                "country_code": country_code,
+                "city_key": city_key,
+                "scope": "city",
+                "city": profile.get("city") or city_key,
+                "region": profile.get("region") or (REGIONAL_PRICING_PROFILES.get(country_code) or {}).get("region") or country_code,
+                "currency": profile.get("currency") or (REGIONAL_PRICING_PROFILES.get(country_code) or {}).get("currency") or "EUR",
+                "source": profile.get("source") or "Built-in benchmark",
+                "modes": profile.get("modes") or {},
+                "enabled": True,
+                "source_type": "built_in",
+                "can_disable": False,
+            })
+
+    return rows
+
+
 @router.get("/admin/pricing/profiles")
 async def admin_list_mobility_pricing_profiles(
     request: Request,
@@ -1645,17 +1684,48 @@ async def admin_list_mobility_pricing_profiles(
     city: Optional[str] = None,
 ):
     await _require_mobility_pricing_admin(request)
-    query = {}
-    if country_code:
-        query["country_code"] = _normalize_country_code(country_code)
-    if city:
-        query["city_key"] = _normalize_city_key(city)
 
-    rows = await db.mobility_pricing_profiles.find(query, {"_id": 0}).sort([
+    country_filter = _normalize_country_code(country_code) if country_code else None
+    city_filter = _normalize_city_key(city) if city else None
+
+    merged = {}
+    for row in _built_in_pricing_admin_rows():
+        if country_filter and row.get("country_code") != country_filter:
+            continue
+        if city_filter and row.get("city_key") != city_filter:
+            continue
+        merged[(row["country_code"], row["city_key"])] = row
+
+    query = {"enabled": {"$ne": False}}
+    if country_filter:
+        query["country_code"] = country_filter
+    if city_filter:
+        query["city_key"] = city_filter
+
+    database_rows = await db.mobility_pricing_profiles.find(query, {"_id": 0}).sort([
         ("country_code", 1),
         ("city_key", 1),
     ]).limit(500).to_list(500)
-    return {"profiles": rows}
+
+    for row in database_rows:
+        key = (row.get("country_code"), row.get("city_key"))
+        built_in = merged.get(key)
+        merged[key] = {
+            **row,
+            "source_type": "database",
+            "can_disable": True,
+            "built_in_fallback": built_in,
+        }
+
+    rows = sorted(
+        merged.values(),
+        key=lambda item: (str(item.get("country_code") or ""), str(item.get("city_key") or "")),
+    )
+    return {
+        "profiles": rows,
+        "database_override_count": len(database_rows),
+        "built_in_count": sum(1 for row in rows if row.get("source_type") == "built_in"),
+    }
 
 
 @router.put("/admin/pricing/profile")
