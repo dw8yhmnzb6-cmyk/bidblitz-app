@@ -88,6 +88,12 @@ REGIONAL_PRICING_PROFILES = {
             "bike": {"base": 1.0, "per_km": 0.0, "per_min": 0.20, "minimum": 1.0, "surge": False, "basis": "EU-Bike-Sharing-Benchmark"},
         },
     },
+    "AE": {
+        "region": "United Arab Emirates",
+        "currency": "AED",
+        "source": "UAE mobility authority benchmark",
+        "modes": {},
+    },
 }
 
 CITY_PRICING_PROFILES = {
@@ -178,6 +184,49 @@ CITY_PRICING_PROFILES = {
             },
         },
     },
+    "AE": {
+        "dubai": {
+            "city": "Dubai",
+            "region": "United Arab Emirates",
+            "currency": "AED",
+            "source": "Dubai RTA taxi benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 9.0,
+                    "per_km": 2.19,
+                    "per_min": 0.0,
+                    "minimum": 13.0,
+                    "surge": False,
+                    "range_base_low": 9.0,
+                    "range_base_high": 13.0,
+                    "range_per_km_low": 2.14,
+                    "range_per_km_high": 2.45,
+                    "basis": "Dubai e-hail · Start ca. AED 9–13 + ca. AED 2,14–2,45/km",
+                },
+            },
+        },
+        "abu_dhabi": {
+            "city": "Abu Dhabi",
+            "region": "United Arab Emirates",
+            "currency": "AED",
+            "source": "Abu Dhabi Mobility · Silver Taxi",
+            "modes": {
+                "taxi": {
+                    "base": 5.0,
+                    "booking_fee": 4.0,
+                    "per_km": 1.82,
+                    "per_min": 0.0,
+                    "minimum": 12.0,
+                    "surge": False,
+                    "range_base_low": 5.0,
+                    "range_base_high": 5.5,
+                    "range_booking_fee_low": 4.0,
+                    "range_booking_fee_high": 5.0,
+                    "basis": "Abu Dhabi · AED 5–5,50 Start + AED 1,82/km + AED 4–5 Buchung",
+                },
+            },
+        },
+    },
 }
 
 CITY_NAME_ALIASES = {
@@ -202,6 +251,9 @@ CITY_NAME_ALIASES = {
     "hamburg": "hamburg",
     "vienna": "wien",
     "wien": "wien",
+    "dubai": "dubai",
+    "abu dhabi": "abu_dhabi",
+    "abu_dhabi": "abu_dhabi",
 }
 
 
@@ -280,7 +332,7 @@ def build_option(
 ) -> dict:
     base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
     profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
-    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "distance_tiers", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "distance_tiers", "range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
 
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
     applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
@@ -311,23 +363,32 @@ def build_option(
     range_low = None
     range_high = None
     if any(key in base for key in ("range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high")):
+        low_base = float(base.get("range_base_low", base["base"]))
+        high_base = float(base.get("range_base_high", base["base"]))
+        low_booking_fee = float(base.get("range_booking_fee_low", booking_fee))
+        high_booking_fee = float(base.get("range_booking_fee_high", booking_fee))
         low_per_km = float(base.get("range_per_km_low", base["per_km"]))
         high_per_km = float(base.get("range_per_km_high", base["per_km"]))
         low_per_min = float(base.get("range_per_min_low", base["per_min"]))
         high_per_min = float(base.get("range_per_min_high", base["per_min"]))
-        low_raw = base["base"] + booking_fee + distance_km * low_per_km + adjusted_duration * low_per_min
-        high_raw = base["base"] + booking_fee + distance_km * high_per_km + adjusted_duration * high_per_min
+        low_raw = low_base + low_booking_fee + distance_km * low_per_km + adjusted_duration * low_per_min
+        high_raw = high_base + high_booking_fee + distance_km * high_per_km + adjusted_duration * high_per_min
         range_low = round(max(float(base.get("minimum") or 0), low_raw) * applied_multiplier, 2)
         range_high = round(max(float(base.get("minimum") or 0), high_raw) * applied_multiplier, 2)
 
     pricing_region = (pricing_profile or {}).get("region") or "Europa"
     pricing_source = (pricing_profile or {}).get("source") or "BidBlitz estimate"
     pricing_basis = base.get("basis") or "BidBlitz Routenschätzung"
+    currency = str((pricing_profile or {}).get("currency") or "EUR").upper()
+    eur_settlement = currency == "EUR"
+    local_range = {"low": range_low, "high": range_high} if range_low is not None and range_high is not None else None
     return {
         "type": option_type,
         "label": base["label"],
         "icon": base["icon"],
-        "price_eur": fare,
+        "price_local": fare,
+        "currency": currency,
+        "price_eur": fare if eur_settlement else None,
         "duration_min": adjusted_duration,
         "distance_km": round(distance_km, 2),
         "wallet_only": base["wallet_only"],
@@ -337,15 +398,34 @@ def build_option(
         "pricing_source": pricing_source,
         "pricing_basis": pricing_basis,
         "estimated": True,
-        "price_range_eur": {"low": range_low, "high": range_high} if range_low is not None and range_high is not None else None,
+        "price_range_local": local_range,
+        "price_range_eur": local_range if eur_settlement else None,
+        "booking_supported": eur_settlement,
+        "settlement_reason": None if eur_settlement else "FX-/Settlement-Verbindung für lokale Währung fehlt",
     }
 
 
+def _option_price(option: dict) -> float:
+    value = option.get("price_local")
+    if value is None:
+        value = option.get("price_eur")
+    return float(value or 0)
+
+
+def _require_supported_settlement(option: dict):
+    if option.get("booking_supported") is False or option.get("price_eur") is None:
+        currency = option.get("currency") or "lokale Währung"
+        raise HTTPException(
+            503,
+            f"Lokaler {currency}-Tarif ist verfügbar, aber FX-/Settlement ist noch nicht verbunden.",
+        )
+
+
 def build_recommendations(options: List[dict]) -> dict:
-    cheapest = min(options, key=lambda x: x["price_eur"])
+    cheapest = min(options, key=_option_price)
     fastest = min(options, key=lambda x: x["duration_min"])
     eco = max(options, key=lambda x: x["eco_score"])
-    balance = min(options, key=lambda x: x["price_eur"] * 0.45 + x["duration_min"] * 0.55)
+    balance = min(options, key=lambda x: _option_price(x) * 0.45 + x["duration_min"] * 0.55)
     return {
         "cheapest": {"type": cheapest["type"], "label": cheapest["label"], "reason": "Günstigste Option"},
         "fastest": {"type": fastest["type"], "label": fastest["label"], "reason": "Schnellste Ankunft"},
@@ -720,6 +800,8 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
             "type": item.get("type"),
             "label": item.get("label"),
             "price_eur": item.get("price_eur"),
+            "price_local": item.get("price_local"),
+            "currency": item.get("currency") or "EUR",
             "duration_min": item.get("duration_min"),
             "distance_km": item.get("distance_km"),
             "eco_score": item.get("eco_score"),
@@ -845,6 +927,8 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
         profile_key = "DE"
     elif country_code in {"AL", "MK", "ME", "RS", "BA"}:
         profile_key = "BALKANS"
+    elif country_code == "AE":
+        profile_key = "AE"
     else:
         profile_key = "EU"
 
@@ -932,10 +1016,10 @@ def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = No
     if not cards:
         return []
 
-    cheapest = min(cards, key=lambda item: item.get("price_eur") or 0)
+    cheapest = min(cards, key=_option_price)
     fastest = min(cards, key=lambda item: item.get("duration_min") or 0)
     eco = max(cards, key=lambda item: item.get("eco_score") or 0)
-    balance = min(cards, key=lambda item: (item.get("price_eur") or 0) * 0.45 + (item.get("duration_min") or 0) * 0.55)
+    balance = min(cards, key=lambda item: _option_price(item) * 0.45 + (item.get("duration_min") or 0) * 0.55)
     taxi_option = _find_option(cards, "taxi") or cheapest
 
     summary_cards = []
@@ -952,11 +1036,11 @@ def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = No
         summary_cards.append({
             "type": item.get("type"),
             "label": item.get("label"),
-            "price_eur": _round_money(item.get("price_eur") or 0),
+            "price_eur": _round_money(item.get("price_eur")) if item.get("price_eur") is not None else None,\n            "price_local": _round_money(_option_price(item)),\n            "currency": item.get("currency") or "EUR",
             "duration_min": int(item.get("duration_min") or 0),
             "distance_km": round(float(item.get("distance_km") or 0), 2),
             "eco_score": int(item.get("eco_score") or 0),
-            "price_delta_vs_taxi": _round_money((item.get("price_eur") or 0) - (taxi_option.get("price_eur") or 0)),
+            "price_delta_vs_taxi": _round_money(_option_price(item) - _option_price(taxi_option)),
             "time_delta_vs_taxi": int((item.get("duration_min") or 0) - (taxi_option.get("duration_min") or 0)),
             "tags": tags,
         })
@@ -978,10 +1062,10 @@ def _build_compare_summary(route_payload: dict, focus_modes: Optional[list[str]]
             },
         }
 
-    cheapest = min(cards, key=lambda item: item["price_eur"])
+    cheapest = min(cards, key=lambda item: item["price_local"])
     fastest = min(cards, key=lambda item: item["duration_min"])
     eco = max(cards, key=lambda item: item["eco_score"])
-    balance = min(cards, key=lambda item: item["price_eur"] * 0.45 + item["duration_min"] * 0.55)
+    balance = min(cards, key=lambda item: item["price_local"] * 0.45 + item["duration_min"] * 0.55)
     return {
         "route": {
             "pickup": route_payload.get("pickup") or {},
@@ -1455,7 +1539,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
+    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
 
     from routes.mobility_payments import process_payment
 
@@ -1608,7 +1692,7 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
     option = _find_option(route_payload["options"], req.transport_type or source.get("transport_type") or "taxi")
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
+    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
     ai_recommendation = await _generate_ai_route_recommendation(MobilityAiRecommendationRequest(
         pickup_address=source["pickup"]["address"],
         dropoff_address=source["dropoff"]["address"],
@@ -1699,7 +1783,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
+    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
 
     booking_id = f"mob-{uuid4().hex[:12]}"
     origin = req.origin_url.rstrip("/")
