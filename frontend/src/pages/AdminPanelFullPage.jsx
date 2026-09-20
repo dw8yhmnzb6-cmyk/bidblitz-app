@@ -5,10 +5,10 @@
  * - Detail data fetchers live in /components/admin/dataLoaders.js
  * - Detail rendering lives in /components/admin/AdminDetailRouter.jsx
  */
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard, BarChart3, ArrowLeft, X, Menu, Loader2,
+  LayoutDashboard, BarChart3, ArrowLeft, X, Menu,
   Search, Settings, LayoutGrid, MapPin,
 } from "lucide-react";
 
@@ -16,7 +16,6 @@ import { ADMIN_SECTIONS } from "../components/admin/sections";
 import AdminDetailRouter from "../components/admin/AdminDetailRouter";
 import { loadAdminDetail, api } from "../components/admin/dataLoaders";
 
-const AdminPageGrid = lazy(() => import("./AdminPage"));
 
 const AdminPanelFullPage = ({ onNavigate, onBack }) => {
   const [menuOpen, setMenuOpen] = useState(true);
@@ -77,21 +76,7 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
     ),
   })).filter((s) => s.items.length > 0);
 
-  /* ─── Grid Layout Mode (delegates to AdminPage) ──────────────────────── */
-  if (layoutMode === "grid") {
-    return (
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <Loader2 className="animate-spin text-[#10B981]" size={32} />
-          </div>
-        }
-      >
-        <AdminPageGrid onNavigate={onNavigate} onBack={onBack} layoutMode={layoutMode} onToggleLayout={toggleLayout} />
-      </Suspense>
-    );
-  }
-
+  /* ─── Canonical Admin Menu: layoutMode changes presentation only ─────── */
   /* ─── Full (List) Layout Mode ────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#F0F4FA] text-[#111]" data-testid="admin-panel-full">
@@ -202,7 +187,7 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
                 <span className="text-[10px] text-gray-400">({section.items.length})</span>
                 <div className="h-[3px] flex-1 rounded-full" style={{ background: `${section.color}20` }} />
               </div>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              <div className={layoutMode === "grid" ? "grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}>
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -210,11 +195,11 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
                       key={item.key}
                       whileTap={{ scale: 0.93 }}
                       onClick={() => handleItemClick(item)}
-                      className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col items-center gap-1.5 hover:border-gray-300 hover:shadow-md transition-all min-h-[88px] sm:min-h-[80px] justify-center"
+                      className={`bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center gap-1.5 hover:border-gray-300 hover:shadow-md transition-all justify-center ${layoutMode === "grid" ? "p-2 min-h-[74px] sm:min-h-[72px]" : "p-3 min-h-[88px] sm:min-h-[80px]"}`}
                       data-testid={`admin-item-${item.key}`}
                     >
                       <Icon size={20} className="text-gray-500" />
-                      <span className="text-[10px] sm:text-[9px] font-medium text-gray-700 text-center leading-tight">{item.label}</span>
+                      <span className={`${layoutMode === "grid" ? "text-[9px]" : "text-[10px] sm:text-[9px]"} font-medium text-gray-700 text-center leading-tight`}>{item.label}</span>
                     </motion.button>
                   );
                 })}
