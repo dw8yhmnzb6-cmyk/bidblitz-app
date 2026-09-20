@@ -526,11 +526,54 @@ def _delete_document_blobs(doc: Dict[str, Any]) -> None:
         _delete_attachment_blob(attachment)
 
 
+async def _resolve_charge_merchant(merchant_name: Any) -> Dict[str, Any]:
+    """Best-effort exact merchant binding for Charge after-sales flows."""
+    name = str(merchant_name or "").strip()
+    if not name:
+        return {}
+    escaped = re.escape(name)
+    merchant = await db.merchants.find_one(
+        {"business_name": {"$regex": f"^{escaped}$", "$options": "i"}},
+        {"_id": 0},
+    )
+    profile = None
+    if not merchant:
+        profile = await db.merchant_profiles.find_one(
+            {"business_name": {"$regex": f"^{escaped}$", "$options": "i"}},
+            {"_id": 0},
+        )
+        if profile and profile.get("user_id"):
+            merchant = await db.merchants.find_one(
+                {"user_id": profile.get("user_id")},
+                {"_id": 0},
+            ) or {}
+    if not merchant and not profile:
+        return {}
+    merchant = merchant or {}
+    profile = profile or (
+        await db.merchant_profiles.find_one(
+            {"user_id": merchant.get("user_id")},
+            {"_id": 0},
+        )
+        if merchant.get("user_id")
+        else {}
+    ) or {}
+    return {
+        "merchant_id": merchant.get("merchant_id") or "",
+        "merchant_user_id": str(merchant.get("user_id") or profile.get("user_id") or ""),
+        "merchant_slug": merchant.get("public_slug") or profile.get("public_slug") or "",
+        "merchant_name": merchant.get("business_name") or profile.get("business_name") or name,
+    }
+
+
 def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "claim_id": doc.get("claim_id"),
         "registration_id": doc.get("registration_id"),
-        "user_id": doc.get("user_id"),
+        "user_id": doc.get("customer_user_id") or doc.get("user_id"),
+        "merchant_user_id": doc.get("user_id") if doc.get("customer_user_id") else doc.get("merchant_user_id"),
+        "merchant_id": doc.get("merchant_id") or "",
+        "merchant_slug": doc.get("merchant_slug") or "",
         "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
         "serial_number": doc.get("serial_number") or "",
         "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
@@ -1039,8 +1082,8 @@ async def get_charge_dashboard(request: Request):
             "personalized_offers_total": len(personalized_offers),
             "active_rules_total": len(rules),
             "saved_products_total": saved_products_total,
-            "claims_total": await db.charge_warranty_claims.count_documents({"user_id": user_id}),
-            "claims_open": await db.charge_warranty_claims.count_documents({"user_id": user_id, "status": {"$in": ["open", "in_review", "approved"]}}),
+            "claims_total": await db.merchant_warranty_claims.count_documents({"customer_user_id": user_id}),
+            "claims_open": await db.merchant_warranty_claims.count_documents({"customer_user_id": user_id, "status": {"$in": ["open", "in_review", "approved"]}}),
         },
         "warranties": [_warranty_card(item) for item in warranties],
         "invoices": [_invoice_card(item) for item in invoices],
@@ -1391,23 +1434,28 @@ async def create_charge_warranty_claim(
     if not subject or not description:
         raise HTTPException(status_code=400, detail="Betreff und Beschreibung sind erforderlich")
 
-    active_existing = await db.charge_warranty_claims.find_one({
-        "user_id": user_id,
+    active_existing = await db.merchant_warranty_claims.find_one({
+        "customer_user_id": user_id,
         "registration_id": registration_id,
         "status": {"$in": ["open", "in_review", "approved"]},
     }, {"_id": 0})
     if active_existing:
         return {"ok": True, "claim": _claim_card(active_existing), "duplicate": True}
 
+    merchant_binding = await _resolve_charge_merchant(warranty.get("merchant_name"))
     now = _now_iso()
     claim = {
         "claim_id": f"CHG-CLM-{uuid.uuid4().hex[:10].upper()}",
         "registration_id": registration_id,
-        "user_id": user_id,
-        "user_email": user.get("email") or "",
+        # Existing merchant portal owns warranty claims through user_id.
+        "user_id": merchant_binding.get("merchant_user_id") or "",
+        "customer_user_id": user_id,
+        "customer_email": user.get("email") or "",
+        "merchant_id": merchant_binding.get("merchant_id") or "",
+        "merchant_slug": merchant_binding.get("merchant_slug") or "",
         "product_name": warranty.get("product_name") or "",
         "serial_number": warranty.get("serial_number") or "",
-        "merchant_name": warranty.get("merchant_name") or "",
+        "merchant_name": merchant_binding.get("merchant_name") or warranty.get("merchant_name") or "",
         "invoice_number": warranty.get("invoice_number") or "",
         "warranty_valid_until": _warranty_card(warranty).get("valid_until"),
         "issue_type": req.issue_type.strip().lower() or "defect",
@@ -1426,7 +1474,7 @@ async def create_charge_warranty_claim(
         "created_at": now,
         "updated_at": now,
     }
-    await db.charge_warranty_claims.insert_one(claim)
+    await db.merchant_warranty_claims.insert_one(claim)
     claim.pop("_id", None)
     return {"ok": True, "claim": _claim_card(claim)}
 
@@ -1435,8 +1483,8 @@ async def create_charge_warranty_claim(
 async def list_my_charge_claims(request: Request, limit: int = 100):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    rows = await db.charge_warranty_claims.find(
-        {"user_id": user_id},
+    rows = await db.merchant_warranty_claims.find(
+        {"customer_user_id": user_id},
         {"_id": 0},
     ).sort("updated_at", -1).limit(min(max(limit, 1), 200)).to_list(200)
     return {"claims": [_claim_card(item) for item in rows], "total": len(rows)}
@@ -1446,8 +1494,8 @@ async def list_my_charge_claims(request: Request, limit: int = 100):
 async def get_my_charge_claim(claim_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    claim = await db.charge_warranty_claims.find_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    claim = await db.merchant_warranty_claims.find_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"_id": 0},
     )
     if not claim:
@@ -1463,8 +1511,8 @@ async def upload_charge_claim_attachment(
 ):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    claim = await db.charge_warranty_claims.find_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    claim = await db.merchant_warranty_claims.find_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"_id": 0},
     )
     if not claim:
@@ -1489,8 +1537,8 @@ async def upload_charge_claim_attachment(
         "uploaded_at": _now_iso(),
     }
     now = _now_iso()
-    await db.charge_warranty_claims.update_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"$push": {"attachments": attachment}, "$set": {"updated_at": now}},
     )
     return {
@@ -1513,8 +1561,8 @@ async def download_charge_claim_attachment(
     user_id = str(user.get("_id"))
     query: Dict[str, Any] = {"claim_id": claim_id}
     if user.get("role") != "admin":
-        query["user_id"] = user_id
-    claim = await db.charge_warranty_claims.find_one(query, {"_id": 0})
+        query["customer_user_id"] = user_id
+    claim = await db.merchant_warranty_claims.find_one(query, {"_id": 0})
     if not claim:
         raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
     attachment = next(
@@ -1541,8 +1589,8 @@ async def delete_charge_claim_attachment(
 ):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    claim = await db.charge_warranty_claims.find_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    claim = await db.merchant_warranty_claims.find_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"_id": 0},
     )
     if not claim:
@@ -1558,8 +1606,8 @@ async def delete_charge_claim_attachment(
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
 
     _delete_attachment_blob(attachment)
-    await db.charge_warranty_claims.update_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {
             "$pull": {"attachments": {"attachment_id": attachment_id}},
             "$set": {"updated_at": _now_iso()},
@@ -1576,8 +1624,8 @@ async def add_charge_claim_message(
 ):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    claim = await db.charge_warranty_claims.find_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    claim = await db.merchant_warranty_claims.find_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"_id": 0},
     )
     if not claim:
@@ -1596,8 +1644,8 @@ async def add_charge_claim_message(
         "message": message,
         "created_at": now,
     }
-    await db.charge_warranty_claims.update_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"$push": {"messages": entry}, "$set": {"updated_at": now}},
     )
     return {"ok": True, "message": entry}
@@ -1607,8 +1655,8 @@ async def add_charge_claim_message(
 async def cancel_my_charge_claim(claim_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    claim = await db.charge_warranty_claims.find_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    claim = await db.merchant_warranty_claims.find_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"_id": 0},
     )
     if not claim:
@@ -1617,8 +1665,8 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
         return {"ok": True, "claim": _claim_card(claim)}
 
     now = _now_iso()
-    await db.charge_warranty_claims.update_one(
-        {"claim_id": claim_id, "user_id": user_id},
+    await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "customer_user_id": user_id},
         {"$set": {"status": "cancelled", "updated_at": now, "resolved_at": now}},
     )
     updated = {**claim, "status": "cancelled", "updated_at": now, "resolved_at": now}
@@ -1635,7 +1683,7 @@ async def admin_list_charge_claims(
     query: Dict[str, Any] = {}
     if status:
         query["status"] = _validate_claim_status(status)
-    rows = await db.charge_warranty_claims.find(
+    rows = await db.merchant_warranty_claims.find(
         query,
         {"_id": 0},
     ).sort("updated_at", -1).limit(min(max(limit, 1), 500)).to_list(500)
@@ -1658,7 +1706,7 @@ async def admin_update_charge_claim_status(
     request: Request,
 ):
     admin = await _require_admin(request)
-    claim = await db.charge_warranty_claims.find_one(
+    claim = await db.merchant_warranty_claims.find_one(
         {"claim_id": claim_id},
         {"_id": 0},
     )
@@ -1690,11 +1738,11 @@ async def admin_update_charge_claim_status(
     mongo_update: Dict[str, Any] = {"$set": update}
     if messages:
         mongo_update["$push"] = {"messages": {"$each": messages}}
-    await db.charge_warranty_claims.update_one(
+    await db.merchant_warranty_claims.update_one(
         {"claim_id": claim_id},
         mongo_update,
     )
-    saved = await db.charge_warranty_claims.find_one(
+    saved = await db.merchant_warranty_claims.find_one(
         {"claim_id": claim_id},
         {"_id": 0},
     )
