@@ -162,6 +162,53 @@ CITY_PRICING_PROFILES = {
             },
         },
     },
+    "AL": {
+        "tirana": {
+            "city": "Tirana",
+            "region": "Albanien",
+            "currency": "ALL",
+            "source": "Taxi.AL published city tariff",
+            "modes": {
+                "taxi": {
+                    "base": 250.0,
+                    "included_distance_km": 1.5,
+                    "per_km": 0.0,
+                    "per_min": 0.0,
+                    "minimum": 250.0,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 5.0, "per_km": 100.0},
+                        {"up_to_km": 10.0, "per_km": 85.0},
+                        {"up_to_km": 16.5, "per_km": 80.0},
+                        {"up_to_km": None, "per_km": 80.0},
+                    ],
+                    "basis": "Tirana · 250 ALL Start inkl. 1,5 km; danach gestaffelter km-Tarif",
+                },
+            },
+        },
+    },
+    "ME": {
+        "podgorica": {
+            "city": "Podgorica",
+            "region": "Montenegro",
+            "currency": "EUR",
+            "source": "Podgorica 2026 local taxi operator benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 1.0,
+                    "per_km": 0.70,
+                    "per_min": 0.0,
+                    "minimum": 2.50,
+                    "surge": False,
+                    "range_base_low": 0.50,
+                    "range_base_high": 1.00,
+                    "range_per_km_low": 0.60,
+                    "range_per_km_high": 1.00,
+                    "basis": "Podgorica · ca. 0,50–1,00 € Start + ca. 0,60–1,00 €/km",
+                },
+            },
+        },
+    },
     "AT": {
         "wien": {
             "city": "Wien",
@@ -251,6 +298,9 @@ CITY_NAME_ALIASES = {
     "hamburg": "hamburg",
     "vienna": "wien",
     "wien": "wien",
+    "tirana": "tirana",
+    "tiranë": "tirana",
+    "podgorica": "podgorica",
     "dubai": "dubai",
     "abu dhabi": "abu_dhabi",
     "abu_dhabi": "abu_dhabi",
@@ -332,16 +382,18 @@ def build_option(
 ) -> dict:
     base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
     profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
-    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "distance_tiers", "range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "included_distance_km", "distance_tiers", "range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
 
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
     applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
 
-    distance_charge = distance_km * base["per_km"]
+    included_distance_km = max(0.0, float(base.get("included_distance_km") or 0))
+    billable_distance_km = max(0.0, float(distance_km) - included_distance_km)
+    distance_charge = billable_distance_km * base["per_km"]
     if base.get("distance_tiers"):
         distance_charge = 0.0
         previous_limit = 0.0
-        remaining = max(0.0, float(distance_km))
+        remaining = billable_distance_km
         for tier in base["distance_tiers"]:
             upper = tier.get("up_to_km")
             if upper is None:
@@ -371,8 +423,8 @@ def build_option(
         high_per_km = float(base.get("range_per_km_high", base["per_km"]))
         low_per_min = float(base.get("range_per_min_low", base["per_min"]))
         high_per_min = float(base.get("range_per_min_high", base["per_min"]))
-        low_raw = low_base + low_booking_fee + distance_km * low_per_km + adjusted_duration * low_per_min
-        high_raw = high_base + high_booking_fee + distance_km * high_per_km + adjusted_duration * high_per_min
+        low_raw = low_base + low_booking_fee + billable_distance_km * low_per_km + adjusted_duration * low_per_min
+        high_raw = high_base + high_booking_fee + billable_distance_km * high_per_km + adjusted_duration * high_per_min
         range_low = round(max(float(base.get("minimum") or 0), low_raw) * applied_multiplier, 2)
         range_high = round(max(float(base.get("minimum") or 0), high_raw) * applied_multiplier, 2)
 
@@ -1053,6 +1105,14 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
             country_code = "AT"
             city = "Wien" if "wien" in text or "vienna" in text else ""
             country = "Österreich"
+        elif "tirana" in text or "tiranë" in text or "albania" in text or "albanien" in text:
+            country_code = "AL"
+            city = "Tirana" if "tirana" in text or "tiranë" in text else ""
+            country = "Albania"
+        elif "podgorica" in text or "montenegro" in text:
+            country_code = "ME"
+            city = "Podgorica" if "podgorica" in text else ""
+            country = "Montenegro"
         elif "dubai" in text or "abu dhabi" in text or "uae" in text or "united arab emirates" in text:
             country_code = "AE"
             if "abu dhabi" in text:
