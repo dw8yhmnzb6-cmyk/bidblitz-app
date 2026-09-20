@@ -2609,3 +2609,12 @@ def test_role_request_routes_cannot_manage_privileged_admin_roles():
     assert 'final_role not in VALID_ROLES and final_role != "admin"' not in source
     assert 'req.new_role not in VALID_ROLES and req.new_role != "admin"' not in source
 
+def test_verification_review_cannot_modify_privileged_admin_roles():
+    source = (BACKEND_DIR / "routes" / "verification.py").read_text(encoding="utf-8")
+
+    assert "role not in ROLES_REQUIRING_VERIFICATION" in source
+    assert 'str(target_user.get("role") or "") in {"admin", "super_admin"}' in source
+    assert "Privilegierte Admin-Rollen dürfen durch KYC-Review nicht geändert werden." in source
+    assert '"role": {"$nin": ["admin", "super_admin"]}' in source
+    assert "Rollenfreigabe konnte nicht atomar abgeschlossen werden" in source
+
