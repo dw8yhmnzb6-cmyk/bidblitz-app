@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, TrendingUp, TrendingDown, Star, Wallet, ChevronRight, X, ArrowUpRight, ArrowDownRight, BarChart3, PieChart, Clock, Eye } from "lucide-react";
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -17,6 +17,7 @@ export default function StocksPage({ onBack }) {
   const [trading, setTrading] = useState(false);
   const [balance, setBalance] = useState(0);
   const [trades, setTrades] = useState([]);
+  const tradeAttemptKeyRef = useRef(null);
   const [capabilities, setCapabilities] = useState({
     live_market_data: true,
     broker_connected: false,
@@ -44,12 +45,43 @@ export default function StocksPage({ onBack }) {
       return;
     }
     if (!tradeModal || !shares || parseFloat(shares) <= 0) return;
+    if (!tradeAttemptKeyRef.current) {
+      tradeAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `stock-trade-${crypto.randomUUID()}`
+        : `stock-trade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = tradeAttemptKeyRef.current;
     setTrading(true);
     try {
-      const r = await fetch(`${API}/api/stocks/trade`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: tradeModal.symbol, shares: parseFloat(shares), side: tradeModal.side }) });
-      if (r.ok) { const d = await r.json(); setBalance(d.new_balance); setTradeModal(null); setShares(""); loadPortfolio(); loadMarket(); alert(`${d.side === "buy" ? "Gekauft" : "Verkauft"}: ${d.shares}x ${d.symbol} für ${d.total}€`); }
-      else { const e = await r.json(); alert(e.detail || "Fehler"); }
-    } catch {} setTrading(false);
+      const r = await fetch(`${API}/api/stocks/trade`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          symbol: tradeModal.symbol,
+          shares: parseFloat(shares),
+          side: tradeModal.side,
+          idempotency_key: idempotencyKey,
+        }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        tradeAttemptKeyRef.current = null;
+        setBalance(d.new_balance);
+        setTradeModal(null);
+        setShares("");
+        loadPortfolio();
+        loadMarket();
+        alert(`${d.side === "buy" ? "Gekauft" : "Verkauft"}: ${d.shares}x ${d.symbol} für ${d.total}€`);
+      } else {
+        const e = await r.json();
+        if (r.status === 400 || String(e.detail || "").includes("neuen Idempotency-Key")) {
+          tradeAttemptKeyRef.current = null;
+        }
+        alert(e.detail || "Fehler");
+      }
+    } catch {}
+    setTrading(false);
   };
 
   const filtered = assets.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.symbol.toLowerCase().includes(search.toLowerCase()));
