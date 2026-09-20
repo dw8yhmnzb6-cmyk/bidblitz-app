@@ -192,7 +192,19 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
     if reserve.modified_count != 1:
         reserved = await db.users.find_one({"_id": user["_id"], reserve_field: {"$exists": True}}, {"_id": 1})
         if not reserved:
-            raise HTTPException(status_code=500, detail="Kartenreservierung benötigt Abstimmung")
+            rollback = await credit_wallet(
+                user_id=user_id,
+                amount=req.limit,
+                tx_type=TransactionType.REFUND,
+                description="Virtual Card Reservierung zurückgebucht",
+                reference=f"VCROLL-{marker[:12].upper()}",
+                source="virtual_cards_legacy",
+                metadata={"card_id": card_id, "reason": "reservation_marker_failed"},
+                idempotency_key=f"virtual-card-create-rollback:{marker}",
+            )
+            if not rollback.success:
+                raise HTTPException(status_code=500, detail="Kartenreservierung benötigt Abstimmung")
+            raise HTTPException(status_code=409, detail="Kartenreservierung fehlgeschlagen. Wallet wurde zurückgebucht.")
 
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=req.expires_hours)
@@ -223,26 +235,51 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
         "expires_at": expires_at.isoformat(),
     }
     
-    await db.virtual_cards.update_one(
+    try:
+        await db.virtual_cards.update_one(
+            {"card_id": card_id, "user_id": user_id},
+            {"$setOnInsert": card},
+            upsert=True,
+        )
+    except Exception:
+        refunded = await _refund_legacy_card_reservation_once(
+            {"card_id": card_id, "user_id": user_id},
+            req.limit,
+            "create_persist_failed",
+        )
+        if not refunded:
+            raise HTTPException(status_code=500, detail="Kartenerstellung fehlgeschlagen; Reservierung benötigt Abstimmung")
+        raise HTTPException(status_code=500, detail="Kartenerstellung fehlgeschlagen. Wallet wurde zurückgebucht.")
+
+    persisted = await db.virtual_cards.find_one(
         {"card_id": card_id, "user_id": user_id},
-        {"$setOnInsert": card},
-        upsert=True,
+        {"_id": 0},
     )
-    
+    if not persisted:
+        refunded = await _refund_legacy_card_reservation_once(
+            {"card_id": card_id, "user_id": user_id},
+            req.limit,
+            "create_missing_after_persist",
+        )
+        if not refunded:
+            raise HTTPException(status_code=500, detail="Kartenerstellung benötigt Abstimmung")
+        raise HTTPException(status_code=500, detail="Kartenerstellung fehlgeschlagen. Wallet wurde zurückgebucht.")
+
     return {
         "success": True,
         "card": {
-            "card_id": card["card_id"],
-            "name": card["name"],
-            "card_number": card["card_number"],
-            "card_number_masked": card["card_number_masked"],
-            "cvv": card["cvv"],
-            "exp_month": card["exp_month"],
-            "exp_year": card["exp_year"],
-            "limit": card["limit"],
-            "expires_at": card["expires_at"],
-            "single_use": card["single_use"],
-        }
+            "card_id": persisted["card_id"],
+            "name": persisted["name"],
+            "card_number": persisted.get("card_number"),
+            "card_number_masked": persisted.get("card_number_masked"),
+            "cvv": persisted.get("cvv"),
+            "exp_month": persisted.get("exp_month"),
+            "exp_year": persisted.get("exp_year"),
+            "limit": persisted.get("limit"),
+            "expires_at": persisted.get("expires_at"),
+            "single_use": persisted.get("single_use"),
+        },
+        "replayed": bool(wallet_result.replayed),
     }
 
 
