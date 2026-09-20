@@ -2547,6 +2547,8 @@ async def download_charge_warranty_pass(registration_id: str, request: Request):
           <p><strong>Händler:</strong> {pass_data['merchant_name']}</p>
           <p><strong>Status:</strong> {pass_data['status_label']}</p>
           <p><strong>Gültig bis:</strong> {pass_data['valid_until']}</p>
+          <p><strong>Nachweis:</strong> {pass_data.get('evidence_label') or 'Manuell erfasst'}</p>
+          <p style='font-size:12px;color:#475569;'>Der Nachweis beschreibt verknüpfte Garantie-/Kaufdaten und ist keine unabhängige Echtheitsprüfung des physischen Produkts.</p>
           <p><strong>QR Payload:</strong><br><span style='font-family:monospace;word-break:break-all;'>{pass_data['qr_payload']}</span></p>
         </div>
       </div>
