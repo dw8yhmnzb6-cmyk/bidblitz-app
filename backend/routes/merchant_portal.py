@@ -2319,16 +2319,25 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
             update_doc["resolved_at"] = now
 
         mongo_update: Dict[str, Any] = {"$set": update_doc}
+        push_ops: Dict[str, Any] = {}
         if note and note != str(claim.get("admin_note") or claim.get("internal_note") or "").strip():
-            mongo_update["$push"] = {
-                "messages": {
-                    "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
-                    "author_role": "merchant",
-                    "author_id": str(user.get("_id") or ""),
-                    "message": note,
-                    "created_at": now,
-                }
+            push_ops["messages"] = {
+                "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
+                "author_role": "merchant",
+                "author_id": str(user.get("_id") or ""),
+                "message": note,
+                "created_at": now,
             }
+        if customer_status != str(claim.get("status") or ""):
+            push_ops["status_history"] = {
+                "status": customer_status,
+                "actor_role": "merchant",
+                "actor_id": str(user.get("_id") or ""),
+                "note": note,
+                "created_at": now,
+            }
+        if push_ops:
+            mongo_update["$push"] = push_ops
         await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
         return {
             "ok": True,
@@ -2343,7 +2352,18 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
     }
     if note:
         update_doc["internal_note"] = note
-    await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, {"$set": update_doc})
+    mongo_update: Dict[str, Any] = {"$set": update_doc}
+    if requested_status != str(claim.get("status") or ""):
+        mongo_update["$push"] = {
+            "status_history": {
+                "status": requested_status,
+                "actor_role": "merchant",
+                "actor_id": str(user.get("_id") or ""),
+                "note": note,
+                "created_at": now,
+            }
+        }
+    await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
     return {"ok": True, "status": requested_status}
 
 @router.post("/dealer/warranty/create")
