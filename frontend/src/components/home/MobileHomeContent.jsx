@@ -47,7 +47,7 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
   };
 
   return (
-    <div className="space-y-5 pb-4 text-white" data-testid="mobile-home-content">
+    <div className="space-y-5 pb-32 text-white" data-testid="mobile-home-content">
       {isGuest && (
         <section className={panel + " p-5"} data-testid="mobile-home-intro">
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">BidBlitz Wallet</p>
