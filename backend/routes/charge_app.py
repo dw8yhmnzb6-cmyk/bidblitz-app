@@ -2089,7 +2089,7 @@ async def cancel_charge_warranty_transfer(transfer_id: str, request: Request):
     return {"ok": True, "transfer": _transfer_card(transfer or {"transfer_id": transfer_id, "status": "cancelled"})}
 
 
-@router.post("/warranty/{registration_id}/claims")@router.post("/warranty/{registration_id}/claims")
+@router.post("/warranty/{registration_id}/claims")
 async def create_charge_warranty_claim(
     registration_id: str,
     req: ChargeWarrantyClaimRequest,
