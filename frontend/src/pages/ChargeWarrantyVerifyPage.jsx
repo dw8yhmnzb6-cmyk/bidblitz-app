@@ -76,6 +76,7 @@ export default function ChargeWarrantyVerifyPage({ registrationId, signature, on
             <Info label="Händler" value={pass.merchant_name} />
             <Info label="Seriennummer" value={pass.serial_number_masked} />
             <Info label="Garantie" value={pass.coverage_label} />
+            <Info label="Nachweis" value={pass.evidence_label || "Manuell erfasst"} />
             <Info label="Gültig bis" value={pass.valid_until} />
             <Info label="Status" value={pass.status_label || pass.status} accent={active} />
           </div>
@@ -84,8 +85,8 @@ export default function ChargeWarrantyVerifyPage({ registrationId, signature, on
         <section className="mt-5 rounded-[28px] border border-[#D9CFC0] bg-[#F8F3EA] p-5 text-slate-800">
           <h2 className="text-lg font-black">Datenschutz</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Die öffentliche Verifikation zeigt nur die für die Echtheitsprüfung nötigen Produkt- und Garantiedaten.
-            Kundennamen, E-Mail-Adressen, Rechnungen und Reklamationsverläufe werden nicht angezeigt.
+            Die öffentliche Verifikation bestätigt den digitalen BidBlitz-Charge-Garantiepass und zeigt, welche Nachweise mit ihm verknüpft sind.
+            Sie ist keine unabhängige Echtheitsprüfung des physischen Produkts. Kundennamen, E-Mail-Adressen, Rechnungen und Reklamationsverläufe werden nicht angezeigt.
           </p>
           <button
             onClick={() => onNavigate?.("/")}
