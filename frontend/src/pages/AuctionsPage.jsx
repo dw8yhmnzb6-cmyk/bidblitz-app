@@ -359,7 +359,7 @@ const WalletTopUpBanner = ({ balance, onTopUp, t }) => {
    LIVE ACTIVITY INDICATOR
    ════════════════════════════════════════════ */
 const LiveActivityBar = ({ auctions, t }) => {
-  const [activity, setActivity] = useState({ bids: 0, watching: 0, hot: false });
+  const [activity, setActivity] = useState({ bids: 0, activeAuctions: 0, hot: false });
   
   useEffect(() => {
     // Calculate activity from auctions
@@ -369,7 +369,7 @@ const LiveActivityBar = ({ auctions, t }) => {
     
     setActivity({
       bids: totalBids,
-      watching: Math.floor(activeCount * 3 + Math.random() * 10),
+      activeAuctions: activeCount,
       hot: hotAuctions > 0,
     });
   }, [auctions]);
@@ -390,7 +390,7 @@ const LiveActivityBar = ({ auctions, t }) => {
         </div>
         <div className="flex items-center gap-1">
           <Users size={10} className="text-[#B068FF]" />
-          <span className="text-[9px] text-white/50">{activity.watching} {t("auction.watching") || "schauen zu"}</span>
+          <span className="text-[9px] text-white/50">{activity.activeAuctions} aktive Auktionen</span>
         </div>
       </div>
       {activity.hot && (
