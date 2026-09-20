@@ -52,8 +52,8 @@ REGIONAL_PRICING_PROFILES = {
         "currency": "EUR",
         "source": "Kosovo local mobility benchmark",
         "modes": {
-            "taxi": {"base": 2.0, "per_km": 0.75, "per_min": 0.0, "minimum": 2.0, "surge": False, "basis": "2,00 € Start + 0,75 €/km"},
-            "scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.15, "minimum": 0.20, "surge": False, "basis": "0,20 € Start + 0,15 €/min"},
+            "taxi": {"base": 2.0, "per_km": 0.60, "per_min": 0.0, "minimum": 2.0, "surge": False, "range_per_km_low": 0.50, "range_per_km_high": 0.65, "basis": "2,00 € Start + ca. 0,50–0,65 €/km"},
+            "scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.18, "minimum": 0.20, "surge": False, "range_per_min_low": 0.15, "range_per_min_high": 0.20, "basis": "ca. 0,15–0,20 €/min + mögliche Entsperrgebühr"},
             "bike": {"base": 0.30, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
             "ev": {"base": 2.0, "per_km": 0.45, "per_min": 0.04, "minimum": 2.5, "surge": False, "basis": "regionaler EV-Schätzwert"},
             "car_sharing": {"base": 1.5, "per_km": 0.32, "per_min": 0.08, "minimum": 2.0, "surge": False, "basis": "regionaler Carsharing-Schätzwert"},
@@ -139,12 +139,25 @@ def build_option(
 ) -> dict:
     base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
     profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
-    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis"}})
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
 
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
     applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
     raw_fare = base["base"] + distance_km * base["per_km"] + adjusted_duration * base["per_min"]
     fare = round(max(float(base.get("minimum") or 0), raw_fare) * applied_multiplier, 2)
+
+    range_low = None
+    range_high = None
+    if any(key in base for key in ("range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high")):
+        low_per_km = float(base.get("range_per_km_low", base["per_km"]))
+        high_per_km = float(base.get("range_per_km_high", base["per_km"]))
+        low_per_min = float(base.get("range_per_min_low", base["per_min"]))
+        high_per_min = float(base.get("range_per_min_high", base["per_min"]))
+        low_raw = base["base"] + distance_km * low_per_km + adjusted_duration * low_per_min
+        high_raw = base["base"] + distance_km * high_per_km + adjusted_duration * high_per_min
+        range_low = round(max(float(base.get("minimum") or 0), low_raw) * applied_multiplier, 2)
+        range_high = round(max(float(base.get("minimum") or 0), high_raw) * applied_multiplier, 2)
+
     pricing_region = (pricing_profile or {}).get("region") or "Europa"
     pricing_source = (pricing_profile or {}).get("source") or "BidBlitz estimate"
     pricing_basis = base.get("basis") or "BidBlitz Routenschätzung"
@@ -162,6 +175,7 @@ def build_option(
         "pricing_source": pricing_source,
         "pricing_basis": pricing_basis,
         "estimated": True,
+        "price_range_eur": {"low": range_low, "high": range_high} if range_low is not None and range_high is not None else None,
     }
 
 
