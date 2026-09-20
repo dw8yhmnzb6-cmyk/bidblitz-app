@@ -379,10 +379,29 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     if (routeMap[featureId]) { onNavigate(routeMap[featureId]); }
   };
 
+  const priorityFeatures = filterStoreSafeItems([
+    {
+      id: "auctions",
+      icon: Gavel,
+      title: t("home.f_auctions") || "Auktionen",
+      desc: t("home.f_auctions_d") || "Live bieten, Produkte gewinnen und Gewinner-Checkout direkt abschließen.",
+      color: "#A855F7",
+      route: "/auctions",
+      badge: t("home.live_now") || "LIVE",
+    },
+    {
+      id: "mining",
+      icon: Cpu,
+      title: t("home.f_mining") || "Mining",
+      desc: t("home.f_mining_d") || "Mining-Status, Fortschritt und Provider-Preview an einem Ort.",
+      color: "#00E89D",
+      route: "/mining",
+      badge: t("home.preview") || "PREVIEW",
+    },
+  ]);
+
   const availableFeatures = filterStoreSafeItems([
     { id: "wallet", icon: Wallet, title: t("home.f_wallet") || "Wallet", desc: t("home.f_wallet_d") || "Manage your money", color: "#00C2FF", route: "/wallet", large: true },
-    { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
-    { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
     { id: "miningTrust", icon: Shield, title: t("mining.trust_title") || "Mining Server", desc: t("mining.trust_menu_desc") || "Dubai & Abu Dhabi Infrastruktur", color: "#F59E0B", route: "/mining-trust" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
   ]);
@@ -651,7 +670,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
-                <ProductCard icon={TrendingUp} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />
+                {!STORE_SAFE_MODE && <ProductCard icon={Gavel} title={t("home.f_auctions") || "Auktionen"} desc={t("home.f_auctions_d") || "Live bieten & gewinnen"} color="#A855F7" delay={0.42} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("auctions"); onRegister(); }} />}
+                {!STORE_SAFE_MODE && <ProductCard icon={Cpu} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#00E89D" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />}
               </div>
             </motion.section>
             </div>
@@ -756,6 +776,62 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {!isGuest && !isCompactHome && !showKycRestrictedExperience && (
           <>
             {/* (Hero Balance Card now rendered at the very top — banking-app feel) */}
+
+            {/* ═══ Priority Modules: Auctions + Mining ═══ */}
+            {priorityFeatures.length > 0 && (
+              <motion.section
+                data-testid="home-priority-modules"
+                className="mb-6"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, ...slide }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 rounded-full bg-[#00C2FF]" />
+                    <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.start_now") || "Direkt starten"}</h3>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {priorityFeatures.map((feature, index) => (
+                    <motion.button
+                      key={feature.id}
+                      type="button"
+                      data-testid={"home-priority-" + feature.id}
+                      onClick={() => onNavigate(feature.route)}
+                      className="relative overflow-hidden rounded-[22px] p-4 text-left min-h-[138px]"
+                      style={{
+                        background: "linear-gradient(145deg, " + feature.color + "18, rgba(8,10,16,0.96) 58%)",
+                        border: "1px solid " + feature.color + "2E",
+                        boxShadow: "0 14px 34px " + feature.color + "0C",
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ y: -2, borderColor: feature.color + "55" }}
+                      transition={{ delay: 0.14 + index * 0.05, ...slide }}
+                    >
+                      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full" style={{ background: feature.color, filter: "blur(38px)", opacity: 0.12 }} />
+                      <div className="relative z-10 flex h-full flex-col">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: feature.color + "16", border: "1px solid " + feature.color + "28" }}>
+                            <feature.icon size={20} style={{ color: feature.color }} />
+                          </div>
+                          <span className="rounded-full px-2 py-1 text-[8px] font-black tracking-[0.12em]" style={{ color: feature.color, background: feature.color + "12", border: "1px solid " + feature.color + "22" }}>
+                            {feature.badge}
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <h3 className="text-[15px] font-bold font-outfit text-white">{feature.title}</h3>
+                          <p className="mt-1 text-[10px] leading-4 text-white/60">{feature.desc}</p>
+                        </div>
+                        <div className="mt-auto pt-3 flex items-center gap-1 text-[10px] font-semibold" style={{ color: feature.color }}>
+                          {t("common.open") || "Öffnen"} <ChevronRight size={12} />
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.section>
+            )}
 
             {/* ═══ Loyalty & Coins Card ═══ */}
             <LoyaltyCard onNavigate={onNavigate} t={t} />
