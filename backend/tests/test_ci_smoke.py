@@ -2243,6 +2243,8 @@ def test_mobility_tirana_and_podgorica_city_profiles_use_local_market_tariffs():
         pricing["REGIONAL_PRICING_PROFILES"]["BALKANS"],
         pricing["CITY_PRICING_PROFILES"]["AL"]["tirana"],
     )
+    assert tirana_profile["strict_modes"] is True
+    assert set(tirana_profile["modes"]) == {"taxi"}
     tirana = build_option("taxi", 5.0, 12, 1.0, 55, tirana_profile)
     assert tirana["currency"] == "ALL"
     assert tirana["price_local"] == 600.0
@@ -2284,6 +2286,36 @@ def test_mobility_tirana_and_podgorica_resolve_from_address_when_geocoder_fails(
     assert podgorica["currency"] == "EUR"
 
 
+def test_mobility_paris_2026_regulated_profile_is_eur_bookable():
+    pricing = _load_mobility_pricing_contract()
+    merge_profile = pricing["_merge_pricing_profile"]
+    build_option = pricing["build_option"]
+
+    paris_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["EU"],
+        pricing["CITY_PRICING_PROFILES"]["FR"]["paris"],
+    )
+    paris = build_option("taxi", 4.0, 12, 1.0, 55, paris_profile)
+    assert paris["currency"] == "EUR"
+    assert paris["price_eur"] == 13.68
+    assert paris["booking_supported"] is True
+    assert "1,30 €/km" in paris["pricing_basis"]
+
+
+def test_mobility_paris_resolves_offline_to_city_profile():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    resolver.__globals__["_nominatim_get"] = unavailable
+    paris = asyncio.run(resolver(48.8566, 2.3522, "Paris, France"))
+    assert paris["profile_key"] == "FR:paris"
+    assert paris["profile_scope"] == "city"
+    assert paris["currency"] == "EUR"
+
+
 def test_mobility_uae_city_fares_use_local_currency_and_fail_closed_settlement():
     pricing = _load_mobility_pricing_contract()
     merge_profile = pricing["_merge_pricing_profile"]
@@ -2294,6 +2326,8 @@ def test_mobility_uae_city_fares_use_local_currency_and_fail_closed_settlement()
         pricing["REGIONAL_PRICING_PROFILES"]["AE"],
         pricing["CITY_PRICING_PROFILES"]["AE"]["dubai"],
     )
+    assert dubai_profile["strict_modes"] is True
+    assert set(dubai_profile["modes"]) == {"taxi"}
     dubai = build_option("taxi", 10.0, 20, 1.0, 55, dubai_profile)
     assert dubai["currency"] == "AED"
     assert dubai["price_local"] == 30.90
@@ -2484,6 +2518,8 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'country_code: Optional[str] = None' in mobility_backend
     assert '"currency": "AED"' in mobility_backend
     assert '"booking_supported": eur_settlement' in mobility_backend
+    assert 'if pricing_context.get("strict_modes"):' in mobility_backend
+    assert 'locally_priced_modes = set((pricing_context.get("modes") or {}).keys())' in mobility_backend
     assert '_require_supported_settlement(option)' in mobility_backend
     assert 'qs.set("country_code", String(countryCode).slice(0, 2))' in mobility_api
 
