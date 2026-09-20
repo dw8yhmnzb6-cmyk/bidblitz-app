@@ -2648,3 +2648,21 @@ def test_checkout_modules_use_canonical_stripe_webhook_url():
         assert "/api/webhook/stripe" not in source
         assert "/api/stripe/webhook" in source
 
+def test_push_and_support_routes_are_not_cross_registered_twice():
+    push = (BACKEND_DIR / "routes" / "push_notifications.py").read_text(encoding="utf-8")
+    web_push = (BACKEND_DIR / "routes" / "web_push.py").read_text(encoding="utf-8")
+    support = (BACKEND_DIR / "routes" / "support.py").read_text(encoding="utf-8")
+    support_legacy = (BACKEND_DIR / "routes" / "support_tickets.py").read_text(encoding="utf-8")
+
+    assert '@router.get("/vapid-public-key")' not in push
+    assert '@router.get("/subscription-status")' not in push
+    assert '@router.post("/subscribe")' not in push
+    assert '@router.delete("/unsubscribe")' not in push
+    assert '@router.post("/test")' not in push
+    assert '@router.get("/vapid-public-key")' in web_push
+    assert '@router.get("/subscription-status")' in web_push
+    assert '@router.get("/tickets/{ticket_id}")' in support
+    assert '@router.post("/tickets/{ticket_id}/close")' in support
+    assert '@router.get("/{ticket_id}")' not in support_legacy
+    assert '@router.post("/{ticket_id}/close")' not in support_legacy
+
