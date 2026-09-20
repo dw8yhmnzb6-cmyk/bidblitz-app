@@ -792,7 +792,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           </div>
 
           {routeSnapshot?.pricing_context && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[#0F766E]/12 bg-[#0F766E]/7 px-3 py-2" data-testid="mobility-pricing-context">
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[#0F766E]/12 bg-[#0F766E]/7 px-3 py-2" data-testid="mobility-local-tariff-context">
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0F766E]">Lokaler Tarif</span>
               <span className="text-xs font-semibold text-[#18202a]">
                 {routeSnapshot.pricing_context.city || routeSnapshot.pricing_context.region}
