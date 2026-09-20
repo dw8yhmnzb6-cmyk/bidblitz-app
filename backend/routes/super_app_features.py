@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import credit_wallet, TransactionType
 from routes.pos_system import short_id
 
 router = APIRouter(prefix="/api/super-app", tags=["Super App Extensions"])
@@ -90,27 +89,12 @@ class WalletTopup(BaseModel):
 
 @router.post("/wallet/topup")
 async def wallet_topup(req: WalletTopup, request: Request):
-    """Legacy endpoint routed through canonical wallet engine."""
-    user = await get_current_user(request)
-
-    result = await credit_wallet(
-        user_id=str(user["_id"]),
-        amount=round(float(req.amount or 0), 2),
-        tx_type=TransactionType.TOPUP,
-        description=f"Legacy Top-up via {req.method}",
-        source="super_app_legacy",
-        metadata={
-            "payment_method": req.method,
-            "route": "super_app.wallet.topup",
-            "audit_metadata": {"legacy": True},
-        },
-        idempotency_key=req.idempotency_key,
+    """Retired legacy top-up path; real wallet funding must be provider-backed."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser Legacy-Topup ist deaktiviert. Verwende den kanonischen Stripe-Topup unter /api/stripe/checkout.",
     )
-    if not result.success:
-        raise HTTPException(status_code=400, detail=result.error or "Top-up fehlgeschlagen")
-
-    log.info(f"Legacy wallet topup routed to engine: {result.transaction_id} (€{req.amount})")
-    return {"transaction_id": result.transaction_id, "status": result.status.value, "new_balance": result.new_balance, "deprecated": True}
 
 @router.get("/wallet/balance")
 async def get_wallet_balance(request: Request):
