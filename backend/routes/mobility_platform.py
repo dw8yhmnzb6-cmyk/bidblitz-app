@@ -479,6 +479,7 @@ def build_option(
         "pricing_region": pricing_region,
         "pricing_source": pricing_source,
         "pricing_basis": pricing_basis,
+        "pricing_scope": ((pricing_profile or {}).get("mode_scopes") or {}).get(option_type, (pricing_profile or {}).get("profile_scope") or "country"),
         "estimated": True,
         "price_range_local": local_range,
         "price_range_eur": local_range if eur_settlement else None,
@@ -1198,6 +1199,12 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
 
     profile["profile_key"] = resolved_profile_key
     profile["profile_scope"] = "city" if (city_override or static_city_profile) else "country"
+    city_mode_keys = set(((static_city_profile or {}).get("modes") or {}).keys())
+    city_mode_keys.update(((city_override or {}).get("modes") or {}).keys())
+    profile["mode_scopes"] = {
+        mode_key: ("city" if mode_key in city_mode_keys else "country")
+        for mode_key in (profile.get("modes") or {}).keys()
+    }
     profile["country_code"] = country_code or ""
     profile["country"] = country or profile.get("region")
     profile["city"] = (city_override or static_city_profile or {}).get("city") or city or ""
@@ -1265,6 +1272,7 @@ async def _compute_route_payload(
             "source": pricing_context.get("source"),
             "currency": pricing_context.get("currency", "EUR"),
             "profile_scope": pricing_context.get("profile_scope", "country"),
+            "mode_scopes": pricing_context.get("mode_scopes") or {},
             "city_key": pricing_context.get("city_key") or "",
             "strict_modes": bool(pricing_context.get("strict_modes")),
         },
