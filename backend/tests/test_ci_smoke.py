@@ -2077,6 +2077,10 @@ def test_super_app_legacy_value_routes_are_retired():
     assert "Legacy-Gaming-Einsätze sind deaktiviert" in source
     assert '@router.post("/creator/subscribe")' in source
     assert "Legacy-Creator-Abo-Zahlungen sind deaktiviert" in source
+    assert '@router.post("/wallet/topup")' in source
+    assert "Dieser Legacy-Topup ist deaktiviert" in source
+    assert "/api/stripe/checkout" in source
+    assert "credit_wallet(" not in source
     assert '"$inc": {"balance": -session.bet_amount}' not in source
     assert '"$inc": {"balance": -tier["monthly_price"]}' not in source
     assert '"$inc": {"balance": tier["monthly_price"] * 0.85}' not in source
