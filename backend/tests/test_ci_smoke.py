@@ -2251,3 +2251,20 @@ def test_seeded_audi_tickets_and_staff_placeholder_checkout_fail_closed_in_produ
     assert "Es wird kein Abo ohne verifizierte Zahlung aktiviert." in staff
     assert "# TEST_MODE only: local subscription simulation" in staff
 
+def test_staff_wallet_payouts_are_idempotent_reserved_and_provider_safe():
+    source = (BACKEND_DIR / "routes" / "staff_wallet.py").read_text(encoding="utf-8")
+
+    assert "idempotency_key: Optional[str] = None" in source
+    assert 'detail="Idempotency-Key erforderlich"' in source
+    assert 'payout_id = "STFPAY-" + hashlib.sha256(' in source
+    assert '"status": "payout_reserved"' in source
+    assert 'idempotency_key=f"staff-payout:{payout_id}"' in source
+    assert '"status": "reconciliation_required"' in source
+    assert "Bonusguthaben bleibt reserviert" in source
+    assert 'if req.method == "sepa_manual" and not TEST_MODE:' in source
+    assert 'bank_update["$unset"] = {"iban_full": ""}' in source
+    assert '"iban_hash": hashlib.sha256(iban_clean.encode("utf-8")).hexdigest()' in source
+    assert '"status": "wallet_paid"' in source
+    assert "Für einen neuen Versuch ist ein neuer Idempotency-Key erforderlich." in source
+    assert 'payout_id = str(uuid4())' not in source
+
