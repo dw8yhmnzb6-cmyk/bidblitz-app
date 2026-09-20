@@ -39,6 +39,8 @@ async function mockAdminPricingApi(page: Page, state: { saved?: any }) {
             currency: 'EUR',
             source: 'Prishtina benchmark',
             enabled: true,
+            source_type: 'built_in',
+            can_disable: false,
             modes: {
               taxi: { base: 2, per_km: 0.65, minimum: 2, surge: false, basis: 'Prishtina taxi' },
               scooter: { base: 0.2, per_min: 0.18, minimum: 0.2, surge: false, basis: 'Prishtina scooter' },
@@ -53,6 +55,8 @@ async function mockAdminPricingApi(page: Page, state: { saved?: any }) {
             currency: 'EUR',
             source: 'Hamburg official tariff',
             enabled: true,
+            source_type: 'database',
+            can_disable: true,
             modes: {
               taxi: { base: 4.5, minimum: 4.5, surge: false, basis: 'Hamburg taxi' },
             },
@@ -96,6 +100,9 @@ test('admin can manage city mobility tariffs on mobile', async ({ page }) => {
   await expect(page.getByTestId('admin-mobility-pricing-page')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('mobility-pricing-profile-list')).toContainText('Prishtina');
   await expect(page.getByTestId('mobility-pricing-profile-list')).toContainText('Hamburg');
+  await expect(page.getByTestId('pricing-source-type-XK-prishtina')).toContainText('Built-in');
+  await expect(page.getByTestId('pricing-source-type-DE-hamburg')).toContainText('Override');
+  await expect(page.getByRole('button', { name: 'Deaktivieren' })).toHaveCount(1);
 
   await page.getByTestId('pricing-country-input').fill('DE');
   await page.getByTestId('pricing-city-input').fill('Berlin');
