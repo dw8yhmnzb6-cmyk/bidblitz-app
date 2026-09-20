@@ -37,6 +37,8 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
           featured: Boolean(item.featured),
           charge_category: item.charge_category || "",
           sort_order: Number(item.sort_order || 100),
+          manual_url: item.manual_url || "",
+          support_url: item.support_url || "",
         };
       }
       setDrafts(next);
@@ -175,6 +177,8 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
                 featured: Boolean(item.featured),
                 charge_category: item.charge_category || "",
                 sort_order: Number(item.sort_order || 100),
+                manual_url: item.manual_url || "",
+                support_url: item.support_url || "",
               };
               const busy = busyId === item.product_id;
               return (
@@ -232,6 +236,20 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
                         className="h-11 rounded-2xl border border-[#D9CFC0] bg-white px-3 text-xs font-bold text-slate-700"
                         placeholder="Sortierung"
                         data-testid={`admin-charge-catalog-sort-${index}`}
+                      />
+                      <input
+                        value={draft.manual_url || ""}
+                        onChange={(e) => setDraft(item.product_id, { manual_url: e.target.value })}
+                        className="h-11 rounded-2xl border border-[#D9CFC0] bg-white px-3 text-xs font-bold text-slate-700 sm:col-span-2"
+                        placeholder="Anleitung URL (https://...)"
+                        data-testid={`admin-charge-catalog-manual-${index}`}
+                      />
+                      <input
+                        value={draft.support_url || ""}
+                        onChange={(e) => setDraft(item.product_id, { support_url: e.target.value })}
+                        className="h-11 rounded-2xl border border-[#D9CFC0] bg-white px-3 text-xs font-bold text-slate-700 sm:col-span-2"
+                        placeholder="Support URL (https://...)"
+                        data-testid={`admin-charge-catalog-support-${index}`}
                       />
                     </div>
                   </div>
