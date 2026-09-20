@@ -36,6 +36,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   const [warrantyTransfers, setWarrantyTransfers] = useState({ incoming: [], outgoing: [] });
   const [transferWarranty, setTransferWarranty] = useState(null);
   const [transferEmail, setTransferEmail] = useState("");
+  const [purchaseCandidates, setPurchaseCandidates] = useState([]);
   const activationPrefillRef = useRef("");
   const [warrantyForm, setWarrantyForm] = useState({
     product_id: "",
@@ -45,6 +46,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     merchant_name: "",
     invoice_id: "",
     invoice_number: "",
+    source_sale_id: "",
+    source_receipt_id: "",
     warranty_months: "24",
   });
   const [invoiceForm, setInvoiceForm] = useState({
@@ -88,6 +91,15 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     }
   }, []);
 
+  const loadPurchaseCandidates = useCallback(async () => {
+    try {
+      const data = await api.getChargePurchaseCandidates();
+      setPurchaseCandidates(data?.candidates || []);
+    } catch (error) {
+      void error;
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
@@ -99,6 +111,10 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   useEffect(() => {
     loadWarrantyTransfers();
   }, [loadWarrantyTransfers]);
+
+  useEffect(() => {
+    loadPurchaseCandidates();
+  }, [loadPurchaseCandidates]);
 
   useEffect(() => {
     const productId = String(routeParams?.activate_product_id || "").trim();
@@ -120,6 +136,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
           product_id: product.product_id || productId,
           product_name: product.name || prev.product_name,
           merchant_name: merchant.business_name || product.merchant_name || prev.merchant_name,
+          source_sale_id: "",
+          source_receipt_id: "",
           warranty_months: String(product.warranty_months || prev.warranty_months || 24),
         }));
         window.setTimeout(() => {
@@ -160,6 +178,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
         product_id: prefill.product_id || "",
         product_name: prefill.product_name || prev.product_name,
         merchant_name: prefill.merchant_name || prev.merchant_name,
+        source_sale_id: "",
+        source_receipt_id: "",
         warranty_months: String(prefill.warranty_months || prev.warranty_months || 24),
       }));
       toast.success("Charge-Produkt erkannt");
@@ -204,19 +224,21 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
         merchant_name: "",
         invoice_id: "",
         invoice_number: "",
+        source_sale_id: "",
+        source_receipt_id: "",
         warranty_months: "24",
       });
       setWarrantyFile(null);
       setEditingWarrantyId("");
       setActivationCode("");
       setActivationProduct(null);
-      await loadDashboard();
+      await Promise.all([loadDashboard(), loadPurchaseCandidates()]);
     } catch (error) {
       toast.error(error.message || (editingWarrantyId ? "Garantie konnte nicht aktualisiert werden" : "Garantie konnte nicht registriert werden"));
     } finally {
       setBusy("");
     }
-  }, [warrantyForm, warrantyFile, editingWarrantyId, loadDashboard]);
+  }, [warrantyForm, warrantyFile, editingWarrantyId, loadDashboard, loadPurchaseCandidates]);
 
   const saveInvoice = useCallback(async () => {
     if (!invoiceForm.invoice_number.trim() || !invoiceForm.merchant_name.trim()) {
@@ -258,6 +280,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       merchant_name: item.merchant_name || "",
       invoice_id: item.invoice_id || "",
       invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+      source_sale_id: item.source_sale_id || "",
+      source_receipt_id: item.source_receipt_id || "",
       warranty_months: String(item.warranty_months || 24),
     });
     setWarrantyFile(null);
@@ -274,6 +298,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       merchant_name: "",
       invoice_id: "",
       invoice_number: "",
+      source_sale_id: "",
+      source_receipt_id: "",
       warranty_months: "24",
     });
     setWarrantyFile(null);
@@ -378,6 +404,30 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     }
   }, [loadDashboard]);
 
+  const prepareWarrantyFromPurchase = useCallback((item) => {
+    setEditingWarrantyId("");
+    setActivationCode("");
+    setActivationProduct(null);
+    setWarrantyFile(null);
+    setWarrantyForm({
+      product_id: item.product_id || "",
+      product_name: item.product_name || "",
+      serial_number: "",
+      purchase_date: item.purchase_date || "",
+      merchant_name: item.merchant_name || "",
+      invoice_id: "",
+      invoice_number: item.receipt_id || "",
+      source_sale_id: item.sale_id || "",
+      source_receipt_id: item.receipt_id || "",
+      warranty_months: String(item.warranty_months || 24),
+    });
+    window.setTimeout(() => {
+      document.querySelector('[data-testid="charge-app-warranty-card"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    toast.success("Kauf erkannt – bitte nur noch Seriennummer ergänzen");
+  }, []);
+
+
   const createWarrantyFromInvoice = useCallback((item) => {
     setEditingWarrantyId("");
     setActivationCode("");
@@ -391,6 +441,8 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       merchant_name: item.merchant_name || "",
       invoice_id: item.invoice_id || "",
       invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+      source_sale_id: "",
+      source_receipt_id: "",
       warranty_months: "24",
     });
     window.setTimeout(() => {
@@ -784,6 +836,47 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
             )}
           </SurfaceCard>
         </div>
+
+        {purchaseCandidates.length > 0 ? (
+          <div className="mt-6">
+            <SurfaceCard title="Käufe erkannt" icon={ReceiptText} testid="charge-app-purchase-candidates-card">
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-sm font-black text-emerald-900">BidBlitz hat Charge-Produkte in deinen POS-Käufen gefunden.</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-700">Produkt, Händler und Kaufbeleg sind bereits bekannt. Für die Garantie musst du nur noch die Seriennummer vom Produkt ergänzen.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {purchaseCandidates.slice(0, 8).map((item, index) => (
+                  <div key={item.candidate_id} className="rounded-[24px] border border-[#E1D7C7] bg-white p-4" data-testid={`charge-app-purchase-candidate-${index}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EFF5F6]">
+                        {item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : <Package size={20} className="text-slate-500" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-slate-900">{item.product_name}</p>
+                        <p className="mt-1 truncate text-xs text-slate-500">{item.merchant_name}</p>
+                        <p className="mt-2 text-[11px] font-bold text-slate-400">
+                          Beleg {item.receipt_id || "—"} · {formatPurchaseDate(item.purchase_date)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-[#F4F0E8] px-3 py-1 text-[10px] font-bold text-slate-600">€{Number(item.unit_price || 0).toFixed(2)}</span>
+                      {item.remaining_quantity > 1 ? <span className="rounded-full bg-cyan-50 px-3 py-1 text-[10px] font-bold text-cyan-700">{item.remaining_quantity} Garantien offen</span> : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => prepareWarrantyFromPurchase(item)}
+                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1626] text-xs font-black text-[#D8FCFF]"
+                      data-testid={`charge-app-purchase-candidate-activate-${index}`}
+                    >
+                      <ShieldCheck size={14} />Garantie vorbereiten
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </SurfaceCard>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <SurfaceCard title={editingWarrantyId ? "Garantie bearbeiten" : "Garantie registrieren"} icon={ShieldCheck} testid="charge-app-warranty-card">
@@ -1251,6 +1344,14 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     <ChargeProductScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleScannedProductCode} />
     </>
   );
+}
+
+
+function formatPurchaseDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("de-DE");
 }
 
 
