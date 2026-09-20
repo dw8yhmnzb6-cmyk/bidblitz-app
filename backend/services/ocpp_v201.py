@@ -329,10 +329,13 @@ async def _remote_stop_at_cap(charge_point_id: str, transaction_id: str, session
     try:
         result = await request_stop_transaction(charge_point_id, transaction_id)
         status = (result or {}).get("status")
+        accepted = not status or status in ("Accepted", "Scheduled")
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
             {"$set": {
+                "status": "stopping" if accepted else "stop_failed",
                 "cap_stop_command_status": status or "sent",
+                "cap_stop_error": None if accepted else f"Station returned {status}",
                 "cap_stop_command_at": _utcnow_iso(),
             }},
         )
@@ -340,6 +343,7 @@ async def _remote_stop_at_cap(charge_point_id: str, transaction_id: str, session
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
             {"$set": {
+                "status": "stop_failed",
                 "cap_stop_command_status": "failed",
                 "cap_stop_error": str(exc)[:300],
                 "cap_stop_command_at": _utcnow_iso(),
