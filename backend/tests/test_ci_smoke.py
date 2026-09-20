@@ -2048,6 +2048,7 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert "shouldKeepAttemptKey" in mining_page
 
     assert 'db.mining_wallets, "user_id", unique=True, critical=True' in database
+    assert 'db.mining_claims, [("user_id", 1), ("date", 1)], unique=True, critical=True' in database
     assert 'db.mining_transactions, "txn_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, "operation_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
