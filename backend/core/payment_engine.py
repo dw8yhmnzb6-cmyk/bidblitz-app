@@ -714,11 +714,6 @@ async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentR
     transfer_between_wallets so idempotency, recovery, and canonical ledgers
     remain authoritative.
     """
-    logger.error(
-        "Blocked legacy process_central_payment call: payment_type=%s user_id=%s",
-        getattr(req.payment_type, "value", req.payment_type),
-        req.user_id,
-    )
     return CentralPaymentResult(
         success=False,
         error="Legacy central payment processor is disabled. Use canonical wallet operations.",
