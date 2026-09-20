@@ -202,7 +202,7 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
                 <span className="text-[10px] text-gray-400">({section.items.length})</span>
                 <div className="h-[3px] flex-1 rounded-full" style={{ background: `${section.color}20` }} />
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -210,11 +210,11 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
                       key={item.key}
                       whileTap={{ scale: 0.93 }}
                       onClick={() => handleItemClick(item)}
-                      className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col items-center gap-1.5 hover:border-gray-300 hover:shadow-md transition-all min-h-[80px] justify-center"
+                      className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col items-center gap-1.5 hover:border-gray-300 hover:shadow-md transition-all min-h-[88px] sm:min-h-[80px] justify-center"
                       data-testid={`admin-item-${item.key}`}
                     >
                       <Icon size={20} className="text-gray-500" />
-                      <span className="text-[9px] font-medium text-gray-700 text-center leading-tight">{item.label}</span>
+                      <span className="text-[10px] sm:text-[9px] font-medium text-gray-700 text-center leading-tight">{item.label}</span>
                     </motion.button>
                   );
                 })}
