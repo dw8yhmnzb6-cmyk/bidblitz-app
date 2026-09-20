@@ -271,6 +271,252 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
     return auction, published_now
 
 
+class AuctionWinnerCheckoutRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=120)
+    address_line1: str = Field(..., min_length=3, max_length=200)
+    address_line2: Optional[str] = Field(default=None, max_length=200)
+    city: str = Field(..., min_length=2, max_length=120)
+    postal_code: str = Field(..., min_length=2, max_length=30)
+    country: str = Field(..., min_length=2, max_length=80)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: Optional[str] = None
+
+
+async def _auction_platform_user_id() -> str:
+    import os
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
+    platform = await db.users.find_one({"email": email}, {"_id": 1})
+    if not platform:
+        raise HTTPException(
+            status_code=503,
+            detail="BidBlitz Plattform-Wallet ist für Gewinnerzahlungen nicht konfiguriert.",
+        )
+    return str(platform["_id"])
+
+
+def _winner_order_id(auction_id: str, winner_id: str) -> str:
+    digest = hashlib.sha256(f"{auction_id}:{winner_id}".encode("utf-8")).hexdigest()[:20]
+    return f"AORD-{digest.upper()}"
+
+
+def _winner_checkout_payload(auction: dict, order: Optional[dict]) -> dict:
+    final_price = round(float(auction.get("current_price") or 0), 2)
+    return {
+        "auction_id": auction.get("auction_id"),
+        "title": auction.get("title"),
+        "image_url": auction.get("image_url"),
+        "winner_id": auction.get("winner_id"),
+        "final_price": final_price,
+        "shipping_fee": 0.0,
+        "total_due": final_price,
+        "free_shipping": True,
+        "order_id": (order or {}).get("order_id") or (order or {}).get("_id"),
+        "order_status": (order or {}).get("status") or "not_started",
+        "payment_status": (order or {}).get("payment_status") or "unpaid",
+        "shipping_address": (order or {}).get("shipping_address"),
+        "fulfillment_status": (order or {}).get("fulfillment_status") or "not_started",
+    }
+
+
+@router.get("/{auction_id}/winner-checkout")
+async def get_winner_checkout(auction_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    auction, _ = await _finalize_auction_once(auction_id)
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    if auction.get("status") != "ended":
+        raise HTTPException(status_code=409, detail="Auktion ist noch nicht beendet")
+    if auction.get("requires_manual_review"):
+        raise HTTPException(status_code=409, detail="Auktion benötigt vor dem Checkout eine manuelle Prüfung")
+    if str(auction.get("winner_id") or "") != user_id:
+        raise HTTPException(status_code=403, detail="Nur der Gewinner kann diesen Checkout öffnen")
+
+    order_id = _winner_order_id(auction_id, user_id)
+    order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0})
+    return _winner_checkout_payload(auction, order)
+
+
+@router.post("/{auction_id}/winner-checkout/pay")
+async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest, request: Request):
+    from core.payment_engine import transfer_between_wallets, TransactionType
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    auction, _ = await _finalize_auction_once(auction_id)
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    if auction.get("status") != "ended":
+        raise HTTPException(status_code=409, detail="Auktion ist noch nicht beendet")
+    if auction.get("requires_manual_review"):
+        raise HTTPException(status_code=409, detail="Auktion benötigt vor der Zahlung eine manuelle Prüfung")
+    if str(auction.get("winner_id") or "") != user_id:
+        raise HTTPException(status_code=403, detail="Nur der Gewinner kann den Endpreis bezahlen")
+
+    final_price = round(float(auction.get("current_price") or 0), 2)
+    if final_price <= 0:
+        raise HTTPException(status_code=409, detail="Ungültiger Auktions-Endpreis")
+
+    client_key = _require_auction_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix="auction-winner-checkout",
+    )
+    order_id = _winner_order_id(auction_id, user_id)
+    shipping_address = {
+        "full_name": req.full_name.strip(),
+        "address_line1": req.address_line1.strip(),
+        "address_line2": (req.address_line2 or "").strip() or None,
+        "city": req.city.strip(),
+        "postal_code": req.postal_code.strip(),
+        "country": req.country.strip(),
+        "phone": (req.phone or "").strip() or None,
+    }
+    request_payload = {
+        "auction_id": auction_id,
+        "winner_id": user_id,
+        "final_price": final_price,
+        "shipping_address": shipping_address,
+    }
+
+    existing = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0})
+    if existing and existing.get("request_payload") != request_payload:
+        if existing.get("payment_status") == "paid":
+            raise HTTPException(status_code=409, detail="Bestellung wurde bereits mit einer anderen Versandadresse bezahlt")
+        raise HTTPException(status_code=409, detail="Gewinner-Checkout wurde bereits mit anderen Daten begonnen")
+    if existing and existing.get("payment_status") == "paid":
+        snapshot = _winner_checkout_payload(auction, existing)
+        return {**snapshot, "success": True, "replayed": True}
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.auction_orders.update_one(
+        {"_id": order_id},
+        {"$setOnInsert": {
+            "_id": order_id,
+            "order_id": order_id,
+            "auction_id": auction_id,
+            "winner_id": user_id,
+            "winner_email": user.get("email"),
+            "product_title": auction.get("title"),
+            "image_url": auction.get("image_url"),
+            "final_price": final_price,
+            "shipping_fee": 0.0,
+            "total_due": final_price,
+            "currency": "EUR",
+            "free_shipping": True,
+            "shipping_address": shipping_address,
+            "request_payload": request_payload,
+            "status": "pending_payment",
+            "payment_status": "unpaid",
+            "fulfillment_status": "not_started",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+
+    claimed = await db.auction_orders.update_one(
+        {
+            "_id": order_id,
+            "payment_status": {"$ne": "paid"},
+            "status": {"$in": ["pending_payment", "payment_failed"]},
+        },
+        {"$set": {
+            "status": "processing_payment",
+            "payment_attempt_key_hash": hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20],
+            "payment_started_at": now,
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+        if current.get("payment_status") == "paid":
+            return {**_winner_checkout_payload(auction, current), "success": True, "replayed": True}
+        raise HTTPException(status_code=409, detail="Gewinner-Zahlung wird bereits verarbeitet")
+
+    platform_user_id = await _auction_platform_user_id()
+    payment = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=platform_user_id,
+        amount=final_price,
+        tx_type=TransactionType.AUCTION_WIN,
+        description=f"Auktionsgewinn: {auction.get('title', auction_id)}",
+        reference=order_id,
+        metadata={
+            "auction_id": auction_id,
+            "order_id": order_id,
+            "shipping_fee": 0.0,
+            "free_shipping": True,
+        },
+        idempotency_key=f"auction-winner-order:{order_id}:payment",
+    )
+    if not payment.success:
+        payment_state = str(getattr(payment.status, "value", payment.status))
+        order_status = (
+            "reconciliation_required"
+            if payment_state in {"pending", "reconciliation_required"}
+            else "payment_failed"
+        )
+        await db.auction_orders.update_one(
+            {"_id": order_id, "status": "processing_payment"},
+            {"$set": {
+                "status": order_status,
+                "payment_status": payment_state or "failed",
+                "payment_error": (payment.error or "payment_failed")[:300],
+                "payment_updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=409 if order_status == "reconciliation_required" else 400,
+            detail=payment.error or "Gewinner-Zahlung fehlgeschlagen",
+        )
+
+    paid_at = datetime.now(timezone.utc).isoformat()
+    finalized = await db.auction_orders.update_one(
+        {"_id": order_id, "status": "processing_payment", "payment_status": {"$ne": "paid"}},
+        {"$set": {
+            "status": "paid_pending_fulfillment",
+            "payment_status": "paid",
+            "fulfillment_status": "pending",
+            "payment_transaction_id": payment.transaction_id,
+            "paid_at": paid_at,
+            "updated_at": paid_at,
+        }},
+    )
+    if finalized.modified_count != 1:
+        current = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+        if current.get("payment_status") != "paid":
+            await db.auction_orders.update_one(
+                {"_id": order_id},
+                {"$set": {"status": "reconciliation_required", "payment_transaction_id": payment.transaction_id}},
+            )
+            raise HTTPException(status_code=500, detail="Zahlung erfolgt; Bestellabschluss benötigt Abstimmung")
+
+    await db.auctions.update_one(
+        {"auction_id": auction_id, "status": "ended", "winner_id": user_id},
+        {"$set": {
+            "winner_order_id": order_id,
+            "winner_payment_status": "paid",
+            "winner_checkout_completed_at": paid_at,
+        }},
+    )
+    await db.auction_notifications.update_one(
+        {"_id": f"auction-order-paid:{order_id}"},
+        {"$setOnInsert": {
+            "_id": f"auction-order-paid:{order_id}",
+            "user_id": user_id,
+            "type": "winner_order_paid",
+            "auction_id": auction_id,
+            "order_id": order_id,
+            "message": f"Bestellung bestätigt: {auction.get('title', 'Auktionsgewinn')}. Versand ist kostenlos.",
+            "read": False,
+            "created_at": paid_at,
+        }},
+        upsert=True,
+    )
+
+    order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+    return {**_winner_checkout_payload(auction, order), "success": True, "replayed": bool(payment.idempotent_replay)}
+
+
 # ── List auctions ──
 @router.get("")
 async def list_auctions(request: Request, response: Response):
