@@ -59,8 +59,41 @@ async function api(path, options = {}) {
     ...options,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || data.message || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const error = new Error(data.detail || data.message || `Request failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
   return data;
+}
+
+function newCheckoutKey(prefix) {
+  return typeof crypto?.randomUUID === "function"
+    ? `${prefix}-${crypto.randomUUID()}`
+    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getStableCheckoutKey(scope, prefix) {
+  const storageKey = `bidblitz-dating-checkout:${scope}`;
+  try {
+    let key = window.sessionStorage.getItem(storageKey);
+    if (!key) {
+      key = newCheckoutKey(prefix);
+      window.sessionStorage.setItem(storageKey, key);
+    }
+    return { key, storageKey };
+  } catch (_) {
+    return { key: newCheckoutKey(prefix), storageKey: null };
+  }
+}
+
+function clearStableCheckoutKey(storageKey) {
+  if (!storageKey) return;
+  try {
+    window.sessionStorage.removeItem(storageKey);
+  } catch (_) {
+    void _;
+  }
 }
 
 export default function DatingPage({ onBack }) {
@@ -373,37 +406,55 @@ export default function DatingPage({ onBack }) {
   }, []);
 
   const startPremiumCheckout = async (planId = null) => {
+    if (premiumCheckoutState.loading) return;
+    const chosenPlanId = planId || premiumPlans?.[0]?.plan_id || "gold_30d";
+    const attempt = getStableCheckoutKey(`premium:${chosenPlanId}`, "dating-premium");
     try {
       setPremiumCheckoutState({ loading: true, checking: false, sessionId: "" });
-      const chosenPlanId = planId || premiumPlans?.[0]?.plan_id || "gold_30d";
       const data = await api("/api/dating/premium/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan_id: chosenPlanId, origin_url: window.location.origin }),
+        headers: { "Idempotency-Key": attempt.key },
+        body: JSON.stringify({
+          plan_id: chosenPlanId,
+          origin_url: window.location.origin,
+          idempotency_key: attempt.key,
+        }),
       });
       if (data.checkout_url) {
+        clearStableCheckoutKey(attempt.storageKey);
         window.location.href = data.checkout_url;
         return;
       }
       throw new Error("Keine Checkout-URL erhalten");
     } catch (error) {
+      if (error?.status === 400) clearStableCheckoutKey(attempt.storageKey);
       toast.error(error.message);
       setPremiumCheckoutState({ loading: false, checking: false, sessionId: "" });
     }
   };
 
   const startConsumableCheckout = async (itemId) => {
+    if (packCheckoutState.loading) return;
+    const attempt = getStableCheckoutKey(`consumable:${itemId}`, "dating-consumable");
     try {
       setPackCheckoutState({ loading: itemId });
       const data = await api("/api/dating/consumables/checkout", {
         method: "POST",
-        body: JSON.stringify({ item_id: itemId, origin_url: window.location.origin }),
+        headers: { "Idempotency-Key": attempt.key },
+        body: JSON.stringify({
+          item_id: itemId,
+          origin_url: window.location.origin,
+          idempotency_key: attempt.key,
+        }),
       });
       if (data.checkout_url) {
+        clearStableCheckoutKey(attempt.storageKey);
         window.location.href = data.checkout_url;
         return;
       }
       throw new Error("Keine Checkout-URL erhalten");
     } catch (error) {
+      if (error?.status === 400) clearStableCheckoutKey(attempt.storageKey);
       toast.error(error.message);
       setPackCheckoutState({ loading: "" });
     }
