@@ -117,12 +117,13 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Mobilität & Energie", color: "#10B981", count: 5,
+    title: "Mobilität & Energie", color: "#10B981", count: 6,
     items: [
       { key: "admin-ladesaeulen", icon: BatteryCharging, label: "Ladesäulen" },
       { key: "admin-scooter-abos", icon: Zap, label: "Scooter-Abos" },
       { key: "admin-car-rental", icon: Car, label: "Mietwagen", nav: "/car-rental/admin" },
       { key: "admin-taxi", icon: Car, label: "Taxi-Fleet" },
+      { key: "admin-mobility-pricing", icon: Euro, label: "Mobility Tarife", nav: "/admin/mobility-pricing" },
       { key: "admin-parcels", icon: Package, label: "Pakete" },
     ],
   },
