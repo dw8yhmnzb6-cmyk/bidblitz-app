@@ -1910,7 +1910,7 @@ async def delete_charge_claim_attachment(
     return {"ok": True, "attachment_id": attachment_id}
 
 
-@router.post("/claims/{claim_id}/messages")@router.post("/claims/{claim_id}/messages")
+@router.post("/claims/{claim_id}/messages")
 async def add_charge_claim_message(
     claim_id: str,
     req: ChargeClaimMessageRequest,
@@ -2084,7 +2084,7 @@ async def verify_charge_warranty_pass(registration_id: str, sig: str):
     }
 
 
-@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")
+@router.get("/warranty/{registration_id}/pass")
 async def get_charge_warranty_pass(registration_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
