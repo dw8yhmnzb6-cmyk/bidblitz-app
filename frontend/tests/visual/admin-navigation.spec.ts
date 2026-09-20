@@ -178,3 +178,56 @@ test('all admin cards have working mobile destinations', async ({ page }) => {
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 });
+
+
+test('admin grid mode keeps mobile admin destinations aligned', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('admin_layout_mode', 'grid');
+  });
+  await mockAdminApi(page);
+
+  await page.goto('/admin');
+  await expect(page.getByTestId('admin-page')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('bottom-nav')).toHaveCount(0);
+  await expect(page.getByText('Zur START zurück', { exact: true })).toHaveCount(0);
+
+  const menuToggle = page.getByRole('button', { name: /Admin-Bereiche|Menü schließen/ });
+  if (await page.getByTestId('admin-grid-audi-ticket-system').count() === 0) {
+    await menuToggle.click();
+  }
+
+  await expect(page.getByTestId('admin-grid-audi-ticket-system')).toBeVisible();
+  await expect(page.getByTestId('admin-grid-mobility-pricing')).toBeVisible();
+
+  const first = await page.getByTestId('admin-grid-scooter-fleet').boundingBox();
+  const second = await page.getByTestId('admin-grid-scooter-add').boundingBox();
+  const third = await page.getByTestId('admin-grid-taxi-drivers').boundingBox();
+  const fourth = await page.getByTestId('admin-grid-mobility-pricing').boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(third).not.toBeNull();
+  expect(fourth).not.toBeNull();
+  expect(Math.abs(first!.y - second!.y)).toBeLessThan(3);
+  expect(Math.abs(first!.y - third!.y)).toBeLessThan(3);
+  expect(fourth!.y).toBeGreaterThan(first!.y + 20);
+
+  await page.getByTestId('admin-grid-audi-ticket-system').click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/audi-ticket-system');
+
+  await page.goto('/admin');
+  await expect(page.getByTestId('admin-page')).toBeVisible();
+  if (await page.getByTestId('admin-grid-mobility-pricing').count() === 0) {
+    await page.getByRole('button', { name: /Admin-Bereiche|Menü schließen/ }).click();
+  }
+  await page.getByTestId('admin-grid-mobility-pricing').click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/mobility-pricing');
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
