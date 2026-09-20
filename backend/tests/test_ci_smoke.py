@@ -2239,3 +2239,17 @@ def test_registration_and_merchant_onboarding_do_not_escalate_normal_users():
     assert "Zahlungen, Mobilität, Marketplace und weitere freigeschaltete Dienste" in email_service
     assert "Tippe täglich auf den BlitzMine-Button" not in email_service
 
+def test_merchant_plan_upgrade_is_idempotent_and_locked():
+    source = (BACKEND_DIR / "routes" / "merchant.py").read_text(encoding="utf-8")
+
+    assert 'raw_key = str(body.get("idempotency_key") or request.headers.get("Idempotency-Key") or "").strip()' in source
+    assert 'upgrade_id = f"MERCH-UP-{key_hash.upper()}"' in source
+    assert "db.merchant_plan_purchases.update_one" in source
+    assert '"plan_upgrade_lock": upgrade_id' in source
+    assert 'idempotency_key=f"merchant-plan:{upgrade_id}:debit"' in source
+    assert '"status": "reconciliation_required"' in source
+    assert '"last_plan_upgrade_id": upgrade_id' in source
+    assert '"merchant_plan_purchase_ids": {"$ne": upgrade_id}' in source
+    assert '"$addToSet": {"merchant_plan_purchase_ids": upgrade_id}' in source
+    assert '{"_id": f"merchant-upgrade:{upgrade_id}"}' in source
+
