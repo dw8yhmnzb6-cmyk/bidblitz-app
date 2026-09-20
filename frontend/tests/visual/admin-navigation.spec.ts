@@ -259,6 +259,12 @@ test('admin stays usable on 320px mobile width', async ({ page }) => {
   await expect(page.locator('[data-testid^="admin-item-"]')).toHaveCount(items.length);
   await expect(page.getByTestId('admin-search')).toBeVisible();
 
+  const adminWidths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(adminWidths.content).toBeLessThanOrEqual(adminWidths.viewport + 1);
+
   const first = await page.getByTestId('admin-item-users').boundingBox();
   const second = await page.getByTestId('admin-item-kyc').boundingBox();
   const third = await page.getByTestId('admin-item-roles').boundingBox();
