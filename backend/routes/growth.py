@@ -1,7 +1,7 @@
 """
 Growth Features Batch:
 1. Daily Free-Spin (tägliches Glücksrad ohne Einsatz)
-2. Birthday Bonus (€10 + 10 BLZ am Geburtstag)
+2. Birthday Bonus (€10; BLZ rewards only in TEST_MODE)
 3. Kleinanzeigen (Local Classifieds mit Boost-Monetarisierung)
 4. Push-Trigger Hooks (nutzt existierende notifications-Collection)
 """
@@ -219,6 +219,7 @@ async def claim_birthday_bonus(request: Request):
             )
 
     now = datetime.now(timezone.utc)
+    birthday_blz = BIRTHDAY_BLZ if TEST_MODE else 0
     today_md = f"{now.month:02d}-{now.day:02d}"
     try:
         bd_md = bd[5:10]
@@ -256,7 +257,7 @@ async def claim_birthday_bonus(request: Request):
             "user_id": uid,
             "year_key": year_key,
             "eur": BIRTHDAY_EUR,
-            "blz": BIRTHDAY_BLZ,
+            "blz": birthday_blz,
             "status": "reserved",
             "reserved_at": now.isoformat(),
         }},
@@ -267,7 +268,7 @@ async def claim_birthday_bonus(request: Request):
         return {
             "ok": True,
             "eur": float(existing.get("eur") or BIRTHDAY_EUR),
-            "blz": int(existing.get("blz") or BIRTHDAY_BLZ),
+            "blz": int(existing.get("blz") or 0),
             "replayed": True,
         }
 
@@ -292,24 +293,67 @@ async def claim_birthday_bonus(request: Request):
         raise HTTPException(status_code=500, detail="Geburtstags-Wallet-Gutschrift benötigt Abstimmung")
 
     blz_marker = f"birthday_reward_markers.y{now.year}"
-    blz_result = await db.users.update_one(
-        {"_id": _oid(uid), blz_marker: {"$exists": False}},
-        {
-            "$inc": {"balance_blz": BIRTHDAY_BLZ},
-            "$set": {blz_marker: {
-                "amount": BIRTHDAY_BLZ,
-                "claim_id": claim_id,
+    awarded_blz = 0
+    if birthday_blz > 0:
+        blz_result = await db.users.update_one(
+            {"_id": _oid(uid), blz_marker: {"$exists": False}},
+            {
+                "$inc": {"balance_blz": birthday_blz},
+                "$set": {blz_marker: {
+                    "amount": birthday_blz,
+                    "claim_id": claim_id,
+                    "created_at": now.isoformat(),
+                }},
+            },
+        )
+        if blz_result.modified_count != 1:
+            marker_exists = await db.users.find_one(
+                {"_id": _oid(uid), blz_marker: {"$exists": True}},
+                {"_id": 1},
+            )
+            if not marker_exists:
+                await db.birthday_claims.update_one(
+                    {"_id": claim_id},
+                    {"$set": {
+                        "status": "reconciliation_required",
+                        "wallet_transaction_id": wallet_result.transaction_id,
+                        "blz_error": "birthday_blz_credit_failed",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="EUR wurde gutgeschrieben, BLZ-Gutschrift benötigt Abstimmung",
+                )
+        awarded_blz = birthday_blz
+        await db.transactions.update_one(
+            {"_id": f"{claim_id}:blz"},
+            {"$setOnInsert": {
+                "_id": f"{claim_id}:blz",
+                "id": f"{claim_id}:blz",
+                "user_id": uid,
+                "type": "bonus",
+                "amount": birthday_blz,
+                "currency": "BLZ",
+                "status": "completed",
+                "description": f"Geburtstags-Bonus {now.year}",
+                "merchant_name": "BidBlitz",
+                "category": "birthday",
+                "reference": f"BDAY-BLZ-{now.year}-{uid[-8:]}",
+                "date": now.isoformat(),
                 "created_at": now.isoformat(),
             }},
-        },
-    )
-    if blz_result.modified_count != 1:
-        marker_exists = await db.users.find_one(
+            upsert=True,
+        )
+    else:
+        legacy_blz_marker = await db.users.find_one(
             {"_id": _oid(uid), blz_marker: {"$exists": True}},
             {"_id": 1},
         )
-        if not marker_exists:
-            await db.birthday_claims.update_one(
+        if legacy_blz_marker:
+            awarded_blz = BIRTHDAY_BLZ
+
+    await db.birthday_claims.update_one(
                 {"_id": claim_id},
                 {"$set": {
                     "status": "reconciliation_required",
@@ -348,9 +392,15 @@ async def claim_birthday_bonus(request: Request):
         {"$set": {
             "status": "completed",
             "wallet_transaction_id": wallet_result.transaction_id,
+            "blz": awarded_blz,
             "claimed_at": datetime.now(timezone.utc).isoformat(),
         }, "$unset": {"wallet_error": "", "blz_error": ""}},
     )
+    gift_message = f"Wir schenken dir €{BIRTHDAY_EUR}"
+    if awarded_blz > 0:
+        gift_message += f" + {awarded_blz} BLZ"
+    gift_message += ". Feier schön!"
+
     await db.notifications.update_one(
         {"_id": f"birthday:{uid}:{now.year}:notification"},
         {"$setOnInsert": {
@@ -358,7 +408,7 @@ async def claim_birthday_bonus(request: Request):
             "notification_id": f"birthday-{uid[-8:]}-{now.year}",
             "user_id": uid,
             "title": "🎂 Happy Birthday!",
-            "message": f"Wir schenken dir €{BIRTHDAY_EUR} + {BIRTHDAY_BLZ} BLZ. Feier schön!",
+            "message": gift_message,
             "type": "birthday",
             "read": False,
             "created_at": now.isoformat(),
@@ -368,7 +418,7 @@ async def claim_birthday_bonus(request: Request):
     return {
         "ok": True,
         "eur": BIRTHDAY_EUR,
-        "blz": BIRTHDAY_BLZ,
+        "blz": awarded_blz,
         "replayed": bool(wallet_result.idempotent_replay),
     }
 
@@ -410,6 +460,7 @@ async def birthday_status(request: Request):
             and str(user.get("kyc_extracted_dob") or "").strip() == bd
         )
     )
+    birthday_blz = BIRTHDAY_BLZ if TEST_MODE else 0
     return {
         "birthdate_set": True,
         "birthdate": bd,
@@ -418,7 +469,7 @@ async def birthday_status(request: Request):
         "claim_available": bool(is_birthday and dob_verified and not existing),
         "dob_verified": dob_verified,
         "eur": BIRTHDAY_EUR if dob_verified else 0,
-        "blz": BIRTHDAY_BLZ if dob_verified else 0,
+        "blz": birthday_blz if dob_verified else 0,
     }
 
 
