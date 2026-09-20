@@ -133,12 +133,14 @@ export default function ScooterPage({ onNavigate }) {
       if (res.ok) {
         const data = await res.json();
         // Check if module is enabled
+        if (data.pricing) setPricing(data.pricing);
         if (data.module_enabled === false) {
           setModuleEnabled(false);
           setModuleMessage(data.message || 'Scooter-Modul wird derzeit vorbereitet');
           setScooters([]);
         } else {
           setModuleEnabled(true);
+          setModuleMessage(data.pricing?.available === false ? (data.pricing?.basis || 'Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.') : '');
           setScooters(data.scooters || []);
         }
       }
@@ -183,7 +185,7 @@ export default function ScooterPage({ onNavigate }) {
       const freeMinutes = Number(rental.free_minutes_remaining_at_start ?? 0);
       const billableMinutes = Math.max(0, minutes - freeMinutes);
       const cost = unlockFee + (billableMinutes * rate);
-      setRideCost(Math.min(cost, Number(pricing.daily_cap ?? 20)));
+      setRideCost(Math.min(cost, Number(rental.daily_cap ?? pricing.daily_cap ?? 20)));
     }, 1000);
   };
 
@@ -195,6 +197,10 @@ export default function ScooterPage({ onNavigate }) {
 
   // Unlock scooter
   const unlockScooter = async (scooter) => {
+    if (pricing.available === false) {
+      setError(pricing.basis || 'Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.');
+      return;
+    }
     const requiredBalance = Number(pricing.min_balance ?? 5);
     if (userBalance < requiredBalance) {
       setError(`Nicht genug Guthaben. Mindestens €${requiredBalance.toFixed(2)} erforderlich, du hast €${userBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
@@ -646,7 +652,23 @@ export default function ScooterPage({ onNavigate }) {
               </div>
 
               {/* Pricing Info */}
-              <div className="p-4 bg-[#111] rounded-xl border border-white/10">
+              <div className="p-4 bg-[#111] rounded-xl border border-white/10" data-testid="scooter-local-pricing">
+                {(pricing.city || pricing.country) && (
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-green-400">Lokaler Tarif</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{[pricing.city, pricing.country].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[10px] font-semibold text-green-300">
+                      {pricing.profile_scope === 'city' ? 'Stadttarif' : pricing.profile_scope === 'country' ? 'Landestarif' : 'Fallback'}
+                    </span>
+                  </div>
+                )}
+                {pricing.available === false && (
+                  <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    {pricing.basis || 'Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.'}
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-gray-400 text-sm">Entsperren</p>
@@ -747,7 +769,7 @@ export default function ScooterPage({ onNavigate }) {
                     ) : (
                       <button
                         onClick={() => unlockScooter(selectedScooter)}
-                        disabled={loading}
+                        disabled={loading || pricing.available === false}
                         className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-black text-lg disabled:opacity-50"
                         data-testid="scooter-unlock-button"
                       >
