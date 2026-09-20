@@ -22,6 +22,35 @@ const VISUAL_AUCTION = {
     'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"%3E%3Crect width="1200" height="800" fill="%23e5e7eb"/%3E%3Crect x="270" y="150" width="660" height="420" rx="24" fill="%23111827"/%3E%3Crect x="305" y="185" width="590" height="350" rx="12" fill="%23f8fafc"/%3E%3Cpath d="M180 610h840l-70 55H250z" fill="%236b7280"/%3E%3C/svg%3E',
 };
 
+async function mockVerifiedAuctionUser(page: Page) {
+  const approvedUser = {
+    id: 'visual-auction-user',
+    name: 'Visual Auction User',
+    email: 'visual-auction@example.invalid',
+    role: 'user',
+    isAuthenticated: true,
+    kyc_status: 'approved',
+    kyc_verified: true,
+    balance: 1000,
+  };
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(approvedUser) });
+  });
+  await page.route('**/api/auth/refresh', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(approvedUser) });
+  });
+  await page.route('**/api/kyc/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'approved', verification_status: 'approved', can_use_auctions: true }),
+    });
+  });
+  await page.route('**/api/wallet', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ balance: 1000, transactions: [] }) });
+  });
+}
+
 async function mockAuctionApi(page: Page) {
   await page.route('**/api/auctions**', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -49,11 +78,13 @@ async function mockAuctionApi(page: Page) {
 
 for (const viewport of VISUAL_VIEWPORTS) {
   test(`visual auctions overview ${viewport.name}`, async ({ page }) => {
+    await mockVerifiedAuctionUser(page);
     await mockAuctionApi(page);
     await runRouteAudit(page, AUCTIONS_OVERVIEW_CONFIG, viewport);
   });
 
   test(`visual auction detail ${viewport.name}`, async ({ page }) => {
+    await mockVerifiedAuctionUser(page);
     await mockAuctionApi(page);
     await prepareVisualPage(page, viewport);
     await openRoute(page, '/auctions', AUCTIONS_OVERVIEW_CONFIG.waitFor);
