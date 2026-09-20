@@ -1196,7 +1196,8 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
         item_id = metadata.get("item_id")
         if not item_id:
             return False
-        applied = await _apply_dating_consumable(user_id, item_id)
+        session_id = str(txn.get("session_id") or "")
+        applied = await _apply_dating_consumable(user_id, item_id, session_id)
         if not applied:
             return False
         await db.payment_transactions.update_one(
@@ -1588,9 +1589,9 @@ def _pricing_payload_for_profile(profile: dict) -> dict:
     }
 
 
-async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
+async def _apply_dating_consumable(user_id: str, item_id: str, session_id: str) -> bool:
     item = DATING_CONSUMABLES.get(item_id)
-    if not item:
+    if not item or not session_id:
         return False
     if item["type"] == "boost_pack":
         field = "credits.boosts"
@@ -1602,8 +1603,33 @@ async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
         field = "credits.roses"
     else:
         return False
-    await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {field: int(item["quantity"]), "lifetime_value_cents": int(round(item["price_eur"] * 100))}})
-    return True
+
+    marker_hash = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"payment_settlement_markers.{marker_hash}"
+    applied = await db.dating_profiles.update_one(
+        {"user_id": user_id, marker_field: {"$exists": False}},
+        {
+            "$inc": {
+                field: int(item["quantity"]),
+                "lifetime_value_cents": int(round(item["price_eur"] * 100)),
+            },
+            "$set": {
+                marker_field: {
+                    "session_id": session_id,
+                    "item_id": item_id,
+                    "quantity": int(item["quantity"]),
+                    "created_at": now_iso(),
+                }
+            },
+        },
+    )
+    if applied.modified_count == 1:
+        return True
+    already = await db.dating_profiles.find_one(
+        {"user_id": user_id, marker_field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(already)
 
 
 @router.get("/profile/me")
