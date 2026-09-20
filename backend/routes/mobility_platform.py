@@ -821,9 +821,20 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
         country = addr.get("country") or ""
     except Exception:
         text = (address or "").lower()
-        if "kosovo" in text or "prisht" in text or "pristin" in text:
+        if "kosovo" in text or any(alias in text for alias in ("prisht", "pristin", "prizren", "peja", "pejë", "ferizaj", "gjilan", "gjakov", "mitrovic")):
             country_code = "XK"
-            city = "Prishtina"
+            for alias, canonical in CITY_NAME_ALIASES.items():
+                if alias in text:
+                    city = canonical
+                    break
+        elif "hamburg" in text or "germany" in text or "deutschland" in text:
+            country_code = "DE"
+            city = "Hamburg" if "hamburg" in text else ""
+            country = "Deutschland"
+        elif "wien" in text or "vienna" in text or "austria" in text or "österreich" in text:
+            country_code = "AT"
+            city = "Wien" if "wien" in text or "vienna" in text else ""
+            country = "Österreich"
 
     if not country_code and 41.80 <= lat <= 43.35 and 20.00 <= lng <= 21.95:
         country_code = "XK"
