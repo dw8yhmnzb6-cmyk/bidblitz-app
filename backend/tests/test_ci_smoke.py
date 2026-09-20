@@ -2257,3 +2257,13 @@ def test_merchant_plan_upgrade_is_idempotent_and_locked():
     assert '"$addToSet": {"merchant_plan_purchase_ids": upgrade_id}' in source
     assert '{"_id": f"merchant-upgrade:{upgrade_id}"}' in source
 
+def test_destructive_admin_demo_cleanup_is_post_superadmin_confirmed_and_audited():
+    source = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+
+    assert '@router.post("/cleanup-fake-data")' in source
+    assert '@router.get("/cleanup-fake-data")' not in source
+    assert "@limiter.limit(RATE_ADMIN_ACTION)" in source
+    assert 'admin.get("role") != "super_admin"' in source
+    assert 'req.confirmation != "DELETE_DEMO_DATA"' in source
+    assert '"admin_cleanup_demo_data"' in source
+
