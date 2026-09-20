@@ -84,11 +84,11 @@ class ClaimDailyRequest(BaseModel):
 
 
 class AdminConfigRequest(BaseModel):
-    new_user_bonus: Optional[float] = None
-    inviter_bonus: Optional[float] = None
-    level1_rate: Optional[float] = None
-    level2_rate: Optional[float] = None
-    daily_bonus: Optional[float] = None
+    new_user_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    inviter_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    level1_rate: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    level2_rate: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    daily_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     daily_bonus_enabled: Optional[bool] = None
 
 
