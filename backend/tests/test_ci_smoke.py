@@ -1599,6 +1599,27 @@ def test_legacy_retention_and_reengage_value_paths_fail_closed():
     assert "Re-Engagement-Wallet-Gutschriften und E-Mails sind in Production deaktiviert." in reengage
     assert "if req.dry_run:" in reengage
     assert "if not TEST_MODE:" in reengage
+    assert "credit_wallet(" in reengage
+    assert 'idempotency_key = f"reengage:{uid_str}:{reward_scope}"' in reengage
+    assert "wallet_result.idempotent_replay" in reengage
+    assert '"$inc": {"balance": REWARD_EUR}' not in reengage
+
+
+def test_bills_and_esim_test_payments_use_canonical_wallet_and_idempotency():
+    backend = (BACKEND_DIR / "routes" / "bills.py").read_text(encoding="utf-8")
+
+    assert "from core.payment_engine import debit_wallet, TransactionType" in backend
+    assert "def _require_bills_idempotency_key" in backend
+    assert 'prefix="bill-pay"' in backend
+    assert 'prefix="esim-purchase"' in backend
+    assert "debit_wallet(" in backend
+    assert 'idempotency_key=idempotency_key' in backend
+    assert 'payment_id = f"BILL-{digest.upper()}"' in backend
+    assert 'esim_id = f"ESIM-{digest.upper()}"' in backend
+    assert '"$setOnInsert": payment' in backend
+    assert '"$setOnInsert": esim' in backend
+    assert '"$inc": {"balance": -req.amount}' not in backend
+    assert '"$inc": {"balance": -package["price"]}' not in backend
 
 
 def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
