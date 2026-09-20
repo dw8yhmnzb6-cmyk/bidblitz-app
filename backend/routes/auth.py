@@ -396,6 +396,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # Create a merchant profile only for an actual merchant registration.
     if role == "merchant":
         merchant_doc = {
+            "merchant_id": secrets.token_hex(8),
             "user_id": user_id,
             "business_name": display_name,
             "total_earnings": 0.0,
