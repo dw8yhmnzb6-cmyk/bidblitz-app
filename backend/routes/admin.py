@@ -9,7 +9,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
-from core.config import FEES
+from core.config import FEES, TEST_MODE
 from core.rate_limit import limiter, RATE_ADMIN_ACTION
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.admin_financial_metrics import (
@@ -889,6 +889,11 @@ async def admin_cleanup_all_fake_data(req: CleanupFakeDataRequest, request: Requ
     Now also covers: hotels, flights, scooters, taxi drivers, food restaurants, rental cars.
     Test accounts with valid email patterns are preserved.
     """
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Demo-Daten-Bereinigung ist in Production deaktiviert.",
+        )
     admin = await require_admin(request)
     if admin.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Super-Admin erforderlich")
