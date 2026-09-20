@@ -610,7 +610,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
                 "email_hint": "",
             }
 
-        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        otp = ''.join(str(secrets.randbelow(10)) for _ in range(6))
         await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
         await db.otp_codes.insert_one({
             "user_id": user_id,
