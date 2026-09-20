@@ -2942,3 +2942,17 @@ def test_birthday_blz_rewards_are_test_only():
     assert '"blz": birthday_blz if dob_verified else 0' in backend
     assert "Number(j.blz || 0) > 0" in birthday
 
+def test_investor_value_flows_fail_closed_without_settlement_provider():
+    source = (BACKEND_DIR / "routes" / "investor.py").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in source
+    assert "def _require_investor_settlement_mode" in source
+    assert "Investor-Settlement ist in Production deaktiviert" in source
+    assert source.count("_require_investor_settlement_mode()") >= 4
+    assert '@router.post("/apply")' in source
+    assert '@router.post("/admin/approve")' in source
+    assert '@router.post("/admin/distribute-profits")' in source
+    assert '@router.post("/admin/credit-payouts")' in source
+    assert "TransactionType.INVESTOR_PROFIT" not in source
+    assert "TransactionType.PAYOUT" in source
+
