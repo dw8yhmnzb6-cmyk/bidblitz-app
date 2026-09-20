@@ -743,6 +743,9 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       setWinnerCheckout(data);
       await fetchAuctions();
     } catch (e) {
+      if (e?.status === 400) {
+        winnerCheckoutKeyRef.current = null;
+      }
       setWinnerCheckoutError(e.message || "Zahlung fehlgeschlagen.");
     } finally {
       setWinnerCheckoutPaying(false);
