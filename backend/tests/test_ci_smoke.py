@@ -1641,6 +1641,30 @@ def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     assert "idempotency_key: idempotencyKey" in page
 
 
+def test_revenue2_legacy_marketplace_and_lottery_value_paths_are_safe():
+    source = (BACKEND_DIR / "routes" / "revenue2.py").read_text(encoding="utf-8")
+
+    assert "Legacy marketplace transfer is permanently disabled" in source
+    assert "Dieser Legacy-Marketplace-Transfer ist deaktiviert" in source
+    assert 'await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -total}})' not in source
+    assert 'await db.users.update_one({"_id": _oid(rid)}, {"$inc": {"balance": net}})' not in source
+
+    assert "class BuyTicketRequest(BaseModel):" in source
+    assert "idempotency_key: Optional[str] = None" in source
+    assert 'key = _require_revenue2_idempotency_key(req.idempotency_key, request, "lottery-buy")' in source
+    assert 'purchase_id = "LOTBUY-" + hashlib.sha256(' in source
+    assert "db.lottery_ticket_purchases.update_one" in source
+    assert '"status": "processing"' in source
+    assert 'idempotency_key=f"lottery:{purchase_id}:debit"' in source
+    assert 'idempotency_key=f"lottery:{purchase_id}:refund"' in source
+    assert '"status": "failed_refunded"' in source
+    assert '"purchase_ids": {"$ne": purchase_id}' in source
+    assert '"$addToSet": {"purchase_ids": purchase_id}' in source
+    assert '"status": "drawing"' in source
+    assert 'idempotency_key=f"lottery-win:{draw[\'draw_date\']}:{t[\'number\']}:{tier_name}"' in source
+    assert source.count('"$inc": {"balance_blz":') == 1
+
+
 def test_premium_page_uses_canonical_subscription_backend():
     page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "PremiumPage.jsx").read_text(encoding="utf-8")
     subscription = (BACKEND_DIR / "routes" / "subscription_system.py").read_text(encoding="utf-8")
