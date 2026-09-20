@@ -1079,7 +1079,7 @@ def test_kids_subscription_wallet_gps_and_rewards_fail_safe():
     assert 'process.env.NODE_ENV !== "production"' in gps_ui
 
     assert "await require_kids_entitlement(parent_id)" in controls
-    assert "await require_kids_entitlement(str(child.get("parent_id") or ""))" in app
+    assert 'await require_kids_entitlement(str(child.get("parent_id") or ""))' in app
     assert "async def _grant_child_blz_once" in premium
     assert "reward_new, grant_ok = await _grant_child_blz_once" in premium
     assert 'raise HTTPException(403, "Keine Berechtigung für diese Aufgabe")' in premium
