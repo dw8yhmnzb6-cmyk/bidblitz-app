@@ -1426,7 +1426,7 @@ async def calculate_fare_with_overrides(
                 "region_label": region_label,
                 "pricing_source": "mobility_profile",
                 "pricing_basis": option.get("pricing_basis"),
-                "profile_scope": pricing_context.get("profile_scope") or "country",
+                "profile_scope": option.get("pricing_scope") or pricing_context.get("profile_scope") or "country",
                 "currency": option.get("currency") or "EUR",
                 "booking_supported": bool(option.get("booking_supported", True)),
                 "settlement_reason": option.get("settlement_reason"),
