@@ -23,7 +23,7 @@ const user = {
 async function mockMobilityApi(page: Page) {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
-    const pathname = url.pathname;
+    const pathname = url.pathname.replace(/^\/undefined(?=\/api\/)/, '');
     const method = route.request().method();
 
     let body: any = {};
