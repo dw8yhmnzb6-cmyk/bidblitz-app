@@ -1987,6 +1987,27 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "valueActionsEnabled" in blitz_page
 
 
+def test_home_prioritizes_auctions_and_mining():
+    home = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "HomePage.jsx").read_text(encoding="utf-8")
+    mobile = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "home" / "MobileHomeContent.jsx").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert 'data-testid="home-priority-modules"' in home
+    assert 'data-testid={"home-priority-" + feature.id}' in home
+    assert 'id: "auctions"' in home and 'route: "/auctions"' in home
+    assert 'id: "mining"' in home and 'route: "/mining"' in home
+    assert 'data-testid="auctions-banner"' not in home
+    assert 'filterStoreSafeItems([' in home
+
+    assert 'id: "auctions"' in mobile and 'route: "/auctions"' in mobile
+    assert 'id: "mining"' in mobile and 'route: "/mining"' in mobile
+    assert 'filterStoreSafeItems([' in mobile
+
+    assert 'case "/mining":' in app
+    assert '<MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />' in app
+    assert 'case "/auctions":' in app
+
+
 def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete():
     profile = (BACKEND_DIR / "routes" / "profile.py").read_text(encoding="utf-8")
     sessions = (BACKEND_DIR / "routes" / "sessions.py").read_text(encoding="utf-8")
