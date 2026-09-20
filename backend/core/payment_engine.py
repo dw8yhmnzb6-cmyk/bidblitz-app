@@ -837,37 +837,42 @@ async def process_streaks(user_id: str, activity_type: str):
             {"$set": updates}
         )
     
-    # Give rewards
+    # Give rewards through the canonical wallet path exactly once per milestone.
     for reward in rewards_to_give:
-        await db.users.update_one(
-            {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-            {"$inc": {"balance": reward["amount"]}}
+        milestone_key = reward["key"]
+        result = await credit_wallet(
+            user_id=user_id,
+            amount=reward["amount"],
+            tx_type=TransactionType.REWARD,
+            description=f"Streak Bonus: {reward['milestone']} Käufe!",
+            reference=f"PURCHASE-STREAK-{user_id}-{reward['milestone']}",
+            source="purchase_streak",
+            metadata={"milestone": reward["milestone"], "milestone_key": milestone_key},
+            idempotency_key=f"purchase-streak:{user_id}:{milestone_key}",
         )
-        await db.transactions.insert_one({
-            "id": generate_transaction_id(),
-            "user_id": user_id,
-            "type": "streak_reward",
-            "amount": reward["amount"],
-            "description": f"Streak Bonus: {reward['milestone']} Käufe!",
-            "reference": generate_reference("STREAK"),
-            "status": "completed",
-            "created_at": now.isoformat(),
-        })
+        if not result.success:
+            return {"success": False, "status": result.status.value, "error": result.error}
+
         await db.user_streaks.update_one(
-            {"user_id": user_id},
-            {"$push": {"rewarded_milestones": reward["key"]}}
+            {"user_id": user_id, "rewarded_milestones": {"$ne": milestone_key}},
+            {"$addToSet": {"rewarded_milestones": milestone_key}},
         )
         
-        # Notification
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "streak_reward",
-            "title": "Streak Bonus!",
-            "message": f"Du hast {reward['milestone']} Käufe erreicht! €{reward['amount']:.2f} Bonus!",
-            "read": False,
-            "created_at": now.isoformat(),
-        })
+        # Notification is deterministic so a retry cannot duplicate it.
+        await db.notifications.update_one(
+            {"_id": f"purchase-streak:{user_id}:{milestone_key}"},
+            {"$setOnInsert": {
+                "_id": f"purchase-streak:{user_id}:{milestone_key}",
+                "id": f"purchase-streak-{user_id}-{milestone_key}",
+                "user_id": user_id,
+                "type": "streak_reward",
+                "title": "Streak Bonus!",
+                "message": f"Du hast {reward['milestone']} Käufe erreicht! €{reward['amount']:.2f} Bonus!",
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
 
 
 async def process_login_streak(user_id: str):
