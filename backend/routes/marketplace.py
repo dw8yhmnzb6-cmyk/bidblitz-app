@@ -404,7 +404,6 @@ async def list_listings(
 
 
 @router.get("/catalog/{listing_id}")
-@router.get("/{listing_id}")
 async def get_listing(listing_id: str):
     """Get listing details (public)."""
     listing = await db.marketplace_listings.find_one(
@@ -1817,3 +1816,9 @@ async def admin_marketplace_revenue(request: Request, days: int = 30):
             "vip_upgrades": len(vip_txns),
         }
     }
+
+# Dynamic public listing alias must remain after every static GET route.
+@router.get("/{listing_id}")
+async def get_listing_public_alias(listing_id: str):
+    return await get_listing(listing_id)
+
