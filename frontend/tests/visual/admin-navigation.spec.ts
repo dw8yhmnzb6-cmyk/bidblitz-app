@@ -127,6 +127,19 @@ async function openAdmin(page: Page) {
   await expect(page.getByText('Zur START zurück', { exact: true })).toHaveCount(0);
 }
 
+async function assertMobileDestinationHealthy(page: Page, pathname: string) {
+  await page.waitForTimeout(120);
+  await expect(page.getByRole('heading', { name: 'Etwas ist schiefgelaufen', exact: true })).toHaveCount(0);
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    await expect(page.getByTestId('bottom-nav')).toHaveCount(0);
+  }
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+}
+
 test('all admin cards have working mobile destinations', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
@@ -161,6 +174,7 @@ test('all admin cards have working mobile destinations', async ({ page }) => {
 
     if (item.nav?.startsWith('/')) {
       await expect.poll(() => new URL(page.url()).pathname, { timeout: 10000 }).toBe(item.nav);
+      await assertMobileDestinationHealthy(page, item.nav);
       await openAdmin(page);
       continue;
     }
@@ -216,6 +230,7 @@ test('admin grid mode keeps mobile admin destinations aligned', async ({ page })
 
   await page.getByTestId('admin-grid-audi-ticket-system').click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/audi-ticket-system');
+  await assertMobileDestinationHealthy(page, '/admin/audi-ticket-system');
 
   await page.goto('/admin');
   await expect(page.getByTestId('admin-page')).toBeVisible();
@@ -224,6 +239,7 @@ test('admin grid mode keeps mobile admin destinations aligned', async ({ page })
   }
   await page.getByTestId('admin-grid-mobility-pricing').click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/mobility-pricing');
+  await assertMobileDestinationHealthy(page, '/admin/mobility-pricing');
 
   const widths = await page.evaluate(() => ({
     content: document.documentElement.scrollWidth,
