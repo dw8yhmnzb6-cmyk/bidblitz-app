@@ -2104,12 +2104,12 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     mobility = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
     shell = (BACKEND_DIR.parent / "frontend" / "src" / "app" / "appShellFlags.js").read_text(encoding="utf-8")
 
-    assert 'h-[62vh] sm:h-[56vh] lg:h-[46vh]' in mobility
-    assert 'bottom-3 sm:bottom-auto sm:top-4' in mobility
+    assert 'h-[54vh] min-h-[360px] sm:h-[56vh] lg:h-[46vh]' in mobility
+    assert 'relative px-3 pt-3 z-[500] pointer-events-none sm:absolute sm:inset-x-0 sm:top-4' in mobility
     assert 'flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar' in mobility
     assert 'grid grid-cols-3 gap-2 mt-2 sm:flex sm:flex-wrap sm:mt-3' in mobility
     assert mobility.count('hidden sm:inline-flex') >= 4
-    assert 'mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4' in mobility
+    assert 'mt-3 sm:-mt-6 relative z-20 px-3 sm:px-4' in mobility
     assert 'onNavigate?.("/mobility-center")' in mobility
     assert 'const visibleMarkers = preferredMode' in mobility
     assert '.filter((item) => item.type === preferredMode)' in mobility
