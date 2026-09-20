@@ -2618,3 +2618,13 @@ def test_verification_review_cannot_modify_privileged_admin_roles():
     assert '"role": {"$nin": ["admin", "super_admin"]}' in source
     assert "Rollenfreigabe konnte nicht atomar abgeschlossen werden" in source
 
+def test_coinbase_confirmed_charge_settlement_is_retry_recoverable():
+    source = (BACKEND_DIR / "routes" / "coinbase_commerce.py").read_text(encoding="utf-8")
+
+    assert '"$inc": {"settlement_attempt": 1}' in source
+    assert 'idempotency_key=f"coinbase_charge:{charge_id}:attempt:{attempt}"' in source
+    assert '"settlement_status": "processing"' in source
+    assert '"reconciliation_required"' in source
+    assert '"wallet_credited_charge_finalize_failed"' in source
+    assert "finalized.modified_count != 1" in source
+
