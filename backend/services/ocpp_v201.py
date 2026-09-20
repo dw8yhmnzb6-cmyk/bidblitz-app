@@ -429,7 +429,7 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "charge_point_id": charge_point_id,
             "connector_id": connector_id,
             "id_tag": id_token,
-            "status": {"$in": ["authorized", "starting"]},
+            "status": {"$in": ["authorized", "starting", "reserved"]},
         }, sort=[("created_at", -1)])
 
         meter_start = latest_wh if latest_wh is not None else 0.0
