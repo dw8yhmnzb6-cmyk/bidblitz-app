@@ -2302,3 +2302,31 @@ def test_pos_retail_cart_and_pick_routes_require_store_access():
     assert 'async def pending_pick_tasks(request: Request, store_id: str):' in source
     assert 'await _require_store_access(user, store_id)' in source
 
+def test_pos_hardware_is_store_scoped_and_production_fail_closed():
+    source = (BACKEND_DIR / "routes" / "pos_hardware.py").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in source
+    assert "from routes.pos_system import short_id, now_iso, _require_store_access" in source
+    assert 'await _require_store_access(user, sale["store_id"])' in source
+    assert 'detail="Kein echter Bondrucker für diese Filiale konfiguriert"' in source
+    assert 'detail="Datei-Druck ist nur im Testmodus erlaubt"' in source
+    assert 'detail="Nicht unterstützter Drucker-Typ"' in source
+
+    assert 'store_id: str' in source
+    assert 'await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})' in source
+    assert '{"store_id": store_id, "barcode": barcode, "active": True}' in source
+
+    assert 'detail="Keine echte Kassenschubladen-/Drucker-Hardware konfiguriert"' in source
+    assert 'await _require_store_access(user, store_id, {"merchant_admin", "store_manager", "cashier"})' in source
+
+    assert 'detail="Kein verifizierter TSE-Provider für diese Filiale konfiguriert"' in source
+    assert 'detail="Epson-TSE SDK noch nicht live verbunden"' in source
+    assert 'detail="Swissbit-TSE SDK noch nicht live verbunden"' in source
+    assert "Using cloud TSE (Fiskaly)" not in source
+    assert "EPSON_TSE_PLACEHOLDER" not in source
+    assert "SWISSBIT_TSE_PLACEHOLDER" not in source
+    assert "response.raise_for_status()" in source
+
+    assert 'await _require_store_access(user, scale["store_id"])' in source
+    assert 'await _require_store_access(user, store_id)' in source
+
