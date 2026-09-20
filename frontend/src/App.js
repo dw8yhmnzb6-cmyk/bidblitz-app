@@ -745,7 +745,11 @@ function AppContent() {
       case "/mining-trust-admin":
         return <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />;
       case "/nft":
-        return <NFTGeneratorPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <NFTGeneratorPage onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="NFT Studio" description="NFT-Erzeugung, Minting und Handel werden erst aktiviert, wenn ein verifizierter Mint-/Custody-/Marketplace-Provider live verbunden ist. Es werden keine Wallet- oder Mining-Werte für lokale NFT-Simulationen bewegt." onBack={() => handleNavigate("/more")} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
