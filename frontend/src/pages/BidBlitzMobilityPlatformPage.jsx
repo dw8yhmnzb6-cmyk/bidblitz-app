@@ -599,7 +599,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     <div className="min-h-screen bg-[#f2eadc] text-[#18202a] pb-28" data-testid="bidblitz-mobility-platform-page">
       <div className="sticky top-0 z-30 bg-[#f2eadc]/92 backdrop-blur-xl border-b border-[#18202a]/8 px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => onNavigate?.("/more")} className="w-10 h-10 rounded-full bg-white/70 border border-[#18202a]/10 flex items-center justify-center" data-testid="mobility-platform-back-btn"><ArrowLeft size={18} className="text-[#18202a]/70" /></button>
+          <button onClick={() => onNavigate?.("/mobility-center")} className="w-10 h-10 rounded-full bg-white/70 border border-[#18202a]/10 flex items-center justify-center" data-testid="mobility-platform-back-btn"><ArrowLeft size={18} className="text-[#18202a]/70" /></button>
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#0F766E]">BidBlitz Mobility</p>
             <h1 className="text-lg font-bold">{ui.title}</h1>
