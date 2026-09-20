@@ -2592,3 +2592,11 @@ def test_legacy_kids_payment_helpers_fail_closed():
     assert '@router.post("/children/{child_id}/transfer")' in kids
     assert '@router.post("/children/pay")' in kids
 
+def test_kids_gps_simulation_is_never_available_in_production():
+    source = (BACKEND_DIR / "routes" / "kids_gps.py").read_text(encoding="utf-8")
+
+    assert '@router.post("/simulate/{child_id}")' in source
+    assert "if not TEST_MODE:" in source
+    assert 'if not TEST_MODE and user.get("role") != "admin":' not in source
+    assert 'detail="Route nicht verfügbar"' in source
+
