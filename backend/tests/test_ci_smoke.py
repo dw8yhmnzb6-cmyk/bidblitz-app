@@ -2028,16 +2028,31 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'Idempotency-Key erforderlich' in phase2
     assert 'idempotency_key=idempotency_key' in phase2
 
+    assert 'class WithdrawRequest(BaseModel):' in mining
+    assert 'class SendBLZRequest(BaseModel):' in mining
+    assert mining.count('Idempotency-Key erforderlich') >= 4
+    assert 'operation_id = f"MWD-{operation_hash.upper()}"' in mining
+    assert 'idempotency_key=f"mining-withdraw:{user_id}:{raw_key}"' in mining
+    assert 'db.mining_transfer_operations.update_one' in mining
+    assert 'sender_marker = f"transfer_out.{transfer_id}"' in mining
+    assert 'recipient_marker = f"transfer_in.{transfer_id}"' in mining
+    assert "BLZ-Transferzustand unklar; finanzielle Abstimmung erforderlich" in mining
+
     assert "minerPurchaseKeysRef" in mining_page
     assert "minerUpgradeKeysRef" in mining_page
+    assert "withdrawAttemptKeysRef" in mining_page
+    assert "sendAttemptKeysRef" in mining_page
     assert "launchpadPurchaseKeysRef" in mining_page
-    assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 4
-    assert mining_page.count("idempotency_key: idempotencyKey") >= 4
+    assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 6
+    assert mining_page.count("idempotency_key: idempotencyKey") >= 6
     assert "shouldKeepAttemptKey" in mining_page
 
+    assert 'db.mining_wallets, "user_id", unique=True, critical=True' in database
     assert 'db.mining_transactions, "txn_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, "operation_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
+    assert 'db.mining_transfer_operations, "transfer_id", unique=True, critical=True' in database
+    assert 'db.mining_transfer_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
 
 
 def test_auction_polling_does_not_delete_shared_browser_caches():
