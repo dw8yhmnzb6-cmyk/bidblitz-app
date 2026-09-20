@@ -941,6 +941,9 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert "winner-checkout-pay" in page
     assert "paid_pending_fulfillment" not in page
     assert "Tracking erst nach echter Übergabe an Versand" in page
+    assert "auction-pending-wins" in page
+    assert "Gewonnen · Zahlung offen" in page
+    assert "winner_payment_status !== \"paid\"" in page
 
     assert 'grant_scope = f"auction-referral:{user_id}:{referrer_id}"' in source
     assert 'grant_key=f"{grant_scope}:invitee"' in source
