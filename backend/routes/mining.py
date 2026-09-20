@@ -706,7 +706,7 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
     ) or {}
     if operation.get("miner_id") != req.miner_id or operation.get("upgrade_type") != req.upgrade_type:
         raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Mining-Aktion verwendet")
-    if int(operation.get("from_level", current_level)) != current_level and operation.get("status") == "processing":
+    if operation.get("from_level") is not None:
         current_level = int(operation.get("from_level"))
         target_level = int(operation.get("to_level"))
         cost = float(operation.get("cost"))
