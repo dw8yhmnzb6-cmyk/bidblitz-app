@@ -918,6 +918,7 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert '"force_ended_by": str(user["_id"])' in source
 
     page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionAdminPage.jsx").read_text(encoding="utf-8")
     api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
     assert 'class AuctionWinnerCheckoutRequest(BaseModel):' in source
     assert '@router.get("/{auction_id}/winner-checkout")' in source
@@ -931,7 +932,17 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert '"status": "paid_pending_fulfillment"' in source
     assert '"fulfillment_status": "pending"' in source
     assert '"winner_payment_status": "paid"' in source
-    assert 'tracking' not in source[source.index('class AuctionWinnerCheckoutRequest'):source.index('# ── List auctions ──')].lower()
+    assert 'class AuctionOrderFulfillmentRequest(BaseModel):' in source
+    assert '@router.get("/admin/orders")' in source
+    assert '@router.post("/admin/orders/{order_id}/fulfillment")' in source
+    assert 'Nur bezahlte Bestellungen können versendet werden' in source
+    assert 'Echter Versanddienstleister erforderlich' in source
+    assert 'Echte Tracking-/Sendungsnummer erforderlich' in source
+    assert '"processing": {"pending", "not_started"}' in source
+    assert '"shipped": {"pending", "processing"}' in source
+    assert '"delivered": {"shipped"}' in source
+    assert 'notification_id = f"auction-order:{order_id}:{req.status}"' in source
+    assert 'tracking_number = (req.tracking_number or "").strip() or None' in source
 
     assert "getAuctionWinnerCheckout" in api
     assert "payAuctionWinnerCheckout" in api
@@ -941,9 +952,16 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert "winner-checkout-pay" in page
     assert "paid_pending_fulfillment" not in page
     assert "Tracking erst nach echter Übergabe an Versand" in page
+    assert "winner-tracking-number" in page
     assert "auction-pending-wins" in page
     assert "Gewonnen · Zahlung offen" in page
     assert "winner_payment_status !== \"paid\"" in page
+    assert "auction-admin-orders" in admin_page
+    assert "updateFulfillment" in admin_page
+    assert "Echte Sendungsnummer" in admin_page
+    assert 'updateFulfillment(order, "processing")' in admin_page
+    assert 'updateFulfillment(order, "shipped")' in admin_page
+    assert 'updateFulfillment(order, "delivered")' in admin_page
 
     assert 'grant_scope = f"auction-referral:{user_id}:{referrer_id}"' in source
     assert 'grant_key=f"{grant_scope}:invitee"' in source
