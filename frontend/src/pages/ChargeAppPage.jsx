@@ -997,6 +997,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                       <PassPill label="Status" value={warrantyPassPreview.status_label} testid="charge-app-pass-status" />
                       <PassPill label="Produkt" value={warrantyPassPreview.product_name} testid="charge-app-pass-product" />
                       <PassPill label="Seriennummer" value={warrantyPassPreview.serial_number} testid="charge-app-pass-serial" />
+                      <PassPill label="Nachweis" value={warrantyPassPreview.evidence_label || "Manuell erfasst"} testid="charge-app-pass-evidence" />
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-3 rounded-[26px] border border-white/10 bg-white/5 p-4" data-testid="charge-app-pass-qr-card">
@@ -1013,6 +1014,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                     <p className="text-sm font-black text-slate-900">{item.product_name}</p>
                     <p className="mt-1 text-xs text-slate-500">SN {item.serial_number} · {item.merchant_name}</p>
                     <p className="mt-2 text-xs text-slate-600">{item.coverage_label} · gültig bis {item.valid_until}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-cyan-700">{item.evidence_label || "Manuell erfasst"}</p>
                     {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Garantiebeleg · ${item.product_name}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} onDelete={(attachment) => deleteWarrantyAttachment(item.registration_id, attachment)} deletingId={busy.startsWith("delete-attachment-") ? busy.slice("delete-attachment-".length) : ""} testidPrefix={`charge-app-warranty-attachments-${index}`} /> : null}
                   </div>
                   <div className="flex flex-col items-end gap-2">
