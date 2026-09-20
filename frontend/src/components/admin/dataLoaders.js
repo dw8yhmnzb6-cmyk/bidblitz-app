@@ -17,6 +17,24 @@ async function api(path, opts = {}) {
 }
 
 const MODULE_LIST_CONFIG = {
+  "admin-immobilien": {
+    url: "/api/real-estate/listings",
+    pickItems: (d) => d.listings || [],
+    module: "Immobilien", countLabel: "Inserate",
+    fields: ["title", "type", "city", "price", "status"],
+  },
+  "admin-freelancer": {
+    url: "/api/freelancer/freelancers",
+    pickItems: (d) => d.freelancers || [],
+    module: "Freelancer", countLabel: "Freelancer",
+    fields: ["name", "category", "city", "hourly_rate", "rating"],
+  },
+  "admin-elearning": {
+    url: "/api/elearning/courses",
+    pickItems: (d) => d.courses || [],
+    module: "E-Learning", countLabel: "Kurse",
+    fields: ["title", "category", "level", "price", "rating"],
+  },
   "admin-handwerker": {
     url: "/api/handwerker/list",
     pickItems: (d) => d.handwerker || [],
