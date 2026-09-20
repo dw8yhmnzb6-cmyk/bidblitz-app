@@ -932,7 +932,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]" data-testid="mobility-pricing-scope">
-                    {routeSnapshot.pricing_context.profile_scope === "city" ? "Stadttarif" : "Landestarif"}
+                    {(selectedOption?.pricing_scope || routeSnapshot.pricing_context.profile_scope) === "city" ? "Stadttarif" : "Landestarif"}
                   </span>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]">Schätzung</span>
                 </div>
