@@ -712,6 +712,8 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         cost = float(operation.get("cost"))
     if operation.get("status") == "refunded":
         raise HTTPException(status_code=409, detail="Upgrade wurde wegen eines parallelen Vorgangs zurückgebucht")
+    if operation.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Upgrade benötigt finanzielle Abstimmung. Keine weitere Belastung wird ausgeführt.")
     if operation.get("status") == "failed":
         raise HTTPException(status_code=400, detail=operation.get("error") or "Upgrade-Zahlung fehlgeschlagen")
 
@@ -767,14 +769,22 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
                 metadata={"operation_id": operation_id, "miner_id": req.miner_id},
                 idempotency_key=f"mining-upgrade-refund:{operation_id}",
             )
+            refund_status = "refunded" if refund.success else "reconciliation_required"
             await db.mining_upgrade_operations.update_one(
                 {"operation_id": operation_id},
                 {"$set": {
-                    "status": "refunded",
+                    "status": refund_status,
                     "refund_transaction_id": refund.transaction_id if refund.success else None,
-                    "refunded_at": datetime.now(timezone.utc).isoformat(),
+                    "refund_error": None if refund.success else refund.error,
+                    "refunded_at": datetime.now(timezone.utc).isoformat() if refund.success else None,
+                    "reconciliation_required_at": None if refund.success else datetime.now(timezone.utc).isoformat(),
                 }},
             )
+            if not refund.success:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Parallel-Upgrade erkannt; Rückgutschrift benötigt finanzielle Abstimmung.",
+                )
             raise HTTPException(status_code=409, detail="Parallel-Upgrade erkannt. Zahlung wurde zurückgebucht.")
 
     completed_at = datetime.now(timezone.utc).isoformat()
