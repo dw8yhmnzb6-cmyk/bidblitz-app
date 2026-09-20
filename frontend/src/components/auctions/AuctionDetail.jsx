@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Zap, ChevronRight, Coins, Loader2, X, User,
-  Trophy, ShieldCheck, Timer, Truck, Globe, Check, Shield,
-  Flame, Gift, Bot, AlertTriangle, Users, Sparkles, Eye, Gavel,
+  ArrowLeft, Zap, Coins, Loader2, X, User,
+  Trophy, ShieldCheck, Truck, Globe, Check, Shield,
+  Bot, AlertTriangle, Users, Gavel,
   Clock, TrendingUp, Wallet, Package,
 } from "lucide-react";
 import { useUser, useI18n } from "../../store";
 import { api } from "../../services/api";
-import GuestCTABar from "../GuestCTABar";
 import Countdown from "./Countdown";
 import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
