@@ -183,12 +183,15 @@ async def create_indexes():
     # MINING
     # ═══════════════════════════════════════════════════════════════════════════
     
+    await safe_create_index(db.mining_wallets, "user_id", unique=True, critical=True)
     await safe_create_index(db.mining_miners, "miner_id", unique=True)
     await safe_create_index(db.mining_miners, "user_id")
     await safe_create_index(db.mining_transactions, "txn_id", unique=True, critical=True)
     await safe_create_index(db.mining_transactions, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mining_upgrade_operations, "operation_id", unique=True, critical=True)
     await safe_create_index(db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True)
+    await safe_create_index(db.mining_transfer_operations, "transfer_id", unique=True, critical=True)
+    await safe_create_index(db.mining_transfer_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True)
     await safe_create_index(db.mining_claims, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mining_referrals, "referrer_id")
     await safe_create_index(db.mining_referrals, "referee_id")
