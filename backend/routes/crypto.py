@@ -4,12 +4,14 @@ Real-time prices via CoinGecko API (free, no key needed)
 """
 
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from core.security import get_current_user
 from core.database import db
 from core.config import TEST_MODE
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from datetime import datetime, timezone
-import secrets, random, httpx, asyncio, logging
+import secrets, hashlib, random, httpx, asyncio, logging
 
 logger = logging.getLogger("bidblitz.crypto")
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
@@ -175,8 +177,9 @@ async def get_portfolio(request: Request):
 
 class TradeRequest(BaseModel):
     symbol: str
-    amount_eur: float
+    amount_eur: float = Field(..., gt=0, le=100000, allow_inf_nan=False)
     side: str  # "buy" or "sell"
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/trade")
@@ -188,81 +191,263 @@ async def trade(req: TradeRequest, request: Request):
             status_code=503,
             detail="Krypto-Handel ist deaktiviert, bis ein verifizierter Custody-/Exchange-Provider live verbunden ist. Das EUR-Wallet wurde nicht belastet.",
         )
-    
 
     symbol = req.symbol.upper()
+    side = req.side.lower().strip()
     if symbol not in CRYPTO_ASSETS:
         raise HTTPException(400, "Unbekannte Kryptowährung")
-    if req.amount_eur <= 0:
-        raise HTTPException(400, "Betrag muss positiv sein")
-    
-    price = get_live_price(symbol)
-    crypto_amount = req.amount_eur / price
-    
-    if req.side == "buy":
-        if user.get("balance", 0) < req.amount_eur:
-            raise HTTPException(400, "Nicht genug Guthaben")
-        
-        # Deduct from wallet
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -req.amount_eur}})
-        
-        # Add to holdings
-        existing = await db.crypto_holdings.find_one({"user_id": user_id, "symbol": symbol})
-        if existing:
-            new_amount = existing["amount"] + crypto_amount
-            new_avg = ((existing["amount"] * existing.get("avg_buy_price", price)) + (crypto_amount * price)) / new_amount
-            await db.crypto_holdings.update_one(
-                {"user_id": user_id, "symbol": symbol},
-                {"$set": {"amount": new_amount, "avg_buy_price": round(new_avg, 2)}}
-            )
-        else:
-            await db.crypto_holdings.insert_one({
-                "user_id": user_id, "symbol": symbol,
-                "amount": crypto_amount, "avg_buy_price": price,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
-    
-    elif req.side == "sell":
-        existing = await db.crypto_holdings.find_one({"user_id": user_id, "symbol": symbol})
-        if not existing or existing["amount"] < crypto_amount:
-            raise HTTPException(400, f"Nicht genug {symbol}")
-        
-        new_amount = existing["amount"] - crypto_amount
-        if new_amount < 0.00000001:
-            await db.crypto_holdings.delete_one({"user_id": user_id, "symbol": symbol})
-        else:
-            await db.crypto_holdings.update_one(
-                {"user_id": user_id, "symbol": symbol},
-                {"$set": {"amount": new_amount}}
-            )
-        
-        # Add to wallet
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": req.amount_eur}})
-    else:
+    if side not in {"buy", "sell"}:
         raise HTTPException(400, "side muss 'buy' oder 'sell' sein")
-    
-    # Record transaction
-    await db.crypto_transactions.insert_one({
-        "id": secrets.token_hex(8),
+
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    key_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:24]
+    trade_id = f"CRY-{key_hash.upper()}"
+    payload = {
         "user_id": user_id,
         "symbol": symbol,
-        "side": req.side,
-        "crypto_amount": round(crypto_amount, 8),
-        "eur_amount": req.amount_eur,
-        "price": price,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    updated = await db.users.find_one({"_id": user["_id"]})
-    return {
-        "success": True,
-        "side": req.side,
-        "symbol": symbol,
-        "crypto_amount": round(crypto_amount, 8),
-        "eur_amount": req.amount_eur,
-        "price": price,
-        "new_balance": round(updated.get("balance", 0), 2),
+        "amount_eur": round(float(req.amount_eur), 2),
+        "side": side,
     }
+
+    existing_op = await db.crypto_trade_ops.find_one({"_id": trade_id}, {"_id": 0})
+    if existing_op and existing_op.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Trade-Daten verwendet")
+    if existing_op and existing_op.get("status") == "completed":
+        return {**existing_op["response"], "replayed": True}
+    if existing_op and existing_op.get("status") in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="Trade wird bereits verarbeitet oder benötigt Abstimmung")
+    if existing_op and existing_op.get("status") == "failed":
+        raise HTTPException(status_code=409, detail="Fehlgeschlagener Trade benötigt einen neuen Idempotency-Key")
+
+    price = round(float(existing_op.get("price") if existing_op else get_live_price(symbol)), 8)
+    crypto_amount = round(float(req.amount_eur) / price, 8)
+    await db.crypto_trade_ops.update_one(
+        {"_id": trade_id},
+        {"$setOnInsert": {
+            "_id": trade_id,
+            "payload": payload,
+            "price": price,
+            "crypto_amount": crypto_amount,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    claimed = await db.crypto_trade_ops.update_one(
+        {"_id": trade_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if claimed.modified_count != 1:
+        current = await db.crypto_trade_ops.find_one({"_id": trade_id}, {"_id": 0}) or {}
+        if current.get("status") == "completed":
+            return {**current["response"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Trade wird bereits verarbeitet")
+
+    marker_field = f"trade_markers.{trade_id}"
+    try:
+        if side == "buy":
+            payment = await debit_wallet(
+                user_id=user_id,
+                amount=req.amount_eur,
+                tx_type=TransactionType.PAYMENT,
+                description=f"Crypto Preview Kauf: {symbol}",
+                reference=trade_id,
+                metadata={"symbol": symbol, "crypto_amount": crypto_amount, "preview": True},
+                idempotency_key=f"crypto-trade:{trade_id}:wallet",
+            )
+            if not payment.success:
+                await db.crypto_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": payment.error or "wallet_debit_failed"}},
+                )
+                raise HTTPException(status_code=400, detail=payment.error or "Wallet-Abbuchung fehlgeschlagen")
+
+            holding_update = await db.crypto_holdings.update_one(
+                {"user_id": user_id, "symbol": symbol, marker_field: {"$exists": False}},
+                {
+                    "$inc": {
+                        "amount": crypto_amount,
+                        "cost_basis_eur": round(float(req.amount_eur), 2),
+                    },
+                    "$set": {
+                        marker_field: {
+                            "trade_id": trade_id,
+                            "side": "buy",
+                            "crypto_amount": crypto_amount,
+                            "eur_amount": round(float(req.amount_eur), 2),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    },
+                    "$setOnInsert": {
+                        "user_id": user_id,
+                        "symbol": symbol,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                upsert=True,
+            )
+            if holding_update.modified_count != 1 and holding_update.upserted_id is None:
+                already = await db.crypto_holdings.find_one(
+                    {"user_id": user_id, "symbol": symbol, marker_field: {"$exists": True}},
+                    {"_id": 1},
+                )
+                if not already:
+                    rollback = await credit_wallet(
+                        user_id=user_id,
+                        amount=req.amount_eur,
+                        tx_type=TransactionType.REFUND,
+                        description=f"Crypto Preview Kauf Rückbuchung: {symbol}",
+                        reference=f"{trade_id}-ROLLBACK",
+                        source="crypto_preview_rollback",
+                        metadata={"trade_id": trade_id, "symbol": symbol},
+                        idempotency_key=f"crypto-trade:{trade_id}:rollback",
+                    )
+                    await db.crypto_trade_ops.update_one(
+                        {"_id": trade_id},
+                        {"$set": {
+                            "status": "failed" if rollback.success else "reconciliation_required",
+                            "error": "holding_update_failed",
+                            "rollback_transaction_id": rollback.transaction_id,
+                        }},
+                    )
+                    if not rollback.success:
+                        raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+                    raise HTTPException(status_code=409, detail="Trade fehlgeschlagen. Wallet wurde zurückgebucht")
+            new_balance = payment.new_balance
+            wallet_tx_id = payment.transaction_id
+
+        else:
+            holding = await db.crypto_holdings.find_one({"user_id": user_id, "symbol": symbol}) or {}
+            current_amount = float(holding.get("amount") or 0)
+            if current_amount + 1e-12 < crypto_amount:
+                await db.crypto_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": "insufficient_crypto"}},
+                )
+                raise HTTPException(400, f"Nicht genug {symbol}")
+            cost_basis_total = float(
+                holding.get("cost_basis_eur")
+                or (current_amount * float(holding.get("avg_buy_price") or price))
+            )
+            avg_cost = (cost_basis_total / current_amount) if current_amount > 0 else 0
+            basis_delta = round(avg_cost * crypto_amount, 2)
+
+            holding_update = await db.crypto_holdings.update_one(
+                {
+                    "user_id": user_id,
+                    "symbol": symbol,
+                    "amount": {"$gte": crypto_amount},
+                    marker_field: {"$exists": False},
+                },
+                {
+                    "$inc": {
+                        "amount": -crypto_amount,
+                        "cost_basis_eur": -basis_delta,
+                    },
+                    "$set": {
+                        marker_field: {
+                            "trade_id": trade_id,
+                            "side": "sell",
+                            "crypto_amount": crypto_amount,
+                            "eur_amount": round(float(req.amount_eur), 2),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    },
+                },
+            )
+            if holding_update.modified_count != 1:
+                await db.crypto_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": "holding_debit_failed"}},
+                )
+                raise HTTPException(status_code=409, detail=f"{symbol}-Bestand wurde bereits verändert oder reicht nicht aus")
+
+            payment = await credit_wallet(
+                user_id=user_id,
+                amount=req.amount_eur,
+                tx_type=TransactionType.REWARD,
+                description=f"Crypto Preview Verkauf: {symbol}",
+                reference=trade_id,
+                source="crypto_preview",
+                metadata={"symbol": symbol, "crypto_amount": crypto_amount, "preview": True},
+                idempotency_key=f"crypto-trade:{trade_id}:wallet",
+            )
+            if not payment.success:
+                rollback = await db.crypto_holdings.update_one(
+                    {"user_id": user_id, "symbol": symbol, marker_field: {"$exists": True}},
+                    {
+                        "$inc": {"amount": crypto_amount, "cost_basis_eur": basis_delta},
+                        "$unset": {marker_field: ""},
+                    },
+                )
+                await db.crypto_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {
+                        "status": "failed" if rollback.modified_count == 1 else "reconciliation_required",
+                        "error": payment.error or "wallet_credit_failed",
+                    }},
+                )
+                if rollback.modified_count != 1:
+                    raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+                raise HTTPException(status_code=400, detail=payment.error or "Wallet-Gutschrift fehlgeschlagen")
+            new_balance = payment.new_balance
+            wallet_tx_id = payment.transaction_id
+
+        fresh_holding = await db.crypto_holdings.find_one({"user_id": user_id, "symbol": symbol}, {"_id": 0}) or {}
+        amount_after = max(0.0, float(fresh_holding.get("amount") or 0))
+        basis_after = max(0.0, float(fresh_holding.get("cost_basis_eur") or 0))
+        avg_after = round(basis_after / amount_after, 2) if amount_after > 1e-12 else 0.0
+        await db.crypto_holdings.update_one(
+            {"user_id": user_id, "symbol": symbol},
+            {"$set": {"avg_buy_price": avg_after}},
+        )
+
+        tx_doc = {
+            "_id": trade_id,
+            "id": trade_id,
+            "user_id": user_id,
+            "symbol": symbol,
+            "side": side,
+            "crypto_amount": crypto_amount,
+            "eur_amount": round(float(req.amount_eur), 2),
+            "price": price,
+            "wallet_transaction_id": wallet_tx_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.crypto_transactions.update_one({"_id": trade_id}, {"$setOnInsert": tx_doc}, upsert=True)
+        response = {
+            "success": True,
+            "side": side,
+            "symbol": symbol,
+            "crypto_amount": crypto_amount,
+            "eur_amount": round(float(req.amount_eur), 2),
+            "price": price,
+            "new_balance": round(float(new_balance or 0), 2),
+        }
+        await db.crypto_trade_ops.update_one(
+            {"_id": trade_id, "status": "processing"},
+            {"$set": {
+                "status": "completed",
+                "response": response,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return {**response, "replayed": bool(payment.idempotent_replay)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.crypto_trade_ops.update_one(
+            {"_id": trade_id, "status": "processing"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "error": str(exc)[:300],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+
 
 
 @router.get("/transactions")
