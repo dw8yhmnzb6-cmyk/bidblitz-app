@@ -1444,6 +1444,352 @@ async def _run_unlock_command(
     await _post_command_result(partner, response_url, command_id, command_result, message)
 
 
+async def _next_ocpp_reservation_id() -> int:
+    counter = await db.counters.find_one_and_update(
+        {"_id": "ocpp_reservation_id"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    return int((counter or {}).get("seq") or 1)
+
+
+def _parse_future_expiry(value: Any) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    if dt <= datetime.now(timezone.utc):
+        return None
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+async def _reservation_tariff_snapshot(cp: Dict[str, Any]) -> Dict[str, Any]:
+    tariff = None
+    if cp.get("tariff_id"):
+        tariff = await db.ev_tariffs.find_one({"_id": cp.get("tariff_id")})
+        if not tariff:
+            try:
+                from bson import ObjectId
+                tariff = await db.ev_tariffs.find_one({"_id": ObjectId(str(cp.get("tariff_id")))})
+            except Exception:
+                tariff = None
+    return {
+        "tariff_id": str(cp.get("tariff_id") or ""),
+        "price_per_kwh": float((tariff or {}).get("price_per_kwh") or 0),
+        "price_per_minute": float((tariff or {}).get("price_per_minute") or 0),
+        "session_fee": float((tariff or {}).get("session_fee") or 0),
+        "idle_fee_per_minute": float((tariff or {}).get("idle_fee_per_minute") or 0),
+        "minimum_fee": float((tariff or {}).get("minimum_fee") or 0),
+        "currency": (tariff or {}).get("currency") or "EUR",
+        "vat_rate": float((tariff or {}).get("vat_rate") or 0),
+    }
+
+
+async def _run_reserve_now_command(
+    partner: Dict[str, Any],
+    command_id: str,
+    reservation_key: Dict[str, Any],
+    cp: Dict[str, Any],
+    id_tag: str,
+    expiry_date: str,
+    response_url: Optional[str],
+) -> None:
+    reservation = await db.ocpi_reservations.find_one(reservation_key)
+    if not reservation:
+        await _post_command_result(partner, response_url, command_id, "FAILED", "Reservation state missing")
+        return
+
+    internal_id = int(reservation["ocpp_reservation_id"])
+    try:
+        if _cp_protocol(cp) == "ocpp2.0.1":
+            result = await ocpp_v201.reserve_now(
+                cp["charge_point_id"],
+                reservation_id=internal_id,
+                expiry_date_time=expiry_date,
+                id_token=id_tag,
+                evse_id=int(reservation.get("evse_id") or 1),
+            )
+        else:
+            result = await ocpp_csms.reserve_now(
+                cp["charge_point_id"],
+                connector_id=int(reservation.get("connector_id") or 0),
+                expiry_date=expiry_date,
+                id_tag=id_tag,
+                reservation_id=internal_id,
+            )
+        remote_status = str((result or {}).get("status") or "")
+        mapping = {
+            "Accepted": "ACCEPTED",
+            "Occupied": "EVSE_OCCUPIED",
+            "Faulted": "EVSE_INOPERATIVE",
+            "Unavailable": "EVSE_INOPERATIVE",
+            "Rejected": "REJECTED",
+        }
+        command_result = mapping.get(remote_status, "FAILED")
+        message = None if command_result == "ACCEPTED" else f"Charge point returned {remote_status or 'unknown'}"
+    except asyncio.TimeoutError:
+        command_result, message = "TIMEOUT", "Charge point reservation timed out"
+    except Exception as exc:
+        command_result, message = "FAILED", str(exc)[:300]
+
+    update = {
+        "status": "reserved" if command_result == "ACCEPTED" else "failed",
+        "command_result": command_result,
+        "updated_at": _now(),
+    }
+    if message:
+        update["error"] = message
+    await db.ocpi_reservations.update_one(reservation_key, {"$set": update})
+
+    session_id = reservation.get("session_id")
+    if session_id:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "reserved" if command_result == "ACCEPTED" else "rejected",
+                "ocpi_command_result": command_result,
+                "error": message,
+            }},
+        )
+    if command_result != "ACCEPTED":
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "used_at": _now()}},
+        )
+
+    await db.ocpi_command_logs.update_one(
+        {"command_id": command_id},
+        {"$set": {"status": "finished", "command_result": command_result, "updated_at": _now()}},
+    )
+    await _post_command_result(partner, response_url, command_id, command_result, message)
+
+
+async def _run_cancel_reservation_command(
+    partner: Dict[str, Any],
+    command_id: str,
+    reservation_key: Dict[str, Any],
+    cp: Dict[str, Any],
+    response_url: Optional[str],
+) -> None:
+    reservation = await db.ocpi_reservations.find_one(reservation_key)
+    if not reservation:
+        await _post_command_result(partner, response_url, command_id, "UNKNOWN_RESERVATION", "Reservation not found")
+        return
+
+    internal_id = int(reservation["ocpp_reservation_id"])
+    try:
+        if _cp_protocol(cp) == "ocpp2.0.1":
+            result = await ocpp_v201.cancel_reservation(cp["charge_point_id"], internal_id)
+        else:
+            result = await ocpp_csms.cancel_reservation(cp["charge_point_id"], internal_id)
+        remote_status = str((result or {}).get("status") or "")
+        if remote_status == "Accepted":
+            command_result, message = "ACCEPTED", None
+        else:
+            command_result, message = "REJECTED", f"Charge point returned {remote_status or 'unknown'}"
+    except asyncio.TimeoutError:
+        command_result, message = "TIMEOUT", "Cancel reservation timed out"
+    except Exception as exc:
+        command_result, message = "FAILED", str(exc)[:300]
+
+    if command_result == "ACCEPTED":
+        await db.ocpi_reservations.update_one(
+            reservation_key,
+            {"$set": {"status": "cancelled", "cancelled_at": _now(), "updated_at": _now()}},
+        )
+        if reservation.get("session_id"):
+            await db.ev_charging_sessions.update_one(
+                {"session_id": reservation["session_id"], "status": {"$in": ["reserved", "reserving"]}},
+                {"$set": {"status": "cancelled", "stopped_at": _now()}},
+            )
+        if reservation.get("id_tag"):
+            await db.ev_authorizations.update_one(
+                {"id_tag": reservation["id_tag"]},
+                {"$set": {"active": False, "used_at": _now()}},
+            )
+
+    await db.ocpi_command_logs.update_one(
+        {"command_id": command_id},
+        {"$set": {"status": "finished", "command_result": command_result, "updated_at": _now()}},
+    )
+    await _post_command_result(partner, response_url, command_id, command_result, message)
+
+
+@router.post(f"/cpo/{OCPI_VERSION}/commands/RESERVE_NOW")
+async def command_reserve_now(
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    response_url = body.get("response_url")
+    token = body.get("token") or {}
+    reservation_id = str(body.get("reservation_id") or "")
+    location_id = str(body.get("location_id") or "")
+    expiry_date = _parse_future_expiry(body.get("expiry_date"))
+    if not response_url or not token.get("uid") or not reservation_id or not location_id or not expiry_date:
+        return _command_response(
+            "REJECTED",
+            message="response_url, token, expiry_date, reservation_id and location_id are required",
+        )
+    if len(reservation_id) > 36:
+        return _command_response("REJECTED", message="reservation_id exceeds 36 characters")
+    if not _remote_token_owned_by_partner(token, partner):
+        return _command_response("REJECTED", message="Token is not owned by requesting eMSP")
+
+    cp = await _find_local_cp(location_id, body.get("evse_uid"))
+    if not cp:
+        return _command_response("REJECTED", message="Unknown location/EVSE")
+    if not _cp_online(cp):
+        return _command_response("REJECTED", message="Charge point offline")
+
+    reservation_key = {
+        "partner_id": partner["partner_id"],
+        "external_reservation_id": reservation_id,
+    }
+    existing = await db.ocpi_reservations.find_one(reservation_key)
+    internal_id = int(existing.get("ocpp_reservation_id")) if existing else await _next_ocpp_reservation_id()
+    session_id = (existing or {}).get("session_id") or f"ocpir_{secrets.token_hex(7)}"
+    token_uid = str(token["uid"])
+    token_type = str(token.get("type") or "RFID")
+    id_tag = (existing or {}).get("id_tag") or (
+        "OCPIR" + hashlib.sha256(
+            f"{partner['partner_id']}:{reservation_id}:{token_uid}:{token_type}".encode("utf-8")
+        ).hexdigest()[:15].upper()
+    )
+    tariff_snapshot = await _reservation_tariff_snapshot(cp)
+
+    # For OCPP 1.6, connectorId=0 lets the charge point choose any connector.
+    # OCPP 2.0.1 can reserve a specific EVSE when our mapping is known.
+    evse_id = 1
+    connector_id = 0
+    await db.ev_authorizations.update_one(
+        {"id_tag": id_tag},
+        {"$set": {
+            "id_tag": id_tag,
+            "user_id": None,
+            "active": True,
+            "ocpi_partner_id": partner["partner_id"],
+            "ocpi_token_uid": token_uid,
+            "created_at": (existing or {}).get("created_at") or _now(),
+            "expires_at": expiry_date,
+        }},
+        upsert=True,
+    )
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "session_id": session_id,
+            "charge_point_id": cp["charge_point_id"],
+            "connector_id": connector_id,
+            "user_id": None,
+            "id_tag": id_tag,
+            "tariff": tariff_snapshot,
+            "reserved_amount": 0.0,
+            "currency": tariff_snapshot["currency"],
+            "kwh_charged": 0.0,
+            "current_cost": 0.0,
+            "status": "reserving",
+            "ocpi_external": True,
+            "ocpi_partner_id": partner["partner_id"],
+            "ocpi_token": token,
+            "authorization_reference": body.get("authorization_reference"),
+            "ocpi_reservation_id": reservation_id,
+            "ocpp_reservation_id": internal_id,
+            "reservation_expiry": expiry_date,
+            "created_at": (existing or {}).get("created_at") or _now(),
+            "updated_at": _now(),
+        }},
+        upsert=True,
+    )
+
+    await db.ocpi_reservations.update_one(
+        reservation_key,
+        {"$set": {
+            **reservation_key,
+            "ocpp_reservation_id": internal_id,
+            "session_id": session_id,
+            "charge_point_id": cp["charge_point_id"],
+            "evse_uid": body.get("evse_uid"),
+            "evse_id": evse_id,
+            "connector_id": connector_id,
+            "id_tag": id_tag,
+            "token": token,
+            "expiry_date": expiry_date,
+            "authorization_reference": body.get("authorization_reference"),
+            "status": "reserving",
+            "updated_at": _now(),
+        }, "$setOnInsert": {"created_at": _now()}},
+        upsert=True,
+    )
+
+    command_id = f"ocpi_cmd_{secrets.token_hex(8)}"
+    await db.ocpi_command_logs.insert_one({
+        "command_id": command_id,
+        "command": "RESERVE_NOW",
+        "partner_id": partner["partner_id"],
+        "reservation_id": reservation_id,
+        "session_id": session_id,
+        "response_url": response_url,
+        "status": "accepted",
+        "created_at": _now(),
+    })
+    asyncio.create_task(_run_reserve_now_command(
+        partner, command_id, reservation_key, cp, id_tag, expiry_date, response_url
+    ))
+    return _command_response("ACCEPTED")
+
+
+@router.post(f"/cpo/{OCPI_VERSION}/commands/CANCEL_RESERVATION")
+async def command_cancel_reservation(
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    response_url = body.get("response_url")
+    reservation_id = str(body.get("reservation_id") or "")
+    if not response_url or not reservation_id:
+        return _command_response("REJECTED", message="response_url and reservation_id are required")
+
+    reservation_key = {
+        "partner_id": partner["partner_id"],
+        "external_reservation_id": reservation_id,
+    }
+    reservation = await db.ocpi_reservations.find_one(reservation_key)
+    if not reservation or reservation.get("status") not in {"reserved", "reserving"}:
+        return _command_response("REJECTED", message="Reservation not active")
+
+    cp = await db.ev_charge_points.find_one({
+        "charge_point_id": reservation.get("charge_point_id"),
+        "active": True,
+    })
+    if not cp or not _cp_online(cp):
+        return _command_response("REJECTED", message="Charge point offline or unavailable")
+
+    command_id = f"ocpi_cmd_{secrets.token_hex(8)}"
+    await db.ocpi_command_logs.insert_one({
+        "command_id": command_id,
+        "command": "CANCEL_RESERVATION",
+        "partner_id": partner["partner_id"],
+        "reservation_id": reservation_id,
+        "session_id": reservation.get("session_id"),
+        "response_url": response_url,
+        "status": "accepted",
+        "created_at": _now(),
+    })
+    asyncio.create_task(_run_cancel_reservation_command(
+        partner, command_id, reservation_key, cp, response_url
+    ))
+    return _command_response("ACCEPTED")
+
+
 @router.post(f"/cpo/{OCPI_VERSION}/commands/START_SESSION")
 async def command_start_session(
     request: Request,
