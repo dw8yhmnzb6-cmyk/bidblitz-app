@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert, ScanLine
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert, ScanLine, ArrowRightLeft, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -33,6 +33,9 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   const [activationCode, setActivationCode] = useState("");
   const [activationProduct, setActivationProduct] = useState(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [warrantyTransfers, setWarrantyTransfers] = useState({ incoming: [], outgoing: [] });
+  const [transferWarranty, setTransferWarranty] = useState(null);
+  const [transferEmail, setTransferEmail] = useState("");
   const activationPrefillRef = useRef("");
   const [warrantyForm, setWarrantyForm] = useState({
     product_id: "",
@@ -76,6 +79,15 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     }
   }, []);
 
+  const loadWarrantyTransfers = useCallback(async () => {
+    try {
+      const data = await api.getChargeWarrantyTransfers();
+      setWarrantyTransfers(data || { incoming: [], outgoing: [] });
+    } catch (error) {
+      void error;
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
@@ -83,6 +95,10 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    loadWarrantyTransfers();
+  }, [loadWarrantyTransfers]);
 
   useEffect(() => {
     const productId = String(routeParams?.activate_product_id || "").trim();
@@ -262,6 +278,75 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     });
     setWarrantyFile(null);
   }, []);
+
+  const openWarrantyTransfer = useCallback((item) => {
+    setTransferWarranty(item);
+    setTransferEmail("");
+  }, []);
+
+  const submitWarrantyTransfer = useCallback(async () => {
+    if (!transferWarranty?.registration_id) return;
+    const recipientEmail = transferEmail.trim();
+    if (!recipientEmail) {
+      toast.error("Bitte Empfänger-E-Mail eingeben");
+      return;
+    }
+    setBusy("warranty-transfer");
+    try {
+      const response = await api.createChargeWarrantyTransfer(
+        transferWarranty.registration_id,
+        { recipient_email: recipientEmail }
+      );
+      toast.success(response?.duplicate ? "Übertragung ist bereits offen" : "Garantieübertragung erstellt");
+      setTransferWarranty(null);
+      setTransferEmail("");
+      await loadWarrantyTransfers();
+    } catch (error) {
+      toast.error(error.message || "Garantie konnte nicht zur Übertragung freigegeben werden");
+    } finally {
+      setBusy("");
+    }
+  }, [transferWarranty, transferEmail, loadWarrantyTransfers]);
+
+  const acceptWarrantyTransfer = useCallback(async (transferId) => {
+    setBusy(`transfer-accept-${transferId}`);
+    try {
+      await api.acceptChargeWarrantyTransfer(transferId);
+      toast.success("Garantie übernommen");
+      await Promise.all([loadWarrantyTransfers(), loadDashboard()]);
+    } catch (error) {
+      toast.error(error.message || "Garantieübertragung konnte nicht angenommen werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadWarrantyTransfers, loadDashboard]);
+
+  const declineWarrantyTransfer = useCallback(async (transferId) => {
+    setBusy(`transfer-decline-${transferId}`);
+    try {
+      await api.declineChargeWarrantyTransfer(transferId);
+      toast.success("Garantieübertragung abgelehnt");
+      await loadWarrantyTransfers();
+    } catch (error) {
+      toast.error(error.message || "Übertragung konnte nicht abgelehnt werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadWarrantyTransfers]);
+
+  const cancelWarrantyTransfer = useCallback(async (transferId) => {
+    setBusy(`transfer-cancel-${transferId}`);
+    try {
+      await api.cancelChargeWarrantyTransfer(transferId);
+      toast.success("Garantieübertragung storniert");
+      await loadWarrantyTransfers();
+    } catch (error) {
+      toast.error(error.message || "Übertragung konnte nicht storniert werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadWarrantyTransfers]);
+
 
   const deleteWarranty = useCallback(async (registrationId) => {
     if (!window.confirm("Garantie und zugehörige Belege wirklich löschen?")) return;
@@ -931,6 +1016,14 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                     >
                       <ShieldAlert size={11} />Reklamation
                     </button>
+                    <button
+                      onClick={() => openWarrantyTransfer(item)}
+                      disabled={item.status !== "active"}
+                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-black text-cyan-800 disabled:opacity-40"
+                      data-testid={`charge-app-warranty-transfer-${index}`}
+                    >
+                      <ArrowRightLeft size={11} />Übertragen
+                    </button>
                     <button onClick={() => editWarranty(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-warranty-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
                     <button onClick={() => deleteWarranty(item.registration_id)} disabled={busy === `delete-warranty-${item.registration_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-warranty-delete-${index}`}><Trash2 size={11} />{busy === `delete-warranty-${item.registration_id}` ? "Löscht..." : "Löschen"}</button>
                   </div>
@@ -959,6 +1052,92 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                   <ChevronRight size={18} className="text-slate-400" />
                 </button>
               ))}
+            </div>
+          </SurfaceCard>
+        </div>
+
+        <div className="mt-6">
+          <SurfaceCard title="Garantieübertragungen" icon={ArrowRightLeft} testid="charge-app-warranty-transfers-card">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Für dich</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Garantien, die ein anderer Besitzer an dein Konto übertragen möchte.</p>
+                  </div>
+                  <span className="rounded-full bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#6EE7F9]">
+                    {(warrantyTransfers.incoming || []).filter((item) => item.status === "pending").length}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {(warrantyTransfers.incoming || []).length === 0 ? (
+                    <EmptyState label="Keine eingehenden Garantieübertragungen" testid="charge-app-transfer-incoming-empty" />
+                  ) : (warrantyTransfers.incoming || []).map((item, index) => (
+                    <div key={item.transfer_id} className="rounded-2xl border border-[#E1D7C7] bg-white p-4" data-testid={`charge-app-transfer-incoming-${index}`}>
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0A1626] text-[#6EE7F9]"><ArrowRightLeft size={16} /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-slate-900">{item.product_name}</p>
+                          <p className="mt-1 text-xs text-slate-500">SN {item.serial_number_masked} · von {item.from_email || "BidBlitz Nutzer"}</p>
+                          <p className="mt-2 text-[11px] font-bold text-slate-400">{transferStatusLabel(item.status)} · bis {formatTransferDate(item.expires_at)}</p>
+                        </div>
+                      </div>
+                      {item.status === "pending" ? (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => declineWarrantyTransfer(item.transfer_id)}
+                            disabled={busy === `transfer-decline-${item.transfer_id}`}
+                            className="h-10 rounded-2xl border border-red-200 bg-red-50 text-xs font-black text-red-700 disabled:opacity-50"
+                            data-testid={`charge-app-transfer-decline-${index}`}
+                          >
+                            Ablehnen
+                          </button>
+                          <button
+                            onClick={() => acceptWarrantyTransfer(item.transfer_id)}
+                            disabled={busy === `transfer-accept-${item.transfer_id}`}
+                            className="h-10 rounded-2xl bg-[#0A1626] text-xs font-black text-[#D8FCFF] disabled:opacity-50"
+                            data-testid={`charge-app-transfer-accept-${index}`}
+                          >
+                            {busy === `transfer-accept-${item.transfer_id}` ? "Übernimmt..." : "Annehmen"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-3">
+                  <p className="text-xs font-black text-slate-900">Von dir gesendet</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Offene und abgeschlossene Übertragungen deiner Charge-Garantien.</p>
+                </div>
+                <div className="space-y-2">
+                  {(warrantyTransfers.outgoing || []).length === 0 ? (
+                    <EmptyState label="Noch keine Garantie übertragen" testid="charge-app-transfer-outgoing-empty" />
+                  ) : (warrantyTransfers.outgoing || []).slice(0, 8).map((item, index) => (
+                    <div key={item.transfer_id} className="rounded-2xl border border-[#E1D7C7] bg-white p-4" data-testid={`charge-app-transfer-outgoing-${index}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-slate-900">{item.product_name}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">an {item.recipient_email}</p>
+                          <p className="mt-2 text-[11px] font-bold text-slate-400">{transferStatusLabel(item.status)}</p>
+                        </div>
+                        {item.status === "pending" ? (
+                          <button
+                            onClick={() => cancelWarrantyTransfer(item.transfer_id)}
+                            disabled={busy === `transfer-cancel-${item.transfer_id}`}
+                            className="shrink-0 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50"
+                            data-testid={`charge-app-transfer-cancel-${index}`}
+                          >
+                            Stornieren
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </SurfaceCard>
         </div>
@@ -1009,10 +1188,67 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
         </div>
       </div>
     </div>
+    {transferWarranty ? (
+      <div className="fixed inset-0 z-[85] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" data-testid="charge-app-warranty-transfer-modal">
+        <div className="w-full max-w-md rounded-t-[30px] bg-[#F8F3EA] p-5 shadow-2xl sm:rounded-[30px]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0A1626] text-[#6EE7F9]"><ArrowRightLeft size={18} /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Garantie übertragen</p>
+              <h3 className="mt-1 truncate text-lg font-black text-slate-900">{transferWarranty.product_name}</h3>
+              <p className="mt-1 text-xs text-slate-500">SN {transferWarranty.serial_number}</p>
+            </div>
+            <button onClick={() => setTransferWarranty(null)} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9CFC0] bg-white"><X size={15} /></button>
+          </div>
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+            Die Garantie wechselt nach Annahme auf das Empfänger-Konto. Deine Rechnung und Belege werden nicht übertragen.
+          </div>
+          <div className="relative mt-4">
+            <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={transferEmail}
+              onChange={(e) => setTransferEmail(e.target.value)}
+              type="email"
+              placeholder="Empfänger-E-Mail"
+              className="h-11 w-full rounded-2xl border border-[#D9CFC0] bg-white pl-10 pr-4 text-sm outline-none"
+              data-testid="charge-app-warranty-transfer-email"
+            />
+          </div>
+          <button
+            onClick={submitWarrantyTransfer}
+            disabled={busy === "warranty-transfer" || !transferEmail.trim()}
+            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1626] text-sm font-black text-[#D8FCFF] disabled:opacity-40"
+            data-testid="charge-app-warranty-transfer-submit"
+          >
+            {busy === "warranty-transfer" ? <Loader2 size={15} className="animate-spin" /> : <ArrowRightLeft size={15} />}
+            Übertragung freigeben
+          </button>
+        </div>
+      </div>
+    ) : null}
     <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
     <ChargeProductScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleScannedProductCode} />
     </>
   );
+}
+
+
+function transferStatusLabel(status) {
+  const labels = {
+    pending: "Wartet auf Annahme",
+    accepted: "Übernommen",
+    declined: "Abgelehnt",
+    cancelled: "Storniert",
+    expired: "Abgelaufen",
+  };
+  return labels[status] || status || "Unbekannt";
+}
+
+function formatTransferDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
 
