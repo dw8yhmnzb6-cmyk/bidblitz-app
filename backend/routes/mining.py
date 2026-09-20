@@ -5,6 +5,7 @@ Virtual mining system with miners, upgrades, VIP levels, referrals.
 
 import secrets
 import random
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -533,24 +534,26 @@ async def get_packages(request: Request):
 class BuyMinerRequest(BaseModel):
     package_id: str
     billing: str = "onetime"  # "onetime", "monthly", "yearly"
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/buy-miner")
 async def buy_miner(req: BuyMinerRequest, request: Request):
-    """Buy a miner package using wallet balance - Uses Payment Engine for safety."""
+    """Buy a miner package through the canonical wallet with retry-safe fulfillment."""
     _require_mining_value_mode()
     from core.payment_engine import debit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
     pkg = next((p for p in MINER_PACKAGES if p["id"] == req.package_id), None)
     if not pkg:
         raise HTTPException(status_code=400, detail="Invalid package")
 
     billing = req.billing if req.billing in ("onetime", "monthly", "yearly") else "onetime"
-
-    # Get the price based on billing type
     if billing == "monthly":
         price = pkg["price_monthly"]
     elif billing == "yearly":
@@ -558,24 +561,32 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     else:
         price = pkg["price_eur"]
 
-    # Use Payment Engine for atomic wallet deduction
+    purchase_hash = hashlib.sha256(
+        f"{user_id}:{req.package_id}:{billing}:{raw_key}".encode("utf-8")
+    ).hexdigest()[:20]
+    purchase_id = f"MINBUY-{purchase_hash.upper()}"
+    miner_id = f"miner_{purchase_hash}"
+    payment_idempotency_key = f"mining-buy:{raw_key}"
     billing_label = {"onetime": "", "monthly": " (Monatlich)", "yearly": " (Jährlich)"}
+
     result = await debit_wallet(
         user_id=user_id,
         amount=price,
         tx_type=TransactionType.MINING_PURCHASE,
         description=f"Mining: {pkg['name']}{billing_label.get(billing, '')}",
-        metadata={"package_id": req.package_id, "billing": billing}
+        reference=f"MIN-BUY-{purchase_hash[:12].upper()}",
+        metadata={
+            "package_id": req.package_id,
+            "billing": billing,
+            "purchase_id": purchase_id,
+            "miner_id": miner_id,
+        },
+        idempotency_key=payment_idempotency_key,
     )
-    
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
-    # Create miner
-    miner_id = secrets.token_hex(6)
     now = datetime.now(timezone.utc).isoformat()
-
-    # Calculate billing dates
     billing_info = {"type": billing, "price": price}
     if billing == "monthly":
         billing_info["next_payment"] = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
@@ -586,6 +597,8 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
 
     miner = {
         "miner_id": miner_id,
+        "purchase_id": purchase_id,
+        "purchase_idempotency_key": payment_idempotency_key,
         "user_id": user_id,
         "package_id": pkg["id"],
         "name": pkg["name"],
@@ -598,25 +611,34 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
         "icon": pkg["icon"],
         "billing": billing_info,
     }
-    await db.mining_miners.insert_one(miner)
-    miner.pop("_id", None)
+    await db.mining_miners.update_one(
+        {"miner_id": miner_id},
+        {"$setOnInsert": miner},
+        upsert=True,
+    )
 
-    # Record mining transaction
     txn = {
-        "txn_id": secrets.token_hex(6),
+        "txn_id": purchase_id,
         "user_id": user_id,
         "type": "purchase",
         "amount_eur": -price,
         "description": f"Purchased {pkg['name']}{billing_label.get(billing, '')}",
+        "wallet_transaction_id": result.transaction_id,
+        "idempotency_key": payment_idempotency_key,
         "created_at": now,
     }
-    await db.mining_transactions.insert_one(txn)
-    txn.pop("_id", None)
+    await db.mining_transactions.update_one(
+        {"txn_id": purchase_id},
+        {"$setOnInsert": txn},
+        upsert=True,
+    )
 
     return {
         "miner": miner,
         "new_balance": result.new_balance,
         "transaction_id": result.transaction_id,
+        "purchase_id": purchase_id,
+        "replayed": result.idempotent_replay,
     }
 
 
@@ -624,16 +646,20 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
 class UpgradeRequest(BaseModel):
     miner_id: str
     upgrade_type: str  # "power" or "efficiency"
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/upgrade")
 async def upgrade_miner(req: UpgradeRequest, request: Request):
-    """Upgrade a miner's power or efficiency - Uses Payment Engine for safety."""
+    """Upgrade a miner exactly once; refund if a concurrent upgrade wins the level CAS."""
     _require_mining_value_mode()
-    from core.payment_engine import debit_wallet, TransactionType
-    
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
     if req.upgrade_type not in ("power", "efficiency"):
         raise HTTPException(status_code=400, detail="Invalid upgrade type")
@@ -643,46 +669,145 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         raise HTTPException(status_code=404, detail="Miner not found")
 
     level_key = f"{req.upgrade_type}_level"
-    current_level = miner.get(level_key, 0)
-
+    current_level = int(miner.get(level_key, 0) or 0)
     costs = UPGRADE_COSTS[req.upgrade_type]
     if current_level >= len(costs) - 1:
         raise HTTPException(status_code=400, detail="Max level reached")
 
-    cost = costs[current_level + 1]
-    
-    # Use Payment Engine for atomic wallet deduction
+    target_level = current_level + 1
+    cost = costs[target_level]
+    payment_idempotency_key = f"mining-upgrade:{raw_key}"
+    operation_hash = hashlib.sha256(
+        f"{user_id}:{req.miner_id}:{req.upgrade_type}:{raw_key}".encode("utf-8")
+    ).hexdigest()[:20]
+    operation_id = f"MUP-{operation_hash.upper()}"
+    applied_marker = f"upgrade_applied.{operation_hash}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.mining_upgrade_operations.update_one(
+        {"user_id": user_id, "idempotency_key": payment_idempotency_key},
+        {"$setOnInsert": {
+            "operation_id": operation_id,
+            "user_id": user_id,
+            "miner_id": req.miner_id,
+            "upgrade_type": req.upgrade_type,
+            "from_level": current_level,
+            "to_level": target_level,
+            "cost": cost,
+            "idempotency_key": payment_idempotency_key,
+            "status": "processing",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    operation = await db.mining_upgrade_operations.find_one(
+        {"user_id": user_id, "idempotency_key": payment_idempotency_key},
+        {"_id": 0},
+    ) or {}
+    if operation.get("miner_id") != req.miner_id or operation.get("upgrade_type") != req.upgrade_type:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Mining-Aktion verwendet")
+    if int(operation.get("from_level", current_level)) != current_level and operation.get("status") == "processing":
+        current_level = int(operation.get("from_level"))
+        target_level = int(operation.get("to_level"))
+        cost = float(operation.get("cost"))
+    if operation.get("status") == "refunded":
+        raise HTTPException(status_code=409, detail="Upgrade wurde wegen eines parallelen Vorgangs zurückgebucht")
+    if operation.get("status") == "failed":
+        raise HTTPException(status_code=400, detail=operation.get("error") or "Upgrade-Zahlung fehlgeschlagen")
+
     result = await debit_wallet(
         user_id=user_id,
         amount=cost,
         tx_type=TransactionType.MINING_PURCHASE,
-        description=f"Mining Upgrade: {miner['name']} {req.upgrade_type} to Lv.{current_level + 1}",
-        metadata={"miner_id": req.miner_id, "upgrade_type": req.upgrade_type, "new_level": current_level + 1}
+        description=f"Mining Upgrade: {miner['name']} {req.upgrade_type} to Lv.{target_level}",
+        reference=f"MIN-UP-{operation_hash[:12].upper()}",
+        metadata={
+            "miner_id": req.miner_id,
+            "upgrade_type": req.upgrade_type,
+            "from_level": current_level,
+            "new_level": target_level,
+            "operation_id": operation_id,
+        },
+        idempotency_key=payment_idempotency_key,
     )
-    
     if not result.success:
+        await db.mining_upgrade_operations.update_one(
+            {"operation_id": operation_id, "status": "processing"},
+            {"$set": {"status": "failed", "error": result.error, "failed_at": datetime.now(timezone.utc).isoformat()}},
+        )
         raise HTTPException(status_code=400, detail=result.error)
 
-    await db.mining_miners.update_one(
-        {"miner_id": req.miner_id},
-        {"$inc": {level_key: 1}},
+    applied = await db.mining_miners.update_one(
+        {
+            "miner_id": req.miner_id,
+            "user_id": user_id,
+            level_key: current_level,
+            applied_marker: {"$exists": False},
+        },
+        {"$set": {
+            level_key: target_level,
+            applied_marker: {
+                "operation_id": operation_id,
+                "wallet_transaction_id": result.transaction_id,
+                "applied_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }},
     )
+    if applied.modified_count != 1:
+        fresh_miner = await db.mining_miners.find_one({"miner_id": req.miner_id, "user_id": user_id}) or {}
+        marker = (fresh_miner.get("upgrade_applied") or {}).get(operation_hash)
+        if not marker:
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=cost,
+                tx_type=TransactionType.REFUND,
+                description=f"Mining Upgrade Rückerstattung: {miner['name']}",
+                reference=f"MIN-UP-REF-{operation_hash[:10].upper()}",
+                source="mining_upgrade_race_refund",
+                metadata={"operation_id": operation_id, "miner_id": req.miner_id},
+                idempotency_key=f"mining-upgrade-refund:{operation_id}",
+            )
+            await db.mining_upgrade_operations.update_one(
+                {"operation_id": operation_id},
+                {"$set": {
+                    "status": "refunded",
+                    "refund_transaction_id": refund.transaction_id if refund.success else None,
+                    "refunded_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=409, detail="Parallel-Upgrade erkannt. Zahlung wurde zurückgebucht.")
 
-    now = datetime.now(timezone.utc).isoformat()
-    await db.mining_transactions.insert_one({
-        "txn_id": secrets.token_hex(6),
-        "user_id": user_id,
-        "type": "upgrade",
-        "amount_eur": -cost,
-        "description": f"Upgraded {miner['name']} {req.upgrade_type} to Lv.{current_level + 1}",
-        "created_at": now,
-    })
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.mining_upgrade_operations.update_one(
+        {"operation_id": operation_id},
+        {"$set": {
+            "status": "completed",
+            "wallet_transaction_id": result.transaction_id,
+            "completed_at": completed_at,
+        }},
+    )
+    await db.mining_transactions.update_one(
+        {"txn_id": operation_id},
+        {"$setOnInsert": {
+            "txn_id": operation_id,
+            "user_id": user_id,
+            "type": "upgrade",
+            "amount_eur": -cost,
+            "description": f"Upgraded {miner['name']} {req.upgrade_type} to Lv.{target_level}",
+            "wallet_transaction_id": result.transaction_id,
+            "idempotency_key": payment_idempotency_key,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
 
     return {
         "ok": True,
-        "new_level": current_level + 1,
+        "operation_id": operation_id,
+        "new_level": target_level,
         "cost": cost,
         "new_balance": result.new_balance,
+        "replayed": result.idempotent_replay or operation.get("status") == "completed",
     }
 
 
