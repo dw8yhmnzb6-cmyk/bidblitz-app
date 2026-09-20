@@ -1479,6 +1479,22 @@ async def update_charge_offer_rule(rule_id: str, req: ChargeOfferRuleRequest, re
     return {"ok": True, "rule": _serialize_offer_rule(saved or update_doc)}
 
 
+@router.delete("/admin/offer-rules/{rule_id}")
+async def delete_charge_offer_rule(rule_id: str, request: Request):
+    admin = await _require_admin(request)
+    existing = await db.charge_offer_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Regel nicht gefunden")
+    result = await db.charge_offer_rules.delete_one({"rule_id": rule_id})
+    if result.deleted_count != 1:
+        raise HTTPException(status_code=409, detail="Regel konnte nicht gelöscht werden")
+    return {
+        "ok": True,
+        "rule_id": rule_id,
+        "deleted_by": admin.get("email") or admin.get("user_id") or "admin",
+    }
+
+
 @router.put("/admin/offer-rules/{rule_id}/toggle")
 async def toggle_charge_offer_rule(rule_id: str, request: Request):
     await _require_admin(request)
