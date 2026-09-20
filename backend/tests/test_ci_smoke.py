@@ -2868,3 +2868,15 @@ def test_registered_router_method_path_pairs_are_unique():
         for (method, path), defs in sorted(duplicates.items())
     )
 
+def test_birthday_blz_rewards_are_test_only():
+    backend = (BACKEND_DIR / "routes" / "growth.py").read_text(encoding="utf-8")
+    birthday = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "BirthdayBonusBanner.jsx").read_text(encoding="utf-8")
+
+    assert "birthday_blz = BIRTHDAY_BLZ if TEST_MODE else 0" in backend
+    assert "if birthday_blz > 0:" in backend
+    assert '"$inc": {"balance_blz": birthday_blz}' in backend
+    assert backend.index("if birthday_blz > 0:") < backend.index("blz_result = await db.users.update_one(")
+    assert 'legacy_blz_marker = await db.users.find_one(' in backend
+    assert '"blz": birthday_blz if dob_verified else 0' in backend
+    assert "Number(j.blz || 0) > 0" in birthday
+
