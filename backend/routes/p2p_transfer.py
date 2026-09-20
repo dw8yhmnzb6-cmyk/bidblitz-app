@@ -367,8 +367,13 @@ async def scan_qr_code(request: Request):
 
 @router.post("/nearby/enable")
 async def enable_nearby_receive(request: Request):
-    """Enable nearby receive mode for 5 minutes"""
+    """Enable nearby receive only in test mode until real proximity is implemented."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Nearby-Empfang ist in Production deaktiviert, bis echte Standortnähe verifiziert wird.",
+        )
     body = await request.json()
     enabled = body.get("enabled", True)
 
@@ -390,8 +395,13 @@ async def enable_nearby_receive(request: Request):
 
 @router.get("/nearby/users")
 async def get_nearby_users(request: Request):
-    """Get users who have nearby receive enabled (simulated - in production use GPS)"""
+    """Return simulated nearby users only in test mode."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Nearby-Nutzer sind in Production deaktiviert, bis echte Standortnähe verifiziert wird.",
+        )
     now = datetime.now(timezone.utc)
 
     nearby_users = await db.users.find({
