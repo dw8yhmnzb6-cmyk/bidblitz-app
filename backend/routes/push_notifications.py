@@ -47,7 +47,6 @@ class PushMessage(BaseModel):
 # SUBSCRIPTION MANAGEMENT
 # ═════════════════════════════════════════════════════════════════
 
-@router.get("/vapid-public-key")
 async def get_vapid_public_key():
     """Return VAPID public key for frontend."""
     if not PUSH_ENABLED:
@@ -55,7 +54,6 @@ async def get_vapid_public_key():
     return {"publicKey": VAPID_PUBLIC_KEY}
 
 
-@router.get("/subscription-status")
 async def push_subscription_status(request: Request):
     """Return whether this account currently has at least one push endpoint."""
     user = await get_current_user(request)
@@ -68,7 +66,6 @@ async def push_subscription_status(request: Request):
     }
 
 
-@router.post("/subscribe")
 async def subscribe_push(subscription: PushSubscription, request: Request):
     """Save push subscription for a user."""
     user = await get_current_user(request)
@@ -94,7 +91,6 @@ async def subscribe_push(subscription: PushSubscription, request: Request):
 
 
 @router.post("/unsubscribe")
-@router.delete("/unsubscribe")
 async def unsubscribe_push(subscription: PushSubscription, request: Request):
     """Remove push subscription."""
     user = await get_current_user(request)
@@ -232,7 +228,6 @@ async def notify_low_battery(parent_user_id: str, child_name: str, battery_level
 # TEST ENDPOINT (Development)
 # ═════════════════════════════════════════════════════════════════
 
-@router.post("/test")
 async def test_push(request: Request):
     """Send test push notification to current user."""
     user = await get_current_user(request)
