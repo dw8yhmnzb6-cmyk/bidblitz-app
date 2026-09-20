@@ -46,6 +46,8 @@ test("guest can sign in or register without seeing a wallet history or demo bala
 test("existing service and information destinations remain reachable", () => {
   renderComponent();
   const destinations = [
+    ["mobile-service-auctions", "/auctions"],
+    ["mobile-service-mining", "/mining"],
     ["mobile-service-mobility-center", "/mobility-center"],
     ["mobile-service-marketplace", "/marketplace"],
     ["mobile-service-loyalty", "/loyalty"],
