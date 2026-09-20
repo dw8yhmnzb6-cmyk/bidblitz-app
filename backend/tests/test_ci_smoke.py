@@ -2681,4 +2681,13 @@ def test_admin_transactions_route_is_single_and_supports_both_admin_uis():
     assert "effective_type = type or txn_type" in management
     assert "/api/admin/transactions?search=" in admin_page
     assert "/api/admin/transactions?" in management_page
+def test_virtual_card_freeze_route_is_not_duplicated():
+    virtual = (BACKEND_DIR / "routes" / "virtual_cards.py").read_text(encoding="utf-8")
+    lifecycle = (BACKEND_DIR / "routes" / "cards_lifecycle.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "VirtualCardsPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.post("/{card_id}/freeze")' not in virtual
+    assert '@router.post("/{card_id}/legacy-freeze")' in virtual
+    assert '@router.post("/api/cards/{card_id}/freeze")' in lifecycle
+    assert '/api/cards/${card.card_id}/${action}' in page
 
