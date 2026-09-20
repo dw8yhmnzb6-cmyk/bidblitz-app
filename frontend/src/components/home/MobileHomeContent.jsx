@@ -22,6 +22,23 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
     { id: "rewards", label: copy.rewards, icon: Gift, route: "/loyalty" },
     { id: "all-services", label: t("home.all_services"), icon: Compass, route: "/all-services" },
   ]);
+  const getTransactionRoute = transaction => {
+    const haystack = [
+      transaction?.type,
+      transaction?.category,
+      transaction?.merchantName,
+      transaction?.description,
+      transaction?.reference,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    if (haystack.includes("mining") || haystack.includes("miner") || haystack.includes("blz")) return "/mining";
+    if (haystack.includes("auction") || haystack.includes("auktion") || haystack.includes("bid credit")) return "/auctions";
+    if (haystack.includes("taxi") || haystack.includes("scooter") || haystack.includes("mobility") || haystack.includes("ride") || haystack.includes("ev charging")) return "/mobility-center";
+    if (haystack.includes("marketplace")) return "/marketplace";
+    if (haystack.includes("reward") || haystack.includes("loyalty") || haystack.includes("präm")) return "/loyalty";
+    return "/wallet";
+  };
+
   const formatAmount = amount => {
     if (balanceHidden) return "••••";
     const value = Number(amount);
@@ -76,7 +93,7 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
             <ul className="divide-y divide-white/10">
               {recent.map((transaction, index) => (
                 <li key={transaction.id || index}>
-                  <button type="button" onClick={() => onNavigate("/wallet")} className="flex min-h-[60px] w-full items-center gap-3 py-3 text-start" data-testid="mobile-recent-transaction">
+                  <button type="button" onClick={() => onNavigate(getTransactionRoute(transaction))} className="flex min-h-[60px] w-full items-center gap-3 py-3 text-start" data-testid="mobile-recent-transaction">
                     <Wallet size={18} className="shrink-0 text-cyan-300" aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate text-sm">{transaction.merchantName || transaction.description || t("nav.wallet")}</span>
                     <span className="shrink-0 text-sm font-semibold" dir="ltr">{formatAmount(transaction.amount)}</span>
