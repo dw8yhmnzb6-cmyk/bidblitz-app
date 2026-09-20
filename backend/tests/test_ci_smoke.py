@@ -1841,6 +1841,17 @@ def test_revenue2_legacy_marketplace_and_lottery_value_paths_are_safe():
     assert source.count('"$inc": {"balance_blz":') == 1
 
 
+def test_revenue2_premium_entitlement_precedes_bonus_credit():
+    source = (BACKEND_DIR / "routes" / "revenue2.py").read_text(encoding="utf-8")
+    block = source.split("async def purchase_premium", 1)[1].split('@router.post("/premium/cancel")', 1)[0]
+
+    entitlement_pos = block.index("await db.premium_subscriptions.update_one(")
+    bonus_pos = block.index('idempotency_key=f"revenue2-premium:{purchase_id}:bonus"')
+    assert entitlement_pos < bonus_pos
+    assert 'idempotency_key=f"revenue2-premium:{purchase_id}:eur"' in block
+    assert 'idempotency_key=f"revenue2-premium:{purchase_id}:blz"' in block
+
+
 def test_premium_page_uses_canonical_subscription_backend():
     page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "PremiumPage.jsx").read_text(encoding="utf-8")
     subscription = (BACKEND_DIR / "routes" / "subscription_system.py").read_text(encoding="utf-8")
