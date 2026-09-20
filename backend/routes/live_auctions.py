@@ -7,11 +7,33 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 import secrets
 
 router = APIRouter(prefix="/api/live-auctions", tags=["live-auctions"])
 
 PLATFORM_FEE = 0.10  # 10%
+
+
+def _require_live_auction_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Legacy-Live-Auktionen sind in Production deaktiviert, bis Escrow, Gewinnerzahlung und Settlement vollständig implementiert sind.",
+        )
+
+
+@router.get("/capabilities")
+async def live_auction_capabilities():
+    return {
+        "live_auction_enabled": bool(TEST_MODE),
+        "escrow_connected": False,
+        "winner_settlement_connected": False,
+        "message": (
+            None if TEST_MODE else
+            "Live-Auktionen sind noch nicht live: Gebote reservieren aktuell kein Geld und es gibt keinen freigegebenen Settlement-Pfad."
+        ),
+    }
 
 
 class AuctionCreate(BaseModel):
@@ -30,6 +52,8 @@ class BidRequest(BaseModel):
 
 @router.get("/active")
 async def get_active_auctions():
+    if not TEST_MODE:
+        return {"auctions": [], "live_auction_enabled": False}
     now = datetime.now(timezone.utc).isoformat()
     auctions = await db.live_auctions.find(
         {"status": "active", "ends_at": {"$gt": now}}, {"_id": 0}
@@ -39,6 +63,7 @@ async def get_active_auctions():
 
 @router.get("/auction/{auction_id}")
 async def get_auction(auction_id: str):
+    _require_live_auction_test_mode()
     a = await db.live_auctions.find_one({"auction_id": auction_id}, {"_id": 0})
     if not a:
         raise HTTPException(404, "Auktion nicht gefunden")
@@ -47,6 +72,7 @@ async def get_auction(auction_id: str):
 
 @router.post("/create")
 async def create_auction(req: AuctionCreate, request: Request):
+    _require_live_auction_test_mode()
     user = await get_current_user(request)
     now = datetime.now(timezone.utc)
     auction = {
@@ -74,6 +100,7 @@ async def create_auction(req: AuctionCreate, request: Request):
 
 @router.post("/bid")
 async def place_bid(req: BidRequest, request: Request):
+    _require_live_auction_test_mode()
     user = await get_current_user(request)
     email = user.get("email", "")
     
@@ -120,6 +147,8 @@ async def place_bid(req: BidRequest, request: Request):
 
 @router.get("/ended")
 async def get_ended_auctions():
+    if not TEST_MODE:
+        return {"auctions": [], "live_auction_enabled": False}
     now = datetime.now(timezone.utc).isoformat()
     ended = await db.live_auctions.find(
         {"ends_at": {"$lt": now}}, {"_id": 0}
