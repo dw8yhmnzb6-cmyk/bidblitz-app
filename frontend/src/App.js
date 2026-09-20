@@ -207,6 +207,7 @@ const AudiTicketSalesPage = lazy(() => import("./pages/AudiTicketSalesPage"));
 const ChargeAppPage = lazy(() => import("./pages/ChargeAppPage"));
 const ChargeMerchantDetailPage = lazy(() => import("./pages/ChargeMerchantDetailPage"));
 const ChargeProductDetailPage = lazy(() => import("./pages/ChargeProductDetailPage"));
+const ChargeCareClaimsPage = lazy(() => import("./pages/ChargeCareClaimsPage"));
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
@@ -855,6 +856,10 @@ function AppContent() {
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
           : <ChargeProductDetailPage productId={routeParams.product_id} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
+      case "/charge-app/claims":
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : <ChargeCareClaimsPage registrationId={routeParams.registration_id} claimId={routeParams.claim_id} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
