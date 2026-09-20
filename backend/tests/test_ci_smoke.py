@@ -1825,6 +1825,36 @@ def test_unverified_cashback_insurance_roundup_and_lottery_are_not_live_flows():
     for module in ["routes.cashback", "routes.insurance", "routes.roundup"]:
         assert f'("{module}", "router")' not in registry
 
+    insurance = (BACKEND_DIR / "routes" / "insurance.py").read_text(encoding="utf-8")
+    insurance_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "InsurancePage.jsx").read_text(encoding="utf-8")
+    assert "def _require_insurance_live_provider" in insurance
+    assert '"error": "insurance_provider_not_live"' in insurance
+    assert "if not TEST_MODE:" in insurance
+    assert 'query.update({"is_real": True, "provider_live": True})' in insurance
+    assert 'idempotency_key=f"insurance-policy:{policy_id}:premium"' in insurance
+    assert 'idempotency_key=f"insurance-policy:{policy_id}:cashback"' in insurance
+    assert 'idempotency_key=f"insurance-claim:{claim_id}:payout"' in insurance
+    assert '"$inc": {"balance": -price}' not in insurance
+    assert '"$inc": {"balance": cashback}' not in insurance
+    assert '"$inc": {"balance": req.payout_amount}' not in insurance
+    assert '"Idempotency-Key": idempotencyKey' in insurance_page
+    assert "insurance_provider_not_live" in insurance_page
+
+    insurance = (BACKEND_DIR / "routes" / "insurance.py").read_text(encoding="utf-8")
+    insurance_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "InsurancePage.jsx").read_text(encoding="utf-8")
+    assert "def _require_insurance_live_provider" in insurance
+    assert '"error": "insurance_provider_not_live"' in insurance
+    assert "if not TEST_MODE:" in insurance
+    assert 'query.update({"is_real": True, "provider_live": True})' in insurance
+    assert 'idempotency_key=f"insurance-policy:{policy_id}:premium"' in insurance
+    assert 'idempotency_key=f"insurance-policy:{policy_id}:cashback"' in insurance
+    assert 'idempotency_key=f"insurance-claim:{claim_id}:payout"' in insurance
+    assert '"$inc": {"balance": -price}' not in insurance
+    assert '"$inc": {"balance": cashback}' not in insurance
+    assert '"$inc": {"balance": req.payout_amount}' not in insurance
+    assert '"Idempotency-Key": idempotencyKey' in insurance_page
+    assert "insurance_provider_not_live" in insurance_page
+
 
 def test_blitzpay_nfc_requires_authenticated_merchant_and_platform_escrow():
     source = (BACKEND_DIR / "routes" / "blitzpay.py").read_text(encoding="utf-8")
