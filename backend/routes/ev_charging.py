@@ -268,26 +268,78 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
         raise HTTPException(404, "Session nicht gefunden")
     if sess.get("user_id") != str(user["_id"]) and not _is_admin(user):
         raise HTTPException(403, "Nicht berechtigt")
-    if sess.get("status") not in ("active", "starting"):
-        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({sess.get('status')})")
+
+    status = sess.get("status")
+    # Idempotent client/network retries: once a stop is already in flight or
+    # terminal, return the current state instead of sending another OCPP call.
+    if status in ("stopping", "completed", "cancelled"):
+        return {"session_id": session_id, "status": status}
+    if status not in ("active", "starting", "stop_failed"):
+        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({status})")
 
     txn_id = sess.get("ocpp_transaction_id")
     if txn_id is None:
-        await db.ev_charging_sessions.update_one(
-            {"session_id": session_id},
+        updated = await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": {"$in": ["active", "starting", "stop_failed"]}},
             {"$set": {"status": "cancelled", "stopped_at": _utcnow_iso()}},
         )
+        if not updated.modified_count:
+            latest = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+            return {"session_id": session_id, "status": (latest or {}).get("status", "cancelled")}
         return {"session_id": session_id, "status": "cancelled"}
 
+    # Compare-and-set claim prevents two concurrent HTTP retries from sending
+    # duplicate RemoteStop/RequestStopTransaction messages.
+    stop_requested_at = _utcnow_iso()
+    claimed = await db.ev_charging_sessions.find_one_and_update(
+        {
+            "session_id": session_id,
+            "status": {"$in": ["active", "starting", "stop_failed"]},
+        },
+        {"$set": {
+            "status": "stopping",
+            "stop_requested_at": stop_requested_at,
+            "stop_request_error": None,
+        }},
+        return_document=True,
+    )
+    if not claimed:
+        latest = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+        latest_status = (latest or {}).get("status")
+        if latest_status in ("stopping", "completed", "cancelled"):
+            return {"session_id": session_id, "status": latest_status}
+        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({latest_status})")
+
     try:
-        cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
+        cp = await db.ev_charge_points.find_one({"charge_point_id": claimed["charge_point_id"]})
         protocol = _cp_protocol(cp or {})
         if protocol == "ocpp2.0.1":
-            await ocpp_v201.request_stop_transaction(sess["charge_point_id"], txn_id)
+            result = await ocpp_v201.request_stop_transaction(claimed["charge_point_id"], txn_id)
         else:
-            await ocpp_csms.remote_stop(sess["charge_point_id"], txn_id)
+            result = await ocpp_csms.remote_stop(claimed["charge_point_id"], txn_id)
     except Exception as exc:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": "stopping", "stop_requested_at": stop_requested_at},
+            {"$set": {
+                "status": "stop_failed",
+                "stop_request_error": str(exc)[:300],
+                "stop_failed_at": _utcnow_iso(),
+            }},
+        )
         raise HTTPException(502, f"Stop-Befehl fehlgeschlagen: {exc}")
+
+    remote_status = (result or {}).get("status")
+    if remote_status and remote_status not in ("Accepted", "Scheduled"):
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": "stopping", "stop_requested_at": stop_requested_at},
+            {"$set": {
+                "status": "stop_failed",
+                "stop_request_error": f"Station returned {remote_status}",
+                "stop_failed_at": _utcnow_iso(),
+            }},
+        )
+        raise HTTPException(409, f"Ladestation hat den Stop abgelehnt ({remote_status})")
+
     return {"session_id": session_id, "status": "stopping"}
 
 
