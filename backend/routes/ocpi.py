@@ -1126,22 +1126,39 @@ async def receive_remote_command_result(
                     }},
                 )
             else:
-                await db.ev_charging_sessions.update_one(
-                    {"session_id": local_session_id},
-                    {"$set": {
-                        "status": "failed",
-                        "ocpi_start_result": result,
-                        "ocpi_start_result_at": _now(),
-                        "error": f"Roaming start failed: {result}",
-                    }},
-                )
-                # Release a user reservation only if this is our eMSP-side
-                # roaming session. Import locally to avoid router import cycles.
-                from routes.ev_charging import _refund_ev_reservation, _release_ev_user_session_claim
-                refunded = await _refund_ev_reservation(local_session_id, f"ocpi_start_{result.lower()}")
-                if refunded:
-                    sess = await db.ev_charging_sessions.find_one({"session_id": local_session_id})
-                    await _release_ev_user_session_claim((sess or {}).get("user_id"), local_session_id)
+                sess = await db.ev_charging_sessions.find_one({"session_id": local_session_id}) or {}
+                remote_evidence = bool(sess.get("ocpi_remote_session_id")) or sess.get("status") in {
+                    "active", "roaming_waiting_cdr", "completed",
+                }
+                if remote_evidence:
+                    # Session push can race ahead of the asynchronous CommandResult.
+                    # Never refund an already-started remote charging session.
+                    await db.ev_charging_sessions.update_one(
+                        {"session_id": local_session_id},
+                        {"$set": {
+                            "ocpi_start_result": result,
+                            "ocpi_start_result_at": _now(),
+                            "ocpi_command_anomaly": (
+                                f"CommandResult={result} arrived after remote session became active"
+                            ),
+                        }},
+                    )
+                else:
+                    await db.ev_charging_sessions.update_one(
+                        {"session_id": local_session_id},
+                        {"$set": {
+                            "status": "failed",
+                            "ocpi_start_result": result,
+                            "ocpi_start_result_at": _now(),
+                            "error": f"Roaming start failed: {result}",
+                        }},
+                    )
+                    # Release a user reservation only when no remote charging
+                    # session exists. Import locally to avoid router cycles.
+                    from routes.ev_charging import _refund_ev_reservation, _release_ev_user_session_claim
+                    refunded = await _refund_ev_reservation(local_session_id, f"ocpi_start_{result.lower()}")
+                    if refunded:
+                        await _release_ev_user_session_claim(sess.get("user_id"), local_session_id)
         elif command.get("command") == "STOP_SESSION":
             await db.ev_charging_sessions.update_one(
                 {"session_id": local_session_id},
