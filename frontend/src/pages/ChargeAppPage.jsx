@@ -40,6 +40,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     serial_number: "",
     purchase_date: "",
     merchant_name: "",
+    invoice_id: "",
     invoice_number: "",
     warranty_months: "24",
   });
@@ -238,6 +239,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       serial_number: item.serial_number || "",
       purchase_date: item.purchase_date || "",
       merchant_name: item.merchant_name || "",
+      invoice_id: item.invoice_id || "",
       invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
       warranty_months: String(item.warranty_months || 24),
     });
@@ -288,6 +290,33 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       setBusy("");
     }
   }, [loadDashboard]);
+
+  const createWarrantyFromInvoice = useCallback((item) => {
+    setEditingWarrantyId("");
+    setActivationCode("");
+    setActivationProduct(null);
+    setWarrantyFile(null);
+    setWarrantyForm({
+      product_id: "",
+      product_name: item.product_name && item.product_name !== "BidBlitz Charge Produkt" ? item.product_name : "",
+      serial_number: item.serial_number || "",
+      purchase_date: item.purchase_date || "",
+      merchant_name: item.merchant_name || "",
+      invoice_id: item.invoice_id || "",
+      invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+      warranty_months: "24",
+    });
+    window.setTimeout(() => {
+      document.querySelector('[data-testid="charge-app-warranty-card"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    toast.success("Rechnung für Garantie übernommen");
+  }, []);
+
+  const unlinkWarrantyInvoice = useCallback(() => {
+    setWarrantyForm((prev) => ({ ...prev, invoice_id: "" }));
+    toast.success("Rechnungsverknüpfung gelöst");
+  }, []);
+
 
   const editInvoice = useCallback((item) => {
     setEditingInvoiceId(item.invoice_id);
@@ -723,6 +752,22 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
               <Field value={warrantyForm.invoice_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, invoice_number: value }))} placeholder="Rechnungsnummer" testid="charge-app-warranty-invoice-input" />
             </div>
             <Field value={warrantyForm.merchant_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, merchant_name: value }))} placeholder="Händlername" testid="charge-app-warranty-merchant-input" />
+            {warrantyForm.invoice_id ? (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3" data-testid="charge-app-warranty-linked-invoice">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-emerald-900">Rechnung verknüpft</p>
+                  <p className="truncate text-[11px] text-emerald-700">{warrantyForm.invoice_number || warrantyForm.invoice_id}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={unlinkWarrantyInvoice}
+                  className="shrink-0 rounded-full border border-emerald-300 bg-white px-3 py-1 text-[11px] font-black text-emerald-800"
+                  data-testid="charge-app-warranty-unlink-invoice"
+                >
+                  Verknüpfung lösen
+                </button>
+              </div>
+            ) : null}
             <UploadField label="Garantiebeleg hochladen (PDF/JPG/PNG/WebP)" file={warrantyFile} onChange={setWarrantyFile} testid="charge-app-warranty-file-input" />
             <ActionButton onClick={submitWarranty} busy={busy === "warranty"} icon={editingWarrantyId ? Save : ShieldCheck} testid="charge-app-warranty-submit">{editingWarrantyId ? "Änderungen speichern" : "Garantie aktivieren"}</ActionButton>
             {editingWarrantyId ? (
@@ -929,6 +974,13 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.amount || 0).toFixed(2)}</span>
+                    <button
+                      onClick={() => createWarrantyFromInvoice(item)}
+                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-700"
+                      data-testid={`charge-app-invoice-create-warranty-${index}`}
+                    >
+                      <ShieldCheck size={11} />Garantie erstellen
+                    </button>
                     <button onClick={() => editInvoice(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-invoice-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
                     <button onClick={() => deleteInvoice(item.invoice_id)} disabled={busy === `delete-invoice-${item.invoice_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-invoice-delete-${index}`}><Trash2 size={11} />{busy === `delete-invoice-${item.invoice_id}` ? "Löscht..." : "Löschen"}</button>
                   </div>
