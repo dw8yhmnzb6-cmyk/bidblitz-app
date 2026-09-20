@@ -186,7 +186,7 @@ test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page 
   await expect(page.getByTestId('mobility-option-car_rental')).toHaveCount(0);
   await expect(page.getByTestId('mobility-show-more-options')).toBeVisible();
   await page.getByTestId('mobility-show-more-options').click();
-  await expect(page.getByTestId('mobility-option-car-rental')).toBeVisible();
+  await expect(page.getByTestId('mobility-option-car_rental')).toBeVisible();
   await expect(page.getByTestId('mobility-show-fewer-options')).toBeVisible();
 
   const widths = await page.evaluate(() => ({
