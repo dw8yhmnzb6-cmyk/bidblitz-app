@@ -200,7 +200,7 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
         "charge_point_id": charge_point_id,
         "connector_id": connector_id,
         "id_tag": id_tag,
-        "status": {"$in": ["authorized", "starting"]},
+        "status": {"$in": ["authorized", "starting", "reserved"]},
     }, sort=[("created_at", -1)])
 
     update = {
