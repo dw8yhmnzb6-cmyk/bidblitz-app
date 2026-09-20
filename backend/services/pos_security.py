@@ -1,5 +1,6 @@
 import re
 import secrets
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -439,32 +440,64 @@ async def get_resolution_customer(actor: dict, resolution_id: str | None = None,
     return customer
 
 
-async def request_manager_approval(actor: dict, approval_type: str, amount: float, payload: dict, reason: str) -> dict:
-    approval = {
-        "approval_id": f"APR-{secrets.token_hex(6).upper()}",
+async def request_manager_approval(
+    actor: dict,
+    approval_type: str,
+    amount: float,
+    payload: dict,
+    reason: str,
+    idempotency_key: str = "",
+) -> dict:
+    safe_payload = sanitize_audit_value(payload)
+    amount_value = round(float(amount or 0), 2)
+    raw_key = str(idempotency_key or "").strip()
+    if raw_key:
+        approval_hash = hashlib.sha256(
+            f"{actor['merchant_id']}:{actor['store_id']}:{actor['user_id']}:{approval_type}:{raw_key}".encode("utf-8")
+        ).hexdigest()[:24]
+        approval_id = f"APR-{approval_hash.upper()}"
+    else:
+        approval_id = f"APR-{secrets.token_hex(6).upper()}"
+
+    binding = {
         "merchant_id": actor["merchant_id"],
         "store_id": actor["store_id"],
         "register_id": actor.get("register_id", ""),
         "requested_by": actor["user_id"],
-        "requester_role": actor["role"],
         "approval_type": approval_type,
-        "amount": round(float(amount or 0), 2),
+        "amount": amount_value,
         "reason": reason,
-        "payload": sanitize_audit_value(payload),
+        "payload": safe_payload,
+    }
+    approval = {
+        "_id": approval_id,
+        "approval_id": approval_id,
+        **binding,
+        "requester_role": actor["role"],
+        "idempotency_key": raw_key or None,
         "status": "pending",
         "created_at": now_iso(),
     }
-    await db.pos_security_approvals.insert_one(approval)
-    await audit_pos_security_event(
-        "pos_manager_approval_requested",
-        request=None,
-        user_id=actor["user_id"],
-        email=actor["user"].get("email", ""),
-        details={"approval_type": approval_type, "amount": amount, "reason": reason, "store_id": actor["store_id"]},
-        severity="warning",
+    inserted = await db.pos_security_approvals.update_one(
+        {"_id": approval_id},
+        {"$setOnInsert": approval},
+        upsert=True,
     )
-    approval.pop("_id", None)
-    return approval
+    saved = await db.pos_security_approvals.find_one({"_id": approval_id}, {"_id": 0}) or {}
+    if any(saved.get(key) != value for key, value in binding.items()):
+        raise HTTPException(status_code=409, detail="Approval-Idempotency-Key wurde mit anderen Daten verwendet")
+
+    if inserted.upserted_id is not None:
+        await audit_pos_security_event(
+            "pos_manager_approval_requested",
+            request=None,
+            user_id=actor["user_id"],
+            email=actor["user"].get("email", ""),
+            details={"approval_type": approval_type, "amount": amount_value, "reason": reason, "store_id": actor["store_id"]},
+            severity="warning",
+        )
+    saved["replayed"] = inserted.upserted_id is None
+    return saved
 
 
 async def create_manual_wallet_adjustment_request(actor: dict, customer: dict, amount: float, reason: str) -> dict:
@@ -983,9 +1016,27 @@ async def execute_gift_card_action(payload: dict, actor: dict, request: Request 
     amount = round(float(payload.get("amount") or 0), 2)
     if amount <= 0 or amount > 2000:
         raise HTTPException(status_code=400, detail="Gutschein-Betrag ungültig")
+
+    stable_id = str(approval_id or "").strip()
+    if stable_id:
+        existing = await db.pos_vouchers.find_one({"approval_id": stable_id}, {"_id": 0})
+        if existing:
+            expected_store = payload.get("store_id") or actor["store_id"]
+            if (
+                round(float(existing.get("amount") or 0), 2) != amount
+                or existing.get("sold_at_store") != expected_store
+            ):
+                raise HTTPException(status_code=409, detail="Approval wurde bereits für einen anderen Gutschein verwendet")
+            return {**existing, "replayed": True}
+
     valid_until = now_utc() + timedelta(days=365)
+    voucher_code = (
+        f"GS-{hashlib.sha256(stable_id.encode('utf-8')).hexdigest()[:12].upper()}"
+        if stable_id
+        else f"GS-{secrets.token_hex(6).upper()}"
+    )
     voucher = {
-        "voucher_code": f"GS-{secrets.token_hex(6).upper()}",
+        "voucher_code": voucher_code,
         "type": "gift_card",
         "amount": amount,
         "balance": amount,
@@ -1002,10 +1053,26 @@ async def execute_gift_card_action(payload: dict, actor: dict, request: Request 
         "redeemed": False,
         "redeemed_at": None,
         "redeemed_by": None,
-        "approval_id": approval_id or None,
+        "approval_id": stable_id or None,
         "created_at": now_iso(),
     }
-    await db.pos_vouchers.insert_one(voucher)
-    await audit_pos_security_event("pos_manager_approval_giftcard_executed", request=request, user_id=actor["user_id"], email=actor["user"].get("email", ""), details={"amount": amount, "approval_id": approval_id, "store_id": actor["store_id"]}, severity="info")
-    voucher.pop("_id", None)
+    if stable_id:
+        await db.pos_vouchers.update_one(
+            {"approval_id": stable_id},
+            {"$setOnInsert": voucher},
+            upsert=True,
+        )
+        voucher = await db.pos_vouchers.find_one({"approval_id": stable_id}, {"_id": 0}) or voucher
+    else:
+        await db.pos_vouchers.insert_one(voucher)
+        voucher.pop("_id", None)
+
+    await audit_pos_security_event(
+        "pos_manager_approval_giftcard_executed",
+        request=request,
+        user_id=actor["user_id"],
+        email=actor["user"].get("email", ""),
+        details={"amount": amount, "approval_id": stable_id, "store_id": actor["store_id"]},
+        severity="info",
+    )
     return voucher
