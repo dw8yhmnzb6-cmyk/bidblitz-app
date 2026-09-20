@@ -74,7 +74,7 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
         if not mode:
             pricing.update({
                 "available": False,
-                "profile_scope": context.get("profile_scope") or "country",
+                "profile_scope": (context.get("mode_scopes") or {}).get("scooter", context.get("profile_scope") or "country"),
                 "source": context.get("source") or pricing["source"],
                 "city": context.get("city") or "",
                 "country": context.get("country") or context.get("region") or "",
