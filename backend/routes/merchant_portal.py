@@ -146,6 +146,13 @@ class DealerWarrantyStatusUpdateRequest(BaseModel):
     internal_note: str = ""
 
 
+class DealerChargeServiceStatusUpdateRequest(BaseModel):
+    status: str
+    scheduled_date: str = ""
+    scheduled_time: str = ""
+    note: str = ""
+
+
 class DealerBrandProfileUpdateRequest(BaseModel):
     hero_claim: str = ""
     package_tier: str = "premium"
@@ -482,6 +489,11 @@ async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
         claim["warranty_pass"] = _build_warranty_pass(claim)
         normalized_claims.append(claim)
 
+    service_requests = await db.charge_service_requests.find(
+        {"merchant_user_id": user_id},
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(120).to_list(120)
+
     active_statuses = {"submitted", "under_review", "awaiting_parts", "open", "in_review", "approved"}
     resolved_statuses = {"resolved", "replacement_sent", "rejected", "cancelled"}
     return {
@@ -494,9 +506,14 @@ async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
                 if row.get("requested_resolution") in {"replace", "replacement"}
             ]),
             "customer_charge_claims_total": len([row for row in normalized_claims if row.get("customer_user_id")]),
+            "service_requests_open": len([
+                row for row in service_requests
+                if row.get("status") in {"requested", "confirmed", "reschedule_requested", "in_service"}
+            ]),
             "pass_total": len(normalized_claims),
         },
         "claims": normalized_claims,
+        "service_requests": service_requests,
         "issue_types": ["defekt", "display", "akku", "kabel", "garantiefrage", "retoure"],
         "resolution_types": ["repair", "replace", "credit", "inspect"],
     }
@@ -2384,7 +2401,96 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
     await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
     return {"ok": True, "status": requested_status}
 
-@router.post("/dealer/warranty/create")
+@router.post("/dealer/service-requests/{request_id}/status")
+async def update_dealer_charge_service_request_status(
+    request_id: str,
+    req: DealerChargeServiceStatusUpdateRequest,
+    request: Request,
+):
+    user = await require_merchant(request)
+    user_id = str(user.get("_id"))
+    service_request = await db.charge_service_requests.find_one(
+        {"request_id": request_id},
+        {"_id": 0},
+    )
+    if not service_request:
+        raise HTTPException(status_code=404, detail="Serviceanfrage nicht gefunden")
+    if user.get("role") != "admin" and str(service_request.get("merchant_user_id") or "") != user_id:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+
+    status = str(req.status or "").strip().lower()
+    allowed = {"confirmed", "reschedule_requested", "in_service", "completed", "rejected"}
+    if status not in allowed:
+        raise HTTPException(status_code=400, detail="Ungültiger Servicestatus")
+
+    scheduled_date = str(req.scheduled_date or "").strip()
+    scheduled_time = str(req.scheduled_time or "").strip()
+    if status in {"confirmed", "reschedule_requested"} and not scheduled_date:
+        scheduled_date = str(service_request.get("preferred_date") or "")
+    if status in {"confirmed", "reschedule_requested"} and not scheduled_time:
+        scheduled_time = str(service_request.get("preferred_time") or "")
+
+    now = _now_iso()
+    note = str(req.note or "").strip()[:1000]
+    update_doc: Dict[str, Any] = {
+        "status": status,
+        "scheduled_date": scheduled_date,
+        "scheduled_time": scheduled_time,
+        "merchant_note": note,
+        "updated_at": now,
+    }
+    if status == "completed":
+        update_doc["completed_at"] = now
+
+    mongo_update: Dict[str, Any] = {"$set": update_doc}
+    if status != str(service_request.get("status") or ""):
+        mongo_update["$push"] = {
+            "status_history": {
+                "status": status,
+                "actor_role": "merchant",
+                "actor_id": user_id,
+                "note": note,
+                "created_at": now,
+            }
+        }
+    await db.charge_service_requests.update_one(
+        {"request_id": request_id},
+        mongo_update,
+    )
+
+    notification_hash = hashlib.sha256(
+        f"{status}|{scheduled_date}|{scheduled_time}|{note}".encode("utf-8")
+    ).hexdigest()[:12]
+    await safe_create_charge_notification(
+        event_key=f"charge_service_merchant_update:{request_id}:{notification_hash}",
+        user_id=str(service_request.get("customer_user_id") or ""),
+        user_email=str(service_request.get("customer_email") or ""),
+        title="Charge-Service aktualisiert",
+        message=(
+            note
+            or (
+                f"Dein Servicetermin ist bestätigt: {scheduled_date} {scheduled_time}".strip()
+                if status == "confirmed"
+                else f"Deine Charge-Serviceanfrage ist jetzt: {status}."
+            )
+        ),
+        action_url="/charge-app",
+        metadata={
+            "request_id": request_id,
+            "status": status,
+            "scheduled_date": scheduled_date,
+            "scheduled_time": scheduled_time,
+        },
+    )
+    return {
+        "ok": True,
+        "status": status,
+        "scheduled_date": scheduled_date,
+        "scheduled_time": scheduled_time,
+    }
+
+
+@router.post("/dealer/warranty/create")@router.post("/dealer/warranty/create")
 async def create_dealer_warranty(req: DealerWarrantyCreateRequest, request: Request):
     user = await require_merchant(request)
     enterprise = await _build_enterprise_overview_data(user)
