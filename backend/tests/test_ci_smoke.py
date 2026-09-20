@@ -2715,3 +2715,14 @@ def test_admin_financial_fee_settings_are_bounded_and_atomic():
     assert "FEES.update(validated)" in source
     assert "Unbekannte Gebührenfelder" in source
 
+def test_coinbase_webhook_settles_before_ack_and_recovers_stale_processing():
+    source = (BACKEND_DIR / "routes" / "coinbase_commerce.py").read_text(encoding="utf-8")
+
+    assert "BackgroundTasks" not in source
+    assert "await _process_event(event_type, charge_id, charge_data)" in source
+    assert 'return {"status": "processed", "event": event_type}' in source
+    assert "timedelta(minutes=5)" in source
+    assert '"settlement_status": "processing"' in source
+    assert '"settlement_recovery_count": 1' in source
+    assert 'idempotency_key=f"coinbase_charge:{charge_id}:attempt:{attempt}"' in source
+
