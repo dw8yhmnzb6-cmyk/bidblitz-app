@@ -656,6 +656,8 @@ def _sanitize_pricing_modes(modes: dict) -> dict:
                     raise HTTPException(400, f"{mode}.{key} muss numerisch sein.") from exc
                 if number < 0:
                     raise HTTPException(400, f"{mode}.{key} darf nicht negativ sein.")
+                if key in {"premium_multiplier", "van_multiplier"} and not 0.1 <= number <= 10:
+                    raise HTTPException(400, f"{mode}.{key} muss zwischen 0,1 und 10 liegen.")
                 entry[key] = number
             elif key == "surge":
                 entry[key] = bool(value)
