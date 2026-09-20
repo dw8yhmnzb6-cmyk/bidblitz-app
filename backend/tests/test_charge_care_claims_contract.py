@@ -94,3 +94,25 @@ def test_charge_claim_admin_ui_and_api_are_wired():
         assert token in api
     assert "Entscheidung speichern" in admin
     assert "admin-charge-claim-save-" in admin
+
+
+def test_charge_claim_evidence_files_are_protected_and_wired():
+    route = _py(ROUTE)
+    customer = _text(CUSTOMER_PAGE)
+    admin = _text(ADMIN_PAGE)
+    api = _text(API)
+
+    assert '@router.post("/claims/{claim_id}/attachments")' in route
+    assert '@router.get("/claims/{claim_id}/attachments/{attachment_id}/download")' in route
+    assert '@router.delete("/claims/{claim_id}/attachments/{attachment_id}")' in route
+    assert '"claim_id": claim_id, "user_id": user_id' in route
+    assert 'query["user_id"] = user_id' in route
+    assert "uploadChargeClaimAttachment" in api
+    assert "deleteChargeClaimAttachment" in api
+    assert "charge-care-evidence-upload" in customer
+    assert "admin-charge-claim-attachments-" in admin
+
+
+def test_repeated_admin_save_does_not_duplicate_same_note_message():
+    src = _py(ROUTE)
+    assert 'note != str(claim.get("admin_note") or "").strip()' in src
