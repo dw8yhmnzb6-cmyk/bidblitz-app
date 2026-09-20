@@ -424,8 +424,37 @@ def _warranty_verify_url(registration_id: str, signature: str) -> str:
     return f"{base}{path}" if base else path
 
 
+def _warranty_evidence(doc: Dict[str, Any]) -> Dict[str, str]:
+    has_product = bool(str(doc.get("product_id") or "").strip())
+    has_invoice = bool(str(doc.get("invoice_id") or "").strip())
+    if has_product and has_invoice:
+        return {
+            "level": "catalog_and_invoice",
+            "label": "Charge-Produkt + Rechnung verknüpft",
+            "description": "Produktdatensatz und private Kaufrechnung sind mit dieser Garantie verknüpft.",
+        }
+    if has_invoice:
+        return {
+            "level": "invoice_linked",
+            "label": "Charge-Rechnung verknüpft",
+            "description": "Eine private Kaufrechnung ist mit dieser Garantie verknüpft.",
+        }
+    if has_product:
+        return {
+            "level": "catalog_linked",
+            "label": "Charge-Produkt verknüpft",
+            "description": "Die Garantie ist mit einem Produkt aus dem BidBlitz-Charge-Katalog verknüpft.",
+        }
+    return {
+        "level": "manual",
+        "label": "Manuell erfasst",
+        "description": "Die Garantie wurde manuell erfasst; es ist kein Kaufbeleg oder Katalogprodukt verknüpft.",
+    }
+
+
 def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     months, valid_until_dt, effective_status = _warranty_terms(doc)
+    evidence = _warranty_evidence(doc)
     purchase_dt = _parse_iso(doc.get("purchase_date")) or _parse_iso(doc.get("created_at")) or datetime.now(timezone.utc)
     valid_until = valid_until_dt.date().isoformat()
     warranty_pass = _build_warranty_pass(doc)
@@ -444,6 +473,9 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "warranty_months": months,
         "valid_until": valid_until,
         "coverage_label": f"{months} Monate Charge Care",
+        "evidence_level": evidence["level"],
+        "evidence_label": evidence["label"],
+        "evidence_description": evidence["description"],
         "support_hint": "Digitale Garantie gespeichert – bei Bedarf direkt im Händlernetz abrufbar.",
         "created_at": doc.get("created_at") or _now_iso(),
         "attachments": [_attachment_meta(item, f"/api/charge-app/warranty/{doc.get('registration_id')}/attachments") for item in (doc.get("attachments") or [])],
@@ -453,6 +485,7 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
     months, valid_until_dt, effective_status = _warranty_terms(doc)
+    evidence = _warranty_evidence(doc)
     valid_until = valid_until_dt.date().isoformat()
     registration_id = str(doc.get("registration_id") or "")
     serial_number = str(doc.get("serial_number") or "")
@@ -467,6 +500,8 @@ def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
         "coverage_label": f"{months} Monate Charge Care",
         "warranty_months": months,
         "status_label": "Aktiv" if effective_status == "active" else ("Abgelaufen" if effective_status == "expired" else effective_status.title()),
+        "evidence_level": evidence["level"],
+        "evidence_label": evidence["label"],
         "valid_until": valid_until,
         "qr_payload": qr_payload,
         "verification_signature": signature,
@@ -2474,6 +2509,8 @@ async def verify_charge_warranty_pass(registration_id: str, sig: str):
             "status": card.get("status"),
             "status_label": card.get("warranty_pass", {}).get("status_label"),
             "coverage_label": card.get("coverage_label"),
+            "evidence_level": card.get("evidence_level"),
+            "evidence_label": card.get("evidence_label"),
             "valid_until": card.get("valid_until"),
         },
     }
