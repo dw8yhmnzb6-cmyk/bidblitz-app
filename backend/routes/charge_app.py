@@ -1677,12 +1677,13 @@ async def admin_update_charge_claim_status(
         update["resolved_at"] = now
 
     messages = []
-    if req.note.strip():
+    note = req.note.strip()
+    if note and note != str(claim.get("admin_note") or "").strip():
         messages.append({
             "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
             "author_role": "admin",
             "author_id": str(admin.get("_id") or "admin"),
-            "message": req.note.strip(),
+            "message": note,
             "created_at": now,
         })
 
