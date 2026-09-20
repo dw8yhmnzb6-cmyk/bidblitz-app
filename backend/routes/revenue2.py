@@ -36,6 +36,22 @@ def _require_revenue2_idempotency_key(body_key: Optional[str], request: Request,
     return f"{prefix}:{key}"
 
 
+def _require_legacy_marketplace_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Der alte Marketplace-Transfer ist in Production deaktiviert. Es wird kein Wallet-Geld bewegt.",
+        )
+
+
+def _require_revenue2_lottery_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Die Legacy-Lotterie ist in Production deaktiviert. Es werden keine BLZ eingesetzt oder ausgeschüttet.",
+        )
+
+
 async def _platform_pool_user_id() -> str:
     email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
     pool = await db.users.find_one({"email": email}, {"_id": 1})
@@ -397,8 +413,9 @@ class MarketplaceTransferRequest(BaseModel):
 
 @router.post("/marketplace/transfer")
 async def marketplace_transfer(req: MarketplaceTransferRequest, request: Request):
-    """P2P-Transfer MIT 2,9% + 0,30€ Fee. Fee geht an BidBlitz."""
+    """Legacy marketplace transfer. Production uses the canonical transfer/payment flows instead."""
     user = await get_current_user(request)
+    _require_legacy_marketplace_test_mode()
     uid = str(user.get("_id") or user.get("id"))
     bal = float(user.get("balance", 0) or 0)
 
@@ -578,6 +595,7 @@ async def _current_lottery_draw():
 @router.get("/lottery/current")
 async def lottery_current(request: Request):
     await get_current_user(request)  # require auth
+    _require_revenue2_lottery_test_mode()
     draw = await _current_lottery_draw()
     # Don't send full ticket list to avoid huge payload
     ticket_count = len(draw.get("tickets", []))
@@ -597,6 +615,7 @@ class BuyTicketRequest(BaseModel):
 @router.post("/lottery/buy-tickets")
 async def lottery_buy(req: BuyTicketRequest, request: Request):
     user = await get_current_user(request)
+    _require_revenue2_lottery_test_mode()
     uid = str(user.get("_id") or user.get("id"))
     cost = LOTTERY_TICKET_PRICE_BLZ * req.quantity
     bal = float(user.get("balance_blz", 0) or 0)
@@ -634,6 +653,7 @@ async def lottery_buy(req: BuyTicketRequest, request: Request):
 @router.get("/lottery/my-tickets")
 async def my_tickets(request: Request, draw_date: Optional[str] = None):
     user = await get_current_user(request)
+    _require_revenue2_lottery_test_mode()
     uid = str(user.get("_id") or user.get("id"))
     query = {"draw_date": draw_date} if draw_date else {}
     cursor = db.lottery_draws.find(query, {"_id": 0}).sort("draw_date", -1).limit(30)
@@ -659,6 +679,7 @@ async def my_tickets(request: Request, draw_date: Optional[str] = None):
 async def lottery_draw_now(request: Request):
     """Admin: Force-ziehung für heute (normalerweise via Cron)."""
     admin = await get_current_user(request)
+    _require_revenue2_lottery_test_mode()
     if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Admin only")
 
