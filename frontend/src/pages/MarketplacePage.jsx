@@ -763,8 +763,149 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
             </motion.div>
           )}
 
+          {/* ORDERS / ESCROW VIEW */}
+          {view === "orders" && (
+            <motion.div
+              key="orders"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-5"
+              data-testid="marketplace-orders-view"
+            >
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-cyan-400" />
+                  <h2 className="font-bold">Meine Käufe</h2>
+                </div>
+                {myPurchases.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-[#111] p-4 text-sm text-gray-500">Noch keine Käufe.</div>
+                ) : myPurchases.map((order) => {
+                  const busy = orderBusy?.startsWith(order.order_id + ":");
+                  const canCancel = ["awaiting_shipment", "awaiting_pickup"].includes(order.status);
+                  const canConfirm = ["shipped", "ready_for_pickup"].includes(order.status);
+                  return (
+                    <div key={order.order_id} className="rounded-2xl border border-white/5 bg-[#111] p-4" data-testid={"marketplace-purchase-" + order.order_id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-white/90">{order.item_title}</p>
+                          <p className="mt-1 text-xs text-cyan-300">€{Number(order.total_price || 0).toFixed(2)} · Escrow: {order.escrow_status || "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold text-white/50">{order.status}</span>
+                      </div>
+                      {order.tracking_number && (
+                        <div className="mt-3 rounded-xl border border-blue-500/15 bg-blue-500/5 p-3 text-xs">
+                          <div className="flex items-center gap-2 text-blue-300"><Truck size={14} /> {order.carrier || "Carrier"}</div>
+                          <p className="mt-1 break-all font-mono text-white/60">{order.tracking_number}</p>
+                        </div>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        {canConfirm && (
+                          <button
+                            disabled={busy}
+                            onClick={() => confirmMarketplaceReceived(order)}
+                            className="flex-1 rounded-xl bg-green-500/15 py-2 text-xs font-bold text-green-300 disabled:opacity-40"
+                            data-testid={"marketplace-confirm-received-" + order.order_id}
+                          >
+                            <Check size={13} className="mr-1 inline" /> Erhalten
+                          </button>
+                        )}
+                        {canCancel && (
+                          <button
+                            disabled={busy}
+                            onClick={() => cancelMarketplaceOrder(order)}
+                            className="flex-1 rounded-xl bg-red-500/10 py-2 text-xs font-bold text-red-300 disabled:opacity-40"
+                            data-testid={"marketplace-cancel-order-" + order.order_id}
+                          >
+                            <RotateCcw size={13} className="mr-1 inline" /> Stornieren
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-purple-400" />
+                  <h2 className="font-bold">Meine Verkäufe</h2>
+                </div>
+                {mySales.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-[#111] p-4 text-sm text-gray-500">Noch keine Verkäufe.</div>
+                ) : mySales.map((order) => {
+                  const busy = orderBusy?.startsWith(order.order_id + ":");
+                  const draft = shippingDrafts[order.order_id] || {};
+                  return (
+                    <div key={order.order_id} className="rounded-2xl border border-white/5 bg-[#111] p-4" data-testid={"marketplace-sale-" + order.order_id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-white/90">{order.item_title}</p>
+                          <p className="mt-1 text-xs text-purple-300">Auszahlung €{Number(order.seller_amount || 0).toFixed(2)} · Escrow: {order.escrow_status || "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold text-white/50">{order.status}</span>
+                      </div>
+
+                      {order.status === "awaiting_shipment" && (
+                        <div className="mt-3 space-y-2">
+                          <input
+                            value={draft.carrier || ""}
+                            onChange={(e) => setShippingDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), carrier: e.target.value } }))}
+                            placeholder="Carrier, z. B. DHL"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                            data-testid={"marketplace-carrier-" + order.order_id}
+                          />
+                          <input
+                            value={draft.tracking_number || ""}
+                            onChange={(e) => setShippingDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), tracking_number: e.target.value } }))}
+                            placeholder="Echte Trackingnummer"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                            data-testid={"marketplace-tracking-" + order.order_id}
+                          />
+                          <button
+                            disabled={busy}
+                            onClick={() => shipMarketplaceOrder(order)}
+                            className="w-full rounded-xl bg-blue-500/15 py-2 text-xs font-bold text-blue-300 disabled:opacity-40"
+                            data-testid={"marketplace-ship-order-" + order.order_id}
+                          >
+                            Als versendet markieren
+                          </button>
+                        </div>
+                      )}
+
+                      {order.status === "awaiting_pickup" && (
+                        <button
+                          disabled={busy}
+                          onClick={() => markMarketplacePickupReady(order)}
+                          className="mt-3 w-full rounded-xl bg-purple-500/15 py-2 text-xs font-bold text-purple-300 disabled:opacity-40"
+                          data-testid={"marketplace-ready-pickup-" + order.order_id}
+                        >
+                          Zur Abholung freigeben
+                        </button>
+                      )}
+
+                      {["awaiting_shipment", "awaiting_pickup"].includes(order.status) && (
+                        <button
+                          disabled={busy}
+                          onClick={() => cancelMarketplaceOrder(order)}
+                          className="mt-2 w-full rounded-xl bg-red-500/10 py-2 text-xs font-bold text-red-300 disabled:opacity-40"
+                        >
+                          Verkauf stornieren
+                        </button>
+                      )}
+
+                      {order.tracking_number && (
+                        <p className="mt-3 text-xs text-white/45">{order.carrier}: <span className="font-mono">{order.tracking_number}</span></p>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+            </motion.div>
+          )}
+
           {/* CREATE VIEW */}
-          {view === 'create' && (
+          {view === "create" && (
             <motion.div
               key="create"
               initial={{ opacity: 0 }}
