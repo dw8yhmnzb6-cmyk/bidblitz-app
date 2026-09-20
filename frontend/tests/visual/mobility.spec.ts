@@ -183,7 +183,7 @@ test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page 
   await expect(page.getByTestId('mobility-option-scooter')).toBeVisible();
   await expect(page.getByTestId('mobility-option-scooter')).toContainText('2,00');
   await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,20 € Start + 0,15 €/min');
-  await expect(page.getByTestId('mobility-option-car-rental')).toHaveCount(0);
+  await expect(page.getByTestId('mobility-option-car_rental')).toHaveCount(0);
   await expect(page.getByTestId('mobility-show-more-options')).toBeVisible();
   await page.getByTestId('mobility-show-more-options').click();
   await expect(page.getByTestId('mobility-option-car-rental')).toBeVisible();
