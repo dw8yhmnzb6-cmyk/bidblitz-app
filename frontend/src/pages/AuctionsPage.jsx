@@ -585,15 +585,6 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
   const fetchAuctions = useCallback(async () => {
     try {
-      // Clear any cached auction data first
-      if ('caches' in window) {
-        const cacheKeys = await caches.keys();
-        for (const key of cacheKeys) {
-          if (key.includes('auction') || key.includes('bidblitz-api')) {
-            await caches.delete(key);
-          }
-        }
-      }
       const r = await api.getAuctions();
       setAuctions(r.auctions || []);
     } catch (e) {
