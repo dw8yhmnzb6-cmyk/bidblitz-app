@@ -1998,6 +1998,17 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "valueActionsEnabled" in blitz_page
 
 
+def test_auction_polling_does_not_delete_shared_browser_caches():
+    auctions_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
+    api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+    service_worker = (BACKEND_DIR.parent / "frontend" / "public" / "service-worker.js").read_text(encoding="utf-8")
+
+    assert "caches.delete" not in auctions_page
+    assert 'getAuctions: () => request(`/api/auctions?_t=${Date.now()}`)' in api_source
+    assert "'/api/auctions'," in service_worker
+    assert "NEVER_CACHE_PREFIXES" in service_worker
+
+
 def test_home_prioritizes_auctions_and_mining():
     home = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "HomePage.jsx").read_text(encoding="utf-8")
     mobile = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "home" / "MobileHomeContent.jsx").read_text(encoding="utf-8")
