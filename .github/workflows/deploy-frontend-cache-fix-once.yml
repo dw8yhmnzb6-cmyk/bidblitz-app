@@ -1,5 +1,5 @@
 name: One-time Frontend Cache Fix Deploy
-# User-authorized merchant commission copy update, source fe9227cd869b34be07656657919e45ae934b0706.
+# User-authorized frontend live deploy, source 940220839c2b0c9dfca9426bd5e35d9958038b1b.
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout exact branch commit
         uses: actions/checkout@v4
         with:
-          ref: fe9227cd869b34be07656657919e45ae934b0706
+          ref: 940220839c2b0c9dfca9426bd5e35d9958038b1b
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -63,7 +63,7 @@ jobs:
           import json
           from pathlib import Path
           version = json.loads(Path('build/version.json').read_text())
-          assert version['git_commit'] == 'fe9227cd869b34be07656657919e45ae934b0706'
+          assert version['git_commit'] == '940220839c2b0c9dfca9426bd5e35d9958038b1b'
           print('Built version:', version['build_id'])
           PY
 
@@ -123,7 +123,7 @@ jobs:
           expected = json.loads(Path('frontend/build/version.json').read_text())
           actual = json.loads(Path('/tmp/bidblitz-live-version.json').read_text())
           assert actual['build_id'] == expected['build_id']
-          assert actual['git_commit'] == 'fe9227cd869b34be07656657919e45ae934b0706'
+          assert actual['git_commit'] == '940220839c2b0c9dfca9426bd5e35d9958038b1b'
           print('Verified live frontend:', actual['build_id'])
           PY
           headers=$(curl -fsSI "https://bidblitz.ae/index.html?deploy=$stamp" | tr -d '\r')
