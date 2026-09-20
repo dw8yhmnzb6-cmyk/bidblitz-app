@@ -327,6 +327,30 @@ function ClaimDetail({ claim, message, onMessageChange, onSend, onCancel, busy, 
           </div>
         ) : null}
 
+        <div className="mt-4 rounded-2xl border border-[#E1D7C7] bg-white p-4" data-testid="charge-care-status-history">
+          <div className="flex items-center gap-2">
+            <Clock3 size={15} className="text-slate-500" />
+            <p className="text-sm font-black text-slate-900">Statusverlauf</p>
+          </div>
+          <div className="mt-3 space-y-3">
+            {(claim.status_history || []).map((entry, index) => (
+              <div key={`${entry.status}-${entry.created_at}-${index}`} className="flex gap-3" data-testid={`charge-care-status-history-item-${index}`}>
+                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0A1626] text-[#6EE7F9]">
+                  <CheckCircle2 size={13} />
+                </div>
+                <div className="min-w-0 flex-1 border-b border-[#EEE6DA] pb-3 last:border-b-0 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-black text-slate-900">{statusLabel(entry.status)}</p>
+                    <p className="text-[10px] text-slate-400">{formatClaimDate(entry.created_at)}</p>
+                  </div>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">{actorLabel(entry.actor_role)}</p>
+                  {entry.note ? <p className="mt-1 text-xs leading-5 text-slate-600">{entry.note}</p> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-4 rounded-2xl border border-[#E1D7C7] bg-white p-4" data-testid="charge-care-evidence-card">
           <div className="flex items-center gap-2">
             <FileUp size={15} className="text-slate-500" />
@@ -453,6 +477,24 @@ function Info({ label, value }) {
     </div>
   );
 }
+
+function actorLabel(role) {
+  const labels = {
+    customer: "Kunde",
+    merchant: "Händler",
+    admin: "Charge Care Admin",
+    system: "System",
+  };
+  return labels[role] || role || "System";
+}
+
+function formatClaimDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+}
+
 
 function statusLabel(status) {
   const labels = {
