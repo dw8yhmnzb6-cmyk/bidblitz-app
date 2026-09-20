@@ -179,19 +179,19 @@ class CreateListingRequest(BaseModel):
     lng: Optional[float] = None
     negotiable: bool = False
     shipping_available: bool = False
-    shipping_cost: Optional[float] = None
+    shipping_cost: Optional[float] = Field(default=None, ge=0, le=100000)
 
 
 class UpdateListingRequest(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[float] = Field(default=None, gt=0, le=100000)
     category: Optional[str] = None
     images: Optional[List[str]] = None
     location: Optional[str] = None
     negotiable: Optional[bool] = None
     shipping_available: Optional[bool] = None
-    shipping_cost: Optional[float] = None
+    shipping_cost: Optional[float] = Field(default=None, ge=0, le=100000)
     status: Optional[str] = None
 
 
@@ -1096,7 +1096,7 @@ async def cancel_marketplace_order(order_id: str, req: MarketplaceOrderActionReq
             "updated_at": refunded_at,
         }},
     )
-    await db.marketplace_listings.update_one(
+    reactivated = await db.marketplace_listings.update_one(
         {
             "listing_id": order.get("listing_id"),
             "status": "sold",
@@ -1108,6 +1108,20 @@ async def cancel_marketplace_order(order_id: str, req: MarketplaceOrderActionReq
             "$unset": {"sold_at": "", "sold_to": "", "order_id": ""},
         },
     )
+    if reactivated.modified_count != 1:
+        current_listing = await db.marketplace_listings.find_one(
+            {"listing_id": order.get("listing_id")},
+            {"_id": 0, "status": 1, "order_id": 1},
+        ) or {}
+        if current_listing.get("status") != "active":
+            await db.marketplace_orders.update_one(
+                {"order_id": order_id},
+                {"$set": {
+                    "listing_reactivation_required": True,
+                    "listing_reactivation_error": "post_refund_listing_state_mismatch",
+                    "updated_at": refunded_at,
+                }},
+            )
     other_user_id = order.get("seller_id") if actor_id == str(order.get("buyer_id")) else order.get("buyer_id")
     await db.notifications.update_one(
         {"id": f"MKT-CANCEL-{order_id}"},
