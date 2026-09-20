@@ -1544,6 +1544,8 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
     assert "valueRandomRewardsEnabled = hub?.value_random_rewards_enabled === true" in rewards_page
     assert "reward-value-games-unavailable" in rewards_page
     assert 'title="Reward Plinko"' in app
+    assert 'case "/spin-wheel":' in app
+    assert 'title="Spin Wheel"' in app
 
     assert "BLZ-Quest-Belohnungen sind in Production deaktiviert." in quests
     assert "if not TEST_MODE:" in quests
