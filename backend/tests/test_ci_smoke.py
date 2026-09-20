@@ -2299,6 +2299,28 @@ def test_mobility_search_contract_supports_local_first_autocomplete():
     assert "globalResults" in frontend_source
 
 
+def test_mobility_city_tariffs_support_database_admin_overrides():
+    backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+    database_source = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
+
+    assert 'db.mobility_pricing_profiles.find_one' in backend_source
+    assert 'country_override, city_override = await _load_dynamic_pricing_overrides' in backend_source
+    assert 'resolved_profile_key = f"db:{country_code}:{city_key}"' in backend_source
+    assert 'profile["dynamic_override"] = bool(country_override or city_override)' in backend_source
+
+    assert '@router.get("/admin/pricing/profiles")' in backend_source
+    assert '@router.put("/admin/pricing/profile")' in backend_source
+    assert '@router.delete("/admin/pricing/profile/{country_code}")' in backend_source
+    assert 'not in {"admin", "super_admin"}' in backend_source
+    assert 'db.mobility_pricing_audit.insert_one' in backend_source
+    assert '"$setOnInsert": {"created_at": now}' in backend_source
+
+    assert "db.mobility_pricing_profiles" in database_source
+    assert '[("country_code", 1), ("city_key", 1)]' in database_source
+    assert "unique=True" in database_source
+    assert "critical=True" in database_source
+
+
 def test_auction_polling_does_not_delete_shared_browser_caches():
     auctions_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
     api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
