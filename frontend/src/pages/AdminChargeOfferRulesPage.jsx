@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, Plus, Save, SlidersHorizontal, Sparkles, ToggleLeft, ToggleRight, Pencil, MapPin, Store, Tag, Package } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Save, SlidersHorizontal, Sparkles, ToggleLeft, ToggleRight, Pencil, MapPin, Store, Tag, Package, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
 
@@ -80,6 +80,22 @@ export default function AdminChargeOfferRulesPage({ onBack, onNavigate }) {
       setBusy("");
     }
   }, [loadRules]);
+
+  const deleteRule = useCallback(async (ruleId) => {
+    if (!window.confirm("Diese Charge-Angebotsregel wirklich löschen?")) return;
+    setBusy(`delete-${ruleId}`);
+    try {
+      await api.deleteChargeOfferRuleAdmin(ruleId);
+      if (editingRuleId === ruleId) resetForm();
+      await loadRules();
+      toast.success("Regel gelöscht");
+    } catch (error) {
+      toast.error(error.message || "Regel konnte nicht gelöscht werden");
+    } finally {
+      setBusy("");
+    }
+  }, [editingRuleId, loadRules, resetForm]);
+
 
   const startEdit = useCallback((rule) => {
     setEditingRuleId(rule.rule_id);
@@ -190,6 +206,7 @@ export default function AdminChargeOfferRulesPage({ onBack, onNavigate }) {
                       <div className="flex flex-wrap gap-2 lg:justify-end">
                         <button onClick={() => startEdit(rule)} className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-[#D9CFC0] bg-white px-4 text-xs font-black text-slate-700" data-testid={`admin-charge-offer-rule-edit-${index}`}><Pencil size={14} />Bearbeiten</button>
                         <button onClick={() => toggleRule(rule.rule_id)} disabled={busy === `toggle-${rule.rule_id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-[#0A1626] px-4 text-xs font-black text-[#D8FCFF] disabled:opacity-50" data-testid={`admin-charge-offer-rule-toggle-${index}`}>{busy === `toggle-${rule.rule_id}` ? <Loader2 size={14} className="animate-spin" /> : rule.active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}{rule.active ? "Deaktivieren" : "Aktivieren"}</button>
+                        <button onClick={() => deleteRule(rule.rule_id)} disabled={busy === `delete-${rule.rule_id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 text-xs font-black text-red-700 disabled:opacity-50" data-testid={`admin-charge-offer-rule-delete-${index}`}>{busy === `delete-${rule.rule_id}` ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}Löschen</button>
                       </div>
                     </div>
                   </div>
