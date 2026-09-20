@@ -28,6 +28,7 @@ export const ADMIN_TAB_MAP = {
   "qr-management": "qr-management",
   pool: "pool",
   "biopay-audit": "biopay-audit",
+  coupons: "promos",
   "merchant-coupons": "promos",
   "bidder-coupons": "promos",
   "partner-coupons": "promos",
