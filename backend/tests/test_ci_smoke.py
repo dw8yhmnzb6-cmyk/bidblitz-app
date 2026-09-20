@@ -2099,6 +2099,10 @@ def test_growth_rewards_and_classified_boost_use_verified_retry_safe_value_flows
     assert 'user.get("kyc_extracted_dob")' in backend
     assert "wallet_result = await credit_wallet(" in backend
     assert 'idempotency_key=f"birthday:{uid}:{now.year}:eur"' in backend
+    assert 'blz_result = await db.users.update_one(' in backend
+    assert '"status": "reconciliation_required"' in backend
+    assert '"blz_error": "birthday_blz_credit_failed"' in backend
+    assert "EUR wurde gutgeschrieben, BLZ-Gutschrift benötigt Abstimmung" in backend
     assert '"$inc": {"balance": BIRTHDAY_EUR, "balance_blz": BIRTHDAY_BLZ}' not in backend
     assert '"claim_available": bool(is_birthday and dob_verified and not existing)' in backend
     assert "!data.claim_available" in birthday
