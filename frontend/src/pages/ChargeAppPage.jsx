@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert, ScanLine
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -29,7 +29,10 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogCategory, setCatalogCategory] = useState("all");
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [activationCode, setActivationCode] = useState("");
+  const [activationProduct, setActivationProduct] = useState(null);
   const [warrantyForm, setWarrantyForm] = useState({
+    product_id: "",
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
     purchase_date: "",
@@ -77,6 +80,35 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     loadCatalog();
   }, [loadCatalog]);
 
+  const lookupActivationProduct = useCallback(async () => {
+    const code = activationCode.trim();
+    if (!code) {
+      toast.error("Bitte Barcode, QR-Code, SKU oder Produkt-ID eingeben");
+      return;
+    }
+    setBusy("activation-lookup");
+    try {
+      const response = await api.lookupChargeProduct(code);
+      const prefill = response?.warranty_prefill || {};
+      const product = response?.product || null;
+      setActivationProduct(product);
+      setWarrantyForm((prev) => ({
+        ...prev,
+        product_id: prefill.product_id || "",
+        product_name: prefill.product_name || prev.product_name,
+        merchant_name: prefill.merchant_name || prev.merchant_name,
+        warranty_months: String(prefill.warranty_months || prev.warranty_months || 24),
+      }));
+      toast.success("Charge-Produkt erkannt");
+    } catch (error) {
+      setActivationProduct(null);
+      toast.error(error.message || "Produktcode wurde nicht gefunden");
+    } finally {
+      setBusy("");
+    }
+  }, [activationCode]);
+
+
   const submitWarranty = useCallback(async () => {
     if (!warrantyForm.product_name.trim() || !warrantyForm.serial_number.trim()) {
       toast.error("Bitte Produktname und Seriennummer ausfüllen");
@@ -97,6 +129,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       }
       toast.success(editingWarrantyId ? "Garantie aktualisiert" : "Garantie erfolgreich registriert");
       setWarrantyForm({
+        product_id: "",
         product_name: "BidBlitz Charge Pro 65W",
         serial_number: "",
         purchase_date: "",
@@ -106,6 +139,8 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       });
       setWarrantyFile(null);
       setEditingWarrantyId("");
+      setActivationCode("");
+      setActivationProduct(null);
       await loadDashboard();
     } catch (error) {
       toast.error(error.message || (editingWarrantyId ? "Garantie konnte nicht aktualisiert werden" : "Garantie konnte nicht registriert werden"));
@@ -147,6 +182,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const editWarranty = useCallback((item) => {
     setEditingWarrantyId(item.registration_id);
     setWarrantyForm({
+      product_id: item.product_id || "",
       product_name: item.product_name || "",
       serial_number: item.serial_number || "",
       purchase_date: item.purchase_date || "",
@@ -161,6 +197,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const cancelWarrantyEdit = useCallback(() => {
     setEditingWarrantyId("");
     setWarrantyForm({
+      product_id: "",
       product_name: "BidBlitz Charge Pro 65W",
       serial_number: "",
       purchase_date: "",
@@ -574,6 +611,51 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <SurfaceCard title={editingWarrantyId ? "Garantie bearbeiten" : "Garantie registrieren"} icon={ShieldCheck} testid="charge-app-warranty-card">
+            {!editingWarrantyId ? (
+              <div className="rounded-[24px] border border-[#B9E7EF] bg-[linear-gradient(145deg,#EDF9FB,#FFFFFF)] p-4" data-testid="charge-app-warranty-activation-card">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0A1626] text-[#6EE7F9]">
+                    <ScanLine size={17} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-slate-900">Produktcode erkennen</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Barcode, QR-Code, SKU oder Produkt-ID vom BidBlitz-Charge-Produkt eingeben. Produkt und Händler werden automatisch übernommen.</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={activationCode}
+                    onChange={(e) => setActivationCode(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") lookupActivationProduct(); }}
+                    placeholder="Produktcode / Barcode / QR"
+                    className="h-11 min-w-0 flex-1 rounded-2xl border border-[#B9E7EF] bg-white px-4 text-sm text-slate-900 outline-none"
+                    data-testid="charge-app-warranty-activation-code"
+                  />
+                  <button
+                    type="button"
+                    onClick={lookupActivationProduct}
+                    disabled={busy === "activation-lookup"}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#0A1626] px-4 text-xs font-black text-[#D8FCFF] disabled:opacity-50"
+                    data-testid="charge-app-warranty-activation-submit"
+                  >
+                    {busy === "activation-lookup" ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
+                    Code prüfen
+                  </button>
+                </div>
+                {activationProduct ? (
+                  <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3" data-testid="charge-app-warranty-activation-result">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+                      {activationProduct.image_url ? <img src={activationProduct.image_url} alt="" className="h-full w-full object-cover" /> : <Package size={18} className="text-emerald-700" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-emerald-900">{activationProduct.name}</p>
+                      <p className="truncate text-xs text-emerald-700">{activationProduct.merchant_name} · €{Number(activationProduct.price || 0).toFixed(2)}</p>
+                    </div>
+                    <ShieldCheck size={18} className="text-emerald-700" />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field value={warrantyForm.product_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, product_name: value }))} placeholder="Produktname" testid="charge-app-warranty-product-input" />
               <Field value={warrantyForm.serial_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="charge-app-warranty-serial-input" />
