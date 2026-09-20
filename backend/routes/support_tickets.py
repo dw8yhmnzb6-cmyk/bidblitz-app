@@ -63,7 +63,6 @@ async def get_my_tickets(request: Request):
     return {"tickets": tickets, "total": len(tickets)}
 
 
-@router.get("/{ticket_id}")
 async def get_ticket_detail(ticket_id: str, request: Request):
     """Get full ticket details including messages."""
     user = await get_current_user(request)
@@ -100,7 +99,6 @@ async def reply_to_ticket(req: ReplyTicketRequest, request: Request):
     }
 
 
-@router.post("/{ticket_id}/close")
 async def close_ticket(ticket_id: str, request: Request):
     """User: Close/resolve a ticket."""
     user = await get_current_user(request)
