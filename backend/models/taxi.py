@@ -248,8 +248,9 @@ class SosRequest(BaseModel):
 
 
 class TipRequest(BaseModel):
-    """Add tip after ride completion"""
+    """Add tip after ride completion."""
     ride_id: str
     tip_amount: float = Field(..., gt=0, le=100, description="Tip in EUR")
+    idempotency_key: Optional[str] = Field(None, max_length=200)
     rating: Optional[int] = Field(None, ge=1, le=5)
     feedback: Optional[str] = Field(None, max_length=500)
