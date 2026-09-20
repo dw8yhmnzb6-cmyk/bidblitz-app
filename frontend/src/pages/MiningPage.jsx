@@ -294,7 +294,7 @@ export default function MiningPage({ onBack, onNavigate }) {
     const code = data?.referral?.code;
     if (!code) return;
     const url = `${window.location.origin}?ref=${code}`;
-    const text = `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`;
+    const text = miningValueEnabled\n      ? `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`\n      : `Entdecke die BidBlitz Mining Preview. Code: ${code}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "BidBlitz Mining", text, url });
@@ -791,7 +791,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="text-center py-12">
                   <Cpu size={32} className="mx-auto text-white/10 mb-3" />
                   <p className="text-[13px] text-white/30 mb-1">{t("mining.no_miners") || "No miners yet"}</p>
-                  <p className="text-[10px] text-white/15 mb-4">{t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ"}</p>
+                  <p className="text-[10px] text-white/15 mb-4">{miningValueEnabled\n                    ? (t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ")\n                    : (data?.capabilities?.production_message || "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert.")}</p>
                   <motion.button onClick={() => setTab("shop")} className="px-5 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
                     whileTap={{ scale: 0.95 }}>{t("mining.go_shop") || "Browse Miners"}</motion.button>
                 </div>
@@ -830,7 +830,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.button
                         data-testid={`upgrade-power-${mn.miner_id}`}
                         onClick={() => upgradeMiner(mn.miner_id, "power")}
-                        disabled={upgrading === `${mn.miner_id}-power` || !pCost}
+                        disabled={upgrading === `${mn.miner_id}-power` || !pCost || !miningValueEnabled}
                         className="flex-1 py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 bg-white/[0.03] border border-white/[0.05] text-white/50 disabled:opacity-30"
                         whileTap={{ scale: 0.95 }}>
                         {upgrading === `${mn.miner_id}-power` ? <Loader2 size={10} className="animate-spin" /> : <>
@@ -840,7 +840,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.button
                         data-testid={`upgrade-eff-${mn.miner_id}`}
                         onClick={() => upgradeMiner(mn.miner_id, "efficiency")}
-                        disabled={upgrading === `${mn.miner_id}-efficiency` || !eCost}
+                        disabled={upgrading === `${mn.miner_id}-efficiency` || !eCost || !miningValueEnabled}
                         className="flex-1 py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 bg-white/[0.03] border border-white/[0.05] text-white/50 disabled:opacity-30"
                         whileTap={{ scale: 0.95 }}>
                         {upgrading === `${mn.miner_id}-efficiency` ? <Loader2 size={10} className="animate-spin" /> : <>
@@ -1211,7 +1211,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                         <motion.button onClick={() => cancelListing(ls.listing_id)} className="px-3 py-1.5 rounded-lg text-[9px] font-semibold bg-white/[0.03] text-white/30 border border-white/[0.05]"
                           whileTap={{ scale: 0.95 }}><X size={9} className="inline mr-0.5" /> {t("mining.mkt_cancel") || "Cancel"}</motion.button>
                       ) : (
-                        <motion.button data-testid={`buy-listing-${ls.listing_id}`} onClick={() => buyFromMarketplace(ls.listing_id)} disabled={buyingListing === ls.listing_id}
+                        <motion.button data-testid={`buy-listing-${ls.listing_id}`} onClick={() => buyFromMarketplace(ls.listing_id)} disabled={buyingListing === ls.listing_id || !miningValueEnabled}
                           className="px-4 py-1.5 rounded-lg text-[9px] font-bold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
                           whileTap={{ scale: 0.95 }}>
                           {buyingListing === ls.listing_id ? <Loader2 size={10} className="animate-spin" /> : (t("mining.mkt_buy") || "Buy")}
@@ -1306,7 +1306,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                               {isCurrent ? (
                                 <span className="text-[8px] font-bold text-[#00E89D] uppercase">Current</span>
                               ) : !isLocked ? (
-                                <motion.button data-testid={`upgrade-card-${tier.tier}`} onClick={() => upgradeCard(tier.tier)}
+                                <motion.button data-testid={`upgrade-card-${tier.tier}`} onClick={() => upgradeCard(tier.tier)} disabled={!miningValueEnabled}
                                   className="px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: `${tier.color}12`, color: tier.color, border: `1px solid ${tier.color}20` }}
                                   whileTap={{ scale: 0.95 }}>{tier.cost_blz} BLZ</motion.button>
                               ) : (
@@ -1427,7 +1427,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <p className="text-[18px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{p.price_eur}</p>
                           <p className="text-[9px] text-white/15">{p.price_blz} BLZ</p>
                         </div>
-                        <motion.button data-testid={`buy-launch-${p.project_id}`} onClick={() => buyLaunchpad(p.project_id)} disabled={buyingLaunch === p.project_id || remaining <= 0}
+                        <motion.button data-testid={`buy-launch-${p.project_id}`} onClick={() => buyLaunchpad(p.project_id)} disabled={buyingLaunch === p.project_id || remaining <= 0 || !miningValueEnabled}
                           className="px-5 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 disabled:opacity-30"
                           style={{ background: `${color}12`, color, border: `1px solid ${color}20` }}
                           whileTap={{ scale: 0.96 }}>
