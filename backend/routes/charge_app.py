@@ -701,6 +701,113 @@ async def get_charge_catalog(
     }
 
 
+@router.get("/catalog/{product_id}")
+async def get_charge_catalog_product(product_id: str, request: Request):
+    await get_current_user(request)
+
+    product = await db.pos_products.find_one(
+        {"product_id": product_id, "active": True},
+        {"_id": 0},
+    )
+    if not product or not _charge_catalog_categories(product):
+        raise HTTPException(status_code=404, detail="Charge-Produkt nicht gefunden")
+
+    override = await db.charge_catalog_overrides.find_one(
+        {"product_id": product_id},
+        {"_id": 0},
+    ) or {}
+    if override.get("visible") is False:
+        raise HTTPException(status_code=404, detail="Charge-Produkt nicht gefunden")
+
+    merchant = None
+    profile = None
+    if product.get("merchant_id"):
+        merchant = await db.merchants.find_one(
+            {"merchant_id": product.get("merchant_id")},
+            {"_id": 0},
+        )
+    if merchant and merchant.get("user_id"):
+        profile = await db.merchant_profiles.find_one(
+            {"user_id": merchant.get("user_id")},
+            {"_id": 0},
+        )
+
+    card = _charge_product_card(product, merchant, profile, override)
+    categories = card.get("charge_categories") or []
+
+    related_query: Dict[str, Any] = {
+        "active": True,
+        "product_id": {"$ne": product_id},
+    }
+    related_candidates = await db.pos_products.find(
+        related_query,
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(120).to_list(120)
+
+    related_ids = [str(item.get("product_id")) for item in related_candidates if item.get("product_id")]
+    related_overrides = await db.charge_catalog_overrides.find(
+        {"product_id": {"$in": related_ids}},
+        {"_id": 0},
+    ).to_list(200) if related_ids else []
+    related_override_by_id = {str(item.get("product_id")): item for item in related_overrides}
+
+    related_merchant_ids = list({
+        str(item.get("merchant_id"))
+        for item in related_candidates
+        if item.get("merchant_id")
+    })
+    related_merchants = await db.merchants.find(
+        {"merchant_id": {"$in": related_merchant_ids}},
+        {"_id": 0},
+    ).to_list(200) if related_merchant_ids else []
+    related_merchant_by_id = {str(item.get("merchant_id")): item for item in related_merchants}
+
+    related_user_ids = list({
+        str(item.get("user_id"))
+        for item in related_merchants
+        if item.get("user_id")
+    })
+    related_profiles = await db.merchant_profiles.find(
+        {"user_id": {"$in": related_user_ids}},
+        {"_id": 0},
+    ).to_list(200) if related_user_ids else []
+    related_profile_by_user = {str(item.get("user_id")): item for item in related_profiles}
+
+    related_cards: List[Dict[str, Any]] = []
+    wanted = {str(item).lower() for item in categories}
+    for candidate in related_candidates:
+        candidate_categories = _charge_catalog_categories(candidate)
+        if not candidate_categories:
+            continue
+        candidate_override = related_override_by_id.get(str(candidate.get("product_id"))) or {}
+        if candidate_override.get("visible") is False:
+            continue
+        if wanted and not wanted.intersection({str(item).lower() for item in candidate_categories}):
+            continue
+        rel_merchant = related_merchant_by_id.get(str(candidate.get("merchant_id")))
+        rel_profile = related_profile_by_user.get(str((rel_merchant or {}).get("user_id")))
+        related_cards.append(_charge_product_card(candidate, rel_merchant, rel_profile, candidate_override))
+        if len(related_cards) >= 6:
+            break
+
+    merchant_payload = {
+        "business_name": (merchant or {}).get("business_name") or card.get("merchant_name"),
+        "public_slug": (merchant or {}).get("public_slug") or (profile or {}).get("public_slug") or card.get("merchant_slug"),
+        "address": (merchant or {}).get("address") or (profile or {}).get("address") or "",
+        "city": (profile or {}).get("city") or (merchant or {}).get("city") or card.get("city") or "",
+        "phone": (merchant or {}).get("phone") or (profile or {}).get("phone") or "",
+        "email": (merchant or {}).get("email") or (profile or {}).get("email") or "",
+        "website": (profile or {}).get("website") or "",
+        "logo_url": (profile or {}).get("logo_url") or "",
+    }
+
+    return {
+        "product": card,
+        "merchant": merchant_payload,
+        "related_products": related_cards,
+    }
+
+
 @router.get("/dashboard")
 async def get_charge_dashboard(request: Request):
     user = await get_current_user(request)
