@@ -2111,6 +2111,9 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert mobility.count('hidden sm:inline-flex') >= 4
     assert 'mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4' in mobility
     assert 'onNavigate?.("/mobility-center")' in mobility
+    assert 'const visibleMarkers = preferredMode' in mobility
+    assert '.filter((item) => item.type === preferredMode)' in mobility
+    assert '}, [preferredMode]);' in mobility
 
     assert 'function isImmersiveMobilityMapPath(path)' in shell
     assert 'return path === "/mobility-map";' in shell
