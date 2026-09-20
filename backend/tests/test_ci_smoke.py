@@ -651,6 +651,13 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     assert 'idempotency_key=f"marketplace-seller:{idempotency_key}"' not in market_source
     assert 'idempotency_key=f"marketplace-refund:{idempotency_key}"' not in market_source
     assert "shipping_cost" in market_source and "seller_amount = round(item_price - commission + shipping_cost, 2)" in market_source
+    assert 'listing.get("status") not in {"active", "inactive"}' in market_source
+    assert 'req.status and req.status in ["active", "inactive"]' in market_source
+    assert "Anzeige ist in einem Kauf-/Verkaufsprozess und kann nicht gelöscht werden" in market_source
+    assert 'o.get("status") == "completed"' in market_source
+    assert 'o.get("escrow_status") in {None, "released"}' in market_source
+    assert '"escrow_status": "released"' in market_source
+    assert '"escrow_status": {"$exists": False}' in market_source
 
     assert "def _require_flash_idempotency_key" in commerce_source
     assert '"reservation_key": key_hash' in commerce_source
