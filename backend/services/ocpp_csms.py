@@ -490,6 +490,35 @@ async def remote_stop(charge_point_id: str, transaction_id: int) -> Dict[str, An
     return await sess.send_call("RemoteStopTransaction", {"transactionId": transaction_id})
 
 
+async def reserve_now(
+    charge_point_id: str,
+    connector_id: int,
+    expiry_date: str,
+    id_tag: str,
+    reservation_id: int,
+    parent_id_tag: Optional[str] = None,
+) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline")
+    payload: Dict[str, Any] = {
+        "connectorId": int(connector_id),
+        "expiryDate": expiry_date,
+        "idTag": id_tag,
+        "reservationId": int(reservation_id),
+    }
+    if parent_id_tag:
+        payload["parentIdTag"] = parent_id_tag
+    return await sess.send_call("ReserveNow", payload)
+
+
+async def cancel_reservation(charge_point_id: str, reservation_id: int) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline")
+    return await sess.send_call("CancelReservation", {"reservationId": int(reservation_id)})
+
+
 async def change_availability(charge_point_id: str, connector_id: int, mode: str) -> Dict[str, Any]:
     """mode: 'Operative' | 'Inoperative'"""
     sess = get_session(charge_point_id)
