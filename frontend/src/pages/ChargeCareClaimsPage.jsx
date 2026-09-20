@@ -15,7 +15,7 @@ const EMPTY_FORM = {
   preferred_resolution: "repair",
 };
 
-export default function ChargeCareClaimsPage({ registrationId, claimId, onBack, onNavigate }) {
+export default function ChargeCareClaimsPage({ registrationId, claimId, preferredResolution, onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [claims, setClaims] = useState([]);
@@ -45,6 +45,17 @@ export default function ChargeCareClaimsPage({ registrationId, claimId, onBack, 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!registrationId || claimId) return;
+    if (preferredResolution === "replacement") {
+      setForm((current) => ({
+        ...current,
+        preferred_resolution: "replacement",
+        subject: current.subject || "Austausch für Charge-Produkt anfragen",
+      }));
+    }
+  }, [registrationId, claimId, preferredResolution]);
 
   const activeForWarranty = useMemo(() => {
     if (!registrationId) return null;
