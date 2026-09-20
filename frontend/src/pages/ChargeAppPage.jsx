@@ -9,6 +9,7 @@ import { api } from "../services/api";
 import { QRCodeSVG } from "qrcode.react";
 import { ChargeAttachmentActions } from "../components/charge/ChargeAttachmentActions";
 import { ChargeDocumentPreviewModal } from "../components/charge/ChargeDocumentPreviewModal";
+import { ChargeProductScanner } from "../components/charge/ChargeProductScanner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -31,6 +32,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [activationCode, setActivationCode] = useState("");
   const [activationProduct, setActivationProduct] = useState(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [warrantyForm, setWarrantyForm] = useState({
     product_id: "",
     product_name: "BidBlitz Charge Pro 65W",
@@ -80,12 +82,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     loadCatalog();
   }, [loadCatalog]);
 
-  const lookupActivationProduct = useCallback(async () => {
-    const code = activationCode.trim();
+  const lookupActivationProduct = useCallback(async (codeOverride = "") => {
+    const code = String(codeOverride || activationCode).trim();
     if (!code) {
       toast.error("Bitte Barcode, QR-Code, SKU oder Produkt-ID eingeben");
       return;
     }
+    setActivationCode(code);
     setBusy("activation-lookup");
     try {
       const response = await api.lookupChargeProduct(code);
@@ -107,6 +110,11 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       setBusy("");
     }
   }, [activationCode]);
+
+  const handleScannedProductCode = useCallback((code) => {
+    setScannerOpen(false);
+    lookupActivationProduct(code);
+  }, [lookupActivationProduct]);
 
 
   const submitWarranty = useCallback(async () => {
@@ -641,6 +649,14 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     {busy === "activation-lookup" ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
                     Code prüfen
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setScannerOpen(true)}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#0A1626]/10 bg-white px-4 text-xs font-black text-slate-700"
+                    data-testid="charge-app-warranty-scan-button"
+                  >
+                    <ScanLine size={14} />Scannen
+                  </button>
                 </div>
                 {activationProduct ? (
                   <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3" data-testid="charge-app-warranty-activation-result">
@@ -897,6 +913,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       </div>
     </div>
     <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
+    <ChargeProductScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleScannedProductCode} />
     </>
   );
 }
