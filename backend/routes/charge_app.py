@@ -688,6 +688,13 @@ def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": doc.get("updated_at") or doc.get("created_at") or "",
         "resolved_at": doc.get("resolved_at") or "",
         "messages": doc.get("messages") or [],
+        "status_history": doc.get("status_history") or [{
+            "status": doc.get("status") or "open",
+            "actor_role": "system",
+            "actor_id": "",
+            "note": "",
+            "created_at": doc.get("created_at") or "",
+        }],
         "attachments": [
             _attachment_meta(item, f"/api/charge-app/claims/{doc.get('claim_id')}/attachments")
             for item in (doc.get("attachments") or [])
@@ -1762,6 +1769,13 @@ async def create_charge_warranty_claim(
             "message": description,
             "created_at": now,
         }],
+        "status_history": [{
+            "status": "open",
+            "actor_role": "customer",
+            "actor_id": user_id,
+            "note": "Garantiefall eröffnet",
+            "created_at": now,
+        }],
         "attachments": [],
         "created_at": now,
         "updated_at": now,
@@ -1959,11 +1973,27 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
         return {"ok": True, "claim": _claim_card(claim)}
 
     now = _now_iso()
+    history_entry = {
+        "status": "cancelled",
+        "actor_role": "customer",
+        "actor_id": user_id,
+        "note": "Garantiefall vom Kunden storniert",
+        "created_at": now,
+    }
     await db.merchant_warranty_claims.update_one(
         {"claim_id": claim_id, "customer_user_id": user_id},
-        {"$set": {"status": "cancelled", "updated_at": now, "resolved_at": now}},
+        {
+            "$set": {"status": "cancelled", "updated_at": now, "resolved_at": now},
+            "$push": {"status_history": history_entry},
+        },
     )
-    updated = {**claim, "status": "cancelled", "updated_at": now, "resolved_at": now}
+    updated = {
+        **claim,
+        "status": "cancelled",
+        "updated_at": now,
+        "resolved_at": now,
+        "status_history": [*(claim.get("status_history") or []), history_entry],
+    }
     return {"ok": True, "claim": _claim_card(updated)}
 
 
@@ -2030,8 +2060,19 @@ async def admin_update_charge_claim_status(
         })
 
     mongo_update: Dict[str, Any] = {"$set": update}
+    push_ops: Dict[str, Any] = {}
     if messages:
-        mongo_update["$push"] = {"messages": {"$each": messages}}
+        push_ops["messages"] = {"$each": messages}
+    if status != str(claim.get("status") or ""):
+        push_ops["status_history"] = {
+            "status": status,
+            "actor_role": "admin",
+            "actor_id": str(admin.get("_id") or "admin"),
+            "note": note,
+            "created_at": now,
+        }
+    if push_ops:
+        mongo_update["$push"] = push_ops
     await db.merchant_warranty_claims.update_one(
         {"claim_id": claim_id},
         mongo_update,
