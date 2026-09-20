@@ -1983,25 +1983,28 @@ async def invoice_payment_webhook(request: Request):
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{str(request.base_url).rstrip('/')}/api/webhook/stripe")
     try:
         event = await stripe_checkout.handle_webhook(body, request.headers.get("Stripe-Signature"))
-    except Exception:
-        return {"received": True, "processed": False}
-
-    if event.payment_status == "paid" and event.session_id:
-        try:
-            from routes.dating import handle_dating_premium_webhook
-            await handle_dating_premium_webhook(event.session_id)
-        except Exception:
-            pass
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid Stripe webhook") from exc
 
     metadata = dict(event.metadata or {})
     if metadata.get("type") != "invoice_payment_link":
-        return {"received": True, "processed": False}
+        return {"received": True, "processed": False, "ignored": True}
 
-    token = metadata.get("token", "")
-    session_id = event.session_id or ""
-    if token and session_id and event.payment_status == "paid":
+    token = str(metadata.get("token") or "")
+    session_id = str(event.session_id or "")
+    if not token or not session_id:
+        raise HTTPException(status_code=400, detail="Invoice webhook metadata incomplete")
+
+    if event.payment_status == "paid":
         try:
             await public_payment_checkout_status(token, session_id, request)
-        except Exception:
-            pass
-    return {"received": True, "processed": True}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Invoice webhook settlement failed") from exc
+
+    return {
+        "received": True,
+        "processed": event.payment_status == "paid",
+        "payment_status": event.payment_status,
+    }
