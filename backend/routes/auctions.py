@@ -315,6 +315,10 @@ def _winner_checkout_payload(auction: dict, order: Optional[dict]) -> dict:
         "payment_status": (order or {}).get("payment_status") or "unpaid",
         "shipping_address": (order or {}).get("shipping_address"),
         "fulfillment_status": (order or {}).get("fulfillment_status") or "not_started",
+        "carrier": (order or {}).get("carrier"),
+        "tracking_number": (order or {}).get("tracking_number"),
+        "shipped_at": (order or {}).get("shipped_at"),
+        "delivered_at": (order or {}).get("delivered_at"),
     }
 
 
@@ -515,6 +519,124 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
 
     order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
     return {**_winner_checkout_payload(auction, order), "success": True, "replayed": bool(payment.idempotent_replay)}
+
+
+class AuctionOrderFulfillmentRequest(BaseModel):
+    status: str = Field(..., pattern="^(processing|shipped|delivered)$")
+    carrier: Optional[str] = Field(default=None, max_length=120)
+    tracking_number: Optional[str] = Field(default=None, max_length=180)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+@router.get("/admin/orders")
+async def admin_auction_orders(request: Request, status: Optional[str] = None):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = {"payment_status": "paid"}
+    if status:
+        if status not in {"pending", "processing", "shipped", "delivered"}:
+            raise HTTPException(status_code=400, detail="Ungültiger Fulfillment-Status")
+        query["fulfillment_status"] = status
+    orders = await db.auction_orders.find(query, {"_id": 0}).sort("paid_at", -1).limit(200).to_list(200)
+    return {"orders": orders, "count": len(orders)}
+
+
+@router.post("/admin/orders/{order_id}/fulfillment")
+async def update_auction_order_fulfillment(order_id: str, req: AuctionOrderFulfillmentRequest, request: Request):
+    admin = await get_current_user(request)
+    if admin.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("payment_status") != "paid":
+        raise HTTPException(status_code=409, detail="Nur bezahlte Bestellungen können versendet werden")
+
+    current = order.get("fulfillment_status") or "pending"
+    carrier = (req.carrier or "").strip() or None
+    tracking_number = (req.tracking_number or "").strip() or None
+    if req.status == "shipped":
+        if not carrier or len(carrier) < 2:
+            raise HTTPException(status_code=400, detail="Echter Versanddienstleister erforderlich")
+        if not tracking_number or len(tracking_number) < 4:
+            raise HTTPException(status_code=400, detail="Echte Tracking-/Sendungsnummer erforderlich")
+    if req.status == "delivered" and current != "shipped":
+        raise HTTPException(status_code=409, detail="Bestellung muss vor 'delivered' zuerst 'shipped' sein")
+
+    allowed_from = {
+        "processing": {"pending", "not_started"},
+        "shipped": {"pending", "processing"},
+        "delivered": {"shipped"},
+    }
+    if current == req.status:
+        same_tracking = (
+            req.status != "shipped"
+            or (order.get("carrier") == carrier and order.get("tracking_number") == tracking_number)
+        )
+        if same_tracking:
+            return {"ok": True, "order": order, "replayed": True}
+        raise HTTPException(status_code=409, detail="Status existiert bereits mit anderen Versanddaten")
+    if current not in allowed_from[req.status]:
+        raise HTTPException(status_code=409, detail=f"Ungültiger Statuswechsel: {current} → {req.status}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {
+        "fulfillment_status": req.status,
+        "fulfillment_updated_at": now,
+        "fulfillment_updated_by": str(admin["_id"]),
+        "fulfillment_note": (req.note or "").strip() or None,
+    }
+    if req.status == "processing":
+        updates["processing_at"] = now
+    elif req.status == "shipped":
+        updates["carrier"] = carrier
+        updates["tracking_number"] = tracking_number
+        updates["shipped_at"] = now
+    elif req.status == "delivered":
+        updates["delivered_at"] = now
+
+    changed = await db.auction_orders.update_one(
+        {
+            "_id": order_id,
+            "payment_status": "paid",
+            "fulfillment_status": current,
+        },
+        {"$set": updates},
+    )
+    if changed.modified_count != 1:
+        fresh = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+        if fresh.get("fulfillment_status") == req.status:
+            return {"ok": True, "order": fresh, "replayed": True}
+        raise HTTPException(status_code=409, detail="Fulfillment wurde parallel geändert")
+
+    await db.auctions.update_one(
+        {"auction_id": order.get("auction_id"), "winner_order_id": order_id},
+        {"$set": {"winner_fulfillment_status": req.status}},
+    )
+    notification_id = f"auction-order:{order_id}:{req.status}"
+    status_message = {
+        "processing": "Dein Auktionsgewinn wird für den Versand vorbereitet.",
+        "shipped": f"Dein Auktionsgewinn wurde versendet. Carrier: {carrier}, Tracking: {tracking_number}",
+        "delivered": "Dein Auktionsgewinn wurde als zugestellt markiert.",
+    }[req.status]
+    await db.auction_notifications.update_one(
+        {"_id": notification_id},
+        {"$setOnInsert": {
+            "_id": notification_id,
+            "user_id": order.get("winner_id"),
+            "type": f"winner_order_{req.status}",
+            "auction_id": order.get("auction_id"),
+            "order_id": order_id,
+            "message": status_message,
+            "read": False,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    fresh = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+    return {"ok": True, "order": fresh, "replayed": False}
 
 
 # ── List auctions ──
