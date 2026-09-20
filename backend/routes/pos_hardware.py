@@ -66,12 +66,17 @@ async def print_receipt(req: PrintRequest, request: Request):
         elif printer["type"] == "usb":
             await _send_to_usb_printer(printer["device"], escpos_data)
         elif printer["type"] == "file":
-            # Dev mode: Save to file
+            if not TEST_MODE:
+                raise HTTPException(status_code=503, detail="Datei-Druck ist nur im Testmodus erlaubt")
             with open(f"/tmp/receipt_{req.receipt_id}.txt", "wb") as f:
                 f.write(escpos_data)
+        else:
+            raise HTTPException(status_code=503, detail="Nicht unterstützter Drucker-Typ")
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Print error: {e}")
-        raise HTTPException(status_code=500, detail=f"Druckfehler: {str(e)}")
+        raise HTTPException(status_code=502, detail="Bondrucker konnte nicht angesprochen werden")
     
     await db.pos_sales.update_one(
         {"receipt_id": req.receipt_id},
