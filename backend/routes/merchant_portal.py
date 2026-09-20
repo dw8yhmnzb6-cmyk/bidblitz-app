@@ -166,7 +166,12 @@ def _safe_slug(value: str, fallback: str = "item") -> str:
 
 def _build_warranty_pass(claim: dict) -> dict:
     purchase_dt = _parse_iso(claim.get("purchase_date")) or _parse_iso(claim.get("created_at")) or datetime.now(timezone.utc)
-    valid_until = (purchase_dt + timedelta(days=730)).date().isoformat()
+    months = max(1, min(int(claim.get("warranty_months") or 24), 120))
+    stored_valid_until = str(claim.get("warranty_valid_until") or "").strip()
+    if stored_valid_until:
+        valid_until = stored_valid_until[:10]
+    else:
+        valid_until = (purchase_dt + timedelta(days=round(months * 30.4375))).date().isoformat()
     claim_id = claim.get("claim_id") or f"WAR-{uuid.uuid4().hex[:8].upper()}"
     pass_id = claim.get("pass_id") or f"BBCH-{claim_id[-6:]}"
     status = claim.get("status") or "submitted"
@@ -182,7 +187,7 @@ def _build_warranty_pass(claim: dict) -> dict:
     return {
         "pass_id": pass_id,
         "claim_id": claim_id,
-        "coverage_label": "BidBlitz Charge Care 24M",
+        "coverage_label": f"BidBlitz Charge Care {months}M",
         "status_label": status.replace("_", " "),
         "valid_until": valid_until,
         "serial_number": claim.get("serial_number") or "—",
@@ -433,25 +438,51 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
 
 async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
     user_id = str(user.get("_id"))
-    claims = await db.merchant_warranty_claims.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(80).to_list(80)
+    claims = await db.merchant_warranty_claims.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(120).to_list(120)
     now = _now_iso()
-    for claim in claims:
+
+    normalized_claims = []
+    for raw in claims:
+        claim = {**raw}
+        is_charge_customer = bool(claim.get("customer_user_id"))
+        if is_charge_customer:
+            claim["issue_summary"] = claim.get("issue_summary") or claim.get("description") or ""
+            claim["requested_resolution"] = claim.get("requested_resolution") or claim.get("preferred_resolution") or "repair"
+            claim["customer_name"] = claim.get("customer_name") or claim.get("customer_email") or "BidBlitz Kunde"
+            claim["dealer_status"] = claim.get("dealer_status") or {
+                "open": "submitted",
+                "in_review": "under_review",
+                "approved": "replacement_sent" if claim.get("requested_resolution") in {"replace", "replacement"} else "under_review",
+                "rejected": "rejected",
+                "resolved": "resolved",
+                "cancelled": "cancelled",
+            }.get(claim.get("status"), claim.get("status") or "submitted")
         claim["created_at"] = claim.get("created_at") or now
         claim["updated_at"] = claim.get("updated_at") or claim.get("created_at") or now
         claim["warranty_pass"] = _build_warranty_pass(claim)
+        normalized_claims.append(claim)
+
+    active_statuses = {"submitted", "under_review", "awaiting_parts", "open", "in_review", "approved"}
+    resolved_statuses = {"resolved", "replacement_sent", "rejected", "cancelled"}
     return {
         "summary": {
-            "claims_total": len(claims),
-            "open_total": len([c for c in claims if c.get("status") in {"submitted", "under_review", "awaiting_parts"}]),
-            "resolved_total": len([c for c in claims if c.get("status") in {"resolved", "replacement_sent", "rejected"}]),
-            "replacement_total": len([c for c in claims if c.get("requested_resolution") == "replace"]),
-            "pass_total": len(claims),
+            "claims_total": len(normalized_claims),
+            "open_total": len([row for row in normalized_claims if row.get("status") in active_statuses]),
+            "resolved_total": len([row for row in normalized_claims if row.get("status") in resolved_statuses]),
+            "replacement_total": len([
+                row for row in normalized_claims
+                if row.get("requested_resolution") in {"replace", "replacement"}
+            ]),
+            "customer_charge_claims_total": len([row for row in normalized_claims if row.get("customer_user_id")]),
+            "pass_total": len(normalized_claims),
         },
-        "claims": claims,
+        "claims": normalized_claims,
         "issue_types": ["defekt", "display", "akku", "kabel", "garantiefrage", "retoure"],
         "resolution_types": ["repair", "replace", "credit", "inspect"],
     }
-
 
 async def require_merchant(request: Request):
     user = await get_current_user(request)
@@ -2237,15 +2268,68 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
         raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
     if user.get("role") != "admin" and claim.get("user_id") != str(user.get("_id")):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
-    update_doc = {
-        "status": req.status,
-        "updated_at": _now_iso(),
-    }
-    if req.internal_note:
-        update_doc["internal_note"] = req.internal_note
-    await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, {"$set": update_doc})
-    return {"ok": True, "status": req.status}
 
+    now = _now_iso()
+    requested_status = str(req.status or "").strip().lower()
+    note = str(req.internal_note or "").strip()
+
+    # Customer-created Charge Care claims share the same collection but expose
+    # a smaller, stable status vocabulary to the customer app.
+    if claim.get("customer_user_id"):
+        status_map = {
+            "submitted": "open",
+            "open": "open",
+            "under_review": "in_review",
+            "awaiting_parts": "in_review",
+            "in_review": "in_review",
+            "replacement_sent": "approved",
+            "approved": "approved",
+            "rejected": "rejected",
+            "resolved": "resolved",
+            "cancelled": "cancelled",
+        }
+        customer_status = status_map.get(requested_status)
+        if not customer_status:
+            raise HTTPException(status_code=400, detail="Ungültiger Garantiestatus")
+
+        update_doc: Dict[str, Any] = {
+            "status": customer_status,
+            "dealer_status": requested_status,
+            "updated_at": now,
+        }
+        if note:
+            update_doc["internal_note"] = note
+            update_doc["admin_note"] = note
+        if customer_status in {"resolved", "rejected", "cancelled"}:
+            update_doc["resolved_at"] = now
+
+        mongo_update: Dict[str, Any] = {"$set": update_doc}
+        if note and note != str(claim.get("admin_note") or claim.get("internal_note") or "").strip():
+            mongo_update["$push"] = {
+                "messages": {
+                    "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
+                    "author_role": "merchant",
+                    "author_id": str(user.get("_id") or ""),
+                    "message": note,
+                    "created_at": now,
+                }
+            }
+        await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
+        return {
+            "ok": True,
+            "status": customer_status,
+            "dealer_status": requested_status,
+        }
+
+    # Legacy merchant-created warranty cases keep their established behavior.
+    update_doc = {
+        "status": requested_status,
+        "updated_at": now,
+    }
+    if note:
+        update_doc["internal_note"] = note
+    await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, {"$set": update_doc})
+    return {"ok": True, "status": requested_status}
 
 @router.post("/dealer/warranty/create")
 async def create_dealer_warranty(req: DealerWarrantyCreateRequest, request: Request):
