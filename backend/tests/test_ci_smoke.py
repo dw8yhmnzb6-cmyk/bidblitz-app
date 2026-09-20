@@ -430,8 +430,10 @@ def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
 
     assert 'const kycRequired = !isGuest && !KYC_DISABLED' in detail_source
     assert 'if (kycRequired) { onNavigate?.("/profile/kyc"); return; }' in detail_source
-    assert 'disabled={bidding || kycRequired}' in detail_source
-    assert 'disabled={kycRequired}' in detail_source
+    assert 'disabled={bidding}' in detail_source
+    assert 'Identität verifizieren' in detail_source
+    assert 'Verifizieren für Auto-Bid' in detail_source
+    assert 'disabled={kycRequired}' not in detail_source
 
 
 def test_scooter_rides_subscriptions_and_location_are_financially_safe():
