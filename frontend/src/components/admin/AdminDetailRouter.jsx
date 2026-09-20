@@ -34,7 +34,7 @@ export default function AdminDetailRouter({ data, setData, loading, error, onNav
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2">
+      <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2" data-testid="admin-detail-error">
         <AlertCircle size={16} className="text-red-500" />
         <span className="text-sm text-red-700">{error}</span>
       </div>
