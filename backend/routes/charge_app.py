@@ -615,7 +615,8 @@ async def get_charge_catalog(
     category: Optional[str] = None,
     limit: int = 120,
 ):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
     safe_limit = min(max(int(limit or 120), 1), 300)
 
     query: Dict[str, Any] = {"active": True}
@@ -662,6 +663,12 @@ async def get_charge_catalog(
     ).to_list(1000) if product_ids else []
     override_by_product = {str(item.get("product_id")): item for item in overrides}
 
+    saved_docs = await db.charge_saved_products.find(
+        {"user_id": user_id, "product_id": {"$in": product_ids}},
+        {"_id": 0, "product_id": 1},
+    ).to_list(1000) if product_ids else []
+    saved_ids = {str(item.get("product_id")) for item in saved_docs}
+
     cards: List[Dict[str, Any]] = []
     requested_category = str(category or "").strip().lower()
 
@@ -672,6 +679,7 @@ async def get_charge_catalog(
         merchant = merchant_by_id.get(str(product.get("merchant_id")))
         profile = profile_by_user.get(str((merchant or {}).get("user_id")))
         card = _charge_product_card(product, merchant, profile, override)
+        card["saved"] = str(product.get("product_id")) in saved_ids
         cats = card.get("charge_categories") or []
         if requested_category and requested_category != "all" and requested_category not in [str(x).lower() for x in cats]:
             continue
@@ -703,7 +711,8 @@ async def get_charge_catalog(
 
 @router.get("/catalog/{product_id}")
 async def get_charge_catalog_product(product_id: str, request: Request):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
 
     product = await db.pos_products.find_one(
         {"product_id": product_id, "active": True},
@@ -733,6 +742,10 @@ async def get_charge_catalog_product(product_id: str, request: Request):
         )
 
     card = _charge_product_card(product, merchant, profile, override)
+    card["saved"] = bool(await db.charge_saved_products.find_one({
+        "user_id": user_id,
+        "product_id": product_id,
+    }))
     categories = card.get("charge_categories") or []
 
     related_query: Dict[str, Any] = {
@@ -808,10 +821,111 @@ async def get_charge_catalog_product(product_id: str, request: Request):
     }
 
 
+@router.get("/saved-products")
+async def get_saved_charge_products(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    saved = await db.charge_saved_products.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(300).to_list(300)
+    ids = [str(item.get("product_id")) for item in saved if item.get("product_id")]
+    if not ids:
+        return {"products": [], "total": 0}
+
+    products = await db.pos_products.find(
+        {"product_id": {"$in": ids}, "active": True},
+        {"_id": 0},
+    ).to_list(300)
+    product_by_id = {str(item.get("product_id")): item for item in products}
+
+    overrides = await db.charge_catalog_overrides.find(
+        {"product_id": {"$in": ids}},
+        {"_id": 0},
+    ).to_list(300)
+    override_by_id = {str(item.get("product_id")): item for item in overrides}
+
+    merchant_ids = list({
+        str(item.get("merchant_id"))
+        for item in products
+        if item.get("merchant_id")
+    })
+    merchants = await db.merchants.find(
+        {"merchant_id": {"$in": merchant_ids}},
+        {"_id": 0},
+    ).to_list(300) if merchant_ids else []
+    merchant_by_id = {str(item.get("merchant_id")): item for item in merchants}
+
+    user_ids = list({
+        str(item.get("user_id"))
+        for item in merchants
+        if item.get("user_id")
+    })
+    profiles = await db.merchant_profiles.find(
+        {"user_id": {"$in": user_ids}},
+        {"_id": 0},
+    ).to_list(300) if user_ids else []
+    profile_by_user = {str(item.get("user_id")): item for item in profiles}
+
+    cards = []
+    for product_id in ids:
+        product = product_by_id.get(product_id)
+        if not product or not _charge_catalog_categories(product):
+            continue
+        override = override_by_id.get(product_id) or {}
+        if override.get("visible") is False:
+            continue
+        merchant = merchant_by_id.get(str(product.get("merchant_id")))
+        profile = profile_by_user.get(str((merchant or {}).get("user_id")))
+        card = _charge_product_card(product, merchant, profile, override)
+        card["saved"] = True
+        cards.append(card)
+    return {"products": cards, "total": len(cards)}
+
+
+@router.put("/saved-products/{product_id}")
+async def save_charge_product(product_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    product = await db.pos_products.find_one(
+        {"product_id": product_id, "active": True},
+        {"_id": 0},
+    )
+    if not product or not _charge_catalog_categories(product):
+        raise HTTPException(status_code=404, detail="Charge-Produkt nicht gefunden")
+    override = await db.charge_catalog_overrides.find_one({"product_id": product_id}, {"_id": 0})
+    if override and override.get("visible") is False:
+        raise HTTPException(status_code=404, detail="Charge-Produkt nicht gefunden")
+
+    now = _now_iso()
+    await db.charge_saved_products.update_one(
+        {"user_id": user_id, "product_id": product_id},
+        {"$setOnInsert": {
+            "user_id": user_id,
+            "product_id": product_id,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    return {"ok": True, "product_id": product_id, "saved": True}
+
+
+@router.delete("/saved-products/{product_id}")
+async def unsave_charge_product(product_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    await db.charge_saved_products.delete_one({
+        "user_id": user_id,
+        "product_id": product_id,
+    })
+    return {"ok": True, "product_id": product_id, "saved": False}
+
+
 @router.get("/dashboard")
 async def get_charge_dashboard(request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
+    saved_products_total = await db.charge_saved_products.count_documents({"user_id": user_id})
 
     warranties = await db.charge_app_warranties.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     invoices = await db.charge_app_invoices.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
@@ -873,6 +987,7 @@ async def get_charge_dashboard(request: Request):
             "merchants_total": len(merchants),
             "personalized_offers_total": len(personalized_offers),
             "active_rules_total": len(rules),
+            "saved_products_total": saved_products_total,
         },
         "warranties": [_warranty_card(item) for item in warranties],
         "invoices": [_invoice_card(item) for item in invoices],
