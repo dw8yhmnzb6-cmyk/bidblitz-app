@@ -5,6 +5,7 @@ import json
 import hashlib
 import hmac
 import re
+import secrets
 from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
@@ -75,6 +76,10 @@ class ChargeInvoiceUpdateRequest(BaseModel):
     purchase_date: Optional[str] = None
     product_name: Optional[str] = None
     serial_number: Optional[str] = None
+
+
+class ChargeWarrantyTransferRequest(BaseModel):
+    recipient_email: str
 
 
 class ChargeWarrantyClaimRequest(BaseModel):
@@ -665,6 +670,32 @@ async def _resolve_charge_merchant(merchant_name: Any) -> Dict[str, Any]:
         "merchant_slug": merchant.get("public_slug") or profile.get("public_slug") or "",
         "merchant_name": merchant.get("business_name") or profile.get("business_name") or name,
     }
+
+
+def _transfer_card(doc: Dict[str, Any]) -> Dict[str, Any]:
+    status = str(doc.get("status") or "pending")
+    expires_at = _parse_iso(doc.get("expires_at"))
+    if status == "pending" and expires_at and expires_at < datetime.now(timezone.utc):
+        status = "expired"
+    return {
+        "transfer_id": doc.get("transfer_id"),
+        "registration_id": doc.get("registration_id"),
+        "product_id": doc.get("product_id") or "",
+        "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number_masked": doc.get("serial_number_masked") or "",
+        "from_user_id": doc.get("from_user_id") or "",
+        "from_email": doc.get("from_email") or "",
+        "recipient_email": doc.get("recipient_email") or "",
+        "status": status,
+        "created_at": doc.get("created_at") or "",
+        "expires_at": doc.get("expires_at") or "",
+        "accepted_at": doc.get("accepted_at") or "",
+        "cancelled_at": doc.get("cancelled_at") or "",
+    }
+
+
+def _normalized_email(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -1700,7 +1731,261 @@ async def delete_invoice_attachment(
     }
 
 
-@router.post("/warranty/{registration_id}/claims")
+@router.post("/warranty/{registration_id}/transfer")
+async def create_charge_warranty_transfer(
+    registration_id: str,
+    req: ChargeWarrantyTransferRequest,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    sender_email = _normalized_email(user.get("email"))
+    recipient_email = _normalized_email(req.recipient_email)
+
+    if not recipient_email or "@" not in recipient_email:
+        raise HTTPException(status_code=400, detail="Gültige Empfänger-E-Mail erforderlich")
+    if recipient_email == sender_email:
+        raise HTTPException(status_code=400, detail="Garantie kann nicht an dasselbe Konto übertragen werden")
+
+    warranty = await _find_user_warranty(user_id, registration_id)
+    if _warranty_card(warranty).get("status") != "active":
+        raise HTTPException(status_code=409, detail="Nur aktive Garantien können übertragen werden")
+
+    active_claim = await db.merchant_warranty_claims.find_one(
+        {
+            "registration_id": registration_id,
+            "customer_user_id": user_id,
+            "status": {"$in": ["open", "in_review", "approved"]},
+        },
+        {"_id": 0, "claim_id": 1},
+    )
+    if active_claim:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Übertragung nicht möglich: Charge-Care-Fall {active_claim.get('claim_id')} ist noch aktiv.",
+        )
+
+    existing = await db.charge_warranty_transfers.find_one(
+        {
+            "registration_id": registration_id,
+            "from_user_id": user_id,
+            "status": "pending",
+        },
+        {"_id": 0},
+    )
+    if existing:
+        existing_expiry = _parse_iso(existing.get("expires_at"))
+        if existing_expiry and existing_expiry > datetime.now(timezone.utc):
+            if _normalized_email(existing.get("recipient_email")) == recipient_email:
+                return {"ok": True, "transfer": _transfer_card(existing), "duplicate": True}
+            raise HTTPException(status_code=409, detail="Für diese Garantie existiert bereits eine offene Übertragung")
+        await db.charge_warranty_transfers.update_one(
+            {"transfer_id": existing.get("transfer_id"), "status": "pending"},
+            {"$set": {"status": "expired", "updated_at": _now_iso()}},
+        )
+
+    now_dt = datetime.now(timezone.utc)
+    expires_at = (now_dt + timedelta(hours=72)).isoformat()
+    serial = str(warranty.get("serial_number") or "")
+    masked_serial = f"{serial[:2]}***{serial[-2:]}" if len(serial) >= 5 else ("***" if serial else "—")
+    transfer = {
+        "transfer_id": f"CHG-TR-{secrets.token_hex(8).upper()}",
+        "registration_id": registration_id,
+        "product_id": warranty.get("product_id") or "",
+        "product_name": warranty.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number_masked": masked_serial,
+        "from_user_id": user_id,
+        "from_email": sender_email,
+        "recipient_email": recipient_email,
+        "status": "pending",
+        "created_at": now_dt.isoformat(),
+        "updated_at": now_dt.isoformat(),
+        "expires_at": expires_at,
+    }
+    await db.charge_warranty_transfers.insert_one(transfer)
+    transfer.pop("_id", None)
+    return {"ok": True, "transfer": _transfer_card(transfer)}
+
+
+@router.get("/warranty-transfers")
+async def list_charge_warranty_transfers(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    email = _normalized_email(user.get("email"))
+    rows = await db.charge_warranty_transfers.find(
+        {
+            "$or": [
+                {"from_user_id": user_id},
+                {"recipient_email": email},
+            ],
+        },
+        {"_id": 0},
+    ).sort("created_at", -1).limit(100).to_list(100)
+
+    expired_ids = []
+    payload = []
+    for row in rows:
+        card = _transfer_card(row)
+        payload.append(card)
+        if row.get("status") == "pending" and card.get("status") == "expired":
+            expired_ids.append(row.get("transfer_id"))
+
+    if expired_ids:
+        await db.charge_warranty_transfers.update_many(
+            {"transfer_id": {"$in": expired_ids}, "status": "pending"},
+            {"$set": {"status": "expired", "updated_at": _now_iso()}},
+        )
+
+    return {
+        "incoming": [item for item in payload if _normalized_email(item.get("recipient_email")) == email],
+        "outgoing": [item for item in payload if item.get("from_user_id") == user_id],
+    }
+
+
+@router.put("/warranty-transfers/{transfer_id}/accept")
+async def accept_charge_warranty_transfer(transfer_id: str, request: Request):
+    user = await get_current_user(request)
+    recipient_user_id = str(user.get("_id"))
+    recipient_email = _normalized_email(user.get("email"))
+
+    transfer = await db.charge_warranty_transfers.find_one(
+        {"transfer_id": transfer_id},
+        {"_id": 0},
+    )
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Garantieübertragung nicht gefunden")
+    if _normalized_email(transfer.get("recipient_email")) != recipient_email:
+        raise HTTPException(status_code=403, detail="Diese Garantieübertragung ist für ein anderes Konto bestimmt")
+
+    if transfer.get("status") == "accepted":
+        warranty = await db.charge_app_warranties.find_one(
+            {"registration_id": transfer.get("registration_id"), "user_id": recipient_user_id},
+            {"_id": 0},
+        )
+        if warranty:
+            return {"ok": True, "warranty": _warranty_card(warranty), "duplicate": True}
+    if transfer.get("status") != "pending":
+        raise HTTPException(status_code=409, detail="Garantieübertragung ist nicht mehr aktiv")
+
+    expires_at = _parse_iso(transfer.get("expires_at"))
+    if not expires_at or expires_at <= datetime.now(timezone.utc):
+        await db.charge_warranty_transfers.update_one(
+            {"transfer_id": transfer_id, "status": "pending"},
+            {"$set": {"status": "expired", "updated_at": _now_iso()}},
+        )
+        raise HTTPException(status_code=409, detail="Garantieübertragung ist abgelaufen")
+
+    registration_id = str(transfer.get("registration_id") or "")
+    warranty = await db.charge_app_warranties.find_one(
+        {"registration_id": registration_id, "user_id": transfer.get("from_user_id")},
+        {"_id": 0},
+    )
+    if not warranty:
+        # Recover a crash where the warranty moved but the transfer status update did not finish.
+        already_moved = await db.charge_app_warranties.find_one(
+            {"registration_id": registration_id, "user_id": recipient_user_id},
+            {"_id": 0},
+        )
+        if already_moved:
+            now = _now_iso()
+            await db.charge_warranty_transfers.update_one(
+                {"transfer_id": transfer_id, "status": "pending"},
+                {"$set": {
+                    "status": "accepted",
+                    "accepted_at": now,
+                    "recipient_user_id": recipient_user_id,
+                    "updated_at": now,
+                }},
+            )
+            return {"ok": True, "warranty": _warranty_card(already_moved), "recovered": True}
+        raise HTTPException(status_code=409, detail="Garantie gehört nicht mehr dem ursprünglichen Konto")
+
+    conflict = await _find_conflicting_active_warranty(
+        user_id=recipient_user_id,
+        registration_id=registration_id,
+        product_id=warranty.get("product_id") or "",
+        product_name=warranty.get("product_name") or "",
+        serial_number=warranty.get("serial_number") or "",
+    )
+    if conflict and conflict.get("registration_id") != registration_id:
+        raise HTTPException(status_code=409, detail="Empfänger hat bereits eine aktive Garantie für diese Produkt-Seriennummer")
+
+    now = _now_iso()
+    history_entry = {
+        "transfer_id": transfer_id,
+        "from_user_id": transfer.get("from_user_id"),
+        "from_email": transfer.get("from_email") or "",
+        "to_user_id": recipient_user_id,
+        "to_email": recipient_email,
+        "transferred_at": now,
+    }
+    result = await db.charge_app_warranties.update_one(
+        {
+            "registration_id": registration_id,
+            "user_id": transfer.get("from_user_id"),
+        },
+        {
+            "$set": {
+                "user_id": recipient_user_id,
+                # Purchase documents stay private with the original buyer.
+                "invoice_id": "",
+                "invoice_number": "",
+                "updated_at": now,
+                "last_transfer_at": now,
+            },
+            "$push": {"transfer_history": history_entry},
+        },
+    )
+    if result.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Garantieübertragung konnte nicht atomar übernommen werden")
+
+    await db.charge_warranty_transfers.update_one(
+        {"transfer_id": transfer_id, "status": "pending"},
+        {"$set": {
+            "status": "accepted",
+            "accepted_at": now,
+            "recipient_user_id": recipient_user_id,
+            "updated_at": now,
+        }},
+    )
+    moved = await db.charge_app_warranties.find_one(
+        {"registration_id": registration_id, "user_id": recipient_user_id},
+        {"_id": 0},
+    )
+    return {"ok": True, "warranty": _warranty_card(moved or warranty)}
+
+
+@router.put("/warranty-transfers/{transfer_id}/cancel")
+async def cancel_charge_warranty_transfer(transfer_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    now = _now_iso()
+    result = await db.charge_warranty_transfers.update_one(
+        {
+            "transfer_id": transfer_id,
+            "from_user_id": user_id,
+            "status": "pending",
+        },
+        {"$set": {"status": "cancelled", "cancelled_at": now, "updated_at": now}},
+    )
+    if result.modified_count != 1:
+        transfer = await db.charge_warranty_transfers.find_one(
+            {"transfer_id": transfer_id, "from_user_id": user_id},
+            {"_id": 0},
+        )
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Garantieübertragung nicht gefunden")
+        if transfer.get("status") == "cancelled":
+            return {"ok": True, "transfer": _transfer_card(transfer)}
+        raise HTTPException(status_code=409, detail="Garantieübertragung kann nicht mehr storniert werden")
+    transfer = await db.charge_warranty_transfers.find_one(
+        {"transfer_id": transfer_id},
+        {"_id": 0},
+    )
+    return {"ok": True, "transfer": _transfer_card(transfer or {"transfer_id": transfer_id, "status": "cancelled"})}
+
+
+@router.post("/warranty/{registration_id}/claims")@router.post("/warranty/{registration_id}/claims")
 async def create_charge_warranty_claim(
     registration_id: str,
     req: ChargeWarrantyClaimRequest,
