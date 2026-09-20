@@ -2552,3 +2552,10 @@ def test_food_demo_cleanup_is_disabled_in_production():
     assert "Food-Demo-Daten-Bereinigung ist in Production deaktiviert." in source
     assert "if not TEST_MODE:" in source
 
+def test_admin_test_email_dispatch_is_disabled_in_production():
+    source = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+
+    assert '@router.post("/test-email")' in source
+    assert "Test-E-Mail-Versand ist in Production deaktiviert." in source
+    assert "if not TEST_MODE:" in source
+
