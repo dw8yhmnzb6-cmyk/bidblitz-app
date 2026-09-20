@@ -1513,7 +1513,7 @@ function AppContent() {
         onClose={() => setShowAuthGate(false)}
         message={authGateMessage}
       />
-      {["/", "/more"].includes(basePath) && <PWAInstallPrompt />}
+      {["/", "/more"].includes(routeBase) && <PWAInstallPrompt />}
       <PushPermissionPrompt isAuthenticated={user.isAuthenticated} />
       {/* Global Search Overlay */}
       <AnimatePresence>
