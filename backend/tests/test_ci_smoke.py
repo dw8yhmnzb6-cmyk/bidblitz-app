@@ -1600,11 +1600,15 @@ def test_legacy_retention_and_reengage_value_paths_fail_closed():
     retention = (BACKEND_DIR / "routes" / "retention.py").read_text(encoding="utf-8")
     reengage = (BACKEND_DIR / "routes" / "reengage.py").read_text(encoding="utf-8")
 
-    assert "def _require_retention_value_mode" in retention
-    assert retention.count("_require_retention_value_mode()") >= 4
-    assert '"value_actions_enabled": bool(TEST_MODE)' in retention
-    assert '"buy_rate": RATE_BLZ_PER_EUR_BUY if TEST_MODE else None' in retention
-    assert '"sell_rate": RATE_BLZ_PER_EUR_SELL if TEST_MODE else None' in retention
+    assert "Legacy-Streak-Wertbelohnungen sind deaktiviert" in retention
+    assert "Legacy BLZ/EUR Exchange ist deaktiviert" in retention
+    assert "Legacy-Geschenkcodes mit Wallet-Guthaben sind deaktiviert" in retention
+    assert "Legacy-Geschenkcode-Einlösung ist deaktiviert" in retention
+    assert retention.count("status_code=410") >= 4
+    assert '"$inc": {"balance": -eur, "balance_blz": blz}' not in retention
+    assert '"$inc": {"balance_blz": -blz_needed, "balance": eur}' not in retention
+    assert '"$inc": {"balance": -req.amount_eur}' not in retention
+    assert '"$inc": {"balance": amount}' not in retention
 
     assert "from core.config import TEST_MODE" in reengage
     assert "Re-Engagement-Wallet-Gutschriften und E-Mails sind in Production deaktiviert." in reengage
