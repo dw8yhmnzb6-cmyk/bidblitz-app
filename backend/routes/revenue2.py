@@ -18,7 +18,7 @@ import logging
 from core.database import db
 from core.security import get_current_user
 from core.config import TEST_MODE
-from core.payment_engine import debit_wallet, credit_wallet, transfer_between_wallets, TransactionType
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
 logger = logging.getLogger("bidblitz.revenue2")
 router = APIRouter(prefix="/api", tags=["revenue2"])
@@ -413,57 +413,12 @@ class MarketplaceTransferRequest(BaseModel):
 
 @router.post("/marketplace/transfer")
 async def marketplace_transfer(req: MarketplaceTransferRequest, request: Request):
-    """Legacy marketplace transfer. Production uses the canonical transfer/payment flows instead."""
-    user = await get_current_user(request)
-    _require_legacy_marketplace_test_mode()
-    uid = str(user.get("_id") or user.get("id"))
-    bal = float(user.get("balance", 0) or 0)
-
-    recipient = await db.users.find_one({"email": req.recipient_email.strip().lower()})
-    if not recipient:
-        raise HTTPException(404, "Empfänger nicht gefunden")
-    rid = str(recipient.get("_id") or recipient.get("id"))
-    if rid == uid:
-        raise HTTPException(400, "Selbst-Transfer nicht möglich")
-
-    fee_info_result = calc_marketplace_fee(req.amount)
-    total = req.amount  # sender pays full amount
-    net = fee_info_result["net"]  # recipient receives amount minus fee
-    if bal < total:
-        raise HTTPException(400, f"Nicht genug Guthaben (benötigt: €{total})")
-
-    # Execute transfer
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -total}})
-    await db.users.update_one({"_id": _oid(rid)}, {"$inc": {"balance": net}})
-
-    now = datetime.now(timezone.utc).isoformat()
-    tx_ref = f"MKT-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-    # Log both sides
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "transfer", "amount": total, "currency": "EUR",
-        "status": "completed", "description": f"Marketplace Transfer an {req.recipient_email}: {req.note or ''}",
-        "merchant_name": req.recipient_email, "category": "marketplace",
-        "reference": tx_ref, "date": now, "created_at": now,
-        "fee": fee_info_result["fee"],
-    })
-    await db.transactions.insert_one({
-        "user_id": rid, "type": "transfer", "amount": net, "currency": "EUR",
-        "status": "completed", "description": f"Marketplace Empfang von {user.get('email')}: {req.note or ''}",
-        "merchant_name": user.get("email"), "category": "marketplace",
-        "reference": tx_ref + "-R", "date": now, "created_at": now,
-    })
-    # Fee tracking
-    await db.marketplace_fees.insert_one({
-        "amount": req.amount, "fee": fee_info_result["fee"], "net": net,
-        "sender_id": uid, "recipient_id": rid, "reference": tx_ref, "created_at": now,
-    })
-    return {
-        "ok": True,
-        "amount_charged": total,
-        "amount_received": net,
-        "fee": fee_info_result["fee"],
-        "tx_ref": tx_ref,
-    }
+    """Legacy marketplace transfer is permanently disabled; use canonical marketplace/P2P settlement."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser Legacy-Marketplace-Transfer ist deaktiviert. Verwende den kanonischen Marketplace-/P2P-Zahlungsweg.",
+    )
 
 
 # ═══════════════════════════════════════════════════════════
