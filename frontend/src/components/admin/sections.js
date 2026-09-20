@@ -27,7 +27,7 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Partner & Händler", color: "#F59E0B", count: 3,
+    title: "Partner & Händler", color: "#F59E0B", count: 10,
     items: [
       { key: "partners", icon: Building2, label: "Partner Portal" },
       { key: "investor-leads", icon: Users, label: "Investor Leads", highlight: true, nav: "/admin/investor-leads" },
@@ -55,7 +55,7 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Marketing", color: "#F59E0B", count: 7,
+    title: "Marketing", color: "#F59E0B", count: 8,
     items: [
       { key: "flash-sales", icon: Zap, label: "Flash Sales" },
       { key: "banners", icon: Eye, label: "Werbebanner" },
@@ -105,7 +105,7 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Lifestyle & Gesundheit", color: "#EC4899", count: 6,
+    title: "Lifestyle & Gesundheit", color: "#EC4899", count: 7,
     items: [
       { key: "admin-streaming", icon: Film, label: "Streaming" },
       { key: "admin-telemedizin", icon: Stethoscope, label: "Telemedizin" },
