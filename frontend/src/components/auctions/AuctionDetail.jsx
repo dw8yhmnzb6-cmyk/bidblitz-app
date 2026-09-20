@@ -26,19 +26,24 @@ function localizeCondition(condition, t) {
 
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
-  <motion.div className={`flex items-center justify-between py-2 px-3 ${isLatest ? "bg-[#00E0FF]/[0.02]" : ""}`}
+  <motion.div className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 ${isLatest ? "bg-[#00E0FF]/[0.035]" : ""}`}
     initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: isLatest ? "rgba(0,224,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isLatest ? "rgba(0,224,255,0.12)" : "rgba(255,255,255,0.03)"}` }}>
-        {bid.is_auto ? <Bot size={8} className={isLatest ? "text-[#B068FF]" : "text-white/20"} /> : <User size={8} className={isLatest ? "text-[#00E0FF]" : "text-white/20"} />}
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: isLatest ? "rgba(0,224,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isLatest ? "rgba(0,224,255,0.14)" : "rgba(255,255,255,0.04)"}` }}>
+        {bid.is_auto ? <Bot size={10} className={isLatest ? "text-[#B068FF]" : "text-white/25"} /> : <User size={10} className={isLatest ? "text-[#00E0FF]" : "text-white/25"} />}
       </div>
       <div className="min-w-0">
-        <p className={`text-[11px] font-semibold truncate ${isLatest ? "text-white/80" : "text-white/35"}`}>{bid.user_name}</p>
-        <p className="text-[9px] text-white/20">{new Date(bid.created_at).toLocaleTimeString()}</p>
+        <div className="flex items-center gap-2">
+          <p className={`truncate text-[12px] font-semibold ${isLatest ? "text-white/85" : "text-white/45"}`}>{bid.user_name}</p>
+          {isLatest && <span className="rounded-full bg-[#00E0FF]/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#00E0FF]">Neu</span>}
+        </div>
+        <p className="mt-0.5 text-[9px] text-white/25">
+          {new Date(bid.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
       </div>
     </div>
-    <MoneyAmount value={bid.bid_price} locale="de" className={`text-[12px] ${isLatest ? "text-[#00E0FF]" : "text-white/40"}`} testId="auction-bid-row-price" />
+    <MoneyAmount value={bid.bid_price} locale="de" className={`text-[13px] font-bold tabular-nums ${isLatest ? "text-[#00E0FF]" : "text-white/50"}`} testId="auction-bid-row-price" />
   </motion.div>
 );
 
@@ -92,6 +97,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [autoBid, setAutoBid] = useState(null);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
   const [showLocalCredits, setShowLocalCredits] = useState(false);
+  const [showAllBids, setShowAllBids] = useState(false);
   const pollRef = useRef(null);
   const bidAttemptKeyRef = useRef(null);
   const fallbackImage = getAuctionFallbackImage(auction || {});
@@ -167,6 +173,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
   const logisticsLabel = auction.category === "marine" ? t("auction.shipping_pickup") : t("auction.shipping_worldwide_free");
   const conditionLabel = localizeCondition(auction.condition, t);
+  const visibleBids = (showAllBids ? bids.slice(0, 30) : bids.slice(0, 5));
 
   return (
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="auction-detail" data-scroll-page="true">
@@ -358,10 +365,20 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             </div>
             <span className="text-[8px] text-[#333]">{bids.length}</span>
           </div>
-          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }} data-testid="auction-bid-history">
+          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.025] ${glass}`} style={{ background: panelBg, border: panelBorder }} data-testid="auction-bid-history">
             {bids.length === 0 ? (
               <div className="py-8 text-center"><Gavel size={16} className="text-white/5 mx-auto mb-2" /><p className="text-[10px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
-            ) : bids.slice(0, 12).map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}
+            ) : visibleBids.map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}
+            {bids.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllBids((value) => !value)}
+                className="w-full min-h-[44px] px-3 py-2 text-[10px] font-semibold text-[#00E0FF]/80 hover:bg-white/[0.02]"
+                data-testid="auction-bid-history-toggle"
+              >
+                {showAllBids ? "Weniger anzeigen" : `Weitere ${Math.max(0, bids.length - 5)} Gebote anzeigen`}
+              </button>
+            )}
           </div>
         </motion.div>
 
