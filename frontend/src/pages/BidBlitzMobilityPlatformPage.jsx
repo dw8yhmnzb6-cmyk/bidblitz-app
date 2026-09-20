@@ -229,6 +229,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
   const [bookingTransportType, setBookingTransportType] = useState("");
+  const [showAllTransportOptions, setShowAllTransportOptions] = useState(false);
   const [routeSummary, setRouteSummary] = useState(null);
   const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, bike: 0, ev: 0, car_sharing: 0, car_rental: 0 });
   const [availableModes, setAvailableModes] = useState([]);
@@ -469,6 +470,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     if (!options.length || !recommendationMode) return null;
     return options.find((item) => item.type === recommendationMode.type) || options[0];
   }, [options, recommendationMode]);
+
+  const visibleTransportOptions = useMemo(() => {
+    if (showAllTransportOptions) return options;
+    const coreTypes = new Set(["taxi", "scooter", "bike", "ev"]);
+    return options.filter((item) => coreTypes.has(item.type));
+  }, [options, showAllTransportOptions]);
 
   const focusOptions = useMemo(() => {
     const subset = options.filter((item) => focusModes.includes(item.type));
@@ -910,7 +917,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           </div>
 
           <div className="space-y-3 mt-4" data-testid="mobility-options-list">
-            {options.map((option) => {
+            {visibleTransportOptions.map((option) => {
               const meta = TRANSPORT_META[option.type] || TRANSPORT_META.taxi;
               const Icon = meta.icon;
               const isSelected = selectedOption?.type === option.type;
@@ -951,6 +958,26 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               <div className="rounded-2xl border border-dashed border-[#18202a]/14 bg-white/70 p-4 text-sm text-[#18202a]/65" data-testid="mobility-empty-comparison-state">
                 {ui.empty}
               </div>
+            )}
+            {options.length > visibleTransportOptions.length && (
+              <button
+                type="button"
+                onClick={() => setShowAllTransportOptions(true)}
+                className="w-full min-h-[46px] rounded-2xl border border-[#18202a]/10 bg-white text-sm font-semibold text-[#18202a]/70"
+                data-testid="mobility-show-more-options"
+              >
+                Weitere Optionen ({options.length - visibleTransportOptions.length})
+              </button>
+            )}
+            {showAllTransportOptions && options.length > 4 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTransportOptions(false)}
+                className="w-full min-h-[44px] text-xs font-semibold text-[#0F766E]"
+                data-testid="mobility-show-fewer-options"
+              >
+                Weniger anzeigen
+              </button>
             )}
           </div>
 
