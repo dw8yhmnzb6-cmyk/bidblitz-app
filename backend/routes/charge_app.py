@@ -6,7 +6,7 @@ from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
@@ -39,6 +39,7 @@ class ChargeWarrantyRegistrationRequest(BaseModel):
     purchase_date: str = ""
     merchant_name: str = ""
     invoice_number: str = ""
+    warranty_months: int = Field(default=24, ge=1, le=120)
 
 
 class ChargeInvoiceSaveRequest(BaseModel):
@@ -56,6 +57,7 @@ class ChargeWarrantyUpdateRequest(BaseModel):
     purchase_date: Optional[str] = None
     merchant_name: Optional[str] = None
     invoice_number: Optional[str] = None
+    warranty_months: Optional[int] = Field(default=None, ge=1, le=120)
 
 
 class ChargeInvoiceUpdateRequest(BaseModel):
@@ -350,9 +352,30 @@ def _parse_iso(value: Any) -> Optional[datetime]:
         return None
 
 
-def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
+def _add_months(dt: datetime, months: int) -> datetime:
+    months = max(1, min(int(months or 24), 120))
+    month_index = (dt.month - 1) + months
+    year = dt.year + month_index // 12
+    month = month_index % 12 + 1
+    # Clamp the original day to the target month's last valid day.
+    next_month = datetime(year + (month == 12), 1 if month == 12 else month + 1, 1, tzinfo=dt.tzinfo)
+    last_day = (next_month - timedelta(days=1)).day
+    return dt.replace(year=year, month=month, day=min(dt.day, last_day))
+
+
+def _warranty_terms(doc: Dict[str, Any]) -> tuple[int, datetime, str]:
     purchase_dt = _parse_iso(doc.get("purchase_date")) or _parse_iso(doc.get("created_at")) or datetime.now(timezone.utc)
-    valid_until = (purchase_dt + timedelta(days=730)).date().isoformat()
+    months = max(1, min(int(doc.get("warranty_months") or 24), 120))
+    valid_until_dt = _add_months(purchase_dt, months)
+    stored_status = str(doc.get("status") or "active")
+    effective_status = "expired" if stored_status == "active" and datetime.now(timezone.utc) > valid_until_dt else stored_status
+    return months, valid_until_dt, effective_status
+
+
+def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
+    months, valid_until_dt, effective_status = _warranty_terms(doc)
+    purchase_dt = _parse_iso(doc.get("purchase_date")) or _parse_iso(doc.get("created_at")) or datetime.now(timezone.utc)
+    valid_until = valid_until_dt.date().isoformat()
     warranty_pass = _build_warranty_pass(doc)
     return {
         "registration_id": doc.get("registration_id"),
@@ -361,9 +384,10 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "purchase_date": doc.get("purchase_date") or purchase_dt.date().isoformat(),
         "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
         "invoice_number": doc.get("invoice_number") or "—",
-        "status": doc.get("status") or "active",
+        "status": effective_status,
+        "warranty_months": months,
         "valid_until": valid_until,
-        "coverage_label": "24 Monate Charge Care",
+        "coverage_label": f"{months} Monate Charge Care",
         "support_hint": "Digitale Garantie gespeichert – bei Bedarf direkt im Händlernetz abrufbar.",
         "created_at": doc.get("created_at") or _now_iso(),
         "attachments": [_attachment_meta(item, f"/api/charge-app/warranty/{doc.get('registration_id')}/attachments") for item in (doc.get("attachments") or [])],
@@ -372,8 +396,8 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
-    purchase_dt = _parse_iso(doc.get("purchase_date")) or _parse_iso(doc.get("created_at")) or datetime.now(timezone.utc)
-    valid_until = (purchase_dt + timedelta(days=730)).date().isoformat()
+    months, valid_until_dt, effective_status = _warranty_terms(doc)
+    valid_until = valid_until_dt.date().isoformat()
     qr_payload = json.dumps({
         "type": "bidblitz_charge_warranty_pass",
         "registration_id": doc.get("registration_id"),
@@ -381,7 +405,7 @@ def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
         "product_name": doc.get("product_name"),
         "merchant_name": doc.get("merchant_name"),
         "valid_until": valid_until,
-        "status": doc.get("status") or "active",
+        "status": effective_status,
     }, ensure_ascii=False)
     return {
         "pass_id": f"BB-CHARGE-{str(doc.get('registration_id') or '')[-6:]}",
@@ -389,8 +413,9 @@ def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
         "serial_number": doc.get("serial_number") or "—",
         "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
         "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
-        "coverage_label": "24 Monate Charge Care",
-        "status_label": "Aktiv" if (doc.get("status") or "active") == "active" else str(doc.get("status") or "active").title(),
+        "coverage_label": f"{months} Monate Charge Care",
+        "warranty_months": months,
+        "status_label": "Aktiv" if effective_status == "active" else ("Abgelaufen" if effective_status == "expired" else effective_status.title()),
         "valid_until": valid_until,
         "qr_payload": qr_payload,
     }
@@ -770,6 +795,7 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
         "purchase_date": req.purchase_date.strip(),
         "merchant_name": req.merchant_name.strip(),
         "invoice_number": req.invoice_number.strip(),
+        "warranty_months": int(req.warranty_months),
         "status": "active",
         "created_at": _now_iso(),
     }
