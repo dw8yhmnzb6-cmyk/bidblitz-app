@@ -696,6 +696,39 @@ async def request_stop_transaction(charge_point_id: str, transaction_id: str) ->
     return await sess.send_call("RequestStopTransaction", {"transactionId": str(transaction_id)})
 
 
+async def reserve_now(
+    charge_point_id: str,
+    reservation_id: int,
+    expiry_date_time: str,
+    id_token: str,
+    evse_id: Optional[int] = None,
+    connector_type: Optional[str] = None,
+    group_id_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    payload: Dict[str, Any] = {
+        "id": int(reservation_id),
+        "expiryDateTime": expiry_date_time,
+        "idToken": {"idToken": id_token, "type": "Central"},
+    }
+    if evse_id is not None:
+        payload["evseId"] = int(evse_id)
+    if connector_type:
+        payload["connectorType"] = connector_type
+    if group_id_token:
+        payload["groupIdToken"] = {"idToken": group_id_token, "type": "Central"}
+    return await sess.send_call("ReserveNow", payload)
+
+
+async def cancel_reservation(charge_point_id: str, reservation_id: int) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    return await sess.send_call("CancelReservation", {"reservationId": int(reservation_id)})
+
+
 async def change_availability(charge_point_id: str, operational: str,
                               evse_id: Optional[int] = None,
                               connector_id: Optional[int] = None) -> Dict[str, Any]:
