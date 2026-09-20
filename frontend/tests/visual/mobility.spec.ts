@@ -64,8 +64,8 @@ async function mockMobilityApi(page: Page) {
         dropoff: { address: 'Sheshi Nënë Tereza, Prishtina, Kosovo', lat: 42.6616, lng: 21.1636 },
         pricing_context: { profile_key: 'XK:prishtina', region: 'Kosovo', city: 'Prishtina', country: 'Kosovo', country_code: 'XK', source: 'Prishtina public taxi and scooter benchmark', currency: 'EUR', profile_scope: 'city', city_key: 'prishtina' },
         options: [
-          { type: 'taxi', label: 'Taxi', icon: 'car-front', price_eur: 4.55, duration_min: 8, distance_km: 3.4, eco_score: 55, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '2,00 € Start + 0,75 €/km', estimated: true },
-          { type: 'scooter', label: 'E-Scooter', icon: 'zap', price_eur: 1.70, duration_min: 10, distance_km: 3.4, eco_score: 86, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '0,20 € Start + 0,15 €/min', estimated: true },
+          { type: 'taxi', label: 'Taxi', icon: 'car-front', price_eur: 4.21, duration_min: 8, distance_km: 3.4, eco_score: 55, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'Prishtina · 2,00 € Start + ca. 0,53–0,75 €/km', estimated: true, price_range_eur: { low: 3.80, high: 4.55 } },
+          { type: 'scooter', label: 'E-Scooter', icon: 'zap', price_eur: 2.00, duration_min: 10, distance_km: 3.4, eco_score: 86, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'Prishtina · ca. 0,15–0,20 €/min + mögliche Entsperrgebühr', estimated: true, price_range_eur: { low: 1.70, high: 2.20 } },
           { type: 'bike', label: 'E-Bike', icon: 'bike', price_eur: 1.84, duration_min: 11, distance_km: 3.4, eco_score: 94, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler E-Bike-Schätzwert', estimated: true },
           { type: 'ev', label: 'EV Drive', icon: 'zap', price_eur: 3.89, duration_min: 9, distance_km: 3.4, eco_score: 92, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler EV-Schätzwert', estimated: true },
           { type: 'car_sharing', label: 'Carsharing', icon: 'car', price_eur: 3.25, duration_min: 9, distance_km: 3.4, eco_score: 64, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler Carsharing-Schätzwert', estimated: true },
@@ -184,8 +184,10 @@ test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page 
   await expect(page.getByTestId('mobility-pricing-context')).toContainText('Prishtina');
   await expect(page.getByTestId('mobility-pricing-scope')).toHaveText('Stadttarif');
   await expect(page.getByTestId('mobility-option-scooter')).toBeVisible();
-  await expect(page.getByTestId('mobility-option-scooter')).toContainText('1,70');
-  await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,20 € Start + 0,15 €/min');
+  await expect(page.getByTestId('mobility-option-scooter')).toContainText('2,00');
+  await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,15–0,20 €/min');
+  await expect(page.getByTestId('mobility-price-range-scooter')).toContainText('1,70');
+  await expect(page.getByTestId('mobility-price-range-scooter')).toContainText('2,20');
   await expect(page.getByTestId('mobility-option-car_rental')).toHaveCount(0);
   await expect(page.getByTestId('mobility-show-more-options')).toBeVisible();
   await page.getByTestId('mobility-show-more-options').click();
