@@ -2423,3 +2423,16 @@ def test_promo_wallet_credits_cannot_be_minted_by_merchants():
     assert '"$pull": {"used_by": email, "redemption_markers": marker}' in source
     assert "credit_wallet(" in source
 
+def test_payment_engine_has_no_legacy_direct_user_balance_processor():
+    source = (BACKEND_DIR / "core" / "payment_engine.py").read_text(encoding="utf-8")
+    referral = (BACKEND_DIR / "routes" / "referral.py").read_text(encoding="utf-8")
+    referral_system = (BACKEND_DIR / "routes" / "referral_system.py").read_text(encoding="utf-8")
+
+    assert "Legacy central payment processor is disabled. Use canonical wallet operations." in source
+    assert 'idempotency_key=f"purchase-streak:{user_id}:{milestone_key}"' in source
+    assert "source=\"purchase_streak\"" in source
+    assert '"$inc": {"balance": reward["amount"]}' not in source
+    assert '@router.get("/my-code")' in referral
+    assert '@router.get("/program/my-code")' in referral_system
+    assert '@router.get("/my-code")' not in referral_system
+
