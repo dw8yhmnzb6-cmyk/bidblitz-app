@@ -438,6 +438,13 @@ export const api = {
 
   // Charge App
   getChargeAppDashboard: () => request("/api/charge-app/dashboard"),
+  getChargeCatalog: ({ q = "", category = "all", limit = 120 } = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (category && category !== "all") params.set("category", category);
+    params.set("limit", String(limit));
+    return request(`/api/charge-app/catalog?${params.toString()}`);
+  },
   registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
   updateChargeWarranty: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteChargeWarranty: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "DELETE" }),
