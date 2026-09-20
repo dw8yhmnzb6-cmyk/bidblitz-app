@@ -202,6 +202,14 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
         "id_tag": id_tag,
         "status": {"$in": ["authorized", "starting", "reserved", "reserving"]},
     }, sort=[("created_at", -1)])
+    if not session:
+        # OCPI/OCPP 1.6 reservation with connectorId=0 means "any connector".
+        session = await db.ev_charging_sessions.find_one({
+            "charge_point_id": charge_point_id,
+            "connector_id": 0,
+            "id_tag": id_tag,
+            "status": {"$in": ["reserved", "reserving"]},
+        }, sort=[("created_at", -1)])
 
     update = {
         "status": "active",
