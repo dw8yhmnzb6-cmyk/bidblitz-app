@@ -2372,6 +2372,30 @@ def test_mobility_city_tariffs_support_database_admin_overrides():
     assert "critical=True" in database_source
 
 
+def test_admin_mobility_tariff_manager_is_wired_end_to_end():
+    backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+    page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminMobilityPricingPage.jsx").read_text(encoding="utf-8")
+    app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    sections_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "admin" / "sections.js").read_text(encoding="utf-8")
+
+    assert '@router.get("/admin/pricing/profiles")' in backend_source
+    assert '@router.put("/admin/pricing/profile")' in backend_source
+    assert '@router.delete("/admin/pricing/profile/{country_code}")' in backend_source
+
+    assert 'data-testid="admin-mobility-pricing-page"' in page_source
+    assert '/api/mobility-platform/admin/pricing/profiles' in page_source
+    assert '/api/mobility-platform/admin/pricing/profile' in page_source
+    assert 'method: "PUT"' in page_source
+    assert 'method: "DELETE"' in page_source
+
+    assert 'const AdminMobilityPricingPage = lazy(() => import("./pages/AdminMobilityPricingPage"));' in app_source
+    assert 'case "/admin/mobility-pricing":' in app_source
+    assert '<AdminMobilityPricingPage onBack={() => handleNavigate("/admin")} />' in app_source
+
+    assert 'label: "Mobility Tarife"' in sections_source
+    assert 'nav: "/admin/mobility-pricing"' in sections_source
+
+
 def test_auction_polling_does_not_delete_shared_browser_caches():
     auctions_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
     api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
