@@ -367,8 +367,8 @@ async def payout_action(payout_ref: str, req: PayoutAction, request: Request):
 
 
 # ── Transaction Monitoring ──
-@router.get("/transactions")
-async def list_transactions(
+@router.get("/transactions-basic")
+async def list_transactions_basic(
     request: Request,
     search: str = "",
     txn_type: str = "",
