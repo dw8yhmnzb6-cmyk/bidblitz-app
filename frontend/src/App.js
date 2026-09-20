@@ -1009,7 +1009,11 @@ function AppContent() {
       case "/admin/bookings":
         return user.role === "admin" ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Spin Wheel" description="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert. Es werden keine BidCoins, BLZ oder Wallet-Werte durch das Glücksrad erzeugt." onBack={() => handleNavigate("/rewards")} />;
       case "/classifieds":
         return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/quests":
