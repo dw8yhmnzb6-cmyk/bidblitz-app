@@ -192,6 +192,7 @@ async def create_indexes():
     await safe_create_index(db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True)
     await safe_create_index(db.mining_transfer_operations, "transfer_id", unique=True, critical=True)
     await safe_create_index(db.mining_transfer_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True)
+    await safe_create_index(db.mining_claims, [("user_id", 1), ("date", 1)], unique=True, critical=True)
     await safe_create_index(db.mining_claims, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mining_referrals, "referrer_id")
     await safe_create_index(db.mining_referrals, "referee_id")
