@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, Star, Sparkles, MessageCircle, Crown, Edit2, SlidersH
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { DatingDiscoverSection } from "../components/dating/DatingDiscoverSection";
+import { TEST_MODE } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const emptyProfile = {
@@ -1008,7 +1009,7 @@ export default function DatingPage({ onBack }) {
                   </div>
                   <div className="flex flex-wrap gap-2" data-testid="dating-profile-action-row">
                     <button onClick={activateBoost} disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)} className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${boostState.is_active ? "bg-yellow-400 text-black" : boostState.cooldown_remaining_seconds > 0 ? "bg-white/10 text-white/45" : "bg-yellow-500/15 text-yellow-200"}`} data-testid="dating-boost-button"><Zap size={14} className="inline mr-1" />{boostLabel}</button>
-                    {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
+                    {TEST_MODE && !userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Demo verifizieren</button>}
                     <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
                     {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
                   </div>
