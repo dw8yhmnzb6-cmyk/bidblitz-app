@@ -2039,3 +2039,25 @@ def test_auction_production_activity_is_real_not_synthetic():
     assert "activity.activeAuctions" in page
     assert "aktive Auktionen" in page
 
+def test_mining_marketplace_purchase_is_atomic_and_retry_safe():
+    backend = (BACKEND_DIR / "routes" / "mining_phase2.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
+
+    assert "idempotency_key: Optional[str] = None" in backend
+    assert 'purchase_id = "MINMKT-" + hashlib.sha256(' in backend
+    assert "db.mining_marketplace_purchases.update_one" in backend
+    assert '"status": "processing"' in backend
+    assert '"purchase_id": purchase_id' in backend
+    assert '"blz_balance": {"$gte": price}' in backend
+    assert 'buyer_marker = f"marketplace_purchase_markers.{purchase_id}"' in backend
+    assert 'seller_marker = f"marketplace_sale_markers.{purchase_id}"' in backend
+    assert '"status": "failed_refunded"' in backend
+    assert '"status": "reconciliation_required"' in backend
+    assert 'txn_id": f"{purchase_id}-{suffix}"' in backend
+    assert '"listing_id": req.listing_id, "seller_id": user_id, "status": "active"' in backend
+
+    assert "marketplacePurchaseKeysRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
+    assert "delete marketplacePurchaseKeysRef.current[listingId]" in page
+
