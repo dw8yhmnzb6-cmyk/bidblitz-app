@@ -127,7 +127,8 @@ def _infer_categories(*texts: Any) -> List[str]:
         "charger": ["charger", "charge", "adapter", "netzteil", "power adapter", "fast charge", "ladegerät"],
         "cable": ["cable", "kabel", "usb-c", "lightning", "hdmi", "wire"],
         "powerbank": ["powerbank", "battery", "akku", "magnetic pack"],
-        "dock": ["dock", "stand", "hub", "station"],
+        "wireless": ["wireless", "magsafe", "mag safe", "qi", "inductive", "induktiv"],
+        "dock": ["dock", "stand", "hub", "station", "halterung", "holder"],
         "car": ["car", "auto", "vehicle", "12v"],
         "audio": ["audio", "earbuds", "kopfhörer", "speaker"],
     }
@@ -487,6 +488,58 @@ def _matches_merchant_context(merchant_name: Any, merchant_payload: Dict[str, An
     return merchant_slug in candidates
 
 
+def _charge_catalog_categories(product: Dict[str, Any]) -> List[str]:
+    categories = _infer_categories(
+        product.get("name"),
+        product.get("brand"),
+        product.get("description"),
+        product.get("category"),
+        product.get("sku"),
+    )
+    corpus = " ".join(str(product.get(key) or "") for key in ("name", "brand", "description", "category", "sku")).lower()
+    if categories == ["charge-accessories"] and not any(
+        token in corpus
+        for token in ("charge", "charger", "kabel", "cable", "powerbank", "magsafe", "wireless", "usb", "adapter", "audio", "car")
+    ):
+        return []
+    return categories
+
+
+def _charge_product_card(
+    product: Dict[str, Any],
+    merchant: Optional[Dict[str, Any]],
+    profile: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    stock = _safe_float(product.get("stock"))
+    track_stock = bool(product.get("track_stock", True))
+    merchant_name = (merchant or {}).get("business_name") or "BidBlitz Charge Händler"
+    merchant_slug = (merchant or {}).get("public_slug") or (profile or {}).get("public_slug") or ""
+    city = (profile or {}).get("city") or (merchant or {}).get("city") or ""
+    categories = _charge_catalog_categories(product)
+    return {
+        "product_id": product.get("product_id"),
+        "name": product.get("name") or "BidBlitz Charge Produkt",
+        "description": product.get("description") or "",
+        "brand": product.get("brand") or "BidBlitz Charge",
+        "category": product.get("category") or (categories[0] if categories else "Charge / Zubehör"),
+        "charge_categories": categories,
+        "price": _safe_float(product.get("price")),
+        "currency": "EUR",
+        "stock": stock,
+        "track_stock": track_stock,
+        "in_stock": (not track_stock) or stock > 0 or bool(product.get("allow_negative_stock")),
+        "image_url": product.get("image_url") or "",
+        "barcode": product.get("barcode") or "",
+        "sku": product.get("sku") or "",
+        "merchant_id": product.get("merchant_id") or "",
+        "merchant_name": merchant_name,
+        "merchant_slug": merchant_slug,
+        "city": city,
+        "route": f"/charge-app/merchant?slug={merchant_slug}" if merchant_slug else "/merchant",
+        "updated_at": product.get("updated_at") or product.get("created_at") or "",
+    }
+
+
 async def _get_charge_merchants(limit: int = 12) -> List[Dict[str, Any]]:
     merchants = await db.merchant_profiles.find({}, {"_id": 0}).sort("updated_at", -1).limit(limit).to_list(limit)
     payload = []
@@ -514,6 +567,82 @@ async def _get_charge_merchants(limit: int = 12) -> List[Dict[str, Any]]:
             "route": f"/charge-app/merchant?slug={slug}" if slug else "/merchant",
         })
     return payload
+
+
+@router.get("/catalog")
+async def get_charge_catalog(
+    request: Request,
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    limit: int = 120,
+):
+    await get_current_user(request)
+    safe_limit = min(max(int(limit or 120), 1), 300)
+
+    query: Dict[str, Any] = {"active": True}
+    if q and q.strip():
+        needle = q.strip()
+        query["$or"] = [
+            {"name": {"$regex": needle, "$options": "i"}},
+            {"brand": {"$regex": needle, "$options": "i"}},
+            {"description": {"$regex": needle, "$options": "i"}},
+            {"category": {"$regex": needle, "$options": "i"}},
+            {"sku": {"$regex": needle, "$options": "i"}},
+            {"barcode": needle},
+        ]
+
+    products = await db.pos_products.find(query, {"_id": 0}).sort("updated_at", -1).limit(500).to_list(500)
+    products = [item for item in products if _charge_catalog_categories(item)]
+
+    merchant_ids = list({
+        str(item.get("merchant_id"))
+        for item in products
+        if item.get("merchant_id")
+    })
+    merchants = await db.merchants.find(
+        {"merchant_id": {"$in": merchant_ids}},
+        {"_id": 0},
+    ).to_list(500) if merchant_ids else []
+    merchant_by_id = {str(item.get("merchant_id")): item for item in merchants}
+
+    user_ids = list({
+        str(item.get("user_id"))
+        for item in merchants
+        if item.get("user_id")
+    })
+    profiles = await db.merchant_profiles.find(
+        {"user_id": {"$in": user_ids}},
+        {"_id": 0},
+    ).to_list(500) if user_ids else []
+    profile_by_user = {str(item.get("user_id")): item for item in profiles}
+
+    cards: List[Dict[str, Any]] = []
+    category_counts: Dict[str, int] = {}
+    requested_category = str(category or "").strip().lower()
+
+    for product in products:
+        merchant = merchant_by_id.get(str(product.get("merchant_id")))
+        profile = profile_by_user.get(str((merchant or {}).get("user_id")))
+        card = _charge_product_card(product, merchant, profile)
+        cats = card.get("charge_categories") or []
+        if requested_category and requested_category != "all" and requested_category not in [str(x).lower() for x in cats]:
+            continue
+        for cat in cats:
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+        cards.append(card)
+        if len(cards) >= safe_limit:
+            break
+
+    return {
+        "products": cards,
+        "total": len(cards),
+        "categories": [
+            {"id": key, "count": value}
+            for key, value in sorted(category_counts.items(), key=lambda item: (-item[1], item[0]))
+        ],
+        "query": q or "",
+        "category": requested_category or "all",
+    }
 
 
 @router.get("/dashboard")
