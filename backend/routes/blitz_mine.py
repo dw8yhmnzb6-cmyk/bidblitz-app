@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from math import log
 from typing import Optional
 import random
+import hashlib
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -34,6 +35,92 @@ def _require_blitz_mine_value_mode() -> None:
                 "Ohne verifizierten Mining-/Settlement-Provider werden keine BLZ erzeugt, gesperrt oder ausgezahlt."
             ),
         )
+
+
+def _require_blitz_idempotency_key(body_key: Optional[str], request: Request, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+async def _mutate_blitz_wallet_once(
+    *,
+    user_id: str,
+    amount: float,
+    direction: str,
+    idempotency_key: str,
+    description: str,
+    category: str,
+) -> dict:
+    amount = round(float(amount or 0), 4)
+    if amount <= 0 or direction not in {"credit", "debit"}:
+        raise HTTPException(status_code=400, detail="Ungültige BlitzMine-BLZ-Buchung")
+
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$setOnInsert": {"user_id": user_id, "balance": 0.0, "balance_blz": 0.0}},
+        upsert=True,
+    )
+    digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"blitz_mine_value_markers.{digest}"
+    selector = {"user_id": user_id, marker_field: {"$exists": False}}
+    delta = amount if direction == "credit" else -amount
+    if direction == "debit":
+        selector["balance_blz"] = {"$gte": amount}
+
+    result = await db.wallets.update_one(
+        selector,
+        {
+            "$inc": {"balance_blz": delta},
+            "$set": {
+                marker_field: {
+                    "direction": direction,
+                    "amount": amount,
+                    "category": category,
+                    "created_at": _now().isoformat(),
+                }
+            },
+        },
+    )
+    replayed = False
+    if result.modified_count != 1:
+        existing = await db.wallets.find_one(
+            {"user_id": user_id, marker_field: {"$exists": True}},
+            {"_id": 0, "balance_blz": 1},
+        )
+        if existing:
+            replayed = True
+        elif direction == "debit":
+            raise HTTPException(status_code=400, detail="Nicht genug BLZ im Wallet.")
+        else:
+            raise HTTPException(status_code=409, detail="BLZ-Buchung konnte nicht atomar angewendet werden")
+
+    tx_id = f"BM-{digest.upper()}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
+            "user_id": user_id,
+            "type": "blitz_mine_value",
+            "amount_blz": amount if direction == "credit" else -amount,
+            "amount_eur": 0.0,
+            "direction": direction,
+            "category": category,
+            "description": description,
+            "status": "completed",
+            "idempotency_key": idempotency_key,
+            "created_at": _now().isoformat(),
+        }},
+        upsert=True,
+    )
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balance_blz": 1}) or {}
+    return {
+        "transaction_id": tx_id,
+        "new_balance_blz": round(float(wallet.get("balance_blz", 0) or 0), 4),
+        "replayed": replayed,
+    }
 
 
 def _blitz_mine_capabilities() -> dict:
@@ -362,6 +449,7 @@ class AddCircleReq(BaseModel):
 class LockupReq(BaseModel):
     amount: float = Field(..., gt=0)
     duration_days: int
+    idempotency_key: Optional[str] = None
 
 
 class ReminderSettingsReq(BaseModel):
