@@ -71,8 +71,8 @@ class PromoRedeem(BaseModel):
 class PromoCreate(BaseModel):
     code: str = Field(..., min_length=3, max_length=20)
     type: str = "percent"  # percent, fixed, credit
-    value: float = Field(..., gt=0)
-    max_uses: int = 100
+    value: float = Field(..., gt=0, le=10000, allow_inf_nan=False)
+    max_uses: int = Field(default=100, ge=1, le=100000)
     description: str = ""
 
 @router.post("/promo/redeem")
@@ -121,6 +121,18 @@ async def redeem_promo(req: PromoRedeem, request: Request):
 
     benefit = 0.0
     if promo.get("type") in {"credit", "fixed"}:
+        creator_role = str(promo.get("creator_role") or "").lower()
+        creator_email = str(promo.get("creator_email") or "").lower()
+        wallet_credit_approved = bool(
+            promo.get("wallet_credit_approved")
+            or creator_role in {"admin", "super_admin"}
+            or creator_email == "admin@bidblitz.ae"
+        )
+        if not wallet_credit_approved:
+            raise HTTPException(
+                status_code=403,
+                detail="Dieser Legacy-Promo-Code ist nicht für Wallet-Gutschriften freigegeben.",
+            )
         benefit = float(promo.get("value", 0) or 0)
         result = await credit_wallet(
             user_id=user_id,
@@ -138,26 +150,63 @@ async def redeem_promo(req: PromoRedeem, request: Request):
             idempotency_key=marker,
         )
         if not result.success:
-            raise HTTPException(409, result.error or "Promo-Gutschrift noch nicht abgeschlossen. Bitte erneut versuchen.")
+            result_state = str(getattr(result.status, "value", result.status))
+            if result_state == "failed":
+                await db.promo_codes.update_one(
+                    {"_id": promo["_id"], "redemption_markers": marker},
+                    {
+                        "$inc": {"used_count": -1},
+                        "$pull": {"used_by": email, "redemption_markers": marker},
+                    },
+                )
+            raise HTTPException(
+                409,
+                result.error
+                or (
+                    "Promo-Gutschrift benötigt Abstimmung. Bitte keinen neuen Code verwenden."
+                    if result_state == "reconciliation_required"
+                    else "Promo-Gutschrift noch nicht abgeschlossen. Bitte erneut versuchen."
+                ),
+            )
 
     return {"ok": True, "message": f"Code eingelöst! +€{benefit:.2f} Guthaben", "benefit": benefit}
 
 @router.post("/promo/create")
 async def create_promo(req: PromoCreate, request: Request):
     user = await get_current_user(request)
-    if user.get("role") not in ["admin", "merchant"]:
+    role = str(user.get("role") or "").lower()
+    if role not in {"admin", "super_admin", "merchant"}:
         raise HTTPException(403, "Nur Admin/Händler")
-    
+
+    promo_type = str(req.type or "").strip().lower()
+    if promo_type not in {"percent", "fixed", "credit"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Promo-Typ")
+    if promo_type == "percent" and req.value > 100:
+        raise HTTPException(status_code=400, detail="Prozent-Rabatt darf 100% nicht überschreiten")
+    if promo_type in {"fixed", "credit"} and role not in {"admin", "super_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Nur Admins dürfen Promo-Codes mit Wallet-Gutschrift erstellen.",
+        )
+
+    code = req.code.strip().upper()
+    existing = await db.promo_codes.find_one({"code": code}, {"_id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Promo-Code existiert bereits")
+
     promo = {
-        "code": req.code.upper(),
-        "type": req.type,
+        "code": code,
+        "type": promo_type,
         "value": req.value,
         "max_uses": req.max_uses,
         "description": req.description,
         "creator_email": user.get("email", ""),
+        "creator_role": role,
+        "wallet_credit_approved": bool(promo_type in {"fixed", "credit"} and role in {"admin", "super_admin"}),
         "active": True,
         "used_count": 0,
         "used_by": [],
+        "redemption_markers": [],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.promo_codes.insert_one(promo)
