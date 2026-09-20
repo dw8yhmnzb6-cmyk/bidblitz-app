@@ -1087,14 +1087,27 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
         raise HTTPException(status_code=500, detail="Refund konnte nicht sicher abgeschlossen werden")
 
 
-async def execute_gift_card_action(payload: dict, actor: dict, request: Request | None = None, approval_id: str = "") -> dict:
+async def execute_gift_card_action(
+    payload: dict,
+    actor: dict,
+    request: Request | None = None,
+    approval_id: str = "",
+    operation_id: str = "",
+) -> dict:
     amount = round(float(payload.get("amount") or 0), 2)
     if amount <= 0 or amount > 2000:
         raise HTTPException(status_code=400, detail="Gutschein-Betrag ungültig")
 
-    stable_id = str(approval_id or "").strip()
-    if stable_id:
-        existing = await db.pos_vouchers.find_one({"approval_id": stable_id}, {"_id": 0})
+    stable_id = str(approval_id or operation_id or "").strip()
+    stable_query = (
+        {"approval_id": approval_id}
+        if approval_id
+        else {"operation_id": operation_id}
+        if operation_id
+        else None
+    )
+    if stable_query:
+        existing = await db.pos_vouchers.find_one(stable_query, {"_id": 0})
         if existing:
             expected_store = payload.get("store_id") or actor["store_id"]
             if (
@@ -1128,16 +1141,17 @@ async def execute_gift_card_action(payload: dict, actor: dict, request: Request 
         "redeemed": False,
         "redeemed_at": None,
         "redeemed_by": None,
-        "approval_id": stable_id or None,
+        "approval_id": approval_id or None,
+        "operation_id": operation_id or None,
         "created_at": now_iso(),
     }
-    if stable_id:
+    if stable_query:
         await db.pos_vouchers.update_one(
-            {"approval_id": stable_id},
+            stable_query,
             {"$setOnInsert": voucher},
             upsert=True,
         )
-        voucher = await db.pos_vouchers.find_one({"approval_id": stable_id}, {"_id": 0}) or voucher
+        voucher = await db.pos_vouchers.find_one(stable_query, {"_id": 0}) or voucher
     else:
         await db.pos_vouchers.insert_one(voucher)
         voucher.pop("_id", None)
