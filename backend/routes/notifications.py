@@ -12,6 +12,19 @@ import secrets
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
+def _notification_user_query(user):
+    user_id = str(user.get("_id") or "")
+    email = str(user.get("email") or "").strip()
+    clauses = []
+    if user_id:
+        clauses.append({"user_id": user_id})
+    if email:
+        clauses.append({"user_email": email})
+    if not clauses:
+        return {"user_id": "__none__"}
+    return clauses[0] if len(clauses) == 1 else {"$or": clauses}
+
+
 CATEGORIES = {
     "payment": {"label": "Zahlung", "icon": "wallet", "color": "#00C2FF"},
     "ride": {"label": "Fahrt", "icon": "car", "color": "#10B981"},
@@ -62,23 +75,47 @@ async def seed_notifications():
         })
 
 
+@router.get("")
+async def get_notifications_root(
+    request: Request,
+    limit: int = 100,
+    category: Optional[str] = None,
+    unread_only: bool = False,
+):
+    user = await get_current_user(request)
+    q = _notification_user_query(user)
+    if category:
+        q = {"$and": [q, {"category": category}]}
+    if unread_only:
+        q = {"$and": [q, {"read": False}]}
+    safe_limit = min(max(int(limit or 100), 1), 200)
+    notifs = await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).limit(safe_limit).to_list(safe_limit)
+    unread_query = {"$and": [_notification_user_query(user), {"read": False}]}
+    unread_count = await db.notifications.count_documents(unread_query)
+    return {
+        "notifications": notifs,
+        "unread_count": unread_count,
+        "total": len(notifs),
+    }
+
+
 @router.get("/list")
 async def get_notifications(request: Request, category: Optional[str] = None, unread_only: bool = False):
     user = await get_current_user(request)
-    q = {"user_email": user.get("email", "")}
+    q = _notification_user_query(user)
     if category:
-        q["category"] = category
+        q = {"$and": [q, {"category": category}]}
     if unread_only:
-        q["read"] = False
+        q = {"$and": [q, {"read": False}]}
     notifs = await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).to_list(50)
-    unread_count = await db.notifications.count_documents({"user_email": user.get("email", ""), "read": False})
+    unread_count = await db.notifications.count_documents({"$and": [_notification_user_query(user), {"read": False}]})
     return {"notifications": notifs, "unread_count": unread_count, "total": len(notifs)}
 
 
 @router.get("/unread-count")
 async def get_unread_count(request: Request):
     user = await get_current_user(request)
-    count = await db.notifications.count_documents({"user_email": user.get("email", ""), "read": False})
+    count = await db.notifications.count_documents({"$and": [_notification_user_query(user), {"read": False}]})
     return {"unread_count": count}
 
 
@@ -86,7 +123,10 @@ async def get_unread_count(request: Request):
 async def mark_read(notif_id: str, request: Request):
     user = await get_current_user(request)
     await db.notifications.update_one(
-        {"notif_id": notif_id, "user_email": user.get("email", "")},
+        {"$and": [
+            {"$or": [{"notif_id": notif_id}, {"id": notif_id}]},
+            _notification_user_query(user),
+        ]},
         {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"ok": True}
@@ -96,7 +136,7 @@ async def mark_read(notif_id: str, request: Request):
 async def mark_all_read(request: Request):
     user = await get_current_user(request)
     r = await db.notifications.update_many(
-        {"user_email": user.get("email", ""), "read": False},
+        {"$and": [_notification_user_query(user), {"read": False}]},
         {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"ok": True, "marked": r.modified_count}
@@ -105,7 +145,12 @@ async def mark_all_read(request: Request):
 @router.delete("/{notif_id}")
 async def delete_notification(notif_id: str, request: Request):
     user = await get_current_user(request)
-    await db.notifications.delete_one({"notif_id": notif_id, "user_email": user.get("email", "")})
+    await db.notifications.delete_one({
+        "$and": [
+            {"$or": [{"notif_id": notif_id}, {"id": notif_id}]},
+            _notification_user_query(user),
+        ]
+    })
     return {"ok": True}
 
 
