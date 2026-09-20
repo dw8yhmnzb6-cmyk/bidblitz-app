@@ -1,4 +1,5 @@
 from datetime import timedelta
+import hashlib
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request
@@ -58,6 +59,7 @@ class PosWalletTopUpRequest(BaseModel):
     customer_user_number: str | None = None
     amount: float = Field(..., gt=0, le=5000)
     payment_method: str = "cash"
+    idempotency_key: str | None = None
 
 
 class PosPaymentPrepareRequest(BaseModel):
@@ -70,6 +72,7 @@ class PosPaymentPrepareRequest(BaseModel):
     cart_id: str | None = None
     payment_method: str = "wallet"
     lookup_type: str | None = None
+    idempotency_key: str | None = None
 
 
 class PosPaymentConfirmPinRequest(BaseModel):
@@ -115,6 +118,14 @@ class GiftCardApprovalRequest(BaseModel):
     payment_method: str = "cash"
     recipient_email: str | None = None
     message: str | None = None
+    idempotency_key: str | None = None
+
+
+def _require_pos_idempotency_key(body_key: str | None, request: Request, prefix: str) -> str:
+    key = str(body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
 
 
 class ManualWalletAdjustmentRequest(BaseModel):
