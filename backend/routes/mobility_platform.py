@@ -690,22 +690,39 @@ async def _compute_route_payload(
         raise HTTPException(404, "Keine Route gefunden")
     duration_min = max(2, round(route["duration"] / 60))
     demand_multiplier = 1.0 + min(0.22, distance_km / 90)
+    pricing_context = await _resolve_pricing_context(pickup_lat, pickup_lng, pickup_address)
     options = [
-        build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
-        build_option("scooter", distance_km, duration_min, 1.0, 86),
-        build_option("bike", distance_km, duration_min, 1.0, 94),
-        build_option("ev", distance_km, duration_min, 1.0, 92),
-        build_option("car_sharing", distance_km, duration_min, 1.0, 64),
-        build_option("car_rental", distance_km, duration_min, 1.0, 48),
-        build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
-        build_option("vip", distance_km, duration_min, 1.08, 28),
+        build_option("taxi", distance_km, duration_min, demand_multiplier, 55, pricing_context),
+        build_option("scooter", distance_km, duration_min, 1.0, 86, pricing_context),
+        build_option("bike", distance_km, duration_min, 1.0, 94, pricing_context),
+        build_option("ev", distance_km, duration_min, 1.0, 92, pricing_context),
+        build_option("car_sharing", distance_km, duration_min, 1.0, 64, pricing_context),
+        build_option("car_rental", distance_km, duration_min, 1.0, 48, pricing_context),
+        build_option("airport_shuttle", distance_km, duration_min, 1.0, 63, pricing_context),
+        build_option("vip", distance_km, duration_min, 1.08, 28, pricing_context),
     ]
     return {
         "distance_km": round(distance_km, 2),
         "duration_min": duration_min,
         "geometry": route.get("geometry", {}).get("coordinates", []),
-        "pickup": {"address": pickup_address, "lat": pickup_lat, "lng": pickup_lng},
+        "pickup": {
+            "address": pickup_address,
+            "lat": pickup_lat,
+            "lng": pickup_lng,
+            "city": pricing_context.get("city") or "",
+            "country": pricing_context.get("country") or "",
+            "country_code": pricing_context.get("country_code") or "",
+        },
         "dropoff": {"address": dropoff_address, "lat": dropoff_lat, "lng": dropoff_lng},
+        "pricing_context": {
+            "profile_key": pricing_context.get("profile_key"),
+            "region": pricing_context.get("region"),
+            "city": pricing_context.get("city") or "",
+            "country": pricing_context.get("country") or "",
+            "country_code": pricing_context.get("country_code") or "",
+            "source": pricing_context.get("source"),
+            "currency": pricing_context.get("currency", "EUR"),
+        },
         "options": options,
         "recommendations": build_recommendations(options),
     }
