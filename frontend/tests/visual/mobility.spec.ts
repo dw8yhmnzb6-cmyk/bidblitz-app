@@ -47,7 +47,34 @@ async function mockMobilityApi(page: Page) {
         ? { preferences: { priority: 'balance', luggage: false, childSeat: false } }
         : { ok: true };
     } else if (pathname === '/api/mobility-platform/reverse') {
-      body = { address: 'Prishtina, Kosovo' };
+      body = { address: 'Prishtina, Kosovo', city: 'Prishtina', country: 'Kosovo', country_code: 'XK' };
+    } else if (pathname === '/api/mobility-platform/search') {
+      body = {
+        results: [
+          { id: '1', name: 'Sheshi Nënë Tereza', address: 'Sheshi Nënë Tereza, Prishtina, Kosovo', lat: 42.6616, lng: 21.1636, city: 'Prishtina', country: 'Kosovo', country_code: 'XK' },
+          { id: '2', name: 'Prishtina Mall', address: 'Prishtina Mall, Lipjan, Kosovo', lat: 42.579, lng: 21.148, city: 'Lipjan', country: 'Kosovo', country_code: 'XK' },
+        ],
+      };
+    } else if (pathname === '/api/mobility-platform/route') {
+      body = {
+        distance_km: 3.4,
+        duration_min: 8,
+        geometry: [[21.1655, 42.6629], [21.1636, 42.6616]],
+        pickup: { address: 'Prishtina, Kosovo', lat: 42.6629, lng: 21.1655, city: 'Prishtina', country: 'Kosovo', country_code: 'XK' },
+        dropoff: { address: 'Sheshi Nënë Tereza, Prishtina, Kosovo', lat: 42.6616, lng: 21.1636 },
+        pricing_context: { profile_key: 'XK', region: 'Kosovo', city: 'Prishtina', country: 'Kosovo', country_code: 'XK', source: 'Kosovo local mobility benchmark', currency: 'EUR' },
+        options: [
+          { type: 'taxi', label: 'Taxi', icon: 'car-front', price_eur: 4.55, duration_min: 8, distance_km: 3.4, eco_score: 55, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '2,00 € Start + 0,75 €/km', estimated: true },
+          { type: 'scooter', label: 'E-Scooter', icon: 'zap', price_eur: 2.0, duration_min: 12, distance_km: 3.4, eco_score: 86, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '0,20 € Start + 0,15 €/min', estimated: true },
+          { type: 'bike', label: 'E-Bike', icon: 'bike', price_eur: 1.98, duration_min: 13, distance_km: 3.4, eco_score: 94, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler E-Bike-Schätzwert', estimated: true },
+        ],
+        recommendations: {
+          cheapest: { type: 'bike', label: 'E-Bike', reason: 'Günstigste Option' },
+          fastest: { type: 'taxi', label: 'Taxi', reason: 'Schnellste Ankunft' },
+          balance: { type: 'scooter', label: 'E-Scooter', reason: 'Beste Balance aus Preis und Zeit' },
+          eco: { type: 'bike', label: 'E-Bike', reason: 'Niedrigste Emissionen' },
+        },
+      };
     } else if (pathname === '/api/mobility-platform/nearby') {
       body = {
         center: { lat: 42.6629, lng: 21.1655 },
@@ -122,3 +149,41 @@ for (const viewport of MOBILE_VIEWPORTS) {
     });
   });
 }
+
+
+test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: any) => success({
+          coords: { latitude: 42.6629, longitude: 21.1655, accuracy: 10 },
+        }),
+        watchPosition: () => 1,
+        clearWatch: () => {},
+      },
+    });
+  });
+  await mockMobilityApi(page);
+
+  await page.goto('/mobility-map?mode=scooter');
+  await expect(page.getByTestId('mobility-dropoff-input')).toBeVisible({ timeout: 20000 });
+  await page.getByTestId('mobility-dropoff-input').fill('Nene Tereza');
+  await expect(page.getByTestId('mobility-search-results-panel')).toBeVisible();
+  await expect(page.getByTestId('mobility-search-result-0')).toContainText('Prishtina');
+  await page.getByTestId('mobility-search-result-0').click();
+
+  await expect(page.getByTestId('mobility-pricing-context')).toContainText('Prishtina');
+  await expect(page.getByTestId('mobility-option-scooter')).toBeVisible();
+  await expect(page.getByTestId('mobility-option-scooter')).toContainText('2,00');
+  await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,20 € Start + 0,15 €/min');
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
