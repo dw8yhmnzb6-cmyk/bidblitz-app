@@ -362,7 +362,7 @@ def build_option(
 
     range_low = None
     range_high = None
-    if any(key in base for key in ("range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high")):
+    if any(key in base for key in ("range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high")):
         low_base = float(base.get("range_base_low", base["base"]))
         high_base = float(base.get("range_base_high", base["base"]))
         low_booking_fee = float(base.get("range_booking_fee_low", booking_fee))
@@ -917,6 +917,13 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
             country_code = "AT"
             city = "Wien" if "wien" in text or "vienna" in text else ""
             country = "Österreich"
+        elif "dubai" in text or "abu dhabi" in text or "uae" in text or "united arab emirates" in text:
+            country_code = "AE"
+            if "abu dhabi" in text:
+                city = "Abu Dhabi"
+            elif "dubai" in text:
+                city = "Dubai"
+            country = "United Arab Emirates"
 
     if not country_code and 41.80 <= lat <= 43.35 and 20.00 <= lng <= 21.95:
         country_code = "XK"
