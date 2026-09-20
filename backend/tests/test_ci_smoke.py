@@ -245,6 +245,19 @@ def test_stripe_webhook_processing_failures_return_retryable_error():
     assert 'raise HTTPException(status_code=500, detail="Webhook processing failed")' in source
 
 
+def test_stripe_known_domain_settlements_are_not_silently_acked():
+    source = _stripe_source()
+    webhook_block = source.split("async def stripe_webhook", 1)[1].split("# ── Get available packages ──", 1)[0]
+
+    assert "payment_tx = await db.payment_transactions.find_one" in webhook_block
+    assert "Dating Stripe settlement incomplete" in webhook_block
+    assert "Pool ticket Stripe settlement incomplete" in webhook_block
+    assert "POS feature Stripe settlement incomplete" in webhook_block
+    assert "dating_settled = await handle_dating_premium_webhook(event.session_id)" in webhook_block
+    assert "pool_ticket = await handle_pool_ticket_webhook(event.session_id)" in webhook_block
+    assert "feature_activated = await activate_feature_after_payment(event.session_id)" in webhook_block
+
+
 def test_stripe_webhook_isolates_wallet_topups_and_recovers_safely():
     source = _stripe_source()
     webhook_block = source.split("async def stripe_webhook", 1)[1].split("# ── Get available packages ──", 1)[0]
