@@ -69,6 +69,13 @@ class ChargeInvoiceUpdateRequest(BaseModel):
     serial_number: Optional[str] = None
 
 
+class ChargeCatalogOverrideRequest(BaseModel):
+    visible: bool = True
+    featured: bool = False
+    charge_category: str = ""
+    sort_order: int = Field(default=100, ge=0, le=10000)
+
+
 class ChargeInteractionRequest(BaseModel):
     interaction_type: str
     merchant_slug: str = ""
@@ -534,13 +541,18 @@ def _charge_product_card(
     product: Dict[str, Any],
     merchant: Optional[Dict[str, Any]],
     profile: Optional[Dict[str, Any]],
+    override: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     stock = _safe_float(product.get("stock"))
     track_stock = bool(product.get("track_stock", True))
     merchant_name = (merchant or {}).get("business_name") or "BidBlitz Charge Händler"
     merchant_slug = (merchant or {}).get("public_slug") or (profile or {}).get("public_slug") or ""
     city = (profile or {}).get("city") or (merchant or {}).get("city") or ""
+    override = override or {}
     categories = _charge_catalog_categories(product)
+    forced_category = str(override.get("charge_category") or "").strip().lower()
+    if forced_category:
+        categories = [forced_category, *[item for item in categories if item != forced_category]]
     return {
         "product_id": product.get("product_id"),
         "name": product.get("name") or "BidBlitz Charge Produkt",
@@ -561,6 +573,8 @@ def _charge_product_card(
         "merchant_slug": merchant_slug,
         "city": city,
         "route": f"/charge-app/merchant?slug={merchant_slug}" if merchant_slug else "/merchant",
+        "featured": bool(override.get("featured", False)),
+        "sort_order": int(override.get("sort_order") or 100),
         "updated_at": product.get("updated_at") or product.get("created_at") or "",
     }
 
@@ -641,22 +655,39 @@ async def get_charge_catalog(
     ).to_list(500) if user_ids else []
     profile_by_user = {str(item.get("user_id")): item for item in profiles}
 
+    product_ids = [str(item.get("product_id")) for item in products if item.get("product_id")]
+    overrides = await db.charge_catalog_overrides.find(
+        {"product_id": {"$in": product_ids}},
+        {"_id": 0},
+    ).to_list(1000) if product_ids else []
+    override_by_product = {str(item.get("product_id")): item for item in overrides}
+
     cards: List[Dict[str, Any]] = []
-    category_counts: Dict[str, int] = {}
     requested_category = str(category or "").strip().lower()
 
     for product in products:
+        override = override_by_product.get(str(product.get("product_id"))) or {}
+        if override.get("visible") is False:
+            continue
         merchant = merchant_by_id.get(str(product.get("merchant_id")))
         profile = profile_by_user.get(str((merchant or {}).get("user_id")))
-        card = _charge_product_card(product, merchant, profile)
+        card = _charge_product_card(product, merchant, profile, override)
         cats = card.get("charge_categories") or []
         if requested_category and requested_category != "all" and requested_category not in [str(x).lower() for x in cats]:
             continue
-        for cat in cats:
-            category_counts[cat] = category_counts.get(cat, 0) + 1
         cards.append(card)
-        if len(cards) >= safe_limit:
-            break
+
+    cards.sort(key=lambda item: (
+        0 if item.get("featured") else 1,
+        int(item.get("sort_order") or 100),
+        str(item.get("name") or "").lower(),
+    ))
+    cards = cards[:safe_limit]
+
+    category_counts: Dict[str, int] = {}
+    for card in cards:
+        for cat in card.get("charge_categories") or []:
+            category_counts[cat] = category_counts.get(cat, 0) + 1
 
     return {
         "products": cards,
@@ -1165,6 +1196,115 @@ async def _require_admin(request: Request):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     return user
+
+
+@router.get("/admin/catalog")
+async def admin_charge_catalog(request: Request, q: Optional[str] = None, limit: int = 300):
+    await _require_admin(request)
+    safe_limit = min(max(int(limit or 300), 1), 500)
+    query: Dict[str, Any] = {"active": True}
+    if q and q.strip():
+        needle = q.strip()
+        query["$or"] = [
+            {"name": {"$regex": needle, "$options": "i"}},
+            {"brand": {"$regex": needle, "$options": "i"}},
+            {"category": {"$regex": needle, "$options": "i"}},
+            {"sku": {"$regex": needle, "$options": "i"}},
+            {"barcode": needle},
+        ]
+
+    products = await db.pos_products.find(query, {"_id": 0}).sort("updated_at", -1).limit(1000).to_list(1000)
+    products = [item for item in products if _charge_catalog_categories(item)]
+
+    product_ids = [str(item.get("product_id")) for item in products if item.get("product_id")]
+    overrides = await db.charge_catalog_overrides.find(
+        {"product_id": {"$in": product_ids}},
+        {"_id": 0},
+    ).to_list(1000) if product_ids else []
+    override_by_product = {str(item.get("product_id")): item for item in overrides}
+
+    merchant_ids = list({str(item.get("merchant_id")) for item in products if item.get("merchant_id")})
+    merchants = await db.merchants.find(
+        {"merchant_id": {"$in": merchant_ids}},
+        {"_id": 0},
+    ).to_list(1000) if merchant_ids else []
+    merchant_by_id = {str(item.get("merchant_id")): item for item in merchants}
+
+    rows = []
+    for product in products[:safe_limit]:
+        merchant = merchant_by_id.get(str(product.get("merchant_id"))) or {}
+        override = override_by_product.get(str(product.get("product_id"))) or {}
+        rows.append({
+            "product_id": product.get("product_id"),
+            "name": product.get("name") or "",
+            "brand": product.get("brand") or "",
+            "price": _safe_float(product.get("price")),
+            "stock": _safe_float(product.get("stock")),
+            "category": product.get("category") or "",
+            "inferred_categories": _charge_catalog_categories(product),
+            "merchant_id": product.get("merchant_id") or "",
+            "merchant_name": merchant.get("business_name") or "BidBlitz Händler",
+            "image_url": product.get("image_url") or "",
+            "visible": bool(override.get("visible", True)),
+            "featured": bool(override.get("featured", False)),
+            "charge_category": override.get("charge_category") or "",
+            "sort_order": int(override.get("sort_order") or 100),
+            "override_updated_at": override.get("updated_at") or "",
+        })
+
+    rows.sort(key=lambda item: (
+        0 if item.get("featured") else 1,
+        int(item.get("sort_order") or 100),
+        str(item.get("name") or "").lower(),
+    ))
+    return {
+        "ok": True,
+        "products": rows,
+        "summary": {
+            "total": len(rows),
+            "visible": sum(1 for item in rows if item.get("visible")),
+            "hidden": sum(1 for item in rows if not item.get("visible")),
+            "featured": sum(1 for item in rows if item.get("featured")),
+        },
+    }
+
+
+@router.put("/admin/catalog/{product_id}")
+async def admin_update_charge_catalog_product(
+    product_id: str,
+    req: ChargeCatalogOverrideRequest,
+    request: Request,
+):
+    admin = await _require_admin(request)
+    product = await db.pos_products.find_one({"product_id": product_id, "active": True}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    if not _charge_catalog_categories(product) and not req.charge_category.strip():
+        raise HTTPException(status_code=400, detail="Produkt ist kein Charge-Produkt; Charge-Kategorie erforderlich")
+
+    now = _now_iso()
+    update = {
+        "product_id": product_id,
+        "visible": bool(req.visible),
+        "featured": bool(req.featured),
+        "charge_category": req.charge_category.strip().lower(),
+        "sort_order": int(req.sort_order),
+        "updated_at": now,
+        "updated_by": admin.get("email") or admin.get("user_id") or "admin",
+    }
+    await db.charge_catalog_overrides.update_one(
+        {"product_id": product_id},
+        {"$set": update, "$setOnInsert": {"created_at": now}},
+        upsert=True,
+    )
+    return {"ok": True, "override": update}
+
+
+@router.delete("/admin/catalog/{product_id}")
+async def admin_reset_charge_catalog_product(product_id: str, request: Request):
+    await _require_admin(request)
+    await db.charge_catalog_overrides.delete_one({"product_id": product_id})
+    return {"ok": True, "product_id": product_id, "reset": True}
 
 
 @router.get("/admin/offer-rules")
