@@ -435,74 +435,13 @@ async def transfer_to_child(
     parent_id: str,
     child_id: str,
     amount: float,
-    note: Optional[str] = None
+    note: Optional[str] = None,
 ) -> PaymentResult:
-    """
-    Transfer from parent wallet to child wallet.
-    """
-    
-    if amount <= 0:
-        return PaymentResult(success=False, error="Amount must be positive", status=TransactionStatus.FAILED)
-    
-    amount = round(amount, 2)
-    ref = generate_reference("KIDS")
-    
-    # Check parent balance
-    try:
-        parent_balance = await get_user_balance(parent_id)
-    except ValueError:
-        return PaymentResult(success=False, error="Parent not found", status=TransactionStatus.FAILED)
-    
-    if parent_balance < amount:
-        return PaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{parent_balance:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Check child exists
-    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
-    if not child:
-        return PaymentResult(success=False, error="Child not found", status=TransactionStatus.FAILED)
-    
-    # Debit parent
-    debit_result = await debit_wallet(
-        user_id=parent_id,
-        amount=amount,
-        tx_type=TransactionType.KIDS_TRANSFER,
-        description=f"Transfer to {child.get('name', 'child')}",
-        reference=ref,
-        metadata={"child_id": child_id, "note": note}
-    )
-    
-    if not debit_result.success:
-        return debit_result
-    
-    # Credit child balance in kids_children collection
-    await db.kids_children.update_one(
-        {"child_id": child_id},
-        {"$inc": {"balance": amount}}
-    )
-    
-    # Record child transaction
-    await db.kids_transactions.insert_one({
-        "id": generate_transaction_id(),
-        "child_id": child_id,
-        "parent_id": parent_id,
-        "type": "allowance",
-        "amount": amount,
-        "description": note or f"From {(await db.users.find_one({'_id': ObjectId(parent_id)})).get('name', 'Parent')}",
-        "reference": ref,
-        "status": "completed",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
+    """Legacy helper disabled; canonical Kids transfers live in routes.kids."""
     return PaymentResult(
-        success=True,
-        transaction_id=debit_result.transaction_id,
-        reference=ref,
-        new_balance=debit_result.new_balance,
-        status=TransactionStatus.COMPLETED
+        success=False,
+        error="Legacy Kids transfer helper is disabled. Use the canonical Kids transfer route.",
+        status=TransactionStatus.FAILED,
     )
 
 
@@ -510,95 +449,14 @@ async def process_child_payment(
     child_id: str,
     amount: float,
     merchant_name: Optional[str] = None,
-    description: Optional[str] = None
+    description: Optional[str] = None,
 ) -> PaymentResult:
-    """
-    Process payment from child wallet with limit enforcement.
-    """
-    
-    if amount <= 0:
-        return PaymentResult(success=False, error="Amount must be positive", status=TransactionStatus.FAILED)
-    
-    amount = round(amount, 2)
-    
-    # Get child
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        return PaymentResult(success=False, error="Child not found", status=TransactionStatus.FAILED)
-    
-    # Check frozen
-    if child.get("is_frozen"):
-        return PaymentResult(success=False, error="Wallet is frozen", status=TransactionStatus.FAILED)
-    
-    # Check balance
-    balance = child.get("balance", 0)
-    if balance < amount:
-        return PaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{balance:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Check daily limit
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    
-    today_txns = await db.kids_transactions.find({
-        "child_id": child_id,
-        "type": "payment",
-        "created_at": {"$gte": today_start}
-    }).to_list(100)
-    
-    today_spent = sum(abs(tx.get("amount", 0)) for tx in today_txns if tx.get("amount", 0) < 0)
-    daily_limit = child.get("daily_limit", 20)
-    
-    if today_spent + amount > daily_limit:
-        return PaymentResult(
-            success=False,
-            error=f"Daily limit exceeded. Spent: €{today_spent:.2f}, Limit: €{daily_limit:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Process payment
-    ref = generate_reference("KIDPAY")
-    
-    result = await db.kids_children.update_one(
-        {"child_id": child_id, "balance": {"$gte": amount}},
-        {"$inc": {"balance": -amount, "total_spent": amount}}
-    )
-    
-    if result.modified_count == 0:
-        return PaymentResult(
-            success=False,
-            error="Balance changed. Please try again.",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Record transaction
-    tx_id = generate_transaction_id()
-    await db.kids_transactions.insert_one({
-        "id": tx_id,
-        "child_id": child_id,
-        "parent_id": child.get("parent_id"),
-        "type": "payment",
-        "amount": -amount,
-        "description": description or "Payment",
-        "merchant_name": merchant_name or "Shop",
-        "reference": ref,
-        "status": "completed",
-        "created_at": now.isoformat()
-    })
-    
-    updated_child = await db.kids_children.find_one({"child_id": child_id})
-    
+    """Legacy helper disabled; canonical Kids payments live in routes.kids."""
     return PaymentResult(
-        success=True,
-        transaction_id=tx_id,
-        reference=ref,
-        new_balance=updated_child.get("balance", 0),
-        status=TransactionStatus.COMPLETED
+        success=False,
+        error="Legacy Kids payment helper is disabled. Use the canonical Kids payment route.",
+        status=TransactionStatus.FAILED,
     )
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
