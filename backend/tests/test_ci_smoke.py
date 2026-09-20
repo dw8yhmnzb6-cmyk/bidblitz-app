@@ -2525,3 +2525,22 @@ def test_saved_card_confirmation_requires_completed_matching_setup_session():
     assert 'body: JSON.stringify({ session_id: setupSessionId })' in wallet_page
     assert 'saveCardConfirm: (sessionId)' in api
 
+def test_stripe_router_is_single_and_not_duplicated():
+    source = (BACKEND_DIR / "routes" / "stripe.py").read_text(encoding="utf-8")
+
+    assert source.count('router = APIRouter(prefix="/api/stripe"') == 1
+    assert source.count("SUPPORTED PAYMENT METHODS:") == 1
+    for route in [
+        '@router.get("/plans")',
+        '@router.post("/checkout")',
+        '@router.get("/checkout/status/{session_id}")',
+        '@router.post("/webhook")',
+        '@router.get("/packages")',
+        '@router.get("/saved-method")',
+        '@router.post("/quick-topup")',
+        '@router.delete("/saved-method")',
+        '@router.post("/save-card")',
+        '@router.post("/save-card-confirm")',
+    ]:
+        assert source.count(route) == 1
+
