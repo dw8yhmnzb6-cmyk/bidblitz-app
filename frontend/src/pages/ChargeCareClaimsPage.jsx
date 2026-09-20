@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, CheckCircle2, Clock3, Loader2, MessageCircle, Send, ShieldAlert,
-  ShieldCheck, XCircle
+  ArrowLeft, CheckCircle2, Clock3, Download, FileUp, Loader2, MessageCircle, Send, ShieldAlert,
+  ShieldCheck, Trash2, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const EMPTY_FORM = {
   issue_type: "defect",
@@ -20,6 +22,7 @@ export default function ChargeCareClaimsPage({ registrationId, claimId, onBack, 
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [message, setMessage] = useState("");
+  const [claimFile, setClaimFile] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +92,36 @@ export default function ChargeCareClaimsPage({ registrationId, claimId, onBack, 
     }
   }, [selected?.claim_id, message, load]);
 
+  const uploadEvidence = useCallback(async () => {
+    if (!selected?.claim_id || !claimFile) return;
+    setBusy("attachment");
+    try {
+      await api.uploadChargeClaimAttachment(selected.claim_id, claimFile);
+      setClaimFile(null);
+      await load();
+      toast.success("Beweisdatei hochgeladen");
+    } catch (error) {
+      toast.error(error.message || "Datei konnte nicht hochgeladen werden");
+    } finally {
+      setBusy("");
+    }
+  }, [selected?.claim_id, claimFile, load]);
+
+  const deleteEvidence = useCallback(async (attachmentId) => {
+    if (!selected?.claim_id || !attachmentId) return;
+    if (!window.confirm("Diese Beweisdatei wirklich entfernen?")) return;
+    setBusy(`attachment-${attachmentId}`);
+    try {
+      await api.deleteChargeClaimAttachment(selected.claim_id, attachmentId);
+      await load();
+      toast.success("Beweisdatei entfernt");
+    } catch (error) {
+      toast.error(error.message || "Datei konnte nicht entfernt werden");
+    } finally {
+      setBusy("");
+    }
+  }, [selected?.claim_id, load]);
+
   const cancelClaim = useCallback(async () => {
     if (!selected?.claim_id) return;
     if (!window.confirm("Diesen Garantiefall wirklich stornieren?")) return;
@@ -138,6 +171,10 @@ export default function ChargeCareClaimsPage({ registrationId, claimId, onBack, 
             onSend={sendMessage}
             onCancel={cancelClaim}
             busy={busy}
+            claimFile={claimFile}
+            onFileChange={setClaimFile}
+            onUploadEvidence={uploadEvidence}
+            onDeleteEvidence={deleteEvidence}
           />
         ) : registrationId ? (
           activeForWarranty ? (
@@ -261,7 +298,7 @@ function ClaimsList({ claims, onOpen }) {
   );
 }
 
-function ClaimDetail({ claim, message, onMessageChange, onSend, onCancel, busy }) {
+function ClaimDetail({ claim, message, onMessageChange, onSend, onCancel, busy, claimFile, onFileChange, onUploadEvidence, onDeleteEvidence }) {
   const closed = ["resolved", "cancelled"].includes(claim.status);
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]" data-testid="charge-care-detail">
@@ -289,6 +326,67 @@ function ClaimDetail({ claim, message, onMessageChange, onSend, onCancel, busy }
             <strong>Charge Care:</strong> {claim.admin_note}
           </div>
         ) : null}
+
+        <div className="mt-4 rounded-2xl border border-[#E1D7C7] bg-white p-4" data-testid="charge-care-evidence-card">
+          <div className="flex items-center gap-2">
+            <FileUp size={15} className="text-slate-500" />
+            <p className="text-sm font-black text-slate-900">Fotos / Belege</p>
+          </div>
+          {(claim.attachments || []).length ? (
+            <div className="mt-3 space-y-2">
+              {(claim.attachments || []).map((item, index) => (
+                <div key={item.attachment_id} className="flex items-center gap-2 rounded-2xl border border-[#E1D7C7] bg-[#FBF8F2] px-3 py-2" data-testid={`charge-care-attachment-${index}`}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-black text-slate-800">{item.original_filename}</p>
+                    <p className="text-[10px] text-slate-400">{Math.max(1, Math.round(Number(item.size || 0) / 1024))} KB</p>
+                  </div>
+                  <a
+                    href={`${API}${item.download_path}`}
+                    className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#D9CFC0] bg-white px-3 text-[11px] font-black text-slate-700"
+                  >
+                    <Download size={12} />Öffnen
+                  </a>
+                  {!closed ? (
+                    <button
+                      onClick={() => onDeleteEvidence(item.attachment_id)}
+                      disabled={busy === `attachment-${item.attachment_id}`}
+                      className="inline-flex h-8 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-[11px] font-black text-red-700 disabled:opacity-50"
+                    >
+                      <Trash2 size={12} />Entfernen
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-500">Noch keine Fotos oder Belege hochgeladen.</p>
+          )}
+
+          {!closed ? (
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <label className="flex min-h-10 flex-1 cursor-pointer items-center justify-between rounded-2xl border border-dashed border-[#D9CFC0] bg-[#FBF8F2] px-3 text-xs font-bold text-slate-600">
+                <span className="truncate">{claimFile?.name || "PDF/JPG/PNG/WebP auswählen"}</span>
+                <FileUp size={14} />
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+                  data-testid="charge-care-evidence-input"
+                />
+              </label>
+              <button
+                onClick={onUploadEvidence}
+                disabled={!claimFile || busy === "attachment"}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-[#0A1626] px-4 text-xs font-black text-[#D8FCFF] disabled:opacity-40"
+                data-testid="charge-care-evidence-upload"
+              >
+                {busy === "attachment" ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
+                Hochladen
+              </button>
+            </div>
+          ) : null}
+        </div>
 
         {!closed ? (
           <button
