@@ -2639,3 +2639,12 @@ def test_pos_feature_stripe_activation_is_exactly_once_and_recoverable():
     assert '"status": "reconciliation_required"' in source
     assert '"feature-purchase:{session_id}"' in source
 
+def test_checkout_modules_use_canonical_stripe_webhook_url():
+    dating = (BACKEND_DIR / "routes" / "dating.py").read_text(encoding="utf-8")
+    pool = (BACKEND_DIR / "routes" / "pool_management.py").read_text(encoding="utf-8")
+    pos_features = (BACKEND_DIR / "routes" / "pos_features.py").read_text(encoding="utf-8")
+
+    for source in [dating, pool, pos_features]:
+        assert "/api/webhook/stripe" not in source
+        assert "/api/stripe/webhook" in source
+
