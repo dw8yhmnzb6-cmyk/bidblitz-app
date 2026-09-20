@@ -4,6 +4,7 @@ Umsatz, Bestellungen, Produkte, Mitarbeiter, Finanzen, Bewertungen,
 Restaurant-Reservierungen, Hotel-Buchungen, Job-Anzeigen, Events, Termine
 """
 import json
+import hashlib
 import os
 import uuid
 
@@ -2340,9 +2341,11 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
         if push_ops:
             mongo_update["$push"] = push_ops
         await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
-        notification_hash = secrets.token_hex(4) if note else requested_status
+        notification_hash = hashlib.sha256(
+            f"{customer_status}|{requested_status}|{note}".encode("utf-8")
+        ).hexdigest()[:12]
         await safe_create_charge_notification(
-            event_key=f"charge_claim_merchant_update:{claim_id}:{customer_status}:{notification_hash}",
+            event_key=f"charge_claim_merchant_update:{claim_id}:{notification_hash}",
             user_id=str(claim.get("customer_user_id") or ""),
             user_email=str(claim.get("customer_email") or ""),
             title="Händler hat Charge Care aktualisiert",
