@@ -12,6 +12,7 @@ from typing import Optional
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+from core.config import TEST_MODE
 from routes import smm_provider
 
 router = APIRouter(prefix="/api/smm", tags=["smm-boost"])
@@ -26,6 +27,14 @@ def _require_smm_idempotency_key(body_key: Optional[str], request: Request, *, p
 
 def _smm_key_hash(key: str) -> str:
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:20]
+
+
+def _require_live_smm_provider_for_value_action() -> None:
+    if not TEST_MODE and not smm_provider.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="BlitzBoost ist in Production deaktiviert, bis ein verifizierter SMM-Provider live verbunden ist. Das Wallet wurde nicht belastet.",
+        )
 
 
 # ── Service Catalog ──
@@ -167,6 +176,7 @@ class OrderRequest(BaseModel):
 async def place_order(req: OrderRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    _require_live_smm_provider_for_value_action()
     idempotency_key = _require_smm_idempotency_key(req.idempotency_key, request, prefix="smm-order")
     key_hash = _smm_key_hash(idempotency_key)
 
@@ -391,6 +401,7 @@ class MassOrderRequest(BaseModel):
 async def mass_order(req: MassOrderRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    _require_live_smm_provider_for_value_action()
     if not req.orders:
         raise HTTPException(status_code=400, detail="Keine Bestellungen")
     if len(req.orders) > 50:
