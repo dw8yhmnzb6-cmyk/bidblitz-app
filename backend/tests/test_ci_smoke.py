@@ -2092,6 +2092,7 @@ def test_home_prioritizes_auctions_and_mining():
     assert 'case "/mining":' in app
     assert '<MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />' in app
     assert 'case "/auctions":' in app
+    assert '{["/", "/more"].includes(basePath) && <PWAInstallPrompt />}' in app
 
     assert 'import { Capacitor } from "@capacitor/core";' in release
     assert 'const isNativeRuntime = Capacitor.isNativePlatform();' in release
