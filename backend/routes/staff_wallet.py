@@ -15,8 +15,10 @@ from pydantic import BaseModel
 from typing import Optional, Literal, List, Dict
 from datetime import datetime, timezone
 from uuid import uuid4
+import hashlib
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/staff/wallet", tags=["staff-wallet"])
 client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
@@ -272,6 +274,7 @@ class BankDetails(BaseModel):
 class PayoutReq(BaseModel):
     staff_id: str
     method: Optional[Literal["stripe_connect", "sepa_manual"]] = "sepa_manual"
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/bank/save")
@@ -285,17 +288,25 @@ async def save_bank_details(req: BankDetails, staff_id: str, request: Request):
     iban_clean = req.iban.replace(" ", "").upper()
     if len(iban_clean) < 15:
         raise HTTPException(400, "Ungültige IBAN")
-    await db.staff_bank_details.update_one(
-        {"merchant_id": mid, "staff_id": staff_id},
-        {"$set": {
-            "merchant_id": mid, "staff_id": staff_id,
-            "iban_full": iban_clean,  # in production: encrypted
+    bank_update = {
+        "$set": {
+            "merchant_id": mid,
+            "staff_id": staff_id,
             "iban_masked": f"{iban_clean[:4]}••••{iban_clean[-4:]}",
+            "iban_hash": hashlib.sha256(iban_clean.encode("utf-8")).hexdigest(),
             "account_holder": req.account_holder,
             "bic": req.bic,
             "verified": False,
             "updated_at": datetime.now(timezone.utc).isoformat(),
-        }},
+        }
+    }
+    if TEST_MODE:
+        bank_update["$set"]["iban_full"] = iban_clean
+    else:
+        bank_update["$unset"] = {"iban_full": ""}
+    await db.staff_bank_details.update_one(
+        {"merchant_id": mid, "staff_id": staff_id},
+        bank_update,
         upsert=True,
     )
     return {"success": True, "iban_masked": f"{iban_clean[:4]}••••{iban_clean[-4:]}"}
@@ -313,89 +324,185 @@ async def get_my_bank_details(member=Depends(_staff_session)):
 
 @router.post("/payout")
 async def request_payout(req: PayoutReq, request: Request):
-    """Echte Auszahlung. SEPA manual: erzeugt Payout-Job, Merchant überweist via Banking-Portal.
-    Stripe Connect: TODO — erzeugt Stripe Transfer (benötigt connected account)."""
+    """Reserve staff bonus events exactly once, then create a manual SEPA job or Stripe Connect transfer."""
     mid = await _merchant_id(request)
     member = await db.staff_members.find_one({"id": req.staff_id, "merchant_id": mid}, {"_id": 0})
     if not member:
         raise HTTPException(404, "Mitarbeiter nicht gefunden")
 
-    # Sum credited (unpaid)
-    pipe = [
-        {"$match": {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"}},
-        {"$group": {"_id": None, "total": {"$sum": "$amount_eur"}, "count": {"$sum": 1}}},
-    ]
-    agg = await db.staff_bonus_events.aggregate(pipe).to_list(length=1)
-    total = float(agg[0]["total"]) if agg else 0.0
-    count = int(agg[0]["count"]) if agg else 0
-    if total <= 0:
-        raise HTTPException(400, "Kein auszahlbares Guthaben")
+    key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
-    bank = await db.staff_bank_details.find_one({"merchant_id": mid, "staff_id": req.staff_id}, {"_id": 0})
-    if not bank or not bank.get("iban_full"):
-        raise HTTPException(400, "Keine Bankverbindung hinterlegt. Bitte zuerst IBAN speichern.")
-
-    payout_id = str(uuid4())
-    now = datetime.now(timezone.utc)
-    payout_doc = {
-        "id": payout_id,
-        "merchant_id": mid,
-        "staff_id": req.staff_id,
-        "amount_eur": total,
-        "event_count": count,
-        "method": req.method,
-        "status": "pending",
-        "iban_masked": bank.get("iban_masked"),
-        "account_holder": bank.get("account_holder"),
-        "reference": f"BB-{payout_id[:8].upper()}",
-        "created_at": now.isoformat(),
-        "completed_at": None,
-    }
-
-    # Stripe Connect path (uses staff_bank_details.stripe_account_id from /api/staff/wallet/connect/* flow)
-    if req.method == "stripe_connect":
-        try:
-            stripe_account_id = bank.get("stripe_account_id")
-            payouts_enabled = bool(bank.get("payouts_enabled"))
-            if not stripe_account_id:
-                payout_doc["status"] = "needs_stripe_onboarding"
-                payout_doc["error"] = "Mitarbeiter hat keinen Stripe Connect Account. Bitte zuerst Onboarding abschließen (/api/staff/wallet/connect/onboard)."
-            elif not payouts_enabled:
-                payout_doc["status"] = "needs_stripe_onboarding"
-                payout_doc["error"] = "Stripe Connect Onboarding nicht abgeschlossen (payouts_enabled=false). Bitte requirements.currently_due erfüllen."
-            else:
-                import stripe
-                stripe.api_key = os.getenv("STRIPE_API_KEY")
-                if not stripe.api_key:
-                    raise RuntimeError("STRIPE_API_KEY fehlt")
-                transfer = stripe.Transfer.create(
-                    amount=int(total * 100),
-                    currency="eur",
-                    destination=stripe_account_id,
-                    description=f"BidBlitz Wallet-Auszahlung {payout_doc['reference']}",
-                    metadata={"merchant_id": mid, "staff_id": req.staff_id, "payout_id": payout_id},
-                )
-                payout_doc["status"] = "processing"
-                payout_doc["stripe_transfer_id"] = transfer.id
-                payout_doc["stripe_account_id"] = stripe_account_id
-        except Exception as e:
-            payout_doc["status"] = "failed"
-            payout_doc["error"] = str(e)[:300]
-
-    await db.staff_payouts.insert_one(payout_doc)
-
-    # Mark bonus events as wallet_paid ONLY if the payout actually went out / is in flight.
-    # Failed or pending-onboarding payouts must NOT consume the credited bonuses.
-    if payout_doc["status"] in ("pending", "processing"):
-        await db.staff_bonus_events.update_many(
-            {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"},
-            {"$set": {"status": "wallet_paid", "paid_at": now.isoformat(), "payout_id": payout_id}},
+    if req.method == "sepa_manual" and not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Manuelle SEPA-Auszahlung ist in Production deaktiviert, bis Bankdaten verschlüsselt-at-rest gespeichert und ein verifizierter Auszahlungsprozess angebunden ist.",
         )
 
-    payout_doc.pop("_id", None)
-    return {"success": True, "payout": payout_doc, "next_step":
-            ("Stripe Transfer wird in 1-3 Werktagen ausgeführt" if req.method == "stripe_connect"
-             else f"SEPA-Überweisung {payout_doc['reference']} an {bank.get('iban_masked')} – bitte im Banking-Portal ausführen")}
+    bank = await db.staff_bank_details.find_one(
+        {"merchant_id": mid, "staff_id": req.staff_id},
+        {"_id": 0},
+    ) or {}
+
+    if req.method == "stripe_connect":
+        stripe_account_id = str(bank.get("stripe_account_id") or "")
+        if not stripe_account_id:
+            raise HTTPException(status_code=409, detail="Stripe Connect Onboarding erforderlich")
+        if not bool(bank.get("payouts_enabled")):
+            raise HTTPException(status_code=409, detail="Stripe Connect Auszahlungen sind noch nicht freigeschaltet")
+        if not os.getenv("STRIPE_API_KEY"):
+            raise HTTPException(status_code=503, detail="Stripe Connect ist nicht konfiguriert")
+    else:
+        if not bank.get("iban_full"):
+            raise HTTPException(status_code=400, detail="Keine Test-Bankverbindung hinterlegt")
+
+    payload = {
+        "merchant_id": mid,
+        "staff_id": req.staff_id,
+        "method": req.method,
+    }
+    payout_id = "STFPAY-" + hashlib.sha256(
+        f"{mid}:{req.staff_id}:{key}".encode("utf-8")
+    ).hexdigest()[:24].upper()
+    existing = await db.staff_payouts.find_one({"id": payout_id}, {"_id": 0})
+    if existing:
+        if existing.get("payload") != payload:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Auszahlungsdaten verwendet")
+        if existing.get("status") in {
+            "pending", "processing", "completed", "reconciliation_required", "needs_stripe_onboarding"
+        }:
+            return {"success": True, "payout": existing, "replayed": True}
+
+    now = datetime.now(timezone.utc)
+    await db.staff_payouts.update_one(
+        {"id": payout_id},
+        {"$setOnInsert": {
+            "id": payout_id,
+            "merchant_id": mid,
+            "staff_id": req.staff_id,
+            "method": req.method,
+            "payload": payload,
+            "status": "reserving",
+            "reference": f"BB-{payout_id[-8:]}",
+            "created_at": now.isoformat(),
+            "completed_at": None,
+        }},
+        upsert=True,
+    )
+
+    await db.staff_bonus_events.update_many(
+        {
+            "merchant_id": mid,
+            "staff_id": req.staff_id,
+            "status": "credited",
+        },
+        {"$set": {
+            "status": "payout_reserved",
+            "payout_id": payout_id,
+            "reserved_at": now.isoformat(),
+        }},
+    )
+
+    reserved_events = await db.staff_bonus_events.find(
+        {
+            "merchant_id": mid,
+            "staff_id": req.staff_id,
+            "status": "payout_reserved",
+            "payout_id": payout_id,
+        },
+        {"_id": 0, "amount_eur": 1},
+    ).to_list(length=1000)
+    total = round(sum(float(e.get("amount_eur") or 0) for e in reserved_events), 2)
+    count = len(reserved_events)
+    if total <= 0 or count == 0:
+        await db.staff_payouts.update_one(
+            {"id": payout_id, "status": "reserving"},
+            {"$set": {"status": "failed", "error": "Kein auszahlbares Guthaben", "failed_at": now.isoformat()}},
+        )
+        raise HTTPException(status_code=400, detail="Kein auszahlbares Guthaben")
+
+    payout_patch = {
+        "amount_eur": total,
+        "event_count": count,
+        "iban_masked": bank.get("iban_masked"),
+        "account_holder": bank.get("account_holder"),
+    }
+    if req.method == "sepa_manual":
+        payout_patch["status"] = "pending"
+        await db.staff_payouts.update_one(
+            {"id": payout_id, "status": "reserving"},
+            {"$set": payout_patch},
+        )
+        payout = await db.staff_payouts.find_one({"id": payout_id}, {"_id": 0}) or {}
+        return {
+            "success": True,
+            "payout": payout,
+            "replayed": False,
+            "next_step": f"SEPA-Überweisung {payout.get('reference')} an {bank.get('iban_masked')} – bitte im Test-Banking-Portal ausführen",
+        }
+
+    payout_patch.update({
+        "status": "provider_processing",
+        "stripe_account_id": bank.get("stripe_account_id"),
+        "provider_started_at": now.isoformat(),
+    })
+    await db.staff_payouts.update_one(
+        {"id": payout_id, "status": {"$in": ["reserving", "provider_processing"]}},
+        {"$set": payout_patch},
+    )
+
+    try:
+        import stripe
+        stripe.api_key = os.getenv("STRIPE_API_KEY")
+        transfer = stripe.Transfer.create(
+            amount=int(round(total * 100)),
+            currency="eur",
+            destination=bank["stripe_account_id"],
+            description=f"BidBlitz Wallet-Auszahlung BB-{payout_id[-8:]}",
+            metadata={"merchant_id": mid, "staff_id": req.staff_id, "payout_id": payout_id},
+            idempotency_key=f"staff-payout:{payout_id}",
+        )
+    except Exception as e:
+        await db.staff_payouts.update_one(
+            {"id": payout_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "error": str(e)[:300],
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Stripe-Auszahlung benötigt Abstimmung; Bonusguthaben bleibt reserviert und wird nicht erneut ausgezahlt.",
+        )
+
+    finished_at = datetime.now(timezone.utc).isoformat()
+    await db.staff_payouts.update_one(
+        {"id": payout_id},
+        {"$set": {
+            "status": "processing",
+            "stripe_transfer_id": transfer.id,
+            "provider_completed_at": finished_at,
+        }},
+    )
+    await db.staff_bonus_events.update_many(
+        {
+            "merchant_id": mid,
+            "staff_id": req.staff_id,
+            "status": "payout_reserved",
+            "payout_id": payout_id,
+        },
+        {"$set": {"status": "wallet_paid", "paid_at": finished_at}},
+    )
+
+    payout = await db.staff_payouts.find_one({"id": payout_id}, {"_id": 0}) or {}
+    return {
+        "success": True,
+        "payout": payout,
+        "replayed": False,
+        "next_step": "Stripe Transfer wurde an den verifizierten Connect-Account übergeben",
+    }
 
 
 @router.get("/payouts")
@@ -418,12 +525,34 @@ async def my_payouts(member=Depends(_staff_session), limit: int = 30):
 
 @router.post("/payouts/{payout_id}/confirm")
 async def confirm_payout(payout_id: str, request: Request):
-    """Merchant markiert SEPA-Auszahlung als erfolgt (manuelle Bestätigung)."""
+    """Merchant bestätigt eine TEST_MODE-SEPA-Auszahlung genau einmal."""
     mid = await _merchant_id(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Manuelle SEPA-Bestätigung ist in Production deaktiviert")
+    now = datetime.now(timezone.utc).isoformat()
     res = await db.staff_payouts.update_one(
-        {"id": payout_id, "merchant_id": mid, "status": "pending"},
-        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+        {
+            "id": payout_id,
+            "merchant_id": mid,
+            "method": "sepa_manual",
+            "status": "pending",
+        },
+        {"$set": {"status": "completed", "completed_at": now}},
     )
     if res.modified_count == 0:
+        existing = await db.staff_payouts.find_one(
+            {"id": payout_id, "merchant_id": mid, "method": "sepa_manual"},
+            {"_id": 0, "status": 1},
+        )
+        if existing and existing.get("status") == "completed":
+            return {"success": True, "replayed": True}
         raise HTTPException(404, "Payout nicht gefunden oder nicht im pending-Status")
-    return {"success": True}
+    await db.staff_bonus_events.update_many(
+        {
+            "merchant_id": mid,
+            "status": "payout_reserved",
+            "payout_id": payout_id,
+        },
+        {"$set": {"status": "wallet_paid", "paid_at": now}},
+    )
+    return {"success": True, "replayed": False}
