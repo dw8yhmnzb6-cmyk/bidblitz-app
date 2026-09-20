@@ -1,9 +1,11 @@
+import ast
 import asyncio
 import inspect
 import os
 import sys
 import uuid
 from pathlib import Path
+from typing import Optional
 
 import pytest
 from fastapi import HTTPException
@@ -24,7 +26,6 @@ import server  # noqa: E402
 from core import canonical_wallet_service as canonical_wallet  # noqa: E402
 from routes import bidblitz_pay as bidblitz_pay_routes  # noqa: E402
 from routes import payment as payment_routes  # noqa: E402
-from routes import mobility_platform as mobility_platform_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
 
@@ -2058,13 +2059,39 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'db.mining_transfer_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
 
 
-def test_mobility_kosovo_regional_pricing_matches_local_profile():
-    profile = mobility_platform_routes.REGIONAL_PRICING_PROFILES["XK"]
+def _load_mobility_pricing_contract():
+    source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    wanted_names = {
+        "DEFAULT_TRANSPORT_PRICING",
+        "REGIONAL_PRICING_PROFILES",
+        "build_option",
+        "_resolve_pricing_context",
+    }
+    selected = []
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            names = {target.id for target in node.targets if isinstance(target, ast.Name)}
+            if names & wanted_names:
+                selected.append(node)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in wanted_names:
+            selected.append(node)
 
-    taxi = mobility_platform_routes.build_option("taxi", 3.4, 8, 1.2, 55, profile)
-    scooter = mobility_platform_routes.build_option("scooter", 3.4, 8, 1.0, 86, profile)
-    bike = mobility_platform_routes.build_option("bike", 3.4, 8, 1.0, 94, profile)
-    ev = mobility_platform_routes.build_option("ev", 3.4, 8, 1.0, 92, profile)
+    namespace = {"Optional": Optional}
+    module = ast.Module(body=selected, type_ignores=[])
+    exec(compile(ast.fix_missing_locations(module), "mobility_pricing_contract", "exec"), namespace)
+    return namespace
+
+
+def test_mobility_kosovo_regional_pricing_matches_local_profile():
+    pricing = _load_mobility_pricing_contract()
+    profile = pricing["REGIONAL_PRICING_PROFILES"]["XK"]
+    build_option = pricing["build_option"]
+
+    taxi = build_option("taxi", 3.4, 8, 1.2, 55, profile)
+    scooter = build_option("scooter", 3.4, 8, 1.0, 86, profile)
+    bike = build_option("bike", 3.4, 8, 1.0, 94, profile)
+    ev = build_option("ev", 3.4, 8, 1.0, 92, profile)
 
     assert taxi["price_eur"] == 4.55
     assert scooter["price_eur"] == 1.70
@@ -2077,18 +2104,16 @@ def test_mobility_kosovo_regional_pricing_matches_local_profile():
         assert option["estimated"] is True
 
 
-def test_mobility_prishtina_coordinates_resolve_to_kosovo_without_geocoder(monkeypatch):
+def test_mobility_prishtina_coordinates_resolve_to_kosovo_without_geocoder():
+    pricing = _load_mobility_pricing_contract()
+
     async def unavailable(*args, **kwargs):
         raise RuntimeError("offline")
 
-    monkeypatch.setattr(mobility_platform_routes, "_nominatim_get", unavailable)
-    profile = asyncio.run(
-        mobility_platform_routes._resolve_pricing_context(
-            42.6629,
-            21.1655,
-            "Prishtina",
-        )
-    )
+    pricing["_nominatim_get"] = unavailable
+    resolver = pricing["_resolve_pricing_context"]
+    resolver.__globals__["_nominatim_get"] = unavailable
+    profile = asyncio.run(resolver(42.6629, 21.1655, "Prishtina"))
 
     assert profile["profile_key"] == "XK"
     assert profile["country_code"] == "XK"
