@@ -50,10 +50,10 @@ REGIONAL_PRICING_PROFILES = {
     "XK": {
         "region": "Kosovo",
         "currency": "EUR",
-        "source": "Prishtina local market benchmark",
+        "source": "Kosovo local mobility benchmark",
         "modes": {
             "taxi": {"base": 2.0, "per_km": 0.75, "per_min": 0.0, "minimum": 2.0, "surge": False, "basis": "2,00 € Start + 0,75 €/km"},
-            "scooter": {"base": 0.0, "per_km": 0.0, "per_min": 0.20, "minimum": 0.80, "surge": False, "basis": "lokaler Benchmark · 0,20 €/min"},
+            "scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.15, "minimum": 0.20, "surge": False, "basis": "0,20 € Start + 0,15 €/min"},
             "bike": {"base": 0.30, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
             "ev": {"base": 2.0, "per_km": 0.45, "per_min": 0.04, "minimum": 2.5, "surge": False, "basis": "regionaler EV-Schätzwert"},
             "car_sharing": {"base": 1.5, "per_km": 0.32, "per_min": 0.08, "minimum": 2.0, "surge": False, "basis": "regionaler Carsharing-Schätzwert"},
