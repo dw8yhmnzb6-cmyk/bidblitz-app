@@ -37,6 +37,7 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 class ChargeWarrantyRegistrationRequest(BaseModel):
     product_name: str
     serial_number: str
+    product_id: str = ""
     purchase_date: str = ""
     merchant_name: str = ""
     invoice_number: str = ""
@@ -53,6 +54,7 @@ class ChargeInvoiceSaveRequest(BaseModel):
 
 
 class ChargeWarrantyUpdateRequest(BaseModel):
+    product_id: Optional[str] = None
     product_name: Optional[str] = None
     serial_number: Optional[str] = None
     purchase_date: Optional[str] = None
@@ -403,6 +405,7 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     warranty_pass = _build_warranty_pass(doc)
     return {
         "registration_id": doc.get("registration_id"),
+        "product_id": doc.get("product_id") or "",
         "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
         "serial_number": doc.get("serial_number") or "—",
         "purchase_date": doc.get("purchase_date") or purchase_dt.date().isoformat(),
@@ -530,6 +533,38 @@ def _delete_attachment_blob(attachment: Dict[str, Any]) -> None:
 def _delete_document_blobs(doc: Dict[str, Any]) -> None:
     for attachment in doc.get("attachments") or []:
         _delete_attachment_blob(attachment)
+
+
+async def _resolve_charge_product(product_id: Any) -> tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+    value = str(product_id or "").strip()
+    if not value:
+        return None, {}
+    product = await db.pos_products.find_one(
+        {"product_id": value, "active": True},
+        {"_id": 0},
+    )
+    if not product or not _charge_catalog_categories(product):
+        raise HTTPException(status_code=404, detail="Charge-Produkt nicht gefunden")
+
+    merchant: Dict[str, Any] = {}
+    profile: Dict[str, Any] = {}
+    if product.get("merchant_id"):
+        merchant = await db.merchants.find_one(
+            {"merchant_id": product.get("merchant_id")},
+            {"_id": 0},
+        ) or {}
+    if merchant.get("user_id"):
+        profile = await db.merchant_profiles.find_one(
+            {"user_id": merchant.get("user_id")},
+            {"_id": 0},
+        ) or {}
+    binding = {
+        "merchant_id": merchant.get("merchant_id") or product.get("merchant_id") or "",
+        "merchant_user_id": str(merchant.get("user_id") or profile.get("user_id") or ""),
+        "merchant_slug": merchant.get("public_slug") or profile.get("public_slug") or "",
+        "merchant_name": merchant.get("business_name") or profile.get("business_name") or "BidBlitz Charge Händler",
+    }
+    return product, binding
 
 
 async def _resolve_charge_merchant(merchant_name: Any) -> Dict[str, Any]:
@@ -814,6 +849,62 @@ async def get_charge_catalog(
         ],
         "query": q or "",
         "category": requested_category or "all",
+    }
+
+
+@router.get("/product-lookup")
+async def lookup_charge_product(code: str, request: Request):
+    await get_current_user(request)
+    value = str(code or "").strip()
+    if not value:
+        raise HTTPException(status_code=400, detail="Produktcode fehlt")
+
+    product = await db.pos_products.find_one(
+        {
+            "active": True,
+            "$or": [
+                {"barcode": value},
+                {"qr_code": value},
+                {"sku": value},
+                {"product_id": value},
+            ],
+        },
+        {"_id": 0},
+    )
+    if not product or not _charge_catalog_categories(product):
+        raise HTTPException(status_code=404, detail="Charge-Produktcode nicht gefunden")
+
+    override = await db.charge_catalog_overrides.find_one(
+        {"product_id": product.get("product_id")},
+        {"_id": 0},
+    ) or {}
+    if override.get("visible") is False:
+        raise HTTPException(status_code=404, detail="Charge-Produktcode nicht gefunden")
+
+    resolved, merchant_binding = await _resolve_charge_product(product.get("product_id"))
+    merchant = {}
+    profile = {}
+    if merchant_binding.get("merchant_id"):
+        merchant = await db.merchants.find_one(
+            {"merchant_id": merchant_binding.get("merchant_id")},
+            {"_id": 0},
+        ) or {}
+    if merchant_binding.get("merchant_user_id"):
+        profile = await db.merchant_profiles.find_one(
+            {"user_id": merchant_binding.get("merchant_user_id")},
+            {"_id": 0},
+        ) or {}
+
+    card = _charge_product_card(resolved or product, merchant, profile, override)
+    return {
+        "ok": True,
+        "product": card,
+        "warranty_prefill": {
+            "product_id": card.get("product_id"),
+            "product_name": card.get("name"),
+            "merchant_name": merchant_binding.get("merchant_name") or card.get("merchant_name"),
+            "warranty_months": int((resolved or product).get("warranty_months") or 24),
+        },
     }
 
 
@@ -1150,11 +1241,18 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if existing:
         return {"ok": True, "warranty": _warranty_card(existing), "duplicate": True}
 
-    merchant_binding = await _resolve_charge_merchant(req.merchant_name)
+    product = None
+    merchant_binding: Dict[str, Any] = {}
+    if req.product_id.strip():
+        product, merchant_binding = await _resolve_charge_product(req.product_id)
+    if not merchant_binding:
+        merchant_binding = await _resolve_charge_merchant(req.merchant_name)
+    canonical_product_name = (product or {}).get("name") or req.product_name.strip()
     doc = {
         "registration_id": f"CHG-WAR-{uuid.uuid4().hex[:10].upper()}",
         "user_id": user_id,
-        "product_name": req.product_name.strip(),
+        "product_id": (product or {}).get("product_id") or req.product_id.strip(),
+        "product_name": canonical_product_name,
         "serial_number": serial,
         "purchase_date": req.purchase_date.strip(),
         "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
@@ -1216,11 +1314,20 @@ async def update_charge_warranty(
     current = await _find_user_warranty(user_id, registration_id)
     updates = req.dict(exclude_unset=True)
 
-    for key in ("product_name", "serial_number", "purchase_date", "merchant_name", "invoice_number"):
+    for key in ("product_id", "product_name", "serial_number", "purchase_date", "merchant_name", "invoice_number"):
         if key in updates:
             updates[key] = _clean_optional_text(updates[key])
 
-    if "merchant_name" in updates:
+    if "product_id" in updates and updates.get("product_id"):
+        product, merchant_binding = await _resolve_charge_product(updates.get("product_id"))
+        updates["product_id"] = product.get("product_id") or updates.get("product_id")
+        updates["product_name"] = product.get("name") or updates.get("product_name") or current.get("product_name") or ""
+        updates["merchant_name"] = merchant_binding.get("merchant_name") or updates.get("merchant_name") or current.get("merchant_name") or ""
+        updates["merchant_id"] = merchant_binding.get("merchant_id") or ""
+        updates["merchant_user_id"] = merchant_binding.get("merchant_user_id") or ""
+        updates["merchant_slug"] = merchant_binding.get("merchant_slug") or ""
+
+    if "merchant_name" in updates and not updates.get("product_id"):
         merchant_binding = await _resolve_charge_merchant(updates.get("merchant_name"))
         updates["merchant_name"] = merchant_binding.get("merchant_name") or updates.get("merchant_name") or ""
         updates["merchant_id"] = merchant_binding.get("merchant_id") or ""
@@ -1497,6 +1604,7 @@ async def create_charge_warranty_claim(
         "customer_email": user.get("email") or "",
         "merchant_id": merchant_binding.get("merchant_id") or "",
         "merchant_slug": merchant_binding.get("merchant_slug") or "",
+        "product_id": warranty.get("product_id") or "",
         "product_name": warranty.get("product_name") or "",
         "serial_number": warranty.get("serial_number") or "",
         "merchant_name": merchant_binding.get("merchant_name") or warranty.get("merchant_name") or "",
