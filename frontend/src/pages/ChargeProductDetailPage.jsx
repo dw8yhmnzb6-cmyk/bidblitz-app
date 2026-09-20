@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft, Building2, CheckCircle2, ChevronRight, Loader2, MapPin,
-  Package, ShieldCheck, ShoppingBag, Tag
+  Package, ShieldCheck, ShoppingBag, Tag, Heart
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -9,6 +9,7 @@ import { api } from "../services/api";
 export default function ChargeProductDetailPage({ productId, onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!productId) {
@@ -48,6 +49,27 @@ export default function ChargeProductDetailPage({ productId, onBack, onNavigate 
   const product = data.product;
   const merchant = data.merchant || {};
   const related = data.related_products || [];
+
+  const toggleSaved = async () => {
+    if (!product?.product_id || saving) return;
+    setSaving(true);
+    try {
+      if (product.saved) {
+        await api.unsaveChargeProduct(product.product_id);
+        setData((current) => current ? { ...current, product: { ...current.product, saved: false } } : current);
+        toast.success("Produkt aus Merkliste entfernt");
+      } else {
+        await api.saveChargeProduct(product.product_id);
+        setData((current) => current ? { ...current, product: { ...current.product, saved: true } } : current);
+        toast.success("Produkt gemerkt");
+      }
+    } catch (error) {
+      toast.error(error.message || "Merkliste konnte nicht aktualisiert werden");
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   const openMerchant = () => {
     if (!merchant.public_slug) return;
@@ -105,6 +127,16 @@ export default function ChargeProductDetailPage({ productId, onBack, onNavigate 
                   <CheckCircle2 size={16} />{product.in_stock ? "Verfügbar" : "Aktuell ausverkauft"}
                 </span>
                 {product.featured ? <span className="rounded-2xl bg-amber-400/15 px-4 py-3 text-sm font-black text-amber-200">Empfohlen</span> : null}
+                <button
+                  type="button"
+                  onClick={toggleSaved}
+                  disabled={saving}
+                  className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black disabled:opacity-50 ${product.saved ? "border-rose-400/30 bg-rose-400/15 text-rose-100" : "border-white/10 bg-white/5 text-white"}`}
+                  data-testid="charge-product-detail-save-button"
+                >
+                  {saving ? <Loader2 size={15} className="animate-spin" /> : <Heart size={16} fill={product.saved ? "currentColor" : "none"} />}
+                  {product.saved ? "Gemerkt" : "Merken"}
+                </button>
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
