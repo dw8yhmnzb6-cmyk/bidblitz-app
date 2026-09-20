@@ -483,6 +483,12 @@ def test_kids_wallet_payments_parental_controls_and_sessions_are_safe():
     assert "kids-merchant-credit:" in kids_source
     assert "Gültiger Händler erforderlich" in kids_source
     assert "idempotency_key=idempotency_key" in kids_source
+    assert 'reward_marker = f"task_reward_markers.{marker_hash}"' in kids_source
+    assert '"completion_state": "processing"' in kids_source
+    assert '"completion_state": "reconciliation_required"' in kids_source
+    assert 'tx_id = f"KTX-TASK-{marker_hash}"' in kids_source
+    assert '"$setOnInsert": {' in kids_source
+    assert '"replayed": True' in kids_source
 
     assert "async def _require_child_access" in kids_app_source
     assert "reward_currency" in kids_app_source
