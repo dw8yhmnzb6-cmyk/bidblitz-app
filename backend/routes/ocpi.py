@@ -9,6 +9,7 @@ No partner is contacted merely by importing or starting this module.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import os
@@ -18,6 +19,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from cryptography.fernet import Fernet, InvalidToken
+import httpx
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
@@ -701,6 +703,385 @@ async def emsp_token_authorize(
         "authorization_reference": f"BB-{secrets.token_hex(6).upper()}",
         "location": body or None,
     })
+
+
+def _cp_protocol(cp: Dict[str, Any]) -> str:
+    value = str((cp or {}).get("protocol") or "ocpp1.6")
+    return "ocpp2.0.1" if value.startswith("ocpp2") else "ocpp1.6"
+
+
+def _cp_online(cp: Dict[str, Any]) -> bool:
+    cp_id = cp.get("charge_point_id")
+    if not cp_id:
+        return False
+    return ocpp_v201.is_online(cp_id) if _cp_protocol(cp) == "ocpp2.0.1" else ocpp_csms.is_online(cp_id)
+
+
+def _command_response(result: str, timeout: int = 30, message: Optional[str] = None) -> Dict[str, Any]:
+    data: Dict[str, Any] = {"result": result, "timeout": timeout}
+    if message:
+        data["message"] = [{"language": "en", "text": message[:512]}]
+    return _ocpi(data)
+
+
+def _callback_allowed(partner: Dict[str, Any], response_url: str) -> bool:
+    try:
+        target = urlparse(response_url)
+        registered = urlparse(str(partner.get("versions_url") or ""))
+        return (
+            target.scheme == "https"
+            and bool(target.hostname)
+            and bool(registered.hostname)
+            and target.hostname.lower() == registered.hostname.lower()
+        )
+    except Exception:
+        return False
+
+
+async def _post_command_result(
+    partner: Dict[str, Any],
+    response_url: Optional[str],
+    command_id: str,
+    result: str,
+    message: Optional[str] = None,
+) -> None:
+    payload: Dict[str, Any] = {"result": result}
+    if message:
+        payload["message"] = [{"language": "en", "text": message[:512]}]
+
+    if not response_url or not _callback_allowed(partner, response_url):
+        await db.ocpi_command_logs.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "callback_status": "blocked",
+                "callback_error": "Missing or untrusted response_url",
+                "updated_at": _now(),
+            }},
+        )
+        return
+
+    remote_token = _decrypt_token(partner.get("remote_token_enc"))
+    if not remote_token:
+        await db.ocpi_command_logs.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "callback_status": "failed",
+                "callback_error": "Partner token unavailable",
+                "updated_at": _now(),
+            }},
+        )
+        return
+
+    encoded = base64.b64encode(remote_token.encode("utf-8")).decode("ascii")
+    headers = {
+        "Authorization": f"Token {encoded}",
+        "Content-Type": "application/json",
+        "OCPI-from-country-code": OCPI_COUNTRY_CODE,
+        "OCPI-from-party-id": OCPI_PARTY_ID,
+        "OCPI-to-country-code": partner["country_code"],
+        "OCPI-to-party-id": partner["party_id"],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=False) as client:
+            res = await client.post(response_url, json=payload, headers=headers)
+        await db.ocpi_command_logs.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "callback_status": "delivered" if 200 <= res.status_code < 300 else "failed",
+                "callback_http_status": res.status_code,
+                "updated_at": _now(),
+            }},
+        )
+    except Exception as exc:
+        await db.ocpi_command_logs.update_one(
+            {"command_id": command_id},
+            {"$set": {
+                "callback_status": "failed",
+                "callback_error": str(exc)[:500],
+                "updated_at": _now(),
+            }},
+        )
+
+
+async def _find_local_cp(location_id: Optional[str], evse_uid: Optional[str]) -> Optional[Dict[str, Any]]:
+    for candidate in (location_id, evse_uid):
+        if not candidate:
+            continue
+        cp = await db.ev_charge_points.find_one({"charge_point_id": str(candidate), "active": True})
+        if cp:
+            return cp
+    return None
+
+
+@router.post(f"/cpo/{OCPI_VERSION}/commands/START_SESSION")
+async def command_start_session(
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    token = body.get("token") or {}
+    token_uid = str(token.get("uid") or "")
+    token_type = str(token.get("type") or "RFID")
+    if not token_uid:
+        return _command_response("REJECTED", message="Missing token uid")
+
+    remote_token = await db.ocpi_remote_tokens.find_one({
+        "uid": token_uid,
+        "type": token_type,
+        "source_partner_id": partner["partner_id"],
+    })
+    if not remote_token or remote_token.get("valid") is False or remote_token.get("whitelist") == "NEVER":
+        return _command_response("REJECTED", message="Unknown or blocked token")
+
+    cp = await _find_local_cp(body.get("location_id"), body.get("evse_uid"))
+    if not cp:
+        return _command_response("UNKNOWN_LOCATION", message="Unknown location/EVSE")
+    if not _cp_online(cp):
+        return _command_response("EVSE_OCCUPIED", message="Charge point offline")
+
+    try:
+        connector_id = int(body.get("connector_id") or 1)
+    except (TypeError, ValueError):
+        return _command_response("REJECTED", message="Invalid connector_id")
+
+    connector = await db.ev_connectors.find_one({
+        "charge_point_id": cp["charge_point_id"],
+        "connector_id": connector_id,
+    })
+    if connector and str(connector.get("status") or "").lower() not in ("", "available", "preparing"):
+        return _command_response("EVSE_OCCUPIED", message="Connector is not available")
+
+    command_id = f"ocpi_cmd_{secrets.token_hex(8)}"
+    session_id = f"ocpi_{secrets.token_hex(8)}"
+    id_tag = "OCPI" + hashlib.sha256(
+        f"{partner['partner_id']}:{token_uid}:{token_type}".encode("utf-8")
+    ).hexdigest()[:16].upper()
+
+    tariff = None
+    if cp.get("tariff_id"):
+        tariff = await db.ev_tariffs.find_one({"_id": cp.get("tariff_id")})
+        if not tariff:
+            try:
+                from bson import ObjectId
+                tariff = await db.ev_tariffs.find_one({"_id": ObjectId(str(cp.get("tariff_id")))})
+            except Exception:
+                tariff = None
+
+    tariff_snapshot = {
+        "tariff_id": str(cp.get("tariff_id") or ""),
+        "price_per_kwh": float((tariff or {}).get("price_per_kwh") or 0),
+        "price_per_minute": float((tariff or {}).get("price_per_minute") or 0),
+        "session_fee": float((tariff or {}).get("session_fee") or 0),
+        "idle_fee_per_minute": float((tariff or {}).get("idle_fee_per_minute") or 0),
+        "minimum_fee": float((tariff or {}).get("minimum_fee") or 0),
+        "currency": (tariff or {}).get("currency") or "EUR",
+        "vat_rate": float((tariff or {}).get("vat_rate") or 0),
+    }
+
+    await db.ev_authorizations.update_one(
+        {"id_tag": id_tag},
+        {"$set": {
+            "id_tag": id_tag,
+            "user_id": None,
+            "active": True,
+            "ocpi_partner_id": partner["partner_id"],
+            "ocpi_token_uid": token_uid,
+            "created_at": _now(),
+            "expires_at": None,
+        }},
+        upsert=True,
+    )
+    await db.ev_charging_sessions.insert_one({
+        "session_id": session_id,
+        "charge_point_id": cp["charge_point_id"],
+        "connector_id": connector_id,
+        "user_id": None,
+        "id_tag": id_tag,
+        "tariff": tariff_snapshot,
+        "reserved_amount": 0.0,
+        "currency": tariff_snapshot["currency"],
+        "kwh_charged": 0.0,
+        "current_cost": 0.0,
+        "status": "authorized",
+        "ocpi_external": True,
+        "ocpi_partner_id": partner["partner_id"],
+        "ocpi_token": {
+            "country_code": token.get("country_code") or partner["country_code"],
+            "party_id": token.get("party_id") or partner["party_id"],
+            "uid": token_uid,
+            "type": token_type,
+            "contract_id": token.get("contract_id"),
+        },
+        "ocpi_command_id": command_id,
+        "created_at": _now(),
+    })
+    await db.ocpi_command_logs.insert_one({
+        "command_id": command_id,
+        "command": "START_SESSION",
+        "partner_id": partner["partner_id"],
+        "session_id": session_id,
+        "response_url": body.get("response_url"),
+        "status": "processing",
+        "created_at": _now(),
+    })
+
+    try:
+        if _cp_protocol(cp) == "ocpp2.0.1":
+            result = await ocpp_v201.request_start_transaction(
+                cp["charge_point_id"],
+                connector_id,
+                id_tag,
+                remote_start_id=secrets.randbelow(1_000_000) + 1,
+            )
+        else:
+            result = await ocpp_csms.remote_start(cp["charge_point_id"], connector_id, id_tag)
+        accepted = (result or {}).get("status") == "Accepted"
+    except Exception as exc:
+        accepted = False
+        result = {"error": str(exc)}
+
+    if not accepted:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "rejected", "error": str(result)[:300]}},
+        )
+        await db.ev_authorizations.update_one({"id_tag": id_tag}, {"$set": {"active": False}})
+        await db.ocpi_command_logs.update_one(
+            {"command_id": command_id},
+            {"$set": {"status": "rejected", "updated_at": _now()}},
+        )
+        asyncio.create_task(_post_command_result(
+            partner, body.get("response_url"), command_id, "REJECTED", "Charge point rejected start"
+        ))
+        return _command_response("REJECTED", message="Charge point rejected start")
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "starting"}},
+    )
+    await db.ocpi_command_logs.update_one(
+        {"command_id": command_id},
+        {"$set": {"status": "accepted", "updated_at": _now()}},
+    )
+    asyncio.create_task(_post_command_result(
+        partner, body.get("response_url"), command_id, "ACCEPTED"
+    ))
+    return _command_response("ACCEPTED")
+
+
+@router.post(f"/cpo/{OCPI_VERSION}/commands/STOP_SESSION")
+async def command_stop_session(
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    session_id = str(body.get("session_id") or "")
+    sess = await db.ev_charging_sessions.find_one({
+        "session_id": session_id,
+        "ocpi_external": True,
+        "ocpi_partner_id": partner["partner_id"],
+    })
+    if not sess:
+        return _command_response("UNKNOWN_SESSION", message="Unknown roaming session")
+
+    cp = await db.ev_charge_points.find_one({"charge_point_id": sess.get("charge_point_id")})
+    transaction_id = sess.get("ocpp_transaction_id")
+    command_id = f"ocpi_cmd_{secrets.token_hex(8)}"
+    await db.ocpi_command_logs.insert_one({
+        "command_id": command_id,
+        "command": "STOP_SESSION",
+        "partner_id": partner["partner_id"],
+        "session_id": session_id,
+        "response_url": body.get("response_url"),
+        "status": "processing",
+        "created_at": _now(),
+    })
+
+    if not cp or transaction_id is None:
+        result_name = "REJECTED"
+        message = "Charging transaction is not active"
+    else:
+        try:
+            if _cp_protocol(cp) == "ocpp2.0.1":
+                result = await ocpp_v201.request_stop_transaction(cp["charge_point_id"], transaction_id)
+            else:
+                result = await ocpp_csms.remote_stop(cp["charge_point_id"], transaction_id)
+            remote_status = (result or {}).get("status")
+            result_name = "ACCEPTED" if not remote_status or remote_status in ("Accepted", "Scheduled") else "REJECTED"
+            message = None if result_name == "ACCEPTED" else f"Charge point returned {remote_status}"
+            if result_name == "ACCEPTED":
+                await db.ev_charging_sessions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "stopping", "ocpi_stop_requested_at": _now()}},
+                )
+        except Exception as exc:
+            result_name = "REJECTED"
+            message = str(exc)[:300]
+
+    await db.ocpi_command_logs.update_one(
+        {"command_id": command_id},
+        {"$set": {"status": result_name.lower(), "updated_at": _now()}},
+    )
+    asyncio.create_task(_post_command_result(
+        partner, body.get("response_url"), command_id, result_name, message
+    ))
+    return _command_response(result_name, message=message)
+
+
+@router.post(f"/cpo/{OCPI_VERSION}/commands/UNLOCK_CONNECTOR")
+async def command_unlock_connector(
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    cp = await _find_local_cp(body.get("location_id"), body.get("evse_uid"))
+    if not cp:
+        return _command_response("UNKNOWN_LOCATION", message="Unknown location/EVSE")
+    try:
+        connector_id = int(body.get("connector_id") or 1)
+    except (TypeError, ValueError):
+        return _command_response("REJECTED", message="Invalid connector_id")
+
+    command_id = f"ocpi_cmd_{secrets.token_hex(8)}"
+    await db.ocpi_command_logs.insert_one({
+        "command_id": command_id,
+        "command": "UNLOCK_CONNECTOR",
+        "partner_id": partner["partner_id"],
+        "charge_point_id": cp["charge_point_id"],
+        "connector_id": connector_id,
+        "response_url": body.get("response_url"),
+        "status": "processing",
+        "created_at": _now(),
+    })
+
+    try:
+        if _cp_protocol(cp) == "ocpp2.0.1":
+            result = await ocpp_v201.unlock_connector(
+                cp["charge_point_id"],
+                evse_id=int(body.get("evse_id") or 1),
+                connector_id=connector_id,
+            )
+        else:
+            result = await ocpp_csms.unlock_connector(cp["charge_point_id"], connector_id)
+        remote_status = (result or {}).get("status")
+        accepted_values = {"Unlocked", "Accepted", "UnlockFailed"}
+        result_name = "ACCEPTED" if remote_status in (None, "Unlocked", "Accepted") else "REJECTED"
+        message = None if result_name == "ACCEPTED" else f"Charge point returned {remote_status}"
+    except Exception as exc:
+        result_name = "REJECTED"
+        message = str(exc)[:300]
+
+    await db.ocpi_command_logs.update_one(
+        {"command_id": command_id},
+        {"$set": {"status": result_name.lower(), "updated_at": _now()}},
+    )
+    asyncio.create_task(_post_command_result(
+        partner, body.get("response_url"), command_id, result_name, message
+    ))
+    return _command_response(result_name, message=message)
 
 
 class OCPITokenAdminBody(BaseModel):
