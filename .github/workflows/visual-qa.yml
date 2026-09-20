@@ -92,6 +92,10 @@ jobs:
         run: npx playwright test tests/visual/admin-mobility-pricing.spec.ts
         working-directory: frontend
 
+      - name: Run full admin mobile navigation audit
+        run: npx playwright test tests/visual/admin-navigation.spec.ts
+        working-directory: frontend
+
       - name: Generate numeric report
         run: node frontend/scripts/visual-qa/numeric-format-validation.mjs
 
