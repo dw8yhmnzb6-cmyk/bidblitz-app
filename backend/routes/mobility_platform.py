@@ -1040,7 +1040,7 @@ async def _nominatim_get(path: str, params: dict):
 
 
 @router.get("/search")
-async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[float] = None, lng: Optional[float] = None):
+async def search_places(q: str, lang: str = "de", limit: int = 10, lat: Optional[float] = None, lng: Optional[float] = None, country_code: Optional[str] = None):
     query = (q or "").strip()
     if len(query) < 2:
         return {"results": []}
@@ -1050,9 +1050,10 @@ async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[
         "addressdetails": 1,
         "limit": max(1, min(limit, 10)),
         "accept-language": SEARCH_LANGS.get(lang, "de"),
-        "countrycodes": "xk,al,de,ch,at,mk,me",
         "dedupe": 1,
     }
+    if country_code:
+        params["countrycodes"] = str(country_code).lower()[:2]
     if lat is not None and lng is not None:
         params["viewbox"] = f"{lng-0.4},{lat+0.3},{lng+0.4},{lat-0.3}"
         params["bounded"] = 0
@@ -1063,18 +1064,31 @@ async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[
 
     ranked = sorted(data, key=lambda item: score_place(item, query), reverse=True)
     results = []
+    seen = set()
     for item in ranked:
         addr = item.get("address", {})
+        display_name = item.get("display_name", "")
+        dedupe_key = display_name.strip().lower()
+        if not dedupe_key or dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or ""
+        country = addr.get("country") or ""
         results.append({
             "id": str(item.get("osm_id") or item.get("place_id")),
-            "name": item.get("name") or format_location_label(addr) or item.get("display_name", ""),
-            "address": item.get("display_name", ""),
+            "name": item.get("name") or format_location_label(addr) or display_name,
+            "address": display_name,
             "lat": float(item.get("lat")),
             "lng": float(item.get("lon")),
-            "city": addr.get("city") or addr.get("town") or addr.get("village") or "",
+            "city": city,
+            "country": country,
+            "country_code": str(addr.get("country_code") or "").upper(),
+            "postcode": addr.get("postcode") or "",
             "type": item.get("type", "address"),
             "class": item.get("class", ""),
         })
+        if len(results) >= max(1, min(limit, 10)):
+            break
     return {"results": results}
 
 
@@ -1094,8 +1108,10 @@ async def reverse_place(lat: float, lng: float, lang: str = "de"):
     return {
         "address": item.get("display_name", ""),
         "street": addr.get("road") or addr.get("pedestrian") or "",
-        "city": addr.get("city") or addr.get("town") or addr.get("village") or "",
+        "city": addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or "",
         "country": addr.get("country") or "",
+        "country_code": str(addr.get("country_code") or "").upper(),
+        "postcode": addr.get("postcode") or "",
         "lat": lat,
         "lng": lng,
     }
