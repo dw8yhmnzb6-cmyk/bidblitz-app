@@ -1292,13 +1292,6 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if not req.product_name.strip() or not serial:
         raise HTTPException(status_code=400, detail="Produktname und Seriennummer sind erforderlich")
 
-    existing = await db.charge_app_warranties.find_one(
-        {"user_id": user_id, "serial_number": serial},
-        {"_id": 0}
-    )
-    if existing:
-        return {"ok": True, "warranty": _warranty_card(existing), "duplicate": True}
-
     product = None
     merchant_binding: Dict[str, Any] = {}
     if req.product_id.strip():
@@ -1313,7 +1306,9 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
         product_name=canonical_product_name,
         serial_number=serial,
     )
-    if conflict and str(conflict.get("user_id") or "") != user_id:
+    if conflict:
+        if str(conflict.get("user_id") or "") == user_id:
+            return {"ok": True, "warranty": _warranty_card(conflict), "duplicate": True}
         raise HTTPException(
             status_code=409,
             detail="Diese Seriennummer ist für dieses Charge-Produkt bereits auf einem anderen Konto aktiv registriert.",
