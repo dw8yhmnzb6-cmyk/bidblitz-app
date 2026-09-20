@@ -43,6 +43,7 @@ class ChargeWarrantyRegistrationRequest(BaseModel):
     product_id: str = ""
     purchase_date: str = ""
     merchant_name: str = ""
+    invoice_id: str = ""
     invoice_number: str = ""
     warranty_months: int = Field(default=24, ge=1, le=120)
 
@@ -62,6 +63,7 @@ class ChargeWarrantyUpdateRequest(BaseModel):
     serial_number: Optional[str] = None
     purchase_date: Optional[str] = None
     merchant_name: Optional[str] = None
+    invoice_id: Optional[str] = None
     invoice_number: Optional[str] = None
     warranty_months: Optional[int] = Field(default=None, ge=1, le=120)
 
@@ -1292,8 +1294,19 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if not req.product_name.strip() or not serial:
         raise HTTPException(status_code=400, detail="Produktname und Seriennummer sind erforderlich")
 
+    linked_invoice = None
+    if req.invoice_id.strip():
+        linked_invoice = await _find_user_invoice(user_id, req.invoice_id.strip())
+
     product = None
     merchant_binding: Dict[str, Any] = {}
+    if linked_invoice:
+        merchant_binding = {
+            "merchant_id": linked_invoice.get("merchant_id") or "",
+            "merchant_user_id": linked_invoice.get("merchant_user_id") or "",
+            "merchant_slug": linked_invoice.get("merchant_slug") or "",
+            "merchant_name": linked_invoice.get("merchant_name") or req.merchant_name.strip(),
+        }
     if req.product_id.strip():
         product, merchant_binding = await _resolve_charge_product(req.product_id)
     if not merchant_binding:
@@ -1317,15 +1330,16 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
         "registration_id": f"CHG-WAR-{uuid.uuid4().hex[:10].upper()}",
         "user_id": user_id,
         "product_id": canonical_product_id,
-        "product_name": canonical_product_name,
+        "product_name": canonical_product_name or (linked_invoice or {}).get("product_name") or "",
         "serial_number": serial,
         "serial_key": _serial_key(serial),
-        "purchase_date": req.purchase_date.strip(),
+        "purchase_date": req.purchase_date.strip() or (linked_invoice or {}).get("purchase_date") or "",
         "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
         "merchant_id": merchant_binding.get("merchant_id") or "",
         "merchant_user_id": merchant_binding.get("merchant_user_id") or "",
         "merchant_slug": merchant_binding.get("merchant_slug") or "",
-        "invoice_number": req.invoice_number.strip(),
+        "invoice_id": (linked_invoice or {}).get("invoice_id") or req.invoice_id.strip(),
+        "invoice_number": (linked_invoice or {}).get("invoice_number") or req.invoice_number.strip(),
         "warranty_months": int(req.warranty_months),
         "status": "active",
         "created_at": _now_iso(),
@@ -1380,9 +1394,22 @@ async def update_charge_warranty(
     current = await _find_user_warranty(user_id, registration_id)
     updates = req.dict(exclude_unset=True)
 
-    for key in ("product_id", "product_name", "serial_number", "purchase_date", "merchant_name", "invoice_number"):
+    for key in ("product_id", "product_name", "serial_number", "purchase_date", "merchant_name", "invoice_id", "invoice_number"):
         if key in updates:
             updates[key] = _clean_optional_text(updates[key])
+
+    if "invoice_id" in updates and updates.get("invoice_id"):
+        linked_invoice = await _find_user_invoice(user_id, updates.get("invoice_id"))
+        updates["invoice_id"] = linked_invoice.get("invoice_id") or updates.get("invoice_id")
+        updates["invoice_number"] = linked_invoice.get("invoice_number") or updates.get("invoice_number") or ""
+        if not updates.get("purchase_date"):
+            updates["purchase_date"] = linked_invoice.get("purchase_date") or current.get("purchase_date") or ""
+        if not updates.get("product_name"):
+            updates["product_name"] = linked_invoice.get("product_name") or current.get("product_name") or ""
+        updates["merchant_name"] = linked_invoice.get("merchant_name") or updates.get("merchant_name") or current.get("merchant_name") or ""
+        updates["merchant_id"] = linked_invoice.get("merchant_id") or ""
+        updates["merchant_user_id"] = linked_invoice.get("merchant_user_id") or ""
+        updates["merchant_slug"] = linked_invoice.get("merchant_slug") or ""
 
     if "product_id" in updates and updates.get("product_id"):
         product, merchant_binding = await _resolve_charge_product(updates.get("product_id"))
@@ -1393,7 +1420,7 @@ async def update_charge_warranty(
         updates["merchant_user_id"] = merchant_binding.get("merchant_user_id") or ""
         updates["merchant_slug"] = merchant_binding.get("merchant_slug") or ""
 
-    if "merchant_name" in updates and not updates.get("product_id"):
+    if "merchant_name" in updates and not updates.get("product_id") and not updates.get("invoice_id"):
         merchant_binding = await _resolve_charge_merchant(updates.get("merchant_name"))
         updates["merchant_name"] = merchant_binding.get("merchant_name") or updates.get("merchant_name") or ""
         updates["merchant_id"] = merchant_binding.get("merchant_id") or ""
@@ -1514,6 +1541,20 @@ async def delete_charge_invoice(invoice_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
     invoice = await _find_user_invoice(user_id, invoice_id)
+
+    linked_warranty = await db.charge_app_warranties.find_one(
+        {"user_id": user_id, "invoice_id": invoice_id},
+        {"_id": 0, "registration_id": 1},
+    )
+    if linked_warranty:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Rechnung kann nicht gelöscht werden, solange sie mit einer Charge-Garantie verknüpft ist "
+                f"({linked_warranty.get('registration_id')})."
+            ),
+        )
+
     _delete_document_blobs(invoice)
     result = await db.charge_app_invoices.delete_one({
         "user_id": user_id,
@@ -1698,6 +1739,7 @@ async def create_charge_warranty_claim(
         "product_name": warranty.get("product_name") or "",
         "serial_number": warranty.get("serial_number") or "",
         "merchant_name": merchant_binding.get("merchant_name") or warranty.get("merchant_name") or "",
+        "invoice_id": warranty.get("invoice_id") or "",
         "invoice_number": warranty.get("invoice_number") or "",
         "purchase_date": warranty.get("purchase_date") or "",
         "warranty_months": int(warranty.get("warranty_months") or 24),
