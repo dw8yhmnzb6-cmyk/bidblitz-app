@@ -1548,6 +1548,23 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
         ):
             raise HTTPException(status_code=409, detail="Produkt gehört nicht zu diesem BidBlitz-Kauf")
 
+        if req.product_id.strip():
+            purchased_quantity = sum(
+                float(item.get("quantity") or 1)
+                for item in (source_sale.get("items") or [])
+                if str(item.get("product_id") or "") == req.product_id.strip()
+            )
+            already_registered = await db.charge_app_warranties.count_documents({
+                "user_id": user_id,
+                "source_sale_id": req.source_sale_id.strip(),
+                "product_id": req.product_id.strip(),
+            })
+            if already_registered >= max(1, int(round(purchased_quantity))):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Für die gekaufte Menge dieses Charge-Produkts sind bereits alle Garantien aktiviert.",
+                )
+
     product = None
     merchant_binding: Dict[str, Any] = {}
     if linked_invoice:
