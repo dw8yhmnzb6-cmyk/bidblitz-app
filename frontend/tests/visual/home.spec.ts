@@ -20,7 +20,9 @@ for (const viewport of VISUAL_VIEWPORTS) {
       await expect(page.getByTestId('mobile-home-activity')).toHaveCount(0);
       await expect(page.getByTestId('header-register-btn')).toHaveCount(0);
       const services = page.locator('[data-testid^="mobile-service-"]');
-      await expect(services).toHaveCount(4);
+      await expect(services).toHaveCount(6);
+      await expect(page.getByTestId('mobile-service-auctions')).toBeVisible();
+      await expect(page.getByTestId('mobile-service-mining')).toBeVisible();
       for (const service of await services.all()) {
         const box = await service.boundingBox();
         expect(box).not.toBeNull();
