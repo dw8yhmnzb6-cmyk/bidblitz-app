@@ -354,40 +354,6 @@ async def claim_birthday_bonus(request: Request):
             awarded_blz = BIRTHDAY_BLZ
 
     await db.birthday_claims.update_one(
-                {"_id": claim_id},
-                {"$set": {
-                    "status": "reconciliation_required",
-                    "wallet_transaction_id": wallet_result.transaction_id,
-                    "blz_error": "birthday_blz_credit_failed",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="EUR wurde gutgeschrieben, BLZ-Gutschrift benötigt Abstimmung",
-            )
-
-    await db.transactions.update_one(
-        {"_id": f"{claim_id}:blz"},
-        {"$setOnInsert": {
-            "_id": f"{claim_id}:blz",
-            "id": f"{claim_id}:blz",
-            "user_id": uid,
-            "type": "bonus",
-            "amount": BIRTHDAY_BLZ,
-            "currency": "BLZ",
-            "status": "completed",
-            "description": f"Geburtstags-Bonus {now.year}",
-            "merchant_name": "BidBlitz",
-            "category": "birthday",
-            "reference": f"BDAY-BLZ-{now.year}-{uid[-8:]}",
-            "date": now.isoformat(),
-            "created_at": now.isoformat(),
-        }},
-        upsert=True,
-    )
-
-    await db.birthday_claims.update_one(
         {"_id": claim_id},
         {"$set": {
             "status": "completed",
