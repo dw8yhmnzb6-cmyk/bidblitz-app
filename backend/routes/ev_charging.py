@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request, WebSocket
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.security import get_current_user
@@ -132,6 +133,67 @@ async def _load_tariff(tariff_id) -> Optional[Dict[str, Any]]:
     return None
 
 
+async def _claim_ev_user_session(user_id: str, session_id: str) -> None:
+    """Atomically allow at most one live EV charging flow per user."""
+    claim = {
+        "_id": user_id,
+        "session_id": session_id,
+        "created_at": _utcnow_iso(),
+    }
+    try:
+        await db.ev_user_session_claims.insert_one(claim)
+        return
+    except DuplicateKeyError:
+        existing = await db.ev_user_session_claims.find_one({"_id": user_id}) or {}
+        existing_session_id = existing.get("session_id")
+        existing_session = None
+        if existing_session_id:
+            existing_session = await db.ev_charging_sessions.find_one(
+                {"session_id": existing_session_id},
+                {"_id": 0, "status": 1},
+            )
+
+        live_statuses = {
+            "authorized", "starting", "active", "stopping", "stop_failed",
+            "settle_failed", "refund_failed",
+        }
+        if existing_session and existing_session.get("status") in live_statuses:
+            raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
+
+        # Reclaim only clearly stale claims.  A very recent claim without a
+        # session can belong to another request between claim and session write.
+        stale = False
+        created_at = existing.get("created_at")
+        if created_at:
+            try:
+                created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+                stale = created < datetime.now(timezone.utc) - timedelta(minutes=2)
+            except Exception:
+                stale = False
+        if existing_session is None and not stale:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+
+        deleted = await db.ev_user_session_claims.delete_one({
+            "_id": user_id,
+            "session_id": existing_session_id,
+        })
+        if deleted.deleted_count != 1:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+        try:
+            await db.ev_user_session_claims.insert_one(claim)
+        except DuplicateKeyError:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+
+
+async def _release_ev_user_session_claim(user_id: Optional[str], session_id: str) -> None:
+    if not user_id:
+        return
+    await db.ev_user_session_claims.delete_one({
+        "_id": str(user_id),
+        "session_id": session_id,
+    })
+
+
 async def _refund_ev_reservation(session_id: str, reason: str) -> bool:
     """Release an unused EV wallet reservation exactly once."""
     sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
@@ -222,7 +284,7 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     # Pre-existing active session for same user → block
     dup = await db.ev_charging_sessions.find_one({
         "user_id": user_id,
-        "status": {"$in": ["authorized", "starting", "active"]},
+        "status": {"$in": ["authorized", "starting", "active", "stopping", "stop_failed", "settle_failed", "refund_failed"]},
     })
     if dup:
         raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
@@ -267,6 +329,19 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         "created_at": _utcnow_iso(),
     })
 
+    try:
+        await _claim_ev_user_session(user_id, session_id)
+    except HTTPException:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "superseded", "error": "Concurrent EV start blocked"}},
+        )
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
+        )
+        raise
+
     # Real wallet reservation: debit the cap into the system wallet before any
     # hardware start command.  Deterministic reference makes retries safe.
     hold = await debit_wallet(
@@ -295,6 +370,7 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             {"id_tag": id_tag},
             {"$set": {"active": False, "used_at": _utcnow_iso()}},
         )
+        await _release_ev_user_session_claim(user_id, session_id)
         raise HTTPException(402, hold.error or "Wallet-Guthaben unzureichend")
 
     await db.ev_charging_sessions.update_one(
@@ -325,6 +401,8 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
                 "error": str(exc)[:200],
             }},
         )
+        if refunded:
+            await _release_ev_user_session_claim(user_id, session_id)
         raise HTTPException(502, f"Hardware-Kommunikation fehlgeschlagen: {exc}")
 
     accepted = (result or {}).get("status") == "Accepted"
@@ -337,6 +415,8 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
                 "error": "Station rejected RemoteStart",
             }},
         )
+        if refunded:
+            await _release_ev_user_session_claim(user_id, session_id)
         raise HTTPException(409, "Ladestation hat den Start abgelehnt")
 
     await db.ev_charging_sessions.update_one(
@@ -389,6 +469,7 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
                 {"$set": {"status": "refund_failed"}},
             )
             raise HTTPException(502, "Reservierung konnte nicht freigegeben werden")
+        await _release_ev_user_session_claim(sess.get("user_id"), session_id)
         return {"session_id": session_id, "status": "cancelled"}
 
     # Compare-and-set claim prevents two concurrent HTTP retries from sending
@@ -805,6 +886,7 @@ async def finalize_session(session_id: str) -> None:
             {"id_tag": sess["id_tag"]},
             {"$set": {"active": False, "used_at": _utcnow_iso()}},
         )
+    await _release_ev_user_session_claim(user_id, session_id)
 
 
 async def _next_receipt_no() -> str:
