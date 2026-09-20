@@ -23,6 +23,7 @@ from services.charge_storage import (
     get_bytes as _storage_get_bytes,
     delete_bytes as _storage_delete_bytes,
 )
+from services.charge_notifications import safe_create_charge_notification
 
 
 router = APIRouter(prefix="/api/charge-app", tags=["charge-app"])
@@ -1873,6 +1874,14 @@ async def create_charge_warranty_transfer(
     }
     await db.charge_warranty_transfers.insert_one(transfer)
     transfer.pop("_id", None)
+    await safe_create_charge_notification(
+        event_key=f"charge_transfer_created:{transfer['transfer_id']}",
+        user_email=recipient_email,
+        title="Charge-Garantie für dich",
+        message=f"{transfer.get('product_name') or 'Charge-Produkt'} wurde dir zur Garantieübernahme angeboten.",
+        action_url="/charge-app",
+        metadata={"transfer_id": transfer["transfer_id"], "registration_id": registration_id},
+    )
     return {"ok": True, "transfer": _transfer_card(transfer)}
 
 
@@ -2021,6 +2030,15 @@ async def accept_charge_warranty_transfer(transfer_id: str, request: Request):
         {"registration_id": registration_id, "user_id": recipient_user_id},
         {"_id": 0},
     )
+    await safe_create_charge_notification(
+        event_key=f"charge_transfer_accepted:{transfer_id}",
+        user_id=str(transfer.get("from_user_id") or ""),
+        user_email=str(transfer.get("from_email") or ""),
+        title="Charge-Garantie übernommen",
+        message=f"Die Garantie für {transfer.get('product_name') or 'dein Charge-Produkt'} wurde vom Empfänger angenommen.",
+        action_url="/charge-app",
+        metadata={"transfer_id": transfer_id, "registration_id": registration_id},
+    )
     return {"ok": True, "warranty": _warranty_card(moved or warranty)}
 
 
@@ -2056,6 +2074,16 @@ async def decline_charge_warranty_transfer(transfer_id: str, request: Request):
         {"transfer_id": transfer_id},
         {"_id": 0},
     )
+    if transfer:
+        await safe_create_charge_notification(
+            event_key=f"charge_transfer_declined:{transfer_id}",
+            user_id=str(transfer.get("from_user_id") or ""),
+            user_email=str(transfer.get("from_email") or ""),
+            title="Garantieübertragung abgelehnt",
+            message=f"Die Übertragung für {transfer.get('product_name') or 'dein Charge-Produkt'} wurde abgelehnt.",
+            action_url="/charge-app",
+            metadata={"transfer_id": transfer_id},
+        )
     return {"ok": True, "transfer": _transfer_card(transfer or {"transfer_id": transfer_id, "status": "declined"})}
 
 
@@ -2086,6 +2114,15 @@ async def cancel_charge_warranty_transfer(transfer_id: str, request: Request):
         {"transfer_id": transfer_id},
         {"_id": 0},
     )
+    if transfer:
+        await safe_create_charge_notification(
+            event_key=f"charge_transfer_cancelled:{transfer_id}",
+            user_email=str(transfer.get("recipient_email") or ""),
+            title="Garantieübertragung storniert",
+            message=f"Die angebotene Übertragung für {transfer.get('product_name') or 'ein Charge-Produkt'} wurde storniert.",
+            action_url="/charge-app",
+            metadata={"transfer_id": transfer_id},
+        )
     return {"ok": True, "transfer": _transfer_card(transfer or {"transfer_id": transfer_id, "status": "cancelled"})}
 
 
@@ -2171,6 +2208,15 @@ async def create_charge_warranty_claim(
     }
     await db.merchant_warranty_claims.insert_one(claim)
     claim.pop("_id", None)
+    if claim.get("user_id"):
+        await safe_create_charge_notification(
+            event_key=f"charge_claim_created:{claim['claim_id']}",
+            user_id=str(claim.get("user_id") or ""),
+            title="Neuer Charge-Care-Fall",
+            message=f"{claim.get('product_name') or 'Charge-Produkt'}: {claim.get('subject') or 'Garantiefall'}",
+            action_url="/merchant-portal",
+            metadata={"claim_id": claim["claim_id"], "registration_id": registration_id},
+        )
     return {"ok": True, "claim": _claim_card(claim)}
 
 
@@ -2345,6 +2391,15 @@ async def add_charge_claim_message(
         {"claim_id": claim_id, "customer_user_id": user_id},
         {"$push": {"messages": entry}, "$set": {"updated_at": now}},
     )
+    if claim.get("user_id"):
+        await safe_create_charge_notification(
+            event_key=f"charge_claim_customer_message:{claim_id}:{entry['message_id']}",
+            user_id=str(claim.get("user_id") or ""),
+            title="Neue Charge-Care-Nachricht",
+            message=f"Kunde hat zu {claim.get('product_name') or 'einem Charge-Produkt'} geschrieben.",
+            action_url="/merchant-portal",
+            metadata={"claim_id": claim_id, "message_id": entry["message_id"]},
+        )
     return {"ok": True, "message": entry}
 
 
@@ -2469,6 +2524,16 @@ async def admin_update_charge_claim_status(
     saved = await db.merchant_warranty_claims.find_one(
         {"claim_id": claim_id},
         {"_id": 0},
+    )
+    notification_hash = hashlib.sha256(f"{status}|{note}".encode("utf-8")).hexdigest()[:12]
+    await safe_create_charge_notification(
+        event_key=f"charge_claim_admin_update:{claim_id}:{notification_hash}",
+        user_id=str(claim.get("customer_user_id") or ""),
+        user_email=str(claim.get("customer_email") or ""),
+        title="Charge Care aktualisiert",
+        message=note or f"Dein Garantiefall ist jetzt: {status}.",
+        action_url=f"/charge-app/claims?claim_id={claim_id}",
+        metadata={"claim_id": claim_id, "status": status},
     )
     return {"ok": True, "claim": _claim_card(saved or {**claim, **update})}
 
