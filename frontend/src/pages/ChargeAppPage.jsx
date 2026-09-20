@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -417,6 +417,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
             <p className="text-[11px] uppercase tracking-[0.24em] text-[#6EE7F9]">BidBlitz Charge</p>
             <h1 className="text-xl font-black text-white">Deine Garantie-, Punkte- und Händler-App</h1>
           </div>
+          <button
+            onClick={() => onNavigate?.("/charge-app/claims")}
+            className="hidden rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black text-amber-100 sm:inline-flex"
+            data-testid="charge-app-claims-button"
+          >
+            Garantiefälle {overview?.claims_open ? `· ${overview.claims_open}` : ""}
+          </button>
           <button onClick={() => onNavigate?.("/all-services")} className="rounded-full border border-[#6EE7F9]/25 bg-[#6EE7F9]/10 px-4 py-2 text-xs font-black text-[#D8FCFF]" data-testid="charge-app-all-services-button">
             Mehr Services
           </button>
@@ -729,6 +736,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                   <div className="flex flex-col items-end gap-2">
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
                     <button onClick={() => previewWarrantyPass(item.registration_id)} disabled={busy === `pass-${item.registration_id}`} className="rounded-full border border-[#0A1626]/10 bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#D8FCFF] disabled:opacity-50" data-testid={`charge-app-warranty-pass-preview-${index}`}>{busy === `pass-${item.registration_id}` ? "Lädt..." : "Pass ansehen"}</button>
+                    <button
+                      onClick={() => onNavigate?.(`/charge-app/claims?registration_id=${encodeURIComponent(item.registration_id)}`)}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-700"
+                      data-testid={`charge-app-warranty-claim-${index}`}
+                    >
+                      <ShieldAlert size={11} />Reklamation
+                    </button>
                     <button onClick={() => editWarranty(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-warranty-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
                     <button onClick={() => deleteWarranty(item.registration_id)} disabled={busy === `delete-warranty-${item.registration_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-warranty-delete-${index}`}><Trash2 size={11} />{busy === `delete-warranty-${item.registration_id}` ? "Löscht..." : "Löschen"}</button>
                   </div>
