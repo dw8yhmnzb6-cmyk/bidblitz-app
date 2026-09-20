@@ -1,0 +1,18 @@
+import { getAppShellFlags } from "./appShellFlags";
+
+test("mobility map uses an immersive shell on mobile", () => {
+  const flags = getAppShellFlags("/mobility-map", false);
+  expect(flags.showBackToHome).toBe(false);
+  expect(flags.showBottomNav).toBe(false);
+});
+
+test("mobility center keeps normal app navigation", () => {
+  const flags = getAppShellFlags("/mobility-center", false);
+  expect(flags.showBackToHome).toBe(true);
+  expect(flags.showBottomNav).toBe(true);
+});
+
+test("desktop never receives the mobile bottom navigation", () => {
+  const flags = getAppShellFlags("/mobility-center", true);
+  expect(flags.showBottomNav).toBe(false);
+});
