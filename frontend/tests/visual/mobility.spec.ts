@@ -67,6 +67,9 @@ async function mockMobilityApi(page: Page) {
           { type: 'taxi', label: 'Taxi', icon: 'car-front', price_eur: 4.55, duration_min: 8, distance_km: 3.4, eco_score: 55, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '2,00 € Start + 0,75 €/km', estimated: true },
           { type: 'scooter', label: 'E-Scooter', icon: 'zap', price_eur: 2.0, duration_min: 12, distance_km: 3.4, eco_score: 86, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '0,20 € Start + 0,15 €/min', estimated: true },
           { type: 'bike', label: 'E-Bike', icon: 'bike', price_eur: 1.98, duration_min: 13, distance_km: 3.4, eco_score: 94, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler E-Bike-Schätzwert', estimated: true },
+          { type: 'ev', label: 'EV Drive', icon: 'zap', price_eur: 3.85, duration_min: 9, distance_km: 3.4, eco_score: 92, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler EV-Schätzwert', estimated: true },
+          { type: 'car_sharing', label: 'Carsharing', icon: 'car', price_eur: 3.25, duration_min: 9, distance_km: 3.4, eco_score: 64, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler Carsharing-Schätzwert', estimated: true },
+          { type: 'car_rental', label: 'Mietwagen', icon: 'car', price_eur: 10.2, duration_min: 9, distance_km: 3.4, eco_score: 48, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: 'regionaler Mietwagen-Schätzwert', estimated: true },
         ],
         recommendations: {
           cheapest: { type: 'bike', label: 'E-Bike', reason: 'Günstigste Option' },
@@ -180,6 +183,11 @@ test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page 
   await expect(page.getByTestId('mobility-option-scooter')).toBeVisible();
   await expect(page.getByTestId('mobility-option-scooter')).toContainText('2,00');
   await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,20 € Start + 0,15 €/min');
+  await expect(page.getByTestId('mobility-option-car-rental')).toHaveCount(0);
+  await expect(page.getByTestId('mobility-show-more-options')).toBeVisible();
+  await page.getByTestId('mobility-show-more-options').click();
+  await expect(page.getByTestId('mobility-option-car-rental')).toBeVisible();
+  await expect(page.getByTestId('mobility-show-fewer-options')).toBeVisible();
 
   const widths = await page.evaluate(() => ({
     content: document.documentElement.scrollWidth,
