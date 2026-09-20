@@ -469,6 +469,13 @@ export const api = {
     return uploadFormData(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}/attachments`, formData);
   },
   getChargeWarrantyPass: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/pass`),
+  createChargeWarrantyClaim: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/claims`, { method: "POST", body: JSON.stringify(body) }),
+  getChargeClaims: () => request("/api/charge-app/claims"),
+  getChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}`),
+  addChargeClaimMessage: (claimId, body) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/messages`, { method: "POST", body: JSON.stringify(body) }),
+  cancelChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/cancel`, { method: "PUT" }),
+  getChargeClaimsAdmin: (status = "") => request(`/api/charge-app/admin/claims${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  updateChargeClaimStatusAdmin: (claimId, body) => request(`/api/charge-app/admin/claims/${encodeURIComponent(claimId)}/status`, { method: "PUT", body: JSON.stringify(body) }),
   getChargeMerchantDetail: (slug) => request(`/api/charge-app/merchants/${encodeURIComponent(slug)}`),
   getChargeProtectedBlob: (path) => requestBlob(path),
   getChargeCatalogAdmin: (q = "") => request(`/api/charge-app/admin/catalog${q ? `?q=${encodeURIComponent(q)}` : ""}`),
