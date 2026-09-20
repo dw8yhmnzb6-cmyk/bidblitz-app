@@ -81,6 +81,9 @@ export async function prepareVisualPage(page: Page, viewport: ViewportSpec) {
   ensureQaOutput();
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('bb_hint_dismissed', '1');
     document.documentElement.classList.add('test-mode-active');
     document.body?.classList.add('test-mode-active');
   });
@@ -334,7 +337,8 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
   await page.evaluate(() => window.scrollTo(0, 0));
   const primaryLocator = page.locator(config.primaryActionSelector).first();
   if (config.primaryActionMayScroll && await primaryLocator.count()) {
-    await primaryLocator.scrollIntoViewIfNeeded();
+    await primaryLocator.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await page.waitForTimeout(100);
     // Trial click checks visibility, stability and obstruction without placing a bid.
     await primaryLocator.click({ trial: true });
   }
