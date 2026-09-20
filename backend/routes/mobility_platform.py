@@ -92,6 +92,7 @@ REGIONAL_PRICING_PROFILES = {
         "region": "United Arab Emirates",
         "currency": "AED",
         "source": "UAE mobility authority benchmark",
+        "strict_modes": True,
         "modes": {},
     },
 }
@@ -334,12 +335,20 @@ def _normalize_city_key(city: str) -> str:
 
 
 def _merge_pricing_profile(base_profile: dict, city_profile: Optional[dict] = None) -> dict:
+    city_currency = str((city_profile or {}).get("currency") or "").upper()
+    base_currency = str(base_profile.get("currency") or "EUR").upper()
+    currency_switch = bool(city_currency and city_currency != base_currency)
+    inherit_modes = not currency_switch and not bool(base_profile.get("strict_modes"))
     profile = {
         **base_profile,
-        "modes": {key: dict(value) for key, value in (base_profile.get("modes") or {}).items()},
+        "modes": {
+            key: dict(value)
+            for key, value in (base_profile.get("modes") or {}).items()
+        } if inherit_modes else {},
     }
     if not city_profile:
         profile["profile_scope"] = "country"
+        profile["strict_modes"] = bool(base_profile.get("strict_modes"))
         return profile
 
     for mode, override in (city_profile.get("modes") or {}).items():
@@ -351,6 +360,7 @@ def _merge_pricing_profile(base_profile: dict, city_profile: Optional[dict] = No
     profile["currency"] = city_profile.get("currency") or profile.get("currency", "EUR")
     profile["source"] = city_profile.get("source") or profile.get("source")
     profile["profile_scope"] = "city"
+    profile["strict_modes"] = currency_switch or bool(base_profile.get("strict_modes")) or bool(city_profile.get("strict_modes"))
     return profile
 
 
@@ -1221,6 +1231,11 @@ async def _compute_route_payload(
         build_option("airport_shuttle", distance_km, duration_min, 1.0, 63, pricing_context),
         build_option("vip", distance_km, duration_min, 1.08, 28, pricing_context),
     ]
+    if pricing_context.get("strict_modes"):
+        locally_priced_modes = set((pricing_context.get("modes") or {}).keys())
+        options = [item for item in options if item.get("type") in locally_priced_modes]
+    if not options:
+        raise HTTPException(503, "Für diesen Standort sind noch keine verifizierten lokalen Mobility-Tarife hinterlegt.")
     return {
         "distance_km": round(distance_km, 2),
         "duration_min": duration_min,
@@ -1244,6 +1259,7 @@ async def _compute_route_payload(
             "currency": pricing_context.get("currency", "EUR"),
             "profile_scope": pricing_context.get("profile_scope", "country"),
             "city_key": pricing_context.get("city_key") or "",
+            "strict_modes": bool(pricing_context.get("strict_modes")),
         },
         "options": options,
         "recommendations": build_recommendations(options),
