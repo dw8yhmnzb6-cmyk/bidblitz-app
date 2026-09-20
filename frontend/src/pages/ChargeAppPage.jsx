@@ -165,6 +165,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       purchase_date: "",
       merchant_name: "",
       invoice_number: "",
+      warranty_months: "24",
     });
     setWarrantyFile(null);
   }, []);
