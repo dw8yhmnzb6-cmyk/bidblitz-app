@@ -2086,6 +2086,14 @@ def _load_mobility_pricing_contract():
     namespace = {"Optional": Optional, "HTTPException": HTTPException}
     module = ast.Module(body=selected, type_ignores=[])
     exec(compile(ast.fix_missing_locations(module), "mobility_pricing_contract", "exec"), namespace)
+
+    async def no_dynamic_pricing_overrides(country_code, city_key):
+        return None, None
+
+    namespace["_load_dynamic_pricing_overrides"] = no_dynamic_pricing_overrides
+    resolver = namespace.get("_resolve_pricing_context")
+    if resolver is not None:
+        resolver.__globals__["_load_dynamic_pricing_overrides"] = no_dynamic_pricing_overrides
     return namespace
 
 
