@@ -322,15 +322,15 @@ export default function AdminMobilityPricingPage({ onBack }) {
           <div className="mb-4 flex items-center gap-2">
             <Globe2 size={18} className="text-cyan-400" />
             <div>
-              <h2 className="font-bold">Gespeicherte Overrides</h2>
-              <p className="text-xs text-white/45">{profiles.length} Profile</p>
+              <h2 className="font-bold">Mobility Tarifprofile</h2>
+              <p className="text-xs text-white/45">{profiles.length} Profile · Built-in + Overrides</p>
             </div>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="animate-spin text-cyan-400" /></div>
           ) : profiles.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-white/40">Noch keine DB-Tarife gespeichert. Statische Fallbacks bleiben aktiv.</div>
+            <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-white/40">Noch keine Tarifprofile verfügbar.</div>
           ) : (
             <div className="space-y-2">
               {profiles.map((profile) => (
@@ -341,13 +341,18 @@ export default function AdminMobilityPricingPage({ onBack }) {
                         <MapPin size={14} className="shrink-0 text-emerald-400" />
                         <span className="truncate text-sm font-bold">{profile.city || profile.region || profile.country_code}</span>
                         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[9px] uppercase text-white/40">{profile.scope || (profile.city ? "city" : "country")}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase ${profile.source_type === "database" ? "bg-cyan-400/10 text-cyan-300" : "bg-emerald-400/10 text-emerald-300"}`} data-testid={`pricing-source-type-${profile.country_code}-${profile.city_key}`}>
+                          {profile.source_type === "database" ? "Override" : "Built-in"}
+                        </span>
                       </div>
                       <p className="mt-1 text-[11px] text-white/45">{profile.country_code} · {profile.currency} · {Object.keys(profile.modes || {}).join(", ")}</p>
                       <p className="mt-1 truncate text-[10px] text-white/30">{profile.source}</p>
                     </button>
-                    <button type="button" onClick={() => disableProfile(profile)} className="rounded-xl p-2 text-red-300 hover:bg-red-400/10" aria-label="Deaktivieren">
-                      <Trash2 size={15} />
-                    </button>
+                    {profile.can_disable && (
+                      <button type="button" onClick={() => disableProfile(profile)} className="rounded-xl p-2 text-red-300 hover:bg-red-400/10" aria-label="Deaktivieren">
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
