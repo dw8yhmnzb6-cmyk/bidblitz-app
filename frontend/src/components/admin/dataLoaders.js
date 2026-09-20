@@ -3,7 +3,7 @@
  * Maps an admin section item.key to an async loader returning detail data.
  */
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, {
