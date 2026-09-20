@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
 from core.config import TEST_MODE
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 import secrets
 import random
 import hashlib
@@ -56,6 +57,19 @@ async def _refund_legacy_card_reservation_once(card: dict, amount: float, reason
         f"virtual-card-refund:{card.get('card_id')}:{reason}".encode("utf-8")
     ).hexdigest()[:24]
     marker_field = f"virtual_card_refund_markers.{marker}"
+    wallet_result = await credit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Virtual Card Reservierung freigegeben ({reason})",
+        reference=f"VCREF-{marker[:12].upper()}",
+        source="virtual_cards_legacy",
+        metadata={"card_id": card.get("card_id"), "reason": reason},
+        idempotency_key=f"virtual-card-refund:{marker}",
+    )
+    if not wallet_result.success:
+        return False
+
     result = await db.users.update_one(
         {
             "_id": ObjectId(user_id),
@@ -63,12 +77,13 @@ async def _refund_legacy_card_reservation_once(card: dict, amount: float, reason
             "reserved_balance": {"$gte": amount},
         },
         {
-            "$inc": {"balance": amount, "reserved_balance": -amount},
+            "$inc": {"reserved_balance": -amount},
             "$set": {
                 marker_field: {
                     "card_id": card.get("card_id"),
                     "amount": amount,
                     "reason": reason,
+                    "wallet_transaction_id": wallet_result.transaction_id,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
             },
@@ -88,6 +103,7 @@ class CreateCardRequest(BaseModel):
     limit: float = Field(..., ge=1, le=5000, allow_inf_nan=False)
     single_use: bool = True
     expires_hours: int = Field(default=24, ge=1, le=720)
+    idempotency_key: Optional[str] = None
 
 
 class CardPaymentRequest(BaseModel):
@@ -116,23 +132,60 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
     _require_virtual_card_test_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    if req.limit < 1:
-        raise HTTPException(status_code=400, detail="Mindestlimit: €1.00")
-    
-    if req.limit > 5000:
-        raise HTTPException(status_code=400, detail="Maximallimit: €5.000")
-    
-    # Check if user has enough balance
-    if user.get("balance", 0) < req.limit:
-        raise HTTPException(status_code=400, detail="Nicht genügend Guthaben für das Kartenlimit")
-    
-    # Reserve the amount from wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -req.limit, "reserved_balance": req.limit}}
+    idem = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(idem) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    marker = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    card_id = f"CARD-{marker[:8].upper()}"
+    existing = await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id}, {"_id": 0})
+    if existing:
+        return {
+            "success": True,
+            "card": {
+                "card_id": existing["card_id"],
+                "name": existing["name"],
+                "card_number": existing.get("card_number"),
+                "card_number_masked": existing.get("card_number_masked"),
+                "cvv": existing.get("cvv"),
+                "exp_month": existing.get("exp_month"),
+                "exp_year": existing.get("exp_year"),
+                "limit": existing.get("limit"),
+                "expires_at": existing.get("expires_at"),
+                "single_use": existing.get("single_use"),
+            },
+            "replayed": True,
+        }
+
+    wallet_result = await debit_wallet(
+        user_id=user_id,
+        amount=req.limit,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Virtual Card Limit reserviert: {req.name}",
+        reference=f"VCRES-{marker[:12].upper()}",
+        metadata={"type": "virtual_card_reservation", "card_id": card_id},
+        idempotency_key=f"virtual-card-create:{marker}",
     )
-    
+    if not wallet_result.success:
+        raise HTTPException(status_code=400, detail=wallet_result.error or "Nicht genügend Guthaben für das Kartenlimit")
+
+    reserve_field = f"virtual_card_reservation_markers.{marker}"
+    reserve = await db.users.update_one(
+        {"_id": user["_id"], reserve_field: {"$exists": False}},
+        {
+            "$inc": {"reserved_balance": req.limit},
+            "$set": {reserve_field: {
+                "card_id": card_id,
+                "amount": req.limit,
+                "wallet_transaction_id": wallet_result.transaction_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        },
+    )
+    if reserve.modified_count != 1:
+        reserved = await db.users.find_one({"_id": user["_id"], reserve_field: {"$exists": True}}, {"_id": 1})
+        if not reserved:
+            raise HTTPException(status_code=500, detail="Kartenreservierung benötigt Abstimmung")
+
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=req.expires_hours)
     
@@ -143,7 +196,7 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
     exp_year = now.year + (1 if now.month + 6 > 12 else 0)
     
     card = {
-        "card_id": generate_card_id(),
+        "card_id": card_id,
         "user_id": user_id,
         "name": req.name,
         "card_number": card_number,
@@ -161,7 +214,11 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
         "expires_at": expires_at.isoformat(),
     }
     
-    await db.virtual_cards.insert_one(card)
+    await db.virtual_cards.update_one(
+        {"card_id": card_id, "user_id": user_id},
+        {"$setOnInsert": card},
+        upsert=True,
+    )
     
     return {
         "success": True,
@@ -368,10 +425,8 @@ async def process_card_payment(req: CardPaymentRequest, request: Request):
         update["$set"]["status"] = "used"
         # Refund remaining
         if new_remaining > 0:
-            await db.users.update_one(
-                {"_id": ObjectId(card["user_id"])},
-                {"$inc": {"balance": new_remaining, "reserved_balance": -new_remaining}}
-            )
+            if not await _refund_legacy_card_reservation_once(card, new_remaining, "single_use_payment"):
+                raise HTTPException(status_code=409, detail="Kartenrestbetrag benötigt Abstimmung")
             update["$set"]["remaining"] = 0
     
     # Deduct from reserved balance
