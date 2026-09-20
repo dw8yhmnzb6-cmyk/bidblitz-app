@@ -439,7 +439,13 @@ export const api = {
   // Charge App
   getChargeAppDashboard: () => request("/api/charge-app/dashboard"),
   registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
+  updateChargeWarranty: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteChargeWarranty: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "DELETE" }),
   saveChargeInvoice: (body) => request("/api/charge-app/invoices/save", { method: "POST", body: JSON.stringify(body) }),
+  updateChargeInvoice: (invoiceId, body) => request(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteChargeInvoice: (invoiceId) => request(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}`, { method: "DELETE" }),
+  deleteChargeWarrantyAttachment: (registrationId, attachmentId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: "DELETE" }),
+  deleteChargeInvoiceAttachment: (invoiceId, attachmentId) => request(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: "DELETE" }),
   trackChargeInteraction: (body) => request("/api/charge-app/interactions", { method: "POST", body: JSON.stringify(body) }),
   uploadChargeWarrantyAttachment: (registrationId, file) => {
     const formData = new FormData();
