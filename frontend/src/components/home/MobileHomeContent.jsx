@@ -1,6 +1,7 @@
-import { Car, Compass, Gift, ShoppingBag, Wallet } from "lucide-react";
+import { Car, Compass, Cpu, Gavel, Gift, ShoppingBag, Wallet } from "lucide-react";
 import { useI18n, useWallet } from "../../store";
 import { getMobileHomeCopy } from "../../models/mobileHomeCopy";
+import { filterStoreSafeItems } from "../../config/release";
 
 const panel = "rounded-2xl border border-white/10 bg-white/[0.04]";
 const action = "min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00C2FF]";
@@ -13,12 +14,14 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
     const date = value => Date.parse(value) || 0;
     return date(b.date) - date(a.date);
   }).slice(0, 3);
-  const services = [
-    { label: t("home.mobility_center"), icon: Car, route: "/mobility-center" },
-    { label: t("home.f_marketplace"), icon: ShoppingBag, route: "/marketplace" },
-    { label: copy.rewards, icon: Gift, route: "/loyalty" },
-    { label: t("home.all_services"), icon: Compass, route: "/all-services" },
-  ];
+  const services = filterStoreSafeItems([
+    { id: "auctions", label: t("home.f_auctions") || "Auktionen", icon: Gavel, route: "/auctions" },
+    { id: "mining", label: t("home.f_mining") || "Mining", icon: Cpu, route: "/mining" },
+    { id: "mobility", label: t("home.mobility_center"), icon: Car, route: "/mobility-center" },
+    { id: "marketplace", label: t("home.f_marketplace"), icon: ShoppingBag, route: "/marketplace" },
+    { id: "rewards", label: copy.rewards, icon: Gift, route: "/loyalty" },
+    { id: "all-services", label: t("home.all_services"), icon: Compass, route: "/all-services" },
+  ]);
   const formatAmount = amount => {
     if (balanceHidden) return "••••";
     const value = Number(amount);
