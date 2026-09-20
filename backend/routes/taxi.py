@@ -7,6 +7,7 @@ NO FAKE DRIVERS - Only registered verified users.
 import secrets
 import math
 import logging
+import hashlib
 from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -3608,49 +3609,119 @@ async def get_ride_receipt(ride_id: str, request: Request):
 
 @router.post("/rides/tip")
 async def add_ride_tip(req: TipRequest, request: Request):
-    """Add a tip to a completed ride. Charges customer wallet, credits driver."""
-    from core.payment_engine import debit_wallet, TransactionType
+    """Add one retry-safe tip to a completed ride using the canonical wallet transfer engine."""
+    from core.payment_engine import transfer_between_wallets, TransactionType
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    amount = round(float(req.tip_amount), 2)
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride or ride.get("customer_id") != user_id:
         raise HTTPException(status_code=403, detail="Nicht berechtigt")
     if ride.get("status") != "completed":
         raise HTTPException(status_code=400, detail="Fahrt nicht abgeschlossen")
-    if ride.get("tip", 0) > 0:
-        raise HTTPException(status_code=400, detail="Trinkgeld bereits hinzugefügt")
-    if req.amount <= 0:
-        raise HTTPException(status_code=400, detail="Betrag muss > 0 sein")
+    driver_id = str(ride.get("driver_id") or "")
+    if not driver_id:
+        raise HTTPException(status_code=409, detail="Fahrt hat keinen abrechenbaren Fahrer")
 
-    # Charge customer
-    pay = await debit_wallet(
-        user_id=user_id,
-        amount=req.amount,
+    idem_key = f"taxi-tip:{req.ride_id}:{raw_key}"
+    marker_hash = hashlib.sha256(idem_key.encode("utf-8")).hexdigest()[:24]
+    now = datetime.now(timezone.utc).isoformat()
+
+    # A ride may receive only one tip. Reserve the ride before any money moves.
+    reserved = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "customer_id": user_id,
+            "status": "completed",
+            "$or": [
+                {"tip_status": {"$exists": False}},
+                {"tip_status": "failed"},
+            ],
+            "tip": {"$in": [None, 0, 0.0]},
+        },
+        {"$set": {
+            "tip_status": "reserved",
+            "tip_amount": amount,
+            "tip_idempotency_key": idem_key,
+            "tip_reserved_at": now,
+        }},
+    )
+
+    if reserved.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or {}
+        existing_amount = round(float(current.get("tip_amount") or current.get("tip") or 0), 2)
+        if current.get("tip_status") == "completed":
+            if existing_amount == amount:
+                return {
+                    "ok": True,
+                    "tip": existing_amount,
+                    "transaction_id": current.get("tip_transaction_id"),
+                    "replayed": True,
+                }
+            raise HTTPException(status_code=409, detail="Für diese Fahrt wurde bereits Trinkgeld gebucht")
+        if current.get("tip_status") == "reserved":
+            if current.get("tip_idempotency_key") != idem_key or existing_amount != amount:
+                raise HTTPException(status_code=409, detail="Trinkgeld wird bereits verarbeitet")
+            # Same retry continues through the idempotent transfer below.
+        else:
+            raise HTTPException(status_code=409, detail="Trinkgeld konnte nicht reserviert werden")
+
+    pay = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=driver_id,
+        amount=amount,
         tx_type=TransactionType.TAXI_PAYMENT,
         description=f"Trinkgeld Fahrt {req.ride_id[:6].upper()}",
-        reference=f"TIP-{req.ride_id[:6].upper()}",
+        reference=f"TIP-{req.ride_id[:10].upper()}",
+        metadata={"ride_id": req.ride_id, "kind": "taxi_tip"},
+        idempotency_key=idem_key,
     )
     if not pay.success:
-        raise HTTPException(status_code=400, detail=pay.error)
+        await db.taxi_rides.update_one(
+            {"ride_id": req.ride_id, "tip_idempotency_key": idem_key, "tip_status": "reserved"},
+            {"$set": {
+                "tip_status": "failed",
+                "tip_error": (pay.error or "wallet_transfer_failed")[:300],
+                "tip_failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=400, detail=pay.error or "Trinkgeld konnte nicht gebucht werden")
 
-    # Credit driver
-    if ride.get("driver_id"):
-        try:
-            await db.users.update_one(
-                {"_id": ObjectId(ride["driver_id"])},
-                {"$inc": {"balance": req.amount, "earnings": req.amount}},
-            )
-        except Exception:
-            pass
-
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
-        {"$set": {"tip": req.amount, "tip_at": datetime.now(timezone.utc).isoformat()}}
+    # Driver earnings is reporting metadata only; wallet value already moved atomically above.
+    earnings_marker = f"taxi_tip_earning_markers.{marker_hash}"
+    await db.users.update_one(
+        {"_id": ObjectId(driver_id) if ObjectId.is_valid(driver_id) else driver_id, earnings_marker: {"$exists": False}},
+        {
+            "$inc": {"earnings": amount},
+            "$set": {earnings_marker: {"ride_id": req.ride_id, "amount": amount, "created_at": now}},
+        },
     )
 
-    return {"ok": True, "tip": req.amount}
+    finalized = await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id, "tip_idempotency_key": idem_key, "tip_status": "reserved"},
+        {"$set": {
+            "tip": amount,
+            "tip_status": "completed",
+            "tip_transaction_id": pay.transaction_id,
+            "tip_at": datetime.now(timezone.utc).isoformat(),
+        }, "$unset": {"tip_error": "", "tip_failed_at": ""}},
+    )
+    if finalized.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or {}
+        if current.get("tip_status") != "completed" or current.get("tip_transaction_id") != pay.transaction_id:
+            raise HTTPException(status_code=500, detail="Trinkgeld transferiert; Ride-Abgleich benötigt Prüfung")
+
+    return {
+        "ok": True,
+        "tip": amount,
+        "transaction_id": pay.transaction_id,
+        "replayed": bool(pay.idempotent_replay),
+    }
 
 
 
