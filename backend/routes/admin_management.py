@@ -656,8 +656,10 @@ async def delete_customer(user_id: str, request: Request):
 async def list_transactions(
     request: Request,
     q: str = "",
+    search: str = "",
     user_id: Optional[str] = None,
     type: Optional[str] = None,
+    txn_type: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
@@ -665,16 +667,18 @@ async def list_transactions(
     """Alle Transaktionen mit Filter."""
     await _require_admin(request)
     query = {}
-    if q:
+    search_term = (q or search or "").strip()
+    if search_term:
         query["$or"] = [
-            {"reference": {"$regex": q, "$options": "i"}},
-            {"description": {"$regex": q, "$options": "i"}},
-            {"merchant_name": {"$regex": q, "$options": "i"}},
+            {"reference": {"$regex": search_term, "$options": "i"}},
+            {"description": {"$regex": search_term, "$options": "i"}},
+            {"merchant_name": {"$regex": search_term, "$options": "i"}},
         ]
     if user_id:
         query["user_id"] = user_id
-    if type:
-        query["type"] = type
+    effective_type = type or txn_type
+    if effective_type:
+        query["type"] = effective_type
     if status:
         query["status"] = status
 
