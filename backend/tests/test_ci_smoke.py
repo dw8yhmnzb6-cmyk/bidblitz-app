@@ -1298,11 +1298,22 @@ def test_virtual_cards_fail_closed_without_live_issuer_and_never_list_pan():
     assert '"live_issuer_connected": False' in backend
     assert '{"_id": 0, "cvv": 0, "card_number": 0}' in backend
     assert "async def _refund_legacy_card_reservation_once" in backend
+    assert "debit_wallet(" in backend
+    assert "credit_wallet(" in backend
+    assert 'idempotency_key=f"virtual-card-create:{marker}"' in backend
+    assert 'idempotency_key=f"virtual-card-refund:{marker}"' in backend
+    assert 'creation_payload = {' in backend
+    assert 'detail="Idempotency-Key wurde mit anderen Kartendaten verwendet"' in backend
+    assert '"$inc": {"balance": -req.limit, "reserved_balance": req.limit}' not in backend
+    assert '"$inc": {"balance": amount, "reserved_balance": -amount}' not in backend
     assert '"routes.cards_lifecycle", "router"' in registry
 
     assert "/api/cards/capabilities" in page
     assert "/api/cards/my-cards?include_inactive=true" in page
     assert "/api/cards/create" in page
+    assert "createAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
     assert "vcard-live-issuer-unavailable" in page
     assert "card_creation_available" in page
     assert "/api/virtual-cards" not in page
