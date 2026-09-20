@@ -151,6 +151,8 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [buyingListing, setBuyingListing] = useState(null);
   const minerPurchaseKeysRef = useRef({});
   const minerUpgradeKeysRef = useRef({});
+  const withdrawAttemptKeysRef = useRef({});
+  const sendAttemptKeysRef = useRef({});
   const marketplacePurchaseKeysRef = useRef({});
   const launchpadPurchaseKeysRef = useRef({});
   const [cardData, setCardData] = useState(null);
@@ -285,33 +287,64 @@ export default function MiningPage({ onBack, onNavigate }) {
       toast.error("Bitte gültigen Betrag eingeben");
       return;
     }
+    const attemptScope = amt.toFixed(8);
+    if (!withdrawAttemptKeysRef.current[attemptScope]) {
+      withdrawAttemptKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
+        ? `mining-withdraw-${crypto.randomUUID()}`
+        : `mining-withdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = withdrawAttemptKeysRef.current[attemptScope];
     setWithdrawing(true);
     try {
-      const r = await api("/api/mining/withdraw", { method: "POST", body: JSON.stringify({ amount: amt }) });
+      const r = await api("/api/mining/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ amount: amt, idempotency_key: idempotencyKey }),
+      });
+      delete withdrawAttemptKeysRef.current[attemptScope];
       toast.success(`Converted ${amt.toFixed(4)} BLZ → €${r.received_eur.toFixed(2)}`);
       setShowWithdraw(false);
       setWithdrawAmt("");
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete withdrawAttemptKeysRef.current[attemptScope];
+      toast.error(e.message);
+    }
     setWithdrawing(false);
   };
 
   const sendBLZ = async () => {
     if (!requireMiningValue()) return;
     const amt = parseAmountInput(sendAmt);
-    if (!amt || amt <= 0 || !sendEmail) {
+    const normalizedEmail = sendEmail.trim().toLowerCase();
+    if (!amt || amt <= 0 || !normalizedEmail) {
       toast.error("Bitte gültige Daten eingeben");
       return;
     }
+    const attemptScope = `${normalizedEmail}:${amt.toFixed(8)}`;
+    if (!sendAttemptKeysRef.current[attemptScope]) {
+      sendAttemptKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
+        ? `mining-send-${crypto.randomUUID()}`
+        : `mining-send-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = sendAttemptKeysRef.current[attemptScope];
     setSending(true);
     try {
-      await api("/api/mining/send", { method: "POST", body: JSON.stringify({ recipient_email: sendEmail, amount: amt }) });
+      await api("/api/mining/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ recipient_email: normalizedEmail, amount: amt, idempotency_key: idempotencyKey }),
+      });
+      delete sendAttemptKeysRef.current[attemptScope];
       toast.success(`Sent ${amt.toFixed(4)} BLZ!`);
       setShowSend(false);
       setSendAmt("");
       setSendEmail("");
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete sendAttemptKeysRef.current[attemptScope];
+      toast.error(e.message);
+    }
     setSending(false);
   };
 
