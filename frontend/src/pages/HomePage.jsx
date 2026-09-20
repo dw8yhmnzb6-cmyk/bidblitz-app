@@ -666,7 +666,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <div className="flex items-center justify-between mb-3.5">
                 <h3 className="text-[13px] font-semibold font-outfit text-white">{gt("gp.products_title")}</h3>
               </div>
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 lg:gap-3">
+              <div className="grid grid-cols-2 xl:grid-cols-5 gap-2.5 lg:gap-3">
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
@@ -994,33 +994,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
             </motion.div>
 
-            {/* Auctions Banner */}
-            {!STORE_SAFE_MODE && (
-              <motion.div
-                data-testid="auctions-banner"
-                className="mt-3 rounded-2xl p-4 relative overflow-hidden cursor-pointer group"
-                style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.08)" }}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.85, ...slide }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate("/auctions")}
-              >
-                <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: "rgba(168,85,247,0.12)", filter: "blur(30px)" }} />
-                <div className="flex items-center gap-3.5 relative z-10">
-                  <div className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)", boxShadow: "0 0 16px rgba(168,85,247,0.08)" }}>
-                    <Gavel size={18} strokeWidth={1.5} className="text-[#A855F7]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-[13px] font-semibold text-white font-outfit mb-0.5">{t("auction.title")}</h4>
-                    <p className="text-[11px] text-[#444] font-medium">{t("auction.subtitle")}</p>
-                  </div>
-                  <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
-                    <ChevronRight size={16} className="text-[#A855F7]/60" />
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
           </>
         )}
 
