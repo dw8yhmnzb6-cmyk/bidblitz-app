@@ -979,6 +979,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [boostBusy, setBoostBusy] = useState(false);
   const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
+  const lockupAttemptKeyRef = useRef(null);
   const push = usePushNotifications();
 
   const questRouteMap = {
@@ -1075,10 +1076,18 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onCreateLockup = async (amount, duration_days) => {
     if (!requireValueAction()) return;
+    if (!lockupAttemptKeyRef.current) {
+      lockupAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `blitz-lockup-${crypto.randomUUID()}`
+        : `blitz-lockup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = lockupAttemptKeyRef.current;
     await api("/api/blitz-mine/lockup", {
       method: "POST",
-      body: JSON.stringify({ amount, duration_days }),
+      headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ amount, duration_days, idempotency_key: idempotencyKey }),
     });
+    lockupAttemptKeyRef.current = null;
     await load();
   };
 
