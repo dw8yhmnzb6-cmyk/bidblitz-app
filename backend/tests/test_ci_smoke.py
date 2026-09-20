@@ -2233,6 +2233,57 @@ def test_mobility_address_fallback_selects_hamburg_and_vienna_city_profiles():
     assert vienna["city"] == "Wien"
 
 
+def test_mobility_tirana_and_podgorica_city_profiles_use_local_market_tariffs():
+    pricing = _load_mobility_pricing_contract()
+    merge_profile = pricing["_merge_pricing_profile"]
+    build_option = pricing["build_option"]
+    require_settlement = pricing["_require_supported_settlement"]
+
+    tirana_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["BALKANS"],
+        pricing["CITY_PRICING_PROFILES"]["AL"]["tirana"],
+    )
+    tirana = build_option("taxi", 5.0, 12, 1.0, 55, tirana_profile)
+    assert tirana["currency"] == "ALL"
+    assert tirana["price_local"] == 600.0
+    assert tirana["price_eur"] is None
+    assert tirana["booking_supported"] is False
+    with pytest.raises(HTTPException) as tirana_error:
+        require_settlement(tirana)
+    assert tirana_error.value.status_code == 503
+
+    podgorica_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["BALKANS"],
+        pricing["CITY_PRICING_PROFILES"]["ME"]["podgorica"],
+    )
+    podgorica = build_option("taxi", 5.0, 12, 1.0, 55, podgorica_profile)
+    assert podgorica["currency"] == "EUR"
+    assert podgorica["price_local"] == 4.50
+    assert podgorica["price_eur"] == 4.50
+    assert podgorica["price_range_eur"] == {"low": 3.50, "high": 6.00}
+    assert podgorica["booking_supported"] is True
+
+
+def test_mobility_tirana_and_podgorica_resolve_from_address_when_geocoder_fails():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    resolver.__globals__["_nominatim_get"] = unavailable
+
+    tirana = asyncio.run(resolver(41.3275, 19.8187, "Tirana, Albania"))
+    assert tirana["profile_key"] == "AL:tirana"
+    assert tirana["profile_scope"] == "city"
+    assert tirana["currency"] == "ALL"
+
+    podgorica = asyncio.run(resolver(42.4304, 19.2594, "Podgorica, Montenegro"))
+    assert podgorica["profile_key"] == "ME:podgorica"
+    assert podgorica["profile_scope"] == "city"
+    assert podgorica["currency"] == "EUR"
+
+
 def test_mobility_uae_city_fares_use_local_currency_and_fail_closed_settlement():
     pricing = _load_mobility_pricing_contract()
     merge_profile = pricing["_merge_pricing_profile"]
