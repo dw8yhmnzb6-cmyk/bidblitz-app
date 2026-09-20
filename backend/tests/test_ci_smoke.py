@@ -1631,11 +1631,21 @@ def test_crypto_market_is_read_only_until_custody_and_exchange_are_live():
     assert "Krypto-Handel ist deaktiviert" in backend
     assert "legacy_demo_holdings" in backend
     assert "legacy_demo_transactions" in backend
+    assert "debit_wallet(" in backend
+    assert "credit_wallet(" in backend
+    assert 'idempotency_key=f"crypto-trade:{trade_id}:wallet"' in backend
+    assert 'idempotency_key=f"crypto-trade:{trade_id}:rollback"' in backend
+    assert "db.crypto_trade_ops.update_one" in backend
+    assert '"$inc": {"balance": -req.amount_eur}' not in backend
+    assert '"$inc": {"balance": req.amount_eur}' not in backend
     assert '"routes.crypto", "router"' in registry
 
     assert "/api/crypto/capabilities" in page
     assert "crypto-provider-unavailable" in page
     assert "capabilities.trading_available" in page
+    assert "tradeAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
     assert "Live-Kurse · Handel noch nicht aktiviert" in page
 
 
