@@ -739,7 +739,7 @@ function AppContent() {
       case "/merchant-landing":
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
-        return <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />;
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
       case "/mining-trust-admin":
