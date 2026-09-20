@@ -658,6 +658,10 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     assert 'o.get("escrow_status") in {None, "released"}' in market_source
     assert '"escrow_status": "released"' in market_source
     assert '"escrow_status": {"$exists": False}' in market_source
+    assert 'shipping_cost: Optional[float] = Field(default=None, ge=0, le=100000)' in market_source
+    assert 'price: Optional[float] = Field(default=None, gt=0, le=100000)' in market_source
+    assert '"listing_reactivation_required": True' in market_source
+    assert '"post_refund_listing_state_mismatch"' in market_source
 
     assert "def _require_flash_idempotency_key" in commerce_source
     assert '"reservation_key": key_hash' in commerce_source
