@@ -751,6 +751,13 @@ def test_food_orders_are_server_priced_retry_safe_and_settle_once():
     assert '"$inc": {"balance": restaurant_share}' not in food_source
     assert '"$inc": {"balance": courier_share}' not in food_source
     assert "async def _require_food_restaurant_owner" in food_source
+    assert 'review_id = f"FOOD-REVIEW-' in food_source
+    assert "db.food_reviews.update_one" in food_source
+    assert 'marker_field = f"food_review_markers.{marker_hash}"' in food_source
+    assert '"rating_sum": {' in food_source
+    assert '"review_count": {"$add":' in food_source
+    assert '"status": "reconciliation_required"' in food_source
+    assert '"$inc": {"review_count": 1}' not in food_source
     assert '"owner_id": user_id' in food_source
     assert 'body.get("location", {"lat": 52.52, "lng": 13.405})' not in food_source
 
