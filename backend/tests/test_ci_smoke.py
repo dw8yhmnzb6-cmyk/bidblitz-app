@@ -2454,3 +2454,12 @@ def test_influencer_bid_credit_commissions_are_exactly_once():
     assert 'await _grant_commission_credits_once(' in source
     assert 'asyncio.create_task(process_commission(' in auctions
 
+def test_referral_wallet_reward_config_is_bounded():
+    source = (BACKEND_DIR / "routes" / "referral_system.py").read_text(encoding="utf-8")
+
+    assert "new_user_bonus: Optional[float] = Field(default=None, ge=0, le=100" in source
+    assert "inviter_bonus: Optional[float] = Field(default=None, ge=0, le=100" in source
+    assert "daily_bonus: Optional[float] = Field(default=None, ge=0, le=100" in source
+    assert "level1_rate: Optional[float] = Field(default=None, ge=0, le=1" in source
+    assert "level2_rate: Optional[float] = Field(default=None, ge=0, le=1" in source
+
