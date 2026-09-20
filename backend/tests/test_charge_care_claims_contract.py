@@ -9,9 +9,11 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 ROUTE = BACKEND / "routes" / "charge_app.py"
+MERCHANT_ROUTE = BACKEND / "routes" / "merchant_portal.py"
 CUSTOMER_PAGE = FRONTEND / "src" / "pages" / "ChargeCareClaimsPage.jsx"
 ADMIN_PAGE = FRONTEND / "src" / "pages" / "AdminChargeClaimsPage.jsx"
 CHARGE_PAGE = FRONTEND / "src" / "pages" / "ChargeAppPage.jsx"
+MERCHANT_PAGE = FRONTEND / "src" / "pages" / "MerchantPortalPage.jsx"
 APP = FRONTEND / "src" / "App.js"
 API = FRONTEND / "src" / "services" / "api.js"
 
@@ -36,8 +38,9 @@ def test_charge_claim_customer_endpoints_are_present_and_user_scoped():
         '@router.put("/claims/{claim_id}/cancel")',
     ):
         assert route in src
-    assert '"claim_id": claim_id, "user_id": user_id' in src
-    assert '"user_id": user_id' in src
+    assert '"claim_id": claim_id, "customer_user_id": user_id' in src
+    assert '"customer_user_id": user_id' in src
+    assert "merchant_warranty_claims" in src
 
 
 def test_charge_claim_duplicate_active_case_is_blocked():
@@ -61,7 +64,8 @@ def test_dashboard_reports_claim_counts():
     src = _py(ROUTE)
     assert '"claims_total"' in src
     assert '"claims_open"' in src
-    assert "charge_warranty_claims.count_documents" in src
+    assert "merchant_warranty_claims.count_documents" in src
+    assert '"customer_user_id": user_id' in src
 
 
 def test_charge_claim_customer_ui_is_routed_from_warranties():
@@ -105,8 +109,9 @@ def test_charge_claim_evidence_files_are_protected_and_wired():
     assert '@router.post("/claims/{claim_id}/attachments")' in route
     assert '@router.get("/claims/{claim_id}/attachments/{attachment_id}/download")' in route
     assert '@router.delete("/claims/{claim_id}/attachments/{attachment_id}")' in route
-    assert '"claim_id": claim_id, "user_id": user_id' in route
-    assert 'query["user_id"] = user_id' in route
+    assert '"claim_id": claim_id, "customer_user_id": user_id' in route
+    assert "is_customer" in route
+    assert "is_merchant" in route
     assert "uploadChargeClaimAttachment" in api
     assert "deleteChargeClaimAttachment" in api
     assert "charge-care-evidence-upload" in customer
@@ -116,3 +121,33 @@ def test_charge_claim_evidence_files_are_protected_and_wired():
 def test_repeated_admin_save_does_not_duplicate_same_note_message():
     src = _py(ROUTE)
     assert 'note != str(claim.get("admin_note") or "").strip()' in src
+
+
+def test_charge_care_reuses_existing_merchant_warranty_collection():
+    charge = _py(ROUTE)
+    merchant = _py(MERCHANT_ROUTE)
+    assert "merchant_warranty_claims" in charge
+    assert "charge_warranty_claims" not in charge
+    assert "merchant_warranty_claims" in merchant
+    assert '"source": "charge_app_customer"' in charge
+    assert '"customer_user_id": user_id' in charge
+
+
+def test_charge_warranty_and_invoice_persist_merchant_identity():
+    charge = _py(ROUTE)
+    assert "_resolve_charge_merchant" in charge
+    assert '"merchant_id": merchant_binding.get("merchant_id") or ""' in charge
+    assert '"merchant_user_id": merchant_binding.get("merchant_user_id") or ""' in charge
+    assert '"merchant_slug": merchant_binding.get("merchant_slug") or ""' in charge
+
+
+def test_existing_merchant_portal_surfaces_customer_charge_claims():
+    merchant_route = _py(MERCHANT_ROUTE)
+    merchant_page = _text(MERCHANT_PAGE)
+    assert "customer_charge_claims_total" in merchant_route
+    assert "Charge Care Kundenfall" in merchant_route
+    assert '"replacement_sent": "approved"' in merchant_route
+    assert '"under_review": "in_review"' in merchant_route
+    assert 'author_role": "merchant"' in merchant_route
+    assert "merchant-dealer-warranty-evidence-" in merchant_page
+    assert "Dein Garantiefall wird jetzt vom Händler geprüft." in merchant_page
