@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel, Field
 from bson import ObjectId
 from datetime import datetime, timezone
+import math
 from core.database import db
 from core.security import get_current_user
 from core.config import FEES, TEST_MODE
@@ -410,11 +411,44 @@ async def update_settings(request: Request):
     user = await require_admin(request)
     body = await request.json()
     new_fees = body.get("fees", {})
-    valid_keys = ["payment", "send", "topup", "payout_flat", "payout_percent", "min_payout", "settlement_delay_hours"]
-    for k in valid_keys:
-        if k in new_fees:
-            FEES[k] = float(new_fees[k])
-    await log_audit("admin_settings_update", str(user["_id"]), request, details={"fees": FEES})
+    if not isinstance(new_fees, dict):
+        raise HTTPException(status_code=400, detail="fees muss ein Objekt sein")
+
+    bounds = {
+        "payment": (0.0, 1.0),
+        "send": (0.0, 1.0),
+        "topup": (0.0, 1.0),
+        "payout_percent": (0.0, 1.0),
+        "payout_flat": (0.0, 10000.0),
+        "min_payout": (0.0, 1_000_000.0),
+        "settlement_delay_hours": (0.0, 720.0),
+    }
+    unknown = sorted(set(new_fees) - set(bounds))
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unbekannte Gebührenfelder: {', '.join(unknown)}")
+
+    validated = {}
+    for key, raw_value in new_fees.items():
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Ungültiger Wert für {key}")
+        low, high = bounds[key]
+        if not math.isfinite(value) or value < low or value > high:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{key} muss zwischen {low:g} und {high:g} liegen",
+            )
+        validated[key] = value
+
+    if validated:
+        FEES.update(validated)
+    await log_audit(
+        "admin_settings_update",
+        str(user["_id"]),
+        request,
+        details={"updated_fees": validated, "fees": FEES},
+    )
     return {"success": True, "fees": FEES}
 
 
