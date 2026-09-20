@@ -849,7 +849,7 @@ function AppContent() {
       case "/audi-tickets":
         return <AudiTicketSalesPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
       case "/charge-app":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChargeAppPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChargeAppPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/charge-app/merchant":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
