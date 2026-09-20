@@ -74,6 +74,9 @@ async def sell_voucher(req: VoucherCreateRequest, request: Request):
     raw_key = str(req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
     if not 8 <= len(raw_key) <= 200:
         raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    key_hash = hashlib.sha256(
+        f"{actor['user_id']}:{req.store_id}:{raw_key}".encode("utf-8")
+    ).hexdigest()[:24]
     if not TEST_MODE and req.payment_method != "cash":
         raise HTTPException(
             status_code=503,
@@ -92,8 +95,10 @@ async def sell_voucher(req: VoucherCreateRequest, request: Request):
                 "register_id": req.register_id,
                 "payment_method": req.payment_method,
                 "recipient_email": req.recipient_email,
+                "message": req.message,
             },
             "Gift card creation requires manager approval",
+            idempotency_key=f"voucher-sale:{key_hash}",
         )
         return {
             "ok": True,
@@ -102,9 +107,6 @@ async def sell_voucher(req: VoucherCreateRequest, request: Request):
             "message": "Gutscheinverkauf wartet auf Manager-Freigabe",
         }
 
-    key_hash = hashlib.sha256(
-        f"{actor['user_id']}:{req.store_id}:{raw_key}".encode("utf-8")
-    ).hexdigest()[:24]
     sale_id = f"VSALE-{key_hash.upper()}"
     voucher_code = f"GS-{key_hash[:12].upper()}"
     payload = {
