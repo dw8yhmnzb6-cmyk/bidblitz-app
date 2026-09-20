@@ -1471,6 +1471,7 @@ async def get_my_listings(request: Request):
     return {"listings": listings, "stats": stats}
 
 
+@router.get("/orders/purchases")
 @router.get("/my-purchases")
 async def get_my_purchases(request: Request):
     """Get user's purchase history."""
@@ -1485,6 +1486,7 @@ async def get_my_purchases(request: Request):
     return {"orders": orders, "total": len(orders)}
 
 
+@router.get("/orders/sales")
 @router.get("/my-sales")
 async def get_my_sales(request: Request):
     """Get user's sales history."""
