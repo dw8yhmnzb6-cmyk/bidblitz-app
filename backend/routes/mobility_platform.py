@@ -626,6 +626,48 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
     }
 
 
+async def _resolve_pricing_context(lat: float, lng: float, address: str = "") -> dict:
+    country_code = ""
+    city = ""
+    country = ""
+    try:
+        item = await _nominatim_get("/reverse", {
+            "lat": lat,
+            "lon": lng,
+            "format": "jsonv2",
+            "addressdetails": 1,
+            "zoom": 10,
+            "accept-language": "en",
+        })
+        addr = item.get("address", {}) if isinstance(item, dict) else {}
+        country_code = str(addr.get("country_code") or "").upper()
+        city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or ""
+        country = addr.get("country") or ""
+    except Exception:
+        text = (address or "").lower()
+        if "kosovo" in text or "prisht" in text or "pristin" in text:
+            country_code = "XK"
+            city = "Prishtina"
+
+    if not country_code and 41.80 <= lat <= 43.35 and 20.00 <= lng <= 21.95:
+        country_code = "XK"
+        city = city or "Kosovo"
+    if country_code == "XK":
+        profile_key = "XK"
+    elif country_code == "DE":
+        profile_key = "DE"
+    elif country_code in {"AL", "MK", "ME", "RS", "BA"}:
+        profile_key = "BALKANS"
+    else:
+        profile_key = "EU"
+
+    profile = dict(REGIONAL_PRICING_PROFILES[profile_key])
+    profile["profile_key"] = profile_key
+    profile["country_code"] = country_code or ""
+    profile["country"] = country or profile.get("region")
+    profile["city"] = city or ""
+    return profile
+
 async def _compute_route_payload(
     pickup_lat: float,
     pickup_lng: float,
