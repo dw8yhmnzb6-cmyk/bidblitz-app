@@ -228,27 +228,18 @@ class BarcodePaymentRequest(BaseModel):
 async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
     merchant_uid = str(merchant_user["_id"])
-
     mp = await _require_merchant_profile(merchant_user)
 
+    mid = str(mp["_id"]) if mp else ""
+    merchant_name = mp.get("business_name", "") if mp else ""
+    merchant_owner_id = str(mp.get("user_id") or "") if mp else ""
+    if not merchant_owner_id:
+        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
+
     now = datetime.now(timezone.utc)
-    bc = await db.payment_barcodes.find_one({"barcode": req.barcode, "active": True})
+    bc = await db.payment_barcodes.find_one({"barcode": req.barcode})
     if not bc:
         raise HTTPException(status_code=404, detail="Invalid or expired barcode")
-
-    expires = datetime.fromisoformat(bc["expires_at"])
-    if expires < now:
-        await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-        raise HTTPException(status_code=400, detail="Barcode expired")
-
-    customer_uid = bc["user_id"]
-    customer = await db.users.find_one({"_id": ObjectId(customer_uid)})
-    if not customer:
-        raise HTTPException(status_code=404, detail="Customer not found")
-
-    balance = customer.get("balance", 0)
-    if balance < req.amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
 
     pt = await detect_payment_type(req.payment_method or "barcode")
     fee = round(req.amount * pt["fee_rate"], 2)
@@ -257,14 +248,109 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         "BRC", merchant_uid, req.barcode, f"{req.amount:.2f}", pt["category"]
     )
 
+    # One-time authorization: exact completed retries may replay, but the
+    # barcode is never reopened after a payment attempt.
+    if not bc.get("active", False):
+        if bc.get("payment_reference") == reference and bc.get("payment_state") == "completed":
+            customer_uid = str(bc.get("user_id") or "")
+            customer_oid = ObjectId(customer_uid) if ObjectId.is_valid(customer_uid) else customer_uid
+            customer = await db.users.find_one({"_id": customer_oid}) or {}
+            tx_id = bc.get("payment_transaction_id") or reference
+            return {
+                "ok": True,
+                "transaction_id": tx_id,
+                "amount": req.amount,
+                "fee": fee,
+                "net": net,
+                "customer_id": customer_uid,
+                "customer_name": customer.get("name", ""),
+                "customer_balance": customer.get("balance", 0),
+                "payment_method": pt["category"],
+                "payment_type_label": pt["label"],
+                "ultra_fast": req.amount <= ULTRA_FAST_LIMIT,
+                "receipt": generate_receipt(
+                    tx_id, req.amount, fee, net, pt,
+                    customer.get("name", ""), merchant_name, req.description or "Payment",
+                ),
+                "replayed": True,
+            }
+        if bc.get("payment_reference") == reference and bc.get("payment_state") in {
+            "processing", "reconciliation_required"
+        }:
+            raise HTTPException(status_code=409, detail="Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung")
+        raise HTTPException(status_code=409, detail="Barcode wurde bereits verwendet")
+
+    expires = datetime.fromisoformat(bc["expires_at"])
+    if expires < now:
+        await db.payment_barcodes.update_one(
+            {"_id": bc["_id"], "active": True},
+            {"$set": {"active": False, "payment_state": "expired", "expired_at": now.isoformat()}},
+        )
+        raise HTTPException(status_code=400, detail="Barcode expired")
+
+    claimed = await db.payment_barcodes.update_one(
+        {"_id": bc["_id"], "active": True},
+        {"$set": {
+            "active": False,
+            "payment_state": "processing",
+            "payment_reference": reference,
+            "payment_claimed_by": merchant_uid,
+            "payment_claimed_at": now.isoformat(),
+        }},
+    )
+    if claimed.modified_count != 1:
+        latest = await db.payment_barcodes.find_one({"_id": bc["_id"]}, {"_id": 0}) or {}
+        if latest.get("payment_reference") == reference and latest.get("payment_state") == "completed":
+            customer_uid = str(latest.get("user_id") or "")
+            customer_oid = ObjectId(customer_uid) if ObjectId.is_valid(customer_uid) else customer_uid
+            customer = await db.users.find_one({"_id": customer_oid}) or {}
+            tx_id = latest.get("payment_transaction_id") or reference
+            return {
+                "ok": True,
+                "transaction_id": tx_id,
+                "amount": req.amount,
+                "fee": fee,
+                "net": net,
+                "customer_id": customer_uid,
+                "customer_name": customer.get("name", ""),
+                "customer_balance": customer.get("balance", 0),
+                "payment_method": pt["category"],
+                "payment_type_label": pt["label"],
+                "ultra_fast": req.amount <= ULTRA_FAST_LIMIT,
+                "receipt": generate_receipt(
+                    tx_id, req.amount, fee, net, pt,
+                    customer.get("name", ""), merchant_name, req.description or "Payment",
+                ),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Barcode wird bereits verarbeitet oder wurde verwendet")
+
+    customer_uid = str(bc["user_id"])
+    customer_oid = ObjectId(customer_uid) if ObjectId.is_valid(customer_uid) else customer_uid
+    customer = await db.users.find_one({"_id": customer_oid})
+    if not customer:
+        await db.payment_barcodes.update_one(
+            {"_id": bc["_id"], "payment_reference": reference},
+            {"$set": {"payment_state": "failed", "payment_error": "customer_not_found"}},
+        )
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    balance = float(customer.get("balance", 0) or 0)
+    if balance < req.amount:
+        await db.payment_barcodes.update_one(
+            {"_id": bc["_id"], "payment_reference": reference},
+            {"$set": {"payment_state": "failed", "payment_error": "insufficient_balance"}},
+        )
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+
     customer_debit = await debit_wallet(
         user_id=customer_uid,
         amount=req.amount,
         tx_type=TransactionType.PAYMENT,
         description=req.description or "Payment",
         reference=reference,
-        merchant_id=str(mp["_id"]) if mp else None,
-        merchant_name=mp.get("business_name", "") if mp else "",
+        merchant_id=mid or None,
+        merchant_name=merchant_name,
         metadata={
             "gross_amount": req.amount,
             "fee_amount": fee,
@@ -275,97 +361,172 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         idempotency_key=f"pos-barcode:{merchant_uid}:{req.barcode}:{req.amount:.2f}",
     )
     if not customer_debit.success:
-        raise HTTPException(status_code=400, detail=customer_debit.error or "Payment failed — balance changed")
+        debit_state = str(getattr(customer_debit.status, "value", customer_debit.status))
+        await db.payment_barcodes.update_one(
+            {"_id": bc["_id"], "payment_reference": reference},
+            {"$set": {
+                "payment_state": (
+                    "reconciliation_required"
+                    if debit_state in {"pending", "reconciliation_required"}
+                    else "failed"
+                ),
+                "payment_error": customer_debit.error or "customer_debit_failed",
+                "payment_transaction_id": customer_debit.transaction_id,
+            }},
+        )
+        raise HTTPException(
+            status_code=409 if debit_state in {"pending", "reconciliation_required"} else 400,
+            detail=customer_debit.error or "Payment failed — balance changed",
+        )
 
-    mid = str(mp["_id"]) if mp else ""
-    merchant_name = mp.get("business_name", "") if mp else ""
-    merchant_owner_id = mp.get("user_id", "") if mp else ""
-    if not merchant_owner_id:
-        raise HTTPException(status_code=409, detail="Händlerkonto hat keinen abrechenbaren Owner")
+    merchant_credit_result = await _credit_merchant_wallet(
+        merchant_owner_id,
+        net,
+        reference=reference,
+        source_user_id=customer_uid,
+        description=f"POS Zahlung: {req.description or 'Payment'}",
+        merchant_name=merchant_name,
+        merchant_id=mid,
+        gross_amount=req.amount,
+        fee_amount=fee,
+        payment_method=pt["category"],
+        route_name="pos_payments.barcode_pay",
+        customer_name=customer.get("name", ""),
+        customer_email=customer.get("email", ""),
+    )
+    if not merchant_credit_result or not merchant_credit_result.success:
+        merchant_state = (
+            str(getattr(merchant_credit_result.status, "value", merchant_credit_result.status))
+            if merchant_credit_result
+            else "failed"
+        )
+        if merchant_state in {"pending", "reconciliation_required"}:
+            await db.payment_barcodes.update_one(
+                {"_id": bc["_id"], "payment_reference": reference},
+                {"$set": {
+                    "payment_state": "reconciliation_required",
+                    "payment_error": (
+                        merchant_credit_result.error
+                        if merchant_credit_result
+                        else "merchant_credit_uncertain"
+                    ),
+                    "payment_transaction_id": customer_debit.transaction_id,
+                    "merchant_transaction_id": (
+                        merchant_credit_result.transaction_id if merchant_credit_result else None
+                    ),
+                }},
+            )
+            raise HTTPException(
+                status_code=409,
+                detail="Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst.",
+            )
+
+        refund = await credit_wallet(
+            user_id=customer_uid,
+            amount=req.amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: POS payment failed ({req.description or 'Payment'})",
+            reference=f"REF-{reference}",
+            source="pos_payments.barcode_pay.rollback",
+            metadata={
+                "original_reference": reference,
+                "audit_metadata": {"route": "pos_payments.barcode_pay.rollback"},
+            },
+            idempotency_key=f"refund:{customer_debit.transaction_id}",
+        )
+        refund_state = str(getattr(refund.status, "value", refund.status))
+        await db.payment_barcodes.update_one(
+            {"_id": bc["_id"], "payment_reference": reference},
+            {"$set": {
+                "payment_state": "refunded" if refund.success else "reconciliation_required",
+                "payment_error": (
+                    merchant_credit_result.error
+                    if merchant_credit_result
+                    else "merchant_settlement_failed"
+                ),
+                "payment_transaction_id": customer_debit.transaction_id,
+                "refund_transaction_id": refund.transaction_id,
+            }},
+        )
+        if not refund.success:
+            logger.error("POS barcode rollback requires reconciliation: %s", reference)
+            raise HTTPException(
+                status_code=500 if refund_state != "pending" else 409,
+                detail="Händlergutschrift und Rückbuchung benötigen manuelle Abstimmung.",
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                merchant_credit_result.error
+                if merchant_credit_result
+                else "Merchant settlement failed; customer refunded"
+            ),
+        )
 
     now_iso = now.isoformat()
+    merchant_tx = {
+        "merchant_id": mid,
+        "branch_id": "",
+        "device_id": "barcode",
+        "reference": reference,
+        "amount": req.amount,
+        "fee": fee,
+        "net": net,
+        "commission_rate": pt["fee_rate"] * 100,
+        "description": req.description,
+        "customer_ref": customer.get("email", ""),
+        "customer_name": customer.get("name", ""),
+        "payment_method": pt["category"],
+        "payment_type_label": pt["label"],
+        "status": "completed",
+        "created_at": now_iso,
+    }
+    write = await db.merchant_transactions.update_one(
+        {"reference": reference},
+        {"$setOnInsert": merchant_tx},
+        upsert=True,
+    )
+    stats_written = write.upserted_id is not None
 
-    merchant_credit_result = None
-    if mp and merchant_owner_id:
-        merchant_credit_result = await _credit_merchant_wallet(
-            merchant_owner_id,
-            net,
-            reference=reference,
-            source_user_id=customer_uid,
-            description=f"POS Zahlung: {req.description or 'Payment'}",
-            merchant_name=merchant_name,
-            merchant_id=mid,
-            gross_amount=req.amount,
-            fee_amount=fee,
-            payment_method=pt["category"],
-            route_name="pos_payments.barcode_pay",
-            customer_name=customer.get("name", ""),
-            customer_email=customer.get("email", ""),
+    if stats_written:
+        await db.merchant_profiles.update_one(
+            {"_id": mp["_id"]},
+            {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
         )
-        if not merchant_credit_result or not merchant_credit_result.success:
-            refund = await credit_wallet(
-                user_id=customer_uid,
-                amount=req.amount,
-                tx_type=TransactionType.REFUND,
-                description=f"Refund: POS payment failed ({req.description or 'Payment'})",
-                reference=f"REF-{reference}",
-                source="pos_payments.barcode_pay.rollback",
-                metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.barcode_pay.rollback"}},
-                idempotency_key=f"refund:{customer_debit.transaction_id}",
-            )
-            if not refund.success:
-                logger.error("POS barcode rollback requires reconciliation: %s", reference)
-                raise HTTPException(status_code=500, detail="Händlergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
-            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed; customer refunded"))
-
-    stats_written = False
-    if mid:
-        merchant_tx = {
-            "merchant_id": mid, "branch_id": "", "device_id": "barcode",
-            "reference": reference,
-            "amount": req.amount, "fee": fee, "net": net,
-            "commission_rate": pt["fee_rate"] * 100,
-            "description": req.description,
-            "customer_ref": customer.get("email", ""),
-            "customer_name": customer.get("name", ""),
-            "payment_method": pt["category"],
-            "payment_type_label": pt["label"],
-            "status": "completed", "created_at": now_iso,
-        }
-        write = await db.merchant_transactions.update_one(
-            {"reference": reference},
-            {"$setOnInsert": merchant_tx},
+        await db.merchants.update_one(
+            {"user_id": merchant_owner_id},
+            {"$inc": {
+                "gross_earnings": req.amount,
+                "total_earnings": net,
+                "total_fees": fee,
+                "total_transactions": 1,
+                "available_payout": net,
+            }},
             upsert=True,
         )
-        stats_written = write.upserted_id is not None
 
-    if mp and stats_written:
-        await db.merchant_profiles.update_one(
-            {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
-        )
-        if merchant_owner_id:
-            await db.merchants.update_one(
-                {"user_id": merchant_owner_id},
-                {"$inc": {
-                    "gross_earnings": req.amount,
-                    "total_earnings": net,
-                    "total_fees": fee,
-                    "total_transactions": 1,
-                    "available_payout": net,
-                }},
-                upsert=True,
-            )
-
-    await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-
-    updated_customer = await db.users.find_one({"_id": ObjectId(customer_uid)})
-
-    receipt = generate_receipt(
-        customer_debit.transaction_id or secrets.token_hex(8), req.amount, fee, net, pt,
-        customer.get("name", ""), merchant_name, req.description or "Payment",
+    await db.payment_barcodes.update_one(
+        {"_id": bc["_id"], "payment_reference": reference, "payment_state": "processing"},
+        {"$set": {
+            "payment_state": "completed",
+            "payment_transaction_id": customer_debit.transaction_id,
+            "merchant_transaction_id": merchant_credit_result.transaction_id,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }},
     )
 
-    # Send receipt email to customer
+    updated_customer = await db.users.find_one({"_id": customer_oid}) or {}
+    receipt = generate_receipt(
+        customer_debit.transaction_id or secrets.token_hex(8),
+        req.amount,
+        fee,
+        net,
+        pt,
+        customer.get("name", ""),
+        merchant_name,
+        req.description or "Payment",
+    )
+
     try:
         from core.email import send_receipt_email
         send_receipt_email(
@@ -376,14 +537,17 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             net_amount=net,
             description=req.description or "Payment",
             merchant_name=merchant_name,
-            user_name=customer.get("name", "")
+            user_name=customer.get("name", ""),
         )
     except Exception:
-        pass  # Non-critical
+        pass
 
     return {
-        "ok": True, "transaction_id": customer_debit.transaction_id,
-        "amount": req.amount, "fee": fee, "net": net,
+        "ok": True,
+        "transaction_id": customer_debit.transaction_id,
+        "amount": req.amount,
+        "fee": fee,
+        "net": net,
         "customer_id": customer_uid,
         "customer_name": customer.get("name", ""),
         "customer_balance": updated_customer.get("balance", 0),
@@ -391,6 +555,9 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         "payment_type_label": pt["label"],
         "ultra_fast": req.amount <= ULTRA_FAST_LIMIT,
         "receipt": receipt,
+        "replayed": bool(
+            customer_debit.idempotent_replay and merchant_credit_result.idempotent_replay
+        ),
     }
 
 
