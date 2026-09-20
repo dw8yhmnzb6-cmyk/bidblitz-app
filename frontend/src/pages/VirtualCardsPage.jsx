@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CreditCard, Plus, Loader2, Eye, EyeOff, Copy, Check, Lock, Trash2, Snowflake, Sun, Receipt, AlertCircle } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
@@ -18,6 +18,7 @@ const VirtualCardsPage = ({ onBack }) => {
   const [txDrawer, setTxDrawer] = useState(null); // { card_id, transactions }
   const [error, setError] = useState(null);
   const [capabilities, setCapabilities] = useState(null);
+  const createAttemptKeyRef = useRef(null);
 
   useEffect(() => { loadCards(); }, []);
 
@@ -49,12 +50,26 @@ const VirtualCardsPage = ({ onBack }) => {
     setCreating(true);
     setError(null);
     try {
+      if (!createAttemptKeyRef.current) {
+        createAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `vcard-create-${crypto.randomUUID()}`
+          : `vcard-create-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = createAttemptKeyRef.current;
       const res = await fetch(`${API}/api/cards/create`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: parseFloat(form.limit), name: form.label || "Virtuelle Karte", single_use: true, expires_hours: 24 }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          limit: parseFloat(form.limit),
+          name: form.label || "Virtuelle Karte",
+          single_use: true,
+          expires_hours: 24,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await res.json().catch(() => ({}));
-      if (res.ok) { loadCards(); setShowCreate(false); setForm({ limit: "50", label: "" }); }
+      if (res.ok) { createAttemptKeyRef.current = null; loadCards(); setShowCreate(false); setForm({ limit: "50", label: "" }); }
       else if (res.status === 403 && d.detail?.error === "kyc_level_2_required") {
         setError("KYC Level 2 erforderlich. Bitte schließe die KYC-Verifizierung ab.");
       } else {
