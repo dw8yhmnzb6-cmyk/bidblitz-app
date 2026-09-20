@@ -2476,3 +2476,24 @@ def test_dating_stripe_settlement_is_session_idempotent():
     assert 'credits.boosts": 1, "credits.superlikes": 3' in source
     assert 'credits.boosts": 2, "credits.superlikes": 5' in source
 
+def test_dating_checkout_creation_uses_stable_client_idempotency():
+    backend = (BACKEND_DIR / "routes" / "dating.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "DatingPage.jsx").read_text(encoding="utf-8")
+
+    assert "idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=200)" in backend
+    assert "def _dating_checkout_key" in backend
+    assert "async def _claim_dating_checkout_intent" in backend
+    assert 'intent_id = f"dating-checkout:{checkout_hash}"' in backend
+    assert '"status": "creating"' in backend
+    assert '"status": "checkout_creation_uncertain"' in backend
+    assert "Bitte keinen neuen Zahlungsversuch starten." in backend
+    assert "checkout_url" in backend
+    assert "client_idempotency_hash" in backend
+
+    assert "getStableCheckoutKey" in page
+    assert "window.sessionStorage.getItem" in page
+    assert "window.sessionStorage.setItem" in page
+    assert '"Idempotency-Key": attempt.key' in page
+    assert "idempotency_key: attempt.key" in page
+    assert "clearStableCheckoutKey(attempt.storageKey)" in page
+
