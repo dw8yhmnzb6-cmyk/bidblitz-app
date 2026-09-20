@@ -66,3 +66,14 @@ def test_admin_can_persist_local_scooter_daily_cap_and_minimum_balance():
     assert 'min_balance: ""' in admin
     assert '["daily_cap", "Tageslimit"]' in admin
     assert '["min_balance", "Mindestguthaben"]' in admin
+
+
+def test_taxi_frontend_keeps_shared_zone_time_and_fixed_fare_context():
+    api = read("frontend/src/services/taxiApi.js")
+    page = read("frontend/src/pages/TaxiPage.jsx")
+
+    assert "const sharedPricing = {" in api
+    assert "time_tariff: item?.time_tariff || sharedPricing.time_tariff" in api
+    assert "fixed_fares: item?.fixed_fares || sharedPricing.fixed_fares" in api
+    assert "typeof fixedFareConfig === 'object'" in page
+    assert "fixedFareConfig?.fixed_fare" in page
