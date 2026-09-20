@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert, ScanLine, ArrowRightLeft, Mail
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart, ShieldAlert, ScanLine, ArrowRightLeft, Mail, History
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -10,6 +10,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { ChargeAttachmentActions } from "../components/charge/ChargeAttachmentActions";
 import { ChargeDocumentPreviewModal } from "../components/charge/ChargeDocumentPreviewModal";
 import { ChargeProductScanner } from "../components/charge/ChargeProductScanner";
+import { ChargeServiceHistoryModal } from "../components/charge/ChargeServiceHistoryModal";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -37,6 +38,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   const [transferWarranty, setTransferWarranty] = useState(null);
   const [transferEmail, setTransferEmail] = useState("");
   const [purchaseCandidates, setPurchaseCandidates] = useState([]);
+  const [serviceHistory, setServiceHistory] = useState(null);
   const activationPrefillRef = useRef("");
   const [warrantyForm, setWarrantyForm] = useState({
     product_id: "",
@@ -304,6 +306,19 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     });
     setWarrantyFile(null);
   }, []);
+
+  const openServiceHistory = useCallback(async (registrationId) => {
+    setBusy(`service-history-${registrationId}`);
+    try {
+      const data = await api.getChargeWarrantyServiceHistory(registrationId);
+      setServiceHistory(data || null);
+    } catch (error) {
+      toast.error(error.message || "Servicehistorie konnte nicht geladen werden");
+    } finally {
+      setBusy("");
+    }
+  }, []);
+
 
   const openWarrantyTransfer = useCallback((item) => {
     setTransferWarranty(item);
@@ -1114,6 +1129,14 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
                     <button onClick={() => previewWarrantyPass(item.registration_id)} disabled={busy === `pass-${item.registration_id}`} className="rounded-full border border-[#0A1626]/10 bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#D8FCFF] disabled:opacity-50" data-testid={`charge-app-warranty-pass-preview-${index}`}>{busy === `pass-${item.registration_id}` ? "Lädt..." : "Pass ansehen"}</button>
                     <button
+                      onClick={() => openServiceHistory(item.registration_id)}
+                      disabled={busy === `service-history-${item.registration_id}`}
+                      className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black text-indigo-700 disabled:opacity-50"
+                      data-testid={`charge-app-warranty-history-${index}`}
+                    >
+                      <History size={11} />{busy === `service-history-${item.registration_id}` ? "Lädt..." : "Historie"}
+                    </button>
+                    <button
                       onClick={() => onNavigate?.(`/charge-app/claims?registration_id=${encodeURIComponent(item.registration_id)}`)}
                       className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-700"
                       data-testid={`charge-app-warranty-claim-${index}`}
@@ -1342,6 +1365,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     ) : null}
     <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
     <ChargeProductScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleScannedProductCode} />
+    <ChargeServiceHistoryModal history={serviceHistory} onClose={() => setServiceHistory(null)} />
     </>
   );
 }
