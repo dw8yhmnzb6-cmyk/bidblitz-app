@@ -666,7 +666,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <div className="flex items-center justify-between mb-3.5">
                 <h3 className="text-[13px] font-semibold font-outfit text-white">{gt("gp.products_title")}</h3>
               </div>
-              <div className="grid grid-cols-2 xl:grid-cols-5 gap-2.5 lg:gap-3">
+              <div className={`grid grid-cols-2 ${STORE_SAFE_MODE ? "xl:grid-cols-3" : "xl:grid-cols-5"} gap-2.5 lg:gap-3`}>
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
