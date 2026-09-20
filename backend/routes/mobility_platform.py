@@ -1191,6 +1191,7 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
         resolved_profile_key = profile_key
 
     profile["profile_key"] = resolved_profile_key
+    profile["profile_scope"] = "city" if (city_override or static_city_profile) else "country"
     profile["country_code"] = country_code or ""
     profile["country"] = country or profile.get("region")
     profile["city"] = (city_override or static_city_profile or {}).get("city") or city or ""
