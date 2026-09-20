@@ -1361,6 +1361,7 @@ async def calculate_fare_with_overrides(
     car_type: str,
     region: str,
 ) -> dict:
+    # 1) Explicit geofenced operator/admin zones stay the most specific source.
     zone = await _find_matching_tariff_zone(pickup_lat, pickup_lng)
     city_key = _normalize_city_key(pickup_address)
     city_doc = None
@@ -1383,8 +1384,58 @@ async def calculate_fare_with_overrides(
             "region_label": zone.get("name") or region,
             "tariff_zone": {"id": zone.get("id"), "label": zone.get("name") or "Zone"},
             "pricing_source": "zone",
+            "currency": "EUR",
+            "booking_supported": True,
         }
 
+    # 2) Canonical Mobility pricing: country -> city override -> transport mode.
+    try:
+        from routes.mobility_platform import _resolve_pricing_context, build_option
+        pricing_context = await _resolve_pricing_context(pickup_lat, pickup_lng, pickup_address)
+        if "taxi" in (pricing_context.get("modes") or {}):
+            option = build_option(
+                "taxi",
+                distance_km,
+                max(1, round(duration_minutes)),
+                1.0,
+                55,
+                pricing_context,
+            )
+            vehicle_multiplier = {
+                "standard": 1.0,
+                "premium": 1.35,
+                "van": 1.20,
+            }.get(car_type, 1.0)
+            total = round(float(option.get("price_local") or 0) * vehicle_multiplier, 2)
+            mode = (pricing_context.get("modes") or {}).get("taxi") or {}
+            base_fare = round(float(mode.get("base") or 0) * vehicle_multiplier, 2)
+            booking_fee = round(float(mode.get("booking_fee") or 0) * vehicle_multiplier, 2)
+            per_min = float(mode.get("per_min") or 0)
+            time_cost = round(max(1, round(duration_minutes)) * per_min * vehicle_multiplier, 2)
+            distance_cost = max(0.0, round(total - base_fare - booking_fee - time_cost, 2))
+            region_label = pricing_context.get("city") or pricing_context.get("region") or pricing_context.get("country") or region
+            return {
+                "base_fare": base_fare,
+                "booking_fee": booking_fee,
+                "distance_cost": distance_cost,
+                "time_cost": time_cost,
+                "total": total,
+                "driver_earnings": round(total * DRIVER_COMMISSION, 2),
+                "platform_fee": round(total * PLATFORM_COMMISSION, 2),
+                "region": pricing_context.get("country_code") or region,
+                "region_label": region_label,
+                "pricing_source": "mobility_profile",
+                "pricing_basis": option.get("pricing_basis"),
+                "profile_scope": pricing_context.get("profile_scope") or "country",
+                "currency": option.get("currency") or "EUR",
+                "booking_supported": bool(option.get("booking_supported", True)),
+                "settlement_reason": option.get("settlement_reason"),
+                "vehicle_multiplier": vehicle_multiplier,
+            }
+    except Exception as exc:
+        logger.warning("Canonical taxi pricing lookup failed; using legacy fallback: %s", exc)
+
+    # 3) Legacy city defaults remain as a compatibility fallback.
     if city_doc and isinstance(city_doc.get("options"), dict) and isinstance(city_doc["options"].get("pricing"), dict):
         pricing = city_doc["options"]["pricing"]
         base_fare = float(pricing.get("base_fare") or 0)
@@ -1403,11 +1454,18 @@ async def calculate_fare_with_overrides(
             "region_label": city_doc.get("options", {}).get("region_label") or city_doc.get("city_label") or city_key,
             "city_default": {"city": city_key, "label": city_doc.get("city_label") or city_key.title()},
             "fixed_fares": city_doc.get("options", {}).get("airport_fixed_fares") or {},
-            "pricing_source": "city",
+            "pricing_source": "city_legacy",
+            "currency": "EUR",
+            "booking_supported": True,
         }
 
     fallback = calculate_fare(distance_km, duration_minutes, car_type, region)
-    return {**fallback, "pricing_source": "region"}
+    return {
+        **fallback,
+        "pricing_source": "region_legacy",
+        "currency": "EUR",
+        "booking_supported": True,
+    }
 
 
 def _looks_like_kosovo_airport(address: str, lat: float, lng: float) -> bool:
@@ -1838,6 +1896,16 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "duration_minutes": round(duration_minutes),
             "route_source": route_source,
             "fare_breakdown": fare,
+            "currency": fare.get("currency", "EUR"),
+            "booking_supported": fare.get("booking_supported", True),
+            "settlement_reason": fare.get("settlement_reason"),
+            "region": fare.get("region", region),
+            "region_label": fare.get("region_label") or REGIONAL_PRICING.get(region, {}).get("label", ""),
+            "profile_scope": fare.get("profile_scope"),
+            "pricing_source": fare.get("pricing_source"),
+            "pricing_basis": fare.get("pricing_basis"),
+            "base_fare": fare.get("base_fare", 0),
+            "tariff_zone": fare.get("tariff_zone"),
         }
         # Apply promo on top of computed fare (per-vehicle so user sees the impact)
         if promo_info and promo_info.get("valid"):
@@ -1988,6 +2056,12 @@ async def book_ride(req: FlexBookRequest, request: Request):
         }
     else:
         fare_estimate = apply_multi_tariff(fare_estimate, matched_zone, time_info)
+
+    if fare_estimate.get("booking_supported") is False or str(fare_estimate.get("currency") or "EUR").upper() != "EUR":
+        raise HTTPException(
+            status_code=503,
+            detail=fare_estimate.get("settlement_reason") or "Lokaler Taxi-Tarif ist verfügbar, aber FX-/Wallet-Settlement ist noch nicht verbunden.",
+        )
 
     fare_total = fare_estimate["total"]
 
