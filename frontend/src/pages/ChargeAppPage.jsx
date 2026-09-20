@@ -34,6 +34,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     purchase_date: "",
     merchant_name: "",
     invoice_number: "",
+    warranty_months: "24",
   });
   const [invoiceForm, setInvoiceForm] = useState({
     invoice_number: "",
@@ -82,9 +83,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
     setBusy("warranty");
     try {
+      const payload = {
+        ...warrantyForm,
+        warranty_months: Number(warrantyForm.warranty_months) || 24,
+      };
       const response = editingWarrantyId
-        ? await api.updateChargeWarranty(editingWarrantyId, warrantyForm)
-        : await api.registerChargeWarranty(warrantyForm);
+        ? await api.updateChargeWarranty(editingWarrantyId, payload)
+        : await api.registerChargeWarranty(payload);
       const registrationId = response?.warranty?.registration_id || editingWarrantyId;
       if (warrantyFile && registrationId) {
         await api.uploadChargeWarrantyAttachment(registrationId, warrantyFile);
@@ -96,6 +101,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
         purchase_date: "",
         merchant_name: "",
         invoice_number: "",
+        warranty_months: "24",
       });
       setWarrantyFile(null);
       setEditingWarrantyId("");
@@ -145,6 +151,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       purchase_date: item.purchase_date || "",
       merchant_name: item.merchant_name || "",
       invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+      warranty_months: String(item.warranty_months || 24),
     });
     setWarrantyFile(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -488,6 +495,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <Field value={warrantyForm.product_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, product_name: value }))} placeholder="Produktname" testid="charge-app-warranty-product-input" />
               <Field value={warrantyForm.serial_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="charge-app-warranty-serial-input" />
               <Field value={warrantyForm.purchase_date} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, purchase_date: value }))} placeholder="Kaufdatum 2026-07-29" testid="charge-app-warranty-purchase-date-input" />
+              <Field value={warrantyForm.warranty_months} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, warranty_months: value.replace(/\D/g, "").slice(0, 3) }))} placeholder="Garantie in Monaten (z. B. 24)" testid="charge-app-warranty-months-input" />
               <Field value={warrantyForm.invoice_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, invoice_number: value }))} placeholder="Rechnungsnummer" testid="charge-app-warranty-invoice-input" />
             </div>
             <Field value={warrantyForm.merchant_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, merchant_name: value }))} placeholder="Händlername" testid="charge-app-warranty-merchant-input" />
