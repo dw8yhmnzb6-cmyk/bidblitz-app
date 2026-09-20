@@ -2197,3 +2197,24 @@ def test_nft_value_flows_fail_closed_until_live_provider_exists():
     assert "TEST_MODE_FULL_ACCESS" in app
     assert "Mint-/Custody-/Marketplace-Provider" in app
 
+def test_admin_ai_cannot_execute_destructive_account_or_wallet_mutations():
+    source = (BACKEND_DIR / "routes" / "admin_ai_assistant.py").read_text(encoding="utf-8")
+
+    assert "BLOCKED_HIGH_RISK_OPERATIONS" in source
+    for op in [
+        "customer_ban_toggle",
+        "customer_delete_by_email",
+        "wallet_credit_user",
+        "wallet_debit_user",
+    ]:
+        assert f'"{op}"' in source
+        assert f'"{op}",\n' not in source.split("SUPPORTED_OPERATIONS = {", 1)[1].split("}", 1)[0]
+
+    assert "Hochrisiko-Aktion im Admin-KI-Assistenten deaktiviert" in source
+    assert "kanonischen Admin-Wallet-/Kontoverwaltungs-Pfad" in source
+    assert 'await db.users.delete_one({"_id": user["_id"]})' not in source
+    assert 'await db.wallets.delete_many({"user_id": str(user["_id"])})' not in source
+    assert '"$inc": {"balance_blz": amount}' not in source
+    assert '"$inc": {"balance_blz": -amount}' not in source
+    assert 'if op_type == "customer_ban_toggle":' not in source
+
