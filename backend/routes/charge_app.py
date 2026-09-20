@@ -529,6 +529,48 @@ async def _find_user_invoice(user_id: str, invoice_id: str) -> Dict[str, Any]:
     return doc
 
 
+def _serial_key(value: Any) -> str:
+    return "".join(str(value or "").strip().upper().split())
+
+
+async def _find_conflicting_active_warranty(
+    *,
+    user_id: str,
+    registration_id: str = "",
+    product_id: str = "",
+    product_name: str = "",
+    serial_number: str,
+) -> Optional[Dict[str, Any]]:
+    key = _serial_key(serial_number)
+    if not key:
+        return None
+
+    identity: Dict[str, Any]
+    if product_id:
+        identity = {"product_id": product_id}
+    else:
+        name = str(product_name or "").strip()
+        identity = {"product_name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}
+
+    query: Dict[str, Any] = {
+        **identity,
+        "$or": [
+            {"serial_key": key},
+            {"serial_number": {"$regex": f"^{re.escape(str(serial_number or '').strip())}$", "$options": "i"}},
+        ],
+    }
+    if registration_id:
+        query["registration_id"] = {"$ne": registration_id}
+
+    candidates = await db.charge_app_warranties.find(query, {"_id": 0}).limit(20).to_list(20)
+    for candidate in candidates:
+        if str(candidate.get("user_id") or "") == user_id and registration_id and candidate.get("registration_id") == registration_id:
+            continue
+        if _warranty_card(candidate).get("status") == "active":
+            return candidate
+    return None
+
+
 def _clean_optional_text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -1264,12 +1306,25 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if not merchant_binding:
         merchant_binding = await _resolve_charge_merchant(req.merchant_name)
     canonical_product_name = (product or {}).get("name") or req.product_name.strip()
+    canonical_product_id = (product or {}).get("product_id") or req.product_id.strip()
+    conflict = await _find_conflicting_active_warranty(
+        user_id=user_id,
+        product_id=canonical_product_id,
+        product_name=canonical_product_name,
+        serial_number=serial,
+    )
+    if conflict and str(conflict.get("user_id") or "") != user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Diese Seriennummer ist für dieses Charge-Produkt bereits auf einem anderen Konto aktiv registriert.",
+        )
     doc = {
         "registration_id": f"CHG-WAR-{uuid.uuid4().hex[:10].upper()}",
         "user_id": user_id,
-        "product_id": (product or {}).get("product_id") or req.product_id.strip(),
+        "product_id": canonical_product_id,
         "product_name": canonical_product_name,
         "serial_number": serial,
+        "serial_key": _serial_key(serial),
         "purchase_date": req.purchase_date.strip(),
         "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
         "merchant_id": merchant_binding.get("merchant_id") or "",
@@ -1355,14 +1410,20 @@ async def update_charge_warranty(
     if not product_name or not serial_number:
         raise HTTPException(status_code=400, detail="Produktname und Seriennummer sind erforderlich")
 
-    if serial_number != current.get("serial_number"):
-        duplicate = await db.charge_app_warranties.find_one({
-            "user_id": user_id,
-            "serial_number": serial_number,
-            "registration_id": {"$ne": registration_id},
-        })
-        if duplicate:
-            raise HTTPException(status_code=409, detail="Diese Seriennummer ist bereits registriert")
+    if serial_number != current.get("serial_number") or updates.get("product_id") or updates.get("product_name"):
+        conflict = await _find_conflicting_active_warranty(
+            user_id=user_id,
+            registration_id=registration_id,
+            product_id=updates.get("product_id", current.get("product_id", "")),
+            product_name=updates.get("product_name", current.get("product_name", "")),
+            serial_number=serial_number,
+        )
+        if conflict:
+            raise HTTPException(
+                status_code=409,
+                detail="Diese Seriennummer ist für dieses Charge-Produkt bereits aktiv registriert.",
+            )
+    updates["serial_key"] = _serial_key(serial_number)
 
     updates["updated_at"] = _now_iso()
     await db.charge_app_warranties.update_one(
