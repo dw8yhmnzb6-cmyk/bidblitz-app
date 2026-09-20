@@ -279,26 +279,17 @@ async def generate_qr(req: QRRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
-    # Look up merchant profile
+    # Only approved merchant accounts may issue payment QR codes.
     merchant = await db.merchants.find_one({"user_id": user_id})
-    if not merchant:
-        # Auto-create merchant profile
-        merchant_doc = {
-            "user_id": user_id,
-            "business_name": f"{user.get('name', 'User')}'s Store",
-            "total_earnings": 0.0,
-            "gross_earnings": 0.0,
-            "total_fees": 0.0,
-            "total_transactions": 0,
-            "available_payout": 0.0,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        result = await db.merchants.insert_one(merchant_doc)
-        merchant_id = str(result.inserted_id)
-        business_name = merchant_doc["business_name"]
-    else:
-        merchant_id = str(merchant["_id"])
-        business_name = merchant.get("business_name", "")
+    if (
+        not merchant
+        or user.get("role") != "merchant"
+        or merchant.get("status") != "approved"
+    ):
+        raise HTTPException(status_code=403, detail="Freigegebenes Händlerkonto erforderlich")
+
+    merchant_id = str(merchant.get("merchant_id") or merchant.get("_id"))
+    business_name = merchant.get("business_name", "")
 
     # Generate QR payload
     qr_ref = f"QR-{secrets.token_hex(4).upper()}"
