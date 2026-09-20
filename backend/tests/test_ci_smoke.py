@@ -1814,6 +1814,12 @@ def test_premium_page_uses_canonical_subscription_backend():
 
     assert "idempotency_key=idempotency_key" in subscription
     assert "subscription_purchase_lock" in subscription
+    assert "tx_type=TransactionType.SUBSCRIPTION_RENEWAL" in subscription
+    assert 'idempotency_key=f"subscription-renewal:{renewal_key}"' in subscription
+    assert '"last_renewal_key": {"$ne": renewal_key}' in subscription
+    assert '"$inc": {"renewal_count": 1}' in subscription
+    assert 'f"renewal:{sub[\'subscription_id\']}:{renewal_key}"' in subscription
+    assert 'subscription-renewed:{sub[\'subscription_id\']}:{renewal_key}' in subscription
 
 
 def test_unverified_cashback_insurance_roundup_and_lottery_are_not_live_flows():
@@ -1987,6 +1993,12 @@ def test_premium_page_uses_canonical_subscription_backend():
 
     assert "idempotency_key=idempotency_key" in subscription
     assert "subscription_purchase_lock" in subscription
+    assert "tx_type=TransactionType.SUBSCRIPTION_RENEWAL" in subscription
+    assert 'idempotency_key=f"subscription-renewal:{renewal_key}"' in subscription
+    assert '"last_renewal_key": {"$ne": renewal_key}' in subscription
+    assert '"$inc": {"renewal_count": 1}' in subscription
+    assert 'f"renewal:{sub[\'subscription_id\']}:{renewal_key}"' in subscription
+    assert 'subscription-renewed:{sub[\'subscription_id\']}:{renewal_key}' in subscription
 
 
 def test_unverified_cashback_insurance_roundup_and_lottery_are_not_live_flows():
