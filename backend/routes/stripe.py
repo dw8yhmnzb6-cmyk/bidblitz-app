@@ -393,16 +393,27 @@ async def stripe_webhook(request: Request):
         event = await stripe_checkout.handle_webhook(body, signature)
 
         if event.payment_status == "paid" and event.session_id:
-            try:
+            # Domain settlements must never be silently acknowledged. Only invoke a
+            # handler when this Stripe session is known to belong to that domain;
+            # otherwise unrelated paid sessions continue normally.
+            payment_tx = await db.payment_transactions.find_one(
+                {"session_id": event.session_id},
+                {"_id": 0, "type": 1, "metadata": 1},
+            )
+            payment_type = str((payment_tx or {}).get("type") or "")
+            metadata_type = str(((payment_tx or {}).get("metadata") or {}).get("type") or "")
+
+            if payment_type in {"dating_premium", "dating_consumable"} or metadata_type in {"dating_premium", "dating_consumable"}:
                 from routes.dating import handle_dating_premium_webhook
-                await handle_dating_premium_webhook(event.session_id)
-            except Exception:
-                pass
-            try:
+                dating_settled = await handle_dating_premium_webhook(event.session_id)
+                if not dating_settled:
+                    raise RuntimeError("Dating Stripe settlement incomplete")
+
+            if payment_type == "pool_ticket" or metadata_type == "pool_ticket":
                 from routes.pool_management import handle_pool_ticket_webhook
-                await handle_pool_ticket_webhook(event.session_id)
-            except Exception:
-                pass
+                pool_ticket = await handle_pool_ticket_webhook(event.session_id)
+                if not pool_ticket:
+                    raise RuntimeError("Pool ticket Stripe settlement incomplete")
 
             # Wallet top-up settlement is shared with checkout polling. The atomic
             # user-document session marker makes polling/webhook races converge on a
@@ -422,14 +433,19 @@ async def stripe_webhook(request: Request):
                     )
                     raise
 
-            # 2. POS Feature-Purchase (Add-On Buchung)
-            try:
-                feature_purchase = await db.pos_feature_purchases.find_one({"session_id": event.session_id})
-                if feature_purchase and feature_purchase.get("status") != "completed":
-                    from routes.pos_features import activate_feature_after_payment
-                    await activate_feature_after_payment(event.session_id)
-            except Exception:
-                pass
+            # 2. POS Feature-Purchase (Add-On Buchung). A known paid
+            # purchase must either complete or make Stripe retry the webhook.
+            feature_purchase = await db.pos_feature_purchases.find_one({"session_id": event.session_id})
+            if feature_purchase and feature_purchase.get("status") != "completed":
+                from routes.pos_features import activate_feature_after_payment
+                feature_activated = await activate_feature_after_payment(event.session_id)
+                if not feature_activated:
+                    current_feature_purchase = await db.pos_feature_purchases.find_one(
+                        {"session_id": event.session_id},
+                        {"_id": 0, "status": 1},
+                    ) or {}
+                    if current_feature_purchase.get("status") != "completed":
+                        raise RuntimeError("POS feature Stripe settlement incomplete")
 
             # 3. Auction Bid-Credits Purchase. Settlement is shared and retry-safe:
             # payment_status is not marked credited until the atomic user marker,
