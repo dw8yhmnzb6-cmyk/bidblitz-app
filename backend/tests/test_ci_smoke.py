@@ -953,6 +953,11 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert "paid_pending_fulfillment" not in page
     assert "Tracking erst nach echter Übergabe an Versand" in page
     assert "winner-tracking-number" in page
+    assert "const paidWins =" in page
+    assert "auction-paid-wins" in page
+    assert "Meine Bestellungen" in page
+    assert "winner_fulfillment_status" in page
+    assert "auction-order-win-" in page
     assert "auction-pending-wins" in page
     assert "Gewonnen · Zahlung offen" in page
     assert "winner_payment_status !== \"paid\"" in page
