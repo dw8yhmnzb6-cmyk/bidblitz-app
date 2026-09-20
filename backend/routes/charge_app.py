@@ -13,7 +13,11 @@ from core.security import get_current_user
 from routes.loyalty_system import get_loyalty_status as _get_loyalty_status
 from routes.loyalty_system import get_loyalty_stats as _get_loyalty_stats
 from routes.loyalty_system import get_reward_history as _get_loyalty_history
-from services.charge_storage import upload_bytes as _storage_upload_bytes, get_bytes as _storage_get_bytes
+from services.charge_storage import (
+    upload_bytes as _storage_upload_bytes,
+    get_bytes as _storage_get_bytes,
+    delete_bytes as _storage_delete_bytes,
+)
 
 
 router = APIRouter(prefix="/api/charge-app", tags=["charge-app"])
@@ -44,6 +48,23 @@ class ChargeInvoiceSaveRequest(BaseModel):
     purchase_date: str = ""
     product_name: str = ""
     serial_number: str = ""
+
+
+class ChargeWarrantyUpdateRequest(BaseModel):
+    product_name: Optional[str] = None
+    serial_number: Optional[str] = None
+    purchase_date: Optional[str] = None
+    merchant_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+
+
+class ChargeInvoiceUpdateRequest(BaseModel):
+    invoice_number: Optional[str] = None
+    merchant_name: Optional[str] = None
+    amount: Optional[float] = None
+    purchase_date: Optional[str] = None
+    product_name: Optional[str] = None
+    serial_number: Optional[str] = None
 
 
 class ChargeInteractionRequest(BaseModel):
@@ -433,6 +454,28 @@ async def _find_user_invoice(user_id: str, invoice_id: str) -> Dict[str, Any]:
     return doc
 
 
+def _clean_optional_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _delete_attachment_blob(attachment: Dict[str, Any]) -> None:
+    storage_path = attachment.get("storage_path")
+    if not storage_path:
+        return
+    try:
+        _storage_delete_bytes(storage_path)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Datei konnte nicht aus dem Charge-Speicher gelöscht werden: {str(exc)[:160]}",
+        )
+
+
+def _delete_document_blobs(doc: Dict[str, Any]) -> None:
+    for attachment in doc.get("attachments") or []:
+        _delete_attachment_blob(attachment)
+
+
 def _matches_merchant_context(merchant_name: Any, merchant_payload: Dict[str, Any], slug: str) -> bool:
     merchant_slug = _slugify(merchant_name)
     if not merchant_slug:
@@ -636,6 +679,114 @@ async def save_charge_invoice(req: ChargeInvoiceSaveRequest, request: Request):
     return {"ok": True, "invoice": doc}
 
 
+@router.put("/warranty/{registration_id}")
+async def update_charge_warranty(
+    registration_id: str,
+    req: ChargeWarrantyUpdateRequest,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    current = await _find_user_warranty(user_id, registration_id)
+    updates = req.dict(exclude_unset=True)
+
+    for key in ("product_name", "serial_number", "purchase_date", "merchant_name", "invoice_number"):
+        if key in updates:
+            updates[key] = _clean_optional_text(updates[key])
+
+    product_name = updates.get("product_name", current.get("product_name", ""))
+    serial_number = updates.get("serial_number", current.get("serial_number", ""))
+    if not product_name or not serial_number:
+        raise HTTPException(status_code=400, detail="Produktname und Seriennummer sind erforderlich")
+
+    if serial_number != current.get("serial_number"):
+        duplicate = await db.charge_app_warranties.find_one({
+            "user_id": user_id,
+            "serial_number": serial_number,
+            "registration_id": {"$ne": registration_id},
+        })
+        if duplicate:
+            raise HTTPException(status_code=409, detail="Diese Seriennummer ist bereits registriert")
+
+    updates["updated_at"] = _now_iso()
+    await db.charge_app_warranties.update_one(
+        {"user_id": user_id, "registration_id": registration_id},
+        {"$set": updates},
+    )
+    updated = {**current, **updates}
+    return {"ok": True, "warranty": _warranty_card(updated)}
+
+
+@router.delete("/warranty/{registration_id}")
+async def delete_charge_warranty(registration_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    warranty = await _find_user_warranty(user_id, registration_id)
+    _delete_document_blobs(warranty)
+    result = await db.charge_app_warranties.delete_one({
+        "user_id": user_id,
+        "registration_id": registration_id,
+    })
+    if result.deleted_count != 1:
+        raise HTTPException(status_code=409, detail="Garantie konnte nicht gelöscht werden")
+    return {"ok": True, "registration_id": registration_id}
+
+
+@router.put("/invoices/{invoice_id}")
+async def update_charge_invoice(
+    invoice_id: str,
+    req: ChargeInvoiceUpdateRequest,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    current = await _find_user_invoice(user_id, invoice_id)
+    updates = req.dict(exclude_unset=True)
+
+    for key in ("invoice_number", "merchant_name", "purchase_date", "product_name", "serial_number"):
+        if key in updates:
+            updates[key] = _clean_optional_text(updates[key])
+    if "amount" in updates:
+        updates["amount"] = _safe_float(updates["amount"])
+
+    invoice_number = updates.get("invoice_number", current.get("invoice_number", ""))
+    merchant_name = updates.get("merchant_name", current.get("merchant_name", ""))
+    if not invoice_number or not merchant_name:
+        raise HTTPException(status_code=400, detail="Rechnungsnummer und Händlername sind erforderlich")
+
+    if invoice_number != current.get("invoice_number"):
+        duplicate = await db.charge_app_invoices.find_one({
+            "user_id": user_id,
+            "invoice_number": invoice_number,
+            "invoice_id": {"$ne": invoice_id},
+        })
+        if duplicate:
+            raise HTTPException(status_code=409, detail="Diese Rechnungsnummer ist bereits gespeichert")
+
+    updates["updated_at"] = _now_iso()
+    await db.charge_app_invoices.update_one(
+        {"user_id": user_id, "invoice_id": invoice_id},
+        {"$set": updates},
+    )
+    updated = {**current, **updates}
+    return {"ok": True, "invoice": _invoice_card(updated)}
+
+
+@router.delete("/invoices/{invoice_id}")
+async def delete_charge_invoice(invoice_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    invoice = await _find_user_invoice(user_id, invoice_id)
+    _delete_document_blobs(invoice)
+    result = await db.charge_app_invoices.delete_one({
+        "user_id": user_id,
+        "invoice_id": invoice_id,
+    })
+    if result.deleted_count != 1:
+        raise HTTPException(status_code=409, detail="Rechnung konnte nicht gelöscht werden")
+    return {"ok": True, "invoice_id": invoice_id}
+
+
 @router.post("/warranty/{registration_id}/attachments")
 async def upload_warranty_attachment(registration_id: str, request: Request, file: UploadFile = File(...)):
     user = await get_current_user(request)
@@ -700,6 +851,68 @@ async def download_invoice_attachment(invoice_id: str, attachment_id: str, reque
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
     content, content_type = _storage_get_bytes(attachment["storage_path"])
     return StreamingResponse(BytesIO(content), media_type=attachment.get("content_type") or content_type, headers={"Content-Disposition": f"attachment; filename={attachment.get('original_filename') or 'charge-datei'}"})
+
+
+@router.delete("/warranty/{registration_id}/attachments/{attachment_id}")
+async def delete_warranty_attachment(
+    registration_id: str,
+    attachment_id: str,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    warranty = await _find_user_warranty(user_id, registration_id)
+    attachment = next(
+        (item for item in (warranty.get("attachments") or []) if item.get("attachment_id") == attachment_id),
+        None,
+    )
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    _delete_attachment_blob(attachment)
+    await db.charge_app_warranties.update_one(
+        {"user_id": user_id, "registration_id": registration_id},
+        {"$pull": {"attachments": {"attachment_id": attachment_id}}, "$set": {"updated_at": _now_iso()}},
+    )
+    remaining = [
+        item for item in (warranty.get("attachments") or [])
+        if item.get("attachment_id") != attachment_id
+    ]
+    return {
+        "ok": True,
+        "attachment_id": attachment_id,
+        "warranty": _warranty_card({**warranty, "attachments": remaining, "updated_at": _now_iso()}),
+    }
+
+
+@router.delete("/invoices/{invoice_id}/attachments/{attachment_id}")
+async def delete_invoice_attachment(
+    invoice_id: str,
+    attachment_id: str,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    invoice = await _find_user_invoice(user_id, invoice_id)
+    attachment = next(
+        (item for item in (invoice.get("attachments") or []) if item.get("attachment_id") == attachment_id),
+        None,
+    )
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    _delete_attachment_blob(attachment)
+    await db.charge_app_invoices.update_one(
+        {"user_id": user_id, "invoice_id": invoice_id},
+        {"$pull": {"attachments": {"attachment_id": attachment_id}}, "$set": {"updated_at": _now_iso()}},
+    )
+    remaining = [
+        item for item in (invoice.get("attachments") or [])
+        if item.get("attachment_id") != attachment_id
+    ]
+    return {
+        "ok": True,
+        "attachment_id": attachment_id,
+        "invoice": _invoice_card({**invoice, "attachments": remaining, "updated_at": _now_iso()}),
+    }
 
 
 @router.get("/warranty/{registration_id}/pass")
