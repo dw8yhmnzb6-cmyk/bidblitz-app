@@ -148,14 +148,11 @@ async def get_checkout_status(session_id: str, request: Request):
         }},
     )
 
-    if new_payment_status == "paid" and not txn.get("processed"):
-        # Activate Staff subscription
+    settlement_pending = False
+    if new_payment_status == "paid":
         plan = (status.metadata or {}).get("plan") or txn.get("metadata", {}).get("plan", "pro")
-        await _activate_subscription(merchant_id, plan, session_id=session_id)
-        await db.payment_transactions.update_one(
-            {"session_id": session_id},
-            {"$set": {"processed": True, "processed_at": datetime.now(timezone.utc).isoformat()}},
-        )
+        settled = await _settle_staff_checkout_once(session_id, merchant_id, plan)
+        settlement_pending = not settled
 
     return {
         "success": True,
@@ -163,15 +160,32 @@ async def get_checkout_status(session_id: str, request: Request):
         "status": status.status,
         "amount_total": status.amount_total,
         "currency": status.currency,
+        "settlement_pending": settlement_pending,
     }
 
 
 async def _activate_subscription(merchant_id: str, plan: str, session_id: Optional[str] = None,
                                  stripe_subscription_id: Optional[str] = None,
                                  stripe_customer_id: Optional[str] = None):
-    """Aktiviert Plan in staff_subscriptions Collection."""
+    """Activate a staff plan idempotently for one paid checkout session."""
     now = datetime.now(timezone.utc)
-    end = now + timedelta(days=30)
+    existing = await db.staff_subscriptions.find_one({"merchant_id": merchant_id})
+
+    if existing and session_id and existing.get("last_checkout_session_id") == session_id:
+        return True
+
+    base = now
+    if existing and existing.get("current_period_end"):
+        try:
+            current_end = datetime.fromisoformat(str(existing["current_period_end"]).replace("Z", "+00:00"))
+            if current_end.tzinfo is None:
+                current_end = current_end.replace(tzinfo=timezone.utc)
+            if current_end > base:
+                base = current_end
+        except Exception:
+            pass
+    end = base + timedelta(days=30)
+
     update = {
         "merchant_id": merchant_id,
         "plan": plan,
@@ -189,7 +203,7 @@ async def _activate_subscription(merchant_id: str, plan: str, session_id: Option
         update["stripe_subscription_id"] = stripe_subscription_id
     if stripe_customer_id:
         update["stripe_customer_id"] = stripe_customer_id
-    existing = await db.staff_subscriptions.find_one({"merchant_id": merchant_id})
+
     if existing:
         await db.staff_subscriptions.update_one({"merchant_id": merchant_id}, {"$set": update})
     else:
@@ -197,6 +211,93 @@ async def _activate_subscription(merchant_id: str, plan: str, session_id: Option
         update["created_at"] = now.isoformat()
         await db.staff_subscriptions.insert_one(update)
     log.info(f"Activated staff subscription: merchant={merchant_id} plan={plan}")
+    return True
+
+
+async def _settle_staff_checkout_once(session_id: str, merchant_id: str, plan: str) -> bool:
+    """Converge polling and webhook settlement with a recoverable atomic claim."""
+    txn = await db.payment_transactions.find_one(
+        {"session_id": session_id, "merchant_id": merchant_id},
+        {"_id": 0, "processed": 1, "settlement_processing": 1, "settlement_started_at": 1},
+    ) or {}
+    if txn.get("processed"):
+        return True
+
+    now = datetime.now(timezone.utc)
+    stale_before = (now - timedelta(minutes=5)).isoformat()
+    claim_token = str(uuid4())
+    claimed = await db.payment_transactions.update_one(
+        {
+            "session_id": session_id,
+            "merchant_id": merchant_id,
+            "processed": {"$ne": True},
+            "$or": [
+                {"settlement_processing": {"$ne": True}},
+                {"settlement_started_at": {"$lte": stale_before}},
+            ],
+        },
+        {"$set": {
+            "settlement_processing": True,
+            "settlement_token": claim_token,
+            "settlement_started_at": now.isoformat(),
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.payment_transactions.find_one(
+            {"session_id": session_id, "merchant_id": merchant_id},
+            {"_id": 0, "processed": 1},
+        ) or {}
+        return bool(current.get("processed"))
+
+    try:
+        await _activate_subscription(merchant_id, plan, session_id=session_id)
+        finalized = await db.payment_transactions.update_one(
+            {
+                "session_id": session_id,
+                "merchant_id": merchant_id,
+                "settlement_token": claim_token,
+                "settlement_processing": True,
+            },
+            {
+                "$set": {
+                    "processed": True,
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                "$unset": {
+                    "settlement_processing": "",
+                    "settlement_token": "",
+                    "settlement_started_at": "",
+                    "settlement_error": "",
+                },
+            },
+        )
+        if finalized.modified_count == 1:
+            return True
+
+        current = await db.payment_transactions.find_one(
+            {"session_id": session_id, "merchant_id": merchant_id},
+            {"_id": 0, "processed": 1},
+        ) or {}
+        if current.get("processed"):
+            return True
+        raise RuntimeError("Staff subscription settlement finalization failed")
+    except Exception as exc:
+        await db.payment_transactions.update_one(
+            {
+                "session_id": session_id,
+                "merchant_id": merchant_id,
+                "settlement_token": claim_token,
+            },
+            {
+                "$set": {"settlement_error": str(exc)[:300]},
+                "$unset": {
+                    "settlement_processing": "",
+                    "settlement_token": "",
+                    "settlement_started_at": "",
+                },
+            },
+        )
+        raise
 
 
 # ────────────────────────────────────────────────────────────────
@@ -244,13 +345,10 @@ async def stripe_webhook(request: Request):
                 "webhook_received_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        txn = await db.payment_transactions.find_one({"session_id": session_id})
-        if evt.payment_status == "paid" and txn and not txn.get("processed") and merchant_id and plan:
-            await _activate_subscription(merchant_id, plan, session_id=session_id)
-            await db.payment_transactions.update_one(
-                {"session_id": session_id},
-                {"$set": {"processed": True, "processed_at": datetime.now(timezone.utc).isoformat()}},
-            )
+        if evt.payment_status == "paid" and merchant_id and plan:
+            settled = await _settle_staff_checkout_once(session_id, merchant_id, plan)
+            if not settled:
+                raise HTTPException(status_code=503, detail="Staff subscription settlement in progress")
 
     # Handle subscription lifecycle events (for future Stripe Subscription products)
     if event_type in ("customer.subscription.deleted", "customer.subscription.canceled"):
