@@ -308,6 +308,8 @@ def test_p2p_money_sends_require_kyc_and_idempotency():
     assert "_ensure_wallet_write_allowed(user)" in transfer_source
     assert "_require_idempotency_key(req.idempotency_key, request)" in transfer_source
     assert "idempotency_key=client_idempotency_key" in transfer_source
+    assert "Nearby-Empfang ist in Production deaktiviert" in transfer_source
+    assert "Nearby-Nutzer sind in Production deaktiviert" in transfer_source
 
     assert "_ensure_wallet_write_allowed(user)" in handle_source
     assert "_require_idempotency_key(req.idempotency_key, request)" in handle_source
