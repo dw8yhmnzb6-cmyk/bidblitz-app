@@ -7,20 +7,23 @@ simulation: charging hardware must connect via OCPP-1.6J at
 """
 from __future__ import annotations
 
+import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import (
+    credit_wallet,
+    debit_wallet,
     transfer_between_wallets,
     TransactionType,
-    generate_reference,
 )
 from services import ocpp_csms
 from services import ocpp_v201
@@ -131,9 +134,650 @@ async def _load_tariff(tariff_id) -> Optional[Dict[str, Any]]:
     return None
 
 
+async def _claim_ev_user_session(user_id: str, session_id: str) -> None:
+    """Atomically allow at most one live EV charging flow per user."""
+    claim = {
+        "_id": user_id,
+        "session_id": session_id,
+        "created_at": _utcnow_iso(),
+    }
+    try:
+        await db.ev_user_session_claims.insert_one(claim)
+        return
+    except DuplicateKeyError:
+        existing = await db.ev_user_session_claims.find_one({"_id": user_id}) or {}
+        existing_session_id = existing.get("session_id")
+        existing_session = None
+        if existing_session_id:
+            existing_session = await db.ev_charging_sessions.find_one(
+                {"session_id": existing_session_id},
+                {"_id": 0, "status": 1},
+            )
+
+        live_statuses = {
+            "authorized", "starting", "active", "stopping", "stop_failed",
+            "settle_failed", "refund_failed",
+        }
+        if existing_session and existing_session.get("status") in live_statuses:
+            raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
+
+        # Reclaim only clearly stale claims.  A very recent claim without a
+        # session can belong to another request between claim and session write.
+        stale = False
+        created_at = existing.get("created_at")
+        if created_at:
+            try:
+                created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+                stale = created < datetime.now(timezone.utc) - timedelta(minutes=2)
+            except Exception:
+                stale = False
+        if existing_session is None and not stale:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+
+        deleted = await db.ev_user_session_claims.delete_one({
+            "_id": user_id,
+            "session_id": existing_session_id,
+        })
+        if deleted.deleted_count != 1:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+        try:
+            await db.ev_user_session_claims.insert_one(claim)
+        except DuplicateKeyError:
+            raise HTTPException(409, "Eine Ladesession wird bereits gestartet")
+
+
+async def _release_ev_user_session_claim(user_id: Optional[str], session_id: str) -> None:
+    if not user_id:
+        return
+    await db.ev_user_session_claims.delete_one({
+        "_id": str(user_id),
+        "session_id": session_id,
+    })
+
+
+async def _refund_ev_reservation(session_id: str, reason: str) -> bool:
+    """Release an unused EV wallet reservation exactly once."""
+    sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
+    if not sess:
+        return True
+    if sess.get("reservation_state") in ("released", "consumed"):
+        return True
+
+    amount = round(float(sess.get("reserved_amount") or 0), 2)
+    user_id = sess.get("user_id")
+    if amount <= 0 or not user_id:
+        return True
+    if sess.get("reservation_state") not in ("held", "release_failed"):
+        return True
+
+    refund = await credit_wallet(
+        user_id=str(user_id),
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"EV-Reservierung freigegeben {session_id}",
+        reference=f"EVHOLDREFUND-{session_id}",
+        metadata={
+            "session_id": session_id,
+            "charge_point_id": sess.get("charge_point_id"),
+            "reason": reason,
+            "reservation_release": True,
+        },
+    )
+    if not refund.success:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "reservation_state": "release_failed",
+                "reservation_error": refund.error,
+                "reservation_release_failed_at": _utcnow_iso(),
+            }},
+        )
+        return False
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "reservation_state": "released",
+            "reservation_released_at": _utcnow_iso(),
+            "reservation_refund_ref": refund.reference or f"EVHOLDREFUND-{session_id}",
+            "reservation_error": None,
+        }},
+    )
+    return True
+
+
+async def _ensure_ocpi_user_token(user: Dict[str, Any]) -> Dict[str, Any]:
+    """Return/create the APP_USER token BidBlitz presents to roaming CPOs."""
+    user_id = str(user["_id"])
+    existing = await db.ocpi_tokens.find_one(
+        {"user_id": user_id, "type": "APP_USER", "active": True},
+        {"_id": 0},
+    )
+    if existing:
+        return existing
+
+    from routes import ocpi as ocpi_route
+
+    digest = hashlib.sha256(user_id.encode("utf-8")).hexdigest().upper()
+    uid = f"BB{digest[:22]}"
+    doc = {
+        "country_code": ocpi_route.OCPI_COUNTRY_CODE,
+        "party_id": ocpi_route.OCPI_PARTY_ID,
+        "uid": uid,
+        "type": "APP_USER",
+        "contract_id": f"{ocpi_route.OCPI_PARTY_ID}-{digest[:28]}"[:36],
+        "visual_number": uid,
+        "issuer": ocpi_route.OCPI_BUSINESS_NAME,
+        "valid": True,
+        "whitelist": "ALLOWED",
+        "language": "de",
+        "default_profile_type": "GREEN",
+        "user_id": user_id,
+        "minimum_balance": 1.0,
+        "active": True,
+        "last_updated": _utcnow_iso(),
+        "created_at": _utcnow_iso(),
+    }
+    await db.ocpi_tokens.update_one(
+        {"uid": uid, "type": "APP_USER"},
+        {"$setOnInsert": doc},
+        upsert=True,
+    )
+    return await db.ocpi_tokens.find_one(
+        {"uid": uid, "type": "APP_USER"},
+        {"_id": 0},
+    ) or doc
+
+
+async def settle_roaming_cdr(session_id: str, cdr: Dict[str, Any]) -> bool:
+    """Settle an eMSP-side roaming CDR against the customer's held amount.
+
+    The customer hold already sits in the system wallet.  The final CDR leaves
+    only the actual roaming charge there, refunds unused funds, and creates an
+    external-partner payable.  No external payout is executed here.
+    """
+    stale_before = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    sess = await db.ev_charging_sessions.find_one_and_update(
+        {
+            "session_id": session_id,
+            "ocpi_roaming": True,
+            "roaming_settlement_state": {"$ne": "completed"},
+            "$or": [
+                {"roaming_settlement_state": {"$exists": False}},
+                {"roaming_settlement_state": {"$in": ["failed", "retryable"]}},
+                {"roaming_settlement_started_at": {"$lt": stale_before}},
+            ],
+        },
+        {"$set": {
+            "roaming_settlement_state": "processing",
+            "roaming_settlement_started_at": _utcnow_iso(),
+        }},
+        return_document=True,
+    )
+    if not sess:
+        existing = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+        return bool(existing and existing.get("roaming_settlement_state") == "completed")
+
+    currency = str(cdr.get("currency") or sess.get("currency") or "EUR").upper()
+    total_cost = cdr.get("total_cost") or {}
+    gross = round(float(
+        total_cost.get("incl_vat")
+        if total_cost.get("incl_vat") is not None
+        else total_cost.get("excl_vat") or 0
+    ), 2)
+    net = round(float(
+        total_cost.get("excl_vat")
+        if total_cost.get("excl_vat") is not None
+        else gross
+    ), 2)
+    vat = round(max(0.0, gross - net), 2)
+
+    if currency != "EUR":
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "settle_failed",
+                "roaming_settlement_state": "failed",
+                "settlement_error": f"Unsupported roaming currency: {currency}",
+            }},
+        )
+        return False
+
+    user_id = str(sess.get("user_id") or "")
+    if not user_id:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "settle_failed",
+                "roaming_settlement_state": "failed",
+                "settlement_error": "Roaming session has no customer",
+            }},
+        )
+        return False
+
+    held = round(float(sess.get("reserved_amount") or 0), 2)
+    has_hold = sess.get("reservation_state") == "held" and held > 0
+    funded = held if has_hold else 0.0
+
+    if gross > funded:
+        overage = round(gross - funded, 2)
+        debit = await debit_wallet(
+            user_id=user_id,
+            amount=overage,
+            tx_type=TransactionType.EV_CHARGING,
+            description=f"OCPI Roaming Nachbelastung {session_id}",
+            reference=f"EVROAMOVER-{session_id}",
+            metadata={
+                "session_id": session_id,
+                "partner_id": sess.get("ocpi_partner_id"),
+                "remote_cdr_id": cdr.get("id"),
+                "roaming": True,
+            },
+        )
+        if not debit.success:
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "settle_failed",
+                    "roaming_settlement_state": "failed",
+                    "settlement_error": debit.error or "Roaming overage debit failed",
+                }},
+            )
+            return False
+        funded = round(funded + overage, 2)
+
+    refund_amount = round(max(0.0, funded - gross), 2)
+    if refund_amount > 0:
+        refund = await credit_wallet(
+            user_id=user_id,
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description=f"OCPI Roaming Restreservierung {session_id}",
+            reference=f"EVROAMREF-{session_id}",
+            source="ocpi_roaming_settlement",
+            metadata={
+                "session_id": session_id,
+                "partner_id": sess.get("ocpi_partner_id"),
+                "remote_cdr_id": cdr.get("id"),
+                "reserved_amount": funded,
+                "final_cost": gross,
+                "roaming": True,
+            },
+        )
+        if not refund.success:
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "settle_failed",
+                    "roaming_settlement_state": "failed",
+                    "settlement_error": refund.error or "Roaming reservation refund failed",
+                }},
+            )
+            return False
+
+    existing_receipt = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+    receipt_no = (existing_receipt or {}).get("receipt_no") or await _next_receipt_no()
+    receipt_doc = {
+        "receipt_no": receipt_no,
+        "session_id": session_id,
+        "user_id": user_id,
+        "charge_point_id": sess.get("charge_point_id") or sess.get("ocpi_location_id"),
+        "operator_user_id": None,
+        "vat_rate": 0.0,
+        "net_amount": net,
+        "vat_amount": vat,
+        "total_amount": gross,
+        "platform_fee": 0.0,
+        "operator_share": 0.0,
+        "commission_pct": 0.0,
+        "currency": currency,
+        "settlement_ref": f"EVROAMSET-{session_id}",
+        "line_items": [{
+            "label": "OCPI Roaming",
+            "calc": str(cdr.get("id") or "CDR"),
+            "amount": gross,
+        }],
+        "roaming": True,
+        "ocpi_partner_id": sess.get("ocpi_partner_id"),
+        "remote_cdr_id": cdr.get("id"),
+        "issued_at": (existing_receipt or {}).get("issued_at") or _utcnow_iso(),
+        "updated_at": _utcnow_iso(),
+    }
+    await db.ev_receipts.update_one(
+        {"session_id": session_id},
+        {"$set": receipt_doc},
+        upsert=True,
+    )
+
+    await db.ocpi_partner_payables.update_one(
+        {"partner_id": sess.get("ocpi_partner_id"), "remote_cdr_id": cdr.get("id")},
+        {"$set": {
+            "partner_id": sess.get("ocpi_partner_id"),
+            "remote_cdr_id": cdr.get("id"),
+            "local_session_id": session_id,
+            "amount": gross,
+            "currency": currency,
+            "status": "unsettled",
+            "cdr": cdr,
+            "updated_at": _utcnow_iso(),
+        }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+        upsert=True,
+    )
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": "completed",
+            "roaming_settlement_state": "completed",
+            "settled_at": _utcnow_iso(),
+            "final_cost": gross,
+            "net_amount": net,
+            "vat_amount": vat,
+            "receipt_no": receipt_no,
+            "settlement_ref": f"EVROAMSET-{session_id}",
+            "reservation_state": "consumed" if has_hold else sess.get("reservation_state"),
+            "reservation_final_cost": gross,
+            "ocpi_remote_cdr_id": cdr.get("id"),
+            "settlement_error": None,
+        }},
+    )
+    await _release_ev_user_session_claim(user_id, session_id)
+    return True
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Customer flow — Start charging via QR / NFC / deep-link
 # ══════════════════════════════════════════════════════════════════════════════
+class RoamingStartRequest(BaseModel):
+    country_code: str
+    party_id: str
+    location_id: str
+    evse_uid: Optional[str] = None
+    connector_id: Optional[str] = None
+    max_amount: float = Field(default=50.0, ge=1.0, le=500.0)
+
+
+@router.get("/roaming/stations")
+async def roaming_stations(
+    country_code: Optional[str] = None,
+    party_id: Optional[str] = None,
+    limit: int = 500,
+) -> Dict[str, Any]:
+    q: Dict[str, Any] = {"publish": {"$ne": False}}
+    if country_code:
+        q["country_code"] = country_code.upper()
+    if party_id:
+        q["party_id"] = party_id.upper()
+    docs = await db.ocpi_remote_locations.find(
+        q,
+        {"_id": 0},
+    ).sort("last_updated", -1).limit(min(max(limit, 1), 1000)).to_list(1000)
+    return {"stations": docs, "total": len(docs), "roaming": True}
+
+
+@router.post("/roaming/start")
+async def start_roaming_charging(req: RoamingStartRequest, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    country = req.country_code.upper()
+    party = req.party_id.upper()
+
+    location = await db.ocpi_remote_locations.find_one({
+        "country_code": country,
+        "party_id": party,
+        "id": req.location_id,
+        "publish": {"$ne": False},
+    })
+    if not location:
+        raise HTTPException(404, "Roaming-Ladestation nicht gefunden")
+
+    partner_id = location.get("source_partner_id") or f"{country}:{party}"
+    partner = await db.ocpi_partners.find_one(
+        {"partner_id": partner_id, "status": "active"},
+        {"_id": 0},
+    )
+    if not partner:
+        raise HTTPException(409, "Roaming-Partner ist nicht aktiv")
+
+    evses = location.get("evses") or []
+    evse = None
+    if req.evse_uid:
+        evse = next((e for e in evses if str(e.get("uid")) == req.evse_uid), None)
+    if evse is None and evses:
+        evse = next(
+            (e for e in evses if str(e.get("status") or "").upper() == "AVAILABLE"),
+            evses[0],
+        )
+    if not evse:
+        raise HTTPException(409, "Keine EVSE an diesem Standort verfügbar")
+    if str(evse.get("status") or "").upper() in {"OUTOFORDER", "INOPERATIVE", "REMOVED"}:
+        raise HTTPException(409, "EVSE ist nicht betriebsbereit")
+
+    connectors = evse.get("connectors") or []
+    connector = None
+    if req.connector_id is not None:
+        connector = next((x for x in connectors if str(x.get("id")) == str(req.connector_id)), None)
+    if connector is None and connectors:
+        connector = connectors[0]
+    connector_id = str((connector or {}).get("id") or req.connector_id or "1")
+
+    dup = await db.ev_charging_sessions.find_one({
+        "user_id": user_id,
+        "status": {"$in": [
+            "authorized", "starting", "active", "stopping", "stop_failed",
+            "settle_failed", "refund_failed", "roaming_waiting_cdr",
+        ]},
+    })
+    if dup:
+        raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
+
+    session_id = f"evr_{secrets.token_hex(7)}"
+    command_id = f"ocpi_out_{secrets.token_hex(8)}"
+    authorization_reference = session_id[:36]
+    token = await _ensure_ocpi_user_token(user)
+
+    await db.ev_charging_sessions.insert_one({
+        "session_id": session_id,
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "status": "authorized",
+        "ocpi_roaming": True,
+        "ocpi_partner_id": partner_id,
+        "ocpi_country_code": country,
+        "ocpi_party_id": party,
+        "ocpi_location_id": req.location_id,
+        "ocpi_evse_uid": str(evse.get("uid") or ""),
+        "ocpi_connector_id": connector_id,
+        "charge_point_id": req.location_id,
+        "connector_id": connector_id,
+        "authorization_reference": authorization_reference,
+        "reserved_amount": round(req.max_amount, 2),
+        "reservation_state": "pending",
+        "reservation_ref": f"EVROAMHOLD-{session_id}",
+        "currency": "EUR",
+        "kwh_charged": 0.0,
+        "current_cost": 0.0,
+        "ocpi_token_uid": token.get("uid"),
+        "ocpi_outbound_command_id": command_id,
+        "created_at": _utcnow_iso(),
+    })
+
+    try:
+        await _claim_ev_user_session(user_id, session_id)
+    except HTTPException:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "superseded", "error": "Concurrent EV start blocked"}},
+        )
+        raise
+
+    hold = await debit_wallet(
+        user_id=user_id,
+        amount=round(req.max_amount, 2),
+        tx_type=TransactionType.EV_CHARGING,
+        description=f"OCPI Roaming Reservierung {req.location_id}",
+        reference=f"EVROAMHOLD-{session_id}",
+        metadata={
+            "session_id": session_id,
+            "partner_id": partner_id,
+            "location_id": req.location_id,
+            "roaming": True,
+        },
+    )
+    if not hold.success:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "payment_failed",
+                "reservation_state": "failed",
+                "reservation_error": hold.error,
+            }},
+        )
+        await _release_ev_user_session_claim(user_id, session_id)
+        raise HTTPException(402, hold.error or "Wallet-Guthaben unzureichend")
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "reservation_state": "held",
+            "reservation_transaction_id": hold.transaction_id,
+            "reservation_held_at": _utcnow_iso(),
+        }},
+    )
+
+    from routes import ocpi as ocpi_route
+    response_url = (
+        f"{ocpi_route._public_base(request)}/ocpi/emsp/{ocpi_route.OCPI_VERSION}/"
+        f"commands/{command_id}"
+    )
+    public_token = {
+        k: v for k, v in token.items()
+        if k not in {"user_id", "minimum_balance", "active", "created_at"}
+    }
+    payload = {
+        "response_url": response_url,
+        "token": public_token,
+        "location_id": req.location_id,
+        "evse_uid": str(evse.get("uid") or ""),
+        "connector_id": connector_id,
+        "authorization_reference": authorization_reference,
+    }
+    await db.ocpi_outbound_commands.insert_one({
+        "command_id": command_id,
+        "command": "START_SESSION",
+        "partner_id": partner_id,
+        "local_session_id": session_id,
+        "response_url": response_url,
+        "status": "sending",
+        "created_at": _utcnow_iso(),
+    })
+    direct = await ocpi_route.send_remote_command(partner, "START_SESSION", payload)
+    direct_result = direct.get("result")
+    await db.ocpi_outbound_commands.update_one(
+        {"command_id": command_id},
+        {"$set": {
+            "direct_result": direct_result,
+            "direct_response": direct,
+            "status": "accepted" if direct_result == "ACCEPTED" else "rejected",
+            "updated_at": _utcnow_iso(),
+        }},
+    )
+
+    if direct_result != "ACCEPTED":
+        refunded = await _refund_ev_reservation(session_id, "ocpi_direct_start_rejected")
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "rejected" if refunded else "refund_failed",
+                "error": str(direct.get("message") or f"OCPI start: {direct_result}")[:300],
+            }},
+        )
+        if refunded:
+            await _release_ev_user_session_claim(user_id, session_id)
+        raise HTTPException(409, str(direct.get("message") or "Roaming-Start abgelehnt"))
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "starting", "ocpi_direct_start_result": "ACCEPTED"}},
+    )
+    return {
+        "session_id": session_id,
+        "status": "starting",
+        "roaming": True,
+        "partner_id": partner_id,
+        "location_id": req.location_id,
+        "reserved_amount": round(req.max_amount, 2),
+    }
+
+
+@router.post("/roaming/stop/{session_id}")
+async def stop_roaming_charging(session_id: str, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    sess = await db.ev_charging_sessions.find_one({
+        "session_id": session_id,
+        "ocpi_roaming": True,
+    })
+    if not sess:
+        raise HTTPException(404, "Roaming-Session nicht gefunden")
+    if str(sess.get("user_id")) != str(user["_id"]) and not _is_admin(user):
+        raise HTTPException(403, "Nicht berechtigt")
+    if sess.get("status") in ("completed", "cancelled"):
+        return {"session_id": session_id, "status": sess.get("status"), "roaming": True}
+
+    remote_session_id = sess.get("ocpi_remote_session_id")
+    if not remote_session_id:
+        raise HTTPException(409, "Remote Session-ID noch nicht verfügbar")
+
+    partner = await db.ocpi_partners.find_one(
+        {"partner_id": sess.get("ocpi_partner_id"), "status": "active"},
+        {"_id": 0},
+    )
+    if not partner:
+        raise HTTPException(409, "Roaming-Partner ist nicht aktiv")
+
+    from routes import ocpi as ocpi_route
+    command_id = f"ocpi_out_{secrets.token_hex(8)}"
+    response_url = (
+        f"{ocpi_route._public_base(request)}/ocpi/emsp/{ocpi_route.OCPI_VERSION}/"
+        f"commands/{command_id}"
+    )
+    payload = {
+        "response_url": response_url,
+        "session_id": remote_session_id,
+    }
+    await db.ocpi_outbound_commands.insert_one({
+        "command_id": command_id,
+        "command": "STOP_SESSION",
+        "partner_id": sess.get("ocpi_partner_id"),
+        "local_session_id": session_id,
+        "remote_session_id": remote_session_id,
+        "response_url": response_url,
+        "status": "sending",
+        "created_at": _utcnow_iso(),
+    })
+    direct = await ocpi_route.send_remote_command(partner, "STOP_SESSION", payload)
+    direct_result = direct.get("result")
+    await db.ocpi_outbound_commands.update_one(
+        {"command_id": command_id},
+        {"$set": {
+            "direct_result": direct_result,
+            "direct_response": direct,
+            "status": "accepted" if direct_result == "ACCEPTED" else "rejected",
+            "updated_at": _utcnow_iso(),
+        }},
+    )
+    if direct_result == "UNKNOWN_SESSION":
+        raise HTTPException(409, "Roaming-Partner kennt diese Session nicht")
+    if direct_result != "ACCEPTED":
+        raise HTTPException(409, str(direct.get("message") or "Roaming-Stop abgelehnt"))
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "stopping", "ocpi_stop_command_id": command_id}},
+    )
+    return {"session_id": session_id, "status": "stopping", "roaming": True}
+
+
 class StartChargingRequest(BaseModel):
     charge_point_id: str
     connector_id: int = 1
@@ -170,15 +814,10 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     # Pre-existing active session for same user → block
     dup = await db.ev_charging_sessions.find_one({
         "user_id": user_id,
-        "status": {"$in": ["authorized", "starting", "active"]},
+        "status": {"$in": ["authorized", "starting", "active", "stopping", "stop_failed", "settle_failed", "refund_failed"]},
     })
     if dup:
         raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
-
-    # Wallet balance check (we will deduct after session ends; here only verify)
-    balance = float(user.get("balance") or 0)
-    if balance < req.max_amount:
-        raise HTTPException(402, f"Wallet-Guthaben unzureichend (€{balance:.2f} < €{req.max_amount:.2f})")
 
     # Create authorization (id_tag = user-specific OCPP token)
     id_tag = f"BB{secrets.token_hex(8).upper()}"
@@ -210,13 +849,69 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             "currency": tariff.get("currency", "EUR"),
             "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
         },
-        "reserved_amount": req.max_amount,
+        "reserved_amount": round(req.max_amount, 2),
+        "reservation_state": "pending",
+        "reservation_ref": f"EVHOLD-{session_id}",
         "currency": "EUR",
         "kwh_charged": 0.0,
         "current_cost": 0.0,
         "status": "authorized",
         "created_at": _utcnow_iso(),
     })
+
+    try:
+        await _claim_ev_user_session(user_id, session_id)
+    except HTTPException:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "superseded", "error": "Concurrent EV start blocked"}},
+        )
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
+        )
+        raise
+
+    # Real wallet reservation: debit the cap into the system wallet before any
+    # hardware start command.  Deterministic reference makes retries safe.
+    hold = await debit_wallet(
+        user_id=user_id,
+        amount=round(req.max_amount, 2),
+        tx_type=TransactionType.EV_CHARGING,
+        description=f"EV-Reservierung {req.charge_point_id}",
+        reference=f"EVHOLD-{session_id}",
+        metadata={
+            "session_id": session_id,
+            "charge_point_id": req.charge_point_id,
+            "connector_id": req.connector_id,
+            "reservation": True,
+        },
+    )
+    if not hold.success:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "payment_failed",
+                "reservation_state": "failed",
+                "reservation_error": hold.error,
+            }},
+        )
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
+        )
+        await _release_ev_user_session_claim(user_id, session_id)
+        raise HTTPException(402, hold.error or "Wallet-Guthaben unzureichend")
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "reservation_state": "held",
+            "reservation_transaction_id": hold.transaction_id,
+            "reservation_ref": hold.reference or f"EVHOLD-{session_id}",
+            "reservation_held_at": _utcnow_iso(),
+        }},
+    )
 
     # Send RemoteStart / RequestStartTransaction depending on protocol
     try:
@@ -228,18 +923,30 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         else:
             result = await ocpp_csms.remote_start(req.charge_point_id, req.connector_id, id_tag)
     except Exception as exc:
+        refunded = await _refund_ev_reservation(session_id, "remote_start_error")
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "failed", "error": str(exc)[:200]}},
+            {"$set": {
+                "status": "failed" if refunded else "refund_failed",
+                "error": str(exc)[:200],
+            }},
         )
+        if refunded:
+            await _release_ev_user_session_claim(user_id, session_id)
         raise HTTPException(502, f"Hardware-Kommunikation fehlgeschlagen: {exc}")
 
     accepted = (result or {}).get("status") == "Accepted"
     if not accepted:
+        refunded = await _refund_ev_reservation(session_id, "remote_start_rejected")
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "rejected", "error": "Station rejected RemoteStart"}},
+            {"$set": {
+                "status": "rejected" if refunded else "refund_failed",
+                "error": "Station rejected RemoteStart",
+            }},
         )
+        if refunded:
+            await _release_ev_user_session_claim(user_id, session_id)
         raise HTTPException(409, "Ladestation hat den Start abgelehnt")
 
     await db.ev_charging_sessions.update_one(
@@ -267,26 +974,86 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
         raise HTTPException(404, "Session nicht gefunden")
     if sess.get("user_id") != str(user["_id"]) and not _is_admin(user):
         raise HTTPException(403, "Nicht berechtigt")
-    if sess.get("status") not in ("active", "starting"):
-        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({sess.get('status')})")
+
+    status = sess.get("status")
+    # Idempotent client/network retries: once a stop is already in flight or
+    # terminal, return the current state instead of sending another OCPP call.
+    if status in ("stopping", "completed", "cancelled"):
+        return {"session_id": session_id, "status": status}
+    if status not in ("active", "starting", "stop_failed"):
+        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({status})")
 
     txn_id = sess.get("ocpp_transaction_id")
     if txn_id is None:
-        await db.ev_charging_sessions.update_one(
-            {"session_id": session_id},
+        updated = await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": {"$in": ["active", "starting", "stop_failed"]}},
             {"$set": {"status": "cancelled", "stopped_at": _utcnow_iso()}},
         )
+        if not updated.modified_count:
+            latest = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+            return {"session_id": session_id, "status": (latest or {}).get("status", "cancelled")}
+        refunded = await _refund_ev_reservation(session_id, "cancelled_before_transaction")
+        if not refunded:
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {"status": "refund_failed"}},
+            )
+            raise HTTPException(502, "Reservierung konnte nicht freigegeben werden")
+        await _release_ev_user_session_claim(sess.get("user_id"), session_id)
         return {"session_id": session_id, "status": "cancelled"}
 
+    # Compare-and-set claim prevents two concurrent HTTP retries from sending
+    # duplicate RemoteStop/RequestStopTransaction messages.
+    stop_requested_at = _utcnow_iso()
+    claimed = await db.ev_charging_sessions.find_one_and_update(
+        {
+            "session_id": session_id,
+            "status": {"$in": ["active", "starting", "stop_failed"]},
+        },
+        {"$set": {
+            "status": "stopping",
+            "stop_requested_at": stop_requested_at,
+            "stop_request_error": None,
+        }},
+        return_document=True,
+    )
+    if not claimed:
+        latest = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+        latest_status = (latest or {}).get("status")
+        if latest_status in ("stopping", "completed", "cancelled"):
+            return {"session_id": session_id, "status": latest_status}
+        raise HTTPException(409, f"Session-Status erlaubt kein Stop ({latest_status})")
+
     try:
-        cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
+        cp = await db.ev_charge_points.find_one({"charge_point_id": claimed["charge_point_id"]})
         protocol = _cp_protocol(cp or {})
         if protocol == "ocpp2.0.1":
-            await ocpp_v201.request_stop_transaction(sess["charge_point_id"], txn_id)
+            result = await ocpp_v201.request_stop_transaction(claimed["charge_point_id"], txn_id)
         else:
-            await ocpp_csms.remote_stop(sess["charge_point_id"], txn_id)
+            result = await ocpp_csms.remote_stop(claimed["charge_point_id"], txn_id)
     except Exception as exc:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": "stopping", "stop_requested_at": stop_requested_at},
+            {"$set": {
+                "status": "stop_failed",
+                "stop_request_error": str(exc)[:300],
+                "stop_failed_at": _utcnow_iso(),
+            }},
+        )
         raise HTTPException(502, f"Stop-Befehl fehlgeschlagen: {exc}")
+
+    remote_status = (result or {}).get("status")
+    if remote_status and remote_status not in ("Accepted", "Scheduled"):
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id, "status": "stopping", "stop_requested_at": stop_requested_at},
+            {"$set": {
+                "status": "stop_failed",
+                "stop_request_error": f"Station returned {remote_status}",
+                "stop_failed_at": _utcnow_iso(),
+            }},
+        )
+        raise HTTPException(409, f"Ladestation hat den Stop abgelehnt ({remote_status})")
+
     return {"session_id": session_id, "status": "stopping"}
 
 
@@ -304,10 +1071,40 @@ async def my_history(request: Request, limit: int = 50) -> Dict[str, Any]:
 # Final settlement — called by ocpp_csms after StopTransaction
 # ══════════════════════════════════════════════════════════════════════════════
 async def finalize_session(session_id: str) -> None:
-    """Atomic close-out: compute net/VAT/commission, deduct from user, credit
-    operator (minus platform commission), persist receipt + line items."""
-    sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
-    if not sess or sess.get("status") == "completed":
+    """Idempotent EV close-out.
+
+    A deterministic payment reference makes wallet retries safe, while a short
+    MongoDB settlement lease prevents two OCPP stop events from settling the
+    same session concurrently.  A stale lease can be reclaimed after five
+    minutes, so a worker crash does not permanently strand the session.
+    """
+    stale_before = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+
+    current = await db.ev_charging_sessions.find_one({"session_id": session_id})
+    if not current:
+        return
+    if current.get("status") == "completed" or current.get("settlement_state") == "completed":
+        return
+
+    sess = await db.ev_charging_sessions.find_one_and_update(
+        {
+            "session_id": session_id,
+            "status": {"$ne": "completed"},
+            "settlement_state": {"$ne": "completed"},
+            "$or": [
+                {"settlement_state": {"$exists": False}},
+                {"settlement_state": {"$in": ["failed", "retryable"]}},
+                {"settlement_started_at": {"$lt": stale_before}},
+            ],
+        },
+        {"$set": {
+            "settlement_state": "processing",
+            "settlement_started_at": _utcnow_iso(),
+        }},
+        return_document=True,
+    )
+    if not sess:
+        # Another worker already owns a fresh settlement lease.
         return
 
     tariff = sess.get("tariff") or {}
@@ -337,10 +1134,104 @@ async def finalize_session(session_id: str) -> None:
 
     user_id = sess.get("user_id")
     if not user_id:
+        # OCPI CPO-side roaming session: there is no BidBlitz customer wallet
+        # to debit. Create the CDR/receivable and wait for inter-party
+        # settlement instead of manufacturing a wallet movement.
+        if sess.get("ocpi_external") and sess.get("ocpi_partner_id"):
+            cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]}) or {}
+            operator_user_id = cp.get("operator_user_id") or cp.get("owner_merchant_id")
+            commission_pct = DEFAULT_PLATFORM_COMMISSION_PCT
+            if cp.get("commission_pct_override") is not None:
+                commission_pct = float(cp["commission_pct_override"])
+            elif operator_user_id:
+                op = await db.ev_operators.find_one({"user_id": str(operator_user_id)})
+                if op and op.get("commission_pct") is not None:
+                    commission_pct = float(op["commission_pct"])
+            platform_fee = round(gross * commission_pct / 100.0, 2)
+            operator_share = round(gross - platform_fee, 2)
+
+            existing_receipt = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+            receipt_no = (existing_receipt or {}).get("receipt_no") or await _next_receipt_no()
+            receipt_doc = {
+                "receipt_no": receipt_no,
+                "session_id": session_id,
+                "user_id": None,
+                "charge_point_id": sess["charge_point_id"],
+                "operator_user_id": str(operator_user_id) if operator_user_id else None,
+                "vat_rate": vat_rate,
+                "net_amount": net,
+                "vat_amount": vat,
+                "total_amount": gross,
+                "platform_fee": platform_fee,
+                "operator_share": operator_share,
+                "commission_pct": commission_pct,
+                "currency": sess.get("currency") or "EUR",
+                "settlement_ref": f"OCPIREC-{session_id}",
+                "line_items": [{
+                    "label": "OCPI Roaming Charge",
+                    "calc": f"{kwh:.3f} kWh",
+                    "amount": gross,
+                }],
+                "roaming": True,
+                "ocpi_partner_id": sess.get("ocpi_partner_id"),
+                "ocpi_token": sess.get("ocpi_token"),
+                "authorization_reference": sess.get("authorization_reference"),
+                "issued_at": (existing_receipt or {}).get("issued_at") or _utcnow_iso(),
+                "updated_at": _utcnow_iso(),
+            }
+            await db.ev_receipts.update_one(
+                {"session_id": session_id},
+                {"$set": receipt_doc},
+                upsert=True,
+            )
+            await db.ocpi_partner_receivables.update_one(
+                {"partner_id": sess.get("ocpi_partner_id"), "session_id": session_id},
+                {"$set": {
+                    "partner_id": sess.get("ocpi_partner_id"),
+                    "session_id": session_id,
+                    "receipt_no": receipt_no,
+                    "gross": gross,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "operator_user_id": str(operator_user_id) if operator_user_id else None,
+                    "currency": sess.get("currency") or "EUR",
+                    "status": "unsettled",
+                    "updated_at": _utcnow_iso(),
+                }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                upsert=True,
+            )
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "final_cost": gross,
+                    "net_amount": net,
+                    "vat_amount": vat,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "receipt_no": receipt_no,
+                    "status": "completed",
+                    "duration_min": round(duration_min, 1),
+                    "settlement_state": "completed",
+                    "settlement_ref": f"OCPIREC-{session_id}",
+                    "settled_at": _utcnow_iso(),
+                }},
+            )
+            if sess.get("id_tag"):
+                await db.ev_authorizations.update_one(
+                    {"id_tag": sess["id_tag"]},
+                    {"$set": {"active": False, "used_at": _utcnow_iso()}},
+                )
+            return
+
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"final_cost": gross, "status": "completed",
-                      "duration_min": round(duration_min, 1)}},
+            {"$set": {
+                "final_cost": gross,
+                "status": "completed",
+                "duration_min": round(duration_min, 1),
+                "settlement_state": "completed",
+                "settled_at": _utcnow_iso(),
+            }},
         )
         return
 
@@ -348,7 +1239,7 @@ async def finalize_session(session_id: str) -> None:
     cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
     operator_user_id = (cp or {}).get("operator_user_id") or (cp or {}).get("owner_merchant_id")
 
-    # Commission: operator-specific override → operator-record default → platform default
+    # Commission: station override -> operator default -> platform default.
     commission_pct = DEFAULT_PLATFORM_COMMISSION_PCT
     if cp and cp.get("commission_pct_override") is not None:
         commission_pct = float(cp["commission_pct_override"])
@@ -359,40 +1250,126 @@ async def finalize_session(session_id: str) -> None:
 
     platform_fee = round(gross * commission_pct / 100.0, 2)
     operator_share = round(gross - platform_fee, 2)
+    if not operator_user_id:
+        commission_pct = 100.0
+        platform_fee = gross
+        operator_share = 0.0
 
-    # Wallet transfer (user → operator). Platform commission is collected by
-    # the operator first then we move the platform_fee to the platform wallet
-    # in a second transfer. Two atomic operations keep the audit trail clean.
-    txn_ref = generate_reference("EV")
+    # Deterministic references are essential: if OCPP retries StopTransaction
+    # or the worker crashes after the wallet transfer, Payment Engine replays
+    # the same idempotent operation instead of charging a second time.
+    settlement_ref = f"EVSET-{session_id}"
+    commission_ref = f"EVFEE-{session_id}"
     primary_ok = True
     primary_err = None
+    commission_ok = True
+    commission_err = None
 
-    if operator_user_id and gross > 0:
+    common_meta = {
+        "session_id": session_id,
+        "charge_point_id": sess["charge_point_id"],
+        "connector_id": sess.get("connector_id"),
+        "kwh": kwh,
+        "duration_min": round(duration_min, 1),
+        "vat_rate": vat_rate,
+        "net": net,
+        "vat": vat,
+        "gross": gross,
+        "commission_pct": commission_pct,
+        "platform_fee": platform_fee,
+        "operator_share": operator_share,
+    }
+
+    held_amount = round(float(sess.get("reserved_amount") or 0), 2)
+    has_reservation = sess.get("reservation_state") == "held" and held_amount > 0
+
+    if has_reservation:
+        funded_amount = held_amount
+
+        # A session should normally stop before its cap is exceeded.  If it did
+        # exceed it, collect only the deterministic overage before distribution.
+        if gross > funded_amount:
+            overage = round(gross - funded_amount, 2)
+            extra = await debit_wallet(
+                user_id=user_id,
+                amount=overage,
+                tx_type=TransactionType.EV_CHARGING,
+                description=f"EV-Nachbelastung {sess['charge_point_id']}",
+                reference=f"EVOVER-{session_id}",
+                metadata={**common_meta, "reservation_overage": True},
+            )
+            primary_ok = extra.success
+            primary_err = extra.error if not extra.success else None
+            if extra.success:
+                funded_amount = round(funded_amount + overage, 2)
+
+        # The pre-authorization already moved funds from the customer into the
+        # system wallet.  Settlement therefore credits the operator share from
+        # system funds and refunds the unused reservation to the customer.
+        if primary_ok and operator_user_id and operator_share > 0:
+            op_credit = await credit_wallet(
+                user_id=str(operator_user_id),
+                amount=operator_share,
+                tx_type=TransactionType.EV_CHARGING_REVENUE,
+                description=f"EV-Ladeumsatz {sess['charge_point_id']}",
+                reference=f"EVOP-{session_id}",
+                source="ev_reservation_settlement",
+                metadata={**common_meta, "settlement_ref": settlement_ref},
+            )
+            commission_ok = op_credit.success
+            commission_err = op_credit.error if not op_credit.success else None
+
+        refund_amount = round(max(0.0, funded_amount - gross), 2)
+        if primary_ok and commission_ok and refund_amount > 0:
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"EV-Restreservierung {session_id}",
+                reference=f"EVREF-{session_id}",
+                source="ev_reservation_settlement",
+                metadata={
+                    "session_id": session_id,
+                    "settlement_ref": settlement_ref,
+                    "reserved_amount": funded_amount,
+                    "final_cost": gross,
+                },
+            )
+            commission_ok = refund.success
+            commission_err = refund.error if not refund.success else None
+
+        if primary_ok and commission_ok and operator_user_id:
+            await db.ev_operator_commissions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "session_id": session_id,
+                    "charge_point_id": sess["charge_point_id"],
+                    "operator_user_id": str(operator_user_id),
+                    "gross": gross,
+                    "commission_pct": commission_pct,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "ref": commission_ref,
+                    "success": True,
+                    "updated_at": _utcnow_iso(),
+                }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                upsert=True,
+            )
+    elif operator_user_id and gross > 0:
+        # Legacy sessions created before reservation support keep the direct
+        # user -> operator flow, still protected by deterministic references.
         result = await transfer_between_wallets(
             from_user_id=user_id,
             to_user_id=str(operator_user_id),
             amount=gross,
             tx_type=TransactionType.EV_CHARGING,
             description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
-            metadata={
-                "session_id": session_id,
-                "charge_point_id": sess["charge_point_id"],
-                "connector_id": sess.get("connector_id"),
-                "kwh": kwh,
-                "duration_min": round(duration_min, 1),
-                "vat_rate": vat_rate,
-                "net": net,
-                "vat": vat,
-                "gross": gross,
-                "commission_pct": commission_pct,
-                "platform_fee": platform_fee,
-                "operator_share": operator_share,
-            },
+            reference=settlement_ref,
+            metadata=common_meta,
         )
         primary_ok = result.success
         primary_err = result.error if not primary_ok else None
 
-        # Move platform commission from operator → platform pool wallet (admin)
         if primary_ok and platform_fee > 0:
             platform_user_id = await _platform_pool_user_id()
             if platform_user_id and platform_user_id != str(operator_user_id):
@@ -402,32 +1379,71 @@ async def finalize_session(session_id: str) -> None:
                     amount=platform_fee,
                     tx_type=TransactionType.EV_CHARGING_REVENUE,
                     description=f"EV-Plattformprovision {sess['charge_point_id']} ({commission_pct}%)",
-                    metadata={"session_id": session_id, "settlement_ref": txn_ref},
+                    reference=commission_ref,
+                    metadata={"session_id": session_id, "settlement_ref": settlement_ref},
                 )
-                await db.ev_operator_commissions.insert_one({
-                    "session_id": session_id,
-                    "charge_point_id": sess["charge_point_id"],
-                    "operator_user_id": str(operator_user_id),
-                    "gross": gross,
-                    "commission_pct": commission_pct,
-                    "platform_fee": platform_fee,
-                    "operator_share": operator_share,
-                    "ref": comm_res.reference if comm_res.success else None,
-                    "success": comm_res.success,
-                    "created_at": _utcnow_iso(),
-                })
-    else:
-        # No operator wired: deduct gross from user; platform keeps everything.
-        if gross > 0:
-            from bson import ObjectId
-            try:
-                _id = ObjectId(user_id)
-            except Exception:
-                _id = user_id
-            await db.users.update_one({"_id": _id}, {"$inc": {"balance": -gross}})
+                commission_ok = comm_res.success
+                commission_err = comm_res.error if not commission_ok else None
+                await db.ev_operator_commissions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "session_id": session_id,
+                        "charge_point_id": sess["charge_point_id"],
+                        "operator_user_id": str(operator_user_id),
+                        "gross": gross,
+                        "commission_pct": commission_pct,
+                        "platform_fee": platform_fee,
+                        "operator_share": operator_share,
+                        "ref": comm_res.reference if comm_res.success else commission_ref,
+                        "success": comm_res.success,
+                        "error": comm_res.error if not comm_res.success else None,
+                        "updated_at": _utcnow_iso(),
+                    }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                    upsert=True,
+                )
+    elif gross > 0:
+        # Legacy no-operator sessions: canonical debit, platform keeps gross.
+        result = await debit_wallet(
+            user_id=user_id,
+            amount=gross,
+            tx_type=TransactionType.EV_CHARGING,
+            description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
+            reference=settlement_ref,
+            metadata={**common_meta, "settlement_target": "platform"},
+        )
+        primary_ok = result.success
+        primary_err = result.error if not primary_ok else None
 
-    # Build receipt + line items
-    receipt_no = await _next_receipt_no()
+    settlement_ok = primary_ok and commission_ok
+    if not settlement_ok:
+        errors = [e for e in (primary_err, commission_err) if e]
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "settle_failed",
+                "settlement_state": "failed",
+                "settlement_error": " | ".join(errors)[:500] or "Settlement failed",
+                "final_cost": gross,
+                "net_amount": net,
+                "vat_amount": vat,
+                "platform_fee": platform_fee,
+                "operator_share": operator_share,
+                "duration_min": round(duration_min, 1),
+                "settlement_ref": settlement_ref,
+                "settlement_failed_at": _utcnow_iso(),
+            }},
+        )
+        if sess.get("id_tag"):
+            await db.ev_authorizations.update_one(
+                {"id_tag": sess["id_tag"]},
+                {"$set": {"active": False, "used_at": _utcnow_iso()}},
+            )
+        return
+
+    # Build receipt only after the money movement is complete.  Reuse an
+    # existing receipt number on retry and upsert by session_id.
+    existing_receipt = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+    receipt_no = (existing_receipt or {}).get("receipt_no") or await _next_receipt_no()
     line_items = [
         {"label": "Energie", "calc": f"{kwh:.3f} kWh × €{tariff.get('price_per_kwh', 0):.2f}", "amount": round(energy_amt, 2)},
     ]
@@ -452,32 +1468,44 @@ async def finalize_session(session_id: str) -> None:
         "operator_share": operator_share,
         "commission_pct": commission_pct,
         "currency": "EUR",
-        "settlement_ref": txn_ref,
+        "settlement_ref": settlement_ref,
         "line_items": line_items,
-        "issued_at": _utcnow_iso(),
+        "issued_at": (existing_receipt or {}).get("issued_at") or _utcnow_iso(),
+        "updated_at": _utcnow_iso(),
     }
-    await db.ev_receipts.insert_one(receipt_doc)
+    await db.ev_receipts.update_one(
+        {"session_id": session_id},
+        {"$set": receipt_doc},
+        upsert=True,
+    )
 
-    update = {
-        "status": "completed" if primary_ok else "settle_failed",
-        "final_cost": gross,
-        "net_amount": net,
-        "vat_amount": vat,
-        "platform_fee": platform_fee,
-        "operator_share": operator_share,
-        "duration_min": round(duration_min, 1),
-        "settlement_ref": txn_ref,
-        "settled_at": _utcnow_iso(),
-        "receipt_no": receipt_no,
-    }
-    if not primary_ok:
-        update["settlement_error"] = primary_err
-    await db.ev_charging_sessions.update_one({"session_id": session_id}, {"$set": update})
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": "completed",
+            "settlement_state": "completed",
+            "final_cost": gross,
+            "net_amount": net,
+            "vat_amount": vat,
+            "platform_fee": platform_fee,
+            "operator_share": operator_share,
+            "duration_min": round(duration_min, 1),
+            "settlement_ref": settlement_ref,
+            "settled_at": _utcnow_iso(),
+            "receipt_no": receipt_no,
+            "settlement_error": None,
+            "reservation_state": "consumed" if has_reservation else sess.get("reservation_state"),
+            "reservation_consumed_at": _utcnow_iso() if has_reservation else sess.get("reservation_consumed_at"),
+            "reservation_final_cost": gross if has_reservation else sess.get("reservation_final_cost"),
+        }},
+    )
 
     if sess.get("id_tag"):
         await db.ev_authorizations.update_one(
-            {"id_tag": sess["id_tag"]}, {"$set": {"active": False, "used_at": _utcnow_iso()}}
+            {"id_tag": sess["id_tag"]},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
         )
+    await _release_ev_user_session_claim(user_id, session_id)
 
 
 async def _next_receipt_no() -> str:
@@ -1244,32 +2272,47 @@ async def admin_payout_decision(payout_id: str, body: PayoutDecisionBody, reques
         raise HTTPException(403, "Admin only")
     if body.decision not in ("approved", "rejected", "paid"):
         raise HTTPException(400, "Ungültige Entscheidung")
+
     payout = await db.ev_operator_payouts.find_one({"payout_id": payout_id})
     if not payout:
         raise HTTPException(404, "Payout nicht gefunden")
+
     update = {
-        "status": body.decision, "admin_note": body.note,
-        "external_ref": body.external_ref, "decided_at": _utcnow_iso(),
+        "status": body.decision,
+        "admin_note": body.note,
+        "external_ref": body.external_ref,
+        "decided_at": _utcnow_iso(),
         "decided_by": str(user["_id"]),
     }
+
     if body.decision == "paid":
-        from bson import ObjectId
-        try:
-            uid = ObjectId(payout["user_id"])
-        except Exception:
-            uid = payout["user_id"]
-        bal_user = await db.users.find_one({"_id": uid}, {"balance": 1})
-        if (bal_user or {}).get("balance", 0) < payout["amount"]:
-            raise HTTPException(402, "Operator-Wallet hat nicht genug Guthaben")
-        await db.users.update_one({"_id": uid}, {"$inc": {"balance": -payout["amount"]}})
-        await db.transactions.insert_one({
-            "user_id": payout["user_id"], "type": "payout",
-            "amount": -payout["amount"], "currency": "EUR",
-            "description": f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
-            "reference": payout_id, "status": "completed",
-            "created_at": _utcnow_iso(),
-        })
-    await db.ev_operator_payouts.update_one({"payout_id": payout_id}, {"$set": update})
+        # Deterministic reference makes repeated admin/API callbacks idempotent.
+        # The canonical wallet engine performs the balance check + atomic debit
+        # and writes the balanced ledger/audit records.
+        payout_ref = f"EVPAYOUT-{payout_id}"
+        debit = await debit_wallet(
+            user_id=str(payout["user_id"]),
+            amount=float(payout["amount"]),
+            tx_type=TransactionType.PAYOUT,
+            description=f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
+            reference=payout_ref,
+            metadata={
+                "payout_id": payout_id,
+                "operator_id": payout.get("operator_id"),
+                "iban": payout.get("iban"),
+                "external_ref": body.external_ref,
+                "approved_by": str(user["_id"]),
+            },
+        )
+        if not debit.success:
+            raise HTTPException(402, debit.error or "Operator-Wallet konnte nicht belastet werden")
+        update["wallet_transaction_id"] = debit.transaction_id
+        update["wallet_reference"] = debit.reference or payout_ref
+
+    await db.ev_operator_payouts.update_one(
+        {"payout_id": payout_id},
+        {"$set": update},
+    )
     return {"ok": True, "payout_id": payout_id, **update}
 
 

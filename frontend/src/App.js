@@ -120,6 +120,7 @@ const TaxiPage = lazy(() => import("./pages/TaxiPage"));
 const TaxiOperatorPage = lazy(() => import("./pages/TaxiOperatorPage"));
 const TaxiOperatorDashboard = lazy(() => import("./pages/TaxiOperatorDashboard"));
 const ScooterPage = lazy(() => import("./pages/ScooterPage"));
+const IChargingEntryPage = lazy(() => import("./pages/IChargingEntryPage"));
 const FoodPage = lazy(() => import("./pages/FoodPage"));
 const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
@@ -452,11 +453,22 @@ function AppContent() {
   }, [user.isAuthenticated, user.language, setLang]);
 
   const resolvePostAuthPath = useCallback(() => {
-    if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return "/";
-    if (user.isAuthenticated && user.kyc_status === "pending") return "/";
+    // Keep customers entering through iCharging in mobility after authentication.
+    // Only these internal routes are accepted; external redirect URLs are ignored.
+    const currentBasePath = currentPath.split("?")[0];
+    const query = currentPath.includes("?") ? currentPath.split("?")[1] : "";
+    const requestedReturnPath = new URLSearchParams(query).get("returnTo") || "";
+    const allowedReturnPath = ["/icharging", "/mobility/icharging"].includes(requestedReturnPath.split("?")[0])
+      ? requestedReturnPath
+      : "";
+    const mobilityPath = ["/icharging", "/mobility/icharging"].includes(currentBasePath)
+      ? currentPath
+      : allowedReturnPath || "/";
+    if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return mobilityPath;
+    if (user.isAuthenticated && user.kyc_status === "pending") return mobilityPath;
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
     if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
-    if (currentPath === "/login" || currentPath === "/register") return "/";
+    if (currentBasePath === "/login" || currentBasePath === "/register") return mobilityPath;
     return currentPath || "/";
   }, [currentPath, user.isAuthenticated, user.kyc_status]);
 
@@ -477,15 +489,15 @@ function AppContent() {
         setShowAuthGate(false);
         setShowFullAuth("");
         setIsDemoMode(false);
-        if (currentPath === "/login" || currentPath === "/register") {
-          const nextPath = KYC_DISABLED || TEST_MODE_FULL_ACCESS ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
+        if (currentPath.split("?")[0] === "/login" || currentPath.split("?")[0] === "/register") {
+          const nextPath = resolvePostAuthPath();
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentPath, syncBrowserPath, user.isAuthenticated, user.kyc_status]);
+  }, [currentPath, resolvePostAuthPath, syncBrowserPath, user.isAuthenticated]);
 
   // Notification polling - show toast for new notifications
   useEffect(() => {
@@ -1042,6 +1054,11 @@ function AppContent() {
         return <HomePage {...homeProps} />;
       case "/taxi-dashboard":
         return <HomePage {...homeProps} />;
+      case "/icharging":
+      case "/mobility/icharging":
+        return (isGuest && !isDemoMode)
+          ? <IChargingEntryPage onLogin={() => setShowFullAuth("login")} onRegister={() => setShowFullAuth("register")} onNavigate={handleNavigate} />
+          : <ScooterPage onNavigate={handleNavigate} />;
       case "/scooter":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":
@@ -1470,7 +1487,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/icharging", "/mobility/icharging"].includes(routeBase) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&
