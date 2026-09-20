@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import os
 import sys
@@ -23,6 +24,7 @@ import server  # noqa: E402
 from core import canonical_wallet_service as canonical_wallet  # noqa: E402
 from routes import bidblitz_pay as bidblitz_pay_routes  # noqa: E402
 from routes import payment as payment_routes  # noqa: E402
+from routes import mobility_platform as mobility_platform_routes  # noqa: E402
 from schemas.models import TopUpRequest  # noqa: E402
 
 
@@ -2054,6 +2056,57 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
     assert 'db.mining_transfer_operations, "transfer_id", unique=True, critical=True' in database
     assert 'db.mining_transfer_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
+
+
+def test_mobility_kosovo_regional_pricing_matches_local_profile():
+    profile = mobility_platform_routes.REGIONAL_PRICING_PROFILES["XK"]
+
+    taxi = mobility_platform_routes.build_option("taxi", 3.4, 8, 1.2, 55, profile)
+    scooter = mobility_platform_routes.build_option("scooter", 3.4, 8, 1.0, 86, profile)
+    bike = mobility_platform_routes.build_option("bike", 3.4, 8, 1.0, 94, profile)
+    ev = mobility_platform_routes.build_option("ev", 3.4, 8, 1.0, 92, profile)
+
+    assert taxi["price_eur"] == 4.55
+    assert scooter["price_eur"] == 1.70
+    assert bike["price_eur"] == 1.84
+    assert ev["price_eur"] == 3.89
+
+    for option in (taxi, scooter, bike, ev):
+        assert option["pricing_region"] == "Kosovo"
+        assert option["pricing_basis"]
+        assert option["estimated"] is True
+
+
+def test_mobility_prishtina_coordinates_resolve_to_kosovo_without_geocoder(monkeypatch):
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(mobility_platform_routes, "_nominatim_get", unavailable)
+    profile = asyncio.run(
+        mobility_platform_routes._resolve_pricing_context(
+            42.6629,
+            21.1655,
+            "Prishtina",
+        )
+    )
+
+    assert profile["profile_key"] == "XK"
+    assert profile["country_code"] == "XK"
+    assert profile["region"] == "Kosovo"
+
+
+def test_mobility_search_contract_supports_local_first_autocomplete():
+    backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+    frontend_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
+    api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "mobilityPlatformApi.js").read_text(encoding="utf-8")
+
+    assert "country_code: Optional[str] = None" in backend_source
+    assert 'params["countrycodes"] = str(country_code).lower()[:2]' in backend_source
+    assert '"country_code": str(addr.get("country_code") or "").upper()' in backend_source
+    assert 'limit: "10"' in api_source
+    assert 'qs.set("country_code", String(countryCode).slice(0, 2))' in api_source
+    assert "localResults.length < 4" in frontend_source
+    assert "globalResults" in frontend_source
 
 
 def test_auction_polling_does_not_delete_shared_browser_caches():
