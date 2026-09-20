@@ -327,7 +327,9 @@ export default function MiningPage({ onBack, onNavigate }) {
     const code = data?.referral?.code;
     if (!code) return;
     const url = `${window.location.origin}?ref=${code}`;
-    const text = miningValueEnabled\n      ? `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`\n      : `Entdecke die BidBlitz Mining Preview. Code: ${code}`;
+    const text = miningValueEnabled
+      ? `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`
+      : `Entdecke die BidBlitz Mining Preview. Code: ${code}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "BidBlitz Mining", text, url });
@@ -839,7 +841,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="text-center py-12">
                   <Cpu size={32} className="mx-auto text-white/10 mb-3" />
                   <p className="text-[13px] text-white/30 mb-1">{t("mining.no_miners") || "No miners yet"}</p>
-                  <p className="text-[10px] text-white/15 mb-4">{miningValueEnabled\n                    ? (t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ")\n                    : (data?.capabilities?.production_message || "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert.")}</p>
+                  <p className="text-[10px] text-white/15 mb-4">{miningValueEnabled
+                    ? (t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ")
+                    : (data?.capabilities?.production_message || "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert.")}</p>
                   <motion.button onClick={() => setTab("shop")} className="px-5 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
                     whileTap={{ scale: 0.95 }}>{t("mining.go_shop") || "Browse Miners"}</motion.button>
                 </div>
