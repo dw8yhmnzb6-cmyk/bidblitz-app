@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import uuid
 import json
+import re
 from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
@@ -621,13 +622,14 @@ async def get_charge_catalog(
 
     query: Dict[str, Any] = {"active": True}
     if q and q.strip():
-        needle = q.strip()
+        needle = q.strip()[:100]
+        safe_needle = re.escape(needle)
         query["$or"] = [
-            {"name": {"$regex": needle, "$options": "i"}},
-            {"brand": {"$regex": needle, "$options": "i"}},
-            {"description": {"$regex": needle, "$options": "i"}},
-            {"category": {"$regex": needle, "$options": "i"}},
-            {"sku": {"$regex": needle, "$options": "i"}},
+            {"name": {"$regex": safe_needle, "$options": "i"}},
+            {"brand": {"$regex": safe_needle, "$options": "i"}},
+            {"description": {"$regex": safe_needle, "$options": "i"}},
+            {"category": {"$regex": safe_needle, "$options": "i"}},
+            {"sku": {"$regex": safe_needle, "$options": "i"}},
             {"barcode": needle},
         ]
 
@@ -1426,12 +1428,13 @@ async def admin_charge_catalog(request: Request, q: Optional[str] = None, limit:
     safe_limit = min(max(int(limit or 300), 1), 500)
     query: Dict[str, Any] = {"active": True}
     if q and q.strip():
-        needle = q.strip()
+        needle = q.strip()[:100]
+        safe_needle = re.escape(needle)
         query["$or"] = [
-            {"name": {"$regex": needle, "$options": "i"}},
-            {"brand": {"$regex": needle, "$options": "i"}},
-            {"category": {"$regex": needle, "$options": "i"}},
-            {"sku": {"$regex": needle, "$options": "i"}},
+            {"name": {"$regex": safe_needle, "$options": "i"}},
+            {"brand": {"$regex": safe_needle, "$options": "i"}},
+            {"category": {"$regex": safe_needle, "$options": "i"}},
+            {"sku": {"$regex": safe_needle, "$options": "i"}},
             {"barcode": needle},
         ]
 
