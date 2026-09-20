@@ -2559,3 +2559,14 @@ def test_admin_test_email_dispatch_is_disabled_in_production():
     assert "Test-E-Mail-Versand ist in Production deaktiviert." in source
     assert "if not TEST_MODE:" in source
 
+def test_p2p_history_route_is_not_duplicated():
+    legacy = (BACKEND_DIR / "routes" / "p2p.py").read_text(encoding="utf-8")
+    transfer = (BACKEND_DIR / "routes" / "p2p_transfer.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "P2PPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/history")' in legacy
+    assert '@router.get("/history")' not in transfer
+    assert '@router.get("/transfer-history")' in transfer
+    assert "/api/p2p/history" in page
+    assert ".items || []" in page
+
