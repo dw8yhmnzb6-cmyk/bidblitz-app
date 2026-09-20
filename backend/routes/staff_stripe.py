@@ -67,7 +67,7 @@ async def create_real_checkout(req: CheckoutRealReq, request: Request):
     merchant_id = str(user.get("user_id") or user.get("id"))
 
     if not _stripe_available():
-        raise HTTPException(503, "Stripe ist aktuell nicht verfügbar. Bitte Placeholder-Checkout nutzen.")
+        raise HTTPException(503, "Stripe ist aktuell nicht verfügbar. Staff-Checkout bleibt bis zur Wiederherstellung deaktiviert.")
 
     from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
     amount = PRICE_MAP[req.plan]
