@@ -544,6 +544,10 @@ def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": doc.get("updated_at") or doc.get("created_at") or "",
         "resolved_at": doc.get("resolved_at") or "",
         "messages": doc.get("messages") or [],
+        "attachments": [
+            _attachment_meta(item, f"/api/charge-app/claims/{doc.get('claim_id')}/attachments")
+            for item in (doc.get("attachments") or [])
+        ],
     }
 
 
@@ -1418,6 +1422,7 @@ async def create_charge_warranty_claim(
             "message": description,
             "created_at": now,
         }],
+        "attachments": [],
         "created_at": now,
         "updated_at": now,
     }
@@ -1450,7 +1455,120 @@ async def get_my_charge_claim(claim_id: str, request: Request):
     return {"claim": _claim_card(claim)}
 
 
-@router.post("/claims/{claim_id}/messages")
+@router.post("/claims/{claim_id}/attachments")
+async def upload_charge_claim_attachment(
+    claim_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if claim.get("status") in {"resolved", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Dieser Garantiefall ist abgeschlossen")
+
+    content = await _read_upload(file)
+    uploaded = _storage_upload_bytes(
+        user_id,
+        file.filename or "claim-evidence.bin",
+        content,
+        file.content_type or None,
+    )
+    attachment = {
+        "attachment_id": f"ATT-{uuid.uuid4().hex[:10].upper()}",
+        "kind": "claim_evidence",
+        "original_filename": file.filename or "Datei",
+        "content_type": file.content_type or "application/octet-stream",
+        "size": uploaded.get("size", len(content)),
+        "storage_path": uploaded["path"],
+        "uploaded_at": _now_iso(),
+    }
+    now = _now_iso()
+    await db.charge_warranty_claims.update_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"$push": {"attachments": attachment}, "$set": {"updated_at": now}},
+    )
+    return {
+        "ok": True,
+        "attachment": _attachment_meta(
+            attachment,
+            f"/api/charge-app/claims/{claim_id}/attachments",
+        ),
+    }
+
+
+@router.get("/claims/{claim_id}/attachments/{attachment_id}/download")
+@router.head("/claims/{claim_id}/attachments/{attachment_id}/download")
+async def download_charge_claim_attachment(
+    claim_id: str,
+    attachment_id: str,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    query: Dict[str, Any] = {"claim_id": claim_id}
+    if user.get("role") != "admin":
+        query["user_id"] = user_id
+    claim = await db.charge_warranty_claims.find_one(query, {"_id": 0})
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    attachment = next(
+        (item for item in (claim.get("attachments") or []) if item.get("attachment_id") == attachment_id),
+        None,
+    )
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    content, content_type = _storage_get_bytes(attachment["storage_path"])
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=attachment.get("content_type") or content_type,
+        headers={
+            "Content-Disposition": f"attachment; filename={attachment.get('original_filename') or 'charge-care-datei'}"
+        },
+    )
+
+
+@router.delete("/claims/{claim_id}/attachments/{attachment_id}")
+async def delete_charge_claim_attachment(
+    claim_id: str,
+    attachment_id: str,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if claim.get("status") in {"resolved", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Dieser Garantiefall ist abgeschlossen")
+
+    attachment = next(
+        (item for item in (claim.get("attachments") or []) if item.get("attachment_id") == attachment_id),
+        None,
+    )
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+
+    _delete_attachment_blob(attachment)
+    await db.charge_warranty_claims.update_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {
+            "$pull": {"attachments": {"attachment_id": attachment_id}},
+            "$set": {"updated_at": _now_iso()},
+        },
+    )
+    return {"ok": True, "attachment_id": attachment_id}
+
+
+@router.post("/claims/{claim_id}/messages")@router.post("/claims/{claim_id}/messages")
 async def add_charge_claim_message(
     claim_id: str,
     req: ChargeClaimMessageRequest,
