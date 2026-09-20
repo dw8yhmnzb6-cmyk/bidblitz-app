@@ -609,11 +609,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       </div>
 
       <div className="relative">
-        <div id="bidblitz-mobility-map" className="h-[46vh] w-full" data-testid="mobility-platform-map" />
-        <div className="absolute inset-x-0 top-4 px-4 z-[500] pointer-events-none">
-          <div className="rounded-[28px] bg-[#fffaf1]/90 border border-[#18202a]/8 backdrop-blur-xl p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
+        <div id="bidblitz-mobility-map" className="h-[62vh] sm:h-[56vh] lg:h-[46vh] w-full" data-testid="mobility-platform-map" />
+        <div className="absolute inset-x-0 bottom-3 sm:bottom-auto sm:top-4 px-3 sm:px-4 z-[500] pointer-events-none">
+          <div className="rounded-[24px] sm:rounded-[28px] bg-[#fffaf1]/94 border border-[#18202a]/8 backdrop-blur-xl p-2.5 sm:p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
             <div className="flex items-center justify-between gap-2 mb-2" data-testid="mobility-live-stats-row">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar pb-1">
                 <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} {ui.liveTaxi}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#7CFF5B]/16 text-[#256C1B] text-[11px] font-semibold" data-testid="mobility-live-count-scooter">{nearbyCounts.scooter || 0} Scooter</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#FACC15]/18 text-[#8A6B00] text-[11px] font-semibold" data-testid="mobility-live-count-bike">{nearbyCounts.bike || 0} {ui.liveEbikes}</span>
@@ -631,11 +631,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             <div className="space-y-2">
               <div className="relative">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0F766E]" />
-                <input value={pickup.address} onFocus={() => { setSearchTarget("pickup"); setActiveField("pickup"); }} onChange={(e) => { setPickup((prev) => ({ ...prev, address: e.target.value })); triggerSearch("pickup", e.target.value); }} placeholder={ui.pickup} className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#0F766E]/40" data-testid="mobility-pickup-input" />
+                <input value={pickup.address} onFocus={() => { setSearchTarget("pickup"); setActiveField("pickup"); }} onChange={(e) => { setPickup((prev) => ({ ...prev, address: e.target.value })); triggerSearch("pickup", e.target.value); }} placeholder={ui.pickup} className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#0F766E]/40" data-testid="mobility-pickup-input" />
               </div>
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F97316]" />
-                <input value={dropoff.address} onFocus={() => { setSearchTarget("dropoff"); setActiveField("dropoff"); }} onChange={(e) => { setDropoff((prev) => ({ ...prev, address: e.target.value })); triggerSearch("dropoff", e.target.value); }} placeholder={ui.dropoff} className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#F97316]/40" data-testid="mobility-dropoff-input" />
+                <input value={dropoff.address} onFocus={() => { setSearchTarget("dropoff"); setActiveField("dropoff"); }} onChange={(e) => { setDropoff((prev) => ({ ...prev, address: e.target.value })); triggerSearch("dropoff", e.target.value); }} placeholder={ui.dropoff} className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#F97316]/40" data-testid="mobility-dropoff-input" />
               </div>
             </div>
 
@@ -652,20 +652,20 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               </div>
             )}
 
-            <div className="flex gap-2 mt-3 flex-wrap">
-              <button onClick={useCurrentLocation} className="px-3 py-2 rounded-2xl bg-[#0F766E]/12 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-use-current-location-btn"><Navigation size={14} /> {ui.current}</button>
-              <button onClick={() => setActiveField(activeField === "pickup" ? "dropoff" : "pickup")} className="px-3 py-2 rounded-2xl bg-[#F97316]/10 border border-[#F97316]/20 text-[#C2410C] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-map-tap-target-btn"><Crosshair size={14} /> {ui.mapSets}: {activeField === "pickup" ? ui.start : ui.destination}</button>
-              <button onClick={() => calculateRoute()} disabled={!pickup.lat || !dropoff.lat || loadingRoute} className="px-3 py-2 rounded-2xl bg-[#F97316] text-white text-xs font-semibold disabled:opacity-40" data-testid="mobility-calculate-route-btn">{loadingRoute ? "..." : ui.compare}</button>
-              <button onClick={() => saveQuickLocation("home", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-home-btn"><Home size={14} className="inline mr-1" /> {ui.home}</button>
-              <button onClick={() => saveQuickLocation("work", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-work-btn"><ShieldCheck size={14} className="inline mr-1" /> {ui.work}</button>
-              <button onClick={() => saveQuickLocation("favorite", "pickup")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-pickup-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveStart}</button>
-              <button onClick={() => saveQuickLocation("favorite", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-dropoff-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveDestination}</button>
+            <div className="grid grid-cols-3 gap-2 mt-2 sm:flex sm:flex-wrap sm:mt-3">
+              <button onClick={useCurrentLocation} className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-2xl bg-[#0F766E]/12 border border-[#0F766E]/20 text-[#0F766E] text-[11px] sm:text-xs font-semibold inline-flex items-center justify-center gap-1.5" data-testid="mobility-use-current-location-btn"><Navigation size={14} /> {ui.current}</button>
+              <button onClick={() => setActiveField(activeField === "pickup" ? "dropoff" : "pickup")} className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-2xl bg-[#F97316]/10 border border-[#F97316]/20 text-[#C2410C] text-[11px] sm:text-xs font-semibold inline-flex items-center justify-center gap-1.5" data-testid="mobility-map-tap-target-btn"><Crosshair size={14} /> {ui.mapSets}: {activeField === "pickup" ? ui.start : ui.destination}</button>
+              <button onClick={() => calculateRoute()} disabled={!pickup.lat || !dropoff.lat || loadingRoute} className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-2xl bg-[#F97316] text-white text-[11px] sm:text-xs font-semibold disabled:opacity-40" data-testid="mobility-calculate-route-btn">{loadingRoute ? "..." : ui.compare}</button>
+              <button onClick={() => saveQuickLocation("home", "dropoff")} className="hidden sm:inline-flex px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-home-btn"><Home size={14} className="inline mr-1" /> {ui.home}</button>
+              <button onClick={() => saveQuickLocation("work", "dropoff")} className="hidden sm:inline-flex px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-work-btn"><ShieldCheck size={14} className="inline mr-1" /> {ui.work}</button>
+              <button onClick={() => saveQuickLocation("favorite", "pickup")} className="hidden sm:inline-flex px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-pickup-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveStart}</button>
+              <button onClick={() => saveQuickLocation("favorite", "dropoff")} className="hidden sm:inline-flex px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-dropoff-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveDestination}</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="-mt-6 relative z-20 px-4">
+      <div className="mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4">
         <div className="rounded-t-[30px] bg-[#fffaf1] border border-[#18202a]/8 p-4 shadow-[0_-16px_40px_rgba(15,23,42,0.12)]" data-testid="mobility-bottom-sheet">
           <div className="w-12 h-1 rounded-full bg-[#18202a]/10 mx-auto mb-4" />
           <div className="flex items-start justify-between gap-3 mb-4">
