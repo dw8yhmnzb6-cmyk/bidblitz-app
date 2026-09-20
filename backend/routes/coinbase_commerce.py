@@ -196,9 +196,42 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
     else:
         return
 
-    if event_type == "charge:confirmed" and charge.get("status") != "confirmed":
-        user_id = charge["user_id"]
-        amount = float(charge["amount_eur"])
+    if event_type == "charge:confirmed":
+        current = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or charge
+        if current.get("settlement_status") == "completed":
+            return
+        if current.get("settlement_status") in {"pending", "reconciliation_required", "processing"}:
+            return
+
+        claim_filter = {
+            "charge_id": charge_id,
+            "settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]},
+        }
+        if "settlement_status" not in current:
+            claim_filter = {
+                "charge_id": charge_id,
+                "$or": [
+                    {"settlement_status": {"$exists": False}},
+                    {"settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]}},
+                ],
+            }
+        claimed = await db.crypto_charges.update_one(
+            claim_filter,
+            {
+                "$set": {
+                    "settlement_status": "processing",
+                    "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+                },
+                "$inc": {"settlement_attempt": 1},
+            },
+        )
+        if claimed.modified_count != 1:
+            return
+
+        claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
+        attempt = int(claimed_charge.get("settlement_attempt", 1) or 1)
+        user_id = claimed_charge["user_id"]
+        amount = float(claimed_charge["amount_eur"])
 
         result = await credit_wallet(
             user_id=user_id,
@@ -212,27 +245,37 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
                 "provider": "coinbase_commerce",
                 "route": "coinbase_commerce.webhook",
                 "audit_metadata": {"kind": "coinbase_wallet_topup"},
+                "settlement_attempt": attempt,
             },
-            idempotency_key=f"coinbase_charge:{charge_id}",
+            idempotency_key=f"coinbase_charge:{charge_id}:attempt:{attempt}",
         )
         if not result.success:
+            result_state = str(getattr(result.status, "value", result.status))
+            next_state = (
+                "reconciliation_required"
+                if result_state in {"pending", "reconciliation_required"}
+                else "failed"
+            )
             await db.crypto_charges.update_one(
-                {"charge_id": charge_id},
+                {"charge_id": charge_id, "settlement_status": "processing", "settlement_attempt": attempt},
                 {"$set": {
-                    "settlement_status": str(getattr(result.status, "value", result.status)),
+                    "settlement_status": next_state,
                     "settlement_error": result.error or "Wallet settlement failed",
                     "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                    "wallet_transaction_id": result.transaction_id,
                 }},
             )
             logger.error("Coinbase wallet settlement failed for charge %s: %s", charge_id, result.error)
             return
 
         await db.crypto_charges.update_one(
-            {"charge_id": charge_id},
+            {"charge_id": charge_id, "settlement_status": "processing", "settlement_attempt": attempt},
             {"$set": {
                 "status": "confirmed",
                 "confirmed_at": datetime.now(timezone.utc).isoformat(),
                 "settlement_status": "completed",
+                "settlement_error": None,
+                "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
                 "wallet_transaction_id": result.transaction_id,
                 "wallet_reference": result.reference,
             }},
