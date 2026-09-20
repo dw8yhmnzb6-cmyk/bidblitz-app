@@ -431,6 +431,12 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "id_tag": id_token,
             "status": {"$in": ["authorized", "starting", "reserved", "reserving"]},
         }, sort=[("created_at", -1)])
+        if not session:
+            session = await db.ev_charging_sessions.find_one({
+                "charge_point_id": charge_point_id,
+                "id_tag": id_token,
+                "status": {"$in": ["reserved", "reserving"]},
+            }, sort=[("created_at", -1)])
 
         meter_start = latest_wh if latest_wh is not None else 0.0
         if session:
