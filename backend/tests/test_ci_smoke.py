@@ -2092,7 +2092,7 @@ def test_home_prioritizes_auctions_and_mining():
     assert 'case "/mining":' in app
     assert '<MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />' in app
     assert 'case "/auctions":' in app
-    assert '{["/", "/more"].includes(basePath) && <PWAInstallPrompt />}' in app
+    assert '{["/", "/more"].includes(routeBase) && <PWAInstallPrompt />}' in app
 
     assert 'import { Capacitor } from "@capacitor/core";' in release
     assert 'const isNativeRuntime = Capacitor.isNativePlatform();' in release
@@ -2129,6 +2129,7 @@ def test_mobility_map_keeps_map_visible_on_mobile():
 
     assert 'function isImmersiveMobilityMapPath(path)' in shell
     assert 'return path === "/mobility-map";' in shell
+    assert 'const path = (currentPath || "/").split("?")[0];' in shell
     assert shell.count('&& !isImmersiveMobilityMap') >= 2
 
 
