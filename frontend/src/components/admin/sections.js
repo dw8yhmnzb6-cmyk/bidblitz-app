@@ -88,7 +88,7 @@ export const ADMIN_SECTIONS = [
       { key: "bidder-vouchers", icon: Ticket, label: "Bieter-Gutscheine" },
       { key: "partner-vouchers", icon: Ticket, label: "Partner-Gutscheine" },
       { key: "discount-coupons", icon: Percent, label: "Rabatt-Coupons" },
-      { key: "coupon-manager", icon: Gift, label: "Gutschein-Manager", nav: "gutscheine" },
+      { key: "coupon-manager", icon: Gift, label: "Gutschein-Manager", nav: "/admin/coupons" },
     ],
   },
   {
