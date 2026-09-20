@@ -2045,6 +2045,9 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert "def _require_blitz_idempotency_key" in backend
     assert "async def _mutate_blitz_wallet_once" in backend
     assert "blitz_mine_value_markers" in backend
+    assert "db.wallets" not in backend
+    assert 'selector = {"_id": user_oid, marker_field: {"$exists": False}}' in backend
+    assert 'wallet = await db.users.find_one({"_id": user_oid}, {"_id": 0, "balance_blz": 1}) or {}' in backend
 
     assert "claim_lock_until" in backend
     assert 'profile_marker = f"claim_markers.{claim_id}"' in backend
