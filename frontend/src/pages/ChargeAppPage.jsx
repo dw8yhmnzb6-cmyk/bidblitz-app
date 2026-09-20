@@ -186,6 +186,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
         serial_number: "",
         purchase_date: "",
         merchant_name: "",
+        invoice_id: "",
         invoice_number: "",
         warranty_months: "24",
       });
@@ -255,6 +256,7 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
       serial_number: "",
       purchase_date: "",
       merchant_name: "",
+      invoice_id: "",
       invoice_number: "",
       warranty_months: "24",
     });
