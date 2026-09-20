@@ -1407,6 +1407,11 @@ def test_virtual_cards_fail_closed_without_live_issuer_and_never_list_pan():
     assert 'idempotency_key=f"virtual-card-refund:{marker}"' in backend
     assert 'creation_payload = {' in backend
     assert 'detail="Idempotency-Key wurde mit anderen Kartendaten verwendet"' in backend
+    assert 'idempotency_key=f"virtual-card-create-rollback:{marker}"' in backend
+    assert '"create_persist_failed"' in backend
+    assert '"create_missing_after_persist"' in backend
+    assert 'persisted = await db.virtual_cards.find_one(' in backend
+    assert '"replayed": bool(wallet_result.idempotent_replay)' in backend
     assert '"$inc": {"balance": -req.limit, "reserved_balance": req.limit}' not in backend
     assert '"$inc": {"balance": amount, "reserved_balance": -amount}' not in backend
     assert '"routes.cards_lifecycle", "router"' in registry
