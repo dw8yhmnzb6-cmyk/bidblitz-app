@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -22,6 +22,8 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
   const [documentPreview, setDocumentPreview] = useState(null);
+  const [editingWarrantyId, setEditingWarrantyId] = useState("");
+  const [editingInvoiceId, setEditingInvoiceId] = useState("");
   const [warrantyForm, setWarrantyForm] = useState({
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
@@ -60,21 +62,30 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
     setBusy("warranty");
     try {
-      const response = await api.registerChargeWarranty(warrantyForm);
-      const registrationId = response?.warranty?.registration_id;
+      const response = editingWarrantyId
+        ? await api.updateChargeWarranty(editingWarrantyId, warrantyForm)
+        : await api.registerChargeWarranty(warrantyForm);
+      const registrationId = response?.warranty?.registration_id || editingWarrantyId;
       if (warrantyFile && registrationId) {
         await api.uploadChargeWarrantyAttachment(registrationId, warrantyFile);
       }
-      toast.success("Garantie erfolgreich registriert");
-      setWarrantyForm((prev) => ({ ...prev, serial_number: "", invoice_number: "" }));
+      toast.success(editingWarrantyId ? "Garantie aktualisiert" : "Garantie erfolgreich registriert");
+      setWarrantyForm({
+        product_name: "BidBlitz Charge Pro 65W",
+        serial_number: "",
+        purchase_date: "",
+        merchant_name: "",
+        invoice_number: "",
+      });
       setWarrantyFile(null);
+      setEditingWarrantyId("");
       await loadDashboard();
     } catch (error) {
-      toast.error(error.message || "Garantie konnte nicht registriert werden");
+      toast.error(error.message || (editingWarrantyId ? "Garantie konnte nicht aktualisiert werden" : "Garantie konnte nicht registriert werden"));
     } finally {
       setBusy("");
     }
-  }, [warrantyForm, warrantyFile, loadDashboard]);
+  }, [warrantyForm, warrantyFile, editingWarrantyId, loadDashboard]);
 
   const saveInvoice = useCallback(async () => {
     if (!invoiceForm.invoice_number.trim() || !invoiceForm.merchant_name.trim()) {
@@ -83,24 +94,133 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
     setBusy("invoice");
     try {
-      const response = await api.saveChargeInvoice({
+      const payload = {
         ...invoiceForm,
         amount: Number(invoiceForm.amount) || 0,
-      });
-      const invoiceId = response?.invoice?.invoice_id;
+      };
+      const response = editingInvoiceId
+        ? await api.updateChargeInvoice(editingInvoiceId, payload)
+        : await api.saveChargeInvoice(payload);
+      const invoiceId = response?.invoice?.invoice_id || editingInvoiceId;
       if (invoiceFile && invoiceId) {
         await api.uploadChargeInvoiceAttachment(invoiceId, invoiceFile);
       }
-      toast.success("Rechnung gespeichert");
+      toast.success(editingInvoiceId ? "Rechnung aktualisiert" : "Rechnung gespeichert");
       setInvoiceForm({ invoice_number: "", merchant_name: "", amount: "", purchase_date: "", product_name: "", serial_number: "" });
       setInvoiceFile(null);
+      setEditingInvoiceId("");
       await loadDashboard();
     } catch (error) {
-      toast.error(error.message || "Rechnung konnte nicht gespeichert werden");
+      toast.error(error.message || (editingInvoiceId ? "Rechnung konnte nicht aktualisiert werden" : "Rechnung konnte nicht gespeichert werden"));
     } finally {
       setBusy("");
     }
-  }, [invoiceForm, invoiceFile, loadDashboard]);
+  }, [invoiceForm, invoiceFile, editingInvoiceId, loadDashboard]);
+
+  const editWarranty = useCallback((item) => {
+    setEditingWarrantyId(item.registration_id);
+    setWarrantyForm({
+      product_name: item.product_name || "",
+      serial_number: item.serial_number || "",
+      purchase_date: item.purchase_date || "",
+      merchant_name: item.merchant_name || "",
+      invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+    });
+    setWarrantyFile(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const cancelWarrantyEdit = useCallback(() => {
+    setEditingWarrantyId("");
+    setWarrantyForm({
+      product_name: "BidBlitz Charge Pro 65W",
+      serial_number: "",
+      purchase_date: "",
+      merchant_name: "",
+      invoice_number: "",
+    });
+    setWarrantyFile(null);
+  }, []);
+
+  const deleteWarranty = useCallback(async (registrationId) => {
+    if (!window.confirm("Garantie und zugehörige Belege wirklich löschen?")) return;
+    setBusy(`delete-warranty-${registrationId}`);
+    try {
+      await api.deleteChargeWarranty(registrationId);
+      if (editingWarrantyId === registrationId) cancelWarrantyEdit();
+      setWarrantyPassPreview((current) => current?.registration_id === registrationId ? null : current);
+      toast.success("Garantie gelöscht");
+      await loadDashboard();
+    } catch (error) {
+      toast.error(error.message || "Garantie konnte nicht gelöscht werden");
+    } finally {
+      setBusy("");
+    }
+  }, [editingWarrantyId, cancelWarrantyEdit, loadDashboard]);
+
+  const deleteWarrantyAttachment = useCallback(async (registrationId, attachment) => {
+    if (!window.confirm(`Beleg „${attachment.original_filename}“ wirklich entfernen?`)) return;
+    setBusy(`delete-attachment-${attachment.attachment_id}`);
+    try {
+      await api.deleteChargeWarrantyAttachment(registrationId, attachment.attachment_id);
+      toast.success("Beleg entfernt");
+      await loadDashboard();
+    } catch (error) {
+      toast.error(error.message || "Beleg konnte nicht entfernt werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadDashboard]);
+
+  const editInvoice = useCallback((item) => {
+    setEditingInvoiceId(item.invoice_id);
+    setInvoiceForm({
+      invoice_number: item.invoice_number === "—" ? "" : (item.invoice_number || ""),
+      merchant_name: item.merchant_name || "",
+      amount: item.amount ?? "",
+      purchase_date: item.purchase_date || "",
+      product_name: item.product_name || "",
+      serial_number: item.serial_number || "",
+    });
+    setInvoiceFile(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const cancelInvoiceEdit = useCallback(() => {
+    setEditingInvoiceId("");
+    setInvoiceForm({ invoice_number: "", merchant_name: "", amount: "", purchase_date: "", product_name: "", serial_number: "" });
+    setInvoiceFile(null);
+  }, []);
+
+  const deleteInvoice = useCallback(async (invoiceId) => {
+    if (!window.confirm("Rechnung und zugehörige Belege wirklich löschen?")) return;
+    setBusy(`delete-invoice-${invoiceId}`);
+    try {
+      await api.deleteChargeInvoice(invoiceId);
+      if (editingInvoiceId === invoiceId) cancelInvoiceEdit();
+      toast.success("Rechnung gelöscht");
+      await loadDashboard();
+    } catch (error) {
+      toast.error(error.message || "Rechnung konnte nicht gelöscht werden");
+    } finally {
+      setBusy("");
+    }
+  }, [editingInvoiceId, cancelInvoiceEdit, loadDashboard]);
+
+  const deleteInvoiceAttachment = useCallback(async (invoiceId, attachment) => {
+    if (!window.confirm(`Beleg „${attachment.original_filename}“ wirklich entfernen?`)) return;
+    setBusy(`delete-attachment-${attachment.attachment_id}`);
+    try {
+      await api.deleteChargeInvoiceAttachment(invoiceId, attachment.attachment_id);
+      toast.success("Beleg entfernt");
+      await loadDashboard();
+    } catch (error) {
+      toast.error(error.message || "Beleg konnte nicht entfernt werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadDashboard]);
+
 
   const previewWarrantyPass = useCallback(async (registrationId) => {
     setBusy(`pass-${registrationId}`);
@@ -225,7 +345,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <SurfaceCard title="Garantie registrieren" icon={ShieldCheck} testid="charge-app-warranty-card">
+          <SurfaceCard title={editingWarrantyId ? "Garantie bearbeiten" : "Garantie registrieren"} icon={ShieldCheck} testid="charge-app-warranty-card">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field value={warrantyForm.product_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, product_name: value }))} placeholder="Produktname" testid="charge-app-warranty-product-input" />
               <Field value={warrantyForm.serial_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="charge-app-warranty-serial-input" />
@@ -234,10 +354,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
             </div>
             <Field value={warrantyForm.merchant_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, merchant_name: value }))} placeholder="Händlername" testid="charge-app-warranty-merchant-input" />
             <UploadField label="Garantiebeleg hochladen (PDF/JPG/PNG/WebP)" file={warrantyFile} onChange={setWarrantyFile} testid="charge-app-warranty-file-input" />
-            <ActionButton onClick={submitWarranty} busy={busy === "warranty"} icon={ShieldCheck} testid="charge-app-warranty-submit">Garantie aktivieren</ActionButton>
+            <ActionButton onClick={submitWarranty} busy={busy === "warranty"} icon={editingWarrantyId ? Save : ShieldCheck} testid="charge-app-warranty-submit">{editingWarrantyId ? "Änderungen speichern" : "Garantie aktivieren"}</ActionButton>
+            {editingWarrantyId ? (
+              <button type="button" onClick={cancelWarrantyEdit} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-[#D9CFC0] bg-white text-xs font-black text-slate-700" data-testid="charge-app-warranty-edit-cancel"><X size={14} />Bearbeiten abbrechen</button>
+            ) : null}
           </SurfaceCard>
 
-          <SurfaceCard title="Rechnung speichern" icon={ReceiptText} testid="charge-app-invoice-card">
+          <SurfaceCard title={editingInvoiceId ? "Rechnung bearbeiten" : "Rechnung speichern"} icon={ReceiptText} testid="charge-app-invoice-card">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field value={invoiceForm.invoice_number} onChange={(value) => setInvoiceForm((prev) => ({ ...prev, invoice_number: value }))} placeholder="Rechnungsnummer" testid="charge-app-invoice-number-input" />
               <Field value={invoiceForm.merchant_name} onChange={(value) => setInvoiceForm((prev) => ({ ...prev, merchant_name: value }))} placeholder="Händlername" testid="charge-app-invoice-merchant-input" />
@@ -249,7 +372,10 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <Field value={invoiceForm.serial_number} onChange={(value) => setInvoiceForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="charge-app-invoice-serial-input" />
             </div>
             <UploadField label="Rechnung / Beleg hochladen (PDF/JPG/PNG/WebP)" file={invoiceFile} onChange={setInvoiceFile} testid="charge-app-invoice-file-input" />
-            <ActionButton onClick={saveInvoice} busy={busy === "invoice"} icon={Save} testid="charge-app-invoice-submit">Rechnung sichern</ActionButton>
+            <ActionButton onClick={saveInvoice} busy={busy === "invoice"} icon={Save} testid="charge-app-invoice-submit">{editingInvoiceId ? "Änderungen speichern" : "Rechnung sichern"}</ActionButton>
+            {editingInvoiceId ? (
+              <button type="button" onClick={cancelInvoiceEdit} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-[#D9CFC0] bg-white text-xs font-black text-slate-700" data-testid="charge-app-invoice-edit-cancel"><X size={14} />Bearbeiten abbrechen</button>
+            ) : null}
           </SurfaceCard>
         </div>
 
@@ -376,11 +502,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.product_name}</p>
                     <p className="mt-1 text-xs text-slate-500">SN {item.serial_number} · {item.merchant_name}</p>
                     <p className="mt-2 text-xs text-slate-600">{item.coverage_label} · gültig bis {item.valid_until}</p>
-                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Garantiebeleg · ${item.product_name}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-app-warranty-attachments-${index}`} /> : null}
+                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Garantiebeleg · ${item.product_name}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} onDelete={(attachment) => deleteWarrantyAttachment(item.registration_id, attachment)} deletingId={busy.startsWith("delete-attachment-") ? busy.slice("delete-attachment-".length) : ""} testidPrefix={`charge-app-warranty-attachments-${index}`} /> : null}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
                     <button onClick={() => previewWarrantyPass(item.registration_id)} disabled={busy === `pass-${item.registration_id}`} className="rounded-full border border-[#0A1626]/10 bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#D8FCFF] disabled:opacity-50" data-testid={`charge-app-warranty-pass-preview-${index}`}>{busy === `pass-${item.registration_id}` ? "Lädt..." : "Pass ansehen"}</button>
+                    <button onClick={() => editWarranty(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-warranty-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
+                    <button onClick={() => deleteWarranty(item.registration_id)} disabled={busy === `delete-warranty-${item.registration_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-warranty-delete-${index}`}><Trash2 size={11} />{busy === `delete-warranty-${item.registration_id}` ? "Löscht..." : "Löschen"}</button>
                   </div>
                 </div>
               </div>
@@ -420,9 +548,13 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.invoice_number}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.merchant_name} · {item.product_name}</p>
                     <p className="mt-2 text-xs text-slate-600">Kaufdatum {item.purchase_date || "—"} · SN {item.serial_number || "—"}</p>
-                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Rechnung · ${item.invoice_number}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-app-invoice-attachments-${index}`} /> : null}
+                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Rechnung · ${item.invoice_number}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} onDelete={(attachment) => deleteInvoiceAttachment(item.invoice_id, attachment)} deletingId={busy.startsWith("delete-attachment-") ? busy.slice("delete-attachment-".length) : ""} testidPrefix={`charge-app-invoice-attachments-${index}`} /> : null}
                   </div>
-                  <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.amount || 0).toFixed(2)}</span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.amount || 0).toFixed(2)}</span>
+                    <button onClick={() => editInvoice(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-invoice-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
+                    <button onClick={() => deleteInvoice(item.invoice_id)} disabled={busy === `delete-invoice-${item.invoice_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-invoice-delete-${index}`}><Trash2 size={11} />{busy === `delete-invoice-${item.invoice_id}` ? "Löscht..." : "Löschen"}</button>
+                  </div>
                 </div>
               </div>
             ))}
