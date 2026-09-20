@@ -791,6 +791,28 @@ async def emsp_cdr_post(
     return _ocpi({"id": cdr_id})
 
 
+@router.get(f"/emsp/{OCPI_VERSION}/cdrs/{{country_code}}/{{party_id}}/{{cdr_id}}")
+async def emsp_cdr_get(
+    country_code: str,
+    party_id: str,
+    cdr_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    country = country_code.upper()
+    party = party_id.upper()
+    if country != partner["country_code"] or party != partner["party_id"]:
+        raise HTTPException(404, "CDR not found")
+    cdr = await db.ocpi_remote_cdrs.find_one(
+        {"country_code": country, "party_id": party, "id": cdr_id},
+        {"_id": 0, "source_partner_id": 0, "received_at": 0},
+    )
+    if not cdr:
+        raise HTTPException(404, "CDR not found")
+    return _ocpi(cdr)
+
+
 @router.put(f"/cpo/{OCPI_VERSION}/tokens/{{country_code}}/{{party_id}}/{{token_uid}}")
 async def cpo_token_put(country_code: str, party_id: str, token_uid: str, request: Request, body: Dict[str, Any], authorization: Optional[str] = Header(None)):
     partner = await _functional_partner(request, authorization)
