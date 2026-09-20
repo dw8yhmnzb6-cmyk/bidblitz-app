@@ -567,7 +567,7 @@ async def update_auction_order_fulfillment(order_id: str, req: AuctionOrderFulfi
 
     allowed_from = {
         "processing": {"pending", "not_started"},
-        "shipped": {"pending", "processing"},
+        "shipped": {"processing"},
         "delivered": {"shipped"},
     }
     if current == req.status:
