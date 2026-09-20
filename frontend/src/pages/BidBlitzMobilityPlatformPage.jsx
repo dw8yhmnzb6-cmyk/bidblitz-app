@@ -928,8 +928,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                 <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]">Schätzung</span>
               </div>
               <p className="mt-1.5 text-[11px] leading-4 text-[#18202a]/55">
-                Preise werden anhand der Tarifbasis am Abholort berechnet und vor der Buchung angezeigt.
+                Preise werden anhand der Tarifbasis am Abholort berechnet. Bei schwankenden Tarifen zeigen wir zusätzlich eine realistische Preisspanne.
               </p>
+              {routeSnapshot.pricing_context.source && (
+                <p className="mt-1 text-[10px] text-[#18202a]/40" data-testid="mobility-pricing-source">
+                  Basis: {routeSnapshot.pricing_context.source}
+                </p>
+              )}
             </div>
           )}
 
@@ -951,7 +956,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px] text-[#18202a]/55"><span>{option.duration_min} Min</span><span>{option.distance_km.toFixed(1)} km</span><span>Eco {option.eco_score}</span></div>
                       </div>
                       <div className="text-right shrink-0 pl-1">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#18202a]/40">{option.estimated ? "ca." : ""}</div>
                         <div className="text-[17px] font-black text-[#18202a] tabular-nums">{formatPrice(option.price_eur, lang)}</div>
+                        {option.price_range_eur?.low != null && option.price_range_eur?.high != null && (
+                          <div className="mt-0.5 text-[9px] font-semibold text-[#0F766E]/75 tabular-nums" data-testid={`mobility-price-range-${option.type}`}>
+                            {formatPrice(option.price_range_eur.low, lang)}–{formatPrice(option.price_range_eur.high, lang)}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <p className="mt-2 hidden text-[11px] leading-4 text-[#18202a]/55 sm:block">{meta.details?.[lang] || meta.details?.de}</p>
