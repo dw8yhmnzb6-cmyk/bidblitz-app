@@ -53,3 +53,26 @@ def get_bytes(path: str) -> Tuple[bytes, str]:
         resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": _init_storage(force=True)}, timeout=60)
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+
+def delete_bytes(path: str) -> bool:
+    """Delete one Charge object-store blob.
+
+    Missing objects are treated as already deleted so retries stay idempotent.
+    """
+    key = _init_storage()
+    resp = requests.delete(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key},
+        timeout=60,
+    )
+    if resp.status_code == 403:
+        resp = requests.delete(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": _init_storage(force=True)},
+            timeout=60,
+        )
+    if resp.status_code == 404:
+        return True
+    resp.raise_for_status()
+    return True
