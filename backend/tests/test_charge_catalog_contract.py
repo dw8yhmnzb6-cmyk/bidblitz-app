@@ -64,3 +64,10 @@ def test_charge_catalog_customer_ui_has_search_categories_and_stock():
         "Zum Händler",
     ):
         assert token in src
+
+
+def test_charge_catalog_search_is_regex_safe():
+    src = _py(ROUTE)
+    assert "import re" in src
+    assert "re.escape(needle)" in src
+    assert "q.strip()[:100]" in src
