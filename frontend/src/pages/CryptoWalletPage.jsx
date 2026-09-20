@@ -2,7 +2,7 @@
  * BidBlitz V2 - Crypto Wallet Page
  * BTC/ETH/USDT portfolio with live prices, buy/sell via EUR wallet
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, TrendingUp, TrendingDown, Loader2, RefreshCw,
@@ -22,6 +22,7 @@ const CryptoWalletPage = ({ onBack }) => {
   const [tradeAmount, setTradeAmount] = useState("");
   const [trading, setTrading] = useState(false);
   const [balance, setBalance] = useState(0);
+  const tradeAttemptKeyRef = useRef(null);
   const [capabilities, setCapabilities] = useState({
     live_market_data: true,
     custody_connected: false,
@@ -57,20 +58,35 @@ const CryptoWalletPage = ({ onBack }) => {
       return;
     }
     if (!tradeModal || !tradeAmount || parseFloat(tradeAmount) <= 0) return;
+    if (!tradeAttemptKeyRef.current) {
+      tradeAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `crypto-trade-${crypto.randomUUID()}`
+        : `crypto-trade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = tradeAttemptKeyRef.current;
     setTrading(true);
     try {
       const res = await fetch(`${API}/api/crypto/trade`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: tradeModal.symbol, amount_eur: parseFloat(tradeAmount), side: tradeModal.side }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          symbol: tradeModal.symbol,
+          amount_eur: parseFloat(tradeAmount),
+          side: tradeModal.side,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await res.json();
       if (res.ok) {
+        tradeAttemptKeyRef.current = null;
         setBalance(d.new_balance);
         setTradeModal(null);
         setTradeAmount("");
         load();
       } else {
+        if (res.status === 400 || String(d.detail || "").includes("neuen Idempotency-Key")) {
+          tradeAttemptKeyRef.current = null;
+        }
         alert(d.detail || "Fehler");
       }
     } catch { alert("Fehler"); }
