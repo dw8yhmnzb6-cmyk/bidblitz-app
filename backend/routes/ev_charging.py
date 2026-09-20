@@ -142,7 +142,9 @@ async def _refund_ev_reservation(session_id: str, reason: str) -> bool:
 
     amount = round(float(sess.get("reserved_amount") or 0), 2)
     user_id = sess.get("user_id")
-    if amount <= 0 or not user_id or sess.get("reservation_state") != "held":
+    if amount <= 0 or not user_id:
+        return True
+    if sess.get("reservation_state") not in ("held", "release_failed"):
         return True
 
     refund = await credit_wallet(
