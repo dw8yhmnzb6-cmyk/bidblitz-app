@@ -28,13 +28,21 @@ import requests
 
 from core.database import db, sanitize_doc
 from core.security import get_current_user
-from core.config import STRIPE_API_KEY
+from core.config import STRIPE_API_KEY, TEST_MODE
 
 load_dotenv()
 
 logger = logging.getLogger("bidblitz.dating")
 
 router = APIRouter(prefix="/api/dating", tags=["dating"])
+
+
+def _require_dating_demo_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Dating-Demoaktionen sind in Production deaktiviert.",
+        )
 
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_STORAGE_PREFIX = "bidblitz/dating"
@@ -1655,6 +1663,7 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
 
 @router.post("/premium/demo-upgrade")
 async def premium_demo_upgrade(request: Request):
+    _require_dating_demo_mode()
     user = await get_me(request)
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"dating_premium": True}})
     await db.dating_profiles.update_one(
@@ -1863,6 +1872,7 @@ async def dating_safety_scan(payload: DatingSafetyScanReq, request: Request):
 
 @router.post("/verify/demo")
 async def verify_demo(payload: VerifyReq, request: Request):
+    _require_dating_demo_mode()
     user = await get_me(request)
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"kyc_verified": True, "verified": True}})
     await db.dating_profiles.update_one(
