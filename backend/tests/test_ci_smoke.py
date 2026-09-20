@@ -731,6 +731,11 @@ def test_marketplace_and_flash_sale_money_paths_are_retry_safe():
     assert "async def _release_flash_claim" in commerce_source
     assert "post_settlement_inventory_finalization_failed" in commerce_source
     assert 'status": "reconciliation_required"' in commerce_source
+    assert "from core.config import TEST_MODE" in commerce_source
+    assert "Flash-Sale-Käufe von externen Marketplace-Verkäufern sind in Production" in commerce_source
+    assert "Es wird kein Käufergeld abgebucht." in commerce_source
+    assert "flash-sale-escrow-pending-" in commerce_page
+    assert "Escrow noch nicht live" in commerce_page
 
     assert "boost_type: boostType" in dashboard_source
     assert "'Idempotency-Key': idempotencyKey" in dashboard_source
