@@ -787,6 +787,14 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const ended = applyFiltersAndSort(auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter)));
   const activeCats = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
   const winners = auctions.filter(a => a.status === "ended" && a.winner_name);
+  const pendingWins = (!isGuest && user?.id)
+    ? auctions.filter(a =>
+        a.status === "ended"
+        && a.winner_id === user.id
+        && !a.requires_manual_review
+        && a.winner_payment_status !== "paid"
+      )
+    : [];
 
   return (
     <motion.div data-testid="auctions-page" className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -837,6 +845,32 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
         {/* Trust */}
         <TrustBar t={t} recentWinners={winners} />
+
+        {pendingWins.length > 0 && (
+          <div className="space-y-2" data-testid="auction-pending-wins">
+            {pendingWins.slice(0, 3).map((auc) => (
+              <div key={auc.auction_id} className="flex items-center gap-3 rounded-2xl border border-[#FFD166]/20 bg-[#FFD166]/[0.07] p-3">
+                {auc.image_url ? (
+                  <img src={auc.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#FFD166]/10"><Trophy size={20} className="text-[#FFD166]" /></div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#FFD166]/70">Gewonnen · Zahlung offen</p>
+                  <p className="truncate text-sm font-bold text-white/85">{auc.title}</p>
+                  <p className="text-xs text-[#00E0FF]">Endpreis €{Number(auc.current_price || 0).toFixed(2)} · Versand kostenlos</p>
+                </div>
+                <button
+                  onClick={() => openWinnerCheckout(auc)}
+                  className="rounded-xl border border-[#FFD166]/25 bg-[#FFD166]/10 px-3 py-2 text-xs font-black text-[#FFD166]"
+                  data-testid={`auction-pay-win-${auc.auction_id}`}
+                >
+                  Bezahlen
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Premium How It Works — DealDash Style */}
         {!isGuest && <div className="px-4"><KYCBanner onNavigate={onNavigate} /></div>}
