@@ -373,6 +373,11 @@ async def request_payout(req: PayoutReq, request: Request):
             "pending", "processing", "completed", "reconciliation_required", "needs_stripe_onboarding"
         }:
             return {"success": True, "payout": existing, "replayed": True}
+        if existing.get("status") == "failed":
+            raise HTTPException(
+                status_code=409,
+                detail="Dieser Auszahlungsversuch ist abgeschlossen/fehlgeschlagen. Für einen neuen Versuch ist ein neuer Idempotency-Key erforderlich.",
+            )
 
     now = datetime.now(timezone.utc)
     await db.staff_payouts.update_one(
