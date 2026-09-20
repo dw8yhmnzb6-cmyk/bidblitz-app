@@ -2410,3 +2410,16 @@ def test_dating_demo_escalations_are_test_mode_only():
     assert "TEST_MODE && !userProfile.verified" in page
     assert "dating-verify-demo-button" in page
 
+def test_promo_wallet_credits_cannot_be_minted_by_merchants():
+    source = (BACKEND_DIR / "routes" / "extras.py").read_text(encoding="utf-8")
+
+    assert 'role not in {"admin", "super_admin", "merchant"}' in source
+    assert 'promo_type in {"fixed", "credit"} and role not in {"admin", "super_admin"}' in source
+    assert "Nur Admins dürfen Promo-Codes mit Wallet-Gutschrift erstellen." in source
+    assert '"wallet_credit_approved": bool(' in source
+    assert "Dieser Legacy-Promo-Code ist nicht für Wallet-Gutschriften freigegeben." in source
+    assert "creator_role in {\"admin\", \"super_admin\"}" in source
+    assert 'creator_email == "admin@bidblitz.ae"' in source
+    assert '"$pull": {"used_by": email, "redemption_markers": marker}' in source
+    assert "credit_wallet(" in source
+
