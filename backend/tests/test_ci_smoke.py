@@ -2387,3 +2387,11 @@ def test_live_auctions_fail_closed_until_escrow_and_settlement_exist():
     assert 'title="Live Auktionen"' in app
     assert "Escrow, Gewinnerzahlung und Settlement" in app
 
+def test_destructive_demo_cleanup_is_disabled_in_production():
+    source = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+
+    assert "from core.config import FEES, TEST_MODE" in source
+    assert '@router.post("/cleanup-fake-data")' in source
+    assert "Demo-Daten-Bereinigung ist in Production deaktiviert." in source
+    assert "if not TEST_MODE:" in source
+
