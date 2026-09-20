@@ -73,8 +73,7 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
         mode = dict((context.get("modes") or {}).get("scooter") or {})
         if not mode:
             pricing.update({
-                "available": not bool(context.get("strict_modes")),
-                "currency": context.get("currency") or pricing["currency"],
+                "available": False,
                 "profile_scope": context.get("profile_scope") or "country",
                 "source": context.get("source") or pricing["source"],
                 "city": context.get("city") or "",
@@ -84,13 +83,14 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
             })
             return pricing
 
+        local_currency = str(context.get("currency") or "EUR").upper()
         pricing.update({
             "unlock_fee": round(float(mode.get("base", UNLOCK_FEE) or 0), 2),
             "per_minute": round(float(mode.get("per_min", PER_MINUTE_RATE) or 0), 4),
             "daily_cap": round(float(mode.get("daily_cap", MAX_DAILY_CAP) or MAX_DAILY_CAP), 2),
             "min_balance": round(float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0), 2),
             "minimum_charge": round(float(mode.get("minimum", mode.get("base", UNLOCK_FEE)) or 0), 2),
-            "currency": context.get("currency") or "EUR",
+            "currency": local_currency,
             "profile_scope": context.get("profile_scope") or "country",
             "source": context.get("source") or pricing["source"],
             "city": context.get("city") or "",
@@ -99,8 +99,11 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
             "basis": mode.get("basis") or "",
             "range_per_min_low": mode.get("range_per_min_low"),
             "range_per_min_high": mode.get("range_per_min_high"),
-            "available": True,
+            "available": local_currency == "EUR",
+            "billing_supported": local_currency == "EUR",
         })
+        if local_currency != "EUR":
+            pricing["basis"] = (pricing.get("basis") or "") + " · Wallet-Abrechnung für diese Währung noch nicht freigeschaltet."
         return pricing
     except HTTPException:
         raise
