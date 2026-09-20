@@ -35,6 +35,61 @@ TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay", "
 STRIPE_CHECKOUT_METHODS = {"nfc", "qr", "apple_pay", "google_pay", "credit_card"}
 DIRECT_BOOKING_METHODS = {"wallet", "cash"}
 
+DEFAULT_TRANSPORT_PRICING = {
+    "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "minimum": 3.0, "speed_factor": 1.0, "wallet_only": False},
+    "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "minimum": 1.0, "speed_factor": 1.25, "wallet_only": True},
+    "bike": {"label": "E-Bike", "icon": "bike", "base": 0.55, "per_km": 0.22, "per_min": 0.04, "minimum": 1.0, "speed_factor": 1.32, "wallet_only": True},
+    "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "minimum": 4.2, "speed_factor": 1.08, "wallet_only": False},
+    "car_sharing": {"label": "Carsharing", "icon": "car", "base": 2.8, "per_km": 0.36, "per_min": 0.11, "minimum": 2.8, "speed_factor": 1.02, "wallet_only": False},
+    "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "minimum": 8.5, "speed_factor": 1.05, "wallet_only": False},
+    "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "minimum": 5.0, "speed_factor": 1.12, "wallet_only": False},
+    "vip": {"label": "VIP Chauffeur", "icon": "crown", "base": 12.0, "per_km": 1.6, "per_min": 0.22, "minimum": 12.0, "speed_factor": 0.92, "wallet_only": False},
+}
+
+REGIONAL_PRICING_PROFILES = {
+    "XK": {
+        "region": "Kosovo",
+        "currency": "EUR",
+        "source": "Prishtina local market benchmark",
+        "modes": {
+            "taxi": {"base": 2.0, "per_km": 0.75, "per_min": 0.0, "minimum": 2.0, "surge": False, "basis": "2,00 € Start + 0,75 €/km"},
+            "scooter": {"base": 0.0, "per_km": 0.0, "per_min": 0.20, "minimum": 0.80, "surge": False, "basis": "lokaler Benchmark · 0,20 €/min"},
+            "bike": {"base": 0.30, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
+            "ev": {"base": 2.0, "per_km": 0.45, "per_min": 0.04, "minimum": 2.5, "surge": False, "basis": "regionaler EV-Schätzwert"},
+            "car_sharing": {"base": 1.5, "per_km": 0.32, "per_min": 0.08, "minimum": 2.0, "surge": False, "basis": "regionaler Carsharing-Schätzwert"},
+        },
+    },
+    "DE": {
+        "region": "Deutschland",
+        "currency": "EUR",
+        "source": "German urban mobility benchmark",
+        "modes": {
+            "taxi": {"base": 4.5, "per_km": 2.20, "per_min": 0.0, "minimum": 6.0, "surge": False, "basis": "regionaler Taxi-Schätzwert"},
+            "scooter": {"base": 0.0, "per_km": 0.0, "per_min": 0.19, "minimum": 1.0, "surge": False, "basis": "Sharing-Benchmark · ca. 0,19 €/min"},
+            "bike": {"base": 1.0, "per_km": 0.0, "per_min": 0.18, "minimum": 1.0, "surge": False, "basis": "Sharing-Benchmark"},
+        },
+    },
+    "BALKANS": {
+        "region": "Balkan",
+        "currency": "EUR",
+        "source": "BidBlitz regional estimate",
+        "modes": {
+            "taxi": {"base": 2.0, "per_km": 0.85, "per_min": 0.03, "minimum": 2.5, "surge": False, "basis": "regionaler Taxi-Schätzwert"},
+            "scooter": {"base": 0.50, "per_km": 0.0, "per_min": 0.18, "minimum": 1.0, "surge": False, "basis": "regionaler Scooter-Schätzwert"},
+            "bike": {"base": 0.50, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
+        },
+    },
+    "EU": {
+        "region": "Europa",
+        "currency": "EUR",
+        "source": "BidBlitz European benchmark",
+        "modes": {
+            "scooter": {"base": 1.0, "per_km": 0.0, "per_min": 0.22, "minimum": 1.0, "surge": False, "basis": "EU-Sharing-Benchmark"},
+            "bike": {"base": 1.0, "per_km": 0.0, "per_min": 0.20, "minimum": 1.0, "surge": False, "basis": "EU-Bike-Sharing-Benchmark"},
+        },
+    },
+}
+
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -80,19 +135,19 @@ def build_option(
     duration_min: int,
     demand_multiplier: float,
     eco_score: int,
+    pricing_profile: Optional[dict] = None,
 ) -> dict:
-    base = {
-        "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "speed_factor": 1.0, "wallet_only": False},
-        "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "speed_factor": 1.25, "wallet_only": True},
-        "bike": {"label": "E-Bike", "icon": "bike", "base": 0.55, "per_km": 0.22, "per_min": 0.04, "speed_factor": 1.32, "wallet_only": True},
-        "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "speed_factor": 1.08, "wallet_only": False},
-        "car_sharing": {"label": "Carsharing", "icon": "car", "base": 2.8, "per_km": 0.36, "per_min": 0.11, "speed_factor": 1.02, "wallet_only": False},
-        "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "speed_factor": 1.05, "wallet_only": False},
-        "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "speed_factor": 1.12, "wallet_only": False},
-        "vip": {"label": "VIP Chauffeur", "icon": "crown", "base": 12.0, "per_km": 1.6, "per_min": 0.22, "speed_factor": 0.92, "wallet_only": False},
-    }[option_type]
+    base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
+    profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis"}})
+
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
-    fare = round((base["base"] + distance_km * base["per_km"] + adjusted_duration * base["per_min"]) * demand_multiplier, 2)
+    applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
+    raw_fare = base["base"] + distance_km * base["per_km"] + adjusted_duration * base["per_min"]
+    fare = round(max(float(base.get("minimum") or 0), raw_fare) * applied_multiplier, 2)
+    pricing_region = (pricing_profile or {}).get("region") or "Europa"
+    pricing_source = (pricing_profile or {}).get("source") or "BidBlitz estimate"
+    pricing_basis = base.get("basis") or "BidBlitz Routenschätzung"
     return {
         "type": option_type,
         "label": base["label"],
@@ -103,6 +158,10 @@ def build_option(
         "wallet_only": base["wallet_only"],
         "eco_score": eco_score,
         "payment_methods": ["wallet", "nfc", "qr", "apple_pay", "google_pay"],
+        "pricing_region": pricing_region,
+        "pricing_source": pricing_source,
+        "pricing_basis": pricing_basis,
+        "estimated": True,
     }
 
 
