@@ -418,6 +418,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
         upsert=True,
     )
 
+    payment_attempt_hash = hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20]
     claimed = await db.auction_orders.update_one(
         {
             "_id": order_id,
@@ -426,7 +427,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
         },
         {"$set": {
             "status": "processing_payment",
-            "payment_attempt_key_hash": hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20],
+            "payment_attempt_key_hash": payment_attempt_hash,
             "payment_started_at": now,
         }},
     )
@@ -450,7 +451,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
             "shipping_fee": 0.0,
             "free_shipping": True,
         },
-        idempotency_key=f"auction-winner-order:{order_id}:payment",
+        idempotency_key=f"auction-winner-order:{order_id}:payment:{payment_attempt_hash}",
     )
     if not payment.success:
         payment_state = str(getattr(payment.status, "value", payment.status))
@@ -465,6 +466,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
                 "status": order_status,
                 "payment_status": payment_state or "failed",
                 "payment_error": (payment.error or "payment_failed")[:300],
+                "payment_attempt_key_hash": payment_attempt_hash,
                 "payment_updated_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
