@@ -27,6 +27,10 @@ function isMobilityShellPath(path) {
     || path.startsWith("/ev/session/");
 }
 
+function isImmersiveMobilityMapPath(path) {
+  return path === "/mobility-map";
+}
+
 function isStaffEmployeeShellPath(path) {
   return path === "/staff/mobile"
     || path === "/staff/invite"
@@ -63,6 +67,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isRestaurantTableGuest = isRestaurantTableGuestPath(currentPath);
   const isInvoicePay = isInvoicePayPath(currentPath);
   const isMobilityShell = isMobilityShellPath(currentPath);
+  const isImmersiveMobilityMap = isImmersiveMobilityMapPath(currentPath);
   const isStaffEmployeeShell = isStaffEmployeeShellPath(currentPath);
   const isFullScreenStaffMgr = isFullScreenStaffManagerPath(currentPath);
   const isFullscreenCommerce = isFullscreenCommercePath(currentPath);
@@ -86,6 +91,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isQrOrder
       && !isRestaurantTableGuest
       && !isInvoicePay
+      && !isImmersiveMobilityMap
       && !isStaffEmployeeShell
       && !isFullScreenStaffMgr
       && !isDating
@@ -103,6 +109,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isRestaurantTableGuest
       && !isInvoicePay
       && !isMobilityShell
+      && !isImmersiveMobilityMap
       && !isStaffEmployeeShell
       && !isDating
       && !isMerchantPos
