@@ -1013,44 +1013,136 @@ async def confirm_delivery(req: OrderAction, request: Request):
 
 @router.post("/rate")
 async def rate_order(request: Request):
-    """Rate a delivered order."""
+    """Rate one delivered order exactly once and update restaurant rating atomically."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     body = await request.json()
-    
-    order_id = body.get("order_id")
-    food_rating = body.get("food_rating", 5)
-    delivery_rating = body.get("delivery_rating", 5)
-    comment = body.get("comment", "")
-    
+
+    order_id = str(body.get("order_id") or "").strip()
+    try:
+        food_rating = int(body.get("food_rating", 5))
+        delivery_rating = int(body.get("delivery_rating", 5))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Bewertung muss 1-5 sein")
+    comment = str(body.get("comment") or "")[:1000]
+
+    if not order_id:
+        raise HTTPException(status_code=400, detail="order_id erforderlich")
     if not 1 <= food_rating <= 5 or not 1 <= delivery_rating <= 5:
         raise HTTPException(status_code=400, detail="Bewertung muss 1-5 sein")
-    
-    order = await db.food_orders.find_one({"order_id": order_id, "user_id": user_id})
+
+    order = await db.food_orders.find_one(
+        {"order_id": order_id, "user_id": user_id},
+        {"_id": 0},
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    
-    if order["status"] != "delivered":
+    if order.get("status") != "delivered":
         raise HTTPException(status_code=400, detail="Nur gelieferte Bestellungen bewerten")
-    
+
+    review_id = f"FOOD-REVIEW-{hashlib.sha256(f'{user_id}:{order_id}'.encode('utf-8')).hexdigest()[:24].upper()}"
+    payload = {
+        "order_id": order_id,
+        "user_id": user_id,
+        "restaurant_id": order.get("restaurant_id"),
+        "food_rating": food_rating,
+        "delivery_rating": delivery_rating,
+        "comment": comment,
+    }
+    await db.food_reviews.update_one(
+        {"_id": review_id},
+        {"$setOnInsert": {
+            "_id": review_id,
+            **payload,
+            "status": "processing",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    review = await db.food_reviews.find_one({"_id": review_id}, {"_id": 0}) or {}
+    stored_payload = {
+        key: review.get(key)
+        for key in ["order_id", "user_id", "restaurant_id", "food_rating", "delivery_rating", "comment"]
+    }
+    if stored_payload != payload:
+        raise HTTPException(status_code=409, detail="Diese Bestellung wurde bereits anders bewertet")
+    if review.get("status") == "completed":
+        return {"ok": True, "message": "Bewertung bereits gespeichert", "replayed": True}
+
+    restaurant_id = str(order.get("restaurant_id") or "")
+    marker_hash = hashlib.sha256(review_id.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"food_review_markers.{marker_hash}"
+    marker = {
+        "review_id": review_id,
+        "order_id": order_id,
+        "rating": food_rating,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    rated = await db.food_restaurants.update_one(
+        {"restaurant_id": restaurant_id, marker_field: {"$exists": False}},
+        [
+            {"$set": {
+                "rating_sum": {
+                    "$add": [
+                        {
+                            "$ifNull": [
+                                "$rating_sum",
+                                {
+                                    "$multiply": [
+                                        {"$ifNull": ["$rating", 0]},
+                                        {"$ifNull": ["$review_count", 0]},
+                                    ]
+                                },
+                            ]
+                        },
+                        food_rating,
+                    ]
+                },
+                "review_count": {"$add": [{"$ifNull": ["$review_count", 0]}, 1]},
+                marker_field: marker,
+            }},
+            {"$set": {
+                "rating": {
+                    "$round": [
+                        {"$divide": ["$rating_sum", "$review_count"]},
+                        1,
+                    ]
+                }
+            }},
+        ],
+    )
+    if rated.modified_count != 1:
+        restaurant = await db.food_restaurants.find_one(
+            {"restaurant_id": restaurant_id, marker_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not restaurant:
+            await db.food_reviews.update_one(
+                {"_id": review_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=500, detail="Restaurantbewertung benötigt Abstimmung")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
     await db.food_orders.update_one(
-        {"order_id": order_id},
+        {"order_id": order_id, "user_id": user_id},
         {"$set": {
             "food_rating": food_rating,
             "delivery_rating": delivery_rating,
             "user_comment": comment,
-            "rated_at": datetime.now(timezone.utc).isoformat(),
-        }}
+            "rated_at": completed_at,
+            "review_id": review_id,
+        }},
     )
-    
-    # Update restaurant rating (simplified)
-    avg_rating = (food_rating + order.get("restaurant", {}).get("rating", 4.5)) / 2
-    await db.food_restaurants.update_one(
-        {"restaurant_id": order["restaurant_id"]},
-        {"$set": {"rating": round(avg_rating, 1)}, "$inc": {"review_count": 1}}
+    await db.food_reviews.update_one(
+        {"_id": review_id},
+        {"$set": {"status": "completed", "completed_at": completed_at}},
     )
-    
-    return {"ok": True, "message": "Bewertung gespeichert"}
+    return {"ok": True, "message": "Bewertung gespeichert", "replayed": False}
 
 
 # ══════════════════════════════════════
