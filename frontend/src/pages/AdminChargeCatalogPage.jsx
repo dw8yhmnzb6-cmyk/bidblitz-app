@@ -126,6 +126,13 @@ export default function AdminChargeCatalogPage({ onBack, onNavigate }) {
             <h1 className="truncate text-xl font-black text-white">Produktkatalog steuern</h1>
           </div>
           <button
+            onClick={() => onNavigate?.("/admin/charge-claims")}
+            className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black text-amber-100"
+            data-testid="admin-charge-catalog-claims-link"
+          >
+            Garantiefälle
+          </button>
+          <button
             onClick={() => onNavigate?.("/admin/charge-offer-rules")}
             className="rounded-full border border-[#6EE7F9]/20 bg-[#6EE7F9]/10 px-4 py-2 text-xs font-black text-[#D8FCFF]"
             data-testid="admin-charge-catalog-offers-link"
