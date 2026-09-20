@@ -109,6 +109,7 @@ class ChargeCatalogOverrideRequest(BaseModel):
     sort_order: int = Field(default=100, ge=0, le=10000)
     manual_url: str = ""
     support_url: str = ""
+    support_steps: List[str] = Field(default_factory=list)
 
 
 class ChargeInteractionRequest(BaseModel):
@@ -892,6 +893,11 @@ def _charge_product_card(
         "sort_order": int(override.get("sort_order") or 100),
         "manual_url": _safe_http_url(override.get("manual_url") or product.get("manual_url") or ""),
         "support_url": _safe_http_url(override.get("support_url") or product.get("support_url") or ""),
+        "support_steps": [
+            str(step).strip()[:300]
+            for step in (override.get("support_steps") or product.get("support_steps") or [])
+            if str(step).strip()
+        ][:12],
         "updated_at": product.get("updated_at") or product.get("created_at") or "",
     }
 
@@ -3043,6 +3049,7 @@ async def admin_charge_catalog(request: Request, q: Optional[str] = None, limit:
             "sort_order": int(override.get("sort_order") or 100),
             "manual_url": override.get("manual_url") or product.get("manual_url") or "",
             "support_url": override.get("support_url") or product.get("support_url") or "",
+            "support_steps": override.get("support_steps") or product.get("support_steps") or [],
             "override_updated_at": override.get("updated_at") or "",
         })
 
@@ -3085,6 +3092,11 @@ async def admin_update_charge_catalog_product(
         "sort_order": int(req.sort_order),
         "manual_url": _safe_http_url(req.manual_url),
         "support_url": _safe_http_url(req.support_url),
+        "support_steps": [
+            str(step).strip()[:300]
+            for step in req.support_steps
+            if str(step).strip()
+        ][:12],
         "updated_at": now,
         "updated_by": admin.get("email") or admin.get("user_id") or "admin",
     }
