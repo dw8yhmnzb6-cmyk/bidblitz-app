@@ -86,6 +86,13 @@ class ChargeWarrantyTransferRequest(BaseModel):
     recipient_email: str
 
 
+class ChargeServiceRequestCreate(BaseModel):
+    service_type: str = "repair"
+    preferred_date: str
+    preferred_time: str = ""
+    note: str = ""
+
+
 class ChargeWarrantyClaimRequest(BaseModel):
     issue_type: str = "defect"
     subject: str
@@ -725,6 +732,60 @@ async def _resolve_charge_merchant(merchant_name: Any) -> Dict[str, Any]:
         "merchant_slug": merchant.get("public_slug") or profile.get("public_slug") or "",
         "merchant_name": merchant.get("business_name") or profile.get("business_name") or name,
     }
+
+
+def _service_request_card(doc: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "request_id": doc.get("request_id"),
+        "registration_id": doc.get("registration_id"),
+        "product_id": doc.get("product_id") or "",
+        "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number": doc.get("serial_number") or "",
+        "merchant_id": doc.get("merchant_id") or "",
+        "merchant_name": doc.get("merchant_name") or "",
+        "service_type": doc.get("service_type") or "repair",
+        "preferred_date": doc.get("preferred_date") or "",
+        "preferred_time": doc.get("preferred_time") or "",
+        "scheduled_date": doc.get("scheduled_date") or "",
+        "scheduled_time": doc.get("scheduled_time") or "",
+        "note": doc.get("note") or "",
+        "merchant_note": doc.get("merchant_note") or "",
+        "status": doc.get("status") or "requested",
+        "status_history": doc.get("status_history") or [],
+        "created_at": doc.get("created_at") or "",
+        "updated_at": doc.get("updated_at") or doc.get("created_at") or "",
+        "completed_at": doc.get("completed_at") or "",
+    }
+
+
+def _validate_service_type(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    allowed = {"inspection", "repair", "replacement_assessment", "diagnostic", "support"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Ungültige Serviceart")
+    return normalized
+
+
+def _validate_service_date(value: Any) -> str:
+    date_text = str(value or "").strip()
+    try:
+        parsed = datetime.strptime(date_text, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Wunschtermin muss YYYY-MM-DD sein")
+    if parsed < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=400, detail="Wunschtermin darf nicht in der Vergangenheit liegen")
+    return date_text
+
+
+def _validate_service_time(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        datetime.strptime(text, "%H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Wunschzeit muss HH:MM sein")
+    return text
 
 
 def _transfer_card(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -2092,6 +2153,38 @@ async def get_charge_warranty_service_history(registration_id: str, request: Req
                 "claim_id": claim_id,
             })
 
+    service_requests = await db.charge_service_requests.find(
+        {
+            "registration_id": registration_id,
+            "customer_user_id": user_id,
+        },
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(100)
+
+    for service_request in service_requests:
+        request_id = str(service_request.get("request_id") or "")
+        for index, history in enumerate(service_request.get("status_history") or []):
+            status = str(history.get("status") or service_request.get("status") or "")
+            events.append({
+                "event_id": f"service:{request_id}:{index}",
+                "event_type": "service_request",
+                "status": status,
+                "title": {
+                    "requested": "Servicetermin angefragt",
+                    "confirmed": "Servicetermin bestätigt",
+                    "reschedule_requested": "Neuer Servicetermin vorgeschlagen",
+                    "in_service": "Produkt im Service",
+                    "completed": "Service abgeschlossen",
+                    "rejected": "Serviceanfrage abgelehnt",
+                    "cancelled": "Serviceanfrage storniert",
+                }.get(status, "Serviceanfrage aktualisiert"),
+                "description": history.get("note") or service_request.get("merchant_note") or "",
+                "actor_role": history.get("actor_role") or "system",
+                "created_at": history.get("created_at") or service_request.get("updated_at") or "",
+                "claim_id": "",
+                "request_id": request_id,
+            })
+
     events.sort(key=lambda item: str(item.get("created_at") or ""))
     return {
         "registration_id": registration_id,
@@ -2104,10 +2197,160 @@ async def get_charge_warranty_service_history(registration_id: str, request: Req
         "service_events": events,
         "service_events_total": len(events),
         "claims_total": len(claims),
+        "service_requests_total": len(service_requests),
     }
 
 
-@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")
+@router.post("/warranty/{registration_id}/service-requests")
+async def create_charge_service_request(
+    registration_id: str,
+    req: ChargeServiceRequestCreate,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    warranty = await _find_user_warranty(user_id, registration_id)
+
+    pending_transfer = await _active_warranty_transfer(registration_id, user_id)
+    if pending_transfer:
+        raise HTTPException(
+            status_code=409,
+            detail="Serviceanfrage ist während einer offenen Garantieübertragung nicht möglich.",
+        )
+
+    merchant_user_id = str(warranty.get("merchant_user_id") or "")
+    merchant_id = str(warranty.get("merchant_id") or "")
+    merchant_name = str(warranty.get("merchant_name") or "")
+    if not merchant_user_id:
+        binding = await _resolve_charge_merchant(merchant_name)
+        merchant_user_id = str(binding.get("merchant_user_id") or "")
+        merchant_id = str(binding.get("merchant_id") or merchant_id)
+        merchant_name = str(binding.get("merchant_name") or merchant_name)
+    if not merchant_user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Dieser Händler ist noch nicht für digitale Charge-Serviceanfragen verbunden.",
+        )
+
+    active = await db.charge_service_requests.find_one(
+        {
+            "registration_id": registration_id,
+            "customer_user_id": user_id,
+            "status": {"$in": ["requested", "confirmed", "reschedule_requested", "in_service"]},
+        },
+        {"_id": 0},
+    )
+    if active:
+        return {"ok": True, "service_request": _service_request_card(active), "duplicate": True}
+
+    service_type = _validate_service_type(req.service_type)
+    preferred_date = _validate_service_date(req.preferred_date)
+    preferred_time = _validate_service_time(req.preferred_time)
+    now = _now_iso()
+    doc = {
+        "request_id": f"CHG-SVC-{uuid.uuid4().hex[:10].upper()}",
+        "registration_id": registration_id,
+        "customer_user_id": user_id,
+        "customer_email": user.get("email") or "",
+        "merchant_user_id": merchant_user_id,
+        "merchant_id": merchant_id,
+        "merchant_name": merchant_name,
+        "product_id": warranty.get("product_id") or "",
+        "product_name": warranty.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number": warranty.get("serial_number") or "",
+        "warranty_status": _warranty_card(warranty).get("status"),
+        "service_type": service_type,
+        "preferred_date": preferred_date,
+        "preferred_time": preferred_time,
+        "scheduled_date": "",
+        "scheduled_time": "",
+        "note": req.note.strip()[:1000],
+        "merchant_note": "",
+        "status": "requested",
+        "status_history": [{
+            "status": "requested",
+            "actor_role": "customer",
+            "actor_id": user_id,
+            "note": req.note.strip()[:300],
+            "created_at": now,
+        }],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.charge_service_requests.insert_one(doc)
+    doc.pop("_id", None)
+
+    await safe_create_charge_notification(
+        event_key=f"charge_service_requested:{doc['request_id']}",
+        user_id=merchant_user_id,
+        title="Neue Charge-Serviceanfrage",
+        message=f"{doc['product_name']} · Wunschtermin {preferred_date} {preferred_time}".strip(),
+        action_url="/merchant-portal",
+        metadata={"request_id": doc["request_id"], "registration_id": registration_id},
+    )
+    return {"ok": True, "service_request": _service_request_card(doc)}
+
+
+@router.get("/service-requests")
+async def list_my_charge_service_requests(request: Request, limit: int = 100):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    rows = await db.charge_service_requests.find(
+        {"customer_user_id": user_id},
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(min(max(int(limit or 100), 1), 200)).to_list(200)
+    return {
+        "service_requests": [_service_request_card(item) for item in rows],
+        "total": len(rows),
+    }
+
+
+@router.put("/service-requests/{request_id}/cancel")
+async def cancel_charge_service_request(request_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    service_request = await db.charge_service_requests.find_one(
+        {"request_id": request_id, "customer_user_id": user_id},
+        {"_id": 0},
+    )
+    if not service_request:
+        raise HTTPException(status_code=404, detail="Serviceanfrage nicht gefunden")
+    if service_request.get("status") in {"completed", "rejected", "cancelled"}:
+        return {"ok": True, "service_request": _service_request_card(service_request)}
+
+    now = _now_iso()
+    history = {
+        "status": "cancelled",
+        "actor_role": "customer",
+        "actor_id": user_id,
+        "note": "Serviceanfrage vom Kunden storniert",
+        "created_at": now,
+    }
+    await db.charge_service_requests.update_one(
+        {"request_id": request_id, "customer_user_id": user_id},
+        {
+            "$set": {"status": "cancelled", "updated_at": now},
+            "$push": {"status_history": history},
+        },
+    )
+    service_request = {
+        **service_request,
+        "status": "cancelled",
+        "updated_at": now,
+        "status_history": [*(service_request.get("status_history") or []), history],
+    }
+    await safe_create_charge_notification(
+        event_key=f"charge_service_cancelled:{request_id}",
+        user_id=str(service_request.get("merchant_user_id") or ""),
+        title="Charge-Serviceanfrage storniert",
+        message=f"Der Kunde hat die Serviceanfrage für {service_request.get('product_name') or 'ein Charge-Produkt'} storniert.",
+        action_url="/merchant-portal",
+        metadata={"request_id": request_id},
+    )
+    return {"ok": True, "service_request": _service_request_card(service_request)}
+
+
+@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")
 async def create_charge_warranty_transfer(
     registration_id: str,
     req: ChargeWarrantyTransferRequest,
