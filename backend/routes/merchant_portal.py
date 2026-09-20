@@ -452,6 +452,21 @@ async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
             claim["issue_summary"] = claim.get("issue_summary") or claim.get("description") or ""
             claim["requested_resolution"] = claim.get("requested_resolution") or claim.get("preferred_resolution") or "repair"
             claim["customer_name"] = claim.get("customer_name") or claim.get("customer_email") or "BidBlitz Kunde"
+            claim["source_label"] = "Charge Care Kundenfall"
+            claim["attachments"] = [
+                {
+                    "attachment_id": item.get("attachment_id"),
+                    "original_filename": item.get("original_filename") or "Datei",
+                    "content_type": item.get("content_type") or "application/octet-stream",
+                    "size": item.get("size") or 0,
+                    "uploaded_at": item.get("uploaded_at") or "",
+                    "download_path": (
+                        f"/api/charge-app/claims/{claim.get('claim_id')}/attachments/"
+                        f"{item.get('attachment_id')}/download"
+                    ),
+                }
+                for item in (claim.get("attachments") or [])
+            ]
             claim["dealer_status"] = claim.get("dealer_status") or {
                 "open": "submitted",
                 "in_review": "under_review",
