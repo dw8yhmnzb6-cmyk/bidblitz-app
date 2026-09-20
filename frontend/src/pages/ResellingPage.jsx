@@ -14,6 +14,7 @@ export default function ResellingPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState({ title: "", description: "", category: "Sneakers", price: "", condition: "Neu", brand: "", size: "" });
   const [msg, setMsg] = useState("");
+  const [capabilities, setCapabilities] = useState(null);
   const purchaseAttemptKeyRef = useRef(null);
 
   const categories = ["Sneakers", "Streetwear", "Gaming", "Elektronik", "Accessoires", "Sammlerstücke"];
@@ -21,6 +22,12 @@ export default function ResellingPage({ onBack }) {
 
   useEffect(() => { loadListings(); }, [category, search]);
   useEffect(() => { purchaseAttemptKeyRef.current = null; }, [selected?.listing_id]);
+  useEffect(() => {
+    fetch(API + "/api/resell/capabilities", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setCapabilities(data); })
+      .catch(() => {});
+  }, []);
 
   const loadListings = async () => {
     setLoading(true);
@@ -47,6 +54,11 @@ export default function ResellingPage({ onBack }) {
   };
 
   const buyItem = async (listing) => {
+    if (!capabilities?.purchase_enabled) {
+      setMsg(capabilities?.production_message || "Reselling Checkout ist noch nicht live.");
+      setTimeout(() => setMsg(""), 4000);
+      return;
+    }
     if (!window.confirm(`${listing.title} für €${listing.price.toFixed(2)} kaufen?`)) return;
     if (!purchaseAttemptKeyRef.current) {
       purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
@@ -156,10 +168,20 @@ export default function ResellingPage({ onBack }) {
                 <span className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-gray-400">Von {selected.seller_name}</span>
               </div>
               {selected.description && <p className="text-sm text-gray-400 mt-4">{selected.description}</p>}
-              <button onClick={() => buyItem(selected)} className="w-full mt-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-black text-base" data-testid="resell-buy-btn">
-                <ShoppingBag size={18} className="inline mr-2" />Jetzt kaufen · €{selected.price.toFixed(2)}
+              <button
+                onClick={() => buyItem(selected)}
+                disabled={!capabilities?.purchase_enabled}
+                className="w-full mt-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-black text-base disabled:opacity-40"
+                data-testid="resell-buy-btn"
+              >
+                <ShoppingBag size={18} className="inline mr-2" />
+                {capabilities?.purchase_enabled ? `Jetzt kaufen · €${selected.price.toFixed(2)}` : "Checkout noch nicht live"}
               </button>
-              <p className="text-[9px] text-gray-600 text-center mt-2">8% Plattform-Gebühr inkl. · Wallet-Zahlung</p>
+              <p className="text-[9px] text-gray-600 text-center mt-2">
+                {capabilities?.purchase_enabled
+                  ? "8% Plattform-Gebühr inkl. · Testmodus"
+                  : (capabilities?.production_message || "Escrow/Versand wird noch vollständig angebunden.")}
+              </p>
             </motion.div>
           </motion.div>
         )}
