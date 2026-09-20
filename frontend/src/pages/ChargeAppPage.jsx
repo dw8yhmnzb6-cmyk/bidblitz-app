@@ -597,6 +597,15 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
     });
   }, [catalog?.products, catalogQuery, catalogCategory, showSavedOnly]);
 
+  const pendingTransferRegistrationIds = useMemo(
+    () => new Set(
+      (warrantyTransfers.outgoing || [])
+        .filter((item) => item.status === "pending")
+        .map((item) => item.registration_id)
+    ),
+    [warrantyTransfers.outgoing]
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#071018]" data-testid="charge-app-loading">
@@ -1018,14 +1027,24 @@ export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
                     </button>
                     <button
                       onClick={() => openWarrantyTransfer(item)}
-                      disabled={item.status !== "active"}
+                      disabled={item.status !== "active" || pendingTransferRegistrationIds.has(item.registration_id)}
                       className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-black text-cyan-800 disabled:opacity-40"
                       data-testid={`charge-app-warranty-transfer-${index}`}
                     >
-                      <ArrowRightLeft size={11} />Übertragen
+                      <ArrowRightLeft size={11} />{pendingTransferRegistrationIds.has(item.registration_id) ? "Übertragung offen" : "Übertragen"}
                     </button>
-                    <button onClick={() => editWarranty(item)} className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700" data-testid={`charge-app-warranty-edit-${index}`}><Pencil size={11} />Bearbeiten</button>
-                    <button onClick={() => deleteWarranty(item.registration_id)} disabled={busy === `delete-warranty-${item.registration_id}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50" data-testid={`charge-app-warranty-delete-${index}`}><Trash2 size={11} />{busy === `delete-warranty-${item.registration_id}` ? "Löscht..." : "Löschen"}</button>
+                    <button
+                      onClick={() => editWarranty(item)}
+                      disabled={pendingTransferRegistrationIds.has(item.registration_id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-[#0A1626]/10 bg-white px-3 py-1 text-[11px] font-black text-slate-700 disabled:opacity-40"
+                      data-testid={`charge-app-warranty-edit-${index}`}
+                    ><Pencil size={11} />Bearbeiten</button>
+                    <button
+                      onClick={() => deleteWarranty(item.registration_id)}
+                      disabled={busy === `delete-warranty-${item.registration_id}` || pendingTransferRegistrationIds.has(item.registration_id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-black text-red-700 disabled:opacity-50"
+                      data-testid={`charge-app-warranty-delete-${index}`}
+                    ><Trash2 size={11} />{busy === `delete-warranty-${item.registration_id}` ? "Löscht..." : "Löschen"}</button>
                   </div>
                 </div>
               </div>
