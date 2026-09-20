@@ -8,6 +8,7 @@ from core.security import get_current_user
 from core.config import FEES
 from core.payment_engine import debit_wallet, TransactionType
 import secrets
+import hashlib
 import logging
 
 router = APIRouter(prefix="/api/merchant", tags=["merchant"])
@@ -455,81 +456,143 @@ async def get_merchant_plans():
 
 @router.post("/upgrade")
 async def upgrade_merchant_plan(request: Request):
-    """
-    Upgrade to Pro merchant plan.
-    Cost: €29.99/month, deducted from wallet.
-    """
+    """Upgrade one approved merchant plan exactly once."""
     body = await request.json()
     plan = body.get("plan", "pro")
-    
+    raw_key = str(body.get("idempotency_key") or request.headers.get("Idempotency-Key") or "").strip()
+
     if plan not in MERCHANT_PLANS or plan == "basic":
         raise HTTPException(status_code=400, detail="Ungültiger Plan")
-    
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     merchant = await db.merchants.find_one({"user_id": user_id})
     if not merchant:
         raise HTTPException(status_code=404, detail="Kein Händlerprofil gefunden")
-    
-    if merchant.get("status") != "approved":
-        raise HTTPException(status_code=400, detail="Händlerprofil muss erst genehmigt werden")
-    
-    if merchant.get("plan") == plan:
-        raise HTTPException(status_code=400, detail=f"Bereits auf {MERCHANT_PLANS[plan]['name']} Plan")
-    
+    if merchant.get("status") != "approved" or user.get("role") != "merchant":
+        raise HTTPException(status_code=403, detail="Freigegebenes Händlerkonto erforderlich")
+
     plan_info = MERCHANT_PLANS[plan]
-    price = plan_info["price"]
-    
-    # Deduct from wallet
+    price = round(float(plan_info["price"]), 2)
+    key_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:24]
+    upgrade_id = f"MERCH-UP-{key_hash.upper()}"
+    payload = {"user_id": user_id, "plan": plan, "price": price}
+
+    await db.merchant_plan_purchases.update_one(
+        {"_id": upgrade_id},
+        {"$setOnInsert": {
+            "_id": upgrade_id,
+            "upgrade_id": upgrade_id,
+            "payload": payload,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    purchase = await db.merchant_plan_purchases.find_one({"_id": upgrade_id}, {"_id": 0}) or {}
+    if purchase.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Upgrade-Daten verwendet")
+    if purchase.get("status") == "completed":
+        return {**(purchase.get("response") or {}), "replayed": True}
+    if purchase.get("status") in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="Merchant-Upgrade wird bereits verarbeitet oder benötigt Abstimmung")
+    if purchase.get("status") == "failed":
+        raise HTTPException(status_code=409, detail="Dieser Upgrade-Versuch ist fehlgeschlagen. Für einen neuen Versuch neuen Idempotency-Key verwenden.")
+
+    claimed = await db.merchant_plan_purchases.update_one(
+        {"_id": upgrade_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if claimed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Merchant-Upgrade wird bereits verarbeitet")
+
+    lock = await db.merchants.update_one(
+        {
+            "user_id": user_id,
+            "status": "approved",
+            "plan": {"$ne": plan},
+            "$or": [
+                {"plan_upgrade_lock": {"$exists": False}},
+                {"plan_upgrade_lock": None},
+                {"plan_upgrade_lock": upgrade_id},
+            ],
+        },
+        {"$set": {
+            "plan_upgrade_lock": upgrade_id,
+            "plan_upgrade_started_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if lock.modified_count != 1:
+        current = await db.merchants.find_one({"user_id": user_id}, {"_id": 0}) or {}
+        await db.merchant_plan_purchases.update_one(
+            {"_id": upgrade_id, "status": "processing"},
+            {"$set": {"status": "pending", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        if current.get("plan") == plan:
+            raise HTTPException(status_code=400, detail=f"Bereits auf {plan_info['name']} Plan")
+        raise HTTPException(status_code=409, detail="Ein anderer Merchant-Upgrade wird bereits verarbeitet")
+
     payment_result = await debit_wallet(
         user_id=user_id,
         amount=price,
         tx_type=TransactionType.PAYMENT,
         description=f"Merchant {plan_info['name']} Plan",
-        reference=f"MERCH-PLAN-{secrets.token_hex(4).upper()}",
-        metadata={"plan": plan, "type": "merchant_upgrade"}
+        reference=upgrade_id,
+        metadata={"plan": plan, "type": "merchant_upgrade", "upgrade_id": upgrade_id},
+        idempotency_key=f"merchant-plan:{upgrade_id}:debit",
     )
-    
     if not payment_result.success:
-        raise HTTPException(status_code=400, detail=payment_result.error)
-    
+        payment_state = str(getattr(payment_result.status, "value", payment_result.status))
+        purchase_state = "reconciliation_required" if payment_state in {"pending", "reconciliation_required"} else "failed"
+        await db.merchant_plan_purchases.update_one(
+            {"_id": upgrade_id},
+            {"$set": {
+                "status": purchase_state,
+                "payment_status": payment_state,
+                "payment_error": (payment_result.error or "payment_failed")[:300],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if purchase_state == "failed":
+            await db.merchants.update_one(
+                {"user_id": user_id, "plan_upgrade_lock": upgrade_id},
+                {"$unset": {"plan_upgrade_lock": "", "plan_upgrade_started_at": ""}},
+            )
+        raise HTTPException(
+            status_code=409 if purchase_state == "reconciliation_required" else 400,
+            detail=payment_result.error or "Abo-Zahlung fehlgeschlagen",
+        )
+
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=30)
-    
-    # Update merchant plan
-    await db.merchants.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "plan": plan,
-            "plan_started_at": now.isoformat(),
-            "plan_expires_at": expires_at.isoformat(),
-            "updated_at": now.isoformat(),
-        }}
+    changed = await db.merchants.update_one(
+        {"user_id": user_id, "plan_upgrade_lock": upgrade_id, "status": "approved"},
+        {
+            "$set": {
+                "plan": plan,
+                "plan_started_at": now.isoformat(),
+                "plan_expires_at": expires_at.isoformat(),
+                "last_plan_upgrade_id": upgrade_id,
+                "last_plan_upgrade_transaction_id": payment_result.transaction_id,
+                "updated_at": now.isoformat(),
+            },
+            "$unset": {"plan_upgrade_lock": "", "plan_upgrade_started_at": ""},
+        },
     )
-    
-    # Record revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": price, "by_source.merchant_plans": price}},
-        upsert=True
-    )
-    
-    # Notify user
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "merchant_upgrade",
-        "title": f"{plan_info['name']} Plan aktiviert!",
-        "message": f"Dein {plan_info['name']} Plan ist jetzt aktiv bis {expires_at.strftime('%d.%m.%Y')}",
-        "data": {"plan": plan},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    logger.info(f"Merchant upgraded: {merchant.get('merchant_id')} to {plan}")
-    
-    return {
+    if changed.modified_count != 1:
+        await db.merchant_plan_purchases.update_one(
+            {"_id": upgrade_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "payment_transaction_id": payment_result.transaction_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Zahlung erfolgt; Merchant-Plan benötigt Abstimmung")
+
+    response_payload = {
         "ok": True,
         "plan": plan,
         "plan_name": plan_info["name"],
@@ -537,6 +600,45 @@ async def upgrade_merchant_plan(request: Request):
         "new_balance": payment_result.new_balance,
         "message": f"{plan_info['name']} Plan erfolgreich aktiviert!",
     }
+    await db.merchant_plan_purchases.update_one(
+        {"_id": upgrade_id, "status": "processing"},
+        {"$set": {
+            "status": "completed",
+            "payment_transaction_id": payment_result.transaction_id,
+            "response": response_payload,
+            "completed_at": now.isoformat(),
+        }},
+    )
+
+    await db.platform_revenue.update_one(
+        {
+            "date": now.strftime("%Y-%m-%d"),
+            "merchant_plan_purchase_ids": {"$ne": upgrade_id},
+        },
+        {
+            "$inc": {"total": price, "by_source.merchant_plans": price},
+            "$addToSet": {"merchant_plan_purchase_ids": upgrade_id},
+        },
+        upsert=True,
+    )
+    await db.notifications.update_one(
+        {"_id": f"merchant-upgrade:{upgrade_id}"},
+        {"$setOnInsert": {
+            "_id": f"merchant-upgrade:{upgrade_id}",
+            "id": f"merchant-upgrade-{key_hash}",
+            "user_id": user_id,
+            "type": "merchant_upgrade",
+            "title": f"{plan_info['name']} Plan aktiviert!",
+            "message": f"Dein {plan_info['name']} Plan ist jetzt aktiv bis {expires_at.strftime('%d.%m.%Y')}",
+            "data": {"plan": plan, "upgrade_id": upgrade_id},
+            "read": False,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
+
+    logger.info("Merchant upgraded: %s to %s", merchant.get("merchant_id"), plan)
+    return {**response_payload, "replayed": bool(payment_result.idempotent_replay)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
