@@ -150,7 +150,10 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
   const regionLabel = selectedEstimate.region_label || selectedEstimate.region || 'Standard-Tarif';
   const tariffZone = selectedEstimate.tariff_zone;
   const timeTariff = selectedEstimate.time_tariff;
-  const fixedFare = selectedEstimate.fixed_fare || selectedEstimate.fixed_fares?.[selectedEstimate.vehicle_type];
+  const fixedFareConfig = selectedEstimate.fixed_fare || selectedEstimate.fixed_fares?.[selectedEstimate.vehicle_type];
+  const fixedFare = typeof fixedFareConfig === 'object'
+    ? Number(fixedFareConfig?.fixed_fare || 0)
+    : Number(fixedFareConfig || 0);
   return (
     <div className="mt-4 rounded-[24px] border border-white/10 bg-white/6 p-4" data-testid="pricing-overview-card">
       <div className="flex items-center justify-between gap-3">
