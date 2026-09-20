@@ -90,6 +90,99 @@ REGIONAL_PRICING_PROFILES = {
     },
 }
 
+CITY_PRICING_PROFILES = {
+    "XK": {
+        "prishtina": {
+            "city": "Prishtina",
+            "source": "Prishtina public taxi and scooter benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 2.0,
+                    "per_km": 0.65,
+                    "per_min": 0.0,
+                    "minimum": 2.0,
+                    "surge": False,
+                    "range_per_km_low": 0.53,
+                    "range_per_km_high": 0.75,
+                    "basis": "Prishtina · 2,00 € Start + ca. 0,53–0,75 €/km",
+                },
+                "scooter": {
+                    "base": 0.20,
+                    "per_km": 0.0,
+                    "per_min": 0.18,
+                    "minimum": 0.20,
+                    "surge": False,
+                    "range_per_min_low": 0.15,
+                    "range_per_min_high": 0.20,
+                    "basis": "Prishtina · ca. 0,15–0,20 €/min + mögliche Entsperrgebühr",
+                },
+            },
+        },
+        "prizren": {
+            "city": "Prizren",
+            "source": "Prizren 2026 local taxi benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 2.05,
+                    "per_km": 0.49,
+                    "per_min": 0.0,
+                    "minimum": 2.05,
+                    "surge": False,
+                    "range_per_km_low": 0.49,
+                    "range_per_km_high": 0.98,
+                    "basis": "Prizren · ca. 2,05 € Start + 0,49 €/km",
+                },
+            },
+        },
+    },
+}
+
+CITY_NAME_ALIASES = {
+    "pristina": "prishtina",
+    "prishtina": "prishtina",
+    "prishtinë": "prishtina",
+    "prishtine": "prishtina",
+    "prizren": "prizren",
+    "peja": "peja",
+    "pec": "peja",
+    "pejë": "peja",
+    "ferizaj": "ferizaj",
+    "urosevac": "ferizaj",
+    "gjilan": "gjilan",
+    "gjilani": "gjilan",
+    "gnjilane": "gjilan",
+    "gjakova": "gjakova",
+    "gjakovë": "gjakova",
+    "djakovica": "gjakova",
+    "mitrovica": "mitrovica",
+    "mitrovicë": "mitrovica",
+}
+
+
+
+def _normalize_city_key(city: str) -> str:
+    value = str(city or "").strip().lower()
+    return CITY_NAME_ALIASES.get(value, value)
+
+
+def _merge_pricing_profile(base_profile: dict, city_profile: Optional[dict] = None) -> dict:
+    profile = {
+        **base_profile,
+        "modes": {key: dict(value) for key, value in (base_profile.get("modes") or {}).items()},
+    }
+    if not city_profile:
+        profile["profile_scope"] = "country"
+        return profile
+
+    for mode, override in (city_profile.get("modes") or {}).items():
+        current = dict(profile["modes"].get(mode) or {})
+        current.update(override)
+        profile["modes"][mode] = current
+    profile["city"] = city_profile.get("city") or profile.get("city") or ""
+    profile["source"] = city_profile.get("source") or profile.get("source")
+    profile["profile_scope"] = "city"
+    return profile
+
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -675,11 +768,15 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
     else:
         profile_key = "EU"
 
-    profile = dict(REGIONAL_PRICING_PROFILES[profile_key])
-    profile["profile_key"] = profile_key
+    base_profile = REGIONAL_PRICING_PROFILES[profile_key]
+    city_key = _normalize_city_key(city)
+    city_profile = (CITY_PRICING_PROFILES.get(country_code or "") or {}).get(city_key)
+    profile = _merge_pricing_profile(base_profile, city_profile)
+    profile["profile_key"] = f"{country_code}:{city_key}" if city_profile else profile_key
     profile["country_code"] = country_code or ""
     profile["country"] = country or profile.get("region")
-    profile["city"] = city or ""
+    profile["city"] = (city_profile or {}).get("city") or city or ""
+    profile["city_key"] = city_key
     return profile
 
 async def _compute_route_payload(
@@ -736,6 +833,8 @@ async def _compute_route_payload(
             "country_code": pricing_context.get("country_code") or "",
             "source": pricing_context.get("source"),
             "currency": pricing_context.get("currency", "EUR"),
+            "profile_scope": pricing_context.get("profile_scope", "country"),
+            "city_key": pricing_context.get("city_key") or "",
         },
         "options": options,
         "recommendations": build_recommendations(options),
