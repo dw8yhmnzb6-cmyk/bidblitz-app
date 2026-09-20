@@ -324,15 +324,6 @@ async def purchase_premium(req: PremiumPurchaseRequest, request: Request):
             payment_transaction_id = payment["transaction_id"]
             payment_replayed = bool(payment["replayed"])
 
-        bonus = await _mutate_blz_once(
-            user_id=uid,
-            amount=int(PREMIUM_BENEFITS["monthly_blz_bonus"]),
-            direction="credit",
-            idempotency_key=f"revenue2-premium:{purchase_id}:bonus",
-            description="BidBlitz Premium Monatsbonus",
-            category="premium_bonus",
-        )
-
         await db.premium_subscriptions.update_one(
             {"user_id": uid},
             {"$set": {
@@ -347,6 +338,17 @@ async def purchase_premium(req: PremiumPurchaseRequest, request: Request):
              "$setOnInsert": {"started_at": now.isoformat()}},
             upsert=True,
         )
+        # Grant the BLZ bonus only after the subscription state is durably
+        # written. If the write above fails, no reward leaks without entitlement.
+        bonus = await _mutate_blz_once(
+            user_id=uid,
+            amount=int(PREMIUM_BENEFITS["monthly_blz_bonus"]),
+            direction="credit",
+            idempotency_key=f"revenue2-premium:{purchase_id}:bonus",
+            description="BidBlitz Premium Monatsbonus",
+            category="premium_bonus",
+        )
+
         await db.premium_purchase_attempts.update_one(
             {"_id": purchase_id},
             {"$set": {
