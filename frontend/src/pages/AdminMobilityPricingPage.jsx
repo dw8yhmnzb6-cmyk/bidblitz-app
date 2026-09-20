@@ -22,6 +22,8 @@ const EMPTY_MODE = {
   per_min: "",
   minimum: "",
   booking_fee: "",
+  daily_cap: "",
+  min_balance: "",
   range_per_km_low: "",
   range_per_km_high: "",
   range_per_min_low: "",
@@ -51,7 +53,7 @@ function modeToDraft(mode = {}) {
 function draftToMode(draft) {
   const out = {};
   [
-    "base", "per_km", "per_min", "minimum", "booking_fee",
+    "base", "per_km", "per_min", "minimum", "booking_fee", "daily_cap", "min_balance",
     "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high",
   ].forEach((key) => {
     if (draft[key] !== "" && draft[key] !== null && draft[key] !== undefined) {
@@ -288,6 +290,7 @@ export default function AdminMobilityPricingPage({ onBack }) {
               {[
                 ["base", "Startpreis"], ["per_km", "Preis / km"], ["per_min", "Preis / Min"],
                 ["minimum", "Mindestpreis"], ["booking_fee", "Buchungsgebühr"],
+                ["daily_cap", "Tageslimit"], ["min_balance", "Mindestguthaben"],
                 ["range_per_km_low", "km min"], ["range_per_km_high", "km max"],
                 ["range_per_min_low", "Min min"], ["range_per_min_high", "Min max"],
               ].map(([key, label]) => (
