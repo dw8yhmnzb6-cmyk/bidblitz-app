@@ -439,32 +439,220 @@ async def pos_security_approvals(store_id: str, request: Request):
 
 @router.post("/pos/security/approvals/{approval_id}/decision")
 async def pos_security_approval_decision(approval_id: str, req: ApprovalDecisionRequest, request: Request):
+    if req.decision not in {"approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="Ungültige Entscheidung")
+
     user = await get_current_user(request)
     approval = await db.pos_security_approvals.find_one({"approval_id": approval_id})
     if not approval:
         raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
     actor = await get_actor_context(user, approval["store_id"], approval.get("register_id", ""))
     require_permission(actor, "approvals.manage")
-    if approval.get("status") != "pending":
-        raise HTTPException(status_code=400, detail="Freigabe wurde bereits entschieden")
-    if req.decision not in {"approved", "rejected"}:
-        raise HTTPException(status_code=400, detail="Ungültige Entscheidung")
+
+    current_status = str(approval.get("status") or "pending")
+    if current_status in {"approved", "rejected"}:
+        if current_status != req.decision:
+            raise HTTPException(status_code=409, detail="Freigabe wurde bereits anders entschieden")
+        return {
+            "ok": True,
+            "approval_id": approval_id,
+            "decision": current_status,
+            "result": approval.get("result") or {},
+            "replayed": True,
+        }
+    if current_status in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="Freigabe wird bereits verarbeitet oder benötigt Abstimmung")
+    if current_status != "pending":
+        raise HTTPException(status_code=409, detail="Freigabe ist nicht mehr entscheidbar")
+
+    approval_type = approval.get("approval_type")
+    supported_types = {
+        "wallet_topup",
+        "refund",
+        "gift_card_create",
+        "manual_wallet_adjustment",
+        "customer_account_change",
+        "biopay_payment",
+    }
+    if req.decision == "approved" and approval_type not in supported_types:
+        raise HTTPException(status_code=400, detail="Unbekannter Freigabe-Typ")
+
+    claimed = await db.pos_security_approvals.update_one(
+        {"approval_id": approval_id, "status": "pending"},
+        {"$set": {
+            "status": "processing",
+            "processing_decision": req.decision,
+            "processing_by": actor["user_id"],
+            "processing_at": now_iso(),
+            "decision_note": req.note,
+        }},
+    )
+    if claimed.modified_count != 1:
+        latest = await db.pos_security_approvals.find_one({"approval_id": approval_id}, {"_id": 0}) or {}
+        latest_status = str(latest.get("status") or "")
+        if latest_status in {"approved", "rejected"} and latest_status == req.decision:
+            return {
+                "ok": True,
+                "approval_id": approval_id,
+                "decision": latest_status,
+                "result": latest.get("result") or {},
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Freigabe wird bereits verarbeitet")
+
+    if req.decision == "rejected":
+        finalized = await db.pos_security_approvals.update_one(
+            {
+                "approval_id": approval_id,
+                "status": "processing",
+                "processing_decision": "rejected",
+                "processing_by": actor["user_id"],
+            },
+            {
+                "$set": {
+                    "status": "rejected",
+                    "decided_at": now_iso(),
+                    "decided_by": actor["user_id"],
+                    "result": {},
+                },
+                "$unset": {
+                    "processing_decision": "",
+                    "processing_by": "",
+                    "processing_at": "",
+                },
+            },
+        )
+        if finalized.modified_count != 1:
+            raise HTTPException(status_code=500, detail="Ablehnung benötigt Abstimmung")
+        await audit_pos_security_event(
+            "pos_manager_approval",
+            request=request,
+            user_id=actor["user_id"],
+            email=user.get("email", ""),
+            details={"approval_id": approval_id, "decision": "rejected", "approval_type": approval_type},
+            severity="info",
+        )
+        return {"ok": True, "approval_id": approval_id, "decision": "rejected", "result": {}, "replayed": False}
+
+    payload = approval.get("payload") or {}
     result_payload = None
-    if req.decision == "approved":
-        payload = approval.get("payload") or {}
-        if approval.get("approval_type") == "wallet_topup":
+    try:
+        if approval_type == "wallet_topup":
             customer = await db.users.find_one({"_id": ObjectId(payload["customer_id"])})
-            result_payload = await execute_secure_topup(actor, customer, float(approval.get("amount", 0)), payload.get("payment_method", "cash"), request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "refund":
-            result_payload = await execute_refund_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "gift_card_create":
-            result_payload = await execute_gift_card_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "manual_wallet_adjustment":
-            result_payload = await execute_manual_wallet_adjustment_action(payload, actor, float(approval.get("amount", 0)), request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "customer_account_change":
-            result_payload = await execute_customer_account_change_action(payload, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "biopay_payment":
+            if not customer:
+                raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+            result_payload = await execute_secure_topup(
+                actor,
+                customer,
+                float(approval.get("amount", 0)),
+                payload.get("payment_method", "cash"),
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "refund":
+            result_payload = await execute_refund_action(
+                {**payload, "amount": approval.get("amount", 0)},
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "gift_card_create":
+            result_payload = await execute_gift_card_action(
+                {**payload, "amount": approval.get("amount", 0)},
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "manual_wallet_adjustment":
+            result_payload = await execute_manual_wallet_adjustment_action(
+                payload,
+                actor,
+                float(approval.get("amount", 0)),
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "customer_account_change":
+            result_payload = await execute_customer_account_change_action(
+                payload,
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "biopay_payment":
             result_payload = {"status": "approved", "next_step": "cashier_retry_biopay", "payload": payload}
-    await db.pos_security_approvals.update_one({"approval_id": approval_id}, {"$set": {"status": req.decision, "decided_at": now_iso(), "decided_by": actor["user_id"], "decision_note": req.note, "result": sanitize_audit_value(result_payload or {})}})
-    await audit_pos_security_event("pos_manager_approval", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"approval_id": approval_id, "decision": req.decision, "approval_type": approval.get("approval_type")}, severity="info")
-    return {"ok": True, "approval_id": approval_id, "decision": req.decision, "result": result_payload}
+    except Exception as exc:
+        await db.pos_security_approvals.update_one(
+            {"approval_id": approval_id, "status": "processing", "processing_decision": "approved"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "processing_error": str(exc)[:500],
+                "reconciliation_required_at": now_iso(),
+            }},
+        )
+        await audit_pos_security_event(
+            "pos_manager_approval_reconciliation_required",
+            request=request,
+            user_id=actor["user_id"],
+            email=user.get("email", ""),
+            details={
+                "approval_id": approval_id,
+                "decision": "approved",
+                "approval_type": approval_type,
+                "error": str(exc)[:200],
+            },
+            severity="warning",
+        )
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail="Freigabe-Aktion benötigt Abstimmung")
+
+    safe_result = sanitize_audit_value(result_payload or {})
+    finalized = await db.pos_security_approvals.update_one(
+        {
+            "approval_id": approval_id,
+            "status": "processing",
+            "processing_decision": "approved",
+            "processing_by": actor["user_id"],
+        },
+        {
+            "$set": {
+                "status": "approved",
+                "decided_at": now_iso(),
+                "decided_by": actor["user_id"],
+                "result": safe_result,
+            },
+            "$unset": {
+                "processing_decision": "",
+                "processing_by": "",
+                "processing_at": "",
+                "processing_error": "",
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        await db.pos_security_approvals.update_one(
+            {"approval_id": approval_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "result": safe_result,
+                "reconciliation_required_at": now_iso(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Freigabe ausgeführt; Statusabschluss benötigt Abstimmung")
+
+    await audit_pos_security_event(
+        "pos_manager_approval",
+        request=request,
+        user_id=actor["user_id"],
+        email=user.get("email", ""),
+        details={"approval_id": approval_id, "decision": "approved", "approval_type": approval_type},
+        severity="info",
+    )
+    return {
+        "ok": True,
+        "approval_id": approval_id,
+        "decision": "approved",
+        "result": result_payload,
+        "replayed": False,
+    }
+
