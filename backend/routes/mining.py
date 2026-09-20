@@ -919,61 +919,118 @@ async def claim_daily(request: Request):
 # ── Withdraw BLZ to EUR wallet ──
 class WithdrawRequest(BaseModel):
     amount: float = Field(..., gt=0)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/withdraw")
 async def withdraw_blz(req: WithdrawRequest, request: Request):
-    """Atomically convert BLZ to EUR through the canonical wallet ledger."""
+    """Convert BLZ to EUR exactly once with retry recovery."""
     _require_mining_value_mode()
     from core.payment_engine import credit_wallet, TransactionType
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+
     eur_amount = round(req.amount * BLZ_TO_EUR, 2)
     if eur_amount <= 0:
         raise HTTPException(status_code=400, detail="Amount too small")
 
-    operation_id = secrets.token_hex(10)
-    debit = await db.mining_wallets.update_one(
-        {"user_id": user_id, "blz_balance": {"$gte": req.amount}},
-        {
-            "$inc": {"blz_balance": -req.amount, "total_withdrawn": req.amount},
-            "$set": {f"withdraw_operations.{operation_id}": {"amount_blz": req.amount, "amount_eur": eur_amount}},
-        },
-    )
-    if debit.modified_count != 1:
-        raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
+    operation_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:20]
+    operation_id = f"MWD-{operation_hash.upper()}"
+    marker_field = f"withdraw_operations.{operation_id}"
+    wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+    marker = (wallet.get("withdraw_operations") or {}).get(operation_id)
+
+    if marker:
+        if round(float(marker.get("amount_blz") or 0), 8) != round(float(req.amount), 8):
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit einem anderen Betrag verwendet")
+        if marker.get("status") == "failed_refunded":
+            raise HTTPException(status_code=409, detail="Frühere Auszahlung wurde zurückgebucht; bitte neue Anfrage starten")
+        if marker.get("status") == "reconciliation_required":
+            raise HTTPException(status_code=503, detail="Auszahlung benötigt finanzielle Abstimmung")
+    else:
+        debit = await db.mining_wallets.update_one(
+            {
+                "user_id": user_id,
+                "blz_balance": {"$gte": req.amount},
+                marker_field: {"$exists": False},
+            },
+            {
+                "$inc": {"blz_balance": -req.amount, "total_withdrawn": req.amount},
+                "$set": {marker_field: {
+                    "amount_blz": req.amount,
+                    "amount_eur": eur_amount,
+                    "status": "debited",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            },
+        )
+        if debit.modified_count != 1:
+            existing_wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+            existing_marker = (existing_wallet.get("withdraw_operations") or {}).get(operation_id)
+            if not existing_marker:
+                raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
+            if round(float(existing_marker.get("amount_blz") or 0), 8) != round(float(req.amount), 8):
+                raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit einem anderen Betrag verwendet")
 
     result = await credit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
         description=f"Mining BLZ eingelöst: {req.amount:.4f} BLZ",
-        reference=f"MINE-WD-{operation_id[:12].upper()}",
+        reference=f"MINE-WD-{operation_hash[:12].upper()}",
         source="mining.withdraw",
         metadata={"amount_blz": req.amount, "operation_id": operation_id},
-        idempotency_key=f"mining-withdraw:{user_id}:{operation_id}",
+        idempotency_key=f"mining-withdraw:{user_id}:{raw_key}",
     )
     if not result.success:
-        await db.mining_wallets.update_one(
-            {"user_id": user_id, f"withdraw_operations.{operation_id}": {"$exists": True}},
-            {
-                "$inc": {"blz_balance": req.amount, "total_withdrawn": -req.amount},
-                "$unset": {f"withdraw_operations.{operation_id}": ""},
-            },
-        )
-        raise HTTPException(status_code=500, detail=result.error or "Wallet-Gutschrift fehlgeschlagen")
+        result_status = getattr(result.status, "value", str(result.status))
+        if result_status == "failed":
+            refunded = await db.mining_wallets.update_one(
+                {"user_id": user_id, f"{marker_field}.status": "debited"},
+                {
+                    "$inc": {"blz_balance": req.amount, "total_withdrawn": -req.amount},
+                    "$set": {
+                        f"{marker_field}.status": "failed_refunded",
+                        f"{marker_field}.refund_error": result.error,
+                        f"{marker_field}.refunded_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+            )
+            if refunded.modified_count == 1:
+                raise HTTPException(status_code=400, detail=result.error or "Wallet-Gutschrift fehlgeschlagen; BLZ wurden zurückgegeben")
+        if result_status == "reconciliation_required":
+            await db.mining_wallets.update_one(
+                {"user_id": user_id, marker_field: {"$exists": True}},
+                {"$set": {
+                    f"{marker_field}.status": "reconciliation_required",
+                    f"{marker_field}.error": result.error,
+                }},
+            )
+        raise HTTPException(status_code=503, detail=result.error or "Auszahlung wird noch abgestimmt; keine erneute Belastung")
 
     now = datetime.now(timezone.utc).isoformat()
+    await db.mining_wallets.update_one(
+        {"user_id": user_id, marker_field: {"$exists": True}},
+        {"$set": {
+            f"{marker_field}.status": "completed",
+            f"{marker_field}.wallet_transaction_id": result.transaction_id,
+            f"{marker_field}.completed_at": now,
+        }},
+    )
     await db.mining_transactions.update_one(
-        {"txn_id": f"MINE-WD-{operation_id}"},
+        {"txn_id": operation_id},
         {"$setOnInsert": {
-            "txn_id": f"MINE-WD-{operation_id}",
+            "txn_id": operation_id,
             "user_id": user_id,
             "type": "withdraw",
             "amount_blz": -req.amount,
             "amount_eur": eur_amount,
             "wallet_transaction_id": result.transaction_id,
+            "idempotency_key": f"mining-withdraw:{user_id}:{raw_key}",
             "description": f"Converted {req.amount:.4f} BLZ → €{eur_amount:.2f}",
             "created_at": now,
         }},
@@ -986,6 +1043,8 @@ async def withdraw_blz(req: WithdrawRequest, request: Request):
         "received_eur": eur_amount,
         "new_blz_balance": updated_wallet["blz_balance"],
         "new_eur_balance": result.new_balance,
+        "operation_id": operation_id,
+        "replayed": result.idempotent_replay,
     }
 
 
@@ -993,70 +1052,175 @@ async def withdraw_blz(req: WithdrawRequest, request: Request):
 class SendBLZRequest(BaseModel):
     recipient_email: str
     amount: float = Field(..., gt=0)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/send")
 async def send_blz(req: SendBLZRequest, request: Request):
-    """Transfer BLZ without allowing concurrent overspending."""
+    """Transfer BLZ exactly once with crash-safe sender/recipient markers."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
-    if req.recipient_email.lower() == user.get("email", "").lower():
+    recipient_email = req.recipient_email.lower().strip()
+    if recipient_email == user.get("email", "").lower():
         raise HTTPException(status_code=400, detail="Cannot send to yourself")
-    recipient = await db.users.find_one({"email": req.recipient_email.lower()})
+    recipient = await db.users.find_one({"email": recipient_email})
     if not recipient:
         raise HTTPException(status_code=404, detail="Recipient not found")
     recipient_id = str(recipient["_id"])
 
-    transfer_id = secrets.token_hex(10)
-    debit = await db.mining_wallets.update_one(
-        {"user_id": user_id, "blz_balance": {"$gte": req.amount}},
-        {"$inc": {"blz_balance": -req.amount}, "$set": {f"transfer_out.{transfer_id}": req.amount}},
-    )
-    if debit.modified_count != 1:
-        raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
+    transfer_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:20]
+    transfer_id = f"MTX-{transfer_hash.upper()}"
+    operation_key = f"mining-send:{user_id}:{raw_key}"
+    now = datetime.now(timezone.utc).isoformat()
 
+    await db.mining_transfer_operations.update_one(
+        {"user_id": user_id, "idempotency_key": operation_key},
+        {"$setOnInsert": {
+            "transfer_id": transfer_id,
+            "user_id": user_id,
+            "recipient_id": recipient_id,
+            "recipient_email": recipient_email,
+            "amount": req.amount,
+            "idempotency_key": operation_key,
+            "status": "processing",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    operation = await db.mining_transfer_operations.find_one(
+        {"user_id": user_id, "idempotency_key": operation_key},
+        {"_id": 0},
+    ) or {}
+    if (
+        operation.get("recipient_id") != recipient_id
+        or round(float(operation.get("amount") or 0), 8) != round(float(req.amount), 8)
+    ):
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Transferdaten verwendet")
+    if operation.get("status") == "completed":
+        updated_wallet = await get_or_create_wallet(user_id)
+        return {
+            "ok": True,
+            "sent": req.amount,
+            "recipient": recipient_email,
+            "new_balance": updated_wallet["blz_balance"],
+            "transfer_id": transfer_id,
+            "replayed": True,
+        }
+    if operation.get("status") == "failed":
+        raise HTTPException(status_code=400, detail=operation.get("error") or "Transfer fehlgeschlagen")
+    if operation.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="BLZ-Transfer benötigt finanzielle Abstimmung")
+
+    sender_marker = f"transfer_out.{transfer_id}"
+    sender_wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+    if not (sender_wallet.get("transfer_out") or {}).get(transfer_id):
+        debit = await db.mining_wallets.update_one(
+            {
+                "user_id": user_id,
+                "blz_balance": {"$gte": req.amount},
+                sender_marker: {"$exists": False},
+            },
+            {
+                "$inc": {"blz_balance": -req.amount},
+                "$set": {sender_marker: {
+                    "amount": req.amount,
+                    "recipient_id": recipient_id,
+                    "created_at": now,
+                }},
+            },
+        )
+        if debit.modified_count != 1:
+            existing_sender = await db.mining_wallets.find_one(
+                {"user_id": user_id, sender_marker: {"$exists": True}},
+                {"_id": 1},
+            )
+            if not existing_sender:
+                await db.mining_transfer_operations.update_one(
+                    {"transfer_id": transfer_id},
+                    {"$set": {"status": "failed", "error": "insufficient_blz", "failed_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
+
+    recipient_marker = f"transfer_in.{transfer_id}"
     try:
         credit = await db.mining_wallets.update_one(
-            {"user_id": recipient_id, f"transfer_in.{transfer_id}": {"$exists": False}},
+            {"user_id": recipient_id, recipient_marker: {"$exists": False}},
             {
                 "$inc": {"blz_balance": req.amount},
-                "$set": {f"transfer_in.{transfer_id}": req.amount},
+                "$set": {recipient_marker: {
+                    "amount": req.amount,
+                    "sender_id": user_id,
+                    "created_at": now,
+                }},
                 "$setOnInsert": {"user_id": recipient_id, "total_mined": 0.0, "total_withdrawn": 0.0},
             },
             upsert=True,
         )
-        if credit.modified_count != 1 and credit.upserted_id is None:
-            raise RuntimeError("recipient credit not applied")
-    except Exception:
-        await db.mining_wallets.update_one(
-            {"user_id": user_id, f"transfer_out.{transfer_id}": {"$exists": True}},
-            {"$inc": {"blz_balance": req.amount}, "$unset": {f"transfer_out.{transfer_id}": ""}},
+    except Exception as exc:
+        await db.mining_transfer_operations.update_one(
+            {"transfer_id": transfer_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "error": str(exc),
+                "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+            }},
         )
-        raise HTTPException(status_code=500, detail="BLZ-Transfer fehlgeschlagen; Betrag wurde zurückgegeben")
+        raise HTTPException(status_code=503, detail="BLZ-Transferzustand unklar; finanzielle Abstimmung erforderlich")
 
-    now = datetime.now(timezone.utc).isoformat()
+    if credit.modified_count != 1 and credit.upserted_id is None:
+        existing_credit = await db.mining_wallets.find_one(
+            {"user_id": recipient_id, recipient_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not existing_credit:
+            await db.mining_transfer_operations.update_one(
+                {"transfer_id": transfer_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "recipient_credit_not_confirmed",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Empfänger-Gutschrift nicht bestätigt; finanzielle Abstimmung erforderlich")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.mining_transfer_operations.update_one(
+        {"transfer_id": transfer_id},
+        {"$set": {"status": "completed", "completed_at": completed_at}},
+    )
     for uid, amt, desc, direction in [
-        (user_id, -req.amount, f"Sent {req.amount:.4f} BLZ to {req.recipient_email}", "send"),
+        (user_id, -req.amount, f"Sent {req.amount:.4f} BLZ to {recipient_email}", "send"),
         (recipient_id, req.amount, f"Received {req.amount:.4f} BLZ from {user.get('email', '')}", "receive"),
     ]:
         await db.mining_transactions.update_one(
-            {"txn_id": f"MINE-TX-{transfer_id}-{direction}"},
+            {"txn_id": f"{transfer_id}-{direction}"},
             {"$setOnInsert": {
-                "txn_id": f"MINE-TX-{transfer_id}-{direction}",
+                "txn_id": f"{transfer_id}-{direction}",
                 "user_id": uid,
                 "type": direction,
                 "amount_blz": amt,
                 "description": desc,
                 "reference": transfer_id,
+                "idempotency_key": operation_key,
                 "created_at": now,
             }},
             upsert=True,
         )
 
     updated_wallet = await get_or_create_wallet(user_id)
-    return {"ok": True, "sent": req.amount, "recipient": req.recipient_email, "new_balance": updated_wallet["blz_balance"]}
+    return {
+        "ok": True,
+        "sent": req.amount,
+        "recipient": recipient_email,
+        "new_balance": updated_wallet["blz_balance"],
+        "transfer_id": transfer_id,
+        "replayed": False,
+    }
 
 
 # ── Apply Referral ──
