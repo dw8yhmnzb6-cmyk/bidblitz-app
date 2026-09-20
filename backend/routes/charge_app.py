@@ -1955,6 +1955,41 @@ async def accept_charge_warranty_transfer(transfer_id: str, request: Request):
     return {"ok": True, "warranty": _warranty_card(moved or warranty)}
 
 
+@router.put("/warranty-transfers/{transfer_id}/decline")
+async def decline_charge_warranty_transfer(transfer_id: str, request: Request):
+    user = await get_current_user(request)
+    recipient_email = _normalized_email(user.get("email"))
+    now = _now_iso()
+    result = await db.charge_warranty_transfers.update_one(
+        {
+            "transfer_id": transfer_id,
+            "recipient_email": recipient_email,
+            "status": "pending",
+        },
+        {"$set": {
+            "status": "declined",
+            "declined_at": now,
+            "recipient_user_id": str(user.get("_id")),
+            "updated_at": now,
+        }},
+    )
+    if result.modified_count != 1:
+        transfer = await db.charge_warranty_transfers.find_one(
+            {"transfer_id": transfer_id, "recipient_email": recipient_email},
+            {"_id": 0},
+        )
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Garantieübertragung nicht gefunden")
+        if transfer.get("status") == "declined":
+            return {"ok": True, "transfer": _transfer_card(transfer)}
+        raise HTTPException(status_code=409, detail="Garantieübertragung kann nicht mehr abgelehnt werden")
+    transfer = await db.charge_warranty_transfers.find_one(
+        {"transfer_id": transfer_id},
+        {"_id": 0},
+    )
+    return {"ok": True, "transfer": _transfer_card(transfer or {"transfer_id": transfer_id, "status": "declined"})}
+
+
 @router.put("/warranty-transfers/{transfer_id}/cancel")
 async def cancel_charge_warranty_transfer(transfer_id: str, request: Request):
     user = await get_current_user(request)
