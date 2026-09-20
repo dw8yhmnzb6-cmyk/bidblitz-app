@@ -2185,10 +2185,10 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         "category": d.get("category", ""),
         "features": d.get("features", []),
         "condition": d.get("condition", "Brand New — Factory Sealed"),
-        # ── Live Viewer Counter ──
-        "viewer_count": random.randint(8, 35),
-        # ── Auto Bot-Bidding Configuration ──
-        "bot_enabled": True,
+        # Real views only in production; synthetic viewer activity is test-only.
+        "viewer_count": random.randint(8, 35) if TEST_MODE else 0,
+        # Auto bot bidding is test-only unless an auction is explicitly bot_only.
+        "bot_enabled": bool(TEST_MODE or d.get("bot_only")),
         "bot_target_price": _bot_target_for(d["retail_price"]),
         "bot_final_phase_seconds": 604800,
         "bot_probability": 0.72,
@@ -2200,7 +2200,9 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
 
 
 async def seed_demo_auctions():
-    """Seed exactly 30 active 2026 auctions if none exist (with bot auto-bidding)."""
+    """Seed demo auctions only in TEST_MODE; production inventory must be explicit."""
+    if not TEST_MODE:
+        return
     count = await db.auctions.count_documents({"status": "active"})
     if count > 0:
         return
@@ -2277,82 +2279,88 @@ async def auction_maintenance_loop():
                 except Exception:
                     pass
 
-            # 2) Auto-restart: ensure TARGET_ACTIVE_AUCTIONS are running
-            #    User-spec: SAME product respawns ~5 min after end → enforce
-            #    minimum cool-down so a freshly ended item doesn't reappear instantly.
-            RESTART_COOLDOWN_SECONDS = 300  # 5 minutes
-            cooldown_threshold = (now - timedelta(seconds=RESTART_COOLDOWN_SECONDS)).isoformat()
+            # 2) Demo auto-restart is TEST_MODE-only. Production auctions must be explicitly created.
+            if TEST_MODE:
+                # 2) Auto-restart: ensure TARGET_ACTIVE_AUCTIONS are running
+                #    User-spec: SAME product respawns ~5 min after end → enforce
+                #    minimum cool-down so a freshly ended item doesn't reappear instantly.
+                RESTART_COOLDOWN_SECONDS = 300  # 5 minutes
+                cooldown_threshold = (now - timedelta(seconds=RESTART_COOLDOWN_SECONDS)).isoformat()
 
-            active_count = await db.auctions.count_documents({"status": "active"})
-            need = TARGET_ACTIVE_AUCTIONS - active_count
+                active_count = await db.auctions.count_documents({"status": "active"})
+                need = TARGET_ACTIVE_AUCTIONS - active_count
 
-            if need > 0:
-                logger.info(f"🎰 Auto-restart check: need={need} (active={active_count}, target={TARGET_ACTIVE_AUCTIONS})")
-                created_titles = set()
-                # Get current active titles to avoid duplicates
-                async for a in db.auctions.find({"status": "active"}, {"_id": 0, "title": 1}):
-                    created_titles.add(a.get("title"))
+                if need > 0:
+                    logger.info(f"🎰 Auto-restart check: need={need} (active={active_count}, target={TARGET_ACTIVE_AUCTIONS})")
+                    created_titles = set()
+                    # Get current active titles to avoid duplicates
+                    async for a in db.auctions.find({"status": "active"}, {"_id": 0, "title": 1}):
+                        created_titles.add(a.get("title"))
 
-                # Compute last_ended_map AND in_cooldown_titles in one pass
-                last_ended_map = {}
-                in_cooldown = set()
-                async for doc in db.auctions.find(
-                    {"status": "ended"}, {"_id": 0, "title": 1, "ended_at": 1}
-                ).sort("ended_at", -1).limit(200):
-                    title = doc.get("title")
-                    ended = doc.get("ended_at") or ""
-                    last_ended_map.setdefault(title, ended)
-                    # If recently ended (< 5 min ago) → in cooldown, skip
-                    if ended and ended > cooldown_threshold:
-                        in_cooldown.add(title)
+                    # Compute last_ended_map AND in_cooldown_titles in one pass
+                    last_ended_map = {}
+                    in_cooldown = set()
+                    async for doc in db.auctions.find(
+                        {"status": "ended"}, {"_id": 0, "title": 1, "ended_at": 1}
+                    ).sort("ended_at", -1).limit(200):
+                        title = doc.get("title")
+                        ended = doc.get("ended_at") or ""
+                        last_ended_map.setdefault(title, ended)
+                        # If recently ended (< 5 min ago) → in cooldown, skip
+                        if ended and ended > cooldown_threshold:
+                            in_cooldown.add(title)
 
-                spawned = 0
-                sorted_cat = sorted(
-                    ACTIVE_AUCTION_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
-                )
-
-                for d in sorted_cat:
-                    if spawned >= need:
-                        break
-                    if d["title"] in created_titles:
-                        continue
-                    if d["title"] in in_cooldown:
-                        # Recently ended — wait the 5-min cool-down before respawn
-                        continue
-                    auction = _build_auction_doc(d, "system_auto", now, spawned)
-                    await db.auctions.insert_one(auction)
-                    created_titles.add(d["title"])
-                    spawned += 1
-
-            # 3) Naturally fluctuate viewer counts (every ~2 minutes per auction)
-            actives = await db.auctions.find(
-                {"status": "active"}, {"_id": 0, "auction_id": 1, "viewer_count": 1, "ends_at": 1}
-            ).to_list(100)
-
-            for a in actives:
-                # Skew viewer fluctuations: more viewers as auction approaches end
-                try:
-                    ends = datetime.fromisoformat(a["ends_at"])
-                    remaining = (ends - now).total_seconds()
-                except Exception:
-                    remaining = 86400
-
-                cur = int(a.get("viewer_count") or 10)
-                if remaining < 600:           # last 10 min: surge
-                    delta = random.randint(-1, 6)
-                    floor, ceil = 20, 250
-                elif remaining < 3600:        # last hour: rising
-                    delta = random.randint(-2, 4)
-                    floor, ceil = 12, 120
-                else:
-                    delta = random.randint(-3, 3)
-                    floor, ceil = 6, 80
-                new_v = max(floor, min(ceil, cur + delta))
-                if new_v != cur:
-                    await db.auctions.update_one(
-                        {"auction_id": a["auction_id"]},
-                        {"$set": {"viewer_count": new_v}},
+                    spawned = 0
+                    sorted_cat = sorted(
+                        ACTIVE_AUCTION_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
                     )
+
+                    for d in sorted_cat:
+                        if spawned >= need:
+                            break
+                        if d["title"] in created_titles:
+                            continue
+                        if d["title"] in in_cooldown:
+                            # Recently ended — wait the 5-min cool-down before respawn
+                            continue
+                        auction = _build_auction_doc(d, "system_auto", now, spawned)
+                        await db.auctions.insert_one(auction)
+                        created_titles.add(d["title"])
+                        spawned += 1
+
+
+            # 3) Synthetic viewer fluctuations are TEST_MODE-only.
+            if TEST_MODE:
+                # 3) Naturally fluctuate viewer counts (every ~2 minutes per auction)
+                actives = await db.auctions.find(
+                    {"status": "active"}, {"_id": 0, "auction_id": 1, "viewer_count": 1, "ends_at": 1}
+                ).to_list(100)
+
+                for a in actives:
+                    # Skew viewer fluctuations: more viewers as auction approaches end
+                    try:
+                        ends = datetime.fromisoformat(a["ends_at"])
+                        remaining = (ends - now).total_seconds()
+                    except Exception:
+                        remaining = 86400
+
+                    cur = int(a.get("viewer_count") or 10)
+                    if remaining < 600:           # last 10 min: surge
+                        delta = random.randint(-1, 6)
+                        floor, ceil = 20, 250
+                    elif remaining < 3600:        # last hour: rising
+                        delta = random.randint(-2, 4)
+                        floor, ceil = 12, 120
+                    else:
+                        delta = random.randint(-3, 3)
+                        floor, ceil = 6, 80
+                    new_v = max(floor, min(ceil, cur + delta))
+                    if new_v != cur:
+                        await db.auctions.update_one(
+                            {"auction_id": a["auction_id"]},
+                            {"$set": {"viewer_count": new_v}},
+                        )
+
 
         except Exception as e:
             import logging
