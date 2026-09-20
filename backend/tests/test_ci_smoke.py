@@ -632,10 +632,24 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
 
     assert "def _require_marketplace_idempotency_key" in market_source
-    assert '"status": "processing"' in market_source
+    assert "async def _marketplace_platform_user_id" in market_source
     assert '"purchase_claim_key": key_hash' in market_source
-    assert 'idempotency_key=f"marketplace-seller:{idempotency_key}"' in market_source
-    assert 'idempotency_key=f"marketplace-refund:{idempotency_key}"' in market_source
+    assert '"status": "escrow_pending"' in market_source
+    assert '"escrow_status": "pending"' in market_source
+    assert 'idempotency_key=f"marketplace-escrow:{order_id}"' in market_source
+    assert '"escrow_status": "funded"' in market_source
+    assert '"awaiting_shipment"' in market_source
+    assert '"awaiting_pickup"' in market_source
+    assert '@router.post("/orders/{order_id}/ship")' in market_source
+    assert '@router.post("/orders/{order_id}/ready-pickup")' in market_source
+    assert '@router.post("/orders/{order_id}/confirm-received")' in market_source
+    assert '@router.post("/orders/{order_id}/cancel")' in market_source
+    assert 'idempotency_key=f"marketplace-order:{order_id}:seller-payout"' in market_source
+    assert 'idempotency_key=f"marketplace-order:{order_id}:refund"' in market_source
+    assert '"escrow_status": "released"' in market_source
+    assert '"escrow_status": "refunded"' in market_source
+    assert 'idempotency_key=f"marketplace-seller:{idempotency_key}"' not in market_source
+    assert 'idempotency_key=f"marketplace-refund:{idempotency_key}"' not in market_source
     assert "shipping_cost" in market_source and "seller_amount = round(item_price - commission + shipping_cost, 2)" in market_source
 
     assert "def _require_flash_idempotency_key" in commerce_source
@@ -645,6 +659,17 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     assert "reconciliation_required" in commerce_source
 
     assert "'Idempotency-Key': idempotencyKey" in market_page
+    assert "use_shipping: !!useShipping" in market_page
+    assert "marketplace-delivery-choice" in market_page
+    assert "marketplace-orders-view" in market_page
+    assert "fetchMarketplaceOrders" in market_page
+    assert "orderActionKeysRef" in market_page
+    assert "/confirm-received" in market_page
+    assert "/ready-pickup" in market_page
+    assert "/ship" in market_page
+    assert "/cancel" in market_page
+    assert "marketplace-confirm-received-" in market_page
+    assert "marketplace-ship-order-" in market_page
     assert "flashPurchaseKeysRef" in commerce_page
     assert '"Idempotency-Key": idempotencyKey' in api_source
 
