@@ -2,8 +2,10 @@ import { Capacitor } from "@capacitor/core";
 
 const PREVIEW_HOST_MATCHERS = ["preview.emergentagent.com", "localhost", "127.0.0.1"];
 const runtimeHost = typeof window !== "undefined" ? window.location.hostname : "";
-const isPreviewRuntime = PREVIEW_HOST_MATCHERS.some((matcher) => runtimeHost.includes(matcher));
 const isNativeRuntime = Capacitor.isNativePlatform();
+const isPreviewRuntime =
+  !isNativeRuntime &&
+  PREVIEW_HOST_MATCHERS.some((matcher) => runtimeHost.includes(matcher));
 
 // Store-safe restrictions belong to the native App Store / Play Store shell.
 // The public web app (including bidblitz.ae in Safari/Chrome) must keep its
