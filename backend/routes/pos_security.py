@@ -605,6 +605,7 @@ async def pos_security_approval_decision(approval_id: str, req: ApprovalDecision
     approval_type = approval.get("approval_type")
     supported_types = {
         "wallet_topup",
+        "secure_payment",
         "refund",
         "gift_card_create",
         "manual_wallet_adjustment",
@@ -686,6 +687,52 @@ async def pos_security_approval_decision(approval_id: str, req: ApprovalDecision
                 request=request,
                 approval_id=approval_id,
             )
+        elif approval_type == "secure_payment":
+            customer = await db.users.find_one({"_id": ObjectId(payload["customer_id"])})
+            if not customer:
+                raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+            payment_id = str(payload.get("payment_id") or "").strip()
+            if not payment_id:
+                raise HTTPException(status_code=409, detail="Freigegebene Zahlung hat keine stabile Payment-ID")
+            prepare_payload = {
+                "merchant_id": actor["merchant_id"],
+                "store_id": actor["store_id"],
+                "register_id": payload.get("register_id", ""),
+                "employee_id": actor["user_id"],
+                "customer_id": str(customer["_id"]),
+                "amount": round(float(approval.get("amount", 0)), 2),
+                "description": payload.get("description", "POS Zahlung"),
+                "cart_id": payload.get("cart_id", ""),
+                "payment_method": payload.get("payment_method", "wallet"),
+            }
+            payment_doc = {
+                "payment_id": payment_id,
+                **prepare_payload,
+                "customer_number": customer.get("user_number", ""),
+                "masked_customer": payload.get("masked_customer") or build_customer_public_view(customer, payload.get("lookup_type")),
+                "status": "awaiting_pin",
+                "requires_pin": True,
+                "requires_app_confirmation": bool(payload.get("requires_app_confirmation")),
+                "prepare_payload": prepare_payload,
+                "idempotency_key": payload.get("idempotency_key"),
+                "approval_id": approval_id,
+                "expires_at": (now_utc() + timedelta(minutes=10)).isoformat(),
+                "created_at": now_iso(),
+            }
+            await db.pos_secure_payments.update_one(
+                {"payment_id": payment_id},
+                {"$setOnInsert": payment_doc},
+                upsert=True,
+            )
+            persisted = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0}) or payment_doc
+            if persisted.get("prepare_payload") != prepare_payload:
+                raise HTTPException(status_code=409, detail="Freigegebene Zahlung kollidiert mit bestehender Payment-ID")
+            result_payload = {
+                "status": persisted.get("status", "awaiting_pin"),
+                "payment": persisted,
+                "customer": build_customer_public_view(customer, payload.get("lookup_type")),
+                "next_step": "customer_pin",
+            }
         elif approval_type == "refund":
             result_payload = await execute_refund_action(
                 {**payload, "amount": approval.get("amount", 0)},
