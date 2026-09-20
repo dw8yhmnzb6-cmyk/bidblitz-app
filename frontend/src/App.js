@@ -208,6 +208,7 @@ const ChargeAppPage = lazy(() => import("./pages/ChargeAppPage"));
 const ChargeMerchantDetailPage = lazy(() => import("./pages/ChargeMerchantDetailPage"));
 const ChargeProductDetailPage = lazy(() => import("./pages/ChargeProductDetailPage"));
 const ChargeCareClaimsPage = lazy(() => import("./pages/ChargeCareClaimsPage"));
+const ChargeServiceRequestsPage = lazy(() => import("./pages/ChargeServiceRequestsPage"));
 const ChargeWarrantyVerifyPage = lazy(() => import("./pages/ChargeWarrantyVerifyPage"));
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
@@ -862,6 +863,10 @@ function AppContent() {
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
           : <ChargeCareClaimsPage registrationId={routeParams.registration_id} claimId={routeParams.claim_id} preferredResolution={routeParams.resolution} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
+      case "/charge-app/service":
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : <ChargeServiceRequestsPage registrationId={routeParams.registration_id} onBack={() => handleNavigate("/charge-app")} />;
       case "/charge-app/warranty-verify":
         return <ChargeWarrantyVerifyPage registrationId={routeParams.registration_id} signature={routeParams.sig} onNavigate={handleNavigate} />;
       case "/selfcheckout":
