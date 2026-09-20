@@ -445,6 +445,7 @@ export const api = {
     params.set("limit", String(limit));
     return request(`/api/charge-app/catalog?${params.toString()}`);
   },
+  getChargeCatalogProduct: (productId) => request(`/api/charge-app/catalog/${encodeURIComponent(productId)}`),
   registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
   updateChargeWarranty: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteChargeWarranty: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "DELETE" }),
