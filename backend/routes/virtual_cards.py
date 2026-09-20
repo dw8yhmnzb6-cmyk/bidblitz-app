@@ -137,7 +137,15 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
         raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
     marker = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
     card_id = f"CARD-{marker[:8].upper()}"
+    creation_payload = {
+        "name": req.name,
+        "limit": round(float(req.limit), 2),
+        "single_use": bool(req.single_use),
+        "expires_hours": int(req.expires_hours),
+    }
     existing = await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id}, {"_id": 0})
+    if existing and existing.get("creation_payload") != creation_payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Kartendaten verwendet")
     if existing:
         return {
             "success": True,
@@ -208,6 +216,7 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
         "spent": 0.0,
         "remaining": req.limit,
         "single_use": req.single_use,
+        "creation_payload": creation_payload,
         "status": "active",
         "transactions": [],
         "created_at": now.isoformat(),
