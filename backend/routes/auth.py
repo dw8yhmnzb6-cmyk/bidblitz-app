@@ -393,19 +393,22 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     user_doc["_id"] = result.inserted_id
     user_id = str(result.inserted_id)
 
-    # Create merchant profile
-    merchant_doc = {
-        "user_id": user_id,
-        "business_name": display_name if role == "merchant" else f"{display_name}'s Store",
-        "total_earnings": 0.0,
-        "gross_earnings": 0.0,
-        "total_fees": 0.0,
-        "available_payout": 0.0,
-        "pending_payout": 0.0,
-        "total_transactions": 0,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.merchants.insert_one(merchant_doc)
+    # Create a merchant profile only for an actual merchant registration.
+    if role == "merchant":
+        merchant_doc = {
+            "user_id": user_id,
+            "business_name": display_name,
+            "total_earnings": 0.0,
+            "gross_earnings": 0.0,
+            "total_fees": 0.0,
+            "available_payout": 0.0,
+            "pending_payout": 0.0,
+            "total_transactions": 0,
+            "status": "pending",
+            "plan": "basic",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.merchants.insert_one(merchant_doc)
 
     # 🎁 Welcome Bonus Transaction für Verlauf / Audit über zentrale Engine
     try:
@@ -455,13 +458,6 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception:
         pass
     
-    # Send welcome email
-    try:
-        from core.email import send_welcome_email
-        send_welcome_email(email, display_name)
-    except Exception as e:
-        logger.warning(f"Failed to send welcome email: {e}")
-
     # Track registration conversion
     try:
         day_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
