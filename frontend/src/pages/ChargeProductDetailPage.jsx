@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft, Building2, CheckCircle2, ChevronRight, Loader2, MapPin,
-  Package, ShieldCheck, ShoppingBag, Tag, Heart
+  Package, ShieldCheck, ShoppingBag, Tag, Heart, BookOpen, LifeBuoy, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -187,6 +187,33 @@ export default function ChargeProductDetailPage({ productId, onBack, onNavigate 
                 <ShoppingBag size={15} />Zum Händler
               </button>
             </div>
+
+            {(product.manual_url || product.support_url) ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="charge-product-detail-support-links">
+                {product.manual_url ? (
+                  <a
+                    href={product.manual_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#D9CFC0] bg-white text-sm font-black text-slate-700"
+                    data-testid="charge-product-detail-manual-link"
+                  >
+                    <BookOpen size={15} />Anleitung<ExternalLink size={13} />
+                  </a>
+                ) : null}
+                {product.support_url ? (
+                  <a
+                    href={product.support_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 text-sm font-black text-cyan-800"
+                    data-testid="charge-product-detail-support-link"
+                  >
+                    <LifeBuoy size={15} />Produkthilfe<ExternalLink size={13} />
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-[30px] border border-[#D9CFC0] bg-[#F8F3EA] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]" data-testid="charge-product-detail-related-card">
