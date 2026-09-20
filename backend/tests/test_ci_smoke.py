@@ -2065,7 +2065,11 @@ def _load_mobility_pricing_contract():
     wanted_names = {
         "DEFAULT_TRANSPORT_PRICING",
         "REGIONAL_PRICING_PROFILES",
+        "CITY_PRICING_PROFILES",
+        "CITY_NAME_ALIASES",
         "build_option",
+        "_normalize_city_key",
+        "_merge_pricing_profile",
         "_resolve_pricing_context",
     }
     selected = []
@@ -2107,20 +2111,59 @@ def test_mobility_kosovo_regional_pricing_matches_local_profile():
         assert option["estimated"] is True
 
 
-def test_mobility_prishtina_coordinates_resolve_to_kosovo_without_geocoder():
+def test_mobility_prishtina_coordinates_resolve_to_city_profile_without_geocoder():
     pricing = _load_mobility_pricing_contract()
 
     async def unavailable(*args, **kwargs):
         raise RuntimeError("offline")
 
-    pricing["_nominatim_get"] = unavailable
     resolver = pricing["_resolve_pricing_context"]
     resolver.__globals__["_nominatim_get"] = unavailable
     profile = asyncio.run(resolver(42.6629, 21.1655, "Prishtina"))
 
-    assert profile["profile_key"] == "XK"
+    assert profile["profile_key"] == "XK:prishtina"
+    assert profile["profile_scope"] == "city"
     assert profile["country_code"] == "XK"
-    assert profile["region"] == "Kosovo"
+    assert profile["city"] == "Prishtina"
+    assert profile["modes"]["taxi"]["per_km"] == 0.65
+    assert profile["modes"]["scooter"]["per_min"] == 0.18
+
+
+def test_mobility_prizren_uses_city_profile_and_peja_falls_back_to_country():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def reverse_prizren(*args, **kwargs):
+        return {
+            "address": {
+                "country_code": "xk",
+                "country": "Kosovo",
+                "city": "Prizren",
+            }
+        }
+
+    resolver.__globals__["_nominatim_get"] = reverse_prizren
+    prizren = asyncio.run(resolver(42.2139, 20.7397, "Prizren"))
+    assert prizren["profile_key"] == "XK:prizren"
+    assert prizren["profile_scope"] == "city"
+    assert prizren["modes"]["taxi"]["base"] == 2.05
+    assert prizren["modes"]["taxi"]["per_km"] == 0.49
+
+    async def reverse_peja(*args, **kwargs):
+        return {
+            "address": {
+                "country_code": "xk",
+                "country": "Kosovo",
+                "city": "Peja",
+            }
+        }
+
+    resolver.__globals__["_nominatim_get"] = reverse_peja
+    peja = asyncio.run(resolver(42.6591, 20.2883, "Peja"))
+    assert peja["profile_key"] == "XK"
+    assert peja["profile_scope"] == "country"
+    assert peja["city"] == "Peja"
+    assert peja["modes"]["taxi"]["per_km"] == 0.60
 
 
 def test_mobility_search_contract_supports_local_first_autocomplete():
