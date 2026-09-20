@@ -8,7 +8,7 @@ simulation: charging hardware must connect via OCPP-1.6J at
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket
@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import (
+    debit_wallet,
     transfer_between_wallets,
     TransactionType,
     generate_reference,
@@ -304,10 +305,40 @@ async def my_history(request: Request, limit: int = 50) -> Dict[str, Any]:
 # Final settlement — called by ocpp_csms after StopTransaction
 # ══════════════════════════════════════════════════════════════════════════════
 async def finalize_session(session_id: str) -> None:
-    """Atomic close-out: compute net/VAT/commission, deduct from user, credit
-    operator (minus platform commission), persist receipt + line items."""
-    sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
-    if not sess or sess.get("status") == "completed":
+    """Idempotent EV close-out.
+
+    A deterministic payment reference makes wallet retries safe, while a short
+    MongoDB settlement lease prevents two OCPP stop events from settling the
+    same session concurrently.  A stale lease can be reclaimed after five
+    minutes, so a worker crash does not permanently strand the session.
+    """
+    stale_before = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+
+    current = await db.ev_charging_sessions.find_one({"session_id": session_id})
+    if not current:
+        return
+    if current.get("status") == "completed" or current.get("settlement_state") == "completed":
+        return
+
+    sess = await db.ev_charging_sessions.find_one_and_update(
+        {
+            "session_id": session_id,
+            "status": {"$ne": "completed"},
+            "settlement_state": {"$ne": "completed"},
+            "$or": [
+                {"settlement_state": {"$exists": False}},
+                {"settlement_state": {"$in": ["failed", "retryable"]}},
+                {"settlement_started_at": {"$lt": stale_before}},
+            ],
+        },
+        {"$set": {
+            "settlement_state": "processing",
+            "settlement_started_at": _utcnow_iso(),
+        }},
+        return_document=True,
+    )
+    if not sess:
+        # Another worker already owns a fresh settlement lease.
         return
 
     tariff = sess.get("tariff") or {}
@@ -339,8 +370,13 @@ async def finalize_session(session_id: str) -> None:
     if not user_id:
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"final_cost": gross, "status": "completed",
-                      "duration_min": round(duration_min, 1)}},
+            {"$set": {
+                "final_cost": gross,
+                "status": "completed",
+                "duration_min": round(duration_min, 1),
+                "settlement_state": "completed",
+                "settled_at": _utcnow_iso(),
+            }},
         )
         return
 
@@ -348,7 +384,7 @@ async def finalize_session(session_id: str) -> None:
     cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
     operator_user_id = (cp or {}).get("operator_user_id") or (cp or {}).get("owner_merchant_id")
 
-    # Commission: operator-specific override → operator-record default → platform default
+    # Commission: station override -> operator default -> platform default.
     commission_pct = DEFAULT_PLATFORM_COMMISSION_PCT
     if cp and cp.get("commission_pct_override") is not None:
         commission_pct = float(cp["commission_pct_override"])
@@ -360,12 +396,30 @@ async def finalize_session(session_id: str) -> None:
     platform_fee = round(gross * commission_pct / 100.0, 2)
     operator_share = round(gross - platform_fee, 2)
 
-    # Wallet transfer (user → operator). Platform commission is collected by
-    # the operator first then we move the platform_fee to the platform wallet
-    # in a second transfer. Two atomic operations keep the audit trail clean.
-    txn_ref = generate_reference("EV")
+    # Deterministic references are essential: if OCPP retries StopTransaction
+    # or the worker crashes after the wallet transfer, Payment Engine replays
+    # the same idempotent operation instead of charging a second time.
+    settlement_ref = f"EVSET-{session_id}"
+    commission_ref = f"EVFEE-{session_id}"
     primary_ok = True
     primary_err = None
+    commission_ok = True
+    commission_err = None
+
+    common_meta = {
+        "session_id": session_id,
+        "charge_point_id": sess["charge_point_id"],
+        "connector_id": sess.get("connector_id"),
+        "kwh": kwh,
+        "duration_min": round(duration_min, 1),
+        "vat_rate": vat_rate,
+        "net": net,
+        "vat": vat,
+        "gross": gross,
+        "commission_pct": commission_pct,
+        "platform_fee": platform_fee,
+        "operator_share": operator_share,
+    }
 
     if operator_user_id and gross > 0:
         result = await transfer_between_wallets(
@@ -374,25 +428,12 @@ async def finalize_session(session_id: str) -> None:
             amount=gross,
             tx_type=TransactionType.EV_CHARGING,
             description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
-            metadata={
-                "session_id": session_id,
-                "charge_point_id": sess["charge_point_id"],
-                "connector_id": sess.get("connector_id"),
-                "kwh": kwh,
-                "duration_min": round(duration_min, 1),
-                "vat_rate": vat_rate,
-                "net": net,
-                "vat": vat,
-                "gross": gross,
-                "commission_pct": commission_pct,
-                "platform_fee": platform_fee,
-                "operator_share": operator_share,
-            },
+            reference=settlement_ref,
+            metadata=common_meta,
         )
         primary_ok = result.success
         primary_err = result.error if not primary_ok else None
 
-        # Move platform commission from operator → platform pool wallet (admin)
         if primary_ok and platform_fee > 0:
             platform_user_id = await _platform_pool_user_id()
             if platform_user_id and platform_user_id != str(operator_user_id):
@@ -402,32 +443,72 @@ async def finalize_session(session_id: str) -> None:
                     amount=platform_fee,
                     tx_type=TransactionType.EV_CHARGING_REVENUE,
                     description=f"EV-Plattformprovision {sess['charge_point_id']} ({commission_pct}%)",
-                    metadata={"session_id": session_id, "settlement_ref": txn_ref},
+                    reference=commission_ref,
+                    metadata={"session_id": session_id, "settlement_ref": settlement_ref},
                 )
-                await db.ev_operator_commissions.insert_one({
-                    "session_id": session_id,
-                    "charge_point_id": sess["charge_point_id"],
-                    "operator_user_id": str(operator_user_id),
-                    "gross": gross,
-                    "commission_pct": commission_pct,
-                    "platform_fee": platform_fee,
-                    "operator_share": operator_share,
-                    "ref": comm_res.reference if comm_res.success else None,
-                    "success": comm_res.success,
-                    "created_at": _utcnow_iso(),
-                })
-    else:
-        # No operator wired: deduct gross from user; platform keeps everything.
-        if gross > 0:
-            from bson import ObjectId
-            try:
-                _id = ObjectId(user_id)
-            except Exception:
-                _id = user_id
-            await db.users.update_one({"_id": _id}, {"$inc": {"balance": -gross}})
+                commission_ok = comm_res.success
+                commission_err = comm_res.error if not commission_ok else None
+                await db.ev_operator_commissions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "session_id": session_id,
+                        "charge_point_id": sess["charge_point_id"],
+                        "operator_user_id": str(operator_user_id),
+                        "gross": gross,
+                        "commission_pct": commission_pct,
+                        "platform_fee": platform_fee,
+                        "operator_share": operator_share,
+                        "ref": comm_res.reference if comm_res.success else commission_ref,
+                        "success": comm_res.success,
+                        "error": comm_res.error if not comm_res.success else None,
+                        "updated_at": _utcnow_iso(),
+                    }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                    upsert=True,
+                )
+    elif gross > 0:
+        # No operator wired: use the canonical wallet engine as well.  Never
+        # mutate users.balance directly from EV charging code.
+        result = await debit_wallet(
+            user_id=user_id,
+            amount=gross,
+            tx_type=TransactionType.EV_CHARGING,
+            description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
+            reference=settlement_ref,
+            metadata={**common_meta, "settlement_target": "platform"},
+        )
+        primary_ok = result.success
+        primary_err = result.error if not primary_ok else None
 
-    # Build receipt + line items
-    receipt_no = await _next_receipt_no()
+    settlement_ok = primary_ok and commission_ok
+    if not settlement_ok:
+        errors = [e for e in (primary_err, commission_err) if e]
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "settle_failed",
+                "settlement_state": "failed",
+                "settlement_error": " | ".join(errors)[:500] or "Settlement failed",
+                "final_cost": gross,
+                "net_amount": net,
+                "vat_amount": vat,
+                "platform_fee": platform_fee,
+                "operator_share": operator_share,
+                "duration_min": round(duration_min, 1),
+                "settlement_ref": settlement_ref,
+                "settlement_failed_at": _utcnow_iso(),
+            }},
+        )
+        if sess.get("id_tag"):
+            await db.ev_authorizations.update_one(
+                {"id_tag": sess["id_tag"]},
+                {"$set": {"active": False, "used_at": _utcnow_iso()}},
+            )
+        return
+
+    # Build receipt only after the money movement is complete.  Reuse an
+    # existing receipt number on retry and upsert by session_id.
+    existing_receipt = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+    receipt_no = (existing_receipt or {}).get("receipt_no") or await _next_receipt_no()
     line_items = [
         {"label": "Energie", "calc": f"{kwh:.3f} kWh × €{tariff.get('price_per_kwh', 0):.2f}", "amount": round(energy_amt, 2)},
     ]
@@ -452,31 +533,39 @@ async def finalize_session(session_id: str) -> None:
         "operator_share": operator_share,
         "commission_pct": commission_pct,
         "currency": "EUR",
-        "settlement_ref": txn_ref,
+        "settlement_ref": settlement_ref,
         "line_items": line_items,
-        "issued_at": _utcnow_iso(),
+        "issued_at": (existing_receipt or {}).get("issued_at") or _utcnow_iso(),
+        "updated_at": _utcnow_iso(),
     }
-    await db.ev_receipts.insert_one(receipt_doc)
+    await db.ev_receipts.update_one(
+        {"session_id": session_id},
+        {"$set": receipt_doc},
+        upsert=True,
+    )
 
-    update = {
-        "status": "completed" if primary_ok else "settle_failed",
-        "final_cost": gross,
-        "net_amount": net,
-        "vat_amount": vat,
-        "platform_fee": platform_fee,
-        "operator_share": operator_share,
-        "duration_min": round(duration_min, 1),
-        "settlement_ref": txn_ref,
-        "settled_at": _utcnow_iso(),
-        "receipt_no": receipt_no,
-    }
-    if not primary_ok:
-        update["settlement_error"] = primary_err
-    await db.ev_charging_sessions.update_one({"session_id": session_id}, {"$set": update})
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": "completed",
+            "settlement_state": "completed",
+            "final_cost": gross,
+            "net_amount": net,
+            "vat_amount": vat,
+            "platform_fee": platform_fee,
+            "operator_share": operator_share,
+            "duration_min": round(duration_min, 1),
+            "settlement_ref": settlement_ref,
+            "settled_at": _utcnow_iso(),
+            "receipt_no": receipt_no,
+            "settlement_error": None,
+        }},
+    )
 
     if sess.get("id_tag"):
         await db.ev_authorizations.update_one(
-            {"id_tag": sess["id_tag"]}, {"$set": {"active": False, "used_at": _utcnow_iso()}}
+            {"id_tag": sess["id_tag"]},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
         )
 
 
