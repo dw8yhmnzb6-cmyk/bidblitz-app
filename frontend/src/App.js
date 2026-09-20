@@ -224,6 +224,7 @@ const AIContentGeneratorPage = lazy(() => import("./pages/AIContentGeneratorPage
 const KidsPremiumHubPage = lazy(() => import("./pages/KidsPremiumHubPage"));
 const InstantCreditPage = lazy(() => import("./pages/InstantCreditPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
+const AdminMobilityPricingPage = lazy(() => import("./pages/AdminMobilityPricingPage"));
 const AdminDirectoryPage = lazy(() => import("./pages/AdminDirectoryPage"));
 const AdminAdManagerPage = lazy(() => import("./pages/AdminAdManagerPage"));
 const AdminBookingManagerPage = lazy(() => import("./pages/AdminBookingManagerPage"));
@@ -962,6 +963,8 @@ function AppContent() {
         return user.role === "admin" ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/taxi-drivers":
         return user.role === "admin" ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/mobility-pricing":
+        return user.role === "admin" ? <AdminMobilityPricingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/restaurants":
       case "/admin/qr-tables":
         return user.role === "admin" ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
