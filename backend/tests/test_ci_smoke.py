@@ -2182,3 +2182,20 @@ def test_mining_marketplace_purchase_is_atomic_and_retry_safe():
     assert "idempotency_key: idempotencyKey" in page
     assert "delete marketplacePurchaseKeysRef.current[listingId]" in page
 
+def test_legacy_express_checkout_stripe_charges_are_fail_closed():
+    source = (BACKEND_DIR / "routes" / "express_checkout_stripe.py").read_text(encoding="utf-8")
+
+    assert '@router.post("/save-payment-method")' in source
+    assert '@router.get("/setup-intent")' in source
+    assert "stripe.SetupIntent.create(" in source
+
+    assert '@router.post("/charge")' in source
+    assert "Legacy Express-Checkout-Charge deaktiviert" in source
+    assert '@router.post("/wallet-payment")' in source
+    assert "Legacy Wallet-Payment-Charge deaktiviert" in source
+    assert source.count("status_code=410") >= 2
+
+    # No client-provided amount may reach a real Stripe PaymentIntent in these legacy routes.
+    assert "amount=int(amount * 100)" not in source
+    assert "stripe.PaymentIntent.create(" not in source
+
