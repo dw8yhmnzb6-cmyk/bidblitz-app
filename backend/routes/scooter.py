@@ -565,6 +565,11 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     ride_rate = float((subscription or {}).get("per_minute_rate", local_pricing["per_minute"]))
     ride_daily_cap = float((subscription or {}).get("daily_cap", local_pricing["daily_cap"]))
     ride_currency = str((subscription or {}).get("currency") or local_pricing.get("currency") or "EUR").upper()
+    if ride_currency != "EUR":
+        raise HTTPException(
+            status_code=503,
+            detail=f"Scooter-Tarif in {ride_currency} kann noch nicht sicher über das EUR-Wallet abgerechnet werden.",
+        )
 
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     balance = float(fresh_user.get("balance") or 0)
