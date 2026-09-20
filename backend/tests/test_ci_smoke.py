@@ -2570,3 +2570,16 @@ def test_p2p_history_route_is_not_duplicated():
     assert "/api/p2p/history" in page
     assert ".items || []" in page
 
+def test_pool_paid_ticket_issuance_is_crash_recoverable():
+    source = (BACKEND_DIR / "routes" / "pool_management.py").read_text(encoding="utf-8")
+
+    assert "import hashlib" in source
+    assert "from pymongo.errors import DuplicateKeyError" in source
+    assert 'ticket_id = f"PTK-{digest[:16].upper()}"' in source
+    assert 'ticket_code = f"POOL-{digest[16:26].upper()}"' in source
+    assert '{"$setOnInsert": ticket_doc}' in source
+    assert '"ticket_issued": True' in source
+    issue_pos = source.index('{"$setOnInsert": ticket_doc}')
+    issued_pos = source.index('"ticket_issued": True', issue_pos)
+    assert issued_pos > issue_pos
+
