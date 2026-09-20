@@ -513,7 +513,7 @@ async def get_favorite_recipients(request: Request):
 # TRANSFER HISTORY
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/history")
+@router.get("/transfer-history")
 async def get_transfer_history(request: Request, limit: int = 50):
     """Get P2P transfer history including canonical transfer rows."""
     user = await get_current_user(request)
