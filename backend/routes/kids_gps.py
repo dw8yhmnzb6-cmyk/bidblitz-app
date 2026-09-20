@@ -480,7 +480,7 @@ async def simulate_location(child_id: str, request: Request, lat: float = 52.52,
     """Simulate a child's location (for testing). Reverse geocodes address."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
-    if not TEST_MODE and user.get("role") != "admin":
+    if not TEST_MODE:
         raise HTTPException(status_code=404, detail="Route nicht verfügbar")
     
     child = await verify_parent_child_access(parent_id, child_id)
