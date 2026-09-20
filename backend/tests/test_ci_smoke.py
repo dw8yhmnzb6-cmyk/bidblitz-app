@@ -265,6 +265,7 @@ def test_quick_topup_compliance_uses_authenticated_user_id():
 
 def test_taxi_customer_driver_wallet_flow_stays_unified():
     taxi_source = (BACKEND_DIR / "routes" / "taxi.py").read_text(encoding="utf-8")
+    taxi_model_source = (BACKEND_DIR / "models" / "taxi.py").read_text(encoding="utf-8")
     driver_source = (BACKEND_DIR / "routes" / "driver_dashboard.py").read_text(encoding="utf-8")
     taxi_api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "taxiApi.js").read_text(encoding="utf-8")
     taxi_page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "TaxiPage.jsx").read_text(encoding="utf-8")
@@ -283,6 +284,13 @@ def test_taxi_customer_driver_wallet_flow_stays_unified():
     assert 'pricing_source = "locked_booking_quote"' in taxi_source
     assert "fare_estimate = apply_multi_tariff" in taxi_source
     assert "claim.modified_count != 1" in taxi_source
+    assert "idempotency_key: Optional[str]" in taxi_model_source
+    assert "amount = round(float(req.tip_amount), 2)" in taxi_source
+    assert "transfer_between_wallets(" in taxi_source
+    assert "idempotency_key=idem_key" in taxi_source
+    assert '"tip_status": "reserved"' in taxi_source
+    assert '"tip_status": "completed"' in taxi_source
+    assert '{"$inc": {"balance": req.amount, "earnings": req.amount}}' not in taxi_source
 
     assert "/api/taxi/rides/${rideId}" in taxi_api_source
     assert "/api/taxi/ride/${rideId}" not in taxi_api_source
