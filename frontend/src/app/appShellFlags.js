@@ -60,6 +60,10 @@ function isMerchantPosPath(path) {
   return path.startsWith("/merchant/pos");
 }
 
+function isAdminShellPath(path) {
+  return path === "/admin" || path.startsWith("/admin/");
+}
+
 export function getAppShellFlags(currentPath, isDesktopViewport) {
   const path = (currentPath || "/").split("?")[0];
   const isCheckout = isCheckoutPath(path);
@@ -74,6 +78,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isFullscreenCommerce = isFullscreenCommercePath(path);
   const isDating = isDatingPath(path);
   const isMerchantPos = isMerchantPosPath(path);
+  const isAdminShell = isAdminShellPath(path);
   const isHomePath = path === "/" || path === "/home" || path === "/landing";
 
   return {
@@ -86,6 +91,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
     isStaffEmployeeShell,
     isFullScreenStaffMgr,
     isFullscreenCommerce,
+    isAdminShell,
     showBottomNav: !isDesktopViewport
       && !isCheckout
       && !isPublicInvoicePayment
@@ -97,6 +103,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isFullScreenStaffMgr
       && !isDating
       && !isMerchantPos
+      && !isAdminShell
       && !isFullscreenCommerce
       && !path.startsWith("/pay/merchant/")
       && path !== "/merchant-landing"
@@ -114,6 +121,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isStaffEmployeeShell
       && !isDating
       && !isMerchantPos
+      && !isAdminShell
       && !isFullscreenCommerce
       && !path.startsWith("/pay/merchant/")
       && path !== "/merchant-landing",
