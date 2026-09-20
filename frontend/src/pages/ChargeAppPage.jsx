@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
@@ -14,7 +14,7 @@ import { ChargeProductScanner } from "../components/charge/ChargeProductScanner"
 const API = process.env.REACT_APP_BACKEND_URL;
 
 
-export default function ChargeAppPage({ onBack, onNavigate }) {
+export default function ChargeAppPage({ onBack, onNavigate, routeParams }) {
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
   const [merchantQuery, setMerchantQuery] = useState("");
@@ -33,6 +33,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [activationCode, setActivationCode] = useState("");
   const [activationProduct, setActivationProduct] = useState(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const activationPrefillRef = useRef("");
   const [warrantyForm, setWarrantyForm] = useState({
     product_id: "",
     product_name: "BidBlitz Charge Pro 65W",
@@ -81,6 +82,48 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    const productId = String(routeParams?.activate_product_id || "").trim();
+    if (!productId || activationPrefillRef.current === productId) return;
+    activationPrefillRef.current = productId;
+
+    let cancelled = false;
+    const prefillWarranty = async () => {
+      setBusy("activation-prefill");
+      try {
+        const response = await api.getChargeCatalogProduct(productId);
+        if (cancelled) return;
+        const product = response?.product || {};
+        const merchant = response?.merchant || {};
+        setActivationProduct(product);
+        setActivationCode(product.product_id || productId);
+        setWarrantyForm((prev) => ({
+          ...prev,
+          product_id: product.product_id || productId,
+          product_name: product.name || prev.product_name,
+          merchant_name: merchant.business_name || product.merchant_name || prev.merchant_name,
+          warranty_months: String(product.warranty_months || prev.warranty_months || 24),
+        }));
+        window.setTimeout(() => {
+          document.querySelector('[data-testid="charge-app-warranty-card"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
+        toast.success("Produkt für Garantie übernommen");
+      } catch (error) {
+        if (!cancelled) {
+          activationPrefillRef.current = "";
+          toast.error(error.message || "Produkt konnte nicht für die Garantie übernommen werden");
+        }
+      } finally {
+        if (!cancelled) setBusy("");
+      }
+    };
+
+    prefillWarranty();
+    return () => {
+      cancelled = true;
+    };
+  }, [routeParams?.activate_product_id]);
 
   const lookupActivationProduct = useCallback(async (codeOverride = "") => {
     const code = String(codeOverride || activationCode).trim();
