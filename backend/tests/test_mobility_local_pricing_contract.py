@@ -104,3 +104,12 @@ def test_pricing_scope_is_tracked_per_transport_mode():
     assert '(context.get("mode_scopes") or {}).get("scooter"' in scooter
     assert 'option.get("pricing_scope") or pricing_context.get("profile_scope")' in taxi
     assert 'selectedOption?.pricing_scope || routeSnapshot.pricing_context.profile_scope' in page
+
+
+def test_admin_lists_real_country_codes_instead_of_pseudo_regions():
+    mobility = read("backend/routes/mobility_platform.py")
+
+    assert 'BALKAN_COUNTRY_CODES = {"AL", "MK", "ME", "RS", "BA"}' in mobility
+    assert 'def _regional_profile_key_for_country' in mobility
+    assert 'admin_country_codes = {"XK", "DE", "AE", *BALKAN_COUNTRY_CODES, *CITY_PRICING_PROFILES.keys()}' in mobility
+    assert 'profile_key = _regional_profile_key_for_country(country_code)' in mobility
