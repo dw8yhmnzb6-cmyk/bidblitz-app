@@ -2438,6 +2438,15 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
         "resolved_at": now,
         "status_history": [*(claim.get("status_history") or []), history_entry],
     }
+    if claim.get("user_id"):
+        await safe_create_charge_notification(
+            event_key=f"charge_claim_cancelled:{claim_id}",
+            user_id=str(claim.get("user_id") or ""),
+            title="Charge-Care-Fall storniert",
+            message=f"Der Kunde hat den Garantiefall {claim_id} storniert.",
+            action_url="/merchant-portal",
+            metadata={"claim_id": claim_id, "status": "cancelled"},
+        )
     return {"ok": True, "claim": _claim_card(updated)}
 
 
