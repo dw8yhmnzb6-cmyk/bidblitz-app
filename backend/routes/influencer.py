@@ -7,7 +7,7 @@ import logging
 import hashlib
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from core.database import db
@@ -87,9 +87,9 @@ async def get_referral_stats(request: Request):
 # ══════════════════════════════════════
 
 class UpdateConfigReq(BaseModel):
-    influencer_rate: Optional[float] = None
-    manager_rate: Optional[float] = None
-    min_payout: Optional[float] = None
+    influencer_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    manager_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    min_payout: Optional[float] = Field(default=None, ge=0, le=100000, allow_inf_nan=False)
 
 
 @router.post("/admin/config")
@@ -124,8 +124,8 @@ async def get_global_config(request: Request):
 # ── Admin: Create/Update Influencer ──
 class CreateInfluencerReq(BaseModel):
     user_email: str
-    type: str = "influencer"  # influencer | manager
-    commission_rate: Optional[float] = None
+    type: str = Field(default="influencer", pattern="^(influencer|manager)$")
+    commission_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     manager_id: Optional[str] = None
 
 
@@ -161,9 +161,9 @@ async def create_influencer(req: CreateInfluencerReq, request: Request):
 # ── Admin: Update commission rate per influencer ──
 class UpdateInfluencerReq(BaseModel):
     user_id: str
-    commission_rate: Optional[float] = None
+    commission_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     manager_id: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = Field(default=None, pattern="^(active|inactive|suspended)$")
 
 
 @router.post("/admin/update")
@@ -218,8 +218,8 @@ async def assign_manager(req: AssignManagerReq, request: Request):
 
 # ── Admin: Create bonus campaign ──
 class BonusCampaignReq(BaseModel):
-    name: str
-    bonus_rate: float
+    name: str = Field(..., min_length=2, max_length=120)
+    bonus_rate: float = Field(..., ge=0, le=100, allow_inf_nan=False)
     start_date: str
     end_date: str
 
@@ -338,6 +338,9 @@ async def _grant_commission_credits_once(
 
 async def process_commission(buyer_id: str, purchase_amount: float, purchase_ref: str):
     """Process influencer + manager bid-credit commission exactly once per purchase."""
+    purchase_amount = float(purchase_amount)
+    if purchase_amount <= 0 or purchase_amount > 1_000_000 or not purchase_ref:
+        return {"ok": False, "reason": "invalid_purchase"}
     buyer_oid = ObjectId(buyer_id) if ObjectId.is_valid(buyer_id) else buyer_id
     buyer = await db.users.find_one({"_id": buyer_oid})
     if not buyer:
