@@ -2463,3 +2463,16 @@ def test_referral_wallet_reward_config_is_bounded():
     assert "level1_rate: Optional[float] = Field(default=None, ge=0, le=1" in source
     assert "level2_rate: Optional[float] = Field(default=None, ge=0, le=1" in source
 
+def test_dating_stripe_settlement_is_session_idempotent():
+    source = (BACKEND_DIR / "routes" / "dating.py").read_text(encoding="utf-8")
+
+    assert "async def _apply_dating_consumable(user_id: str, item_id: str, session_id: str)" in source
+    assert 'marker_field = f"payment_settlement_markers.{marker_hash}"' in source
+    assert 'user_marker = f"dating_payment_markers.{marker_hash}"' in source
+    assert 'profile_marker = f"payment_settlement_markers.{marker_hash}"' in source
+    assert '"settlement_marker": marker_hash' in source
+    assert 'tx_id = f"dating-premium:{marker_hash}"' in source
+    assert '"$setOnInsert": {' in source
+    assert 'credits.boosts": 1, "credits.superlikes": 3' in source
+    assert 'credits.boosts": 2, "credits.superlikes": 5' in source
+
