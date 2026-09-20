@@ -26,7 +26,7 @@ const MOBILITY_COPY = {
   sq: { title: "Gjithçka në një hartë", pickup: "Kërko nisjen ose vendose me GPS", dropoff: "Ku dëshiron të shkosh?", current: "Vendndodhja ime", mapSets: "Harta vendos", start: "nisjen", destination: "destinacionin", compare: "Krahaso çmimet", home: "Shtëpia", work: "Puna", saveStart: "Ruaj nisjen", saveDestination: "Ruaj destinacionin", aiRules: "Rregullat smart aktive", aiRulesText: "Pas zgjedhjes së destinacionit, çmimi, ETA dhe rekomandimi shfaqen menjëherë për taxi, e-scooter, e-bike, carsharing, EV dhe vetura me qira.", aiPrefs: "Preferencat AI", checkout: "Metoda e pagesës", favorites: "Të preferuarat", recents: "Adresat e fundit", noFavorites: "Ende nuk ka të preferuara.", noRecents: "Ende nuk ka adresa të fundit.", bookings: "Rezervimet e fundit mobility", directWallet: "Rezervo direkt me wallet", directCash: "Rezervo si udhëtim me cash", booking: "Po rezervohet...", bookNow: "Rezervo tani", empty: "Vendos nisjen dhe destinacionin ose prek hartën. Pastaj këtu shfaqet menjëherë krahasimi për taxi, e-scooter, e-bike, carsharing, veturë me qira, shuttle dhe VIP.", recentLabel: "Destinacion i fundit", used: "herë përdorur", recommended: "Rekomanduar", bestChoice: "Zgjedhja më e mirë", alternative: "Alternativa", nearby: "Live afër", nearbyFallback: "I disponueshëm në hartë", qrTitle: "QR checkout", qrText: "Skano kodin QR në një pajisje tjetër ose hape linkun direkt.", close: "Mbyll", openStripe: "Hap Stripe checkout", liveTaxi: "taksi live", liveEbikes: "e-bike", liveCarsharing: "carsharing", rentalCars: "vetura me qira", paymentTitle: "Metodat e pagesës", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card dhe Cash janë të integruara.", price: "Çmimi", time: "Koha", distance: "Distanca" },
 };
 
-function formatPrice(value, language = "de") {
+function formatPrice(value, language = "de", currency = "EUR") {
   const locale =
     String(language || "de").startsWith("de") ? "de-DE" :
     String(language || "").startsWith("sq") ? "sq-XK" :
@@ -34,7 +34,7 @@ function formatPrice(value, language = "de") {
     language || "de-DE";
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "EUR",
+    currency: String(currency || "EUR").toUpperCase(),
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
@@ -120,7 +120,9 @@ function FocusCompareCard({ option, compareToTaxi, highlight, lang, onOpen }) {
   if (!option) return null;
   const meta = TRANSPORT_META[option.type] || TRANSPORT_META.taxi;
   const Icon = meta.icon;
-  const priceDelta = compareToTaxi ? Number(option.price_eur || 0) - Number(compareToTaxi.price_eur || 0) : 0;
+  const optionPrice = Number(option.price_local ?? option.price_eur ?? 0);
+  const taxiPrice = Number(compareToTaxi?.price_local ?? compareToTaxi?.price_eur ?? 0);
+  const priceDelta = compareToTaxi ? optionPrice - taxiPrice : 0;
   const timeDelta = compareToTaxi ? Number(option.duration_min || 0) - Number(compareToTaxi.duration_min || 0) : 0;
   return (
     <button
@@ -142,12 +144,12 @@ function FocusCompareCard({ option, compareToTaxi, highlight, lang, onOpen }) {
           </div>
         </div>
         <div className="text-right">
-          <p className="text-base font-bold text-[#18202a]">{formatPrice(option.price_eur, lang)}</p>
+          <p className="text-base font-bold text-[#18202a]">{formatPrice(option.price_local ?? option.price_eur, lang, option.currency || "EUR")}</p>
           <p className="text-[10px] text-[#18202a]/45">{option.duration_min} Min</p>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[#18202a]/62">
-        <div className="rounded-xl bg-[#f8f3e9] px-3 py-2">vs Taxi {priceDelta > 0 ? '+' : ''}{formatPrice(priceDelta, lang)}</div>
+        <div className="rounded-xl bg-[#f8f3e9] px-3 py-2">vs Taxi {priceDelta > 0 ? '+' : ''}{formatPrice(priceDelta, lang, option.currency || compareToTaxi?.currency || "EUR")}</div>
         <div className="rounded-xl bg-[#f8f3e9] px-3 py-2">Zeit {timeDelta > 0 ? '+' : ''}{timeDelta} Min</div>
       </div>
     </button>
@@ -173,7 +175,7 @@ function MobilityDetailSheet({ option, onClose, paymentOptions, ui, lang }) {
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-5">
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.price}</p><p className="text-lg font-bold text-white mt-1">{formatPrice(option.price_eur, lang)}</p></div>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.price}</p><p className="text-lg font-bold text-white mt-1">{formatPrice(option.price_local ?? option.price_eur, lang, option.currency || "EUR")}</p></div>
             <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.time}</p><p className="text-lg font-bold text-white mt-1">{option.duration_min} Min</p></div>
             <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.distance}</p><p className="text-lg font-bold text-white mt-1">{option.distance_km.toFixed(1)} km</p></div>
           </div>
@@ -610,6 +612,9 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
 
   const bookTransport = async (option) => {
     if (!pickup.lat || !dropoff.lat) return toast.error("Bitte zuerst Start und Ziel festlegen");
+    if (option?.booking_supported === false || option?.price_eur == null) {
+      return toast.error(option?.settlement_reason || "Lokaler Tarif verfügbar, aber FX-/Settlement ist noch nicht verbunden.");
+    }
     const transportType = option.type;
     const transportLabel = option.label;
     const priceEur = option.price_eur;
@@ -962,10 +967,10 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                       </div>
                       <div className="text-right shrink-0 pl-1">
                         <div className="text-[9px] font-semibold uppercase tracking-wide text-[#18202a]/40">{option.estimated ? "ca." : ""}</div>
-                        <div className="text-[17px] font-black text-[#18202a] tabular-nums">{formatPrice(option.price_eur, lang)}</div>
-                        {option.price_range_eur?.low != null && option.price_range_eur?.high != null && (
+                        <div className="text-[17px] font-black text-[#18202a] tabular-nums">{formatPrice(option.price_local ?? option.price_eur, lang, option.currency || "EUR")}</div>
+                        {(option.price_range_local || option.price_range_eur)?.low != null && (option.price_range_local || option.price_range_eur)?.high != null && (
                           <div className="mt-0.5 text-[9px] font-semibold text-[#0F766E]/75 tabular-nums" data-testid={`mobility-price-range-${option.type}`}>
-                            {formatPrice(option.price_range_eur.low, lang)}–{formatPrice(option.price_range_eur.high, lang)}
+                            {formatPrice((option.price_range_local || option.price_range_eur).low, lang, option.currency || "EUR")}–{formatPrice((option.price_range_local || option.price_range_eur).high, lang, option.currency || "EUR")}
                           </div>
                         )}
                       </div>
@@ -982,7 +987,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                   </button>
                   <div className="mt-2 grid grid-cols-1 items-center gap-2 border-t border-[#18202a]/7 pt-2 sm:mt-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3 sm:pt-3">
                     <div className="hidden min-w-0 truncate text-[11px] text-[#18202a]/55 sm:block">{selectedPaymentMethod === "wallet" ? ui.directWallet : selectedPaymentMethod === "cash" ? ui.directCash : `Checkout: ${(paymentOptions.methods || []).find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
-                    <button onClick={() => bookTransport(option)} className="min-h-[44px] w-full whitespace-nowrap rounded-full bg-[#18202a] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40 sm:w-auto" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? ui.booking : ui.bookNow}</button>
+                    <button onClick={() => bookTransport(option)} className="min-h-[44px] w-full whitespace-nowrap rounded-full bg-[#18202a] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40 sm:w-auto" disabled={bookingTransportType === option.type || option.booking_supported === false} data-testid={`mobility-book-option-${option.type}`}>{option.booking_supported === false ? "FX-Verbindung fehlt" : bookingTransportType === option.type ? ui.booking : ui.bookNow}</button>
                   </div>
                 </div>
               );
@@ -1065,7 +1070,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                         <div className="text-[10px] text-[#18202a]/45 mt-0.5 truncate">{item.pickup?.address} → {item.dropoff?.address}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[11px] font-semibold text-[#18202a]">{formatPrice(item.price_eur, lang)}</div>
+                        <div className="text-[11px] font-semibold text-[#18202a]">{formatPrice(item.price_eur, lang, "EUR")}</div>
                         <div className="text-[10px] text-[#18202a]/45">{item.status}</div>
                       </div>
                     </div>
