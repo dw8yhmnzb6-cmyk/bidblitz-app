@@ -2102,6 +2102,7 @@ def test_home_prioritizes_auctions_and_mining():
 
 def test_mobility_map_keeps_map_visible_on_mobile():
     mobility = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
+    center = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MobilityCenterPage.jsx").read_text(encoding="utf-8")
     shell = (BACKEND_DIR.parent / "frontend" / "src" / "app" / "appShellFlags.js").read_text(encoding="utf-8")
 
     assert 'h-[54vh] min-h-[360px] sm:h-[56vh] lg:h-[46vh]' in mobility
@@ -2121,6 +2122,10 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'formatCompactPrice(paymentOptions.wallet_balance, lang)' in mobility
     assert 'formatPrice(paymentOptions.wallet_balance, lang)' in mobility
     assert 'max-w-[44vw]' in mobility
+
+    assert 'route: "/mobility-map?mode=taxi"' in center
+    assert 'route: "/taxi"' not in center
+    assert 'new Intl.NumberFormat("de-DE"' in center
 
     assert 'function isImmersiveMobilityMapPath(path)' in shell
     assert 'return path === "/mobility-map";' in shell
