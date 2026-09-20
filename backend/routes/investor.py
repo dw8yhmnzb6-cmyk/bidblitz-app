@@ -11,9 +11,21 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from bson import ObjectId
 from core.database import db
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/investor", tags=["Investor"])
 logger = logging.getLogger("bidblitz.investor")
+
+def _require_investor_settlement_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Investor-Settlement ist in Production deaktiviert, bis ein verifizierter "
+                "Investment-/Custody-/Settlement-Provider verbunden ist."
+            ),
+        )
+
 
 # Investment tiers (configurable by admin)
 DEFAULT_TIERS = [
@@ -272,6 +284,7 @@ async def get_revenue_stats(request: Request):
 @router.post("/admin/distribute-profits")
 async def distribute_profits(request: Request):
     """Admin: create one deterministic profit distribution per accounting scope."""
+    _require_investor_settlement_mode()
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -430,6 +443,7 @@ async def distribute_profits(request: Request):
 @router.post("/admin/credit-payouts")
 async def credit_pending_payouts(request: Request):
     """Admin: credit each investor payout exactly once."""
+    _require_investor_settlement_mode()
     from core.payment_engine import credit_wallet, TransactionType
 
     user = await get_current_user(request)
@@ -456,7 +470,7 @@ async def credit_pending_payouts(request: Request):
             result = await credit_wallet(
                 user_id=payout["investor_id"],
                 amount=float(payout["amount"]),
-                tx_type=TransactionType.INVESTOR_PROFIT,
+                tx_type=TransactionType.PAYOUT,
                 description=f"Investor Profit ({payout.get('period', 'manual')})",
                 reference=f"INV-{payout_id[:12].upper()}",
                 source="profit_distribution",
@@ -509,6 +523,7 @@ async def list_applications(request: Request):
 @router.post("/admin/approve")
 async def approve_investor(req: AdminApproveReq, request: Request):
     """Admin: Approve an investor application."""
+    _require_investor_settlement_mode()
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
