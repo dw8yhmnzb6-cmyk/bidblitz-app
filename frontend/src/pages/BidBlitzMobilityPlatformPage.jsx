@@ -916,6 +916,23 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             ) : null}
           </div>
 
+          {routeSnapshot?.pricing_context && (
+            <div className="mt-4 rounded-2xl border border-[#0F766E]/15 bg-[#0F766E]/[0.06] px-3.5 py-3" data-testid="mobility-pricing-context">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0F766E]/70">Regionale Preisbasis</p>
+                  <p className="mt-1 truncate text-sm font-bold text-[#18202a]">
+                    {[routeSnapshot.pricing_context.city, routeSnapshot.pricing_context.region].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]">Schätzung</span>
+              </div>
+              <p className="mt-1.5 text-[11px] leading-4 text-[#18202a]/55">
+                Preise werden anhand der Tarifbasis am Abholort berechnet und vor der Buchung angezeigt.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-3 mt-4" data-testid="mobility-options-list">
             {visibleTransportOptions.map((option) => {
               const meta = TRANSPORT_META[option.type] || TRANSPORT_META.taxi;
@@ -940,7 +957,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                     <p className="mt-2 text-[11px] leading-4 text-[#18202a]/55">{meta.details?.[lang] || meta.details?.de}</p>
                     {option.pricing_basis && (
                       <div className="mt-2 inline-flex max-w-full items-center rounded-full bg-[#0F766E]/8 px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]" data-testid={`mobility-pricing-basis-${option.type}`}>
-                        <span className="truncate">{option.pricing_region}: {option.pricing_basis}</span>
+                        <span className="truncate">{option.estimated ? "Schätzung · " : ""}{option.pricing_region}: {option.pricing_basis}</span>
                       </div>
                     )}
                     <div className="mt-2 text-[10px] text-[#18202a]/42">
