@@ -451,6 +451,11 @@ async def update_listing(listing_id: str, req: UpdateListingRequest, request: Re
     
     if listing["seller_id"] != user_id:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    if listing.get("status") not in {"active", "inactive"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Anzeige ist in einem Kauf-/Verkaufsprozess und kann nicht bearbeitet werden",
+        )
     
     update = {"updated_at": datetime.now(timezone.utc).isoformat()}
     
@@ -475,7 +480,7 @@ async def update_listing(listing_id: str, req: UpdateListingRequest, request: Re
             update["shipping_cost"] = None
     if req.shipping_cost is not None:
         update["shipping_cost"] = req.shipping_cost
-    if req.status and req.status in ["active", "inactive", "sold"]:
+    if req.status and req.status in ["active", "inactive"]:
         update["status"] = req.status
     
     await db.marketplace_listings.update_one(
@@ -500,6 +505,11 @@ async def delete_listing(listing_id: str, request: Request):
     
     if listing["seller_id"] != user_id and not is_admin:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    if not is_admin and listing.get("status") not in {"active", "inactive"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Anzeige ist in einem Kauf-/Verkaufsprozess und kann nicht gelöscht werden",
+        )
     
     await db.marketplace_listings.delete_one({"listing_id": listing_id})
     
@@ -1487,7 +1497,12 @@ async def get_my_sales(request: Request):
         {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
     
-    total_revenue = sum(o.get("seller_amount", 0) for o in orders)
+    total_revenue = sum(
+        float(o.get("seller_amount") or 0)
+        for o in orders
+        if o.get("status") == "completed"
+        and o.get("escrow_status") in {None, "released"}
+    )
     
     return {
         "orders": orders,
@@ -1684,10 +1699,17 @@ async def get_my_stats(request: Request):
     
     # Get sales revenue
     sales = await db.marketplace_orders.find(
-        {"seller_id": user_id},
-        {"seller_amount": 1}
+        {
+            "seller_id": user_id,
+            "status": "completed",
+            "$or": [
+                {"escrow_status": "released"},
+                {"escrow_status": {"$exists": False}},
+            ],
+        },
+        {"seller_amount": 1, "escrow_status": 1, "status": 1},
     ).to_list(500)
-    total_revenue = sum(s.get("seller_amount", 0) for s in sales)
+    total_revenue = sum(float(s.get("seller_amount") or 0) for s in sales)
     
     return {
         "total_listings": total,
