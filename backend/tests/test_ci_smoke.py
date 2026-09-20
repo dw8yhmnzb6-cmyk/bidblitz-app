@@ -2372,3 +2372,18 @@ def test_pro_feature_preview_fees_use_payment_engine_and_tax_get_never_charges()
     assert '"$inc": {"balance": -REPORT_FEE}' not in source
     assert "Kostenpflichtiger Steuerbericht ist deaktiviert" in source
 
+def test_live_auctions_fail_closed_until_escrow_and_settlement_exist():
+    backend = (BACKEND_DIR / "routes" / "live_auctions.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in backend
+    assert "def _require_live_auction_test_mode" in backend
+    assert "Legacy-Live-Auktionen sind in Production deaktiviert" in backend
+    assert '"live_auction_enabled": bool(TEST_MODE)' in backend
+    assert '"escrow_connected": False' in backend
+    assert '"winner_settlement_connected": False' in backend
+    assert backend.count("_require_live_auction_test_mode()") >= 3
+    assert 'case "/live-auctions":' in app
+    assert 'title="Live Auktionen"' in app
+    assert "Escrow, Gewinnerzahlung und Settlement" in app
+
