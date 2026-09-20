@@ -2218,3 +2218,24 @@ def test_admin_ai_cannot_execute_destructive_account_or_wallet_mutations():
     assert '"$inc": {"balance_blz": -amount}' not in source
     assert 'if op_type == "customer_ban_toggle":' not in source
 
+def test_registration_and_merchant_onboarding_do_not_escalate_normal_users():
+    auth = (BACKEND_DIR / "routes" / "auth.py").read_text(encoding="utf-8")
+    merchant = (BACKEND_DIR / "routes" / "merchant.py").read_text(encoding="utf-8")
+    email_service = (BACKEND_DIR / "routes" / "email_service.py").read_text(encoding="utf-8")
+
+    assert 'if role == "merchant":' in auth
+    assert '"merchant_id": secrets.token_hex(8)' in auth
+    assert 'business_name": display_name if role == "merchant" else' not in auth
+    assert "from core.email import send_welcome_email" not in auth
+    assert "notify_welcome(" in auth
+
+    assert 'user.get("role") != "merchant"' in merchant
+    assert 'merchant.get("status") != "approved"' in merchant
+    assert 'detail="Freigegebenes Händlerkonto erforderlich"' in merchant
+    assert "Auto-create merchant profile" not in merchant
+    assert "recognized_merchant = bool(" in merchant
+    assert 'detail="Händlerkonto erforderlich"' in merchant
+
+    assert "Zahlungen, Mobilität, Marketplace und weitere freigeschaltete Dienste" in email_service
+    assert "Tippe täglich auf den BlitzMine-Button" not in email_service
+
