@@ -222,14 +222,25 @@ async def admin_decide_verification(request: Request):
     target_name = target_user.get("name", "") if target_user else ""
 
     if decision == "approve":
-        role = ver.get("requested_role", "user")
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
+        role = str(ver.get("requested_role") or "")
+        if role not in ROLES_REQUIRING_VERIFICATION:
+            raise HTTPException(status_code=409, detail="Verification enthält keine freigabefähige Rolle")
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if str(target_user.get("role") or "") in {"admin", "super_admin"}:
+            raise HTTPException(
+                status_code=403,
+                detail="Privilegierte Admin-Rollen dürfen durch KYC-Review nicht geändert werden.",
+            )
+        role_update = await db.users.update_one(
+            {"_id": ObjectId(user_id), "role": {"$nin": ["admin", "super_admin"]}},
             {
                 "$set": {"role": role, "role_approved_at": now, "verification_status": "approved"},
                 "$inc": {"auth_version": 1},
             },
         )
+        if role_update.modified_count != 1:
+            raise HTTPException(status_code=409, detail="Rollenfreigabe konnte nicht atomar abgeschlossen werden")
         from routes.sessions import revoke_all_sessions
         await revoke_all_sessions(user_id)
         await db.role_requests.update_one(
