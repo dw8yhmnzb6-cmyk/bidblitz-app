@@ -980,6 +980,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
   const lockupAttemptKeyRef = useRef(null);
+  const quickBonusAttemptKeyRef = useRef(null);
   const push = usePushNotifications();
 
   const questRouteMap = {
@@ -1117,7 +1118,17 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     if (!requireValueAction()) return;
     setQuickBusy(true);
     try {
-      const res = await api("/api/blitz-mine/quick-bonus/claim", { method: "POST" });
+      if (!quickBonusAttemptKeyRef.current) {
+        quickBonusAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `blitz-quick-${crypto.randomUUID()}`
+          : `blitz-quick-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = quickBonusAttemptKeyRef.current;
+      const res = await api("/api/blitz-mine/quick-bonus/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      quickBonusAttemptKeyRef.current = null;
       toast.success(`Quick Bonus: +${fmt(res.reward_blz, 2)} BLZ`);
       await load();
     } catch (e) { toast.error(e.message); }
