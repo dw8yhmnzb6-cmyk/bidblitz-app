@@ -2281,3 +2281,14 @@ def test_duplicate_legacy_kids_money_router_stays_unmounted():
     assert '@router.post("/transfer")' in legacy
     assert 'transferToChild: (childId, body, idempotencyKey = "")' in api
     assert '/api/kids/children/' in api
+
+def test_pos_retail_cart_and_pick_routes_require_store_access():
+    source = (BACKEND_DIR / "routes" / "pos_retail_p1p2.py").read_text(encoding="utf-8")
+
+    assert 'async def apply_bulk_discounts(request: Request, cart_id: str):' in source
+    assert 'await _require_store_access(user, cart["store_id"])' in source
+    assert 'async def upsell_suggestions(request: Request, cart_id: str):' in source
+    assert source.count('await _require_store_access(user, cart["store_id"])') >= 2
+    assert 'async def pending_pick_tasks(request: Request, store_id: str):' in source
+    assert 'await _require_store_access(user, store_id)' in source
+
