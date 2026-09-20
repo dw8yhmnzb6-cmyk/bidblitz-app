@@ -1728,12 +1728,25 @@ def test_value_based_games_fail_closed_and_rewards_cashback_is_ledger_backed():
 
     assert "BLZ-Quest-Belohnungen sind in Production deaktiviert." in quests
     assert "if not TEST_MODE:" in quests
+    assert "async def _credit_quest_blz_once" in quests
+    assert "quest_reward_markers" in quests
+    assert '"quests.$.claimed": True' in quests
+    assert 'reward_key=f"quest:{uid}:{day}:all-claimed"' in quests
+    assert '{"$inc": {"balance_blz": reward}}' not in quests
+    assert '{"$inc": {"balance_blz": bonus}}' not in quests
     assert 'case "/quests":' in app
     assert 'title="Quests"' in app
 
     assert "BLZ-Gamification-Rewards sind in Production deaktiviert." in gamification
     assert "BLZ-Achievement-Rewards sind in Production deaktiviert." in gamification
     assert gamification.count("if not TEST_MODE:") >= 4
+    assert "async def _credit_gamification_blz_once" in gamification
+    assert "async def _credit_challenge_rewards_once" in gamification
+    assert "gamification_reward_markers" in gamification
+    assert "credit_wallet(" in gamification
+    assert 'idempotency_key=f"{stable}:eur"' in gamification
+    assert '{"$inc": {"balance": challenge["reward_eur"]}}' not in gamification
+    assert '{"$inc": {"balance_blz": challenge["reward_blz"]}}' not in gamification
     assert 'case "/challenges":' in app
     assert 'title="Challenges"' in app
     assert 'case "/achievements":' in app
