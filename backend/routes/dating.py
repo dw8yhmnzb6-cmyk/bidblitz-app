@@ -701,6 +701,7 @@ class DatingSafetyScanReq(BaseModel):
 class DatingPremiumCheckoutReq(BaseModel):
     plan_id: str = Field(default="premium_30d")
     origin_url: str = Field(min_length=8, max_length=500)
+    idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=200)
 
 
 class DatingPremiumStatusReq(BaseModel):
@@ -715,6 +716,7 @@ class DatingChatSafetyReq(BaseModel):
 class DatingConsumableCheckoutReq(BaseModel):
     item_id: str = Field(min_length=4, max_length=80)
     origin_url: str = Field(min_length=8, max_length=500)
+    idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=200)
 
 
 class DatingOfferClaimReq(BaseModel):
@@ -1180,6 +1182,26 @@ async def maybe_attach_safety(profile: dict, include_scan: bool = False) -> dict
 
 def _premium_until(days: int) -> str:
     return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+
+
+def _dating_checkout_key(body_key: Optional[str], request: Request, user_id: str, kind: str) -> tuple[str, str]:
+    raw = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    digest = hashlib.sha256(f"{user_id}:{kind}:{raw}".encode("utf-8")).hexdigest()[:24]
+    return raw, digest
+
+
+async def _claim_dating_checkout_intent(intent_id: str, payload: dict, doc: dict) -> tuple[dict, bool]:
+    claim = await db.payment_transactions.update_one(
+        {"_id": intent_id},
+        {"$setOnInsert": {"_id": intent_id, **doc}},
+        upsert=True,
+    )
+    saved = await db.payment_transactions.find_one({"_id": intent_id}, {"_id": 0}) or {}
+    if saved.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Checkout-Daten verwendet")
+    return saved, claim.upserted_id is not None
 
 
 async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
