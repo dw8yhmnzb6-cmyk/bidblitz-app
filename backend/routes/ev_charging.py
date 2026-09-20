@@ -21,7 +21,6 @@ from core.payment_engine import (
     debit_wallet,
     transfer_between_wallets,
     TransactionType,
-    generate_reference,
 )
 from services import ocpp_csms
 from services import ocpp_v201
@@ -1385,32 +1384,47 @@ async def admin_payout_decision(payout_id: str, body: PayoutDecisionBody, reques
         raise HTTPException(403, "Admin only")
     if body.decision not in ("approved", "rejected", "paid"):
         raise HTTPException(400, "Ungültige Entscheidung")
+
     payout = await db.ev_operator_payouts.find_one({"payout_id": payout_id})
     if not payout:
         raise HTTPException(404, "Payout nicht gefunden")
+
     update = {
-        "status": body.decision, "admin_note": body.note,
-        "external_ref": body.external_ref, "decided_at": _utcnow_iso(),
+        "status": body.decision,
+        "admin_note": body.note,
+        "external_ref": body.external_ref,
+        "decided_at": _utcnow_iso(),
         "decided_by": str(user["_id"]),
     }
+
     if body.decision == "paid":
-        from bson import ObjectId
-        try:
-            uid = ObjectId(payout["user_id"])
-        except Exception:
-            uid = payout["user_id"]
-        bal_user = await db.users.find_one({"_id": uid}, {"balance": 1})
-        if (bal_user or {}).get("balance", 0) < payout["amount"]:
-            raise HTTPException(402, "Operator-Wallet hat nicht genug Guthaben")
-        await db.users.update_one({"_id": uid}, {"$inc": {"balance": -payout["amount"]}})
-        await db.transactions.insert_one({
-            "user_id": payout["user_id"], "type": "payout",
-            "amount": -payout["amount"], "currency": "EUR",
-            "description": f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
-            "reference": payout_id, "status": "completed",
-            "created_at": _utcnow_iso(),
-        })
-    await db.ev_operator_payouts.update_one({"payout_id": payout_id}, {"$set": update})
+        # Deterministic reference makes repeated admin/API callbacks idempotent.
+        # The canonical wallet engine performs the balance check + atomic debit
+        # and writes the balanced ledger/audit records.
+        payout_ref = f"EVPAYOUT-{payout_id}"
+        debit = await debit_wallet(
+            user_id=str(payout["user_id"]),
+            amount=float(payout["amount"]),
+            tx_type=TransactionType.PAYOUT,
+            description=f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
+            reference=payout_ref,
+            metadata={
+                "payout_id": payout_id,
+                "operator_id": payout.get("operator_id"),
+                "iban": payout.get("iban"),
+                "external_ref": body.external_ref,
+                "approved_by": str(user["_id"]),
+            },
+        )
+        if not debit.success:
+            raise HTTPException(402, debit.error or "Operator-Wallet konnte nicht belastet werden")
+        update["wallet_transaction_id"] = debit.transaction_id
+        update["wallet_reference"] = debit.reference or payout_ref
+
+    await db.ev_operator_payouts.update_one(
+        {"payout_id": payout_id},
+        {"$set": update},
+    )
     return {"ok": True, "payout_id": payout_id, **update}
 
 
