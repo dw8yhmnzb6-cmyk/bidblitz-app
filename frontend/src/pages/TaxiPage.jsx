@@ -39,7 +39,7 @@ function formatEta(item) {
 function formatPrice(item) {
   const price = Number(item?.total || item?.fare || 0);
   if (!price) return '—';
-  return formatBidBlitzCurrency(price, { locale: 'de' });
+  return formatBidBlitzCurrency(price, { locale: 'de', currency: item?.currency || 'EUR' });
 }
 
 function useTaxiSimpleData(user) {
@@ -165,7 +165,7 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
       <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
         <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
           <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Grundpreis</div>
-          <MoneyAmount value={selectedEstimate.base_fare || 0} locale="de" className="mt-1 block text-base font-black text-white" testId="taxi-base-fare" />
+          <MoneyAmount value={selectedEstimate.base_fare || 0} locale="de" currency={selectedEstimate.currency || 'EUR'} className="mt-1 block text-base font-black text-white" testId="taxi-base-fare" />
         </div>
         <div className="rounded-2xl bg-[var(--bb-bg-card)] px-3 py-3">
           <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bb-text-muted)]">Region</div>
@@ -176,6 +176,17 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
           <div className="mt-1 font-black text-white">{tariffZone?.label || 'Standard'}</div>
         </div>
       </div>
+      {(selectedEstimate.profile_scope || selectedEstimate.pricing_source === 'mobility_profile') ? (
+        <div className="mt-3 rounded-2xl border border-[rgba(0,194,255,0.16)] bg-[rgba(0,194,255,0.08)] px-4 py-3 text-sm text-[var(--bb-text-secondary)]" data-testid="taxi-local-pricing-source">
+          <span className="font-bold text-white">{selectedEstimate.profile_scope === 'city' ? 'Stadttarif' : 'Landestarif'}</span>
+          {selectedEstimate.pricing_basis ? <span> · {selectedEstimate.pricing_basis}</span> : null}
+        </div>
+      ) : null}
+      {selectedEstimate.booking_supported === false ? (
+        <div className="mt-3 rounded-2xl border border-[rgba(255,204,51,0.24)] bg-[rgba(255,204,51,0.1)] px-4 py-3 text-sm font-semibold text-[var(--bb-accent-warning)]">
+          {selectedEstimate.settlement_reason || 'Dieser lokale Tarif kann noch nicht über das EUR-Wallet abgerechnet werden.'}
+        </div>
+      ) : null}
       {fixedFare ? (
         <div className="mt-3 rounded-2xl bg-[rgba(24,214,140,0.12)] px-4 py-3 text-sm font-semibold text-[var(--bb-accent-success)]">
           Festpreis aktiv: <MoneyAmount value={fixedFare} locale="de" className="font-bold text-[var(--bb-accent-success)]" testId="taxi-fixed-fare" />
@@ -588,6 +599,10 @@ export default function TaxiPage({ onNavigate }) {
   const handleBookRide = useCallback(async () => {
     if (!selectedEstimate) {
       setError('Preis konnte noch nicht berechnet werden. Bitte Ziel oder Abholpunkt erneut wählen.');
+      return;
+    }
+    if (selectedEstimate.booking_supported === false) {
+      setError(selectedEstimate.settlement_reason || 'Dieser lokale Tarif kann noch nicht sicher über das EUR-Wallet abgerechnet werden.');
       return;
     }
     const normalizedScheduledAt = bookingMode === 'later' && scheduledAt ? new Date(scheduledAt).toISOString() : null;
