@@ -457,10 +457,6 @@ Unterstützte Operationen:
 - auction_update_by_title
 - monitoring_run_probes
 - customer_reset_password
-- customer_ban_toggle
-- customer_delete_by_email
-- wallet_credit_user
-- wallet_debit_user
 - lead_update_status
 - unsupported_request
 
@@ -584,15 +580,6 @@ async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str
             "message": "Reset-E-Mail gesendet." if email_sent else "Reset-E-Mail konnte nicht zugestellt werden. Login wurde deshalb NICHT gesperrt.",
             "enforcement_skipped": bool((issued or {}).get("enforcement_skipped")),
         }
-
-    if op_type == "customer_ban_toggle":
-        email = (op.get("target_email") or "").strip().lower()
-        user = await _find_user_by_email(email)
-        if not user:
-            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
-        banned = bool(op.get("banned", True))
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"banned": banned, "ban_reason": "admin_ai_assistant", "banned_at": now.isoformat() if banned else None, "banned_by": admin_user_id if banned else None}})
-        return {"type": op_type, "ok": True, "email": email, "banned": banned}
 
     if op_type == "lead_update_status":
         lead_id = str(op.get("lead_id") or "").strip()
