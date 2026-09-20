@@ -151,6 +151,19 @@ async def _credit_marketplace_revenue_once(order_id: str, amount: float, now: da
     )
 
 
+async def _marketplace_platform_user_id() -> str:
+    import os
+
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
+    platform = await db.users.find_one({"email": email}, {"_id": 1})
+    if not platform:
+        raise HTTPException(
+            status_code=503,
+            detail="Marketplace-Escrow ist nicht konfiguriert. Es wird kein Käufergeld bewegt.",
+        )
+    return str(platform["_id"])
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SCHEMAS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -187,6 +200,17 @@ class BuyRequest(BaseModel):
     use_shipping: bool = False
     message: Optional[str] = None
     idempotency_key: Optional[str] = None
+
+
+class MarketplaceShipRequest(BaseModel):
+    carrier: str = Field(..., min_length=2, max_length=120)
+    tracking_number: str = Field(..., min_length=4, max_length=180)
+    idempotency_key: Optional[str] = None
+
+
+class MarketplaceOrderActionRequest(BaseModel):
+    idempotency_key: Optional[str] = None
+    note: Optional[str] = Field(default=None, max_length=500)
 
 
 class ContactSellerRequest(BaseModel):
@@ -488,74 +512,109 @@ async def delete_listing(listing_id: str, request: Request):
 
 @router.post("/buy")
 async def buy_item(req: BuyRequest, request: Request):
-    """Buy one listing exactly once with atomic reservation and rollback-safe settlement."""
+    """Fund one marketplace order into platform escrow exactly once."""
     user = await get_current_user(request)
     _require_marketplace_kyc(user, action="zu kaufen")
     buyer_id = str(user["_id"])
     idempotency_key = _require_marketplace_idempotency_key(req.idempotency_key, request)
-    key_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
-    order_id = f"MKO-{key_hash}"
+    purchase_payload = {
+        "listing_id": req.listing_id,
+        "use_shipping": bool(req.use_shipping),
+        "message": (req.message or "").strip() or None,
+    }
 
     existing_order = await db.marketplace_orders.find_one(
-        {"order_id": order_id, "buyer_id": buyer_id},
+        {"buyer_id": buyer_id, "idempotency_key": idempotency_key},
         {"_id": 0},
     )
     if existing_order:
-        if existing_order.get("status") == "completed":
-            await _credit_marketplace_revenue_once(
-                order_id,
-                float(existing_order.get("commission") or 0),
-                datetime.fromisoformat(existing_order["created_at"]),
-            )
-        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
-        return {
-            "ok": existing_order.get("status") == "completed",
-            "order": existing_order,
-            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
-            "message": "Kauf bereits verarbeitet.",
-            "replayed": True,
-        }
+        if existing_order.get("purchase_payload") and existing_order.get("purchase_payload") != purchase_payload:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Kaufdaten verwendet")
+        order_id = existing_order["order_id"]
+        status = str(existing_order.get("status") or "")
+        if status in {
+            "awaiting_shipment", "awaiting_pickup", "shipped", "ready_for_pickup",
+            "settling", "completed",
+        }:
+            fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+            return {
+                "ok": True,
+                "order": existing_order,
+                "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+                "message": "Kauf bereits im Escrow verarbeitet.",
+                "replayed": True,
+            }
+        if status in {"refunded", "cancelled"}:
+            raise HTTPException(status_code=409, detail="Dieser Kaufversuch wurde storniert. Bitte starte einen neuen Kauf.")
+        if status == "reconciliation_required":
+            raise HTTPException(status_code=409, detail="Dieser Kauf benötigt manuelle Abstimmung.")
+    else:
+        key_hash = hashlib.sha256(f"{buyer_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+        order_id = f"MKO-{key_hash}"
 
     listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id})
     if not listing:
         raise HTTPException(status_code=404, detail="Anzeige nicht gefunden")
     if listing.get("seller_id") == buyer_id:
         raise HTTPException(status_code=400, detail="Du kannst deine eigene Anzeige nicht kaufen")
+    if req.use_shipping and not listing.get("shipping_available"):
+        raise HTTPException(status_code=400, detail="Versand ist für diese Anzeige nicht verfügbar")
 
-    claim = await db.marketplace_listings.update_one(
-        {"listing_id": req.listing_id, "status": "active"},
-        {"$set": {
-            "status": "processing",
-            "purchase_claim_key": key_hash,
-            "purchase_claim_buyer_id": buyer_id,
-            "purchase_claimed_at": datetime.now(timezone.utc).isoformat(),
-        }},
+    key_hash = hashlib.sha256(f"{buyer_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    if existing_order:
+        expected_price = round(float(existing_order.get("item_price") or 0), 2)
+        expected_shipping = round(float(existing_order.get("shipping_cost") or 0), 2)
+        current_shipping = (
+            round(float(listing.get("shipping_cost") or 0), 2)
+            if req.use_shipping and listing.get("shipping_available")
+            else 0.0
+        )
+        if round(float(listing.get("price") or 0), 2) != expected_price or current_shipping != expected_shipping:
+            raise HTTPException(status_code=409, detail="Preis oder Versandkosten haben sich geändert. Bitte starte einen neuen Kauf.")
+
+    listing_is_owned_by_attempt = (
+        listing.get("status") == "processing"
+        and listing.get("purchase_claim_key") == key_hash
+        and listing.get("purchase_claim_buyer_id") == buyer_id
     )
-    if claim.modified_count != 1:
-        current = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0})
-        if current and current.get("order_id") == order_id and current.get("sold_to") == buyer_id:
-            order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
-            if order:
-                fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
-                return {"ok": True, "order": order, "new_balance": round(float(fresh_user.get("balance") or 0), 2), "message": "Kauf bereits verarbeitet.", "replayed": True}
-        raise HTTPException(status_code=409, detail="Anzeige wird gerade gekauft oder ist nicht mehr verfügbar")
-
-    listing = await db.marketplace_listings.find_one(
-        {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
-        {"_id": 0},
+    listing_is_sold_to_attempt = (
+        listing.get("status") == "sold"
+        and listing.get("order_id") == order_id
+        and listing.get("sold_to") == buyer_id
     )
-    if not listing:
-        raise HTTPException(status_code=409, detail="Kaufreservierung konnte nicht bestätigt werden")
+    if not listing_is_owned_by_attempt and not listing_is_sold_to_attempt:
+        claim = await db.marketplace_listings.update_one(
+            {"listing_id": req.listing_id, "status": "active"},
+            {"$set": {
+                "status": "processing",
+                "purchase_claim_key": key_hash,
+                "purchase_claim_buyer_id": buyer_id,
+                "purchase_claimed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            current = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
+            if not (
+                current.get("status") == "sold"
+                and current.get("order_id") == order_id
+                and current.get("sold_to") == buyer_id
+            ):
+                raise HTTPException(status_code=409, detail="Anzeige wird gerade gekauft oder ist nicht mehr verfügbar")
+        listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0}) or listing
 
-    seller_id = listing["seller_id"]
+    seller_id = str(listing["seller_id"])
     item_price = round(float(listing["price"]), 2)
-    shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0.0
+    shipping_cost = (
+        round(float(listing.get("shipping_cost") or 0), 2)
+        if req.use_shipping and listing.get("shipping_available")
+        else 0.0
+    )
     total_price = round(item_price + shipping_cost, 2)
     commission = round(item_price * PLATFORM_COMMISSION, 2)
     seller_amount = round(item_price - commission + shipping_cost, 2)
     now = datetime.now(timezone.utc)
 
-    order = {
+    order = existing_order or {
         "order_id": order_id,
         "listing_id": req.listing_id,
         "buyer_id": buyer_id,
@@ -568,114 +627,120 @@ async def buy_item(req: BuyRequest, request: Request):
         "total_price": total_price,
         "commission": commission,
         "seller_amount": seller_amount,
-        "use_shipping": req.use_shipping,
-        "message": req.message,
-        "status": "processing",
+        "use_shipping": bool(req.use_shipping),
+        "message": purchase_payload["message"],
+        "purchase_payload": purchase_payload,
+        "status": "escrow_pending",
+        "payment_status": "pending",
+        "escrow_status": "pending",
         "idempotency_key": idempotency_key,
         "created_at": now.isoformat(),
     }
     await db.marketplace_orders.update_one(
-        {"order_id": order_id},
+        {"order_id": order_id, "buyer_id": buyer_id},
         {"$setOnInsert": order},
         upsert=True,
     )
 
-    debit_result = await debit_wallet(
-        user_id=buyer_id,
+    platform_user_id = await _marketplace_platform_user_id()
+    escrow_result = await transfer_between_wallets(
+        from_user_id=buyer_id,
+        to_user_id=platform_user_id,
         amount=total_price,
         tx_type=TransactionType.PAYMENT,
-        description=f"Marketplace: {listing['title'][:50]}",
-        reference=f"MKT-{key_hash[:12].upper()}",
-        merchant_name=listing.get("seller_name", "Verkäufer"),
+        description=f"Marketplace Escrow: {listing['title'][:50]}",
+        reference=f"MKT-ESC-{order_id[-12:]}",
         metadata={
             "listing_id": req.listing_id,
             "order_id": order_id,
             "item_price": item_price,
             "shipping_cost": shipping_cost,
+            "escrow": True,
         },
-        idempotency_key=idempotency_key,
+        idempotency_key=f"marketplace-escrow:{order_id}",
     )
-    if not debit_result.success:
-        await db.marketplace_orders.update_one(
-            {"order_id": order_id},
-            {"$set": {"status": "payment_failed", "failure_reason": debit_result.error, "updated_at": datetime.now(timezone.utc).isoformat()}},
-        )
-        await db.marketplace_listings.update_one(
-            {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
-            {"$set": {"status": "active"}, "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""}},
-        )
-        raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
-
-    credit_result = await credit_wallet(
-        user_id=seller_id,
-        amount=seller_amount,
-        tx_type=TransactionType.MERCHANT_CREDIT,
-        description=f"Verkauf: {listing['title'][:50]}",
-        reference=f"MKT-SELL-{key_hash[:12].upper()}",
-        source="marketplace",
-        metadata={
-            "listing_id": req.listing_id,
-            "order_id": order_id,
-            "original_price": item_price,
-            "shipping_cost": shipping_cost,
-            "commission": commission,
-        },
-        idempotency_key=f"marketplace-seller:{idempotency_key}",
-    )
-
-    if not credit_result.success:
-        refund = await credit_wallet(
-            user_id=buyer_id,
-            amount=total_price,
-            tx_type=TransactionType.REFUND,
-            description=f"Marketplace Rückbuchung: {listing['title'][:50]}",
-            reference=f"MKT-REF-{key_hash[:12].upper()}",
-            source="marketplace_settlement_rollback",
-            metadata={"listing_id": req.listing_id, "order_id": order_id},
-            idempotency_key=f"marketplace-refund:{idempotency_key}",
-        )
-        status = "refunded" if refund.success else "reconciliation_required"
+    if not escrow_result.success:
         await db.marketplace_orders.update_one(
             {"order_id": order_id},
             {"$set": {
-                "status": status,
-                "buyer_payment_id": debit_result.transaction_id,
-                "refund_payment_id": refund.transaction_id if refund.success else None,
-                "failure_reason": credit_result.error or "seller_credit_failed",
+                "status": "payment_failed",
+                "payment_status": str(getattr(escrow_result.status, "value", escrow_result.status)),
+                "failure_reason": escrow_result.error,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
         await db.marketplace_listings.update_one(
-            {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
-            {"$set": {"status": "active"}, "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""}},
+            {"listing_id": req.listing_id, "purchase_claim_key": key_hash, "status": "processing"},
+            {"$set": {"status": "active"}, "$unset": {
+                "purchase_claim_key": "",
+                "purchase_claim_buyer_id": "",
+                "purchase_claimed_at": "",
+            }},
         )
-        if not refund.success:
-            raise HTTPException(status_code=500, detail="Verkäufergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
-        raise HTTPException(status_code=400, detail="Verkäufergutschrift fehlgeschlagen. Käuferbetrag wurde zurückgebucht.")
+        raise HTTPException(status_code=400, detail=escrow_result.error or "Escrow-Zahlung fehlgeschlagen")
 
-    completed_at = datetime.now(timezone.utc).isoformat()
-    await db.marketplace_orders.update_one(
-        {"order_id": order_id},
+    funded_at = datetime.now(timezone.utc).isoformat()
+    next_status = "awaiting_shipment" if req.use_shipping else "awaiting_pickup"
+    order_update = await db.marketplace_orders.update_one(
+        {
+            "order_id": order_id,
+            "buyer_id": buyer_id,
+            "status": {"$in": ["escrow_pending", "payment_failed"]},
+        },
         {"$set": {
-            "status": "completed",
-            "buyer_payment_id": debit_result.transaction_id,
-            "seller_payment_id": credit_result.transaction_id,
-            "completed_at": completed_at,
+            "status": next_status,
+            "payment_status": "paid",
+            "escrow_status": "funded",
+            "escrow_transaction_id": escrow_result.transaction_id,
+            "escrow_platform_user_id": platform_user_id,
+            "funded_at": funded_at,
+            "updated_at": funded_at,
         }},
     )
-    await db.marketplace_listings.update_one(
-        {"listing_id": req.listing_id, "purchase_claim_key": key_hash},
+    current_order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    if order_update.modified_count != 1 and current_order.get("escrow_status") != "funded":
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "escrow_transaction_id": escrow_result.transaction_id,
+                "updated_at": funded_at,
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Escrow finanziert; Bestellstatus benötigt Abstimmung")
+
+    listing_update = await db.marketplace_listings.update_one(
+        {
+            "listing_id": req.listing_id,
+            "status": "processing",
+            "purchase_claim_key": key_hash,
+        },
         {
             "$set": {
                 "status": "sold",
-                "sold_at": completed_at,
+                "sold_at": funded_at,
                 "sold_to": buyer_id,
                 "order_id": order_id,
             },
-            "$unset": {"purchase_claim_key": "", "purchase_claim_buyer_id": "", "purchase_claimed_at": ""},
+            "$unset": {
+                "purchase_claim_key": "",
+                "purchase_claim_buyer_id": "",
+                "purchase_claimed_at": "",
+            },
         },
     )
-    await _credit_marketplace_revenue_once(order_id, commission, now)
+    if listing_update.modified_count != 1:
+        current_listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
+        if not (
+            current_listing.get("status") == "sold"
+            and current_listing.get("order_id") == order_id
+            and current_listing.get("sold_to") == buyer_id
+        ):
+            await db.marketplace_orders.update_one(
+                {"order_id": order_id},
+                {"$set": {"status": "reconciliation_required", "failure_reason": "listing_finalize_failed"}},
+            )
+            raise HTTPException(status_code=500, detail="Escrow finanziert; Listing-Abschluss benötigt Abstimmung")
 
     notification_id = f"MKT-SALE-{order_id}"
     await db.notifications.update_one(
@@ -684,35 +749,373 @@ async def buy_item(req: BuyRequest, request: Request):
             "id": notification_id,
             "user_id": seller_id,
             "type": "marketplace_sale",
-            "title": "Artikel verkauft!",
-            "message": f"Dein Artikel '{listing['title'][:30]}' wurde für €{item_price:.2f} verkauft.",
+            "title": "Artikel verkauft – Auszahlung im Escrow",
+            "message": (
+                f"'{listing['title'][:30]}' wurde verkauft. "
+                + ("Bitte versenden; Auszahlung folgt nach Empfangsbestätigung." if req.use_shipping
+                   else "Bitte Übergabe vorbereiten; Auszahlung folgt nach Abholbestätigung.")
+            ),
             "data": {"order_id": order_id, "listing_id": req.listing_id},
             "read": False,
-            "created_at": completed_at,
+            "created_at": funded_at,
         }},
         upsert=True,
     )
 
+    final_order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or current_order
+    return {
+        "ok": True,
+        "order": final_order,
+        "new_balance": escrow_result.new_balance,
+        "message": (
+            f"€{total_price:.2f} sicher im Escrow. "
+            + ("Verkäufer muss den Versand bestätigen." if req.use_shipping else "Warte auf die Abholfreigabe des Verkäufers.")
+        ),
+        "replayed": bool(escrow_result.idempotent_replay),
+    }
+
+
+@router.post("/orders/{order_id}/ship")
+async def ship_marketplace_order(order_id: str, req: MarketplaceShipRequest, request: Request):
+    seller = await get_current_user(request)
+    _require_marketplace_kyc(seller, action="zu versenden")
+    seller_id = str(seller["_id"])
+    order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("seller_id") != seller_id:
+        raise HTTPException(status_code=403, detail="Nicht deine Bestellung")
+    if not order.get("use_shipping"):
+        raise HTTPException(status_code=409, detail="Diese Bestellung ist zur Abholung vorgesehen")
+
+    carrier = req.carrier.strip()
+    tracking_number = req.tracking_number.strip()
+    action_key = _require_marketplace_action_idempotency_key(
+        req.idempotency_key,
+        request,
+        action="ship",
+    )
+    if order.get("status") == "shipped":
+        if order.get("carrier") == carrier and order.get("tracking_number") == tracking_number:
+            return {"ok": True, "order": order, "replayed": True}
+        raise HTTPException(status_code=409, detail="Bestellung wurde bereits mit anderen Versanddaten versendet")
+    if order.get("status") != "awaiting_shipment" or order.get("escrow_status") != "funded":
+        raise HTTPException(status_code=409, detail="Bestellung ist nicht versandbereit")
+
+    now = datetime.now(timezone.utc).isoformat()
+    changed = await db.marketplace_orders.update_one(
+        {
+            "order_id": order_id,
+            "seller_id": seller_id,
+            "status": "awaiting_shipment",
+            "escrow_status": "funded",
+        },
+        {"$set": {
+            "status": "shipped",
+            "carrier": carrier,
+            "tracking_number": tracking_number,
+            "shipping_action_key_hash": hashlib.sha256(action_key.encode("utf-8")).hexdigest()[:20],
+            "shipped_at": now,
+            "updated_at": now,
+        }},
+    )
+    if changed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Versandstatus wurde parallel geändert")
+
+    await db.notifications.update_one(
+        {"id": f"MKT-SHIPPED-{order_id}"},
+        {"$setOnInsert": {
+            "id": f"MKT-SHIPPED-{order_id}",
+            "user_id": order.get("buyer_id"),
+            "type": "marketplace_shipped",
+            "title": "Marketplace-Bestellung versendet",
+            "message": f"Carrier: {carrier} · Tracking: {tracking_number}",
+            "data": {"order_id": order_id, "carrier": carrier, "tracking_number": tracking_number},
+            "read": False,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    fresh = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {"ok": True, "order": fresh, "replayed": False}
+
+
+@router.post("/orders/{order_id}/ready-pickup")
+async def ready_marketplace_pickup(order_id: str, req: MarketplaceOrderActionRequest, request: Request):
+    seller = await get_current_user(request)
+    _require_marketplace_kyc(seller, action="zur Abholung freizugeben")
+    seller_id = str(seller["_id"])
+    order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("seller_id") != seller_id:
+        raise HTTPException(status_code=403, detail="Nicht deine Bestellung")
+    if order.get("use_shipping"):
+        raise HTTPException(status_code=409, detail="Diese Bestellung ist für Versand vorgesehen")
+    if order.get("status") == "ready_for_pickup":
+        return {"ok": True, "order": order, "replayed": True}
+    if order.get("status") != "awaiting_pickup" or order.get("escrow_status") != "funded":
+        raise HTTPException(status_code=409, detail="Bestellung ist nicht für Abholung bereit")
+
+    action_key = _require_marketplace_action_idempotency_key(
+        req.idempotency_key,
+        request,
+        action="ready-pickup",
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    changed = await db.marketplace_orders.update_one(
+        {
+            "order_id": order_id,
+            "seller_id": seller_id,
+            "status": "awaiting_pickup",
+            "escrow_status": "funded",
+        },
+        {"$set": {
+            "status": "ready_for_pickup",
+            "pickup_action_key_hash": hashlib.sha256(action_key.encode("utf-8")).hexdigest()[:20],
+            "ready_for_pickup_at": now,
+            "updated_at": now,
+        }},
+    )
+    if changed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Abholstatus wurde parallel geändert")
+
+    await db.notifications.update_one(
+        {"id": f"MKT-PICKUP-{order_id}"},
+        {"$setOnInsert": {
+            "id": f"MKT-PICKUP-{order_id}",
+            "user_id": order.get("buyer_id"),
+            "type": "marketplace_ready_pickup",
+            "title": "Marketplace-Abholung bereit",
+            "message": "Der Verkäufer hat den Artikel zur Abholung freigegeben.",
+            "data": {"order_id": order_id},
+            "read": False,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    fresh = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {"ok": True, "order": fresh, "replayed": False}
+
+
+@router.post("/orders/{order_id}/confirm-received")
+async def confirm_marketplace_received(order_id: str, req: MarketplaceOrderActionRequest, request: Request):
+    buyer = await get_current_user(request)
+    _require_marketplace_kyc(buyer, action="den Empfang zu bestätigen")
+    buyer_id = str(buyer["_id"])
+    order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("buyer_id") != buyer_id:
+        raise HTTPException(status_code=403, detail="Nicht deine Bestellung")
+    if order.get("status") == "completed" and order.get("escrow_status") == "released":
+        return {"ok": True, "order": order, "replayed": True}
+    expected = "shipped" if order.get("use_shipping") else "ready_for_pickup"
+    if order.get("status") != expected or order.get("escrow_status") != "funded":
+        raise HTTPException(status_code=409, detail="Bestellung kann noch nicht als erhalten bestätigt werden")
+
+    action_key = _require_marketplace_action_idempotency_key(
+        req.idempotency_key,
+        request,
+        action="confirm-received",
+    )
+    claim = await db.marketplace_orders.update_one(
+        {
+            "order_id": order_id,
+            "buyer_id": buyer_id,
+            "status": expected,
+            "escrow_status": "funded",
+        },
+        {"$set": {
+            "status": "settling",
+            "settlement_action_key_hash": hashlib.sha256(action_key.encode("utf-8")).hexdigest()[:20],
+            "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if claim.modified_count != 1:
+        current = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or {}
+        if current.get("status") == "completed" and current.get("escrow_status") == "released":
+            return {"ok": True, "order": current, "replayed": True}
+        raise HTTPException(status_code=409, detail="Escrow-Auszahlung wird bereits verarbeitet")
+
+    platform_user_id = order.get("escrow_platform_user_id") or await _marketplace_platform_user_id()
+    payout = await transfer_between_wallets(
+        from_user_id=str(platform_user_id),
+        to_user_id=str(order["seller_id"]),
+        amount=round(float(order["seller_amount"]), 2),
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Marketplace Auszahlung: {order['item_title'][:50]}",
+        reference=f"MKT-PAYOUT-{order_id[-12:]}",
+        metadata={"order_id": order_id, "listing_id": order.get("listing_id"), "escrow_release": True},
+        idempotency_key=f"marketplace-order:{order_id}:seller-payout",
+    )
+    if not payout.success:
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id, "status": "settling"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "settlement_error": payout.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail=payout.error or "Verkäuferauszahlung benötigt Abstimmung")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    finalized = await db.marketplace_orders.update_one(
+        {"order_id": order_id, "status": "settling", "escrow_status": "funded"},
+        {"$set": {
+            "status": "completed",
+            "escrow_status": "released",
+            "seller_payment_id": payout.transaction_id,
+            "received_confirmed_at": completed_at,
+            "completed_at": completed_at,
+            "updated_at": completed_at,
+        }},
+    )
+    if finalized.modified_count != 1:
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "seller_payment_id": payout.transaction_id,
+                "updated_at": completed_at,
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Verkäufer bezahlt; Bestellabschluss benötigt Abstimmung")
+
+    await _credit_marketplace_revenue_once(
+        order_id,
+        float(order.get("commission") or 0),
+        datetime.fromisoformat(order["created_at"]),
+    )
     try:
         from routes.loyalty_system import process_loyalty_rewards
         await process_loyalty_rewards(
             user_id=buyer_id,
             source_type="marketplace",
             source_id=order_id,
-            amount=total_price,
-            tx_id=debit_result.transaction_id or order_id,
+            amount=float(order.get("total_price") or 0),
+            tx_id=order.get("escrow_transaction_id") or order_id,
         )
     except Exception:
         pass
 
-    final_order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
-    return {
-        "ok": True,
-        "order": final_order,
-        "new_balance": debit_result.new_balance,
-        "message": f"Kauf erfolgreich! €{total_price:.2f} bezahlt.",
-        "replayed": debit_result.idempotent_replay,
-    }
+    await db.notifications.update_one(
+        {"id": f"MKT-COMPLETE-{order_id}"},
+        {"$setOnInsert": {
+            "id": f"MKT-COMPLETE-{order_id}",
+            "user_id": order.get("seller_id"),
+            "type": "marketplace_completed",
+            "title": "Marketplace-Auszahlung freigegeben",
+            "message": f"€{float(order.get('seller_amount') or 0):.2f} wurden nach Empfangsbestätigung ausgezahlt.",
+            "data": {"order_id": order_id, "listing_id": order.get("listing_id")},
+            "read": False,
+            "created_at": completed_at,
+        }},
+        upsert=True,
+    )
+    fresh = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {"ok": True, "order": fresh, "replayed": bool(payout.idempotent_replay)}
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_marketplace_order(order_id: str, req: MarketplaceOrderActionRequest, request: Request):
+    actor = await get_current_user(request)
+    actor_id = str(actor["_id"])
+    order = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if actor_id not in {str(order.get("buyer_id")), str(order.get("seller_id"))}:
+        raise HTTPException(status_code=403, detail="Nicht deine Bestellung")
+    if order.get("status") == "refunded" and order.get("escrow_status") == "refunded":
+        return {"ok": True, "order": order, "replayed": True}
+    if order.get("status") not in {"awaiting_shipment", "awaiting_pickup"} or order.get("escrow_status") != "funded":
+        raise HTTPException(status_code=409, detail="Bestellung kann nach Übergabe/Versand nicht mehr storniert werden")
+
+    action_key = _require_marketplace_action_idempotency_key(
+        req.idempotency_key,
+        request,
+        action="cancel-order",
+    )
+    claimed = await db.marketplace_orders.update_one(
+        {
+            "order_id": order_id,
+            "status": {"$in": ["awaiting_shipment", "awaiting_pickup"]},
+            "escrow_status": "funded",
+        },
+        {"$set": {
+            "status": "refunding",
+            "cancelled_by": actor_id,
+            "cancel_note": (req.note or "").strip() or None,
+            "cancel_action_key_hash": hashlib.sha256(action_key.encode("utf-8")).hexdigest()[:20],
+            "refund_started_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if claimed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Stornierung wird bereits verarbeitet")
+
+    platform_user_id = order.get("escrow_platform_user_id") or await _marketplace_platform_user_id()
+    refund = await transfer_between_wallets(
+        from_user_id=str(platform_user_id),
+        to_user_id=str(order["buyer_id"]),
+        amount=round(float(order["total_price"]), 2),
+        tx_type=TransactionType.REFUND,
+        description=f"Marketplace Escrow Rückzahlung: {order['item_title'][:50]}",
+        reference=f"MKT-REF-{order_id[-12:]}",
+        metadata={"order_id": order_id, "listing_id": order.get("listing_id"), "escrow_refund": True},
+        idempotency_key=f"marketplace-order:{order_id}:refund",
+    )
+    if not refund.success:
+        await db.marketplace_orders.update_one(
+            {"order_id": order_id, "status": "refunding"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "refund_error": refund.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail=refund.error or "Marketplace-Rückzahlung benötigt Abstimmung")
+
+    refunded_at = datetime.now(timezone.utc).isoformat()
+    await db.marketplace_orders.update_one(
+        {"order_id": order_id, "status": "refunding"},
+        {"$set": {
+            "status": "refunded",
+            "escrow_status": "refunded",
+            "refund_transaction_id": refund.transaction_id,
+            "refunded_at": refunded_at,
+            "updated_at": refunded_at,
+        }},
+    )
+    await db.marketplace_listings.update_one(
+        {
+            "listing_id": order.get("listing_id"),
+            "status": "sold",
+            "order_id": order_id,
+            "sold_to": order.get("buyer_id"),
+        },
+        {
+            "$set": {"status": "active", "updated_at": refunded_at},
+            "$unset": {"sold_at": "", "sold_to": "", "order_id": ""},
+        },
+    )
+    other_user_id = order.get("seller_id") if actor_id == str(order.get("buyer_id")) else order.get("buyer_id")
+    await db.notifications.update_one(
+        {"id": f"MKT-CANCEL-{order_id}"},
+        {"$setOnInsert": {
+            "id": f"MKT-CANCEL-{order_id}",
+            "user_id": other_user_id,
+            "type": "marketplace_cancelled",
+            "title": "Marketplace-Bestellung storniert",
+            "message": "Die Bestellung wurde vor Versand/Übergabe storniert und der Käuferbetrag zurückgezahlt.",
+            "data": {"order_id": order_id, "listing_id": order.get("listing_id")},
+            "read": False,
+            "created_at": refunded_at,
+        }},
+        upsert=True,
+    )
+    fresh = await db.marketplace_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {"ok": True, "order": fresh, "replayed": bool(refund.idempotent_replay)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
