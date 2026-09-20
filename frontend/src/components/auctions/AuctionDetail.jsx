@@ -82,6 +82,7 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
 export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged, onBuyCredits, onNavigate }) {
   const { t } = useI18n();
   const user = useUser();
+  const kycRequired = !isGuest && !KYC_DISABLED && user?.kyc_status !== "approved" && user?.role !== "admin";
   const [auction, setAuction] = useState(null);
   const [bids, setBids] = useState([]);
   const [uniqueBidders, setUniqueBidders] = useState(0);
@@ -121,6 +122,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
 
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
+    if (kycRequired) { onNavigate?.("/profile/kyc"); return; }
     if (userCredits < 1) {
       setBidMsg({ ok: false, text: t("auction.no_credits") });
       setTimeout(() => setShowLocalCredits(true), 800);
@@ -271,7 +273,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         )}
 
         {/* KYC Banner — show BEFORE bid attempt if KYC not approved */}
-        {isActive && !auction.bot_only && !isGuest && !KYC_DISABLED && user.kyc_status !== "approved" && user.role !== "admin" && (
+        {isActive && !auction.bot_only && kycRequired && (
           <motion.div
             data-testid="kyc-required-banner"
             className="px-4 py-3 rounded-2xl text-center mb-2"
@@ -300,7 +302,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         {isActive && !auction.bot_only && (
           <motion.div className="space-y-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
             <AnimatePresence>{bidMsg && <motion.div className="px-3 py-2 rounded-xl text-[10px] font-medium bg-[#FF4060]/6 text-[#FF4060] border border-[#FF4060]/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{bidMsg.text}</motion.div>}</AnimatePresence>
-            <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding}
+            <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding || kycRequired}
               className="w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 relative overflow-hidden"
               style={{ 
                 background: userCredits < 1 
@@ -329,7 +331,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
                   <Bot size={12} />{t("auction.auto_bid_active")} ({autoBid.bids_placed}/{autoBid.max_bids}) — {t("auction.cancel")}
                 </motion.button>
               ) : (
-                <motion.button data-testid="auto-bid-btn" onClick={() => isGuest ? onAuthRequired() : setShowAutoBidModal(true)}
+                <motion.button data-testid="auto-bid-btn" onClick={() => isGuest ? onAuthRequired() : kycRequired ? onNavigate?.("/profile/kyc") : setShowAutoBidModal(true)} disabled={kycRequired}
                   className={`flex-1 py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 ${glass}`}
                   style={{ background: "rgba(176,104,255,0.04)", border: "1px solid rgba(176,104,255,0.08)", color: "#888" }}
                   whileTap={{ scale: 0.97 }} whileHover={{ borderColor: "rgba(176,104,255,0.2)", color: accentPurple }}>
