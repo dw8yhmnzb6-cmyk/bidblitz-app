@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.config import BACKEND_URL, JWT_SECRET
+from core.config import FRONTEND_URL, JWT_SECRET
 from core.security import get_current_user
 from routes.loyalty_system import get_loyalty_status as _get_loyalty_status
 from routes.loyalty_system import get_loyalty_stats as _get_loyalty_stats
@@ -412,8 +412,8 @@ def _warranty_signature(registration_id: str, serial_number: str, valid_until: s
 
 
 def _warranty_verify_url(registration_id: str, signature: str) -> str:
-    base = (BACKEND_URL or "").rstrip("/")
-    path = f"/api/charge-app/warranty/verify/{registration_id}?sig={signature}"
+    base = (FRONTEND_URL or "").rstrip("/")
+    path = f"/charge-app/warranty-verify?registration_id={registration_id}&sig={signature}"
     return f"{base}{path}" if base else path
 
 
