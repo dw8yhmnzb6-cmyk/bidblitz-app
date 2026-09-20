@@ -446,6 +446,9 @@ export const api = {
     return request(`/api/charge-app/catalog?${params.toString()}`);
   },
   getChargeCatalogProduct: (productId) => request(`/api/charge-app/catalog/${encodeURIComponent(productId)}`),
+  getSavedChargeProducts: () => request("/api/charge-app/saved-products"),
+  saveChargeProduct: (productId) => request(`/api/charge-app/saved-products/${encodeURIComponent(productId)}`, { method: "PUT" }),
+  unsaveChargeProduct: (productId) => request(`/api/charge-app/saved-products/${encodeURIComponent(productId)}`, { method: "DELETE" }),
   registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
   updateChargeWarranty: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteChargeWarranty: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}`, { method: "DELETE" }),
