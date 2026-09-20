@@ -27,6 +27,13 @@ from core.security import get_current_user
 router = APIRouter(prefix="/api/blitz-mine", tags=["blitz-mine"])
 
 
+def _user_oid(user_id: str):
+    try:
+        return ObjectId(user_id)
+    except Exception:
+        return user_id
+
+
 def _require_blitz_mine_value_mode() -> None:
     if not TEST_MODE:
         raise HTTPException(
@@ -58,19 +65,19 @@ async def _mutate_blitz_wallet_once(
     if amount <= 0 or direction not in {"credit", "debit"}:
         raise HTTPException(status_code=400, detail="Ungültige BlitzMine-BLZ-Buchung")
 
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$setOnInsert": {"user_id": user_id, "balance": 0.0, "balance_blz": 0.0}},
-        upsert=True,
-    )
+    user_oid = _user_oid(user_id)
+    user_exists = await db.users.find_one({"_id": user_oid}, {"_id": 1})
+    if not user_exists:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+
     digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
     marker_field = f"blitz_mine_value_markers.{digest}"
-    selector = {"user_id": user_id, marker_field: {"$exists": False}}
+    selector = {"_id": user_oid, marker_field: {"$exists": False}}
     delta = amount if direction == "credit" else -amount
     if direction == "debit":
         selector["balance_blz"] = {"$gte": amount}
 
-    result = await db.wallets.update_one(
+    result = await db.users.update_one(
         selector,
         {
             "$inc": {"balance_blz": delta},
@@ -86,8 +93,8 @@ async def _mutate_blitz_wallet_once(
     )
     replayed = False
     if result.modified_count != 1:
-        existing = await db.wallets.find_one(
-            {"user_id": user_id, marker_field: {"$exists": True}},
+        existing = await db.users.find_one(
+            {"_id": user_oid, marker_field: {"$exists": True}},
             {"_id": 0, "balance_blz": 1},
         )
         if existing:
@@ -116,7 +123,7 @@ async def _mutate_blitz_wallet_once(
         }},
         upsert=True,
     )
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balance_blz": 1}) or {}
+    wallet = await db.users.find_one({"_id": user_oid}, {"_id": 0, "balance_blz": 1}) or {}
     return {
         "transaction_id": tx_id,
         "new_balance_blz": round(float(wallet.get("balance_blz", 0) or 0), 4),
@@ -499,7 +506,7 @@ async def status(request: Request):
             "ready_to_claim": ready,
         }
 
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balance_blz": 1})
+    wallet = await db.users.find_one({"_id": _user_oid(user_id)}, {"_id": 0, "balance_blz": 1})
     blz_balance = (wallet or {}).get("balance_blz", 0.0)
 
     # next role target
