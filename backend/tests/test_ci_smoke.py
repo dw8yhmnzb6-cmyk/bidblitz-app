@@ -2505,6 +2505,6 @@ def test_duplicate_legacy_pos_voucher_money_routes_are_retired():
     assert "Legacy-Gutschein-Einlösung deaktiviert." in legacy
     assert "Legacy-Gutschein-Storno deaktiviert." in legacy
     assert "/api/pos/vouchers/create" in legacy
-    assert '@router.post("/redeem/{voucher_code}")' in canonical
+    assert '@router.post("/redeem")' in canonical
     assert "credit_wallet(" in canonical
 
