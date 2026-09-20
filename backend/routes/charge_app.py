@@ -698,6 +698,27 @@ def _normalized_email(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+async def _active_warranty_transfer(registration_id: str, owner_user_id: str) -> Optional[Dict[str, Any]]:
+    transfer = await db.charge_warranty_transfers.find_one(
+        {
+            "registration_id": registration_id,
+            "from_user_id": owner_user_id,
+            "status": "pending",
+        },
+        {"_id": 0},
+    )
+    if not transfer:
+        return None
+    expires_at = _parse_iso(transfer.get("expires_at"))
+    if expires_at and expires_at <= datetime.now(timezone.utc):
+        await db.charge_warranty_transfers.update_one(
+            {"transfer_id": transfer.get("transfer_id"), "status": "pending"},
+            {"$set": {"status": "expired", "updated_at": _now_iso()}},
+        )
+        return None
+    return transfer
+
+
 def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "claim_id": doc.get("claim_id"),
@@ -1430,6 +1451,12 @@ async def update_charge_warranty(
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
     current = await _find_user_warranty(user_id, registration_id)
+    pending_transfer = await _active_warranty_transfer(registration_id, user_id)
+    if pending_transfer:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Garantie kann während der offenen Übertragung {pending_transfer.get('transfer_id')} nicht bearbeitet werden.",
+        )
     updates = req.dict(exclude_unset=True)
 
     for key in ("product_id", "product_name", "serial_number", "purchase_date", "merchant_name", "invoice_id", "invoice_number"):
@@ -1499,6 +1526,13 @@ async def delete_charge_warranty(registration_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
     warranty = await _find_user_warranty(user_id, registration_id)
+
+    pending_transfer = await _active_warranty_transfer(registration_id, user_id)
+    if pending_transfer:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Garantie kann während der offenen Übertragung {pending_transfer.get('transfer_id')} nicht gelöscht werden.",
+        )
 
     active_claim = await db.merchant_warranty_claims.find_one(
         {
