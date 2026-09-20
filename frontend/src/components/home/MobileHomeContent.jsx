@@ -109,7 +109,7 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
         <button type="button" className="min-h-[44px] text-sm text-white/75" onClick={() => onNavigate("/about-bidblitz")}>{copy.about}</button>
         <button type="button" className="min-h-[44px] text-sm text-white/75" onClick={() => onNavigate("/merchant-landing")}>{t("home.f_merchant")}</button>
         <button type="button" className="min-h-[44px] text-sm text-white/75" onClick={() => onNavigate("/investieren")}>{copy.investors}</button>
-        <button type="button" className="min-h-[44px] text-sm text-white/75" onClick={() => onNavigate("/support")}>{t("more.support")}</button>
+        <button type="button" className="min-h-[44px] text-sm text-white/75" onClick={() => onNavigate("/support")} data-testid="mobile-home-support-link">{t("more.support")}</button>
       </nav>
     </div>
   );
