@@ -198,6 +198,65 @@ def _partner_identity(body: Dict[str, Any]) -> tuple[str, str]:
     return country, party
 
 
+def _outbound_auth_header(token: str) -> str:
+    encoded = base64.b64encode(token.encode("utf-8")).decode("ascii")
+    return f"Token {encoded}"
+
+
+async def _fetch_remote_endpoints(versions_url: str, remote_token: str) -> List[Dict[str, Any]]:
+    """Fetch the partner's advertised 2.2.1 endpoints during credentials setup."""
+    if not await _public_https_url(versions_url):
+        raise HTTPException(400, "OCPI versions URL must be a public HTTPS URL")
+
+    headers = {"Authorization": _outbound_auth_header(remote_token)}
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=False, trust_env=False) as client:
+            versions_res = await client.get(versions_url, headers=headers)
+            versions_res.raise_for_status()
+            versions_payload = versions_res.json()
+            versions_data = versions_payload.get("data") or []
+            selected = next(
+                (item for item in versions_data if str(item.get("version")) == OCPI_VERSION),
+                None,
+            )
+            if not selected or not selected.get("url"):
+                raise HTTPException(400, f"Partner does not advertise OCPI {OCPI_VERSION}")
+            details_url = str(selected["url"])
+            if not await _public_https_url(details_url):
+                raise HTTPException(400, "OCPI version-details URL must be a public HTTPS URL")
+
+            details_res = await client.get(details_url, headers=headers)
+            details_res.raise_for_status()
+            details_payload = details_res.json()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Could not fetch partner OCPI endpoints: {str(exc)[:300]}")
+
+    data = details_payload.get("data") or {}
+    if str(data.get("version")) != OCPI_VERSION:
+        raise HTTPException(400, "Partner returned a different OCPI version")
+    endpoints = data.get("endpoints") or []
+    if not endpoints:
+        raise HTTPException(400, "Partner returned no OCPI endpoints")
+
+    sanitized: List[Dict[str, Any]] = []
+    for endpoint in endpoints:
+        identifier = str(endpoint.get("identifier") or "")
+        role = str(endpoint.get("role") or "")
+        url = str(endpoint.get("url") or "")
+        if not identifier or role not in ("SENDER", "RECEIVER") or not url:
+            continue
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise HTTPException(400, f"Unsafe endpoint URL for module {identifier}")
+        sanitized.append({"identifier": identifier, "role": role, "url": url})
+
+    if not any(e["identifier"] == "credentials" for e in sanitized):
+        raise HTTPException(400, "Partner did not advertise a credentials endpoint")
+    return sanitized
+
+
 @router.get("/versions")
 async def versions(request: Request, authorization: Optional[str] = Header(None)):
     await _partner_from_auth(authorization, allow_bootstrap=True)
@@ -223,16 +282,14 @@ async def credentials_register(
     remote_url = str(body.get("url") or "")
     if not remote_token or not remote_url:
         raise HTTPException(400, "OCPI credentials token and url are required")
-    parsed = urlparse(remote_url)
-    if parsed.scheme not in ("https", "http") or not parsed.hostname:
-        raise HTTPException(400, "Invalid OCPI versions URL")
 
     country, party = _partner_identity(body)
     partner_id = f"{country}:{party}"
     existing = await db.ocpi_partners.find_one({"partner_id": partner_id})
     if existing and existing.get("status") == "active":
-        raise HTTPException(409, "OCPI partner already registered")
+        raise HTTPException(405, "OCPI partner already registered")
 
+    remote_endpoints = await _fetch_remote_endpoints(remote_url, remote_token)
     our_token = secrets.token_urlsafe(32)
     doc = {
         "partner_id": partner_id,
@@ -240,6 +297,7 @@ async def credentials_register(
         "party_id": party,
         "roles": body.get("roles") or [],
         "versions_url": remote_url,
+        "remote_endpoints": remote_endpoints,
         "remote_token_enc": _encrypt_token(remote_token),
         "incoming_token_enc": _encrypt_token(our_token),
         "incoming_token_hash": _token_hash(our_token),
@@ -280,12 +338,14 @@ async def credentials_update(
     if country != partner.get("country_code") or party != partner.get("party_id"):
         raise HTTPException(400, "OCPI credentials role identity cannot change with PUT")
 
+    remote_endpoints = await _fetch_remote_endpoints(remote_url, remote_token)
     rotated = secrets.token_urlsafe(32)
     await db.ocpi_partners.update_one(
         {"partner_id": partner["partner_id"]},
         {"$set": {
             "roles": body.get("roles") or [],
             "versions_url": remote_url,
+            "remote_endpoints": remote_endpoints,
             "remote_token_enc": _encrypt_token(remote_token),
             "incoming_token_enc": _encrypt_token(rotated),
             "incoming_token_hash": _token_hash(rotated),
