@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag, Heart
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -28,6 +28,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogCategory, setCatalogCategory] = useState("all");
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [warrantyForm, setWarrantyForm] = useState({
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
@@ -316,6 +317,33 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     onNavigate?.(route);
   }, [onNavigate]);
 
+  const toggleSavedProduct = useCallback(async (item) => {
+    if (!item?.product_id) return;
+    const nextSaved = !item.saved;
+    setBusy(`save-product-${item.product_id}`);
+    try {
+      if (nextSaved) {
+        await api.saveChargeProduct(item.product_id);
+        toast.success("Produkt gemerkt");
+      } else {
+        await api.unsaveChargeProduct(item.product_id);
+        toast.success("Produkt aus Merkliste entfernt");
+      }
+      setCatalog((current) => ({
+        ...current,
+        products: (current?.products || []).map((row) =>
+          row.product_id === item.product_id ? { ...row, saved: nextSaved } : row
+        ),
+      }));
+      await loadDashboard();
+    } catch (error) {
+      toast.error(error.message || "Merkliste konnte nicht aktualisiert werden");
+    } finally {
+      setBusy("");
+    }
+  }, [loadDashboard]);
+
+
   const openProductDetail = useCallback(async (item) => {
     if (!item?.product_id) return;
     try {
@@ -350,6 +378,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
       const categories = (item.charge_categories || []).map((value) => String(value).toLowerCase());
       const categoryMatches = catalogCategory === "all" || categories.includes(catalogCategory);
       if (!categoryMatches) return false;
+      if (showSavedOnly && !item.saved) return false;
       if (!q) return true;
       return [
         item.name,
@@ -362,7 +391,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
         item.city,
       ].join(" ").toLowerCase().includes(q);
     });
-  }, [catalog?.products, catalogQuery, catalogCategory]);
+  }, [catalog?.products, catalogQuery, catalogCategory, showSavedOnly]);
 
   if (loading) {
     return (
@@ -438,6 +467,14 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               >
                 Alle
               </button>
+              <button
+                type="button"
+                onClick={() => setShowSavedOnly((value) => !value)}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${showSavedOnly ? "bg-rose-600 text-white" : "border border-[#D9CFC0] bg-white text-slate-600"}`}
+                data-testid="charge-app-catalog-saved-filter"
+              >
+                <span className="inline-flex items-center gap-2"><Heart size={13} fill={showSavedOnly ? "currentColor" : "none"} />Gemerkt {overview.saved_products_total || 0}</span>
+              </button>
               {(catalog?.categories || []).map((item) => (
                 <button
                   key={item.id}
@@ -461,12 +498,22 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {catalogProducts.map((item, index) => (
                   <div key={item.product_id || `${item.name}-${index}`} className="overflow-hidden rounded-[26px] border border-[#E1D7C7] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.05)]" data-testid={`charge-app-catalog-product-${index}`}>
-                    <div className="flex h-36 items-center justify-center bg-[linear-gradient(145deg,#EEF6F8,#F8F3EA)]">
+                    <div className="relative flex h-36 items-center justify-center bg-[linear-gradient(145deg,#EEF6F8,#F8F3EA)]">
                       {item.image_url ? (
                         <img src={item.image_url} alt={item.name || ""} className="h-full w-full object-cover" />
                       ) : (
                         <Package size={34} className="text-[#0A1626]" />
                       )}
+                      <button
+                        type="button"
+                        onClick={() => toggleSavedProduct(item)}
+                        disabled={busy === `save-product-${item.product_id}`}
+                        aria-label={item.saved ? "Aus Merkliste entfernen" : "Produkt merken"}
+                        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm disabled:opacity-50 ${item.saved ? "border-rose-200 bg-rose-50 text-rose-600" : "border-white/80 bg-white/90 text-slate-600"}`}
+                        data-testid={`charge-app-catalog-product-save-${index}`}
+                      >
+                        {busy === `save-product-${item.product_id}` ? <Loader2 size={14} className="animate-spin" /> : <Heart size={15} fill={item.saved ? "currentColor" : "none"} />}
+                      </button>
                     </div>
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
