@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timezone
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import transfer_between_wallets, TransactionType
 import secrets
@@ -16,6 +17,30 @@ import os
 router = APIRouter(prefix="/api/resell", tags=["reselling"])
 
 PLATFORM_FEE = 0.08  # 8%
+
+
+def _require_resell_purchase_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Reselling-Käufe sind in Production bis zum vollständigen Escrow-/Versand-/"
+                "Empfangsflow deaktiviert. Es wird kein Wallet-Geld bewegt."
+            ),
+        )
+
+
+@router.get("/capabilities")
+async def resell_capabilities():
+    return {
+        "purchase_enabled": bool(TEST_MODE),
+        "escrow_fulfillment_live": False,
+        "production_message": (
+            None if TEST_MODE else
+            "Reselling Checkout wird nach vollständiger Escrow- und Versandabwicklung freigeschaltet."
+        ),
+    }
+
 
 
 async def _resell_platform_user_id() -> Optional[str]:
@@ -120,8 +145,9 @@ async def create_listing(req: ListingCreate, request: Request):
 
 @router.post("/buy")
 async def buy_listing(req: BuyRequest, request: Request):
-    """Claim a listing once, escrow the gross amount, then settle seller + platform fee."""
+    """Legacy preview purchase; production stays closed until fulfillment is complete."""
     user = await get_current_user(request)
+    _require_resell_purchase_mode()
     buyer_email = str(user.get("email") or "").strip().lower()
     buyer_id = str(user.get("_id"))
     idem = _resell_idempotency_key(req.idempotency_key, request)
