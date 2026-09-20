@@ -1753,8 +1753,17 @@ def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     assert '"type": "resell"' in backend
     assert 'user.get("kyc_status") != "approved"' in backend
     assert '"routes.reselling", "router"' in registry
+    assert "from core.config import TEST_MODE" in backend
+    assert "def _require_resell_purchase_mode" in backend
+    assert "Reselling-Käufe sind in Production bis zum vollständigen Escrow-/Versand-/" in backend
+    assert '@router.get("/capabilities")' in backend
+    assert '"purchase_enabled": bool(TEST_MODE)' in backend
+    assert "_require_resell_purchase_mode()" in backend
 
     assert "purchaseAttemptKeyRef" in page
+    assert "/api/resell/capabilities" in page
+    assert "capabilities?.purchase_enabled" in page
+    assert "Checkout noch nicht live" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
 
@@ -1911,8 +1920,17 @@ def test_reselling_is_atomic_escrow_and_active_ui_retries_safely():
     assert '"type": "resell"' in backend
     assert 'user.get("kyc_status") != "approved"' in backend
     assert '"routes.reselling", "router"' in registry
+    assert "from core.config import TEST_MODE" in backend
+    assert "def _require_resell_purchase_mode" in backend
+    assert "Reselling-Käufe sind in Production bis zum vollständigen Escrow-/Versand-/" in backend
+    assert '@router.get("/capabilities")' in backend
+    assert '"purchase_enabled": bool(TEST_MODE)' in backend
+    assert "_require_resell_purchase_mode()" in backend
 
     assert "purchaseAttemptKeyRef" in page
+    assert "/api/resell/capabilities" in page
+    assert "capabilities?.purchase_enabled" in page
+    assert "Checkout noch nicht live" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
 
