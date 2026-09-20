@@ -5,7 +5,7 @@ import {
   Trash2, Settings, BarChart3, TrendingUp, Users, RefreshCw,
   Calendar, Bot, Zap, Package, ChevronRight, Check, X,
   Timer, DollarSign, Target, Layers, AlertCircle, Activity,
-  Sliders, Power, Eye, Edit3, Save
+  Sliders, Power, Eye, Edit3, Save, Truck
 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store";
@@ -28,6 +28,9 @@ const AuctionAdminPage = ({ onBack }) => {
   const [stats, setStats] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [config, setConfig] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [fulfillmentDrafts, setFulfillmentDrafts] = useState({});
+  const [updatingOrder, setUpdatingOrder] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
@@ -39,17 +42,31 @@ const AuctionAdminPage = ({ onBack }) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [auctionsRes, statsRes, catalogRes, configRes] = await Promise.all([
+      const [auctionsRes, statsRes, catalogRes, configRes, ordersRes] = await Promise.all([
         api("/api/auctions/admin/list"),
         api("/api/auctions/admin/stats/overview"),
         api("/api/auctions/admin/catalog"),
         api("/api/auctions/admin/automation/config"),
+        api("/api/auctions/admin/orders"),
       ]);
       
       setAuctions(auctionsRes.auctions || []);
       setStats(statsRes);
       setCatalog(catalogRes.catalog || []);
       setConfig(configRes);
+      setOrders(ordersRes.orders || []);
+      setFulfillmentDrafts((prev) => {
+        const next = { ...prev };
+        for (const order of (ordersRes.orders || [])) {
+          if (!next[order.order_id]) {
+            next[order.order_id] = {
+              carrier: order.carrier || "",
+              tracking_number: order.tracking_number || "",
+            };
+          }
+        }
+        return next;
+      });
     } catch (err) {
       toast.error("Fehler beim Laden");
     }
@@ -61,6 +78,33 @@ const AuctionAdminPage = ({ onBack }) => {
     const interval = setInterval(loadData, 15000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  const updateFulfillment = async (order, status) => {
+    const orderId = order.order_id;
+    const draft = fulfillmentDrafts[orderId] || {};
+    setUpdatingOrder(orderId);
+    try {
+      const body = { status };
+      if (status === "shipped") {
+        body.carrier = String(draft.carrier || "").trim();
+        body.tracking_number = String(draft.tracking_number || "").trim();
+        if (!body.carrier || body.tracking_number.length < 4) {
+          toast.error("Carrier und echte Trackingnummer erforderlich");
+          setUpdatingOrder(null);
+          return;
+        }
+      }
+      await api(`/api/auctions/admin/orders/${orderId}/fulfillment`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      toast.success(status === "processing" ? "Fulfillment gestartet" : status === "shipped" ? "Als versendet markiert" : "Als zugestellt markiert");
+      await loadData();
+    } catch (err) {
+      toast.error(err?.detail || err?.message || "Fulfillment konnte nicht aktualisiert werden");
+    }
+    setUpdatingOrder(null);
+  };
 
   // ─── Bot Actions ───
   const openBotConfig = (auction) => {
@@ -279,6 +323,7 @@ const AuctionAdminPage = ({ onBack }) => {
             { id: "overview", label: "Übersicht", icon: <BarChart3 size={14} /> },
             { id: "bots", label: "Bot-System", icon: <Bot size={14} /> },
             { id: "active", label: `Aktiv (${activeAuctions.length})`, icon: <Play size={14} /> },
+            { id: "orders", label: `Bestellungen (${orders.length})`, icon: <Truck size={14} /> },
             { id: "catalog", label: "Katalog", icon: <Package size={14} /> },
           ].map((tab) => (
             <motion.button
@@ -344,6 +389,82 @@ const AuctionAdminPage = ({ onBack }) => {
                 </div>
               )}
             </Card>
+          </div>
+        )}
+
+        {/* ═══ FULFILLMENT TAB ═══ */}
+        {activeTab === "orders" && (
+          <div className="space-y-3" data-testid="auction-admin-orders">
+            {orders.length === 0 ? (
+              <Card title="Gewinner-Bestellungen" icon={<Truck size={16} className="text-cyan-400" />}>
+                <p className="py-5 text-center text-sm text-white/40">Noch keine bezahlten Gewinner-Bestellungen.</p>
+              </Card>
+            ) : orders.map((order) => {
+              const status = order.fulfillment_status || "pending";
+              const draft = fulfillmentDrafts[order.order_id] || {};
+              const busy = updatingOrder === order.order_id;
+              return (
+                <div key={order.order_id} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4" data-testid={`auction-order-${order.order_id}`}>
+                  <div className="flex items-start gap-3">
+                    {order.image_url ? <img src={order.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5"><Package size={18} /></div>}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{order.product_title}</p>
+                      <p className="mt-1 text-xs text-white/40">{order.order_id} · €{Number(order.final_price || 0).toFixed(2)}</p>
+                      <p className="mt-1 text-[11px] text-cyan-300">Fulfillment: {status}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/6 bg-black/20 p-3 text-xs text-white/55">
+                    <p className="font-semibold text-white/75">{order.shipping_address?.full_name}</p>
+                    <p>{order.shipping_address?.address_line1}{order.shipping_address?.address_line2 ? `, ${order.shipping_address.address_line2}` : ""}</p>
+                    <p>{order.shipping_address?.postal_code} {order.shipping_address?.city} · {order.shipping_address?.country}</p>
+                  </div>
+
+                  {(status === "pending" || status === "processing") && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <input
+                        value={draft.carrier || ""}
+                        onChange={(e) => setFulfillmentDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), carrier: e.target.value } }))}
+                        placeholder="Carrier, z. B. DHL"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs outline-none focus:border-cyan-400/40"
+                        data-testid={`auction-carrier-${order.order_id}`}
+                      />
+                      <input
+                        value={draft.tracking_number || ""}
+                        onChange={(e) => setFulfillmentDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), tracking_number: e.target.value } }))}
+                        placeholder="Echte Sendungsnummer"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs outline-none focus:border-cyan-400/40"
+                        data-testid={`auction-tracking-${order.order_id}`}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    {status === "pending" && (
+                      <button onClick={() => updateFulfillment(order, "processing")} disabled={busy} className="flex-1 rounded-xl bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 disabled:opacity-40">
+                        Vorbereitung
+                      </button>
+                    )}
+                    {(status === "pending" || status === "processing") && (
+                      <button onClick={() => updateFulfillment(order, "shipped")} disabled={busy} className="flex-1 rounded-xl bg-cyan-500/10 py-2 text-xs font-semibold text-cyan-300 disabled:opacity-40">
+                        {busy ? "Speichert…" : "Versendet"}
+                      </button>
+                    )}
+                    {status === "shipped" && (
+                      <button onClick={() => updateFulfillment(order, "delivered")} disabled={busy} className="flex-1 rounded-xl bg-green-500/10 py-2 text-xs font-semibold text-green-300 disabled:opacity-40">
+                        {busy ? "Speichert…" : "Zugestellt"}
+                      </button>
+                    )}
+                  </div>
+
+                  {order.tracking_number && (
+                    <div className="mt-2 text-[11px] text-white/45">
+                      {order.carrier}: <span className="font-mono text-white/70">{order.tracking_number}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
