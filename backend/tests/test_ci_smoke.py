@@ -1982,6 +1982,11 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
+    assert "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert." in mining_page
+    assert "Entdecke die BidBlitz Mining Preview. Code:" in mining_page
+    assert 'disabled={buyingListing === ls.listing_id || !miningValueEnabled}' in mining_page
+    assert 'disabled={buyingLaunch === p.project_id || remaining <= 0 || !miningValueEnabled}' in mining_page
+    assert 'onClick={() => upgradeCard(tier.tier)} disabled={!miningValueEnabled}' in mining_page
     assert "BlitzMine Preview" in mining_page
     assert "blitzmine-provider-unavailable" in blitz_page
     assert "valueActionsEnabled" in blitz_page
