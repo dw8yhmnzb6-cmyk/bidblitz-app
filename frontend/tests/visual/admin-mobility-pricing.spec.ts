@@ -25,6 +25,8 @@ async function mockAdminPricingApi(page: Page, state: { saved?: any }) {
       body = { balance: 1000, transactions: [] };
     } else if (pathname === '/api/wallet/balance/total') {
       body = { total_balance_eur: 1000, crypto_balance_eur: 0, crypto_breakdown: [] };
+    } else if (pathname === '/api/kyc/status') {
+      body = { status: 'approved', verification_status: 'approved', verified: true, can_use_auctions: true };
     } else if (pathname === '/api/mobility-platform/admin/pricing/profiles' && method === 'GET') {
       body = {
         profiles: [
