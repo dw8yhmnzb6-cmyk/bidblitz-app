@@ -426,7 +426,7 @@ const AuctionAdminPage = ({ onBack }) => {
                     <p>{order.shipping_address?.postal_code} {order.shipping_address?.city} · {order.shipping_address?.country}</p>
                   </div>
 
-                  {(status === "pending" || status === "processing") && (
+                  {status === "processing" && (
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <input
                         value={draft.carrier || ""}
@@ -451,7 +451,7 @@ const AuctionAdminPage = ({ onBack }) => {
                         Vorbereitung
                       </button>
                     )}
-                    {(status === "pending" || status === "processing") && (
+                    {status === "processing" && (
                       <button onClick={() => updateFulfillment(order, "shipped")} disabled={busy} className="flex-1 rounded-xl bg-cyan-500/10 py-2 text-xs font-semibold text-cyan-300 disabled:opacity-40">
                         {busy ? "Speichert…" : "Versendet"}
                       </button>
