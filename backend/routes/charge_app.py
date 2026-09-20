@@ -1450,6 +1450,7 @@ async def create_charge_warranty_claim(
         # Existing merchant portal owns warranty claims through user_id.
         "user_id": merchant_binding.get("merchant_user_id") or "",
         "customer_user_id": user_id,
+        "customer_name": user.get("name") or user.get("full_name") or user.get("email") or "BidBlitz Kunde",
         "customer_email": user.get("email") or "",
         "merchant_id": merchant_binding.get("merchant_id") or "",
         "merchant_slug": merchant_binding.get("merchant_slug") or "",
@@ -1457,11 +1458,19 @@ async def create_charge_warranty_claim(
         "serial_number": warranty.get("serial_number") or "",
         "merchant_name": merchant_binding.get("merchant_name") or warranty.get("merchant_name") or "",
         "invoice_number": warranty.get("invoice_number") or "",
+        "purchase_date": warranty.get("purchase_date") or "",
+        "warranty_months": int(warranty.get("warranty_months") or 24),
         "warranty_valid_until": _warranty_card(warranty).get("valid_until"),
         "issue_type": req.issue_type.strip().lower() or "defect",
         "subject": subject,
         "description": description,
+        "issue_summary": description,
         "preferred_resolution": req.preferred_resolution.strip().lower() or "repair",
+        "requested_resolution": (
+            "replace" if (req.preferred_resolution.strip().lower() or "repair") == "replacement"
+            else (req.preferred_resolution.strip().lower() or "repair")
+        ),
+        "source": "charge_app_customer",
         "status": "open",
         "messages": [{
             "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
@@ -1559,12 +1568,14 @@ async def download_charge_claim_attachment(
 ):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
-    query: Dict[str, Any] = {"claim_id": claim_id}
-    if user.get("role") != "admin":
-        query["customer_user_id"] = user_id
-    claim = await db.merchant_warranty_claims.find_one(query, {"_id": 0})
+    claim = await db.merchant_warranty_claims.find_one({"claim_id": claim_id}, {"_id": 0})
     if not claim:
         raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    is_admin = user.get("role") == "admin"
+    is_customer = str(claim.get("customer_user_id") or "") == user_id
+    is_merchant = user.get("role") == "merchant" and str(claim.get("user_id") or "") == user_id
+    if not (is_admin or is_customer or is_merchant):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
     attachment = next(
         (item for item in (claim.get("attachments") or []) if item.get("attachment_id") == attachment_id),
         None,
