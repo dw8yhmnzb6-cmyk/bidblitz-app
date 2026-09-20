@@ -721,6 +721,70 @@ async def _upsert_remote(
     return stored
 
 
+async def _sync_remote_session_to_local(
+    partner: Dict[str, Any],
+    country_code: str,
+    party_id: str,
+    remote_session_id: str,
+    body: Dict[str, Any],
+) -> None:
+    authorization_reference = body.get("authorization_reference")
+    match: Dict[str, Any] = {
+        "ocpi_roaming": True,
+        "ocpi_partner_id": partner["partner_id"],
+    }
+    candidates: List[Dict[str, Any]] = [{"ocpi_remote_session_id": remote_session_id}]
+    if authorization_reference:
+        candidates.insert(0, {"authorization_reference": authorization_reference})
+    match["$or"] = candidates
+
+    local = await db.ev_charging_sessions.find_one(match)
+    if not local:
+        return
+
+    remote_status = str(body.get("status") or "PENDING").upper()
+    if local.get("status") == "completed":
+        local_status = "completed"
+    else:
+        local_status = {
+            "PENDING": "starting",
+            "ACTIVE": "active",
+            "COMPLETED": "roaming_waiting_cdr",
+            "INVALID": "failed",
+        }.get(remote_status, local.get("status") or "starting")
+
+    total_cost = body.get("total_cost") or {}
+    current_cost = (
+        total_cost.get("incl_vat")
+        if total_cost.get("incl_vat") is not None
+        else total_cost.get("excl_vat")
+    )
+    update: Dict[str, Any] = {
+        "ocpi_remote_session_id": remote_session_id,
+        "ocpi_remote_session_status": remote_status,
+        "ocpi_remote_session_updated_at": body.get("last_updated") or _now(),
+        "status": local_status,
+        "kwh_charged": float(body.get("kwh") or local.get("kwh_charged") or 0),
+    }
+    if current_cost is not None:
+        update["current_cost"] = round(float(current_cost), 2)
+    if body.get("start_date_time"):
+        update["started_at"] = body.get("start_date_time")
+    if body.get("end_date_time"):
+        update["stopped_at"] = body.get("end_date_time")
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": local["session_id"]},
+        {"$set": update},
+    )
+
+    if remote_status == "INVALID":
+        from routes.ev_charging import _refund_ev_reservation, _release_ev_user_session_claim
+        refunded = await _refund_ev_reservation(local["session_id"], "ocpi_remote_session_invalid")
+        if refunded:
+            await _release_ev_user_session_claim(local.get("user_id"), local["session_id"])
+
+
 @router.put(f"/emsp/{OCPI_VERSION}/locations/{{country_code}}/{{party_id}}/{{location_id}}")
 async def emsp_location_put(country_code: str, party_id: str, location_id: str, request: Request, body: Dict[str, Any], authorization: Optional[str] = Header(None)):
     partner = await _functional_partner(request, authorization)
@@ -750,16 +814,56 @@ async def emsp_tariff_patch(country_code: str, party_id: str, tariff_id: str, re
 
 
 @router.put(f"/emsp/{OCPI_VERSION}/sessions/{{country_code}}/{{party_id}}/{{session_id}}")
-async def emsp_session_put(country_code: str, party_id: str, session_id: str, request: Request, body: Dict[str, Any], authorization: Optional[str] = Header(None)):
+async def emsp_session_put(
+    country_code: str,
+    party_id: str,
+    session_id: str,
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
     partner = await _functional_partner(request, authorization)
-    await _upsert_remote(db.ocpi_remote_sessions, {"country_code": country_code.upper(), "party_id": party_id.upper(), "id": session_id}, body, partner, patch=False)
+    country = country_code.upper()
+    party = party_id.upper()
+    if country != partner["country_code"] or party != partner["party_id"]:
+        return _ocpi(status_code=2001, message="Session owner does not match authenticated partner")
+    await _upsert_remote(
+        db.ocpi_remote_sessions,
+        {"country_code": country, "party_id": party, "id": session_id},
+        body,
+        partner,
+        patch=False,
+    )
+    await _sync_remote_session_to_local(partner, country, party, session_id, body)
     return _ocpi()
 
 
 @router.patch(f"/emsp/{OCPI_VERSION}/sessions/{{country_code}}/{{party_id}}/{{session_id}}")
-async def emsp_session_patch(country_code: str, party_id: str, session_id: str, request: Request, body: Dict[str, Any], authorization: Optional[str] = Header(None)):
+async def emsp_session_patch(
+    country_code: str,
+    party_id: str,
+    session_id: str,
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
     partner = await _functional_partner(request, authorization)
-    await _upsert_remote(db.ocpi_remote_sessions, {"country_code": country_code.upper(), "party_id": party_id.upper(), "id": session_id}, body, partner, patch=True)
+    country = country_code.upper()
+    party = party_id.upper()
+    if country != partner["country_code"] or party != partner["party_id"]:
+        return _ocpi(status_code=2001, message="Session owner does not match authenticated partner")
+    stored = await _upsert_remote(
+        db.ocpi_remote_sessions,
+        {"country_code": country, "party_id": party, "id": session_id},
+        body,
+        partner,
+        patch=True,
+    )
+    merged = await db.ocpi_remote_sessions.find_one(
+        {"country_code": country, "party_id": party, "id": session_id},
+        {"_id": 0},
+    ) or stored
+    await _sync_remote_session_to_local(partner, country, party, session_id, merged)
     return _ocpi()
 
 
@@ -785,6 +889,34 @@ async def emsp_cdr_post(
         partner,
         patch=False,
     )
+
+    local = None
+    authorization_reference = body.get("authorization_reference")
+    remote_session_id = body.get("session_id")
+    if authorization_reference:
+        local = await db.ev_charging_sessions.find_one({
+            "ocpi_roaming": True,
+            "ocpi_partner_id": partner["partner_id"],
+            "authorization_reference": authorization_reference,
+        })
+    if not local and remote_session_id:
+        local = await db.ev_charging_sessions.find_one({
+            "ocpi_roaming": True,
+            "ocpi_partner_id": partner["partner_id"],
+            "ocpi_remote_session_id": remote_session_id,
+        })
+    if local:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": local["session_id"]},
+            {"$set": {
+                "ocpi_remote_session_id": remote_session_id or local.get("ocpi_remote_session_id"),
+                "ocpi_remote_cdr_id": cdr_id,
+                "stopped_at": body.get("end_date_time") or local.get("stopped_at"),
+            }},
+        )
+        from routes.ev_charging import settle_roaming_cdr
+        await settle_roaming_cdr(local["session_id"], body)
+
     response.headers["Location"] = (
         f"{_public_base(request)}/ocpi/emsp/{OCPI_VERSION}/cdrs/"
         f"{country}/{party}/{cdr_id}"
