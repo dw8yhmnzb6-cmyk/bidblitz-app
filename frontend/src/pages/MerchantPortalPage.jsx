@@ -66,6 +66,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [warrantyForm, setWarrantyForm] = useState({ product_id: "", serial_number: "", issue_type: "defekt", customer_name: "", customer_email: "", purchase_date: "", issue_summary: "", requested_resolution: "repair" });
   const [brandProfileForm, setBrandProfileForm] = useState({ hero_claim: "", package_tier: "premium", display_mode: "counter_display", warranty_badge: "24 Monate Garantie", accent_finish: "matte_black", packaging_notes: "" });
   const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
+  const [dealerWarrantyNotes, setDealerWarrantyNotes] = useState({});
 
   const loadDash = useCallback(async () => {
     try {
@@ -471,7 +472,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, []);
 
-  const updateWarrantyStatus = useCallback(async (claimId, status) => {
+  const updateWarrantyStatus = useCallback(async (claimId, status, noteOverride = "") => {
     setDealerBusy(`warranty-status-${claimId}`);
     const customerNotes = {
       under_review: "Dein Garantiefall wird jetzt vom Händler geprüft.",
@@ -481,9 +482,12 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     try {
       await api.updateMerchantDealerWarrantyStatus(claimId, {
         status,
-        internal_note: customerNotes[status] || `Garantiestatus wurde auf ${status} aktualisiert.`,
+        internal_note: noteOverride.trim() || customerNotes[status] || `Garantiestatus wurde auf ${status} aktualisiert.`,
       });
-      toast.success("Garantiestatus aktualisiert");
+      if (noteOverride.trim()) {
+        setDealerWarrantyNotes((current) => ({ ...current, [claimId]: "" }));
+      }
+      toast.success(noteOverride.trim() ? "Antwort an Kunden gesendet" : "Garantiestatus aktualisiert");
       await loadDealerWarranty();
     } catch (error) {
       toast.error(error.message || "Garantiestatus konnte nicht aktualisiert werden");
@@ -491,6 +495,23 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
       setDealerBusy("");
     }
   }, [loadDealerWarranty]);
+
+  const sendWarrantyResponse = useCallback(async (item) => {
+    const note = (dealerWarrantyNotes[item.claim_id] || "").trim();
+    if (!note) {
+      toast.error("Bitte zuerst eine Nachricht für den Kunden eingeben");
+      return;
+    }
+    const status = item.dealer_status || {
+      open: "under_review",
+      in_review: "under_review",
+      approved: "replacement_sent",
+      rejected: "rejected",
+      resolved: "resolved",
+      cancelled: "cancelled",
+    }[item.status] || "under_review";
+    await updateWarrantyStatus(item.claim_id, status, note);
+  }, [dealerWarrantyNotes, updateWarrantyStatus]);
 
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -972,6 +993,19 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                           {item.warranty_pass?.pass_id ? <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200">{item.warranty_pass.pass_id}</span> : null}
                         </div>
                         {item.issue_summary && <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.issue_summary}</p>}
+                        {item.customer_user_id && (item.messages || []).length ? (
+                          <div className="mt-3 rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid={`merchant-dealer-warranty-messages-${index}`}>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70">Letzte Kundenkommunikation</p>
+                            <div className="mt-2 space-y-2">
+                              {(item.messages || []).slice(-3).map((entry) => (
+                                <div key={entry.message_id} className="rounded-xl bg-black/20 px-3 py-2">
+                                  <p className="text-[10px] font-semibold text-slate-500">{entry.author_role === "customer" ? "Kunde" : entry.author_role === "merchant" ? "Händler" : "Charge Care"}</p>
+                                  <p className="mt-1 text-[11px] leading-5 text-slate-300">{entry.message}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                         {(item.attachments || []).length ? (
                           <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`merchant-dealer-warranty-evidence-${index}`}>
                             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Beweisdateien · {item.attachments.length}</p>
@@ -1030,6 +1064,27 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                             </button>
                           ))}
                         </div>
+                        {item.customer_user_id ? (
+                          <div className="w-full min-w-[260px] rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid={`merchant-dealer-warranty-response-${index}`}>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70">Antwort an Kunden</p>
+                            <textarea
+                              value={dealerWarrantyNotes[item.claim_id] || ""}
+                              onChange={(event) => setDealerWarrantyNotes((current) => ({ ...current, [item.claim_id]: event.target.value }))}
+                              rows={3}
+                              placeholder="z. B. Bitte bring das Ladegerät und den Kaufbeleg in die Filiale..."
+                              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] leading-5 text-white outline-none placeholder:text-slate-600"
+                              data-testid={`merchant-dealer-warranty-response-input-${index}`}
+                            />
+                            <button
+                              onClick={() => sendWarrantyResponse(item)}
+                              disabled={dealerBusy === `warranty-status-${item.claim_id}` || !(dealerWarrantyNotes[item.claim_id] || "").trim()}
+                              className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-xl bg-emerald-400 px-3 text-[11px] font-black text-slate-950 disabled:opacity-40"
+                              data-testid={`merchant-dealer-warranty-response-send-${index}`}
+                            >
+                              {dealerBusy === `warranty-status-${item.claim_id}` ? "Sendet..." : "Antwort senden"}
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
