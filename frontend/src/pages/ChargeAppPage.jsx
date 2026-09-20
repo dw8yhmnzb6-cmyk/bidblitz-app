@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles, Pencil, Trash2, X, Package, ShoppingBag
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -24,6 +24,10 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [documentPreview, setDocumentPreview] = useState(null);
   const [editingWarrantyId, setEditingWarrantyId] = useState("");
   const [editingInvoiceId, setEditingInvoiceId] = useState("");
+  const [catalog, setCatalog] = useState({ products: [], categories: [] });
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState("all");
   const [warrantyForm, setWarrantyForm] = useState({
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
@@ -51,9 +55,25 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
   }, []);
 
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const data = await api.getChargeCatalog();
+      setCatalog(data || { products: [], categories: [] });
+    } catch (error) {
+      toast.error(error.message || "Charge Produktkatalog konnte nicht geladen werden");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
 
   const submitWarranty = useCallback(async () => {
     if (!warrantyForm.product_name.trim() || !warrantyForm.serial_number.trim()) {
@@ -297,6 +317,27 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     );
   }, [dashboard?.merchants, merchantQuery]);
 
+  const catalogProducts = useMemo(() => {
+    const rows = catalog?.products || [];
+    const q = catalogQuery.trim().toLowerCase();
+    return rows.filter((item) => {
+      const categories = (item.charge_categories || []).map((value) => String(value).toLowerCase());
+      const categoryMatches = catalogCategory === "all" || categories.includes(catalogCategory);
+      if (!categoryMatches) return false;
+      if (!q) return true;
+      return [
+        item.name,
+        item.brand,
+        item.category,
+        item.description,
+        item.sku,
+        item.barcode,
+        item.merchant_name,
+        item.city,
+      ].join(" ").toLowerCase().includes(q);
+    });
+  }, [catalog?.products, catalogQuery, catalogCategory]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#071018]" data-testid="charge-app-loading">
@@ -342,6 +383,103 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <SummaryCard label="Händler" value={overview.merchants_total || 0} icon={MapPin} testid="charge-app-summary-merchants" />
             </div>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <SurfaceCard title="Charge Produkte entdecken" icon={ShoppingBag} testid="charge-app-catalog-card">
+            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={catalogQuery}
+                  onChange={(e) => setCatalogQuery(e.target.value)}
+                  placeholder="Kabel, Ladegerät, Powerbank, MagSafe, Auto, Audio..."
+                  className="h-11 w-full rounded-2xl border border-[#D9CFC0] bg-white pl-10 pr-4 text-sm text-slate-900 outline-none"
+                  data-testid="charge-app-catalog-search"
+                />
+              </div>
+              <div className="flex items-center rounded-2xl border border-[#D9CFC0] bg-white px-4 text-xs font-black text-slate-600" data-testid="charge-app-catalog-count">
+                {catalogProducts.length} Produkte
+              </div>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-1" data-testid="charge-app-catalog-categories">
+              <button
+                type="button"
+                onClick={() => setCatalogCategory("all")}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${catalogCategory === "all" ? "bg-[#0A1626] text-[#D8FCFF]" : "border border-[#D9CFC0] bg-white text-slate-600"}`}
+                data-testid="charge-app-catalog-category-all"
+              >
+                Alle
+              </button>
+              {(catalog?.categories || []).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCatalogCategory(item.id)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${catalogCategory === item.id ? "bg-[#0A1626] text-[#D8FCFF]" : "border border-[#D9CFC0] bg-white text-slate-600"}`}
+                  data-testid={`charge-app-catalog-category-${item.id}`}
+                >
+                  {catalogCategoryLabel(item.id)} · {item.count}
+                </button>
+              ))}
+            </div>
+
+            {catalogLoading ? (
+              <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-[#D9CFC0] bg-white/60" data-testid="charge-app-catalog-loading">
+                <Loader2 size={22} className="animate-spin text-[#0A1626]" />
+              </div>
+            ) : catalogProducts.length === 0 ? (
+              <EmptyState label="Noch keine passenden Charge-Produkte im Händlernetz gefunden" testid="charge-app-catalog-empty" />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {catalogProducts.map((item, index) => (
+                  <div key={item.product_id || `${item.name}-${index}`} className="overflow-hidden rounded-[26px] border border-[#E1D7C7] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.05)]" data-testid={`charge-app-catalog-product-${index}`}>
+                    <div className="flex h-36 items-center justify-center bg-[linear-gradient(145deg,#EEF6F8,#F8F3EA)]">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name || ""} className="h-full w-full object-cover" />
+                      ) : (
+                        <Package size={34} className="text-[#0A1626]" />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.brand || "BidBlitz Charge"}</p>
+                          <h4 className="mt-1 line-clamp-2 text-base font-black text-slate-900">{item.name}</h4>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.price || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(item.charge_categories || []).slice(0, 2).map((category) => (
+                          <span key={category} className="rounded-full bg-[#F4F0E8] px-3 py-1 text-[10px] font-bold text-slate-600">{catalogCategoryLabel(category)}</span>
+                        ))}
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${item.in_stock ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                          {item.in_stock ? "Verfügbar" : "Ausverkauft"}
+                        </span>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">{item.description || item.category || "Premium Charge Zubehör"}</p>
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#EEE6DA] pt-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black text-slate-800">{item.merchant_name}</p>
+                          <p className="truncate text-[11px] text-slate-400">{item.city || "BidBlitz Charge Netzwerk"}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openMerchantDetail({ ...item, business_name: item.merchant_name, public_slug: item.merchant_slug }, "catalog_product_click")}
+                          disabled={!item.merchant_slug}
+                          className="shrink-0 rounded-2xl bg-[#0A1626] px-4 py-2 text-xs font-black text-[#D8FCFF] disabled:opacity-40"
+                          data-testid={`charge-app-catalog-product-merchant-${index}`}
+                        >
+                          Zum Händler
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SurfaceCard>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -581,6 +719,21 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
     </>
   );
+}
+
+
+function catalogCategoryLabel(value) {
+  const labels = {
+    charger: "Ladegeräte",
+    cable: "Kabel",
+    powerbank: "Powerbanks",
+    wireless: "Wireless / MagSafe",
+    dock: "Halterungen / Docks",
+    car: "Auto",
+    audio: "Audio",
+    "charge-accessories": "Charge Zubehör",
+  };
+  return labels[value] || String(value || "Charge Zubehör").replace(/_/g, " ");
 }
 
 
