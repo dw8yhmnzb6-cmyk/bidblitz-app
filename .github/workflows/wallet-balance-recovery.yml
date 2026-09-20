@@ -6,6 +6,10 @@ on:
       - work/cache-update-hardening
   pull_request:
 
+concurrency:
+  group: bidblitz-wallet-recovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   wallet-balance-recovery:
     runs-on: ubuntu-latest
