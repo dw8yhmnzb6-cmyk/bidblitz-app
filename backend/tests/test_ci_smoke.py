@@ -2330,3 +2330,18 @@ def test_pos_hardware_is_store_scoped_and_production_fail_closed():
     assert 'await _require_store_access(user, scale["store_id"])' in source
     assert 'await _require_store_access(user, store_id)' in source
 
+def test_pro_feature_preview_fees_use_payment_engine_and_tax_get_never_charges():
+    source = (BACKEND_DIR / "routes" / "pro_features.py").read_text(encoding="utf-8")
+
+    assert "from core.payment_engine import debit_wallet, credit_wallet, TransactionType" in source
+    assert "def _require_pro_idempotency_key" in source
+    assert "express_key = _require_pro_idempotency_key" in source
+    assert "payment = await debit_wallet(" in source
+    assert 'idempotency_key=f"{express_key}:rollback"' in source
+    assert 'idem = _require_pro_idempotency_key(req.idempotency_key, request, "banner")' in source
+    assert 'idempotency_key=f"{idem}:rollback"' in source
+    assert '"$inc": {"balance": -EXPRESS_FEE}' not in source
+    assert '"$inc": {"balance": -price}' not in source
+    assert '"$inc": {"balance": -REPORT_FEE}' not in source
+    assert "Kostenpflichtiger Steuerbericht ist deaktiviert" in source
+
