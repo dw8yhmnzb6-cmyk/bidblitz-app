@@ -174,6 +174,7 @@ def _version_details(request: Request) -> Dict[str, Any]:
             {"identifier": "tokens", "role": "SENDER", "url": f"{base}/ocpi/emsp/{v}/tokens"},
             {"identifier": "tokens", "role": "RECEIVER", "url": f"{base}/ocpi/cpo/{v}/tokens"},
             {"identifier": "commands", "role": "RECEIVER", "url": f"{base}/ocpi/cpo/{v}/commands"},
+            {"identifier": "commands", "role": "SENDER", "url": f"{base}/ocpi/emsp/{v}/commands"},
         ],
     }
 
@@ -870,6 +871,142 @@ async def emsp_token_authorize(
         "authorization_reference": f"BB-{secrets.token_hex(6).upper()}",
         "location": body or None,
     })
+
+
+def _partner_endpoint(partner: Dict[str, Any], identifier: str, role: str) -> Optional[str]:
+    for endpoint in partner.get("remote_endpoints") or []:
+        if endpoint.get("identifier") == identifier and endpoint.get("role") == role:
+            return str(endpoint.get("url") or "")
+    return None
+
+
+async def send_remote_command(
+    partner: Dict[str, Any],
+    command: str,
+    payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Send an OCPI command to a partner CPO and return its direct CommandResponse."""
+    endpoint = _partner_endpoint(partner, "commands", "RECEIVER")
+    if not endpoint:
+        return {"result": "NOT_SUPPORTED", "message": "Partner has no Commands receiver endpoint"}
+
+    target = f"{endpoint.rstrip('/')}/{command}"
+    if not await _public_https_url(target):
+        return {"result": "REJECTED", "message": "Partner Commands endpoint is not a safe public HTTPS URL"}
+
+    remote_token = _decrypt_token(partner.get("remote_token_enc"))
+    if not remote_token:
+        return {"result": "REJECTED", "message": "Partner credentials token unavailable"}
+
+    headers = {
+        "Authorization": _outbound_auth_header(remote_token),
+        "Content-Type": "application/json",
+        "OCPI-from-country-code": OCPI_COUNTRY_CODE,
+        "OCPI-from-party-id": OCPI_PARTY_ID,
+        "OCPI-to-country-code": partner["country_code"],
+        "OCPI-to-party-id": partner["party_id"],
+    }
+    try:
+        async with httpx.AsyncClient(
+            timeout=10.0,
+            follow_redirects=False,
+            trust_env=False,
+        ) as client:
+            res = await client.post(target, json=payload, headers=headers)
+        if not (200 <= res.status_code < 300):
+            return {"result": "REJECTED", "message": f"Partner HTTP {res.status_code}"}
+        envelope = res.json()
+        if int(envelope.get("status_code", 0) or 0) != 1000:
+            return {
+                "result": "REJECTED",
+                "message": str(envelope.get("status_message") or "Partner returned OCPI error")[:300],
+            }
+        data = envelope.get("data") or {}
+        result = str(data.get("result") or "REJECTED")
+        if result not in {"NOT_SUPPORTED", "REJECTED", "ACCEPTED", "UNKNOWN_SESSION"}:
+            result = "REJECTED"
+        return {
+            "result": result,
+            "timeout": int(data.get("timeout") or 30),
+            "message": data.get("message"),
+        }
+    except Exception as exc:
+        return {"result": "REJECTED", "message": str(exc)[:300]}
+
+
+@router.post(f"/emsp/{OCPI_VERSION}/commands/{{command_id}}")
+async def receive_remote_command_result(
+    command_id: str,
+    request: Request,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
+    partner = await _functional_partner(request, authorization)
+    command = await db.ocpi_outbound_commands.find_one({
+        "command_id": command_id,
+        "partner_id": partner["partner_id"],
+    })
+    if not command:
+        raise HTTPException(404, "Unknown OCPI command")
+
+    result = str(body.get("result") or "FAILED")
+    valid_results = {
+        "ACCEPTED", "CANCELED_RESERVATION", "EVSE_OCCUPIED",
+        "EVSE_INOPERATIVE", "FAILED", "NOT_SUPPORTED", "REJECTED",
+        "TIMEOUT", "UNKNOWN_RESERVATION",
+    }
+    if result not in valid_results:
+        return _ocpi(status_code=2001, message="Invalid CommandResult.result")
+
+    await db.ocpi_outbound_commands.update_one(
+        {"command_id": command_id},
+        {"$set": {
+            "result": result,
+            "result_message": body.get("message"),
+            "status": "finished",
+            "result_received_at": _now(),
+            "updated_at": _now(),
+        }},
+    )
+
+    local_session_id = command.get("local_session_id")
+    if local_session_id:
+        if command.get("command") == "START_SESSION":
+            if result == "ACCEPTED":
+                await db.ev_charging_sessions.update_one(
+                    {"session_id": local_session_id},
+                    {"$set": {
+                        "ocpi_start_result": result,
+                        "ocpi_start_result_at": _now(),
+                    }},
+                )
+            else:
+                await db.ev_charging_sessions.update_one(
+                    {"session_id": local_session_id},
+                    {"$set": {
+                        "status": "failed",
+                        "ocpi_start_result": result,
+                        "ocpi_start_result_at": _now(),
+                        "error": f"Roaming start failed: {result}",
+                    }},
+                )
+                # Release a user reservation only if this is our eMSP-side
+                # roaming session. Import locally to avoid router import cycles.
+                from routes.ev_charging import _refund_ev_reservation, _release_ev_user_session_claim
+                refunded = await _refund_ev_reservation(local_session_id, f"ocpi_start_{result.lower()}")
+                if refunded:
+                    sess = await db.ev_charging_sessions.find_one({"session_id": local_session_id})
+                    await _release_ev_user_session_claim((sess or {}).get("user_id"), local_session_id)
+        elif command.get("command") == "STOP_SESSION":
+            await db.ev_charging_sessions.update_one(
+                {"session_id": local_session_id},
+                {"$set": {
+                    "ocpi_stop_result": result,
+                    "ocpi_stop_result_at": _now(),
+                }},
+            )
+
+    return _ocpi()
 
 
 def _cp_protocol(cp: Dict[str, Any]) -> str:
