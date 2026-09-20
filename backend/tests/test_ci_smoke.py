@@ -1840,3 +1840,15 @@ def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete()
 
     assert '"$inc": {"auth_version": 1}' in sessions
     assert "await revoke_all_sessions(user_id)" in sessions
+
+def test_revenue2_legacy_value_flows_fail_closed_in_production():
+    source = (BACKEND_DIR / "routes" / "revenue2.py").read_text(encoding="utf-8")
+
+    assert "def _require_legacy_marketplace_test_mode" in source
+    assert "Der alte Marketplace-Transfer ist in Production deaktiviert" in source
+    assert "_require_legacy_marketplace_test_mode()" in source
+
+    assert "def _require_revenue2_lottery_test_mode" in source
+    assert "Die Legacy-Lotterie ist in Production deaktiviert" in source
+    assert source.count("_require_revenue2_lottery_test_mode()") >= 4
+
