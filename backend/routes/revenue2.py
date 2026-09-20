@@ -565,6 +565,7 @@ async def lottery_current(request: Request):
 
 class BuyTicketRequest(BaseModel):
     quantity: int = Field(ge=1, le=100)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/lottery/buy-tickets")
@@ -572,37 +573,127 @@ async def lottery_buy(req: BuyTicketRequest, request: Request):
     user = await get_current_user(request)
     _require_revenue2_lottery_test_mode()
     uid = str(user.get("_id") or user.get("id"))
-    cost = LOTTERY_TICKET_PRICE_BLZ * req.quantity
-    bal = float(user.get("balance_blz", 0) or 0)
-    if bal < cost:
-        raise HTTPException(400, f"Nicht genug BLZ (brauchst {cost})")
-
     draw = await _current_lottery_draw()
     if draw.get("status") != "open":
         raise HTTPException(400, "Keine offene Ziehung")
 
-    ticket_numbers = []
-    for _ in range(req.quantity):
-        ticket_numbers.append({
-            "user_id": uid,
-            "number": secrets.token_hex(4).upper(),
-            "bought_at": datetime.now(timezone.utc).isoformat(),
-        })
+    key = _require_revenue2_idempotency_key(req.idempotency_key, request, "lottery-buy")
+    cost = LOTTERY_TICKET_PRICE_BLZ * req.quantity
+    purchase_id = "LOTBUY-" + hashlib.sha256(
+        f"{uid}:{draw['draw_date']}:{key}".encode("utf-8")
+    ).hexdigest()[:20].upper()
+    payload = {
+        "user_id": uid,
+        "draw_date": draw["draw_date"],
+        "quantity": req.quantity,
+        "cost": cost,
+    }
 
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": -cost}})
-    await db.lottery_draws.update_one(
-        {"draw_date": draw["draw_date"]},
-        {"$push": {"tickets": {"$each": ticket_numbers}}},
+    existing = await db.lottery_ticket_purchases.find_one({"_id": purchase_id}, {"_id": 0})
+    if existing and existing.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Ticketdaten verwendet")
+    if existing and existing.get("status") == "completed":
+        return {
+            "ok": True,
+            "tickets_bought": req.quantity,
+            "tickets": existing.get("tickets", []),
+            "cost": cost,
+            "replayed": True,
+        }
+
+    await db.lottery_ticket_purchases.update_one(
+        {"_id": purchase_id},
+        {"$setOnInsert": {
+            "_id": purchase_id,
+            "payload": payload,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
     )
-    now = datetime.now(timezone.utc).isoformat()
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "payment", "amount": cost, "currency": "BLZ",
-        "status": "completed", "description": f"Lotterie: {req.quantity} Los(e)",
-        "merchant_name": "BidBlitz", "category": "lottery",
-        "reference": f"LOT-{now.replace('-','').replace(':','').replace('.','')[:18]}",
-        "date": now, "created_at": now,
-    })
-    return {"ok": True, "tickets_bought": req.quantity, "tickets": [t["number"] for t in ticket_numbers], "cost": cost}
+    claimed = await db.lottery_ticket_purchases.update_one(
+        {"_id": purchase_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if claimed.modified_count != 1:
+        current = await db.lottery_ticket_purchases.find_one({"_id": purchase_id}, {"_id": 0}) or {}
+        if current.get("status") == "completed":
+            return {
+                "ok": True,
+                "tickets_bought": req.quantity,
+                "tickets": current.get("tickets", []),
+                "cost": cost,
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Ticketkauf wird bereits verarbeitet")
+
+    ticket_numbers = [{
+        "user_id": uid,
+        "number": hashlib.sha256(f"{purchase_id}:{idx}".encode("utf-8")).hexdigest()[:8].upper(),
+        "bought_at": datetime.now(timezone.utc).isoformat(),
+        "purchase_id": purchase_id,
+    } for idx in range(req.quantity)]
+
+    debit = await _mutate_blz_once(
+        user_id=uid,
+        amount=cost,
+        direction="debit",
+        idempotency_key=f"lottery:{purchase_id}:debit",
+        description=f"Lotterie: {req.quantity} Los(e)",
+        category="lottery",
+    )
+
+    attached = await db.lottery_draws.update_one(
+        {
+            "draw_date": draw["draw_date"],
+            "status": "open",
+            "purchase_ids": {"$ne": purchase_id},
+        },
+        {
+            "$push": {"tickets": {"$each": ticket_numbers}},
+            "$addToSet": {"purchase_ids": purchase_id},
+        },
+    )
+    if attached.modified_count != 1:
+        attached_draw = await db.lottery_draws.find_one(
+            {"draw_date": draw["draw_date"], "purchase_ids": purchase_id},
+            {"_id": 1},
+        )
+        if not attached_draw:
+            await _mutate_blz_once(
+                user_id=uid,
+                amount=cost,
+                direction="credit",
+                idempotency_key=f"lottery:{purchase_id}:refund",
+                description="Lotterie-Ticketkauf zurückgebucht",
+                category="lottery_refund",
+            )
+            await db.lottery_ticket_purchases.update_one(
+                {"_id": purchase_id},
+                {"$set": {
+                    "status": "failed_refunded",
+                    "failed_at": datetime.now(timezone.utc).isoformat(),
+                    "reason": "draw_not_open_or_ticket_attach_failed",
+                }},
+            )
+            raise HTTPException(status_code=409, detail="Ziehung nicht mehr offen. BLZ wurden zurückgebucht.")
+
+    await db.lottery_ticket_purchases.update_one(
+        {"_id": purchase_id, "status": "processing"},
+        {"$set": {
+            "status": "completed",
+            "tickets": [t["number"] for t in ticket_numbers],
+            "debit_transaction_id": debit["transaction_id"],
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {
+        "ok": True,
+        "tickets_bought": req.quantity,
+        "tickets": [t["number"] for t in ticket_numbers],
+        "cost": cost,
+        "replayed": bool(debit["replayed"]),
+    }
 
 
 @router.get("/lottery/my-tickets")
@@ -646,6 +737,13 @@ async def lottery_draw_now(request: Request):
     if not tickets:
         raise HTTPException(400, "Keine Tickets — keine Ziehung")
 
+    draw_lock = await db.lottery_draws.update_one(
+        {"draw_date": draw["draw_date"], "status": "open"},
+        {"$set": {"status": "drawing", "draw_started_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if draw_lock.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Ziehung wird bereits verarbeitet")
+
     # Shuffle and draw
     random.shuffle(tickets)
     winners = []
@@ -661,20 +759,19 @@ async def lottery_draw_now(request: Request):
                 "tier": tier_name,
                 "prize_blz": tier_cfg["blz"],
             })
-            # Credit winner
-            await db.users.update_one({"_id": _oid(t["user_id"])}, {"$inc": {"balance_blz": tier_cfg["blz"]}})
-            await db.transactions.insert_one({
-                "user_id": t["user_id"], "type": "reward", "amount": tier_cfg["blz"], "currency": "BLZ",
-                "status": "completed", "description": f"Lotterie-Gewinn ({tier_name}): {tier_cfg['blz']} BLZ",
-                "merchant_name": "BidBlitz Lotterie", "category": "lottery_win",
-                "reference": f"LOT-WIN-{draw['draw_date']}-{t['number']}",
-                "date": datetime.now(timezone.utc).isoformat(),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
+            payout = await _mutate_blz_once(
+                user_id=t["user_id"],
+                amount=int(tier_cfg["blz"]),
+                direction="credit",
+                idempotency_key=f"lottery-win:{draw['draw_date']}:{t['number']}:{tier_name}",
+                description=f"Lotterie-Gewinn ({tier_name}): {tier_cfg['blz']} BLZ",
+                category="lottery_win",
+            )
+            winners[-1]["payout_transaction_id"] = payout["transaction_id"]
             i += 1
 
     await db.lottery_draws.update_one(
-        {"draw_date": draw["draw_date"]},
+        {"draw_date": draw["draw_date"], "status": "drawing"},
         {"$set": {
             "status": "closed",
             "winners": winners,
