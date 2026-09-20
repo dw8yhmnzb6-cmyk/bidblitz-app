@@ -2508,3 +2508,20 @@ def test_duplicate_legacy_pos_voucher_money_routes_are_retired():
     assert '@router.post("/redeem")' in canonical
     assert "credit_wallet(" in canonical
 
+def test_saved_card_confirmation_requires_completed_matching_setup_session():
+    backend = (BACKEND_DIR / "routes" / "stripe.py").read_text(encoding="utf-8")
+    wallet_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "WalletPage.jsx").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+
+    assert "class SaveCardConfirmRequest(BaseModel):" in backend
+    assert 'setup_session_id={CHECKOUT_SESSION_ID}' in backend
+    assert 'session_mode != "setup"' in backend
+    assert 'session_status != "complete"' in backend
+    assert "session_customer != str(cust_id)" in backend
+    assert 'metadata.get("type") != "save_card"' in backend
+    assert '"stripe_setup_session_id": req.session_id' in backend
+
+    assert 'setupSessionId = walletSearchParams?.get("setup_session_id")' in wallet_page
+    assert 'body: JSON.stringify({ session_id: setupSessionId })' in wallet_page
+    assert 'saveCardConfirm: (sessionId)' in api
+
