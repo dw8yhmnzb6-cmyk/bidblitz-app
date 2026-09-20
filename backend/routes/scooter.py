@@ -40,6 +40,75 @@ MAX_DAILY_CAP = 20.00
 MIN_WALLET_BALANCE = 5.00  # Minimum balance to start ride
 
 
+def _default_scooter_pricing() -> dict:
+    return {
+        "unlock_fee": UNLOCK_FEE,
+        "per_minute": PER_MINUTE_RATE,
+        "daily_cap": MAX_DAILY_CAP,
+        "min_balance": MIN_WALLET_BALANCE,
+        "minimum_charge": UNLOCK_FEE,
+        "currency": "EUR",
+        "profile_scope": "fallback",
+        "source": "Scooter fallback tariff",
+        "city": "",
+        "country": "",
+        "country_code": "",
+        "basis": "Fallback-Tarif",
+        "available": True,
+    }
+
+
+async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[float] = None, address: str = "") -> dict:
+    pricing = _default_scooter_pricing()
+    if lat is None or lng is None:
+        return pricing
+    if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
+        raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
+
+    try:
+        # Single canonical tariff resolver shared with the Mobility Platform.
+        # Lazy import avoids coupling router import order during app startup.
+        from routes.mobility_platform import _resolve_pricing_context
+        context = await _resolve_pricing_context(float(lat), float(lng), address or "")
+        mode = dict((context.get("modes") or {}).get("scooter") or {})
+        if not mode:
+            pricing.update({
+                "available": not bool(context.get("strict_modes")),
+                "currency": context.get("currency") or pricing["currency"],
+                "profile_scope": context.get("profile_scope") or "country",
+                "source": context.get("source") or pricing["source"],
+                "city": context.get("city") or "",
+                "country": context.get("country") or context.get("region") or "",
+                "country_code": context.get("country_code") or "",
+                "basis": "Für diese Region ist noch kein Scooter-Tarif hinterlegt.",
+            })
+            return pricing
+
+        pricing.update({
+            "unlock_fee": round(float(mode.get("base", UNLOCK_FEE) or 0), 2),
+            "per_minute": round(float(mode.get("per_min", PER_MINUTE_RATE) or 0), 4),
+            "daily_cap": round(float(mode.get("daily_cap", MAX_DAILY_CAP) or MAX_DAILY_CAP), 2),
+            "min_balance": round(float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0), 2),
+            "minimum_charge": round(float(mode.get("minimum", mode.get("base", UNLOCK_FEE)) or 0), 2),
+            "currency": context.get("currency") or "EUR",
+            "profile_scope": context.get("profile_scope") or "country",
+            "source": context.get("source") or pricing["source"],
+            "city": context.get("city") or "",
+            "country": context.get("country") or context.get("region") or "",
+            "country_code": context.get("country_code") or "",
+            "basis": mode.get("basis") or "",
+            "range_per_min_low": mode.get("range_per_min_low"),
+            "range_per_min_high": mode.get("range_per_min_high"),
+            "available": True,
+        })
+        return pricing
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Scooter tariff resolution failed, using fallback: %s", exc)
+        return pricing
+
+
 def _require_scooter_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
     key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
     if not 8 <= len(key) <= 200:
@@ -273,20 +342,16 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
 
 @router.get("/nearby")
 async def get_nearby_scooters(lat: Optional[float] = None, lng: Optional[float] = None, radius: float = 5.0):
-    """Get available scooters only for an explicit user location."""
+    """Get available scooters and the canonical local tariff for the explicit user location."""
     effective_enabled = SCOOTER_MODULE_ENABLED and (TEST_MODE or _iot_live_configured())
+    fallback_pricing = _default_scooter_pricing()
     if not effective_enabled:
         return {
             "scooters": [],
             "total": 0,
             "module_enabled": False,
             "message": "Scooter-IoT ist noch nicht für Livebetrieb verbunden.",
-            "pricing": {
-                "unlock_fee": UNLOCK_FEE,
-                "per_minute": PER_MINUTE_RATE,
-                "daily_cap": MAX_DAILY_CAP,
-                "min_balance": MIN_WALLET_BALANCE,
-            },
+            "pricing": fallback_pricing,
         }
     if lat is None or lng is None:
         return {
@@ -295,87 +360,49 @@ async def get_nearby_scooters(lat: Optional[float] = None, lng: Optional[float] 
             "module_enabled": True,
             "location_required": True,
             "message": "Standortzugriff erforderlich, um Scooter in deiner Nähe anzuzeigen.",
-            "pricing": {
-                "unlock_fee": UNLOCK_FEE,
-                "per_minute": PER_MINUTE_RATE,
-                "daily_cap": MAX_DAILY_CAP,
-                "min_balance": MIN_WALLET_BALANCE,
-            },
+            "pricing": fallback_pricing,
         }
     if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
         raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
     radius = max(0.1, min(float(radius), 20.0))
+    pricing = await _resolve_scooter_pricing(lat, lng)
 
-    # Module disabled - return empty state
-    if not SCOOTER_MODULE_ENABLED:
-        return {
-            "scooters": [],
-            "total": 0,
-            "module_enabled": False,
-            "message": "Scooter-Modul wird derzeit vorbereitet",
-            "pricing": {
-                "unlock_fee": UNLOCK_FEE,
-                "per_minute": PER_MINUTE_RATE,
-                "daily_cap": MAX_DAILY_CAP,
-                "min_balance": MIN_WALLET_BALANCE,
-            }
-        }
-    
-    # Return both real and demo scooters
     scooters = await db.scooters.find(
         {
             "status": {"$in": ["available", "locked"]},
-            "battery": {"$gte": 15},  # Only scooters with enough battery
+            "battery": {"$gte": 15},
         },
         {"_id": 0, "device_id": 0}
     ).to_list(100)
-    
-    # Production: return only real scooters from DB
-    if len(scooters) == 0:
-        return {"scooters": [], "total": 0, "message": "Keine E-Scooter in deiner Nähe verfügbar"}
-    
+
     nearby = []
     for s in scooters:
         loc = s.get("location", {})
         slat = loc.get("lat") if loc.get("lat") is not None else s.get("lat")
         slng = loc.get("lng") if loc.get("lng") is not None else s.get("lng")
-
         if slat is None or slng is None:
             continue
-        
         s["lat"] = slat
         s["lng"] = slng
-        
-        # Ensure battery_percent field exists
         if "battery_percent" not in s:
             s["battery_percent"] = s.get("battery", 50)
-        
-        # Ensure model field exists
         if "model" not in s:
             s["model"] = s.get("name", "E-Scooter")
-        
-        # Ensure range_km field exists
         if "range_km" not in s:
-            s["range_km"] = int(s["battery_percent"] * 0.4)  # ~40km at 100%
-        
+            s["range_km"] = int(s["battery_percent"] * 0.4)
         dist = haversine_distance(lat, lng, slat, slng)
         if dist <= radius:
             s["distance_km"] = round(dist, 2)
             s["walk_minutes"] = max(1, round(dist * 12))
             nearby.append(s)
-    
+
     nearby.sort(key=lambda x: x.get("distance_km", 999))
-    
     return {
         "scooters": nearby[:30],
         "total": len(nearby),
         "module_enabled": True,
-        "pricing": {
-            "unlock_fee": UNLOCK_FEE,
-            "per_minute": PER_MINUTE_RATE,
-            "daily_cap": MAX_DAILY_CAP,
-            "min_balance": MIN_WALLET_BALANCE,
-        }
+        "message": None if nearby else "Keine E-Scooter in deiner Nähe verfügbar",
+        "pricing": pricing,
     }
 
 
@@ -386,17 +413,13 @@ async def get_scooter_plans_alt():
 
 
 @router.get("/pricing")
-async def get_scooter_pricing():
-    """Public: pricing & service info."""
+async def get_scooter_pricing(lat: Optional[float] = None, lng: Optional[float] = None, address: str = ""):
+    """Public local scooter pricing resolved by country/city through the canonical Mobility tariff source."""
+    pricing = await _resolve_scooter_pricing(lat, lng, address)
     return {
-        "unlock_fee": UNLOCK_FEE,
-        "per_minute": PER_MINUTE_RATE,
-        "min_balance": MIN_WALLET_BALANCE,
-        "daily_cap": MAX_DAILY_CAP,
-        "currency": "EUR",
+        **pricing,
         "free_paused_minutes": 5,
         "max_speed_kmh": 25,
-        "service_area": "Berlin, München, Hamburg",
         "subscription_plans": SCOOTER_PLANS,
     }
 
@@ -500,8 +523,6 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
 
     subscription = await _get_active_scooter_subscription(user)
-    ride_unlock_fee = float((subscription or {}).get("unlock_fee", UNLOCK_FEE))
-    ride_rate = float((subscription or {}).get("per_minute_rate", PER_MINUTE_RATE))
     free_minutes_per_day = int((subscription or {}).get("free_minutes_per_day", 0) or 0)
     free_minutes_remaining_at_start = 0.0
     if subscription and free_minutes_per_day > 0:
@@ -519,15 +540,6 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         used_minutes = sum(float(item.get("duration_minutes") or 0) for item in prior_rides)
         free_minutes_remaining_at_start = max(0.0, free_minutes_per_day - used_minutes)
 
-    fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
-    balance = float(fresh_user.get("balance") or 0)
-    required_balance = 0.0 if subscription else MIN_WALLET_BALANCE
-    if balance < required_balance:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Mindestguthaben €{required_balance:.2f} erforderlich. Aktuell: €{balance:.2f}",
-        )
-
     scooter = await db.scooters.find_one({
         "$or": [{"scooter_id": req.scooter_id}, {"qr_code": req.scooter_id}]
     })
@@ -535,6 +547,31 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
     if scooter.get("battery", 100) < 10:
         raise HTTPException(status_code=400, detail="Scooter Akku zu niedrig")
+
+    scooter_location = scooter.get("location") or {}
+    scooter_address = " ".join(str(value) for value in [scooter.get("city"), scooter.get("country"), scooter.get("address")] if value)
+    local_pricing = await _resolve_scooter_pricing(
+        scooter_location.get("lat", scooter.get("lat")),
+        scooter_location.get("lng", scooter.get("lng")),
+        scooter_address,
+    )
+    if not local_pricing.get("available", True) and not subscription:
+        raise HTTPException(status_code=503, detail="Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.")
+
+    ride_unlock_fee = float((subscription or {}).get("unlock_fee", local_pricing["unlock_fee"]))
+    ride_rate = float((subscription or {}).get("per_minute_rate", local_pricing["per_minute"]))
+    ride_daily_cap = float((subscription or {}).get("daily_cap", local_pricing["daily_cap"]))
+    ride_currency = str((subscription or {}).get("currency") or local_pricing.get("currency") or "EUR").upper()
+
+    fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+    balance = float(fresh_user.get("balance") or 0)
+    required_balance = 0.0 if subscription else float(local_pricing.get("min_balance", MIN_WALLET_BALANCE))
+    if balance < required_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mindestguthaben {required_balance:.2f} {ride_currency} erforderlich. Aktuell: {balance:.2f} {ride_currency}",
+        )
+
     device_id = scooter.get("device_id")
     if not device_id:
         raise HTTPException(status_code=503, detail="Scooter hat keine verbundene IoT-Geräte-ID")
@@ -603,6 +640,16 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         "started_at": now.isoformat(),
         "unlock_fee": ride_unlock_fee,
         "per_minute_rate": ride_rate,
+        "daily_cap": ride_daily_cap,
+        "currency": ride_currency,
+        "pricing_context": {
+            "profile_scope": local_pricing.get("profile_scope"),
+            "source": local_pricing.get("source"),
+            "city": local_pricing.get("city"),
+            "country": local_pricing.get("country"),
+            "country_code": local_pricing.get("country_code"),
+            "basis": local_pricing.get("basis"),
+        },
         "free_minutes_per_day": free_minutes_per_day,
         "free_minutes_remaining_at_start": round(free_minutes_remaining_at_start, 2),
         "subscription_id": (subscription or {}).get("sub_id"),
@@ -762,7 +809,8 @@ async def end_ride(req: EndRideRequest, request: Request):
         free_minutes_used = min(duration_minutes, free_minutes_remaining)
         billable_minutes = max(0.0, duration_minutes - free_minutes_used)
         ride_cost = round(billable_minutes * rate, 2)
-        total_cost = min(round(unlock_fee + ride_cost, 2), MAX_DAILY_CAP)
+        daily_cap = float(ride.get("daily_cap") or MAX_DAILY_CAP)
+        total_cost = min(round(unlock_fee + ride_cost, 2), daily_cap)
         ride_cost_to_deduct = max(0.0, round(total_cost - unlock_fee, 2))
 
         end_location = ride.get("current_location") or ride.get("start_location", {})
@@ -964,7 +1012,8 @@ async def get_active_ride(request: Request):
     rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)
     free_remaining = max(0.0, float(ride.get("free_minutes_remaining_at_start") or 0))
     billable_minutes = max(0.0, elapsed_minutes - free_remaining)
-    current_cost = min(round(unlock_fee + (billable_minutes * rate), 2), MAX_DAILY_CAP)
+    daily_cap = float(ride.get("daily_cap") or MAX_DAILY_CAP)
+    current_cost = min(round(unlock_fee + (billable_minutes * rate), 2), daily_cap)
 
     ride["rental_id"] = ride.get("ride_id")
     ride["started_at"] = ride.get("start_time")
@@ -980,7 +1029,7 @@ async def get_active_ride(request: Request):
             "free_minutes_remaining_at_start": round(free_remaining, 1),
             "billable_minutes": round(billable_minutes, 1),
             "current_cost": current_cost,
-            "max_cost": MAX_DAILY_CAP,
+            "max_cost": daily_cap,
         }
     }
 
