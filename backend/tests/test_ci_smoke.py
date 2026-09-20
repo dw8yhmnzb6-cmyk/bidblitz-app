@@ -2000,6 +2000,42 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "valueActionsEnabled" in blitz_page
 
 
+def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
+    mining = (BACKEND_DIR / "routes" / "mining.py").read_text(encoding="utf-8")
+    phase2 = (BACKEND_DIR / "routes" / "mining_phase2.py").read_text(encoding="utf-8")
+    mining_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
+    database = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
+
+    assert mining.count("idempotency_key: Optional[str] = None") >= 2
+    assert 'payment_idempotency_key = f"mining-buy:{raw_key}"' in mining
+    assert '"miner_id": miner_id' in mining
+    assert '{"$setOnInsert": miner}' in mining
+    assert '{"txn_id": purchase_id}' in mining
+    assert 'idempotency_key=payment_idempotency_key' in mining
+
+    assert "db.mining_upgrade_operations.update_one" in mining
+    assert 'applied_marker = f"upgrade_applied.{operation_hash}"' in mining
+    assert 'level_key: current_level' in mining
+    assert 'idempotency_key=f"mining-upgrade-refund:{operation_id}"' in mining
+    assert 'refund_status = "refunded" if refund.success else "reconciliation_required"' in mining
+    assert "Rückgutschrift benötigt finanzielle Abstimmung" in mining
+
+    assert "LaunchpadBuyRequest" in phase2
+    assert 'Idempotency-Key erforderlich' in phase2
+    assert 'idempotency_key=idempotency_key' in phase2
+
+    assert "minerPurchaseKeysRef" in mining_page
+    assert "minerUpgradeKeysRef" in mining_page
+    assert "launchpadPurchaseKeysRef" in mining_page
+    assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 4
+    assert mining_page.count("idempotency_key: idempotencyKey") >= 4
+    assert "shouldKeepAttemptKey" in mining_page
+
+    assert 'db.mining_transactions, "txn_id", unique=True, critical=True' in database
+    assert 'db.mining_upgrade_operations, "operation_id", unique=True, critical=True' in database
+    assert 'db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
+
+
 def test_auction_polling_does_not_delete_shared_browser_caches():
     auctions_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
     api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
