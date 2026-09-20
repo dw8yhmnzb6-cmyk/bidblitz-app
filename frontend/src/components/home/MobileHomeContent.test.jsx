@@ -98,6 +98,12 @@ test("recent transactions open the owning BidBlitz module", () => {
   expect(props.onNavigate).toHaveBeenLastCalledWith("/mobility-center");
 });
 
+test("mobile home reserves space above the fixed bottom navigation", () => {
+  renderComponent({ isGuest: false });
+  const home = container.querySelector('[data-testid="mobile-home-content"]');
+  expect(home.className).toContain("pb-32");
+});
+
 test("hidden balance also hides recent transaction amounts", () => {
   mockWallet.transactions = [{ id: "1", date: "2026-09-17", amount: 1234.56, merchantName: "Shop" }];
   renderComponent({ isGuest: false, balanceHidden: true });
