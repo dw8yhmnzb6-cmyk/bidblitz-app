@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import KYCBanner from '../components/KYCBanner';
-import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List } from 'lucide-react';
+import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List, Package, Truck, Check, RotateCcw } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -45,6 +45,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const [selectedListing, setSelectedListing] = useState(null);
   const [userBalance, setUserBalance] = useState(0);
   const [myListings, setMyListings] = useState([]);
+  const [myPurchases, setMyPurchases] = useState([]);
+  const [mySales, setMySales] = useState([]);
+  const [useShipping, setUseShipping] = useState(false);
+  const [orderBusy, setOrderBusy] = useState(null);
+  const [shippingDrafts, setShippingDrafts] = useState({});
   const [favorites, setFavorites] = useState([]);
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   
@@ -65,9 +70,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const [messageText, setMessageText] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const purchaseAttemptKeyRef = useRef(null);
+  const orderActionKeysRef = useRef({});
 
   useEffect(() => {
     purchaseAttemptKeyRef.current = null;
+    setUseShipping(false);
   }, [selectedListing?.listing_id]);
 
   const openListingById = useCallback(async (listingId) => {
@@ -126,6 +133,34 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
     } catch (err) { void err; }
   };
 
+  const fetchMarketplaceOrders = async () => {
+    try {
+      const [purchasesRes, salesRes] = await Promise.all([
+        fetch(API + "/api/marketplace/my-purchases", { credentials: "include" }),
+        fetch(API + "/api/marketplace/my-sales", { credentials: "include" }),
+      ]);
+      if (purchasesRes.ok) {
+        const data = await purchasesRes.json();
+        setMyPurchases(data.orders || []);
+      }
+      if (salesRes.ok) {
+        const data = await salesRes.json();
+        const orders = data.orders || [];
+        setMySales(orders);
+        setShippingDrafts((prev) => {
+          const next = { ...prev };
+          for (const order of orders) {
+            next[order.order_id] = next[order.order_id] || {
+              carrier: order.carrier || "",
+              tracking_number: order.tracking_number || "",
+            };
+          }
+          return next;
+        });
+      }
+    } catch (err) { void err; }
+  };
+
   const fetchFavorites = async () => {
     try {
       const res = await fetch(`${API}/api/marketplace/meta/favorites`, { credentials: 'include' });
@@ -143,8 +178,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   }, [fetchListings]);
 
   useEffect(() => {
-    if (view === 'my-listings') {
+    if (view === "my-listings") {
       fetchMyListings();
+    }
+    if (view === "orders") {
+      fetchMarketplaceOrders();
     }
   }, [view]);
 
@@ -160,8 +198,12 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
       setView('my-listings');
       return;
     }
-    if (routeParams?.tab === 'create') {
-      setView('create');
+    if (routeParams?.tab === "create") {
+      setView("create");
+      return;
+    }
+    if (routeParams?.tab === "orders") {
+      setView("orders");
     }
   }, [routeParams?.tab]);
 
@@ -224,7 +266,10 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const buyItem = async () => {
     if (!selectedListing) return;
 
-    const required = Number(selectedListing.price || 0);
+    const shippingCost = useShipping && selectedListing.shipping_available
+      ? Number(selectedListing.shipping_cost || 0)
+      : 0;
+    const required = Number(selectedListing.price || 0) + shippingCost;
     if (userBalance < required) {
       alert(`Nicht genug Guthaben. Benötigt: €${required.toFixed(2)}`);
       return;
@@ -248,6 +293,7 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
         credentials: 'include',
         body: JSON.stringify({
           listing_id: selectedListing.listing_id,
+          use_shipping: !!useShipping,
           idempotency_key: idempotencyKey,
         }),
       });
@@ -256,7 +302,8 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
         purchaseAttemptKeyRef.current = null;
         setUserBalance(Number(data.new_balance ?? userBalance));
         alert(data.message);
-        setView('browse');
+        setView("orders");
+        await fetchMarketplaceOrders();
         fetchListings();
       } else {
         if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
@@ -266,6 +313,72 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
       void err; // keep the same key for a safe retry after a network error
     }
     setLoading(false);
+  };
+
+  const orderActionKey = (orderId, action) => {
+    const refKey = orderId + ":" + action;
+    if (!orderActionKeysRef.current[refKey]) {
+      orderActionKeysRef.current[refKey] = typeof crypto?.randomUUID === "function"
+        ? "marketplace-" + action + "-" + crypto.randomUUID()
+        : "marketplace-" + action + "-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
+    return { refKey, idempotencyKey: orderActionKeysRef.current[refKey] };
+  };
+
+  const runOrderAction = async (orderId, action, path, extra = {}) => {
+    const { refKey, idempotencyKey } = orderActionKey(orderId, action);
+    setOrderBusy(refKey);
+    try {
+      const res = await fetch(API + path, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ ...extra, idempotency_key: idempotencyKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status < 500 && res.status !== 409) delete orderActionKeysRef.current[refKey];
+        throw new Error(typeof data.detail === "string" ? data.detail : (data.message || "Aktion fehlgeschlagen"));
+      }
+      delete orderActionKeysRef.current[refKey];
+      await Promise.all([fetchMarketplaceOrders(), fetchUserData(), fetchListings()]);
+      return data;
+    } finally {
+      setOrderBusy(null);
+    }
+  };
+
+  const confirmMarketplaceReceived = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "confirm-received", "/api/marketplace/orders/" + order.order_id + "/confirm-received");
+      alert("Empfang bestätigt. Escrow-Auszahlung wurde freigegeben.");
+    } catch (err) { alert(err.message || "Empfang konnte nicht bestätigt werden"); }
+  };
+
+  const cancelMarketplaceOrder = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "cancel", "/api/marketplace/orders/" + order.order_id + "/cancel");
+      alert("Bestellung storniert. Escrow wurde an den Käufer zurückgezahlt.");
+    } catch (err) { alert(err.message || "Stornierung fehlgeschlagen"); }
+  };
+
+  const markMarketplacePickupReady = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "ready-pickup", "/api/marketplace/orders/" + order.order_id + "/ready-pickup");
+    } catch (err) { alert(err.message || "Abholfreigabe fehlgeschlagen"); }
+  };
+
+  const shipMarketplaceOrder = async (order) => {
+    const draft = shippingDrafts[order.order_id] || {};
+    const carrier = String(draft.carrier || "").trim();
+    const trackingNumber = String(draft.tracking_number || "").trim();
+    if (carrier.length < 2 || trackingNumber.length < 4) {
+      alert("Bitte echten Carrier und echte Trackingnummer eingeben.");
+      return;
+    }
+    try {
+      await runOrderAction(order.order_id, "ship", "/api/marketplace/orders/" + order.order_id + "/ship", { carrier, tracking_number: trackingNumber });
+    } catch (err) { alert(err.message || "Versand konnte nicht bestätigt werden"); }
   };
 
   // Contact seller
@@ -322,8 +435,9 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             {[
               { id: 'browse', label: 'Stöbern' },
-              { id: 'my-listings', label: 'Meine' },
-              { id: 'create', label: 'Verkaufen' },
+              { id: "my-listings", label: "Meine" },
+              { id: "orders", label: "Bestellungen" },
+              { id: "create", label: "Verkaufen" },
               { id: 'dashboard', label: 'Dashboard' },
             ].map((tab) => (
               <button
@@ -571,6 +685,21 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
                   )}
                 </div>
                 
+                {selectedListing.shipping_available && (
+                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3" data-testid="marketplace-delivery-choice">
+                    <p className="mb-2 text-xs font-semibold text-white/60">Übergabe wählen</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => setUseShipping(false)} className={"rounded-xl px-3 py-2 text-xs font-bold " + (!useShipping ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" : "bg-white/5 text-white/50 border border-white/10")} data-testid="marketplace-pickup-choice">
+                        Abholung · 0,00 €
+                      </button>
+                      <button onClick={() => setUseShipping(true)} className={"rounded-xl px-3 py-2 text-xs font-bold " + (useShipping ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-white/5 text-white/50 border border-white/10")} data-testid="marketplace-shipping-choice">
+                        Versand · €{Number(selectedListing.shipping_cost || 0).toFixed(2)}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-white/35">Käufergeld bleibt bis zur bestätigten Übergabe im BidBlitz Escrow.</p>
+                  </div>
+                )}
+
                 <p className="mt-4 text-gray-300 whitespace-pre-wrap">{selectedListing.description}</p>
                 
                 {selectedListing.location && (
@@ -628,7 +757,7 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
                   ? 'Nicht verfügbar'
                   : loading 
                     ? 'Wird gekauft...' 
-                    : `Jetzt kaufen - €${selectedListing.price.toFixed(2)}`
+                    : `Jetzt kaufen - €${(Number(selectedListing.price || 0) + (useShipping && selectedListing.shipping_available ? Number(selectedListing.shipping_cost || 0) : 0)).toFixed(2)}`
                 }
               </button>
             </motion.div>
