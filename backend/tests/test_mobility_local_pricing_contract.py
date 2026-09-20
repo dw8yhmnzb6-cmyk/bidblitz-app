@@ -91,3 +91,16 @@ def test_admin_can_control_taxi_premium_and_van_city_factors():
     assert 'mode.get("van_multiplier", 1.20)' in taxi
     assert '["premium_multiplier", "Premium Faktor"]' in admin
     assert '["van_multiplier", "Van Faktor"]' in admin
+
+
+def test_pricing_scope_is_tracked_per_transport_mode():
+    mobility = read("backend/routes/mobility_platform.py")
+    scooter = read("backend/routes/scooter.py")
+    taxi = read("backend/routes/taxi.py")
+    page = read("frontend/src/pages/BidBlitzMobilityPlatformPage.jsx")
+
+    assert 'profile["mode_scopes"] = {' in mobility
+    assert '"pricing_scope": ((pricing_profile or {}).get("mode_scopes") or {}).get(option_type' in mobility
+    assert '(context.get("mode_scopes") or {}).get("scooter"' in scooter
+    assert 'option.get("pricing_scope") or pricing_context.get("profile_scope")' in taxi
+    assert 'selectedOption?.pricing_scope || routeSnapshot.pricing_context.profile_scope' in page
