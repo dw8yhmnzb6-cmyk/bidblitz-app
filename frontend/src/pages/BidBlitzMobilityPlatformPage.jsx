@@ -719,13 +719,23 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             </div>
 
             {(pickupSuggestions.length > 0 || dropoffSuggestions.length > 0) && (
-              <div className="mt-2 rounded-2xl overflow-hidden border border-[#18202a]/8 bg-white" data-testid="mobility-search-results-panel">
-                {(searchTarget === "dropoff" ? dropoffSuggestions : pickupSuggestions).slice(0, 6).map((item, idx) => (
+              <div className="mt-2 max-h-[310px] overflow-y-auto rounded-2xl border border-[#18202a]/8 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.12)]" data-testid="mobility-search-results-panel">
+                {(searchTarget === "dropoff" ? dropoffSuggestions : pickupSuggestions).slice(0, 8).map((item, idx) => (
                   <button key={`${item.id}-${idx}`} onClick={() => {
                     applyLocation(searchTarget, item);
-                  }} className="w-full px-4 py-3 bg-white hover:bg-[#f7f2e7] border-b border-[#18202a]/8 text-left last:border-b-0" data-testid={`mobility-search-result-${idx}`}>
-                    <div className="text-sm font-medium text-[#18202a]">{item.name}</div>
-                    <div className="text-xs text-[#18202a]/55 mt-0.5 truncate">{item.address}</div>
+                  }} className="w-full px-3.5 py-2.5 bg-white hover:bg-[#f7f2e7] border-b border-[#18202a]/8 text-left last:border-b-0" data-testid={`mobility-search-result-${idx}`}>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin size={15} className="mt-0.5 shrink-0 text-[#0F766E]" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-[#18202a] truncate">{item.name}</div>
+                        {(item.city || item.country) && (
+                          <div className="mt-0.5 text-[11px] font-medium text-[#0F766E]/75 truncate">
+                            {[item.city, item.country].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-[#18202a]/50 mt-0.5 truncate">{item.address}</div>
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -755,6 +765,16 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             </div>
             {routeSummary && <div className="text-right text-xs text-[#18202a]/70" data-testid="mobility-route-summary"><div>{routeSummary.distance_km.toFixed(1)} km</div><div>{routeSummary.duration_min} Min</div></div>}
           </div>
+
+          {routeSnapshot?.pricing_context && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[#0F766E]/12 bg-[#0F766E]/7 px-3 py-2" data-testid="mobility-pricing-context">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0F766E]">Lokaler Tarif</span>
+              <span className="text-xs font-semibold text-[#18202a]">
+                {routeSnapshot.pricing_context.city || routeSnapshot.pricing_context.region}
+              </span>
+              <span className="text-[10px] text-[#18202a]/50">· Preis vor Buchung geschätzt</span>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2 mb-4" data-testid="mobility-available-modes-row">
             {(availableModes.length ? availableModes : Object.keys(TRANSPORT_META).map((type) => ({ type, label: TRANSPORT_META[type].label || type, live: true }))).map((item) => {
@@ -877,29 +897,34 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               const Icon = meta.icon;
               const isSelected = selectedOption?.type === option.type;
               return (
-                <div key={option.type} className={`w-full rounded-2xl border p-4 text-left transition-all ${isSelected || aiRecommendation?.best_option_type === option.type ? "border-[#00C2FF]/30 bg-[#00C2FF]/8" : "border-white/[0.06] bg-white/[0.03]"}`} data-testid={`mobility-option-${option.type}`}>
+                <div key={option.type} className={`w-full rounded-2xl border p-3.5 sm:p-4 text-left transition-all ${isSelected || aiRecommendation?.best_option_type === option.type ? "border-[#00C2FF]/30 bg-[#00C2FF]/8" : "border-white/[0.06] bg-white/[0.03]"}`} data-testid={`mobility-option-${option.type}`}>
                   <button onClick={() => setDetailOption(option)} className="w-full text-left" data-testid={`mobility-option-detail-${option.type}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-start gap-3">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${meta.color}18`, color: meta.color }}><Icon size={20} /></div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-[#18202a]">{option.label}</span>
+                          <span className="text-[15px] font-bold text-[#18202a]">{option.label}</span>
                           {isSelected && <span className="px-2 py-0.5 rounded-full bg-[#0F766E]/15 text-[#0F766E] text-[10px] font-semibold">{ui.recommended}</span>}
                         </div>
-                        <p className="text-xs text-[#18202a]/55 mt-1">{option.duration_min} Min · {option.distance_km.toFixed(1)} km · Eco {option.eco_score}</p>
-                        <p className="text-[11px] text-[#18202a]/42 mt-1">{meta.details?.[lang] || meta.details?.de}</p>
+                        <p className="text-[11px] text-[#18202a]/55 mt-1">{option.duration_min} Min · {option.distance_km.toFixed(1)} km · Eco {option.eco_score}</p>
+                      </div>
+                      <div className="text-right shrink-0 pl-1">
+                        <div className="text-[17px] font-black text-[#18202a] tabular-nums">{formatPrice(option.price_eur, lang)}</div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-base font-bold text-[#18202a]">{formatPrice(option.price_eur, lang)}</div>
-                      <div className="text-[10px] text-[#18202a]/45 mt-1">{(option.payment_methods || []).map((id) => paymentOptions.methods.find((item) => item.id === id)?.label || id).slice(0, 3).join(" · ")}</div>
+                    <p className="mt-2 text-[11px] leading-4 text-[#18202a]/55">{meta.details?.[lang] || meta.details?.de}</p>
+                    {option.pricing_basis && (
+                      <div className="mt-2 inline-flex max-w-full items-center rounded-full bg-[#0F766E]/8 px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]" data-testid={`mobility-pricing-basis-${option.type}`}>
+                        <span className="truncate">{option.pricing_region}: {option.pricing_basis}</span>
+                      </div>
+                    )}
+                    <div className="mt-2 text-[10px] text-[#18202a]/42">
+                      {(option.payment_methods || []).map((id) => (paymentOptions.methods || []).find((item) => item.id === id)?.label || id).slice(0, 3).join(" · ")}
                     </div>
-                  </div>
                   </button>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-[11px] text-[#18202a]/55">{selectedPaymentMethod === "wallet" ? ui.directWallet : selectedPaymentMethod === "cash" ? ui.directCash : `Checkout: ${paymentOptions.methods.find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
-                    <button onClick={() => bookTransport(option)} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? ui.booking : ui.bookNow}</button>
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-[#18202a]/7 pt-3">
+                    <div className="min-w-0 text-[11px] text-[#18202a]/55 truncate">{selectedPaymentMethod === "wallet" ? ui.directWallet : selectedPaymentMethod === "cash" ? ui.directCash : `Checkout: ${(paymentOptions.methods || []).find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
+                    <button onClick={() => bookTransport(option)} className="min-h-[44px] whitespace-nowrap rounded-full bg-[#18202a] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? ui.booking : ui.bookNow}</button>
                   </div>
                 </div>
               );
