@@ -1883,3 +1883,31 @@ def test_revenue2_legacy_value_flows_fail_closed_in_production():
     assert "Die Legacy-Lotterie ist in Production deaktiviert" in source
     assert source.count("_require_revenue2_lottery_test_mode()") >= 4
 
+def test_growth_rewards_and_classified_boost_use_verified_retry_safe_value_flows():
+    backend = (BACKEND_DIR / "routes" / "growth.py").read_text(encoding="utf-8")
+    classifieds = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ClassifiedsPage.jsx").read_text(encoding="utf-8")
+    birthday = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "BirthdayBonusBanner.jsx").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in backend
+    assert "Das alte Growth-Glücksrad ist in Production deaktiviert" in backend
+    assert '"value_rewards_enabled": bool(TEST_MODE)' in backend
+
+    assert 'claim_id = f"birthday:{uid}:{now.year}"' in backend
+    assert 'user.get("kyc_status") != "approved"' in backend
+    assert 'user.get("kyc_extracted_dob")' in backend
+    assert "wallet_result = await credit_wallet(" in backend
+    assert 'idempotency_key=f"birthday:{uid}:{now.year}:eur"' in backend
+    assert '"$inc": {"balance": BIRTHDAY_EUR, "balance_blz": BIRTHDAY_BLZ}' not in backend
+    assert '"claim_available": bool(is_birthday and dob_verified and not existing)' in backend
+    assert "!data.claim_available" in birthday
+
+    assert "idempotency_key: Optional[str]" in backend
+    assert "boost_payment_pending" in backend
+    assert "last_boost_purchase" in backend
+    assert "payment = await debit_wallet(" in backend
+    assert "idempotency_key=idem_key" in backend
+    assert '{"$inc": {"balance": -tier["eur"]}}' not in backend
+    assert "boostAttemptKeysRef" in classifieds
+    assert '"Idempotency-Key": idempotencyKey' in classifieds
+    assert "idempotency_key: idempotencyKey" in classifieds
+
