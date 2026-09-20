@@ -317,7 +317,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-[#ffd8b5]">Flash Sales</p>
-                <h2 className="mt-2 text-base md:text-lg font-bold">Kurzfristige Commerce-Deals mit echtem Wallet-Checkout</h2>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Kurzfristige Commerce-Deals mit sicherem Checkout</h2>
               </div>
               <button onClick={() => onNavigate("/marketplace")} data-testid="commerce-flash-more-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/70">Mehr Produkte</button>
             </div>
@@ -348,14 +348,25 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                       <button onClick={() => openMarketplaceDetail(sale.listing_id)} data-testid={`flash-sale-detail-${sale.sale_id}`} className="rounded-full border border-white/10 px-4 py-3 text-sm font-semibold text-white/80">
                         Details
                       </button>
-                      <button
-                        onClick={() => handleBuyFlashSale(sale.sale_id)}
-                        disabled={buyingSaleId === sale.sale_id}
-                        data-testid={`flash-sale-buy-${sale.sale_id}`}
-                        className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
-                      >
-                        {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
-                      </button>
+                      {sale.seller_id ? (
+                        <button
+                          disabled
+                          data-testid={`flash-sale-escrow-pending-${sale.sale_id}`}
+                          className="rounded-full border border-[#ff7a18]/25 bg-[#ff7a18]/10 px-4 py-3 text-sm font-bold text-[#ffd8b5] opacity-80"
+                          title="Externe Flash-Sale-Verkäufer werden erst nach vollständiger Escrow-Anbindung freigeschaltet."
+                        >
+                          Escrow noch nicht live
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleBuyFlashSale(sale.sale_id)}
+                          disabled={buyingSaleId === sale.sale_id}
+                          data-testid={`flash-sale-buy-${sale.sale_id}`}
+                          className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
+                        >
+                          {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
