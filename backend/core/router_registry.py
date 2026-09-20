@@ -175,7 +175,7 @@ def register_all_routers(app):
         
         # Systems
         ("routes.referral_system", "router"),
-        ("routes.kids_system", "router"),
+        # routes.kids_system is legacy; canonical Kids money/control flows live in routes.kids.
         ("routes.subscription_system", "router"),
         ("routes.growth_engine", "router"),
         ("routes.boost_system", "router"),
