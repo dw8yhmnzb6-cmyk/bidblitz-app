@@ -475,6 +475,7 @@ export const api = {
   createChargeOfferRuleAdmin: (body) => request("/api/charge-app/admin/offer-rules", { method: "POST", body: JSON.stringify(body) }),
   updateChargeOfferRuleAdmin: (ruleId, body) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}`, { method: "PUT", body: JSON.stringify(body) }),
   toggleChargeOfferRuleAdmin: (ruleId) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}/toggle`, { method: "PUT" }),
+  deleteChargeOfferRuleAdmin: (ruleId) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}`, { method: "DELETE" }),
 
   // Transactions
   getTransactions: (params = {}) => {
