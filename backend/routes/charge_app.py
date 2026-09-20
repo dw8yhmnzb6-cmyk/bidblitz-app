@@ -2,6 +2,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import uuid
 import json
+import hashlib
+import hmac
 import re
 from io import BytesIO
 
@@ -10,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import BACKEND_URL, JWT_SECRET
 from core.security import get_current_user
 from routes.loyalty_system import get_loyalty_status as _get_loyalty_status
 from routes.loyalty_system import get_loyalty_stats as _get_loyalty_stats
@@ -398,6 +401,22 @@ def _warranty_terms(doc: Dict[str, Any]) -> tuple[int, datetime, str]:
     return months, valid_until_dt, effective_status
 
 
+def _warranty_signature(registration_id: str, serial_number: str, valid_until: str) -> str:
+    payload = f"{registration_id}|{serial_number}|{valid_until}".encode("utf-8")
+    key = hmac.new(
+        JWT_SECRET.encode("utf-8"),
+        b"bidblitz-charge-warranty-pass",
+        hashlib.sha256,
+    ).digest()
+    return hmac.new(key, payload, hashlib.sha256).hexdigest()
+
+
+def _warranty_verify_url(registration_id: str, signature: str) -> str:
+    base = (BACKEND_URL or "").rstrip("/")
+    path = f"/api/charge-app/warranty/verify/{registration_id}?sig={signature}"
+    return f"{base}{path}" if base else path
+
+
 def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     months, valid_until_dt, effective_status = _warranty_terms(doc)
     purchase_dt = _parse_iso(doc.get("purchase_date")) or _parse_iso(doc.get("created_at")) or datetime.now(timezone.utc)
@@ -428,15 +447,10 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
 def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
     months, valid_until_dt, effective_status = _warranty_terms(doc)
     valid_until = valid_until_dt.date().isoformat()
-    qr_payload = json.dumps({
-        "type": "bidblitz_charge_warranty_pass",
-        "registration_id": doc.get("registration_id"),
-        "serial_number": doc.get("serial_number"),
-        "product_name": doc.get("product_name"),
-        "merchant_name": doc.get("merchant_name"),
-        "valid_until": valid_until,
-        "status": effective_status,
-    }, ensure_ascii=False)
+    registration_id = str(doc.get("registration_id") or "")
+    serial_number = str(doc.get("serial_number") or "")
+    signature = _warranty_signature(registration_id, serial_number, valid_until)
+    qr_payload = _warranty_verify_url(registration_id, signature)
     return {
         "pass_id": f"BB-CHARGE-{str(doc.get('registration_id') or '')[-6:]}",
         "registration_id": doc.get("registration_id"),
@@ -448,6 +462,8 @@ def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
         "status_label": "Aktiv" if effective_status == "active" else ("Abgelaufen" if effective_status == "expired" else effective_status.title()),
         "valid_until": valid_until,
         "qr_payload": qr_payload,
+        "verification_signature": signature,
+        "verification_path": f"/api/charge-app/warranty/verify/{registration_id}",
     }
 
 
@@ -1911,7 +1927,48 @@ async def admin_update_charge_claim_status(
     return {"ok": True, "claim": _claim_card(saved or {**claim, **update})}
 
 
-@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")
+@router.get("/warranty/verify/{registration_id}")
+async def verify_charge_warranty_pass(registration_id: str, sig: str):
+    warranty = await db.charge_app_warranties.find_one(
+        {"registration_id": registration_id},
+        {"_id": 0},
+    )
+    if not warranty:
+        raise HTTPException(status_code=404, detail="Garantiepass nicht gefunden")
+
+    card = _warranty_card(warranty)
+    expected = _warranty_signature(
+        registration_id,
+        str(warranty.get("serial_number") or ""),
+        str(card.get("valid_until") or ""),
+    )
+    if not sig or not hmac.compare_digest(str(sig), expected):
+        raise HTTPException(status_code=403, detail="Ungültiger Garantiepass")
+
+    serial = str(warranty.get("serial_number") or "")
+    masked_serial = (
+        f"{serial[:2]}***{serial[-2:]}"
+        if len(serial) >= 5
+        else ("***" if serial else "—")
+    )
+    return {
+        "ok": True,
+        "verified": True,
+        "pass": {
+            "registration_id": registration_id,
+            "pass_id": f"BB-CHARGE-{registration_id[-6:]}",
+            "product_name": warranty.get("product_name") or "BidBlitz Charge Produkt",
+            "merchant_name": warranty.get("merchant_name") or "BidBlitz Charge Händler",
+            "serial_number_masked": masked_serial,
+            "status": card.get("status"),
+            "status_label": card.get("warranty_pass", {}).get("status_label"),
+            "coverage_label": card.get("coverage_label"),
+            "valid_until": card.get("valid_until"),
+        },
+    }
+
+
+@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")
 async def get_charge_warranty_pass(registration_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
