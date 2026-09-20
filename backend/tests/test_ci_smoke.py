@@ -2277,3 +2277,19 @@ def test_staff_wallet_payouts_are_idempotent_reserved_and_provider_safe():
     assert "Für einen neuen Versuch ist ein neuer Idempotency-Key erforderlich." in source
     assert 'payout_id = str(uuid4())' not in source
 
+def test_unsafe_legacy_cashback_and_subscription_routers_stay_unregistered():
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    legacy_subscriptions = (BACKEND_DIR / "routes" / "subscriptions.py").read_text(encoding="utf-8")
+    legacy_cashback = (BACKEND_DIR / "routes" / "cashback.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert '"routes.subscriptions", "router"' not in registry
+    assert '"routes.cashback", "router"' not in registry
+    assert "db.wallet.find_one" in legacy_subscriptions
+    assert '"$inc": {"balance": -plan["price"]}' in legacy_subscriptions
+    assert "simulated — in production" in legacy_cashback
+    assert '"$inc": {"balance": cashback_amount}' in legacy_cashback
+    assert 'case "/cashback":' in app
+    assert 'title="Cashback"' in app
+    assert "Käufe über verifizierte Affiliate-/Merchant-Events" in app
+
