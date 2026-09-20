@@ -549,7 +549,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                     whileTap={{ scale: 0.96 }}>
                     <ArrowUpRight size={15} /> {t("mining.withdraw") || "Auszahlen"}
                   </motion.button>
-                  <motion.button data-testid="mining-send-btn" onClick={() => miningValueEnabled && setShowSend(!showSend)} disabled={!miningValueEnabled>
+                  <motion.button data-testid="mining-send-btn" onClick={() => miningValueEnabled && setShowSend(!showSend)} disabled={!miningValueEnabled}
                     className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
                     style={{ background: "rgba(0,194,255,0.10)", border: "1px solid rgba(0,194,255,0.22)", color: "#00C2FF" }}
                     whileTap={{ scale: 0.96 }}>
