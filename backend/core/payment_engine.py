@@ -708,207 +708,22 @@ async def get_referrer(user_id: str) -> Optional[str]:
 
 
 async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentResult:
+    """Legacy processor retained only as a fail-closed compatibility boundary.
+
+    Active money flows must use debit_wallet, credit_wallet, or
+    transfer_between_wallets so idempotency, recovery, and canonical ledgers
+    remain authoritative.
     """
-    CENTRAL PAYMENT PROCESSOR
-    
-    Handles ALL payment types with:
-    1. Balance validation
-    2. Atomic deduction
-    3. Commission calculation
-    4. Auto-distribution to recipient
-    5. Referral rewards
-    6. Cashback
-    7. Activity tracking
-    8. Notifications
-    """
-    
-    user_id = req.user_id
-    amount = round(req.amount, 2)
-    payment_type = req.payment_type.value
-    
-    if amount <= 0:
-        return CentralPaymentResult(success=False, error="Amount must be positive")
-    
-    # 1. Get user and validate balance
-    try:
-        current_balance = await get_user_balance(user_id)
-    except ValueError as e:
-        return CentralPaymentResult(success=False, error=str(e))
-    
-    if current_balance < amount:
-        return CentralPaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{current_balance:.2f}, Required: €{amount:.2f}"
-        )
-    
-    now = datetime.now(timezone.utc)
-    tx_id = generate_transaction_id()
-    ref = generate_reference(payment_type.upper()[:3])
-    
-    # 2. Calculate commission
-    commission_rate = await get_commission_rate(payment_type)
-    platform_fee = round(amount * commission_rate, 2)
-    recipient_amount = round(amount - platform_fee, 2)
-    
-    # 3. Debit user wallet (atomic)
-    debit_result = await db.users.update_one(
-        {
-            "_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id,
-            "balance": {"$gte": amount}
-        },
-        {"$inc": {"balance": -amount}}
+    logger.error(
+        "Blocked legacy process_central_payment call: payment_type=%s user_id=%s",
+        getattr(req.payment_type, "value", req.payment_type),
+        req.user_id,
     )
-    
-    if debit_result.modified_count == 0:
-        return CentralPaymentResult(success=False, error="Balance changed during transaction")
-    
-    # 4. Create transaction record
-    transaction = {
-        "id": tx_id,
-        "user_id": user_id,
-        "type": payment_type,
-        "amount": -amount,
-        "description": req.description or f"{payment_type.title()} Payment",
-        "reference": ref,
-        "reference_id": req.reference_id,
-        "status": "completed",
-        "platform_fee": platform_fee,
-        "recipient_id": req.recipient_id,
-        "recipient_amount": recipient_amount if req.recipient_id else None,
-        "metadata": req.metadata or {},
-        "created_at": now.isoformat(),
-    }
-    await db.transactions.insert_one(transaction)
-    
-    # 5. Credit recipient if exists (driver, seller, merchant)
-    if req.recipient_id:
-        await db.users.update_one(
-            {"_id": ObjectId(req.recipient_id) if ObjectId.is_valid(req.recipient_id) else req.recipient_id},
-            {"$inc": {"balance": recipient_amount}}
-        )
-        
-        # Recipient transaction record
-        await db.transactions.insert_one({
-            "id": generate_transaction_id(),
-            "user_id": req.recipient_id,
-            "type": f"{payment_type}_income",
-            "amount": recipient_amount,
-            "description": f"Einnahme: {req.description or payment_type}",
-            "reference": f"INC-{ref}",
-            "source_user_id": user_id,
-            "status": "completed",
-            "created_at": now.isoformat(),
-        })
-    
-    # 6. Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {
-            "total": platform_fee,
-            f"by_source.{payment_type}": platform_fee,
-            "transaction_count": 1,
-        }},
-        upsert=True
-    )
-    
-    # 7. Process cashback
-    cashback = 0
-    cashback_rate = await get_cashback_rate(user_id)
-    if cashback_rate > 0:
-        cashback = round(amount * cashback_rate, 2)
-        if cashback >= 0.01:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-                {"$inc": {"balance": cashback}}
-            )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": user_id,
-                "type": "cashback",
-                "amount": cashback,
-                "description": f"Cashback ({cashback_rate*100:.0f}%)",
-                "reference": f"CB-{ref}",
-                "source_tx": tx_id,
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
-    
-    # 8. Process referral reward
-    referral_reward = 0
-    referrer_id = await get_referrer(user_id)
-    if referrer_id:
-        referral_reward = round(amount * REFERRAL_REWARD_RATE, 2)
-        if referral_reward >= 0.01:
-            await db.users.update_one(
-                {"_id": ObjectId(referrer_id) if ObjectId.is_valid(referrer_id) else referrer_id},
-                {"$inc": {"balance": referral_reward}}
-            )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": referrer_id,
-                "type": "referral_reward",
-                "amount": referral_reward,
-                "description": f"Empfehlungsbonus ({REFERRAL_REWARD_RATE*100:.0f}%)",
-                "reference": f"REF-{ref}",
-                "referred_user_id": user_id,
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
-    
-    # 9. Track activity
-    await track_user_activity(user_id, payment_type, amount)
-    
-    # 10. Check and apply streaks
-    await process_streaks(user_id, payment_type)
-    
-    # 11. Process loyalty rewards (coins + cashback)
-    loyalty_rewards = {"coins_earned": 0, "cashback_earned": 0}
-    try:
-        from routes.loyalty_system import process_loyalty_rewards
-        loyalty_rewards = await process_loyalty_rewards(
-            user_id=user_id,
-            source_type=payment_type,
-            source_id=req.reference_id,
-            amount=amount,
-            tx_id=tx_id,
-        )
-    except Exception as e:
-        import logging
-        logging.getLogger("bidblitz").warning(f"Loyalty reward error: {e}")
-    
-    # Get new balance (includes cashback if awarded)
-    new_balance = await get_user_balance(user_id)
-    
-    # Log audit
-    await log_audit(
-        action=f"central_payment_{payment_type}",
-        user_id=user_id,
-        details={
-            "tx_id": tx_id,
-            "amount": amount,
-            "platform_fee": platform_fee,
-            "recipient_id": req.recipient_id,
-            "cashback": cashback,
-            "referral_reward": referral_reward,
-        },
-        status="success"
-    )
-    
     return CentralPaymentResult(
-        success=True,
-        transaction_id=tx_id,
-        reference=ref,
-        user_new_balance=new_balance,
-        recipient_earnings=recipient_amount if req.recipient_id else None,
-        platform_fee=platform_fee,
-        cashback_earned=loyalty_rewards.get("cashback_earned") or (cashback if cashback > 0 else None),
-        referral_reward=referral_reward if referral_reward > 0 else None,
+        success=False,
+        error="Legacy central payment processor is disabled. Use canonical wallet operations.",
     )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# ACTIVITY TRACKING
-# ══════════════════════════════════════════════════════════════════════════════
 
 async def track_user_activity(user_id: str, activity_type: str, amount: float):
     """Track user spending and engagement."""
