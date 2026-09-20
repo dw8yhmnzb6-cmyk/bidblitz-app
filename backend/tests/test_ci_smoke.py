@@ -2666,3 +2666,19 @@ def test_push_and_support_routes_are_not_cross_registered_twice():
     assert '@router.get("/{ticket_id}")' not in support_legacy
     assert '@router.post("/{ticket_id}/close")' not in support_legacy
 
+def test_admin_transactions_route_is_single_and_supports_both_admin_uis():
+    admin = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+    management = (BACKEND_DIR / "routes" / "admin_management.py").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPage.jsx").read_text(encoding="utf-8")
+    management_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminManagementPage.jsx").read_text(encoding="utf-8")
+
+    assert '@router.get("/transactions")' not in admin
+    assert '@router.get("/transactions-basic")' in admin
+    assert '@router.get("/transactions")' in management
+    assert 'search: str = ""' in management
+    assert 'txn_type: Optional[str] = None' in management
+    assert 'search_term = (q or search or "").strip()' in management
+    assert "effective_type = type or txn_type" in management
+    assert "/api/admin/transactions?search=" in admin_page
+    assert "/api/admin/transactions?" in management_page
+
