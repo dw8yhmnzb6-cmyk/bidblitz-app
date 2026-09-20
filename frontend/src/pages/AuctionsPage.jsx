@@ -322,7 +322,14 @@ const WinnerCheckoutModal = ({
               <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                 <Globe size={16} className="mb-2 text-[#A855F7]" />
                 <p className="text-xs font-bold text-white/80">{checkout?.shipping_address?.country || "Versandland"}</p>
-                <p className="mt-1 text-[10px] text-white/40">Tracking erst nach echter Übergabe an Versand</p>
+                {checkout?.tracking_number ? (
+                  <>
+                    <p className="mt-1 text-[10px] text-white/50">{checkout?.carrier || "Carrier"}</p>
+                    <p className="mt-1 break-all font-mono text-[10px] text-[#00C2FF]" data-testid="winner-tracking-number">{checkout.tracking_number}</p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-[10px] text-white/40">Tracking erst nach echter Übergabe an Versand</p>
+                )}
               </div>
             </div>
             <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-3 text-sm font-bold text-white/80">Schließen</button>
