@@ -617,6 +617,8 @@ PRICING_NUMERIC_FIELDS = {
     "per_min",
     "minimum",
     "booking_fee",
+    "daily_cap",
+    "min_balance",
     "range_base_low",
     "range_base_high",
     "range_booking_fee_low",
