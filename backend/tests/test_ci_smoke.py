@@ -2267,3 +2267,17 @@ def test_destructive_admin_demo_cleanup_is_post_superadmin_confirmed_and_audited
     assert 'req.confirmation != "DELETE_DEMO_DATA"' in source
     assert '"admin_cleanup_demo_data"' in source
 
+def test_duplicate_legacy_kids_money_router_stays_unmounted():
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    canonical = (BACKEND_DIR / "routes" / "kids.py").read_text(encoding="utf-8")
+    legacy = (BACKEND_DIR / "routes" / "kids_system.py").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+
+    assert '"routes.kids", "router"' in registry
+    assert '"routes.kids_system", "router"' not in registry
+    assert '@router.post("/children/{child_id}/transfer")' in canonical
+    assert "Idempotency-Key erforderlich" in canonical
+    assert "kids-transfer-rollback" in canonical
+    assert '@router.post("/transfer")' in legacy
+    assert 'transferToChild: (childId, body, idempotencyKey = "")' in api
+    assert '/api/kids/children/' in api
