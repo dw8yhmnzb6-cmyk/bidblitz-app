@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, Plus, Save, SlidersHorizontal, Sparkles, ToggleLeft, ToggleRight, Pencil, MapPin, Store, Tag } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Save, SlidersHorizontal, Sparkles, ToggleLeft, ToggleRight, Pencil, MapPin, Store, Tag, Package } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
 
@@ -16,7 +16,7 @@ const EMPTY_FORM = {
   active: true,
 };
 
-export default function AdminChargeOfferRulesPage({ onBack }) {
+export default function AdminChargeOfferRulesPage({ onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [data, setData] = useState({ rules: [], summary: {} });
@@ -111,6 +111,13 @@ export default function AdminChargeOfferRulesPage({ onBack }) {
             <p className="text-[11px] uppercase tracking-[0.24em] text-[#6EE7F9]">Charge Admin</p>
             <h1 className="text-xl font-black text-white">Angebotsregeln je Region, Händler und Kategorie</h1>
           </div>
+          <button
+            onClick={() => onNavigate?.("/admin/charge-catalog")}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-[#6EE7F9]/20 bg-[#6EE7F9]/10 px-4 text-xs font-black text-[#D8FCFF]"
+            data-testid="admin-charge-offer-rules-catalog-link"
+          >
+            <Package size={14} />Katalog
+          </button>
         </div>
       </div>
 
