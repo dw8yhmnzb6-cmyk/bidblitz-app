@@ -292,7 +292,7 @@ async def claim_birthday_bonus(request: Request):
         raise HTTPException(status_code=500, detail="Geburtstags-Wallet-Gutschrift benötigt Abstimmung")
 
     blz_marker = f"birthday_reward_markers.y{now.year}"
-    await db.users.update_one(
+    blz_result = await db.users.update_one(
         {"_id": _oid(uid), blz_marker: {"$exists": False}},
         {
             "$inc": {"balance_blz": BIRTHDAY_BLZ},
@@ -303,6 +303,26 @@ async def claim_birthday_bonus(request: Request):
             }},
         },
     )
+    if blz_result.modified_count != 1:
+        marker_exists = await db.users.find_one(
+            {"_id": _oid(uid), blz_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not marker_exists:
+            await db.birthday_claims.update_one(
+                {"_id": claim_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "wallet_transaction_id": wallet_result.transaction_id,
+                    "blz_error": "birthday_blz_credit_failed",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="EUR wurde gutgeschrieben, BLZ-Gutschrift benötigt Abstimmung",
+            )
+
     await db.transactions.update_one(
         {"_id": f"{claim_id}:blz"},
         {"$setOnInsert": {
@@ -329,7 +349,7 @@ async def claim_birthday_bonus(request: Request):
             "status": "completed",
             "wallet_transaction_id": wallet_result.transaction_id,
             "claimed_at": datetime.now(timezone.utc).isoformat(),
-        }, "$unset": {"wallet_error": ""}},
+        }, "$unset": {"wallet_error": "", "blz_error": ""}},
     )
     await db.notifications.update_one(
         {"_id": f"birthday:{uid}:{now.year}:notification"},
