@@ -37,6 +37,21 @@ def _require_live_smm_provider_for_value_action() -> None:
         )
 
 
+@router.get("/capabilities")
+async def smm_capabilities():
+    provider_connected = bool(smm_provider.is_configured())
+    return {
+        "provider_connected": provider_connected,
+        "orders_enabled": bool(TEST_MODE or provider_connected),
+        "test_mode": bool(TEST_MODE),
+        "message": (
+            None
+            if TEST_MODE or provider_connected
+            else "BlitzBoost-Bestellungen sind deaktiviert, bis der verifizierte SMM-Provider live verbunden ist."
+        ),
+    }
+
+
 # ── Service Catalog ──
 SMM_SERVICES = [
     # Instagram (8 Services)
