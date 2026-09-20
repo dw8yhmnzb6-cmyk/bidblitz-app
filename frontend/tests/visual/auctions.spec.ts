@@ -58,7 +58,7 @@ async function mockAuctionApi(page: Page) {
       return;
     }
 
-    const pathname = new URL(route.request().url()).pathname;
+    const pathname = new URL(route.request().url()).pathname.replace(/^\/undefined(?=\/api\/)/, '');
     const body = pathname === '/api/auctions'
       ? { auctions: [VISUAL_AUCTION] }
       : pathname === `/api/auctions/${VISUAL_AUCTION.auction_id}`
