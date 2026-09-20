@@ -1147,6 +1147,16 @@ async def send_blz(req: SendBLZRequest, request: Request):
                 raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
 
     recipient_marker = f"transfer_in.{transfer_id}"
+    await db.mining_wallets.update_one(
+        {"user_id": recipient_id},
+        {"$setOnInsert": {
+            "user_id": recipient_id,
+            "blz_balance": 0.0,
+            "total_mined": 0.0,
+            "total_withdrawn": 0.0,
+        }},
+        upsert=True,
+    )
     try:
         credit = await db.mining_wallets.update_one(
             {"user_id": recipient_id, recipient_marker: {"$exists": False}},
@@ -1157,9 +1167,7 @@ async def send_blz(req: SendBLZRequest, request: Request):
                     "sender_id": user_id,
                     "created_at": now,
                 }},
-                "$setOnInsert": {"user_id": recipient_id, "total_mined": 0.0, "total_withdrawn": 0.0},
             },
-            upsert=True,
         )
     except Exception as exc:
         await db.mining_transfer_operations.update_one(
