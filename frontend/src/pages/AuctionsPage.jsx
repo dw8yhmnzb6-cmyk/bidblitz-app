@@ -802,6 +802,13 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
         && a.winner_payment_status !== "paid"
       )
     : [];
+  const paidWins = (!isGuest && user?.id)
+    ? auctions.filter(a =>
+        a.status === "ended"
+        && a.winner_id === user.id
+        && a.winner_payment_status === "paid"
+      )
+    : [];
 
   return (
     <motion.div data-testid="auctions-page" className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -876,6 +883,39 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {paidWins.length > 0 && (
+          <div className="space-y-2" data-testid="auction-paid-wins">
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#00E89D]/70">Meine Bestellungen</p>
+              <p className="text-[10px] text-white/30">{paidWins.length} bezahlt</p>
+            </div>
+            {paidWins.slice(0, 5).map((auc) => {
+              const fulfillment = auc.winner_fulfillment_status || "pending";
+              return (
+                <div key={auc.auction_id} className="flex items-center gap-3 rounded-2xl border border-[#00E89D]/15 bg-[#00E89D]/[0.05] p-3">
+                  {auc.image_url ? (
+                    <img src={auc.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#00E89D]/10"><Package size={20} className="text-[#00E89D]" /></div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#00E89D]/70">Bezahlt · {fulfillment}</p>
+                    <p className="truncate text-sm font-bold text-white/85">{auc.title}</p>
+                    <p className="text-xs text-white/40">Endpreis €{Number(auc.current_price || 0).toFixed(2)} · Versand kostenlos</p>
+                  </div>
+                  <button
+                    onClick={() => openWinnerCheckout(auc)}
+                    className="rounded-xl border border-[#00E89D]/20 bg-[#00E89D]/10 px-3 py-2 text-xs font-black text-[#00E89D]"
+                    data-testid={`auction-order-win-${auc.auction_id}`}
+                  >
+                    Bestellung
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
