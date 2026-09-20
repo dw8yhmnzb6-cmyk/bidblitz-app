@@ -981,6 +981,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const firstLoad = useRef(true);
   const lockupAttemptKeyRef = useRef(null);
   const quickBonusAttemptKeyRef = useRef(null);
+  const claimAttemptKeyRef = useRef(null);
   const push = usePushNotifications();
 
   const questRouteMap = {
@@ -1050,7 +1051,17 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     if (!requireValueAction()) return;
     setLoading(true);
     try {
-      const res = await api("/api/blitz-mine/claim", { method: "POST" });
+      if (!claimAttemptKeyRef.current) {
+        claimAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `blitz-claim-${crypto.randomUUID()}`
+          : `blitz-claim-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = claimAttemptKeyRef.current;
+      const res = await api("/api/blitz-mine/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      claimAttemptKeyRef.current = null;
       toast.success(`+${fmt(res.amount_blz, 4)} BLZ gesammelt! 🎉`);
       if (res.milestone_hit) {
         setMilestoneModal(res);
