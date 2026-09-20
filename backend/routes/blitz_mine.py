@@ -605,6 +605,15 @@ async def claim(request: Request):
     _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-session-claim")
+    claim_id = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+
+    prior = await db.blitz_mine_sessions.find_one(
+        {"user_id": user_id, "claim_id": claim_id, "claimed": True},
+        {"_id": 0, "claim_result": 1},
+    )
+    if prior and prior.get("claim_result"):
+        return {**prior["claim_result"], "replayed": True}
 
     session = await _get_active_session(user_id)
     if not session:
@@ -615,153 +624,169 @@ async def claim(request: Request):
         remaining = int((ends_at - _now()).total_seconds())
         raise HTTPException(400, f"Session läuft noch {remaining // 3600}h {(remaining % 3600) // 60}m.")
 
-    earnings = float(session.get("estimated_earnings", 0.0)) + float(session.get("boost_bonus_blz", 0.0) or 0.0)
-    session_key = hashlib.sha256(
-        f"{user_id}:{session['started_at']}".encode("utf-8")
-    ).hexdigest()[:24]
-
-    claimed = await db.blitz_mine_sessions.update_one(
+    now = _now()
+    now_iso = now.isoformat()
+    lock_until = (now + timedelta(minutes=5)).isoformat()
+    acquired = await db.blitz_mine_sessions.update_one(
         {
             "user_id": user_id,
             "started_at": session["started_at"],
-            "claimed": {"$ne": True},
-            "claim_state": {"$ne": "processing"},
+            "claimed": False,
+            "$or": [
+                {"claim_lock_until": {"$exists": False}},
+                {"claim_lock_until": {"$lt": now_iso}},
+            ],
         },
         {"$set": {
             "claim_state": "processing",
-            "claim_started_at": _now().isoformat(),
-            "claim_id": session_key,
+            "claim_id": claim_id,
+            "claim_started_at": now_iso,
+            "claim_lock_until": lock_until,
         }},
     )
-    if claimed.modified_count != 1:
+    if acquired.modified_count != 1:
         current = await db.blitz_mine_sessions.find_one(
             {"user_id": user_id, "started_at": session["started_at"]},
             {"_id": 0},
         ) or {}
-        if current.get("claimed"):
-            return {
-                "success": True,
-                "amount_blz": round(float(current.get("final_earnings", 0) or 0), 4),
-                "streak_days": int(current.get("final_streak_days", 0) or 0),
-                "total_mined": round(float(current.get("final_total_mined", 0) or 0), 4),
-                "milestone_bonus_blz": round(float(current.get("final_milestone_bonus", 0) or 0), 4),
-                "milestone_hit": current.get("final_milestone_hit"),
-                "replayed": True,
-            }
+        if current.get("claimed") and current.get("claim_id") == claim_id and current.get("claim_result"):
+            return {**current["claim_result"], "replayed": True}
         raise HTTPException(status_code=409, detail="Mining-Claim wird bereits verarbeitet.")
 
-    payout = await _mutate_blitz_wallet_once(
-        user_id=user_id,
-        amount=earnings,
-        direction="credit",
-        idempotency_key=f"blitz-mine-claim:{session_key}:earnings",
-        description="BlitzMine Session Reward",
-        category="blitz_mine_claim",
+    earnings = round(
+        float(session.get("estimated_earnings", 0.0))
+        + float(session.get("boost_bonus_blz", 0.0) or 0.0),
+        4,
     )
-
-    # Update profile: streak, totals
     profile = await _get_profile(user_id)
-    last_claim = profile.get("last_claim_date")
-    today = _now().date().isoformat()
-    yesterday = (_now().date() - timedelta(days=1)).isoformat()
-    prev_streak = int(profile.get("streak_days", 0))
-    new_streak = prev_streak + 1 if last_claim == yesterday else 1
+    profile_marker = f"claim_markers.{claim_id}"
+    marker = (profile.get("claim_markers") or {}).get(claim_id)
 
-    # Streak milestone reward (paid once when crossing a tier)
-    claimed_milestones = set(profile.get("claimed_milestones", []))
-    milestone_bonus = 0.0
-    milestone_hit = None
-    for m in STREAK_MILESTONES:
-        if new_streak >= m["days"] and m["days"] not in claimed_milestones:
-            milestone_bonus += m["bonus_blz"]
-            claimed_milestones.add(m["days"])
-            milestone_hit = m  # last one crossed (if multiple)
+    if marker:
+        new_streak = int(marker.get("streak_days", 1) or 1)
+        milestone_bonus = round(float(marker.get("milestone_bonus_blz", 0.0) or 0.0), 4)
+        milestone_hit = marker.get("milestone_hit")
+    else:
+        last_claim = profile.get("last_claim_date")
+        today = now.date().isoformat()
+        yesterday = (now.date() - timedelta(days=1)).isoformat()
+        prev_streak = int(profile.get("streak_days", 0) or 0)
+        new_streak = prev_streak + 1 if last_claim == yesterday else 1
 
-    await db.blitz_mine_profile.update_one(
-        {"user_id": user_id},
-        {"$inc": {"total_mined": earnings + milestone_bonus, "total_sessions": 1},
-         "$set": {"last_claim_date": today, "streak_days": new_streak,
-                  "claimed_milestones": list(sorted(claimed_milestones))}},
-    )
+        claimed_milestones = set(profile.get("claimed_milestones", []))
+        milestone_bonus = 0.0
+        milestone_hit = None
+        for milestone in STREAK_MILESTONES:
+            if new_streak >= milestone["days"] and milestone["days"] not in claimed_milestones:
+                milestone_bonus += milestone["bonus_blz"]
+                claimed_milestones.add(milestone["days"])
+                milestone_hit = milestone
+        milestone_bonus = round(milestone_bonus, 4)
+        marker_value = {
+            "earnings_blz": earnings,
+            "milestone_bonus_blz": milestone_bonus,
+            "milestone_hit": milestone_hit,
+            "streak_days": new_streak,
+            "created_at": now_iso,
+        }
+        profile_update = await db.blitz_mine_profile.update_one(
+            {"user_id": user_id, profile_marker: {"$exists": False}},
+            {
+                "$inc": {
+                    "total_mined": earnings + milestone_bonus,
+                    "total_sessions": 1,
+                },
+                "$set": {
+                    "last_claim_date": today,
+                    "streak_days": new_streak,
+                    "claimed_milestones": list(sorted(claimed_milestones)),
+                    profile_marker: marker_value,
+                },
+            },
+        )
+        if profile_update.modified_count != 1:
+            fresh_profile = await db.blitz_mine_profile.find_one(
+                {"user_id": user_id, profile_marker: {"$exists": True}},
+                {"_id": 0, "claim_markers": 1},
+            ) or {}
+            marker = (fresh_profile.get("claim_markers") or {}).get(claim_id)
+            if not marker:
+                await db.blitz_mine_sessions.update_one(
+                    {"user_id": user_id, "started_at": session["started_at"], "claim_id": claim_id},
+                    {"$set": {"claim_state": "reconciliation_required"}},
+                )
+                raise HTTPException(status_code=500, detail="Mining-Profil benötigt Abstimmung")
+            new_streak = int(marker.get("streak_days", 1) or 1)
+            milestone_bonus = round(float(marker.get("milestone_bonus_blz", 0.0) or 0.0), 4)
+            milestone_hit = marker.get("milestone_hit")
 
-    milestone_payout = None
+    earning_tx = None
+    if earnings > 0:
+        earning_tx = await _mutate_blitz_wallet_once(
+            user_id=user_id,
+            amount=earnings,
+            direction="credit",
+            idempotency_key=f"blitz-session-claim:{claim_id}:earnings",
+            description=f"BlitzMine Reward ({new_streak}d streak)",
+            category="blitz_mine_claim",
+        )
+
+    milestone_tx = None
     if milestone_bonus > 0:
-        milestone_payout = await _mutate_blitz_wallet_once(
+        milestone_tx = await _mutate_blitz_wallet_once(
             user_id=user_id,
             amount=milestone_bonus,
             direction="credit",
-            idempotency_key=f"blitz-mine-claim:{session_key}:milestone",
+            idempotency_key=f"blitz-session-claim:{claim_id}:milestone",
             description=f"BlitzMine Streak-Bonus ({new_streak} Tage)",
             category="blitz_mine_streak_bonus",
         )
-        # Send milestone email (non-blocking)
-        try:
-            from routes.email_service import notify_streak_milestone
-            import asyncio
-            if milestone_hit:
-                asyncio.create_task(notify_streak_milestone(
-                    user_email=user.get("email", ""),
-                    user_name=user.get("username") or user.get("email", "").split("@")[0],
-                    title=milestone_hit["title"],
-                    days=new_streak,
-                    bonus_blz=milestone_bonus,
-                    rate_bonus=int(milestone_hit["multiplier_bonus"] * 100),
-                ))
-        except Exception:
-            pass
 
-    # Record tx for history
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "blitz_mine_claim",
+    fresh_profile = await db.blitz_mine_profile.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "total_mined": 1},
+    ) or {}
+    claim_result = {
+        "success": True,
         "amount_blz": earnings,
-        "amount_eur": 0.0,
-        "description": f"BlitzMine Reward ({new_streak}d streak)",
-        "created_at": _now().isoformat(),
-    })
-    if milestone_bonus > 0:
-        await db.transactions.insert_one({
-            "user_id": user_id,
-            "type": "blitz_mine_streak_bonus",
-            "amount_blz": milestone_bonus,
-            "amount_eur": 0.0,
-            "description": f"Streak-Bonus: {milestone_hit['title']} ({new_streak} Tage)",
-            "created_at": _now().isoformat(),
-        })
-
-    final_total_mined = round(profile.get("total_mined", 0.0) + earnings + milestone_bonus, 4)
+        "streak_days": new_streak,
+        "total_mined": round(float(fresh_profile.get("total_mined", 0.0) or 0.0), 4),
+        "milestone_bonus_blz": milestone_bonus,
+        "milestone_hit": milestone_hit,
+        "earning_transaction_id": earning_tx["transaction_id"] if earning_tx else None,
+        "milestone_transaction_id": milestone_tx["transaction_id"] if milestone_tx else None,
+    }
     finalized = await db.blitz_mine_sessions.update_one(
         {
             "user_id": user_id,
             "started_at": session["started_at"],
+            "claimed": False,
             "claim_state": "processing",
-            "claim_id": session_key,
+            "claim_id": claim_id,
         },
-        {"$set": {
-            "claimed": True,
-            "claim_state": "completed",
-            "claimed_at": _now().isoformat(),
-            "final_earnings": earnings,
-            "final_streak_days": new_streak,
-            "final_total_mined": final_total_mined,
-            "final_milestone_bonus": milestone_bonus,
-            "final_milestone_hit": milestone_hit,
-            "payout_transaction_id": payout["transaction_id"],
-            "milestone_transaction_id": milestone_payout["transaction_id"] if milestone_payout else None,
-        }},
+        {
+            "$set": {
+                "claimed": True,
+                "claim_state": "completed",
+                "claimed_at": _now().isoformat(),
+                "final_earnings": earnings,
+                "claim_result": claim_result,
+            },
+            "$unset": {"claim_lock_until": ""},
+        },
     )
     if finalized.modified_count != 1:
-        raise HTTPException(status_code=500, detail="BLZ wurden gutgeschrieben, Mining-Claim benötigt Abstimmung")
+        current = await db.blitz_mine_sessions.find_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"_id": 0, "claimed": 1, "claim_id": 1, "claim_result": 1},
+        ) or {}
+        if current.get("claimed") and current.get("claim_id") == claim_id and current.get("claim_result"):
+            return {**current["claim_result"], "replayed": True}
+        raise HTTPException(status_code=500, detail="BLZ wurden gutgeschrieben, Session-Abschluss benötigt Abstimmung")
 
-    return {
-        "success": True,
-        "amount_blz": round(earnings, 4),
-        "streak_days": new_streak,
-        "total_mined": final_total_mined,
-        "milestone_bonus_blz": round(milestone_bonus, 4),
-        "milestone_hit": milestone_hit,
-        "replayed": bool(payout["replayed"]) and (milestone_payout is None or bool(milestone_payout["replayed"])),
-    }
+    return {**claim_result, "replayed": bool(
+        (earning_tx and earning_tx["replayed"]) or (milestone_tx and milestone_tx["replayed"])
+    )}
 
 
 @router.post("/boost-tap")
