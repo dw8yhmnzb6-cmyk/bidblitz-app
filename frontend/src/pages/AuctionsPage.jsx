@@ -730,7 +730,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     if (!winnerCheckoutKeyRef.current) {
       winnerCheckoutKeyRef.current = typeof crypto?.randomUUID === "function"
         ? `auction-winner-${crypto.randomUUID()}`
-        : `auction-winner-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        : `auction-winner-${Date.now()}-${winnerCheckout.auction_id}`;
     }
     setWinnerCheckoutPaying(true);
     setWinnerCheckoutError("");
