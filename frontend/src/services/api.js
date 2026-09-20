@@ -475,6 +475,7 @@ export const api = {
   getChargeWarrantyTransfers: () => request("/api/charge-app/warranty-transfers"),
   acceptChargeWarrantyTransfer: (transferId) => request(`/api/charge-app/warranty-transfers/${encodeURIComponent(transferId)}/accept`, { method: "PUT" }),
   cancelChargeWarrantyTransfer: (transferId) => request(`/api/charge-app/warranty-transfers/${encodeURIComponent(transferId)}/cancel`, { method: "PUT" }),
+  declineChargeWarrantyTransfer: (transferId) => request(`/api/charge-app/warranty-transfers/${encodeURIComponent(transferId)}/decline`, { method: "PUT" }),
     createChargeWarrantyClaim: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/claims`, { method: "POST", body: JSON.stringify(body) }),
   getChargeClaims: () => request("/api/charge-app/claims"),
   getChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}`),
