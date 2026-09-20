@@ -1977,7 +1977,96 @@ async def delete_invoice_attachment(
     }
 
 
-@router.post("/warranty/{registration_id}/transfer")
+@router.get("/warranty/{registration_id}/service-history")
+async def get_charge_warranty_service_history(registration_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    warranty = await _find_user_warranty(user_id, registration_id)
+    card = _warranty_card(warranty)
+
+    events: List[Dict[str, Any]] = [{
+        "event_id": f"registration:{registration_id}",
+        "event_type": "warranty_registered",
+        "status": card.get("status") or "active",
+        "title": "Garantie registriert",
+        "description": card.get("evidence_label") or "Digitale Charge-Garantie",
+        "actor_role": "customer",
+        "created_at": warranty.get("created_at") or "",
+        "claim_id": "",
+    }]
+
+    for transfer in warranty.get("transfer_history") or []:
+        events.append({
+            "event_id": f"transfer:{transfer.get('transfer_id')}",
+            "event_type": "ownership_transfer",
+            "status": "completed",
+            "title": "Garantie übertragen",
+            "description": "Besitzerwechsel der digitalen Charge-Garantie",
+            "actor_role": "system",
+            "created_at": transfer.get("transferred_at") or "",
+            "claim_id": "",
+        })
+
+    claims = await db.merchant_warranty_claims.find(
+        {
+            "registration_id": registration_id,
+            "customer_user_id": user_id,
+        },
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(100)
+
+    for claim in claims:
+        claim_id = str(claim.get("claim_id") or "")
+        events.append({
+            "event_id": f"claim:{claim_id}",
+            "event_type": "claim_opened",
+            "status": "open",
+            "title": claim.get("subject") or "Charge-Care-Fall eröffnet",
+            "description": claim.get("issue_summary") or claim.get("description") or "",
+            "actor_role": "customer",
+            "created_at": claim.get("created_at") or "",
+            "claim_id": claim_id,
+        })
+        for index, history in enumerate(claim.get("status_history") or []):
+            if (
+                str(history.get("status") or "") == "open"
+                and str(history.get("created_at") or "") == str(claim.get("created_at") or "")
+            ):
+                continue
+            events.append({
+                "event_id": f"claim-status:{claim_id}:{index}",
+                "event_type": "claim_status",
+                "status": history.get("status") or claim.get("status") or "",
+                "title": {
+                    "in_review": "Garantiefall in Prüfung",
+                    "approved": "Lösung freigegeben",
+                    "rejected": "Garantiefall abgelehnt",
+                    "resolved": "Garantiefall abgeschlossen",
+                    "cancelled": "Garantiefall storniert",
+                    "open": "Garantiefall geöffnet",
+                }.get(str(history.get("status") or ""), "Garantiefall aktualisiert"),
+                "description": history.get("note") or "",
+                "actor_role": history.get("actor_role") or "system",
+                "created_at": history.get("created_at") or "",
+                "claim_id": claim_id,
+            })
+
+    events.sort(key=lambda item: str(item.get("created_at") or ""))
+    return {
+        "registration_id": registration_id,
+        "product_id": warranty.get("product_id") or "",
+        "product_name": warranty.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number": warranty.get("serial_number") or "",
+        "merchant_name": warranty.get("merchant_name") or "",
+        "warranty_status": card.get("status"),
+        "valid_until": card.get("valid_until"),
+        "service_events": events,
+        "service_events_total": len(events),
+        "claims_total": len(claims),
+    }
+
+
+@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")
 async def create_charge_warranty_transfer(
     registration_id: str,
     req: ChargeWarrantyTransferRequest,
