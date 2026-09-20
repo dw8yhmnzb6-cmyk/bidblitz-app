@@ -62,7 +62,7 @@ async function mockMobilityApi(page: Page) {
         geometry: [[21.1655, 42.6629], [21.1636, 42.6616]],
         pickup: { address: 'Prishtina, Kosovo', lat: 42.6629, lng: 21.1655, city: 'Prishtina', country: 'Kosovo', country_code: 'XK' },
         dropoff: { address: 'Sheshi Nënë Tereza, Prishtina, Kosovo', lat: 42.6616, lng: 21.1636 },
-        pricing_context: { profile_key: 'XK', region: 'Kosovo', city: 'Prishtina', country: 'Kosovo', country_code: 'XK', source: 'Kosovo local mobility benchmark', currency: 'EUR' },
+        pricing_context: { profile_key: 'XK:prishtina', region: 'Kosovo', city: 'Prishtina', country: 'Kosovo', country_code: 'XK', source: 'Prishtina public taxi and scooter benchmark', currency: 'EUR', profile_scope: 'city', city_key: 'prishtina' },
         options: [
           { type: 'taxi', label: 'Taxi', icon: 'car-front', price_eur: 4.55, duration_min: 8, distance_km: 3.4, eco_score: 55, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '2,00 € Start + 0,75 €/km', estimated: true },
           { type: 'scooter', label: 'E-Scooter', icon: 'zap', price_eur: 1.70, duration_min: 10, distance_km: 3.4, eco_score: 86, payment_methods: ['wallet'], pricing_region: 'Kosovo', pricing_basis: '0,20 € Start + 0,15 €/min', estimated: true },
@@ -182,6 +182,7 @@ test('Kosovo route shows local scooter tariff clearly on mobile', async ({ page 
   await page.getByTestId('mobility-search-result-0').click();
 
   await expect(page.getByTestId('mobility-pricing-context')).toContainText('Prishtina');
+  await expect(page.getByTestId('mobility-pricing-scope')).toHaveText('Stadttarif');
   await expect(page.getByTestId('mobility-option-scooter')).toBeVisible();
   await expect(page.getByTestId('mobility-option-scooter')).toContainText('1,70');
   await expect(page.getByTestId('mobility-pricing-basis-scooter')).toContainText('0,20 € Start + 0,15 €/min');
