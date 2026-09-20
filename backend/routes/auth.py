@@ -7,7 +7,7 @@ from core.security import (
     hash_password, verify_password, create_access_token, create_refresh_token,
     set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user, validate_auth_state
 )
-from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
+from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES, TEST_MODE
 from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN, RATE_PASSWORD
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.payment_engine import credit_wallet, TransactionType
@@ -373,8 +373,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "balance": 0.0,
         "balance_blz": WELCOME_BLZ,
         "currency": "EUR",
-        "card_number": generate_card_number(),
-        "card_expiry": generate_card_expiry(),
+        "card_number": generate_card_number() if TEST_MODE else None,
+        "card_expiry": generate_card_expiry() if TEST_MODE else None,
         "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
         "welcome_bonus_received": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
