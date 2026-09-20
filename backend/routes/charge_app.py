@@ -407,6 +407,9 @@ def _warranty_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "serial_number": doc.get("serial_number") or "—",
         "purchase_date": doc.get("purchase_date") or purchase_dt.date().isoformat(),
         "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
+        "merchant_id": doc.get("merchant_id") or "",
+        "merchant_user_id": doc.get("merchant_user_id") or "",
+        "merchant_slug": doc.get("merchant_slug") or "",
         "invoice_number": doc.get("invoice_number") or "—",
         "status": effective_status,
         "warranty_months": months,
@@ -464,6 +467,9 @@ def _invoice_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "invoice_id": doc.get("invoice_id"),
         "invoice_number": doc.get("invoice_number") or "—",
         "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
+        "merchant_id": doc.get("merchant_id") or "",
+        "merchant_user_id": doc.get("merchant_user_id") or "",
+        "merchant_slug": doc.get("merchant_slug") or "",
         "amount": _safe_float(doc.get("amount")),
         "purchase_date": doc.get("purchase_date") or "",
         "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
@@ -602,7 +608,15 @@ def _validate_claim_status(value: str) -> str:
     return normalized
 
 
-def _matches_merchant_context(merchant_name: Any, merchant_payload: Dict[str, Any], slug: str) -> bool:
+def _matches_merchant_context(
+    merchant_name: Any,
+    merchant_payload: Dict[str, Any],
+    slug: str,
+    linked_slug: Any = "",
+) -> bool:
+    direct_slug = str(linked_slug or "").strip().lower()
+    if direct_slug and direct_slug == str(slug or "").strip().lower():
+        return True
     merchant_slug = _slugify(merchant_name)
     if not merchant_slug:
         return False
@@ -1136,13 +1150,17 @@ async def register_charge_warranty(req: ChargeWarrantyRegistrationRequest, reque
     if existing:
         return {"ok": True, "warranty": _warranty_card(existing), "duplicate": True}
 
+    merchant_binding = await _resolve_charge_merchant(req.merchant_name)
     doc = {
         "registration_id": f"CHG-WAR-{uuid.uuid4().hex[:10].upper()}",
         "user_id": user_id,
         "product_name": req.product_name.strip(),
         "serial_number": serial,
         "purchase_date": req.purchase_date.strip(),
-        "merchant_name": req.merchant_name.strip(),
+        "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
+        "merchant_id": merchant_binding.get("merchant_id") or "",
+        "merchant_user_id": merchant_binding.get("merchant_user_id") or "",
+        "merchant_slug": merchant_binding.get("merchant_slug") or "",
         "invoice_number": req.invoice_number.strip(),
         "warranty_months": int(req.warranty_months),
         "status": "active",
@@ -1166,11 +1184,15 @@ async def save_charge_invoice(req: ChargeInvoiceSaveRequest, request: Request):
     if existing:
         return {"ok": True, "invoice": existing, "duplicate": True}
 
+    merchant_binding = await _resolve_charge_merchant(req.merchant_name)
     doc = {
         "invoice_id": f"CHG-INV-{uuid.uuid4().hex[:10].upper()}",
         "user_id": user_id,
         "invoice_number": req.invoice_number.strip(),
-        "merchant_name": req.merchant_name.strip(),
+        "merchant_name": merchant_binding.get("merchant_name") or req.merchant_name.strip(),
+        "merchant_id": merchant_binding.get("merchant_id") or "",
+        "merchant_user_id": merchant_binding.get("merchant_user_id") or "",
+        "merchant_slug": merchant_binding.get("merchant_slug") or "",
         "amount": _safe_float(req.amount),
         "purchase_date": req.purchase_date.strip(),
         "product_name": req.product_name.strip(),
@@ -1197,6 +1219,13 @@ async def update_charge_warranty(
     for key in ("product_name", "serial_number", "purchase_date", "merchant_name", "invoice_number"):
         if key in updates:
             updates[key] = _clean_optional_text(updates[key])
+
+    if "merchant_name" in updates:
+        merchant_binding = await _resolve_charge_merchant(updates.get("merchant_name"))
+        updates["merchant_name"] = merchant_binding.get("merchant_name") or updates.get("merchant_name") or ""
+        updates["merchant_id"] = merchant_binding.get("merchant_id") or ""
+        updates["merchant_user_id"] = merchant_binding.get("merchant_user_id") or ""
+        updates["merchant_slug"] = merchant_binding.get("merchant_slug") or ""
 
     product_name = updates.get("product_name", current.get("product_name", ""))
     serial_number = updates.get("serial_number", current.get("serial_number", ""))
@@ -1252,6 +1281,13 @@ async def update_charge_invoice(
             updates[key] = _clean_optional_text(updates[key])
     if "amount" in updates:
         updates["amount"] = _safe_float(updates["amount"])
+
+    if "merchant_name" in updates:
+        merchant_binding = await _resolve_charge_merchant(updates.get("merchant_name"))
+        updates["merchant_name"] = merchant_binding.get("merchant_name") or updates.get("merchant_name") or ""
+        updates["merchant_id"] = merchant_binding.get("merchant_id") or ""
+        updates["merchant_user_id"] = merchant_binding.get("merchant_user_id") or ""
+        updates["merchant_slug"] = merchant_binding.get("merchant_slug") or ""
 
     invoice_number = updates.get("invoice_number", current.get("invoice_number", ""))
     merchant_name = updates.get("merchant_name", current.get("merchant_name", ""))
@@ -1442,7 +1478,14 @@ async def create_charge_warranty_claim(
     if active_existing:
         return {"ok": True, "claim": _claim_card(active_existing), "duplicate": True}
 
-    merchant_binding = await _resolve_charge_merchant(warranty.get("merchant_name"))
+    merchant_binding = {
+        "merchant_id": warranty.get("merchant_id") or "",
+        "merchant_user_id": warranty.get("merchant_user_id") or "",
+        "merchant_slug": warranty.get("merchant_slug") or "",
+        "merchant_name": warranty.get("merchant_name") or "",
+    }
+    if not merchant_binding.get("merchant_user_id"):
+        merchant_binding = await _resolve_charge_merchant(warranty.get("merchant_name"))
     now = _now_iso()
     claim = {
         "claim_id": f"CHG-CLM-{uuid.uuid4().hex[:10].upper()}",
@@ -1829,7 +1872,7 @@ async def get_charge_merchant_detail(slug: str, request: Request):
     vouchers = await db.vouchers.find({"merchant_id": owner_user_id, "status": "active"}, {"_id": 0}).sort("created_at", -1).limit(4).to_list(4) if owner_user_id else []
     user_warranties = await db.charge_app_warranties.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     user_invoices = await db.charge_app_invoices.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
-    related_warranties = [_warranty_card(item) for item in user_warranties if _matches_merchant_context(item.get("merchant_name"), merchant_payload, slug)][:4]
+    related_warranties = [_warranty_card(item) for item in user_warranties if _matches_merchant_context(item.get("merchant_name"), merchant_payload, slug, item.get("merchant_slug"))][:4]
     related_invoices = [_invoice_card(item) for item in user_invoices if _matches_merchant_context(item.get("merchant_name"), merchant_payload, slug)][:4]
     return {
         "merchant": merchant_payload,
