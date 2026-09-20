@@ -236,9 +236,31 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
   });
   if (!res) return { ok: false, error: "Taxi-Server momentan nicht erreichbar" };
   const data = await readJson(res);
-  return res.ok
-    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null, region: data?.region || '', region_label: data?.region_label || '', fixed_fares: data?.fixed_fares || {} }
-    : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
+  if (!res.ok) return { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
+
+  const sharedPricing = {
+    tariff_zone: data?.tariff_zone || null,
+    time_tariff: data?.time_tariff || null,
+    fixed_fares: data?.fixed_fares || {},
+    region: data?.region || "",
+    region_label: data?.region_label || "",
+  };
+  const estimates = (data?.estimates || []).map((item) => ({
+    ...sharedPricing,
+    ...item,
+    tariff_zone: item?.tariff_zone || sharedPricing.tariff_zone,
+    time_tariff: item?.time_tariff || sharedPricing.time_tariff,
+    fixed_fares: item?.fixed_fares || sharedPricing.fixed_fares,
+    region: item?.region || sharedPricing.region,
+    region_label: item?.region_label || sharedPricing.region_label,
+  }));
+  return {
+    ok: true,
+    estimates,
+    surge: data?.surge || { active: false, multiplier: 1.0 },
+    promo: data?.promo || null,
+    ...sharedPricing,
+  };
 }
 
 export async function fetchPricing() {
