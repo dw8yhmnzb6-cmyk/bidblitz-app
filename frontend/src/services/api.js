@@ -446,6 +446,7 @@ export const api = {
     return request(`/api/charge-app/catalog?${params.toString()}`);
   },
   getChargeCatalogProduct: (productId) => request(`/api/charge-app/catalog/${encodeURIComponent(productId)}`),
+  lookupChargeProduct: (code) => request(`/api/charge-app/product-lookup?code=${encodeURIComponent(code)}`),
   getSavedChargeProducts: () => request("/api/charge-app/saved-products"),
   saveChargeProduct: (productId) => request(`/api/charge-app/saved-products/${encodeURIComponent(productId)}`, { method: "PUT" }),
   unsaveChargeProduct: (productId) => request(`/api/charge-app/saved-products/${encodeURIComponent(productId)}`, { method: "DELETE" }),
