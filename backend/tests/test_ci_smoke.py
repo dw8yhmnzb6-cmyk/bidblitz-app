@@ -2159,3 +2159,13 @@ def test_unsafe_legacy_cashback_and_subscription_routers_stay_unregistered():
     assert 'title="Cashback"' in app
     assert "Käufe über verifizierte Affiliate-/Merchant-Events" in app
 
+def test_auth_does_not_issue_or_expose_fake_card_pan_in_production():
+    auth = (BACKEND_DIR / "routes" / "auth.py").read_text(encoding="utf-8")
+    security = (BACKEND_DIR / "core" / "security.py").read_text(encoding="utf-8")
+
+    assert "from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES, TEST_MODE" in auth
+    assert '"card_number": generate_card_number() if TEST_MODE else None' in auth
+    assert '"card_expiry": generate_card_expiry() if TEST_MODE else None' in auth
+    assert '"card_number": user.get("card_number", "") if TEST_MODE else ""' in security
+    assert '"card_expiry": user.get("card_expiry", "") if TEST_MODE else ""' in security
+
