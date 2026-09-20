@@ -188,6 +188,26 @@ export default function ChargeProductDetailPage({ productId, onBack, onNavigate 
               </button>
             </div>
 
+            {(product.support_steps || []).length ? (
+              <div className="mt-4 rounded-[22px] border border-cyan-200 bg-cyan-50 p-4" data-testid="charge-product-detail-troubleshooting">
+                <div className="flex items-center gap-2">
+                  <LifeBuoy size={16} className="text-cyan-800" />
+                  <div>
+                    <p className="text-sm font-black text-cyan-950">Schnellhilfe</p>
+                    <p className="mt-1 text-xs text-cyan-700">Kurze Schritte für typische Probleme mit diesem Produkt.</p>
+                  </div>
+                </div>
+                <ol className="mt-4 space-y-2">
+                  {(product.support_steps || []).map((step, index) => (
+                    <li key={`${step}-${index}`} className="flex gap-3 rounded-2xl bg-white px-3 py-3 text-sm text-slate-700" data-testid={`charge-product-detail-troubleshooting-step-${index}`}>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0A1626] text-[10px] font-black text-[#6EE7F9]">{index + 1}</span>
+                      <span className="leading-5">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+
             {(product.manual_url || product.support_url) ? (
               <div className="mt-3 grid gap-2 sm:grid-cols-2" data-testid="charge-product-detail-support-links">
                 {product.manual_url ? (
