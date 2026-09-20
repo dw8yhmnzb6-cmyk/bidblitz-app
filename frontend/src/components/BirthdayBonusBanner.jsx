@@ -29,12 +29,12 @@ export default function BirthdayBonusBanner({ isGuest }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || "Fehler");
       toast.success(`🎂 Happy Birthday! €${j.eur} + ${j.blz} BLZ gutgeschrieben!`, { duration: 6000 });
-      setData({ ...data, already_claimed: true });
+      setData({ ...data, already_claimed: true, claim_available: false });
     } catch (e) { toast.error(e.message); }
     setClaiming(false);
   };
 
-  if (isGuest || !data || !data.is_birthday || data.already_claimed || dismissed) return null;
+  if (isGuest || !data || !data.is_birthday || !data.claim_available || data.already_claimed || dismissed) return null;
 
   return (
     <AnimatePresence>
