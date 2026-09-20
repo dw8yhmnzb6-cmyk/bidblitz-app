@@ -1267,7 +1267,7 @@ async def create_pool_checkout(req: PoolCheckoutRequest, request: Request):
         "customer_email": req.customer_email or "",
     }
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     session = await stripe_checkout.create_checkout_session(
         CheckoutSessionRequest(
             amount=float(total),
@@ -1316,7 +1316,7 @@ async def get_pool_checkout_status(session_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Checkout-Session nicht gefunden")
 
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_status = await stripe_checkout.get_checkout_status(session_id)
     new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
     await db.payment_transactions.update_one(
