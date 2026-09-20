@@ -18,3 +18,13 @@ test("desktop never receives the mobile bottom navigation", () => {
   const flags = getAppShellFlags("/mobility-center", true);
   expect(flags.showBottomNav).toBe(false);
 });
+
+
+test("admin routes use their own shell on mobile", () => {
+  for (const route of ["/admin", "/admin/mobility-pricing", "/admin/investor-dashboard"]) {
+    const flags = getAppShellFlags(route, false);
+    expect(flags.isAdminShell).toBe(true);
+    expect(flags.showBackToHome).toBe(false);
+    expect(flags.showBottomNav).toBe(false);
+  }
+});
