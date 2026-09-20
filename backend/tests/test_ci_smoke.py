@@ -2114,6 +2114,9 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'const visibleMarkers = preferredMode' in mobility
     assert '.filter((item) => item.type === preferredMode)' in mobility
     assert '}, [preferredMode]);' in mobility
+    assert 'function formatPrice(value, language = "de")' in mobility
+    assert 'new Intl.NumberFormat(locale' in mobility
+    assert 'formatPrice(paymentOptions.wallet_balance, lang)' in mobility
 
     assert 'function isImmersiveMobilityMapPath(path)' in shell
     assert 'return path === "/mobility-map";' in shell
