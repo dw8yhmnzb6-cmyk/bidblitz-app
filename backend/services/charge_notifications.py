@@ -94,3 +94,11 @@ async def create_charge_notification(
         upsert=True,
     )
     return await db.notifications.find_one({"id": notification_id}, {"_id": 0})
+
+
+async def safe_create_charge_notification(**kwargs) -> Optional[Dict[str, Any]]:
+    """Best-effort wrapper: notifications must never break Charge business flows."""
+    try:
+        return await create_charge_notification(**kwargs)
+    except Exception:
+        return None
