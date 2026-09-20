@@ -549,7 +549,7 @@ def _local_session(doc: Dict[str, Any]) -> Dict[str, Any]:
         "start_date_time": doc.get("started_at") or doc.get("created_at") or _now(),
         "end_date_time": doc.get("stopped_at") or (doc.get("settled_at") if doc.get("status") == "completed" else None),
         "kwh": float(doc.get("kwh_charged") or 0),
-        "cdr_token": {
+        "cdr_token": doc.get("ocpi_token") or {
             "country_code": OCPI_COUNTRY_CODE,
             "party_id": OCPI_PARTY_ID,
             "uid": str(doc.get("id_tag") or doc.get("user_id") or "UNKNOWN")[:36],
@@ -557,7 +557,11 @@ def _local_session(doc: Dict[str, Any]) -> Dict[str, Any]:
             "contract_id": str(doc.get("user_id") or "")[:36],
         },
         "auth_method": "COMMAND",
-        "authorization_reference": doc.get("settlement_ref") or doc.get("reservation_ref"),
+        "authorization_reference": (
+            doc.get("authorization_reference")
+            or doc.get("settlement_ref")
+            or doc.get("reservation_ref")
+        ),
         "location_id": doc.get("charge_point_id"),
         "evse_uid": doc.get("charge_point_id"),
         "connector_id": str(doc.get("connector_id") or 1),
@@ -633,9 +637,13 @@ async def cpo_sessions(
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
-    await _functional_partner(request, authorization)
+    partner = await _functional_partner(request, authorization)
+    base = {
+        "ocpi_external": True,
+        "ocpi_partner_id": partner["partner_id"],
+    }
     query = _updated_window_query(
-        {},
+        base,
         ["settled_at", "last_meter_at", "stopped_at", "started_at", "created_at"],
         date_from,
         date_to,
@@ -656,8 +664,12 @@ async def cpo_cdrs(
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
-    await _functional_partner(request, authorization)
-    query = _updated_window_query({}, ["updated_at", "issued_at"], date_from, date_to)
+    partner = await _functional_partner(request, authorization)
+    base = {
+        "roaming": True,
+        "ocpi_partner_id": partner["partner_id"],
+    }
+    query = _updated_window_query(base, ["updated_at", "issued_at"], date_from, date_to)
     total = await db.ev_receipts.count_documents(query)
     receipts = await db.ev_receipts.find(query).sort("issued_at", 1).skip(offset).limit(limit).to_list(limit)
     data = []
@@ -672,6 +684,7 @@ async def cpo_cdrs(
             "session_id": rec.get("session_id"),
             "cdr_token": _local_session({**sess, "session_id": rec.get("session_id")})["cdr_token"],
             "auth_method": "COMMAND",
+            "authorization_reference": sess.get("authorization_reference"),
             "cdr_location": {
                 "id": sess.get("charge_point_id"),
                 "name": sess.get("charge_point_id"),
