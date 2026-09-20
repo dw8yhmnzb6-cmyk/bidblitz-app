@@ -2211,6 +2211,26 @@ def test_mobility_resolver_selects_hamburg_and_vienna_city_profiles():
     assert vienna["region"] == "Österreich"
 
 
+def test_mobility_address_fallback_selects_hamburg_and_vienna_city_profiles():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    resolver.__globals__["_nominatim_get"] = unavailable
+
+    hamburg = asyncio.run(resolver(53.5511, 9.9937, "Hamburg, Deutschland"))
+    assert hamburg["profile_key"] == "DE:hamburg"
+    assert hamburg["profile_scope"] == "city"
+    assert hamburg["city"] == "Hamburg"
+
+    vienna = asyncio.run(resolver(48.2082, 16.3738, "Wien, Österreich"))
+    assert vienna["profile_key"] == "AT:wien"
+    assert vienna["profile_scope"] == "city"
+    assert vienna["city"] == "Wien"
+
+
 def test_mobility_search_contract_supports_local_first_autocomplete():
     backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
     frontend_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
