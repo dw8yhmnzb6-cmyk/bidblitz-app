@@ -493,7 +493,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception:
         pass
 
-    return serialize_user(user_doc)
+    fresh_user = await db.users.find_one({"_id": result.inserted_id}) or user_doc
+    return serialize_user(fresh_user)
 
 
 @router.post("/login")
