@@ -375,10 +375,45 @@ async def _functional_partner(request: Request, authorization: Optional[str]) ->
     return partner
 
 
-def _page_headers(response: Response, *, total: int, offset: int, limit: int) -> None:
+def _updated_window_query(
+    base: Dict[str, Any],
+    fields: List[str],
+    date_from: Optional[str],
+    date_to: Optional[str],
+) -> Dict[str, Any]:
+    if not date_from and not date_to:
+        return dict(base)
+    bounds: Dict[str, Any] = {}
+    if date_from:
+        bounds["$gte"] = date_from
+    if date_to:
+        bounds["$lt"] = date_to
+
+    clauses: List[Dict[str, Any]] = []
+    for index, field in enumerate(fields):
+        clause: Dict[str, Any] = {field: dict(bounds)}
+        for previous in fields[:index]:
+            clause[previous] = {"$exists": False}
+        clauses.append(clause)
+    window = {"$or": clauses}
+    return {"$and": [dict(base), window]} if base else window
+
+
+def _page_headers(
+    request: Request,
+    response: Response,
+    *,
+    total: int,
+    offset: int,
+    limit: int,
+) -> None:
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Limit"] = str(limit)
     response.headers["X-Offset"] = str(offset)
+    next_offset = offset + limit
+    if next_offset < total:
+        next_url = request.url.include_query_params(offset=next_offset, limit=limit)
+        response.headers["Link"] = f'<{next_url}>; rel="next"'
 
 
 def _connector_standard(value: Any) -> str:
@@ -537,14 +572,17 @@ async def cpo_locations(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
     await _functional_partner(request, authorization)
-    total = await db.ev_charge_points.count_documents({"active": True})
-    docs = await db.ev_charge_points.find({"active": True}).skip(offset).limit(limit).to_list(limit)
+    query = _updated_window_query({"active": True}, ["updated_at", "created_at"], date_from, date_to)
+    total = await db.ev_charge_points.count_documents(query)
+    docs = await db.ev_charge_points.find(query).sort("created_at", 1).skip(offset).limit(limit).to_list(limit)
     data = [await _local_location(d) for d in docs]
-    _page_headers(response, total=total, offset=offset, limit=limit)
+    _page_headers(request, response, total=total, offset=offset, limit=limit)
     return _ocpi(data)
 
 
@@ -570,14 +608,17 @@ async def cpo_tariffs(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
     await _functional_partner(request, authorization)
-    total = await db.ev_tariffs.count_documents({})
-    docs = await db.ev_tariffs.find({}).skip(offset).limit(limit).to_list(limit)
+    query = _updated_window_query({}, ["updated_at", "created_at"], date_from, date_to)
+    total = await db.ev_tariffs.count_documents(query)
+    docs = await db.ev_tariffs.find(query).sort("created_at", 1).skip(offset).limit(limit).to_list(limit)
     data = [await _local_tariff(d) for d in docs]
-    _page_headers(response, total=total, offset=offset, limit=limit)
+    _page_headers(request, response, total=total, offset=offset, limit=limit)
     return _ocpi(data)
 
 
@@ -586,13 +627,21 @@ async def cpo_sessions(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
     await _functional_partner(request, authorization)
-    total = await db.ev_charging_sessions.count_documents({})
-    docs = await db.ev_charging_sessions.find({}).sort("created_at", -1).skip(offset).limit(limit).to_list(limit)
-    _page_headers(response, total=total, offset=offset, limit=limit)
+    query = _updated_window_query(
+        {},
+        ["settled_at", "last_meter_at", "stopped_at", "started_at", "created_at"],
+        date_from,
+        date_to,
+    )
+    total = await db.ev_charging_sessions.count_documents(query)
+    docs = await db.ev_charging_sessions.find(query).sort("created_at", 1).skip(offset).limit(limit).to_list(limit)
+    _page_headers(request, response, total=total, offset=offset, limit=limit)
     return _ocpi([_local_session(d) for d in docs])
 
 
@@ -601,12 +650,15 @@ async def cpo_cdrs(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
     await _functional_partner(request, authorization)
-    total = await db.ev_receipts.count_documents({})
-    receipts = await db.ev_receipts.find({}).sort("issued_at", -1).skip(offset).limit(limit).to_list(limit)
+    query = _updated_window_query({}, ["updated_at", "issued_at"], date_from, date_to)
+    total = await db.ev_receipts.count_documents(query)
+    receipts = await db.ev_receipts.find(query).sort("issued_at", 1).skip(offset).limit(limit).to_list(limit)
     data = []
     for rec in receipts:
         sess = await db.ev_charging_sessions.find_one({"session_id": rec.get("session_id")}) or {}
@@ -643,7 +695,7 @@ async def cpo_cdrs(
             "total_time": round(float(sess.get("duration_min") or 0) / 60, 4),
             "last_updated": rec.get("updated_at") or rec.get("issued_at") or _now(),
         })
-    _page_headers(response, total=total, offset=offset, limit=limit)
+    _page_headers(request, response, total=total, offset=offset, limit=limit)
     return _ocpi(data)
 
 
@@ -711,14 +763,31 @@ async def emsp_session_patch(country_code: str, party_id: str, session_id: str, 
 
 
 @router.post(f"/emsp/{OCPI_VERSION}/cdrs")
-async def emsp_cdr_post(request: Request, body: Dict[str, Any], authorization: Optional[str] = Header(None)):
+async def emsp_cdr_post(
+    request: Request,
+    response: Response,
+    body: Dict[str, Any],
+    authorization: Optional[str] = Header(None),
+):
     partner = await _functional_partner(request, authorization)
     country = str(body.get("country_code") or partner["country_code"]).upper()
     party = str(body.get("party_id") or partner["party_id"]).upper()
     cdr_id = str(body.get("id") or "")
     if not cdr_id:
         return _ocpi(status_code=2001, message="Missing required field: id")
-    await _upsert_remote(db.ocpi_remote_cdrs, {"country_code": country, "party_id": party, "id": cdr_id}, body, partner, patch=False)
+    if country != partner["country_code"] or party != partner["party_id"]:
+        return _ocpi(status_code=2001, message="CDR owner does not match authenticated partner")
+    await _upsert_remote(
+        db.ocpi_remote_cdrs,
+        {"country_code": country, "party_id": party, "id": cdr_id},
+        body,
+        partner,
+        patch=False,
+    )
+    response.headers["Location"] = (
+        f"{_public_base(request)}/ocpi/emsp/{OCPI_VERSION}/cdrs/"
+        f"{country}/{party}/{cdr_id}"
+    )
     return _ocpi({"id": cdr_id})
 
 
@@ -741,13 +810,19 @@ async def emsp_tokens(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(OCPI_DEFAULT_LIMIT, ge=1, le=OCPI_MAX_LIMIT),
 ):
     await _functional_partner(request, authorization)
-    total = await db.ocpi_tokens.count_documents({"active": True})
-    docs = await db.ocpi_tokens.find({"active": True}, {"_id": 0, "user_id": 0}).skip(offset).limit(limit).to_list(limit)
-    _page_headers(response, total=total, offset=offset, limit=limit)
+    query = _updated_window_query({"active": True}, ["last_updated", "created_at"], date_from, date_to)
+    total = await db.ocpi_tokens.count_documents(query)
+    docs = await db.ocpi_tokens.find(
+        query,
+        {"_id": 0, "user_id": 0, "minimum_balance": 0, "active": 0},
+    ).sort("last_updated", 1).skip(offset).limit(limit).to_list(limit)
+    _page_headers(request, response, total=total, offset=offset, limit=limit)
     return _ocpi(docs)
 
 
