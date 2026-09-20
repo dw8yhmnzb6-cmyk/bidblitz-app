@@ -2070,6 +2070,7 @@ def _load_mobility_pricing_contract():
         "build_option",
         "_normalize_city_key",
         "_merge_pricing_profile",
+        "_merge_pricing_override",
         "_resolve_pricing_context",
         "_option_price",
         "_require_supported_settlement",
