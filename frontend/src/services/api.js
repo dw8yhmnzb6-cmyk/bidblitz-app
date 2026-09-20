@@ -474,9 +474,9 @@ export const api = {
   getChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}`),
   addChargeClaimMessage: (claimId, body) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/messages`, { method: "POST", body: JSON.stringify(body) }),
   uploadChargeClaimAttachment: (claimId, file) => {
-    const body = new FormData();
-    body.append("file", file);
-    return request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/attachments`, { method: "POST", body, isFormData: true });
+    const formData = new FormData();
+    formData.append("file", file);
+    return uploadFormData(`/api/charge-app/claims/${encodeURIComponent(claimId)}/attachments`, formData);
   },
   deleteChargeClaimAttachment: (claimId, attachmentId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: "DELETE" }),
   cancelChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/cancel`, { method: "PUT" }),
