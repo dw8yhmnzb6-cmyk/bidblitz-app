@@ -33,6 +33,10 @@ from core.performance import invalidate_user_cache
 router = APIRouter(prefix="/api/admin/wallet", tags=["admin-wallet"])
 
 
+def _hash_admin_stepup_otp(code: str) -> str:
+    return hashlib.sha256(f"admin-wallet-stepup:{code}".encode("utf-8")).hexdigest()
+
+
 async def _require_admin(request: Request):
     user = await get_current_user(request)
     if (user.get("role") or "") not in ("admin", "super_admin"):
@@ -61,9 +65,16 @@ async def _verify_admin_step_up(admin: dict, password: str, otp_code: Optional[s
             "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
             "attempts": {"$lt": 3},
         }, {"$inc": {"attempts": 1}}, return_document=ReturnDocument.AFTER)
-        if not otp_doc or not hmac.compare_digest(str(otp_doc.get("code", "")), str(otp_code)):
+        if not otp_doc:
             raise HTTPException(403, "2FA-Code ungültig oder abgelaufen.")
-        consumed = await db.otp_codes.delete_one({"_id": otp_doc["_id"], "code": otp_code})
+        stored_hash = str(otp_doc.get("code_hash") or "")
+        if stored_hash:
+            otp_ok = hmac.compare_digest(stored_hash, _hash_admin_stepup_otp(str(otp_code)))
+        else:
+            otp_ok = hmac.compare_digest(str(otp_doc.get("code") or ""), str(otp_code))
+        if not otp_ok:
+            raise HTTPException(403, "2FA-Code ungültig oder abgelaufen.")
+        consumed = await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
         if consumed.deleted_count != 1:
             raise HTTPException(403, "2FA-Code wurde bereits verwendet.")
 
@@ -993,8 +1004,12 @@ async def repair_request_2fa(request: Request):
     otp = generate_otp()
     await db.otp_codes.delete_many({"user_id": str(admin["_id"]), "purpose": "wallet_repair_stepup"})
     await db.otp_codes.insert_one({
-        "user_id": str(admin["_id"]), "code": otp, "purpose": "wallet_repair_stepup", "attempts": 0,
-        "created_at": now.isoformat(), "expires_at": (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
+        "user_id": str(admin["_id"]),
+        "code_hash": _hash_admin_stepup_otp(otp),
+        "purpose": "wallet_repair_stepup",
+        "attempts": 0,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
     })
     sent = await send_otp_email(admin.get("email", ""), otp, "wallet_repair", admin.get("name", ""))
     if not sent:
