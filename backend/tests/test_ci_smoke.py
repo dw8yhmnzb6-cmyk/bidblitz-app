@@ -2071,6 +2071,7 @@ def test_home_prioritizes_auctions_and_mining():
     home = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "HomePage.jsx").read_text(encoding="utf-8")
     mobile = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "home" / "MobileHomeContent.jsx").read_text(encoding="utf-8")
     app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    release = (BACKEND_DIR.parent / "frontend" / "src" / "config" / "release.js").read_text(encoding="utf-8")
 
     assert 'data-testid="home-priority-modules"' in home
     assert 'data-testid={"home-priority-" + feature.id}' in home
@@ -2092,6 +2093,11 @@ def test_home_prioritizes_auctions_and_mining():
     assert '<MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />' in app
     assert 'case "/auctions":' in app
 
+    assert 'import { Capacitor } from "@capacitor/core";' in release
+    assert 'const isNativeRuntime = Capacitor.isNativePlatform();' in release
+    assert 'process.env.REACT_APP_STORE_SAFE_MODE === "true"' in release
+    assert 'isNativeRuntime;' in release
+
 
 def test_mobility_map_keeps_map_visible_on_mobile():
     mobility = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
@@ -2102,6 +2108,7 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'grid grid-cols-3 gap-2 mt-2 sm:flex sm:flex-wrap sm:mt-3' in mobility
     assert mobility.count('hidden sm:inline-flex') >= 4
     assert 'mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4' in mobility
+    assert 'onNavigate?.("/mobility-center")' in mobility
 
 
 def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete():
