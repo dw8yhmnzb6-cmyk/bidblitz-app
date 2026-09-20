@@ -91,3 +91,16 @@ test("mobile customer awaiting KYC still sees the existing restriction instead o
   act(() => find("pre-kyc-home-start-button").click());
   expect(props.onNavigate).toHaveBeenLastCalledWith("/kyc");
 });
+
+
+test("desktop authenticated home prioritizes auctions and mining", () => {
+  media.matches = false;
+  mountHome({ isGuest: false });
+  expect(find("home-priority-modules")).not.toBeNull();
+  expect(find("home-priority-auctions")).not.toBeNull();
+  expect(find("home-priority-mining")).not.toBeNull();
+  act(() => find("home-priority-auctions").click());
+  expect(props.onNavigate).toHaveBeenLastCalledWith("/auctions");
+  act(() => find("home-priority-mining").click());
+  expect(props.onNavigate).toHaveBeenLastCalledWith("/mining");
+});
