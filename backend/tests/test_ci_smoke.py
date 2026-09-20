@@ -2181,7 +2181,8 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'data-testid="mobility-pricing-context"' in mobility
     assert 'option.pricing_basis' in mobility
     assert '.slice(0, 8).map((item, idx) =>' in mobility
-    assert 'countryCode: pickup.country_code || undefined' in mobility
+    assert 'const countryCode = pickup.country_code || undefined;' in mobility
+    assert 'countryCode,' in mobility
 
     assert '"scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.15' in mobility_backend
     assert '"basis": "0,20 € Start + 0,15 €/min"' in mobility_backend
