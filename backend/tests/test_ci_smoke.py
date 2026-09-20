@@ -420,12 +420,18 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
 
 def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
     auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    detail_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
 
     assert "Bitte verifiziere zuerst deinen Ausweis, um Auto-Bid zu aktivieren." in auctions_source
     assert 'disabled_reason": "kyc_required"' in auctions_source
     assert "credit_state = await _reserve_bid_credit_once" in auctions_source
     assert "processing_until" in auctions_source
     assert "processing_slot" in auctions_source
+
+    assert 'const kycRequired = !isGuest && !KYC_DISABLED' in detail_source
+    assert 'if (kycRequired) { onNavigate?.("/profile/kyc"); return; }' in detail_source
+    assert 'disabled={bidding || kycRequired}' in detail_source
+    assert 'disabled={kycRequired}' in detail_source
 
 
 def test_scooter_rides_subscriptions_and_location_are_financially_safe():
