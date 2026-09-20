@@ -1,9 +1,11 @@
 import { getAppShellFlags } from "./appShellFlags";
 
 test("mobility map uses an immersive shell on mobile", () => {
-  const flags = getAppShellFlags("/mobility-map", false);
-  expect(flags.showBackToHome).toBe(false);
-  expect(flags.showBottomNav).toBe(false);
+  for (const route of ["/mobility-map", "/mobility-map?mode=scooter", "/mobility-map?mode=taxi"]) {
+    const flags = getAppShellFlags(route, false);
+    expect(flags.showBackToHome).toBe(false);
+    expect(flags.showBottomNav).toBe(false);
+  }
 });
 
 test("mobility center keeps normal app navigation", () => {
