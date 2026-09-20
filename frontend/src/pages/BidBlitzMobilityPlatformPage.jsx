@@ -612,8 +612,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       </div>
 
       <div className="relative">
-        <div id="bidblitz-mobility-map" className="h-[62vh] sm:h-[56vh] lg:h-[46vh] w-full" data-testid="mobility-platform-map" />
-        <div className="absolute inset-x-0 bottom-3 sm:bottom-auto sm:top-4 px-3 sm:px-4 z-[500] pointer-events-none">
+        <div id="bidblitz-mobility-map" className="h-[54vh] min-h-[360px] sm:h-[56vh] lg:h-[46vh] w-full" data-testid="mobility-platform-map" />
+        <div className="relative px-3 pt-3 z-[500] pointer-events-none sm:absolute sm:inset-x-0 sm:top-4 sm:px-4 sm:pt-0">
           <div className="rounded-[24px] sm:rounded-[28px] bg-[#fffaf1]/94 border border-[#18202a]/8 backdrop-blur-xl p-2.5 sm:p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
             <div className="flex items-center justify-between gap-2 mb-2" data-testid="mobility-live-stats-row">
               <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -668,7 +668,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
         </div>
       </div>
 
-      <div className="mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4">
+      <div className="mt-3 sm:-mt-6 relative z-20 px-3 sm:px-4">
         <div className="rounded-t-[30px] bg-[#fffaf1] border border-[#18202a]/8 p-4 shadow-[0_-16px_40px_rgba(15,23,42,0.12)]" data-testid="mobility-bottom-sheet">
           <div className="w-12 h-1 rounded-full bg-[#18202a]/10 mx-auto mb-4" />
           <div className="flex items-start justify-between gap-3 mb-4">
