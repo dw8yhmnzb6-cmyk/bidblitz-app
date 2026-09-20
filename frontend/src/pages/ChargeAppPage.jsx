@@ -316,6 +316,24 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     onNavigate?.(route);
   }, [onNavigate]);
 
+  const openProductDetail = useCallback(async (item) => {
+    if (!item?.product_id) return;
+    try {
+      await api.trackChargeInteraction({
+        interaction_type: "catalog_product_detail",
+        merchant_slug: item.merchant_slug || "",
+        merchant_name: item.merchant_name || "",
+        city: item.city || "",
+        category: item.category || "",
+        offer_title: item.name || "",
+        metadata: { product_id: item.product_id },
+      });
+    } catch (error) {
+      void error;
+    }
+    onNavigate?.(`/charge-app/product?product_id=${encodeURIComponent(item.product_id)}`);
+  }, [onNavigate]);
+
   const merchants = useMemo(() => {
     const rows = dashboard?.merchants || [];
     if (!merchantQuery.trim()) return rows;
@@ -467,20 +485,30 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                         </span>
                       </div>
                       <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">{item.description || item.category || "Premium Charge Zubehör"}</p>
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#EEE6DA] pt-3">
-                        <div className="min-w-0">
+                      <div className="mt-4 border-t border-[#EEE6DA] pt-3">
+                        <div className="mb-3 min-w-0">
                           <p className="truncate text-xs font-black text-slate-800">{item.merchant_name}</p>
                           <p className="truncate text-[11px] text-slate-400">{item.city || "BidBlitz Charge Netzwerk"}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => openMerchantDetail({ ...item, business_name: item.merchant_name, public_slug: item.merchant_slug }, "catalog_product_click")}
-                          disabled={!item.merchant_slug}
-                          className="shrink-0 rounded-2xl bg-[#0A1626] px-4 py-2 text-xs font-black text-[#D8FCFF] disabled:opacity-40"
-                          data-testid={`charge-app-catalog-product-merchant-${index}`}
-                        >
-                          Zum Händler
-                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openProductDetail(item)}
+                            className="rounded-2xl border border-[#D9CFC0] bg-white px-3 py-2 text-xs font-black text-slate-700"
+                            data-testid={`charge-app-catalog-product-detail-${index}`}
+                          >
+                            Details
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openMerchantDetail({ ...item, business_name: item.merchant_name, public_slug: item.merchant_slug }, "catalog_product_click")}
+                            disabled={!item.merchant_slug}
+                            className="rounded-2xl bg-[#0A1626] px-3 py-2 text-xs font-black text-[#D8FCFF] disabled:opacity-40"
+                            data-testid={`charge-app-catalog-product-merchant-${index}`}
+                          >
+                            Zum Händler
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
