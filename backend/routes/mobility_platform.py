@@ -519,6 +519,142 @@ class FrequentRouteSaveRequest(BaseModel):
     payment_method: str = Field(default="wallet")
 
 
+class MobilityPricingProfilePayload(BaseModel):
+    country_code: str = Field(..., min_length=2, max_length=2)
+    city: Optional[str] = Field(default=None, max_length=100)
+    region: Optional[str] = Field(default=None, max_length=100)
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    source: str = Field(..., min_length=2, max_length=240)
+    modes: dict[str, dict] = Field(default_factory=dict)
+    enabled: bool = True
+
+
+PRICING_NUMERIC_FIELDS = {
+    "base",
+    "per_km",
+    "per_min",
+    "minimum",
+    "booking_fee",
+    "range_base_low",
+    "range_base_high",
+    "range_booking_fee_low",
+    "range_booking_fee_high",
+    "range_per_km_low",
+    "range_per_km_high",
+    "range_per_min_low",
+    "range_per_min_high",
+}
+
+
+def _normalize_country_code(value: str) -> str:
+    code = str(value or "").strip().upper()
+    if len(code) != 2 or not code.isalpha():
+        raise HTTPException(400, "Ländercode muss aus zwei Buchstaben bestehen.")
+    return code
+
+
+def _sanitize_pricing_modes(modes: dict) -> dict:
+    cleaned = {}
+    for mode, raw in (modes or {}).items():
+        if mode not in DEFAULT_TRANSPORT_PRICING:
+            raise HTTPException(400, f"Unbekannte Transportart: {mode}")
+        if not isinstance(raw, dict):
+            raise HTTPException(400, f"Tarif für {mode} muss ein Objekt sein.")
+
+        entry = {}
+        for key, value in raw.items():
+            if key in PRICING_NUMERIC_FIELDS:
+                try:
+                    number = float(value)
+                except (TypeError, ValueError) as exc:
+                    raise HTTPException(400, f"{mode}.{key} muss numerisch sein.") from exc
+                if number < 0:
+                    raise HTTPException(400, f"{mode}.{key} darf nicht negativ sein.")
+                entry[key] = number
+            elif key == "surge":
+                entry[key] = bool(value)
+            elif key == "basis":
+                entry[key] = str(value or "")[:280]
+            elif key == "distance_tiers":
+                if not isinstance(value, list) or len(value) > 12:
+                    raise HTTPException(400, f"{mode}.distance_tiers ist ungültig.")
+                tiers = []
+                previous_limit = 0.0
+                for tier in value:
+                    if not isinstance(tier, dict):
+                        raise HTTPException(400, f"{mode}.distance_tiers enthält einen ungültigen Eintrag.")
+                    upper = tier.get("up_to_km")
+                    per_km = tier.get("per_km")
+                    if upper is not None:
+                        upper = float(upper)
+                        if upper <= previous_limit:
+                            raise HTTPException(400, f"{mode}.distance_tiers muss aufsteigend sein.")
+                        previous_limit = upper
+                    per_km = float(per_km)
+                    if per_km < 0:
+                        raise HTTPException(400, f"{mode}.distance_tiers.per_km darf nicht negativ sein.")
+                    tiers.append({"up_to_km": upper, "per_km": per_km})
+                entry[key] = tiers
+        cleaned[mode] = entry
+
+    if not cleaned:
+        raise HTTPException(400, "Mindestens eine Transportart ist erforderlich.")
+    return cleaned
+
+
+def _merge_pricing_override(base_profile: dict, override: Optional[dict], scope: str) -> dict:
+    profile = {
+        **base_profile,
+        "modes": {key: dict(value) for key, value in (base_profile.get("modes") or {}).items()},
+    }
+    if not override:
+        return profile
+
+    for mode, mode_override in (override.get("modes") or {}).items():
+        current = dict(profile["modes"].get(mode) or {})
+        current.update(mode_override or {})
+        profile["modes"][mode] = current
+
+    for key in ("region", "currency", "source", "city"):
+        if override.get(key):
+            profile[key] = override[key]
+    profile["profile_scope"] = scope
+    profile["profile_source"] = "database"
+    return profile
+
+
+async def _load_dynamic_pricing_overrides(country_code: str, city_key: str) -> tuple[Optional[dict], Optional[dict]]:
+    if not country_code:
+        return None, None
+
+    country_doc = await db.mobility_pricing_profiles.find_one(
+        {
+            "country_code": country_code,
+            "city_key": "*",
+            "enabled": {"$ne": False},
+        },
+        {"_id": 0},
+    )
+    city_doc = None
+    if city_key:
+        city_doc = await db.mobility_pricing_profiles.find_one(
+            {
+                "country_code": country_code,
+                "city_key": city_key,
+                "enabled": {"$ne": False},
+            },
+            {"_id": 0},
+        )
+    return country_doc, city_doc
+
+
+async def _require_mobility_pricing_admin(request: Request):
+    user = await get_current_user(request)
+    if (user.get("role") or "") not in {"admin", "super_admin"}:
+        raise HTTPException(403, "Admin-Rechte erforderlich.")
+    return user
+
+
 def _cache_key(path: str, params: dict) -> str:
     clean = {k: v for k, v in params.items() if v is not None}
     return f"{path}?{urlencode(sorted(clean.items()), doseq=True)}"
@@ -941,13 +1077,31 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
 
     base_profile = REGIONAL_PRICING_PROFILES[profile_key]
     city_key = _normalize_city_key(city)
-    city_profile = (CITY_PRICING_PROFILES.get(country_code or "") or {}).get(city_key)
-    profile = _merge_pricing_profile(base_profile, city_profile)
-    profile["profile_key"] = f"{country_code}:{city_key}" if city_profile else profile_key
+    static_city_profile = (CITY_PRICING_PROFILES.get(country_code or "") or {}).get(city_key)
+    country_override, city_override = await _load_dynamic_pricing_overrides(country_code, city_key)
+
+    profile = _merge_pricing_override(base_profile, country_override, "country")
+    if static_city_profile:
+        profile = _merge_pricing_profile(profile, static_city_profile)
+        profile["profile_source"] = profile.get("profile_source") or "static"
+    if city_override:
+        profile = _merge_pricing_override(profile, city_override, "city")
+
+    if city_override:
+        resolved_profile_key = f"db:{country_code}:{city_key}"
+    elif static_city_profile:
+        resolved_profile_key = f"{country_code}:{city_key}"
+    elif country_override:
+        resolved_profile_key = f"db:{country_code}"
+    else:
+        resolved_profile_key = profile_key
+
+    profile["profile_key"] = resolved_profile_key
     profile["country_code"] = country_code or ""
     profile["country"] = country or profile.get("region")
-    profile["city"] = (city_profile or {}).get("city") or city or ""
+    profile["city"] = (city_override or static_city_profile or {}).get("city") or city or ""
     profile["city_key"] = city_key
+    profile["dynamic_override"] = bool(country_override or city_override)
     return profile
 
 async def _compute_route_payload(
@@ -1382,6 +1536,116 @@ async def _nominatim_get(path: str, params: dict):
         payload = response.json()
         await _write_geo_cache(key, payload)
         return payload
+
+
+@router.get("/admin/pricing/profiles")
+async def admin_list_mobility_pricing_profiles(
+    request: Request,
+    country_code: Optional[str] = None,
+    city: Optional[str] = None,
+):
+    await _require_mobility_pricing_admin(request)
+    query = {}
+    if country_code:
+        query["country_code"] = _normalize_country_code(country_code)
+    if city:
+        query["city_key"] = _normalize_city_key(city)
+
+    rows = await db.mobility_pricing_profiles.find(query, {"_id": 0}).sort([
+        ("country_code", 1),
+        ("city_key", 1),
+    ]).limit(500).to_list(500)
+    return {"profiles": rows}
+
+
+@router.put("/admin/pricing/profile")
+async def admin_upsert_mobility_pricing_profile(
+    payload: MobilityPricingProfilePayload,
+    request: Request,
+):
+    admin = await _require_mobility_pricing_admin(request)
+    country_code = _normalize_country_code(payload.country_code)
+    city = str(payload.city or "").strip()
+    city_key = _normalize_city_key(city) if city else "*"
+    scope = "city" if city else "country"
+    now = datetime.now(timezone.utc).isoformat()
+
+    modes = _sanitize_pricing_modes(payload.modes)
+    doc = {
+        "country_code": country_code,
+        "city_key": city_key,
+        "scope": scope,
+        "city": city,
+        "region": str(payload.region or "").strip(),
+        "currency": str(payload.currency or "EUR").upper(),
+        "source": str(payload.source or "").strip(),
+        "modes": modes,
+        "enabled": bool(payload.enabled),
+        "updated_at": now,
+        "updated_by": str(admin.get("_id") or ""),
+        "updated_by_email": admin.get("email") or "",
+    }
+
+    await db.mobility_pricing_profiles.update_one(
+        {"country_code": country_code, "city_key": city_key},
+        {
+            "$set": doc,
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
+    )
+    await db.mobility_pricing_audit.insert_one({
+        "action": "upsert",
+        "country_code": country_code,
+        "city_key": city_key,
+        "scope": scope,
+        "profile": doc,
+        "admin_id": str(admin.get("_id") or ""),
+        "admin_email": admin.get("email") or "",
+        "created_at": now,
+    })
+    saved = await db.mobility_pricing_profiles.find_one(
+        {"country_code": country_code, "city_key": city_key},
+        {"_id": 0},
+    )
+    return {"ok": True, "profile": saved}
+
+
+@router.delete("/admin/pricing/profile/{country_code}")
+async def admin_disable_mobility_pricing_profile(
+    country_code: str,
+    request: Request,
+    city: Optional[str] = None,
+):
+    admin = await _require_mobility_pricing_admin(request)
+    normalized_country = _normalize_country_code(country_code)
+    city_key = _normalize_city_key(city) if city else "*"
+    now = datetime.now(timezone.utc).isoformat()
+
+    result = await db.mobility_pricing_profiles.update_one(
+        {"country_code": normalized_country, "city_key": city_key},
+        {
+            "$set": {
+                "enabled": False,
+                "disabled_at": now,
+                "updated_at": now,
+                "updated_by": str(admin.get("_id") or ""),
+                "updated_by_email": admin.get("email") or "",
+            }
+        },
+    )
+    if result.matched_count != 1:
+        raise HTTPException(404, "Tarifprofil nicht gefunden.")
+
+    await db.mobility_pricing_audit.insert_one({
+        "action": "disable",
+        "country_code": normalized_country,
+        "city_key": city_key,
+        "admin_id": str(admin.get("_id") or ""),
+        "admin_email": admin.get("email") or "",
+        "created_at": now,
+    })
+    return {"ok": True, "country_code": normalized_country, "city_key": city_key}
 
 
 @router.get("/search")
