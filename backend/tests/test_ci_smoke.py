@@ -2703,3 +2703,15 @@ def test_admin_wallet_stepup_otp_is_hashed_and_one_time():
     assert "hmac.compare_digest(stored_hash, _hash_admin_stepup_otp(str(otp_code)))" in source
     assert 'consumed = await db.otp_codes.delete_one({"_id": otp_doc["_id"]})' in source
 
+def test_admin_financial_fee_settings_are_bounded_and_atomic():
+    source = (BACKEND_DIR / "routes" / "admin.py").read_text(encoding="utf-8")
+
+    assert "import math" in source
+    assert '"payment": (0.0, 1.0)' in source
+    assert '"payout_percent": (0.0, 1.0)' in source
+    assert '"settlement_delay_hours": (0.0, 720.0)' in source
+    assert "if not math.isfinite(value)" in source
+    assert "validated = {}" in source
+    assert "FEES.update(validated)" in source
+    assert "Unbekannte Gebührenfelder" in source
+
