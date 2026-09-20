@@ -642,7 +642,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       <div className="relative">
         <div id="bidblitz-mobility-map" className="h-[54vh] min-h-[360px] sm:h-[56vh] lg:h-[46vh] w-full" data-testid="mobility-platform-map" />
         <div className="relative px-3 pt-3 z-[500] pointer-events-none sm:absolute sm:inset-x-0 sm:top-4 sm:px-4 sm:pt-0">
-          <div className="rounded-[24px] sm:rounded-[28px] bg-[#fffaf1]/94 border border-[#18202a]/8 backdrop-blur-xl p-2.5 sm:p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
+          <div className="rounded-[24px] sm:rounded-[28px] bg-[#fffaf1]/94 border border-[#18202a]/8 backdrop-blur-xl p-2.5 sm:p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]" data-testid="mobility-map-controls">
             <div className="flex items-center justify-between gap-2 mb-2" data-testid="mobility-live-stats-row">
               <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar pb-1">
                 <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} {ui.liveTaxi}</span>
