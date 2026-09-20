@@ -129,7 +129,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const hasStripeParam = windowSearch.includes("stripe_session_id") || windowSearch.includes("stripe_cancelled");
 
   // Handle card_saved redirect from Stripe Setup
-  const hasCardSaved = windowSearch.includes("card_saved=success");
+  const walletSearchParams = canUseWindow() ? new URLSearchParams(windowSearch) : null;
+  const setupSessionId = walletSearchParams?.get("setup_session_id") || "";
+  const hasCardSaved = walletSearchParams?.get("card_saved") === "success" && !!setupSessionId;
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(canAutoOpenWalletActions && (hasStripeParam || routeParams.action === "topup"));
@@ -148,22 +150,34 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   // Confirm card save after Stripe redirect
   useEffect(() => {
-    if (hasCardSaved && !isGuest) {
+    if (hasCardSaved && setupSessionId && !isGuest) {
       const API = process.env.REACT_APP_BACKEND_URL;
-      fetch(`${API}/api/stripe/save-card-confirm`, { method: "POST", credentials: "include" })
-        .then(r => r.json())
+      fetch(`${API}/api/stripe/save-card-confirm`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: setupSessionId }),
+      })
+        .then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.detail || "Karte konnte nicht bestätigt werden");
+          return data;
+        })
         .then(d => {
           if (d.ok) {
             setSavedCard({ brand: d.card_brand, last4: d.card_last4 });
           }
         })
-        .catch(() => {});
-      // Clean URL
-      if (canUseWindow()) {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
+        .catch((error) => {
+          console.error("Save-card confirm failed", error);
+        })
+        .finally(() => {
+          if (canUseWindow()) {
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        });
     }
-  }, [hasCardSaved, isGuest]);
+  }, [hasCardSaved, setupSessionId, isGuest]);
 
   useEffect(() => {
     if (!canAutoOpenWalletActions) {
