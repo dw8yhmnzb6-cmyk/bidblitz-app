@@ -2600,3 +2600,12 @@ def test_kids_gps_simulation_is_never_available_in_production():
     assert 'if not TEST_MODE and user.get("role") != "admin":' not in source
     assert 'detail="Route nicht verfügbar"' in source
 
+def test_role_request_routes_cannot_manage_privileged_admin_roles():
+    source = (BACKEND_DIR / "routes" / "role_requests.py").read_text(encoding="utf-8")
+
+    assert "Privilegierte Admin-Rollen dürfen nur über die kanonische Admin-Kontoverwaltung geändert werden." in source
+    assert '"role": {"$nin": ["admin", "super_admin"]}' in source
+    assert 'str(target.get("role") or "") in {"admin", "super_admin"}' in source
+    assert 'final_role not in VALID_ROLES and final_role != "admin"' not in source
+    assert 'req.new_role not in VALID_ROLES and req.new_role != "admin"' not in source
+
