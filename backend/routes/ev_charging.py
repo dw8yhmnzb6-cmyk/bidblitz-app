@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import (
+    credit_wallet,
     debit_wallet,
     transfer_between_wallets,
     TransactionType,
@@ -131,6 +132,55 @@ async def _load_tariff(tariff_id) -> Optional[Dict[str, Any]]:
     return None
 
 
+async def _refund_ev_reservation(session_id: str, reason: str) -> bool:
+    """Release an unused EV wallet reservation exactly once."""
+    sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
+    if not sess:
+        return True
+    if sess.get("reservation_state") in ("released", "consumed"):
+        return True
+
+    amount = round(float(sess.get("reserved_amount") or 0), 2)
+    user_id = sess.get("user_id")
+    if amount <= 0 or not user_id or sess.get("reservation_state") != "held":
+        return True
+
+    refund = await credit_wallet(
+        user_id=str(user_id),
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"EV-Reservierung freigegeben {session_id}",
+        reference=f"EVHOLDREFUND-{session_id}",
+        metadata={
+            "session_id": session_id,
+            "charge_point_id": sess.get("charge_point_id"),
+            "reason": reason,
+            "reservation_release": True,
+        },
+    )
+    if not refund.success:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "reservation_state": "release_failed",
+                "reservation_error": refund.error,
+                "reservation_release_failed_at": _utcnow_iso(),
+            }},
+        )
+        return False
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "reservation_state": "released",
+            "reservation_released_at": _utcnow_iso(),
+            "reservation_refund_ref": refund.reference or f"EVHOLDREFUND-{session_id}",
+            "reservation_error": None,
+        }},
+    )
+    return True
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Customer flow — Start charging via QR / NFC / deep-link
 # ══════════════════════════════════════════════════════════════════════════════
@@ -175,11 +225,6 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     if dup:
         raise HTTPException(409, "Du hast bereits eine aktive Ladesession")
 
-    # Wallet balance check (we will deduct after session ends; here only verify)
-    balance = float(user.get("balance") or 0)
-    if balance < req.max_amount:
-        raise HTTPException(402, f"Wallet-Guthaben unzureichend (€{balance:.2f} < €{req.max_amount:.2f})")
-
     # Create authorization (id_tag = user-specific OCPP token)
     id_tag = f"BB{secrets.token_hex(8).upper()}"
     await db.ev_authorizations.insert_one({
@@ -210,13 +255,55 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             "currency": tariff.get("currency", "EUR"),
             "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
         },
-        "reserved_amount": req.max_amount,
+        "reserved_amount": round(req.max_amount, 2),
+        "reservation_state": "pending",
+        "reservation_ref": f"EVHOLD-{session_id}",
         "currency": "EUR",
         "kwh_charged": 0.0,
         "current_cost": 0.0,
         "status": "authorized",
         "created_at": _utcnow_iso(),
     })
+
+    # Real wallet reservation: debit the cap into the system wallet before any
+    # hardware start command.  Deterministic reference makes retries safe.
+    hold = await debit_wallet(
+        user_id=user_id,
+        amount=round(req.max_amount, 2),
+        tx_type=TransactionType.EV_CHARGING,
+        description=f"EV-Reservierung {req.charge_point_id}",
+        reference=f"EVHOLD-{session_id}",
+        metadata={
+            "session_id": session_id,
+            "charge_point_id": req.charge_point_id,
+            "connector_id": req.connector_id,
+            "reservation": True,
+        },
+    )
+    if not hold.success:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "payment_failed",
+                "reservation_state": "failed",
+                "reservation_error": hold.error,
+            }},
+        )
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_tag},
+            {"$set": {"active": False, "used_at": _utcnow_iso()}},
+        )
+        raise HTTPException(402, hold.error or "Wallet-Guthaben unzureichend")
+
+    await db.ev_charging_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "reservation_state": "held",
+            "reservation_transaction_id": hold.transaction_id,
+            "reservation_ref": hold.reference or f"EVHOLD-{session_id}",
+            "reservation_held_at": _utcnow_iso(),
+        }},
+    )
 
     # Send RemoteStart / RequestStartTransaction depending on protocol
     try:
@@ -228,17 +315,25 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         else:
             result = await ocpp_csms.remote_start(req.charge_point_id, req.connector_id, id_tag)
     except Exception as exc:
+        refunded = await _refund_ev_reservation(session_id, "remote_start_error")
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "failed", "error": str(exc)[:200]}},
+            {"$set": {
+                "status": "failed" if refunded else "refund_failed",
+                "error": str(exc)[:200],
+            }},
         )
         raise HTTPException(502, f"Hardware-Kommunikation fehlgeschlagen: {exc}")
 
     accepted = (result or {}).get("status") == "Accepted"
     if not accepted:
+        refunded = await _refund_ev_reservation(session_id, "remote_start_rejected")
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"status": "rejected", "error": "Station rejected RemoteStart"}},
+            {"$set": {
+                "status": "rejected" if refunded else "refund_failed",
+                "error": "Station rejected RemoteStart",
+            }},
         )
         raise HTTPException(409, "Ladestation hat den Start abgelehnt")
 
@@ -285,6 +380,13 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
         if not updated.modified_count:
             latest = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
             return {"session_id": session_id, "status": (latest or {}).get("status", "cancelled")}
+        refunded = await _refund_ev_reservation(session_id, "cancelled_before_transaction")
+        if not refunded:
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {"status": "refund_failed"}},
+            )
+            raise HTTPException(502, "Reservierung konnte nicht freigegeben werden")
         return {"session_id": session_id, "status": "cancelled"}
 
     # Compare-and-set claim prevents two concurrent HTTP retries from sending
@@ -446,6 +548,10 @@ async def finalize_session(session_id: str) -> None:
 
     platform_fee = round(gross * commission_pct / 100.0, 2)
     operator_share = round(gross - platform_fee, 2)
+    if not operator_user_id:
+        commission_pct = 100.0
+        platform_fee = gross
+        operator_share = 0.0
 
     # Deterministic references are essential: if OCPP retries StopTransaction
     # or the worker crashes after the wallet transfer, Payment Engine replays
@@ -472,7 +578,84 @@ async def finalize_session(session_id: str) -> None:
         "operator_share": operator_share,
     }
 
-    if operator_user_id and gross > 0:
+    held_amount = round(float(sess.get("reserved_amount") or 0), 2)
+    has_reservation = sess.get("reservation_state") == "held" and held_amount > 0
+
+    if has_reservation:
+        funded_amount = held_amount
+
+        # A session should normally stop before its cap is exceeded.  If it did
+        # exceed it, collect only the deterministic overage before distribution.
+        if gross > funded_amount:
+            overage = round(gross - funded_amount, 2)
+            extra = await debit_wallet(
+                user_id=user_id,
+                amount=overage,
+                tx_type=TransactionType.EV_CHARGING,
+                description=f"EV-Nachbelastung {sess['charge_point_id']}",
+                reference=f"EVOVER-{session_id}",
+                metadata={**common_meta, "reservation_overage": True},
+            )
+            primary_ok = extra.success
+            primary_err = extra.error if not extra.success else None
+            if extra.success:
+                funded_amount = round(funded_amount + overage, 2)
+
+        # The pre-authorization already moved funds from the customer into the
+        # system wallet.  Settlement therefore credits the operator share from
+        # system funds and refunds the unused reservation to the customer.
+        if primary_ok and operator_user_id and operator_share > 0:
+            op_credit = await credit_wallet(
+                user_id=str(operator_user_id),
+                amount=operator_share,
+                tx_type=TransactionType.EV_CHARGING_REVENUE,
+                description=f"EV-Ladeumsatz {sess['charge_point_id']}",
+                reference=f"EVOP-{session_id}",
+                source="ev_reservation_settlement",
+                metadata={**common_meta, "settlement_ref": settlement_ref},
+            )
+            commission_ok = op_credit.success
+            commission_err = op_credit.error if not op_credit.success else None
+
+        refund_amount = round(max(0.0, funded_amount - gross), 2)
+        if primary_ok and commission_ok and refund_amount > 0:
+            refund = await credit_wallet(
+                user_id=user_id,
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"EV-Restreservierung {session_id}",
+                reference=f"EVREF-{session_id}",
+                source="ev_reservation_settlement",
+                metadata={
+                    "session_id": session_id,
+                    "settlement_ref": settlement_ref,
+                    "reserved_amount": funded_amount,
+                    "final_cost": gross,
+                },
+            )
+            commission_ok = refund.success
+            commission_err = refund.error if not refund.success else None
+
+        if primary_ok and commission_ok and operator_user_id:
+            await db.ev_operator_commissions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "session_id": session_id,
+                    "charge_point_id": sess["charge_point_id"],
+                    "operator_user_id": str(operator_user_id),
+                    "gross": gross,
+                    "commission_pct": commission_pct,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "ref": commission_ref,
+                    "success": True,
+                    "updated_at": _utcnow_iso(),
+                }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                upsert=True,
+            )
+    elif operator_user_id and gross > 0:
+        # Legacy sessions created before reservation support keep the direct
+        # user -> operator flow, still protected by deterministic references.
         result = await transfer_between_wallets(
             from_user_id=user_id,
             to_user_id=str(operator_user_id),
@@ -517,8 +700,7 @@ async def finalize_session(session_id: str) -> None:
                     upsert=True,
                 )
     elif gross > 0:
-        # No operator wired: use the canonical wallet engine as well.  Never
-        # mutate users.balance directly from EV charging code.
+        # Legacy no-operator sessions: canonical debit, platform keeps gross.
         result = await debit_wallet(
             user_id=user_id,
             amount=gross,
@@ -610,6 +792,9 @@ async def finalize_session(session_id: str) -> None:
             "settled_at": _utcnow_iso(),
             "receipt_no": receipt_no,
             "settlement_error": None,
+            "reservation_state": "consumed" if has_reservation else sess.get("reservation_state"),
+            "reservation_consumed_at": _utcnow_iso() if has_reservation else sess.get("reservation_consumed_at"),
+            "reservation_final_cost": gross if has_reservation else sess.get("reservation_final_cost"),
         }},
     )
 
