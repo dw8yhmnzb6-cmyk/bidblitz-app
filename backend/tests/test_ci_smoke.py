@@ -2199,3 +2199,25 @@ def test_legacy_express_checkout_stripe_charges_are_fail_closed():
     assert "amount=int(amount * 100)" not in source
     assert "stripe.PaymentIntent.create(" not in source
 
+def test_seeded_audi_tickets_and_staff_placeholder_checkout_fail_closed_in_production():
+    audi = (BACKEND_DIR / "routes" / "audi_tickets.py").read_text(encoding="utf-8")
+    audi_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AudiTicketSalesPage.jsx").read_text(encoding="utf-8")
+    staff = (BACKEND_DIR / "routes" / "staff_subscription.py").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in audi
+    assert "def _require_audi_ticket_test_mode" in audi
+    assert "Audi-Ticketverkauf ist in Production deaktiviert" in audi
+    assert '"provider_live": False' in audi
+    assert '"purchase_enabled": bool(TEST_MODE)' in audi
+    assert "_require_audi_ticket_test_mode()" in audi
+    assert "if not TEST_MODE:" in audi
+    assert "Audi-Ticketprovider ist noch nicht live verbunden." in audi
+    assert "audi-ticket-provider-unavailable" in audi_page
+    assert "Provider noch nicht live" in audi_page
+    assert "Keine Wallet-Belastung" in audi_page
+
+    assert "from core.config import TEST_MODE" in staff
+    assert "Staff-Abo-Checkout ist in Production deaktiviert" in staff
+    assert "Es wird kein Abo ohne verifizierte Zahlung aktiviert." in staff
+    assert "# TEST_MODE only: local subscription simulation" in staff
+
