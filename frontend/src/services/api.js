@@ -470,6 +470,7 @@ export const api = {
     return uploadFormData(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}/attachments`, formData);
   },
   getChargeWarrantyPass: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/pass`),
+  verifyChargeWarrantyPass: (registrationId, signature) => request(`/api/charge-app/warranty/verify/${encodeURIComponent(registrationId)}?sig=${encodeURIComponent(signature)}`),
   createChargeWarrantyClaim: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/claims`, { method: "POST", body: JSON.stringify(body) }),
   getChargeClaims: () => request("/api/charge-app/claims"),
   getChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}`),
