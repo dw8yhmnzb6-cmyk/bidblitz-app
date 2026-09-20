@@ -769,42 +769,129 @@ async def claim_quick_bonus(request: Request):
     _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    state = await _get_quick_bonus_state(user_id)
-    if not state["available"]:
-        raise HTTPException(400, "Quick Bonus ist noch nicht bereit.")
-
-    reward = float(random.choice(QUICK_BONUS_REWARDS))
+    idem = _require_blitz_idempotency_key(None, request, "blitz-quick-bonus")
+    claim_id = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
     now = _now()
-    next_claim_at = (now + timedelta(hours=QUICK_BONUS_INTERVAL_HOURS)).isoformat()
+    now_iso = now.isoformat()
 
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": reward}, "$setOnInsert": {"user_id": user_id, "balance": 0.0}},
-        upsert=True,
-    )
     await db.blitz_mine_quick_bonus.update_one(
         {"user_id": user_id},
-        {"$set": {
+        {"$setOnInsert": {
             "user_id": user_id,
-            "last_reward_blz": reward,
-            "last_claimed_at": now.isoformat(),
-            "next_claim_at": next_claim_at,
-        }, "$inc": {"total_claims": 1}},
+            "total_claims": 0,
+            "claim_state": "idle",
+            "created_at": now_iso,
+        }},
         upsert=True,
     )
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "blitz_mine_quick_bonus",
-        "amount_blz": reward,
-        "amount_eur": 0.0,
-        "description": "BlitzMine Quick Bonus",
-        "created_at": now.isoformat(),
-    })
+    current = await db.blitz_mine_quick_bonus.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    if current.get("last_claim_id") == claim_id:
+        return {
+            "success": True,
+            "reward_blz": round(float(current.get("last_reward_blz", 0.0) or 0.0), 4),
+            "next_claim_at": current.get("next_claim_at"),
+            "remaining_seconds": max(
+                0,
+                int(
+                    (
+                        datetime.fromisoformat(str(current.get("next_claim_at")).replace("Z", "+00:00")) - now
+                    ).total_seconds()
+                ),
+            ) if current.get("next_claim_at") else 0,
+            "replayed": True,
+        }
+
+    next_claim_at = current.get("next_claim_at")
+    if next_claim_at:
+        try:
+            next_dt = datetime.fromisoformat(str(next_claim_at).replace("Z", "+00:00"))
+            if next_dt > now:
+                raise HTTPException(status_code=400, detail="Quick Bonus ist noch nicht bereit.")
+        except ValueError:
+            pass
+
+    reward = (
+        float(current.get("pending_reward_blz"))
+        if current.get("pending_claim_id") == claim_id and current.get("pending_reward_blz") is not None
+        else float(random.choice(QUICK_BONUS_REWARDS))
+    )
+    lock_until = (now + timedelta(minutes=5)).isoformat()
+    claimed = await db.blitz_mine_quick_bonus.update_one(
+        {
+            "user_id": user_id,
+            "$and": [
+                {
+                    "$or": [
+                        {"next_claim_at": {"$exists": False}},
+                        {"next_claim_at": None},
+                        {"next_claim_at": {"$lte": now_iso}},
+                    ]
+                },
+                {
+                    "$or": [
+                        {"claim_state": {"$ne": "processing"}},
+                        {"claim_lock_until": {"$lt": now_iso}},
+                    ]
+                },
+            ],
+        },
+        {"$set": {
+            "claim_state": "processing",
+            "pending_claim_id": claim_id,
+            "pending_reward_blz": reward,
+            "claim_lock_until": lock_until,
+            "claim_started_at": now_iso,
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.blitz_mine_quick_bonus.find_one({"user_id": user_id}, {"_id": 0}) or {}
+        if current.get("last_claim_id") == claim_id:
+            return {
+                "success": True,
+                "reward_blz": round(float(current.get("last_reward_blz", 0.0) or 0.0), 4),
+                "next_claim_at": current.get("next_claim_at"),
+                "remaining_seconds": 0,
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Quick Bonus wird bereits verarbeitet.")
+
+    payout = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=reward,
+        direction="credit",
+        idempotency_key=f"blitz-quick-bonus:{claim_id}",
+        description="BlitzMine Quick Bonus",
+        category="blitz_mine_quick_bonus",
+    )
+    next_claim_at = (now + timedelta(hours=QUICK_BONUS_INTERVAL_HOURS)).isoformat()
+    finalized = await db.blitz_mine_quick_bonus.update_one(
+        {"user_id": user_id, "claim_state": "processing", "pending_claim_id": claim_id},
+        {
+            "$set": {
+                "claim_state": "completed",
+                "last_claim_id": claim_id,
+                "last_reward_blz": reward,
+                "last_claimed_at": now_iso,
+                "next_claim_at": next_claim_at,
+                "wallet_transaction_id": payout["transaction_id"],
+            },
+            "$inc": {"total_claims": 1},
+            "$unset": {
+                "pending_claim_id": "",
+                "pending_reward_blz": "",
+                "claim_lock_until": "",
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        raise HTTPException(status_code=500, detail="Quick-Bonus wurde gutgeschrieben, Abschluss benötigt Abstimmung")
+
     return {
         "success": True,
         "reward_blz": round(reward, 4),
         "next_claim_at": next_claim_at,
         "remaining_seconds": QUICK_BONUS_INTERVAL_HOURS * 3600,
+        "replayed": bool(payout["replayed"]),
     }
 
 
