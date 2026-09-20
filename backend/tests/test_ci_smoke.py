@@ -2726,3 +2726,20 @@ def test_coinbase_webhook_settles_before_ack_and_recovers_stale_processing():
     assert '"settlement_recovery_count": 1' in source
     assert 'idempotency_key=f"coinbase_charge:{charge_id}:attempt:{attempt}"' in source
 
+def test_pos_barcode_and_nfc_wallet_payments_are_retry_and_race_safe():
+    source = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
+
+    assert '{"_id": bc["_id"], "active": True}' in source
+    assert '"payment_state": "processing"' in source
+    assert '"payment_reference": reference' in source
+    assert "Barcode wird bereits verarbeitet oder wurde verwendet" in source
+    assert "Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst." in source
+
+    assert "idempotency_key: Optional[str] = None" in source
+    assert 'request.headers.get("Idempotency-Key")' in source
+    assert 'idempotency_key=f"pos-nfc:{merchant_uid}:{key_hash}"' in source
+    assert '"client_idempotency_hash": key_hash' in source
+    assert "db.pos_payment_reconciliation.update_one" in source
+    assert 'idempotency_key=f"refund:{customer_debit.transaction_id}"' in source
+    assert "replayed = bool(customer_debit.idempotent_replay and merchant_credit_result.idempotent_replay)" in source
+
