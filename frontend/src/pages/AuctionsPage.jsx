@@ -240,7 +240,7 @@ const CATS = [
 /* ════════════════════════════════════════════
    WIN / LOSE MODAL
    ════════════════════════════════════════════ */
-const WinLoseModal = ({ type, auction, onClose, t }) => {
+const WinLoseModal = ({ type, auction, onClose, onClaimPrize, t }) => {
   if (!type || !auction) return null;
   const isWin = type === "won";
   return (
@@ -262,13 +262,119 @@ const WinLoseModal = ({ type, auction, onClose, t }) => {
           {auction.image_url && <img src={auction.image_url} alt="" className="w-full h-32 object-cover rounded-xl mb-3 opacity-80" />}
           <p className="text-[12px] font-semibold text-white/70 mb-1">{auction.title}</p>
           {isWin && <p className="text-[22px] font-black font-mono text-[#00E0FF] mb-4" style={{ textShadow: "0 0 12px rgba(0,224,255,0.2)" }}>{auction.current_price?.toFixed(2)}</p>}
-          <motion.button data-testid="winlose-close-btn" onClick={onClose}
+          <motion.button data-testid="winlose-close-btn" onClick={isWin ? onClaimPrize : onClose}
             className="w-full py-3 rounded-xl text-[12px] font-bold"
             style={{ background: isWin ? "rgba(255,209,102,0.1)" : "rgba(0,224,255,0.06)", border: `1px solid ${isWin ? "rgba(255,209,102,0.2)" : "rgba(0,224,255,0.1)"}`, color: isWin ? accentGold : accentCyan }}
             whileTap={{ scale: 0.97 }}>
             {isWin ? t("auction.claim_prize") : t("auction.browse_more")}
           </motion.button>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const WinnerCheckoutModal = ({
+  open,
+  checkout,
+  loading,
+  paying,
+  error,
+  form,
+  onChange,
+  onPay,
+  onClose,
+}) => {
+  if (!open) return null;
+  const paid = checkout?.payment_status === "paid";
+  return (
+    <motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={paying ? undefined : onClose} />
+      <motion.div
+        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl border border-[#FFD166]/20 bg-[#080C14] p-5"
+        initial={{ scale: 0.94, y: 20 }} animate={{ scale: 1, y: 0 }}
+        data-testid="auction-winner-checkout"
+      >
+        <button onClick={onClose} disabled={paying} className="absolute right-4 top-4 text-white/40 disabled:opacity-30"><X size={18} /></button>
+        <div className="flex items-center gap-3 pr-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#FFD166]/20 bg-[#FFD166]/10"><Package size={20} className="text-[#FFD166]" /></div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#FFD166]/70">Gewinner-Checkout</p>
+            <h3 className="text-lg font-black text-white">{checkout?.title || "Auktionsgewinn"}</h3>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-48 items-center justify-center"><Loader2 className="animate-spin text-[#FFD166]" /></div>
+        ) : paid ? (
+          <div className="mt-5 space-y-4">
+            <div className="rounded-2xl border border-[#00E89D]/20 bg-[#00E89D]/10 p-4" data-testid="winner-order-paid">
+              <div className="flex items-center gap-2 text-[#00E89D]"><Check size={18} /><span className="font-bold">Bestellung bezahlt</span></div>
+              <p className="mt-2 text-sm text-white/65">Order-ID: {checkout?.order_id}</p>
+              <p className="text-sm text-white/65">Endpreis: €{Number(checkout?.final_price || 0).toFixed(2)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <Truck size={16} className="mb-2 text-[#00C2FF]" />
+                <p className="text-xs font-bold text-white/80">Versand kostenlos</p>
+                <p className="mt-1 text-[10px] text-white/40">Fulfillment: {checkout?.fulfillment_status || "pending"}</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <Globe size={16} className="mb-2 text-[#A855F7]" />
+                <p className="text-xs font-bold text-white/80">{checkout?.shipping_address?.country || "Versandland"}</p>
+                <p className="mt-1 text-[10px] text-white/40">Tracking erst nach echter Übergabe an Versand</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-3 text-sm font-bold text-white/80">Schließen</button>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/40">Zu zahlen</p>
+                <p className="mt-1 text-2xl font-black text-[#00E0FF]">€{Number(checkout?.total_due || 0).toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-[#00E89D]">0,00 € Versand</p>
+                <p className="text-[10px] text-white/35">weltweit kostenlos</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ["full_name", "Vor- und Nachname"],
+                ["phone", "Telefon (optional)"],
+                ["address_line1", "Straße + Hausnummer"],
+                ["address_line2", "Adresszusatz (optional)"],
+                ["postal_code", "PLZ"],
+                ["city", "Stadt"],
+                ["country", "Land"],
+              ].map(([key, label]) => (
+                <label key={key} className={key === "address_line1" || key === "address_line2" ? "sm:col-span-2" : ""}>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-white/35">{label}</span>
+                  <input
+                    value={form[key] || ""}
+                    onChange={(e) => onChange(key, e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-white outline-none focus:border-[#00C2FF]/40"
+                    data-testid={`winner-checkout-${key}`}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300" data-testid="winner-checkout-error">{error}</div>}
+            <button
+              onClick={onPay}
+              disabled={paying}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00E89D] py-3.5 text-sm font-black text-black disabled:opacity-50"
+              data-testid="winner-checkout-pay"
+            >
+              {paying ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />}
+              {paying ? "Zahlung wird verarbeitet…" : `Mit Wallet bezahlen · €${Number(checkout?.total_due || 0).toFixed(2)}`}
+            </button>
+            <p className="text-center text-[10px] text-white/30">Die Bestellung wird erst nach erfolgreicher zentraler Wallet-Buchung als bezahlt markiert.</p>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -452,6 +558,21 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [auctionNotifs, setAuctionNotifs] = useState([]);
   const [showNotifToast, setShowNotifToast] = useState(false);
   const [winLose, setWinLose] = useState({ type: null, auction: null });
+  const [winnerCheckoutOpen, setWinnerCheckoutOpen] = useState(false);
+  const [winnerCheckout, setWinnerCheckout] = useState(null);
+  const [winnerCheckoutLoading, setWinnerCheckoutLoading] = useState(false);
+  const [winnerCheckoutPaying, setWinnerCheckoutPaying] = useState(false);
+  const [winnerCheckoutError, setWinnerCheckoutError] = useState("");
+  const [winnerCheckoutForm, setWinnerCheckoutForm] = useState({
+    full_name: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+  });
+  const winnerCheckoutKeyRef = useRef(null);
   const prevAuctionsRef = useRef([]);
   const pollRef = useRef(null);
 
@@ -572,6 +693,55 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     prevAuctionsRef.current = auctions;
   }, [auctions, isGuest, user?.id]);
 
+  const openWinnerCheckout = async (auction) => {
+    if (!auction?.auction_id) return;
+    setWinLose({ type: null, auction: null });
+    setWinnerCheckoutOpen(true);
+    setWinnerCheckoutLoading(true);
+    setWinnerCheckoutError("");
+    setWinnerCheckoutForm((prev) => ({ ...prev, full_name: prev.full_name || user?.name || "" }));
+    try {
+      const data = await api.getAuctionWinnerCheckout(auction.auction_id);
+      setWinnerCheckout(data);
+      if (data.shipping_address) {
+        setWinnerCheckoutForm((prev) => ({ ...prev, ...data.shipping_address }));
+      }
+    } catch (e) {
+      setWinnerCheckoutError(e.message || "Gewinner-Checkout konnte nicht geladen werden.");
+    } finally {
+      setWinnerCheckoutLoading(false);
+    }
+  };
+
+  const payWinnerCheckout = async () => {
+    if (!winnerCheckout?.auction_id || winnerCheckoutPaying) return;
+    const required = ["full_name", "address_line1", "postal_code", "city", "country"];
+    if (required.some((key) => !String(winnerCheckoutForm[key] || "").trim())) {
+      setWinnerCheckoutError("Bitte fülle Name, Straße, PLZ, Stadt und Land vollständig aus.");
+      return;
+    }
+    if (!winnerCheckoutKeyRef.current) {
+      winnerCheckoutKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `auction-winner-${crypto.randomUUID()}`
+        : `auction-winner-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    setWinnerCheckoutPaying(true);
+    setWinnerCheckoutError("");
+    try {
+      const data = await api.payAuctionWinnerCheckout(winnerCheckout.auction_id, {
+        ...winnerCheckoutForm,
+        idempotency_key: winnerCheckoutKeyRef.current,
+      });
+      winnerCheckoutKeyRef.current = null;
+      setWinnerCheckout(data);
+      await fetchAuctions();
+    } catch (e) {
+      setWinnerCheckoutError(e.message || "Zahlung fehlgeschlagen.");
+    } finally {
+      setWinnerCheckoutPaying(false);
+    }
+  };
+
   const toggleWatch = async (auctionId) => {
     if (isGuest) { onAuthRequired(); return; }
     try {
@@ -623,7 +793,22 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       {/* Notification Toast */}
       <AnimatePresence>{showNotifToast && <NotifToast notifs={auctionNotifs} onDismiss={dismissNotif} />}</AnimatePresence>
       {/* Win/Lose Modal */}
-      <AnimatePresence>{winLose.type && <WinLoseModal type={winLose.type} auction={winLose.auction} onClose={() => setWinLose({ type: null, auction: null })} t={t} />}</AnimatePresence>
+      <AnimatePresence>{winLose.type && <WinLoseModal type={winLose.type} auction={winLose.auction} onClose={() => setWinLose({ type: null, auction: null })} onClaimPrize={() => openWinnerCheckout(winLose.auction)} t={t} />}</AnimatePresence>
+      <AnimatePresence>
+        {winnerCheckoutOpen && (
+          <WinnerCheckoutModal
+            open={winnerCheckoutOpen}
+            checkout={winnerCheckout}
+            loading={winnerCheckoutLoading}
+            paying={winnerCheckoutPaying}
+            error={winnerCheckoutError}
+            form={winnerCheckoutForm}
+            onChange={(key, value) => { setWinnerCheckoutForm((prev) => ({ ...prev, [key]: value })); setWinnerCheckoutError(""); }}
+            onPay={payWinnerCheckout}
+            onClose={() => { if (!winnerCheckoutPaying) { setWinnerCheckoutOpen(false); setWinnerCheckoutError(""); } }}
+          />
+        )}
+      </AnimatePresence>
       {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[60vw] max-h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(160px)", background: "rgba(0,224,255,0.02)" }} />
 
