@@ -473,8 +473,16 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
 
   const updateWarrantyStatus = useCallback(async (claimId, status) => {
     setDealerBusy(`warranty-status-${claimId}`);
+    const customerNotes = {
+      under_review: "Dein Garantiefall wird jetzt vom Händler geprüft.",
+      replacement_sent: "Der Händler hat den Austausch freigegeben.",
+      resolved: "Der Händler hat den Garantiefall abgeschlossen.",
+    };
     try {
-      await api.updateMerchantDealerWarrantyStatus(claimId, { status, internal_note: `Status via Händlerportal auf ${status} gesetzt` });
+      await api.updateMerchantDealerWarrantyStatus(claimId, {
+        status,
+        internal_note: customerNotes[status] || `Garantiestatus wurde auf ${status} aktualisiert.`,
+      });
       toast.success("Garantiestatus aktualisiert");
       await loadDealerWarranty();
     } catch (error) {
@@ -896,6 +904,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               ["Offen", dealerWarranty?.summary?.open_total ?? 0],
               ["Gelöst", dealerWarranty?.summary?.resolved_total ?? 0],
               ["Austausch", dealerWarranty?.summary?.replacement_total ?? 0],
+              ["Kundenfälle", dealerWarranty?.summary?.customer_charge_claims_total ?? 0],
             ]}
             testid="merchant-dealer-warranty-hero"
           />
@@ -957,10 +966,28 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                         <p className="mt-1 text-[11px] leading-5 text-slate-400">{item.issue_type} · {item.requested_resolution} · {item.customer_name || 'Kunde offen'}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.status}</span>
+                          {item.dealer_status && item.dealer_status !== item.status ? <span className="rounded-full bg-fuchsia-400/10 px-2.5 py-1 text-[11px] text-fuchsia-200">{item.dealer_status}</span> : null}
+                          {item.source_label ? <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-200">{item.source_label}</span> : null}
                           <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.serial_number || 'ohne SN'}</span>
                           {item.warranty_pass?.pass_id ? <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200">{item.warranty_pass.pass_id}</span> : null}
                         </div>
                         {item.issue_summary && <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.issue_summary}</p>}
+                        {(item.attachments || []).length ? (
+                          <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`merchant-dealer-warranty-evidence-${index}`}>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Beweisdateien · {item.attachments.length}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(item.attachments || []).map((attachment) => (
+                                <a
+                                  key={attachment.attachment_id}
+                                  href={`${API}${attachment.download_path}`}
+                                  className="inline-flex h-8 items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 text-[11px] font-semibold text-cyan-200"
+                                >
+                                  <FileText size={11} />{attachment.original_filename}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                         {item.warranty_pass ? (
                           <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`merchant-dealer-warranty-pass-summary-${index}`}>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
