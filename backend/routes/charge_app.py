@@ -1378,6 +1378,24 @@ async def delete_charge_warranty(registration_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
     warranty = await _find_user_warranty(user_id, registration_id)
+
+    active_claim = await db.merchant_warranty_claims.find_one(
+        {
+            "registration_id": registration_id,
+            "customer_user_id": user_id,
+            "status": {"$in": ["open", "in_review", "approved"]},
+        },
+        {"_id": 0, "claim_id": 1, "status": 1},
+    )
+    if active_claim:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Garantie kann nicht gelöscht werden, solange ein Charge-Care-Fall aktiv ist "
+                f"({active_claim.get('claim_id')})."
+            ),
+        )
+
     _delete_document_blobs(warranty)
     result = await db.charge_app_warranties.delete_one({
         "user_id": user_id,
