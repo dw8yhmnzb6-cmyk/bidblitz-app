@@ -1343,7 +1343,7 @@ async def _refresh_dating_premium_status(session_id: str, user_id: str, request:
     if not txn:
         raise HTTPException(status_code=404, detail="Payment-Session nicht gefunden")
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_status = await stripe_checkout.get_checkout_status(session_id)
     new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
     await db.payment_transactions.update_one(
@@ -1874,7 +1874,7 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         raise HTTPException(status_code=409, detail="Checkout wird bereits erstellt")
 
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_req = CheckoutSessionRequest(
         amount=effective_price,
         currency=plan["currency"],
@@ -2010,7 +2010,7 @@ async def dating_consumable_checkout(payload: DatingConsumableCheckoutReq, reque
         raise HTTPException(status_code=409, detail="Checkout wird bereits erstellt")
 
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_req = CheckoutSessionRequest(
         amount=float(item["price_eur"]),
         currency=item["currency"],
