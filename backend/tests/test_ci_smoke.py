@@ -1969,3 +1969,14 @@ def test_live_shopping_uses_livekit_and_legacy_mock_router_is_unregistered():
     assert "<LiveKitStreamPage" in app
     assert "window.location.replace('/livekit-stream')" in legacy_page
 
+def test_super_app_legacy_value_routes_are_retired():
+    source = (BACKEND_DIR / "routes" / "super_app_features.py").read_text(encoding="utf-8")
+
+    assert '@router.post("/gaming/session")' in source
+    assert "Legacy-Gaming-Einsätze sind deaktiviert" in source
+    assert '@router.post("/creator/subscribe")' in source
+    assert "Legacy-Creator-Abo-Zahlungen sind deaktiviert" in source
+    assert '"$inc": {"balance": -session.bet_amount}' not in source
+    assert '"$inc": {"balance": -tier["monthly_price"]}' not in source
+    assert '"$inc": {"balance": tier["monthly_price"] * 0.85}' not in source
+
