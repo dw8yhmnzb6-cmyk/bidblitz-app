@@ -3,13 +3,14 @@ BidBlitz V2 - Aktien & ETF Trading
 Echte Kurse via Yahoo Finance (kein API Key nötig), Portfolio, Watchlist
 """
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.config import TEST_MODE
 from core.security import get_current_user
-import secrets, logging, random, asyncio, threading
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+import secrets, hashlib, logging, random, asyncio, threading
 
 logger = logging.getLogger("bidblitz.stocks")
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
@@ -338,8 +339,9 @@ async def get_portfolio(request: Request):
 
 class TradeReq(BaseModel):
     symbol: str
-    shares: float
+    shares: float = Field(..., gt=0, le=100000, allow_inf_nan=False)
     side: str  # buy | sell
+    idempotency_key: Optional[str] = None
 
 @router.post("/trade")
 async def execute_trade(req: TradeReq, request: Request):
@@ -349,57 +351,271 @@ async def execute_trade(req: TradeReq, request: Request):
             status_code=503,
             detail="Echter Aktienhandel ist deaktiviert, bis ein verifizierter Broker live verbunden ist. Das Wallet wurde nicht belastet.",
         )
+
+    user_id = str(user["_id"])
     email = user.get("email", "")
     symbol = req.symbol.upper()
+    side = req.side.lower().strip()
+    if side not in {"buy", "sell"}:
+        raise HTTPException(400, "side muss 'buy' oder 'sell' sein")
+
     asset = next((a for a in ASSETS if a["symbol"] == symbol), None)
     if not asset:
         raise HTTPException(404, "Asset nicht gefunden")
-    price = get_price(symbol)
-    total_cost = round(price * req.shares, 2)
 
-    if req.side == "buy":
-        user_doc = await db.users.find_one({"email": email})
-        balance = user_doc.get("balance", 0) if user_doc else 0
-        if balance < total_cost:
-            raise HTTPException(400, f"Nicht genügend Guthaben. Benötigt: {total_cost}€, Verfügbar: {balance:.2f}€")
-        await db.users.update_one({"email": email}, {"$inc": {"balance": -total_cost}})
-        existing = await db.stock_holdings.find_one({"user_email": email, "symbol": symbol})
-        if existing:
-            new_shares = existing["shares"] + req.shares
-            new_avg = ((existing["avg_price"] * existing["shares"]) + (price * req.shares)) / new_shares
-            await db.stock_holdings.update_one({"user_email": email, "symbol": symbol},
-                {"$set": {"shares": round(new_shares, 6), "avg_price": round(new_avg, 2)}})
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    key_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:24]
+    trade_id = f"STK-{key_hash.upper()}"
+    payload = {
+        "user_id": user_id,
+        "symbol": symbol,
+        "shares": round(float(req.shares), 6),
+        "side": side,
+    }
+
+    existing_op = await db.stock_trade_ops.find_one({"_id": trade_id}, {"_id": 0})
+    if existing_op and existing_op.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Trade-Daten verwendet")
+    if existing_op and existing_op.get("status") == "completed":
+        return {**existing_op["response"], "replayed": True}
+    if existing_op and existing_op.get("status") in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="Trade wird bereits verarbeitet oder benötigt Abstimmung")
+    if existing_op and existing_op.get("status") == "failed":
+        raise HTTPException(status_code=409, detail="Fehlgeschlagener Trade benötigt einen neuen Idempotency-Key")
+
+    price = round(float(get_price(symbol)), 2)
+    total_cost = round(price * float(req.shares), 2)
+    await db.stock_trade_ops.update_one(
+        {"_id": trade_id},
+        {"$setOnInsert": {
+            "_id": trade_id,
+            "payload": payload,
+            "price": price,
+            "total": total_cost,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    claimed = await db.stock_trade_ops.update_one(
+        {"_id": trade_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if claimed.modified_count != 1:
+        current = await db.stock_trade_ops.find_one({"_id": trade_id}, {"_id": 0}) or {}
+        if current.get("status") == "completed":
+            return {**current["response"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Trade wird bereits verarbeitet")
+
+    marker_field = f"trade_markers.{trade_id}"
+    try:
+        if side == "buy":
+            payment = await debit_wallet(
+                user_id=user_id,
+                amount=total_cost,
+                tx_type=TransactionType.PAYMENT,
+                description=f"Stock Preview Kauf: {symbol}",
+                reference=trade_id,
+                metadata={"symbol": symbol, "shares": req.shares, "preview": True},
+                idempotency_key=f"stock-trade:{trade_id}:wallet",
+            )
+            if not payment.success:
+                await db.stock_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": payment.error or "wallet_debit_failed"}},
+                )
+                raise HTTPException(status_code=400, detail=payment.error or "Wallet-Abbuchung fehlgeschlagen")
+
+            holding_update = await db.stock_holdings.update_one(
+                {"user_email": email, "symbol": symbol, marker_field: {"$exists": False}},
+                {
+                    "$inc": {
+                        "shares": round(float(req.shares), 6),
+                        "cost_basis_total": total_cost,
+                    },
+                    "$set": {
+                        marker_field: {
+                            "trade_id": trade_id,
+                            "side": "buy",
+                            "shares": round(float(req.shares), 6),
+                            "total": total_cost,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                        "name": asset["name"],
+                        "type": asset["type"],
+                    },
+                    "$setOnInsert": {
+                        "user_email": email,
+                        "symbol": symbol,
+                        "bought_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                upsert=True,
+            )
+            if holding_update.modified_count != 1 and holding_update.upserted_id is None:
+                already = await db.stock_holdings.find_one(
+                    {"user_email": email, "symbol": symbol, marker_field: {"$exists": True}},
+                    {"_id": 1},
+                )
+                if not already:
+                    rollback = await credit_wallet(
+                        user_id=user_id,
+                        amount=total_cost,
+                        tx_type=TransactionType.REFUND,
+                        description=f"Stock Preview Kauf Rückbuchung: {symbol}",
+                        reference=f"{trade_id}-ROLLBACK",
+                        source="stock_preview_rollback",
+                        metadata={"trade_id": trade_id, "symbol": symbol},
+                        idempotency_key=f"stock-trade:{trade_id}:rollback",
+                    )
+                    await db.stock_trade_ops.update_one(
+                        {"_id": trade_id},
+                        {"$set": {
+                            "status": "failed" if rollback.success else "reconciliation_required",
+                            "error": "holding_update_failed",
+                            "rollback_transaction_id": rollback.transaction_id,
+                        }},
+                    )
+                    if not rollback.success:
+                        raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+                    raise HTTPException(status_code=409, detail="Trade fehlgeschlagen. Wallet wurde zurückgebucht")
+            new_balance = payment.new_balance
+            wallet_tx_id = payment.transaction_id
+
         else:
-            await db.stock_holdings.insert_one({
-                "user_email": email, "symbol": symbol, "name": asset["name"],
-                "type": asset["type"], "shares": round(req.shares, 6),
-                "avg_price": price, "bought_at": datetime.now(timezone.utc).isoformat(),
-            })
-    elif req.side == "sell":
-        existing = await db.stock_holdings.find_one({"user_email": email, "symbol": symbol})
-        if not existing or existing["shares"] < req.shares:
-            raise HTTPException(400, "Nicht genügend Anteile")
-        new_shares = round(existing["shares"] - req.shares, 6)
-        if new_shares < 0.0001:
-            await db.stock_holdings.delete_one({"user_email": email, "symbol": symbol})
-        else:
-            await db.stock_holdings.update_one({"user_email": email, "symbol": symbol}, {"$set": {"shares": new_shares}})
-        await db.users.update_one({"email": email}, {"$inc": {"balance": total_cost}})
-    else:
-        raise HTTPException(400, "side muss 'buy' oder 'sell' sein")
+            holding = await db.stock_holdings.find_one({"user_email": email, "symbol": symbol}) or {}
+            current_shares = round(float(holding.get("shares") or 0), 6)
+            if current_shares < float(req.shares):
+                await db.stock_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": "insufficient_shares"}},
+                )
+                raise HTTPException(400, "Nicht genügend Anteile")
+            cost_basis_total = float(holding.get("cost_basis_total") or (float(holding.get("avg_price") or price) * current_shares))
+            avg_cost = (cost_basis_total / current_shares) if current_shares > 0 else 0
+            cost_basis_delta = round(avg_cost * float(req.shares), 2)
 
-    await db.stock_trades.insert_one({
-        "trade_id": secrets.token_hex(8), "user_email": email, "symbol": symbol,
-        "name": asset["name"], "side": req.side, "shares": req.shares,
-        "price": price, "total": total_cost,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+            holding_update = await db.stock_holdings.update_one(
+                {
+                    "user_email": email,
+                    "symbol": symbol,
+                    "shares": {"$gte": round(float(req.shares), 6)},
+                    marker_field: {"$exists": False},
+                },
+                {
+                    "$inc": {
+                        "shares": -round(float(req.shares), 6),
+                        "cost_basis_total": -cost_basis_delta,
+                    },
+                    "$set": {
+                        marker_field: {
+                            "trade_id": trade_id,
+                            "side": "sell",
+                            "shares": round(float(req.shares), 6),
+                            "total": total_cost,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    },
+                },
+            )
+            if holding_update.modified_count != 1:
+                await db.stock_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {"status": "failed", "error": "holding_debit_failed"}},
+                )
+                raise HTTPException(409, "Anteile wurden bereits verkauft oder reichen nicht aus")
 
-    user_doc = await db.users.find_one({"email": email})
-    new_balance = user_doc.get("balance", 0) if user_doc else 0
+            payment = await credit_wallet(
+                user_id=user_id,
+                amount=total_cost,
+                tx_type=TransactionType.REWARD,
+                description=f"Stock Preview Verkauf: {symbol}",
+                reference=trade_id,
+                source="stock_preview",
+                metadata={"symbol": symbol, "shares": req.shares, "preview": True},
+                idempotency_key=f"stock-trade:{trade_id}:wallet",
+            )
+            if not payment.success:
+                rollback = await db.stock_holdings.update_one(
+                    {"user_email": email, "symbol": symbol, marker_field: {"$exists": True}},
+                    {
+                        "$inc": {
+                            "shares": round(float(req.shares), 6),
+                            "cost_basis_total": cost_basis_delta,
+                        },
+                        "$unset": {marker_field: ""},
+                    },
+                )
+                await db.stock_trade_ops.update_one(
+                    {"_id": trade_id},
+                    {"$set": {
+                        "status": "failed" if rollback.modified_count == 1 else "reconciliation_required",
+                        "error": payment.error or "wallet_credit_failed",
+                    }},
+                )
+                if rollback.modified_count != 1:
+                    raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+                raise HTTPException(status_code=400, detail=payment.error or "Wallet-Gutschrift fehlgeschlagen")
+            new_balance = payment.new_balance
+            wallet_tx_id = payment.transaction_id
 
-    return {"ok": True, "side": req.side, "symbol": symbol, "shares": req.shares,
-            "price": price, "total": total_cost, "new_balance": round(new_balance, 2)}
+        fresh_holding = await db.stock_holdings.find_one({"user_email": email, "symbol": symbol}, {"_id": 0}) or {}
+        shares_after = max(0.0, round(float(fresh_holding.get("shares") or 0), 6))
+        cost_basis_after = max(0.0, round(float(fresh_holding.get("cost_basis_total") or 0), 2))
+        avg_price_after = round(cost_basis_after / shares_after, 2) if shares_after > 0 else 0.0
+        await db.stock_holdings.update_one(
+            {"user_email": email, "symbol": symbol},
+            {"$set": {"avg_price": avg_price_after}},
+        )
+
+        trade_doc = {
+            "_id": trade_id,
+            "trade_id": trade_id,
+            "user_id": user_id,
+            "user_email": email,
+            "symbol": symbol,
+            "name": asset["name"],
+            "side": side,
+            "shares": round(float(req.shares), 6),
+            "price": price,
+            "total": total_cost,
+            "wallet_transaction_id": wallet_tx_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.stock_trades.update_one({"_id": trade_id}, {"$setOnInsert": trade_doc}, upsert=True)
+        response = {
+            "ok": True,
+            "side": side,
+            "symbol": symbol,
+            "shares": round(float(req.shares), 6),
+            "price": price,
+            "total": total_cost,
+            "new_balance": round(float(new_balance or 0), 2),
+        }
+        await db.stock_trade_ops.update_one(
+            {"_id": trade_id, "status": "processing"},
+            {"$set": {
+                "status": "completed",
+                "response": response,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return {**response, "replayed": bool(payment.idempotent_replay)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.stock_trade_ops.update_one(
+            {"_id": trade_id, "status": "processing"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "error": str(exc)[:300],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Trade benötigt Abstimmung")
+
 
 
 @router.get("/trades")
