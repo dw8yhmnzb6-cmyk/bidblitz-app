@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, CheckCircle2, Clock3, Loader2, MessageCircle, Search,
+  ArrowLeft, CheckCircle2, Clock3, Download, Loader2, MessageCircle, Search,
   ShieldAlert, ShieldCheck, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const STATUS_OPTIONS = [
   { value: "", label: "Alle" },
@@ -175,6 +177,23 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
                         <div className="mt-4 rounded-2xl border border-[#E1D7C7] bg-[#FBF8F2] p-4">
                           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Letzte Nachricht</p>
                           <p className="mt-2 text-sm text-slate-700">{claim.messages[claim.messages.length - 1]?.message}</p>
+                        </div>
+                      ) : null}
+
+                      {(claim.attachments || []).length ? (
+                        <div className="mt-4 rounded-2xl border border-[#E1D7C7] bg-[#FBF8F2] p-4" data-testid={`admin-charge-claim-attachments-${index}`}>
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Beweisdateien · {claim.attachments.length}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {(claim.attachments || []).map((item) => (
+                              <a
+                                key={item.attachment_id}
+                                href={`${API}${item.download_path}`}
+                                className="inline-flex h-9 items-center gap-2 rounded-2xl border border-[#D9CFC0] bg-white px-3 text-[11px] font-black text-slate-700"
+                              >
+                                <Download size={12} />{item.original_filename}
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       ) : null}
                     </div>
