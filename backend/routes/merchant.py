@@ -163,21 +163,13 @@ async def get_dashboard(request: Request):
 
     merchant = await db.merchants.find_one({"user_id": user_id}, {"_id": 0})
     merchant_profile = await db.merchant_profiles.find_one({"user_id": user_id})
-    if not merchant and not merchant_profile:
-        return {
-            "merchant_id": user_id,
-            "business_name": f"{user.get('name', 'User')}'s Store",
-            "gross_earnings": 0.0,
-            "total_earnings": 0.0,
-            "total_fees": 0.0,
-            "total_transactions": 0,
-            "available_payout": 0.0,
-            "today_earnings": 0.0,
-            "today_transactions": 0,
-            "fee_percent": FEES["payment"] * 100,
-            "recent_payments": [],
-            "public_slug": _slugify(f"{user.get('name', 'User')}-store"),
-        }
+    recognized_merchant = bool(
+        user.get("role") == "merchant"
+        or (merchant and (merchant.get("merchant_id") or merchant.get("status")))
+        or merchant_profile
+    )
+    if not recognized_merchant:
+        raise HTTPException(status_code=403, detail="Händlerkonto erforderlich")
 
     summary = await _build_dashboard_summary(user_id, merchant, merchant_profile)
     merchant_id = user_id
@@ -435,8 +427,12 @@ async def get_merchant_status(request: Request):
     user_id = str(user["_id"])
     
     merchant = await db.merchants.find_one({"user_id": user_id}, {"_id": 0})
-    
-    if not merchant:
+    recognized_merchant = bool(
+        user.get("role") == "merchant"
+        or (merchant and (merchant.get("merchant_id") or merchant.get("status")))
+    )
+
+    if not merchant or not recognized_merchant:
         return {
             "is_merchant": False,
             "status": None,
