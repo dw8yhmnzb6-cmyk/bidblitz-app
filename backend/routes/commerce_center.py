@@ -950,6 +950,15 @@ async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: R
         listing = await db.marketplace_listings.find_one({"listing_id": sale["listing_id"]}, {"_id": 0}) or listing
 
     platform_owned = not sale.get("seller_id")
+    if not platform_owned and not TEST_MODE:
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Flash-Sale-Käufe von externen Marketplace-Verkäufern sind in Production "
+                "bis zur Escrow-/Versandfreigabe deaktiviert. Es wird kein Käufergeld abgebucht."
+            ),
+        )
     seller = None
     if not platform_owned:
         seller_query = {"_id": ObjectId(sale["seller_id"])} if ObjectId.is_valid(str(sale.get("seller_id") or "")) else {"_id": sale.get("seller_id")}
