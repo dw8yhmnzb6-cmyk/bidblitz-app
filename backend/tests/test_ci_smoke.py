@@ -2179,3 +2179,21 @@ def test_auth_does_not_issue_or_expose_fake_card_pan_in_production():
     assert 'fresh_user = await db.users.find_one({"_id": result.inserted_id}) or user_doc' in auth
     assert "return serialize_user(fresh_user)" in auth
 
+def test_nft_value_flows_fail_closed_until_live_provider_exists():
+    backend = (BACKEND_DIR / "routes" / "nft_generator.py").read_text(encoding="utf-8")
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert "from core.config import TEST_MODE" in backend
+    assert "def _require_nft_value_mode" in backend
+    assert "NFT-Erzeugung, Minting und Handel sind in Production deaktiviert" in backend
+    assert backend.count("_require_nft_value_mode()") >= 4
+    assert '"value_actions_enabled": bool(TEST_MODE)' in backend
+    assert '"live_nft_provider_connected": False' in backend
+    assert '"prices": NFT_PRICES if TEST_MODE else {}' in backend
+    assert "mining_balance = await get_mining_balance(user_id) if TEST_MODE else 0" in backend
+
+    assert 'case "/nft":' in app
+    assert 'title="NFT Studio"' in app
+    assert "TEST_MODE_FULL_ACCESS" in app
+    assert "Mint-/Custody-/Marketplace-Provider" in app
+
