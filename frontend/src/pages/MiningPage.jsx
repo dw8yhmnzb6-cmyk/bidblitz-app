@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Cpu, Server, Zap, Flame, Atom, ChevronRight,
@@ -149,6 +149,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [listPrice, setListPrice] = useState("");
   const [listing, setListing] = useState(false);
   const [buyingListing, setBuyingListing] = useState(null);
+  const marketplacePurchaseKeysRef = useRef({});
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
@@ -322,8 +323,19 @@ export default function MiningPage({ onBack, onNavigate }) {
   const buyFromMarketplace = async (listingId) => {
     if (!requireMiningValue()) return;
     setBuyingListing(listingId);
+    if (!marketplacePurchaseKeysRef.current[listingId]) {
+      marketplacePurchaseKeysRef.current[listingId] = typeof crypto?.randomUUID === "function"
+        ? `mining-market-${crypto.randomUUID()}`
+        : `mining-market-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = marketplacePurchaseKeysRef.current[listingId];
     try {
-      const r = await api("/api/mining/marketplace/buy", { method: "POST", body: JSON.stringify({ listing_id: listingId }) });
+      const r = await api("/api/mining/marketplace/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ listing_id: listingId, idempotency_key: idempotencyKey }),
+      });
+      delete marketplacePurchaseKeysRef.current[listingId];
       toast.success(`Bought ${r.miner_name}!`);
       load();
     } catch (e) { toast.error(e.message); }
