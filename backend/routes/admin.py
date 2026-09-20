@@ -977,8 +977,10 @@ class EmailTestRequest(BaseModel):
 
 @router.post("/test-email")
 async def admin_test_email(req: EmailTestRequest, request: Request):
-    """Admin-only: löst eine Test-Email via Resend aus. Nutzbar nach DNS-Updates."""
+    """Admin-only: test dispatch is never allowed from production."""
     await require_admin(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=403, detail="Test-E-Mail-Versand ist in Production deaktiviert.")
     from routes.email_service import send_email, RESEND_KEY, SENDER
 
     if not req.to or "@" not in req.to:
