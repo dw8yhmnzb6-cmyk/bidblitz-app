@@ -719,19 +719,51 @@ async def verify_customer_payment_pin(customer: dict, pin: str, request: Request
     return {"ok": True, "locked": False}
 
 
-async def execute_secure_topup(actor: dict, customer: dict, amount: float, payment_method: str, request: Request | None = None, approval_id: str = "") -> dict:
+async def execute_secure_topup(
+    actor: dict,
+    customer: dict,
+    amount: float,
+    payment_method: str,
+    request: Request | None = None,
+    approval_id: str = "",
+    idempotency_key: str = "",
+) -> dict:
+    stable_key = str(approval_id or idempotency_key or "").strip()
+    if not stable_key:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    operation_hash = hashlib.sha256(
+        f"{actor['merchant_id']}:{actor['store_id']}:{customer['_id']}:{stable_key}".encode("utf-8")
+    ).hexdigest()[:24]
+    sale_id = f"SALE-TOP-{operation_hash.upper()}"
+    reference = f"TOP-{operation_hash[:12].upper()}"
+
     result = await credit_wallet(
         user_id=str(customer["_id"]),
         amount=amount,
         tx_type=TransactionType.WALLET_TOPUP_POS,
         description=f"Sichere POS-Aufladung ({actor['store_id']})",
-        metadata={"merchant_id": actor["merchant_id"], "store_id": actor["store_id"], "register_id": actor.get("register_id", ""), "employee_id": actor["user_id"], "payment_method": payment_method, "approval_id": approval_id},
+        reference=reference,
+        metadata={
+            "merchant_id": actor["merchant_id"],
+            "store_id": actor["store_id"],
+            "register_id": actor.get("register_id", ""),
+            "employee_id": actor["user_id"],
+            "payment_method": payment_method,
+            "approval_id": approval_id or None,
+            "operation_hash": operation_hash,
+        },
+        idempotency_key=f"pos-secure-topup:{operation_hash}",
     )
     if not result.success:
-        raise HTTPException(status_code=500, detail=result.error or "Top-up fehlgeschlagen")
+        state = str(getattr(result.status, "value", result.status))
+        raise HTTPException(
+            status_code=409 if state in {"pending", "reconciliation_required"} else 400,
+            detail=result.error or "Top-up fehlgeschlagen",
+        )
+
     sale = {
-        "sale_id": f"SALE-{secrets.token_hex(6).upper()}",
-        "receipt_id": f"TOP-{secrets.token_hex(4).upper()}",
+        "sale_id": sale_id,
+        "receipt_id": reference,
         "store_id": actor["store_id"],
         "register_id": actor.get("register_id", ""),
         "cashier_user_id": actor["user_id"],
@@ -744,16 +776,59 @@ async def execute_secure_topup(actor: dict, customer: dict, amount: float, payme
         "method": payment_method,
         "status": "completed",
         "approval_id": approval_id or None,
+        "wallet_transaction_id": result.transaction_id,
+        "idempotency_key": stable_key,
         "created_at": now_iso(),
     }
-    await db.pos_sales.insert_one(sale)
-    await audit_pos_security_event("pos_topup_success", request=request, user_id=actor["user_id"], email=actor["user"].get("email", ""), details={"customer_number": customer.get("user_number", ""), "amount": amount, "store_id": actor["store_id"], "register_id": actor.get("register_id", ""), "payment_method": payment_method, "approval_id": approval_id}, severity="info")
+    await db.pos_sales.update_one(
+        {"sale_id": sale_id},
+        {"$setOnInsert": sale},
+        upsert=True,
+    )
+    persisted_sale = await db.pos_sales.find_one({"sale_id": sale_id}, {"_id": 0}) or sale
+
+    await audit_pos_security_event(
+        "pos_topup_success",
+        request=request,
+        user_id=actor["user_id"],
+        email=actor["user"].get("email", ""),
+        details={
+            "customer_number": customer.get("user_number", ""),
+            "amount": amount,
+            "store_id": actor["store_id"],
+            "register_id": actor.get("register_id", ""),
+            "payment_method": payment_method,
+            "approval_id": approval_id,
+            "sale_id": sale_id,
+        },
+        severity="info",
+    )
     try:
-        await db.notifications.insert_one({"user_id": str(customer["_id"]), "type": "wallet_topup", "title": "Wallet aufgeladen", "message": f"Dein Wallet wurde am POS um €{amount:.2f} aufgeladen.", "read": False, "created_at": now_iso()})
+        await db.notifications.update_one(
+            {"_id": f"pos-topup:{sale_id}"},
+            {"$setOnInsert": {
+                "_id": f"pos-topup:{sale_id}",
+                "user_id": str(customer["_id"]),
+                "type": "wallet_topup",
+                "title": "Wallet aufgeladen",
+                "message": f"Dein Wallet wurde am POS um €{amount:.2f} aufgeladen.",
+                "read": False,
+                "created_at": now_iso(),
+                "data": {"sale_id": sale_id},
+            }},
+            upsert=True,
+        )
     except Exception:
         pass
-    sale.pop("_id", None)
-    return {"ok": True, "status": "approved", "customer": build_customer_public_view(customer), "sale": sale, "message": f"€{amount:.2f} erfolgreich aufgeladen"}
+
+    return {
+        "ok": True,
+        "status": "approved",
+        "customer": build_customer_public_view(customer),
+        "sale": persisted_sale,
+        "message": f"€{amount:.2f} erfolgreich aufgeladen",
+        "replayed": bool(result.idempotent_replay),
+    }
 
 
 async def execute_secure_payment(actor: dict, customer: dict, amount: float, description: str, payment_id: str, request: Request | None = None, cart_id: str = "", approval_id: str = ""):
