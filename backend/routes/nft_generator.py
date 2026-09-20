@@ -18,9 +18,19 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 from services.nft_ai_generator import get_nft_generator
 
 router = APIRouter(prefix="/api/nft", tags=["nft"])
+
+
+def _require_nft_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="NFT-Erzeugung, Minting und Handel sind in Production deaktiviert, bis ein verifizierter Mint-/Custody-/Marketplace-Provider live verbunden ist.",
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # NFT CONFIGURATION
@@ -221,7 +231,13 @@ async def get_nft_config():
     return {
         "styles": NFT_STYLES,
         "rarity": NFT_RARITY,
-        "prices": NFT_PRICES,
+        "prices": NFT_PRICES if TEST_MODE else {},
+        "value_actions_enabled": bool(TEST_MODE),
+        "live_nft_provider_connected": False,
+        "production_message": (
+            None if TEST_MODE else
+            "NFT-Erzeugung, Minting und Handel sind noch nicht live verbunden."
+        ),
     }
 
 
@@ -232,23 +248,24 @@ async def get_nft_balance(request: Request):
     user_id = str(user["_id"])
     
     wallet_balance = user.get("balance", 0)
-    mining_balance = await get_mining_balance(user_id)
+    mining_balance = await get_mining_balance(user_id) if TEST_MODE else 0
     
     return {
         "wallet_eur": round(wallet_balance, 2),
         "mining_btc": round(mining_balance, 8),
+        "value_actions_enabled": bool(TEST_MODE),
         "can_afford": {
             "basic": {
-                "wallet": wallet_balance >= NFT_PRICES["basic"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["basic"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["basic"]["eur"]),
+                "mining": bool(TEST_MODE and mining_balance >= NFT_PRICES["basic"]["btc"]),
             },
             "premium": {
-                "wallet": wallet_balance >= NFT_PRICES["premium"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["premium"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["premium"]["eur"]),
+                "mining": bool(TEST_MODE and mining_balance >= NFT_PRICES["premium"]["btc"]),
             },
             "ultimate": {
-                "wallet": wallet_balance >= NFT_PRICES["ultimate"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["ultimate"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["ultimate"]["eur"]),
+                "mining": bool(TEST_MODE and mining_balance >= NFT_PRICES["ultimate"]["btc"]),
             },
         }
     }
@@ -256,6 +273,7 @@ async def get_nft_balance(request: Request):
 
 @router.post("/generate")
 async def generate_nft(req: GenerateNFTRequest, request: Request):
+    _require_nft_value_mode()
     """Generate a new NFT image."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -456,6 +474,7 @@ async def get_nft_details(nft_id: str, request: Request):
 
 @router.post("/list")
 async def list_nft_for_sale(req: ListNFTRequest, request: Request):
+    _require_nft_value_mode()
     """List an NFT for sale on the marketplace."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -491,6 +510,7 @@ async def list_nft_for_sale(req: ListNFTRequest, request: Request):
 
 @router.post("/unlist/{nft_id}")
 async def unlist_nft(nft_id: str, request: Request):
+    _require_nft_value_mode()
     """Remove NFT from marketplace."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -547,6 +567,7 @@ async def get_marketplace(limit: int = 50, rarity: Optional[str] = None, style: 
 
 @router.post("/buy/{nft_id}")
 async def buy_nft(nft_id: str, request: Request):
+    _require_nft_value_mode()
     """Buy an NFT from the marketplace."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
