@@ -209,6 +209,25 @@ CITY_PRICING_PROFILES = {
             },
         },
     },
+    "FR": {
+        "paris": {
+            "city": "Paris",
+            "region": "Frankreich",
+            "currency": "EUR",
+            "source": "Service Public France · 2026 regulated taxi ceiling",
+            "modes": {
+                "taxi": {
+                    "base": 4.48,
+                    "booking_fee": 4.00,
+                    "per_km": 1.30,
+                    "per_min": 0.0,
+                    "minimum": 8.00,
+                    "surge": False,
+                    "basis": "Paris 2026 · regulierter Richtwert: max. 4,48 € Aufnahme + max. 1,30 €/km + 4,00 € Sofortreservierung",
+                },
+            },
+        },
+    },
     "AT": {
         "wien": {
             "city": "Wien",
@@ -301,6 +320,7 @@ CITY_NAME_ALIASES = {
     "tirana": "tirana",
     "tiranë": "tirana",
     "podgorica": "podgorica",
+    "paris": "paris",
     "dubai": "dubai",
     "abu dhabi": "abu_dhabi",
     "abu_dhabi": "abu_dhabi",
@@ -1113,6 +1133,10 @@ async def _resolve_pricing_context(lat: float, lng: float, address: str = "") ->
             country_code = "ME"
             city = "Podgorica" if "podgorica" in text else ""
             country = "Montenegro"
+        elif "paris" in text or "france" in text or "frankreich" in text:
+            country_code = "FR"
+            city = "Paris" if "paris" in text else ""
+            country = "France"
         elif "dubai" in text or "abu dhabi" in text or "uae" in text or "united arab emirates" in text:
             country_code = "AE"
             if "abu dhabi" in text:
