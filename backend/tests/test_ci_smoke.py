@@ -2436,3 +2436,17 @@ def test_payment_engine_has_no_legacy_direct_user_balance_processor():
     assert '@router.get("/program/my-code")' in referral_system
     assert '@router.get("/my-code")' not in referral_system
 
+def test_influencer_bid_credit_commissions_are_exactly_once():
+    source = (BACKEND_DIR / "routes" / "influencer.py").read_text(encoding="utf-8")
+    auctions = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert "async def _grant_commission_credits_once" in source
+    assert 'commission_id = f"COMM-{marker_hash.upper()}"' in source
+    assert 'marker_field = f"influencer_commission_markers.{marker_hash}"' in source
+    assert '"$setOnInsert": {' in source
+    assert '"status": "pending"' in source
+    assert '"status": "reconciliation_required"' in source
+    assert '"status": "credited"' in source
+    assert 'await _grant_commission_credits_once(' in source
+    assert 'asyncio.create_task(process_commission(' in auctions
+
