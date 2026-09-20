@@ -438,8 +438,6 @@ async def create_gift_code(req: GiftCreateRequest, request: Request):
     )
 
 
-class GiftRedeemRequest
-
 class GiftRedeemRequest(BaseModel):
     code: str = Field(..., min_length=6)
 
