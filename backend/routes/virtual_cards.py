@@ -279,7 +279,7 @@ async def create_virtual_card(req: CreateCardRequest, request: Request):
             "expires_at": persisted.get("expires_at"),
             "single_use": persisted.get("single_use"),
         },
-        "replayed": bool(wallet_result.replayed),
+        "replayed": bool(wallet_result.idempotent_replay),
     }
 
 
