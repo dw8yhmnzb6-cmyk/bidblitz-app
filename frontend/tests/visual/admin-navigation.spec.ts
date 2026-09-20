@@ -243,3 +243,42 @@ test('admin grid mode keeps the same canonical mobile destinations', async ({ pa
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 });
+
+
+test('admin stays usable on 320px mobile width', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('admin_layout_mode', 'full');
+  });
+  await mockAdminApi(page);
+  await openAdmin(page);
+
+  const items = readAdminItems();
+  await expect(page.locator('[data-testid^="admin-item-"]')).toHaveCount(items.length);
+  await expect(page.getByTestId('admin-search')).toBeVisible();
+
+  const first = await page.getByTestId('admin-item-users').boundingBox();
+  const second = await page.getByTestId('admin-item-kyc').boundingBox();
+  const third = await page.getByTestId('admin-item-roles').boundingBox();
+  const fourth = await page.getByTestId('admin-item-staff').boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(third).not.toBeNull();
+  expect(fourth).not.toBeNull();
+  expect(Math.abs(first!.y - second!.y)).toBeLessThan(3);
+  expect(Math.abs(first!.y - third!.y)).toBeLessThan(3);
+  expect(fourth!.y).toBeGreaterThan(first!.y + 20);
+
+  await page.getByTestId('admin-item-admin-mobility-pricing').scrollIntoViewIfNeeded();
+  await page.getByTestId('admin-item-admin-mobility-pricing').click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/mobility-pricing');
+  await assertMobileDestinationHealthy(page, '/admin/mobility-pricing');
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
