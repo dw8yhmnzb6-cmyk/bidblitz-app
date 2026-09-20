@@ -2019,3 +2019,19 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert '{"$inc": {"balance_blz": -req.amount}' not in backend
     assert '{"$inc": {"balance_blz": refund}' not in backend
 
+def test_auction_production_activity_is_real_not_synthetic():
+    backend = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    server = (BACKEND_DIR / "server.py").read_text(encoding="utf-8")
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
+
+    assert '"viewer_count": random.randint(8, 35) if TEST_MODE else 0' in backend
+    assert '"bot_enabled": bool(TEST_MODE or d.get("bot_only"))' in backend
+    assert "Seed demo auctions only in TEST_MODE" in backend
+    assert "Demo auto-restart is TEST_MODE-only" in backend
+    assert "Synthetic viewer fluctuations are TEST_MODE-only" in backend
+    assert "if TEST_MODE:\n                await seed_demo_auctions()" in server
+
+    assert "Math.random()" not in page
+    assert "activity.activeAuctions" in page
+    assert "aktive Auktionen" in page
+
