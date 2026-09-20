@@ -7,6 +7,7 @@ import hmac
 import re
 import secrets
 from io import BytesIO
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -106,6 +107,8 @@ class ChargeCatalogOverrideRequest(BaseModel):
     featured: bool = False
     charge_category: str = ""
     sort_order: int = Field(default=100, ge=0, le=10000)
+    manual_url: str = ""
+    support_url: str = ""
 
 
 class ChargeInteractionRequest(BaseModel):
@@ -140,6 +143,19 @@ def _safe_float(value: Any) -> float:
         return round(float(value or 0), 2)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _safe_http_url(value: Any) -> str:
+    url = str(value or "").strip()
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ungültige URL")
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Nur gültige HTTP/HTTPS-URLs sind erlaubt")
+    return url[:1000]
 
 
 def _slugify(value: Any) -> str:
@@ -874,6 +890,8 @@ def _charge_product_card(
         "route": f"/charge-app/merchant?slug={merchant_slug}" if merchant_slug else "/merchant",
         "featured": bool(override.get("featured", False)),
         "sort_order": int(override.get("sort_order") or 100),
+        "manual_url": _safe_http_url(override.get("manual_url") or product.get("manual_url") or ""),
+        "support_url": _safe_http_url(override.get("support_url") or product.get("support_url") or ""),
         "updated_at": product.get("updated_at") or product.get("created_at") or "",
     }
 
@@ -3006,6 +3024,8 @@ async def admin_charge_catalog(request: Request, q: Optional[str] = None, limit:
             "featured": bool(override.get("featured", False)),
             "charge_category": override.get("charge_category") or "",
             "sort_order": int(override.get("sort_order") or 100),
+            "manual_url": override.get("manual_url") or product.get("manual_url") or "",
+            "support_url": override.get("support_url") or product.get("support_url") or "",
             "override_updated_at": override.get("updated_at") or "",
         })
 
@@ -3046,6 +3066,8 @@ async def admin_update_charge_catalog_product(
         "featured": bool(req.featured),
         "charge_category": req.charge_category.strip().lower(),
         "sort_order": int(req.sort_order),
+        "manual_url": _safe_http_url(req.manual_url),
+        "support_url": _safe_http_url(req.support_url),
         "updated_at": now,
         "updated_by": admin.get("email") or admin.get("user_id") or "admin",
     }
