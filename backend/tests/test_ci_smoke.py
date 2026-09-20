@@ -2497,3 +2497,14 @@ def test_dating_checkout_creation_uses_stable_client_idempotency():
     assert "idempotency_key: attempt.key" in page
     assert "clearStableCheckoutKey(attempt.storageKey)" in page
 
+def test_duplicate_legacy_pos_voucher_money_routes_are_retired():
+    legacy = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
+    canonical = (BACKEND_DIR / "routes" / "pos_vouchers.py").read_text(encoding="utf-8")
+
+    assert "Legacy-Gutschein-Erstellung deaktiviert." in legacy
+    assert "Legacy-Gutschein-Einlösung deaktiviert." in legacy
+    assert "Legacy-Gutschein-Storno deaktiviert." in legacy
+    assert "/api/pos/vouchers/create" in legacy
+    assert '@router.post("/redeem/{voucher_code}")' in canonical
+    assert "credit_wallet(" in canonical
+
