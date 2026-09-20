@@ -994,7 +994,7 @@ async def create_feature_checkout(req: FeatureCheckoutRequest, request: Request)
     cancel_url = f"{origin}/pos?feature_purchase=cancelled"
 
     host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
+    webhook_url = f"{host_url}/api/stripe/webhook"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
     checkout_request = CheckoutSessionRequest(
@@ -1217,7 +1217,7 @@ async def get_checkout_status(session_id: str, request: Request):
     if purchase["status"] != "completed":
         try:
             host_url = str(request.base_url).rstrip("/")
-            webhook_url = f"{host_url}/api/webhook/stripe"
+            webhook_url = f"{host_url}/api/stripe/webhook"
             sc = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
             status = await sc.get_checkout_status(session_id)
             if status.payment_status == "paid":
