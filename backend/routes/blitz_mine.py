@@ -18,6 +18,7 @@ import hashlib
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from bson import ObjectId
 
 from core.database import db
 from core.config import TEST_MODE
@@ -942,8 +943,14 @@ async def remove_circle(member_id: str, request: Request):
 async def get_lockups(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    cur = db.blitz_mine_lockup.find({"user_id": user_id}, {"_id": 0}).sort("started_at", -1)
-    items = await cur.to_list(100)
+    cur = db.blitz_mine_lockup.find({"user_id": user_id}).sort("started_at", -1)
+    raw_items = await cur.to_list(100)
+    items = []
+    for row in raw_items:
+        item = {**row}
+        item["id"] = item.get("lockup_id") or str(item.get("_id"))
+        item.pop("_id", None)
+        items.append(item)
     return {
         "lockups": items,
         "durations": [{"days": d, **info} for d, info in LOCKUP_DURATIONS.items()],
@@ -963,31 +970,70 @@ async def create_lockup(req: LockupReq, request: Request):
     if req.amount < 1:
         raise HTTPException(400, "Mindestbetrag: 1 BLZ.")
 
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
-    if not wallet or (wallet.get("balance_blz", 0) < req.amount):
-        raise HTTPException(400, "Nicht genug BLZ im Wallet.")
+    idem = _require_blitz_idempotency_key(req.idempotency_key, request, "blitz-lockup")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    lockup_key = f"BLK-{digest.upper()}"
+    payload = {
+        "amount": round(float(req.amount), 4),
+        "duration_days": int(req.duration_days),
+    }
+    existing = await db.blitz_mine_lockup.find_one(
+        {"lockup_id": lockup_key, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing and existing.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Lockup-Daten verwendet")
+    if existing:
+        return {"success": True, "lockup": {**existing, "id": lockup_key}, "replayed": True}
 
-    # Deduct from wallet into lockup
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": -req.amount}},
+    debit = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=req.amount,
+        direction="debit",
+        idempotency_key=f"blitz-lockup-create:{lockup_key}:debit",
+        description=f"BlitzMine Lockup {req.duration_days} Tage",
+        category="blitz_mine_lockup",
     )
 
     now = _now()
     ends = now + timedelta(days=req.duration_days)
     bonus = _lockup_bonus_for(req.amount, req.duration_days)
     lk = {
+        "lockup_id": lockup_key,
         "user_id": user_id,
-        "amount": req.amount,
+        "amount": round(float(req.amount), 4),
         "duration_days": req.duration_days,
         "bonus_rate": bonus,
+        "request_payload": payload,
+        "debit_transaction_id": debit["transaction_id"],
         "started_at": now.isoformat(),
         "ends_at": ends.isoformat(),
         "status": "active",
     }
-    await db.blitz_mine_lockup.insert_one(dict(lk))
-    lk.pop("_id", None)
-    return {"success": True, "lockup": lk}
+    try:
+        await db.blitz_mine_lockup.update_one(
+            {"lockup_id": lockup_key, "user_id": user_id},
+            {"$setOnInsert": lk},
+            upsert=True,
+        )
+    except Exception as exc:
+        await _mutate_blitz_wallet_once(
+            user_id=user_id,
+            amount=req.amount,
+            direction="credit",
+            idempotency_key=f"blitz-lockup-create:{lockup_key}:rollback",
+            description="BlitzMine Lockup Rollback",
+            category="blitz_mine_lockup_rollback",
+        )
+        raise HTTPException(status_code=500, detail="Lockup konnte nicht sicher gespeichert werden") from exc
+
+    stored = await db.blitz_mine_lockup.find_one(
+        {"lockup_id": lockup_key, "user_id": user_id},
+        {"_id": 0},
+    ) or lk
+    if stored.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Lockup-Daten verwendet")
+    return {"success": True, "lockup": {**stored, "id": lockup_key}, "replayed": bool(debit["replayed"])}
 
 
 @router.post("/lockup/{lockup_id}/release")
@@ -995,39 +1041,84 @@ async def release_lockup(lockup_id: str, request: Request):
     _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    from bson import ObjectId
-    try:
-        oid = ObjectId(lockup_id)
-    except Exception:
-        raise HTTPException(400, "Ungültige Lockup-ID.")
 
-    lk = await db.blitz_mine_lockup.find_one({"_id": oid, "user_id": user_id})
+    selectors = [{"lockup_id": lockup_id}]
+    if ObjectId.is_valid(lockup_id):
+        selectors.append({"_id": ObjectId(lockup_id)})
+    query = {"user_id": user_id, "$or": selectors}
+    lk = await db.blitz_mine_lockup.find_one(query)
     if not lk:
         raise HTTPException(404, "Lockup nicht gefunden.")
+    if lk.get("status") in {"completed", "released"}:
+        return {
+            "success": True,
+            "refund_blz": round(float(lk.get("refunded") or 0), 4),
+            "penalty_blz": round(float(lk.get("penalty") or 0), 4),
+            "status": lk.get("status"),
+            "replayed": True,
+        }
     if lk.get("status") != "active":
-        raise HTTPException(400, "Lockup ist nicht aktiv.")
+        raise HTTPException(status_code=409, detail="Lockup wird bereits verarbeitet.")
 
     ends_at = datetime.fromisoformat(lk["ends_at"].replace("Z", "+00:00"))
     amount = float(lk["amount"])
     if ends_at <= _now():
-        # Completed: full refund
         refund = amount
-        status = "completed"
+        final_status = "completed"
         penalty = 0.0
     else:
-        # Early release: penalty
         penalty = round(amount * LOCKUP_EARLY_RELEASE_PENALTY, 4)
         refund = round(amount - penalty, 4)
-        status = "released"
+        final_status = "released"
 
-    await db.blitz_mine_lockup.update_one(
-        {"_id": oid}, {"$set": {"status": status, "released_at": _now().isoformat(), "refunded": refund, "penalty": penalty}}
+    stable_id = str(lk.get("lockup_id") or lk.get("_id"))
+    claimed = await db.blitz_mine_lockup.update_one(
+        {"_id": lk["_id"], "user_id": user_id, "status": "active"},
+        {"$set": {
+            "status": "releasing",
+            "release_target_status": final_status,
+            "refunded": refund,
+            "penalty": penalty,
+            "release_started_at": _now().isoformat(),
+        }},
     )
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": refund}},
+    if claimed.modified_count != 1:
+        current = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
+        if current.get("status") in {"completed", "released"}:
+            return {
+                "success": True,
+                "refund_blz": round(float(current.get("refunded") or 0), 4),
+                "penalty_blz": round(float(current.get("penalty") or 0), 4),
+                "status": current.get("status"),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Lockup wird bereits verarbeitet.")
+
+    payout = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=refund,
+        direction="credit",
+        idempotency_key=f"blitz-lockup-release:{stable_id}",
+        description=f"BlitzMine Lockup Freigabe ({final_status})",
+        category="blitz_mine_lockup_release",
     )
-    return {"success": True, "refund_blz": refund, "penalty_blz": penalty, "status": status}
+    finalized = await db.blitz_mine_lockup.update_one(
+        {"_id": lk["_id"], "user_id": user_id, "status": "releasing"},
+        {"$set": {
+            "status": final_status,
+            "released_at": _now().isoformat(),
+            "refund_transaction_id": payout["transaction_id"],
+        }, "$unset": {"release_target_status": ""}},
+    )
+    if finalized.modified_count != 1:
+        raise HTTPException(status_code=500, detail="BLZ wurden gutgeschrieben, Lockup-Abschluss benötigt Abstimmung")
+    return {
+        "success": True,
+        "refund_blz": refund,
+        "penalty_blz": penalty,
+        "status": final_status,
+        "replayed": bool(payout["replayed"]),
+    }
 
 
 # ── Leaderboard ──
