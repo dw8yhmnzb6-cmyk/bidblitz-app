@@ -53,3 +53,15 @@ def test_taxi_non_eur_booking_is_fail_closed_and_ui_surfaces_local_source():
     assert "selectedEstimate.booking_supported === false" in taxi_page
     assert 'data-testid="scooter-local-pricing"' in scooter_page
     assert "pricing.available === false" in scooter_page
+
+
+def test_admin_can_persist_local_scooter_daily_cap_and_minimum_balance():
+    backend = read("backend/routes/mobility_platform.py")
+    admin = read("frontend/src/pages/AdminMobilityPricingPage.jsx")
+
+    assert '"daily_cap"' in backend
+    assert '"min_balance"' in backend
+    assert 'daily_cap: ""' in admin
+    assert 'min_balance: ""' in admin
+    assert '["daily_cap", "Tageslimit"]' in admin
+    assert '["min_balance", "Mindestguthaben"]' in admin
