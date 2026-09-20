@@ -82,9 +82,9 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
     <div className="min-h-screen bg-[#F0F4FA] text-[#111]" data-testid="admin-panel-full">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between w-full">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:flex-nowrap sm:gap-3">
           {/* LEFT - Back + Title */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={onBack || (() => onNavigate("/more"))}
@@ -100,7 +100,7 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
           </div>
 
           {/* RIGHT - Toggle + Menu */}
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={toggleLayout}
