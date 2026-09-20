@@ -1211,50 +1211,108 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
     if not plan:
         return False
 
-    valid_until = _premium_until(plan["duration_days"])
-    await db.users.update_one(
-        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+    session_id = str(txn.get("session_id") or "")
+    if not session_id:
+        return False
+    marker_hash = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:24]
+    user_marker = f"dating_payment_markers.{marker_hash}"
+    profile_marker = f"payment_settlement_markers.{marker_hash}"
+
+    try:
+        base_dt = datetime.fromisoformat(str(txn.get("created_at") or "").replace("Z", "+00:00"))
+        if base_dt.tzinfo is None:
+            base_dt = base_dt.replace(tzinfo=timezone.utc)
+        valid_until = (base_dt + timedelta(days=plan["duration_days"])).isoformat()
+    except Exception:
+        valid_until = _premium_until(plan["duration_days"])
+
+    user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+    user_applied = await db.users.update_one(
+        {"_id": user_oid, user_marker: {"$exists": False}},
         {"$set": {
             "dating_premium": True,
             "dating_premium_plan": plan_id,
             "dating_premium_valid_until": valid_until,
             "dating_starter_offer_claimed": True,
+            user_marker: {
+                "session_id": session_id,
+                "plan_id": plan_id,
+                "created_at": now_iso(),
+            },
         }},
     )
-    await db.dating_profiles.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "premium": True,
-            "premium_plan": plan_id,
-            "premium_valid_until": valid_until,
-            "premium_activated_at": now_iso(),
-            "starter_offer_claimed": True,
-        }},
-    )
+    if user_applied.modified_count != 1:
+        user_done = await db.users.find_one(
+            {"_id": user_oid, user_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not user_done:
+            return False
+
+    profile_set = {
+        "premium": True,
+        "premium_plan": plan_id,
+        "premium_valid_until": valid_until,
+        "premium_activated_at": now_iso(),
+        "starter_offer_claimed": True,
+        profile_marker: {
+            "session_id": session_id,
+            "plan_id": plan_id,
+            "created_at": now_iso(),
+        },
+    }
+    profile_inc = {}
     if plan.get("tier") == "gold":
-        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 1, "credits.superlikes": 3}})
-    if plan.get("tier") == "platinum":
-        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 2, "credits.superlikes": 5}})
-    await db.payment_transactions.update_one(
-        {"session_id": txn.get("session_id")},
-        {"$set": {"credited": True, "credited_at": now_iso(), "status": "completed", "payment_status": "paid"}},
+        profile_inc = {"credits.boosts": 1, "credits.superlikes": 3}
+    elif plan.get("tier") == "platinum":
+        profile_inc = {"credits.boosts": 2, "credits.superlikes": 5}
+
+    profile_update_doc = {"$set": profile_set}
+    if profile_inc:
+        profile_update_doc["$inc"] = profile_inc
+    profile_applied = await db.dating_profiles.update_one(
+        {"user_id": user_id, profile_marker: {"$exists": False}},
+        profile_update_doc,
     )
-    existing = await db.transactions.find_one({"stripe_session_id": txn.get("session_id"), "category": "dating_premium"}, {"_id": 0})
-    if not existing:
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
+    if profile_applied.modified_count != 1:
+        profile_done = await db.dating_profiles.find_one(
+            {"user_id": user_id, profile_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not profile_done:
+            return False
+
+    credited_at = now_iso()
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "credited": True,
+            "credited_at": credited_at,
+            "settlement_marker": marker_hash,
+            "status": "completed",
+            "payment_status": "paid",
+        }},
+    )
+    tx_id = f"dating-premium:{marker_hash}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
             "user_id": user_id,
             "type": "subscription",
             "amount": txn.get("amount", 0),
             "description": f"Dating Premium aktiviert ({plan['label']})",
             "merchant_name": "BidBlitz Dating",
             "status": "completed",
-            "reference": f"DATE-{str(txn.get('session_id', ''))[:12].upper()}",
+            "reference": f"DATE-{session_id[:12].upper()}",
             "payment_method": "stripe",
             "category": "dating_premium",
-            "stripe_session_id": txn.get("session_id"),
-            "created_at": now_iso(),
-        })
+            "stripe_session_id": session_id,
+            "created_at": credited_at,
+        }},
+        upsert=True,
+    )
     return True
 
 
