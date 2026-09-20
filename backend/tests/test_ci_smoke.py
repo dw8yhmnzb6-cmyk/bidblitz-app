@@ -917,6 +917,31 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert "finalized, _ = await _finalize_auction_once(auction_id)" in source
     assert '"force_ended_by": str(user["_id"])' in source
 
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+    assert 'class AuctionWinnerCheckoutRequest(BaseModel):' in source
+    assert '@router.get("/{auction_id}/winner-checkout")' in source
+    assert '@router.post("/{auction_id}/winner-checkout/pay")' in source
+    assert 'str(auction.get("winner_id") or "") != user_id' in source
+    assert 'idempotency_key=f"auction-winner-order:{order_id}:payment"' in source
+    assert 'transfer_between_wallets(' in source
+    assert 'tx_type=TransactionType.AUCTION_WIN' in source
+    assert '"shipping_fee": 0.0' in source
+    assert '"free_shipping": True' in source
+    assert '"status": "paid_pending_fulfillment"' in source
+    assert '"fulfillment_status": "pending"' in source
+    assert '"winner_payment_status": "paid"' in source
+    assert 'tracking' not in source[source.index('class AuctionWinnerCheckoutRequest'):source.index('# ── List auctions ──')].lower()
+
+    assert "getAuctionWinnerCheckout" in api
+    assert "payAuctionWinnerCheckout" in api
+    assert '"Idempotency-Key": body.idempotency_key' in api
+    assert "WinnerCheckoutModal" in page
+    assert "winnerCheckoutKeyRef" in page
+    assert "winner-checkout-pay" in page
+    assert "paid_pending_fulfillment" not in page
+    assert "Tracking erst nach echter Übergabe an Versand" in page
+
     assert 'grant_scope = f"auction-referral:{user_id}:{referrer_id}"' in source
     assert 'grant_key=f"{grant_scope}:invitee"' in source
     assert 'grant_key=f"{grant_scope}:referrer"' in source
