@@ -149,7 +149,10 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [listPrice, setListPrice] = useState("");
   const [listing, setListing] = useState(false);
   const [buyingListing, setBuyingListing] = useState(null);
+  const minerPurchaseKeysRef = useRef({});
+  const minerUpgradeKeysRef = useRef({});
   const marketplacePurchaseKeysRef = useRef({});
+  const launchpadPurchaseKeysRef = useRef({});
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
@@ -210,13 +213,27 @@ export default function MiningPage({ onBack, onNavigate }) {
     toast.error(data?.capabilities?.production_message || "Mining-Wertfunktionen sind noch nicht live verbunden.");
     return false;
   };
+  const shouldKeepAttemptKey = (error) =>
+    !!error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
 
   const buyMiner = async (pkgId) => {
     if (!requireMiningValue()) return;
+    const attemptScope = `${pkgId}:${billingType}`;
+    if (!minerPurchaseKeysRef.current[attemptScope]) {
+      minerPurchaseKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
+        ? `mining-buy-${crypto.randomUUID()}`
+        : `mining-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = minerPurchaseKeysRef.current[attemptScope];
     setPurchaseError(null);
     setBuying(pkgId);
     try {
-      const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId, billing: billingType }) });
+      const r = await api("/api/mining/buy-miner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ package_id: pkgId, billing: billingType, idempotency_key: idempotencyKey }),
+      });
+      delete minerPurchaseKeysRef.current[attemptScope];
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
       setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
@@ -224,6 +241,7 @@ export default function MiningPage({ onBack, onNavigate }) {
       toast.success(t("mining.purchased") || "Miner purchased!");
       load();
     } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete minerPurchaseKeysRef.current[attemptScope];
       const msg = e.message || "Purchase failed";
       if (msg.toLowerCase().includes("insufficient")) {
         setPurchaseError(t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.");
@@ -236,12 +254,27 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const upgradeMiner = async (minerId, type) => {
     if (!requireMiningValue()) return;
-    setUpgrading(`${minerId}-${type}`);
+    const attemptScope = `${minerId}:${type}`;
+    if (!minerUpgradeKeysRef.current[attemptScope]) {
+      minerUpgradeKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
+        ? `mining-upgrade-${crypto.randomUUID()}`
+        : `mining-upgrade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = minerUpgradeKeysRef.current[attemptScope];
+    setUpgrading(attemptScope);
     try {
-      const r = await api("/api/mining/upgrade", { method: "POST", body: JSON.stringify({ miner_id: minerId, upgrade_type: type }) });
+      const r = await api("/api/mining/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ miner_id: minerId, upgrade_type: type, idempotency_key: idempotencyKey }),
+      });
+      delete minerUpgradeKeysRef.current[attemptScope];
       toast.success(`Upgraded to Lv.${r.new_level}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete minerUpgradeKeysRef.current[attemptScope];
+      toast.error(e.message);
+    }
     setUpgrading(null);
   };
 
@@ -338,7 +371,10 @@ export default function MiningPage({ onBack, onNavigate }) {
       delete marketplacePurchaseKeysRef.current[listingId];
       toast.success(`Bought ${r.miner_name}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete marketplacePurchaseKeysRef.current[listingId];
+      toast.error(e.message);
+    }
     setBuyingListing(null);
   };
 
@@ -352,12 +388,24 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const buyLaunchpad = async (projectId) => {
     if (!requireMiningValue()) return;
+    if (!launchpadPurchaseKeysRef.current[projectId]) {
+      launchpadPurchaseKeysRef.current[projectId] = typeof crypto?.randomUUID === "function"
+        ? `mining-launch-${crypto.randomUUID()}`
+        : `mining-launch-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = launchpadPurchaseKeysRef.current[projectId];
     setBuyingLaunch(projectId);
     try {
-      const r = await api("/api/mining/launchpad/buy", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+      const r = await api("/api/mining/launchpad/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ project_id: projectId, idempotency_key: idempotencyKey }),
+      });
+      delete launchpadPurchaseKeysRef.current[projectId];
       toast.success(`${r.miner_name} ${t("mining.activated") || "activated"}! (${r.hashrate} TH/s)`);
       load();
     } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete launchpadPurchaseKeysRef.current[projectId];
       const msg = e.message || "";
       if (msg.includes("Insufficient")) {
         toast.error(t("mining.err_need_more") || "Guthaben reicht nicht. Lade dein Wallet auf.");
