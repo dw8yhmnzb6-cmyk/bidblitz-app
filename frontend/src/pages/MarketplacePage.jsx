@@ -136,8 +136,8 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const fetchMarketplaceOrders = async () => {
     try {
       const [purchasesRes, salesRes] = await Promise.all([
-        fetch(API + "/api/marketplace/my-purchases", { credentials: "include" }),
-        fetch(API + "/api/marketplace/my-sales", { credentials: "include" }),
+        fetch(API + "/api/marketplace/orders/purchases", { credentials: "include" }),
+        fetch(API + "/api/marketplace/orders/sales", { credentials: "include" }),
       ]);
       if (purchasesRes.ok) {
         const data = await purchasesRes.json();
