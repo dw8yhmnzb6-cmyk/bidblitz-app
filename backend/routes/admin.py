@@ -876,15 +876,24 @@ async def system_health(request: Request):
     return health
 
 
-@router.get("/cleanup-fake-data")
-async def admin_cleanup_all_fake_data(request: Request):
+class CleanupFakeDataRequest(BaseModel):
+    confirmation: str = Field(..., min_length=1, max_length=64)
+
+
+@router.post("/cleanup-fake-data")
+@limiter.limit(RATE_ADMIN_ACTION)
+async def admin_cleanup_all_fake_data(req: CleanupFakeDataRequest, request: Request):
     """
     Remove ALL fake/demo data from the entire system.
     Only keeps real, verified, approved data.
     Now also covers: hotels, flights, scooters, taxi drivers, food restaurants, rental cars.
     Test accounts with valid email patterns are preserved.
     """
-    await require_admin(request)
+    admin = await require_admin(request)
+    if admin.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super-Admin erforderlich")
+    if req.confirmation != "DELETE_DEMO_DATA":
+        raise HTTPException(status_code=400, detail="Explizite Bestätigung erforderlich")
 
     # Whitelist real test accounts (kept):
     keep_driver_emails = ["fahrer@bidblitz.com"]
@@ -938,6 +947,15 @@ async def admin_cleanup_all_fake_data(request: Request):
 
     total_removed = sum(results.values())
 
+    await log_audit(
+        "admin_cleanup_demo_data",
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=get_client_info(request)[0],
+        user_agent=get_client_info(request)[1],
+        details={"total_removed": total_removed, "results": results},
+        severity="warn",
+    )
     return {
         "ok": True,
         "total_removed": total_removed,
