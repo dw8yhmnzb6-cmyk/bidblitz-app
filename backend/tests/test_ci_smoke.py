@@ -1557,11 +1557,21 @@ def test_stocks_are_live_market_data_only_until_broker_is_connected():
     assert "Echter Aktienhandel ist deaktiviert" in backend
     assert "legacy_demo_holdings" in backend
     assert "legacy_demo_trades" in backend
+    assert "debit_wallet(" in backend
+    assert "credit_wallet(" in backend
+    assert 'idempotency_key=f"stock-trade:{trade_id}:wallet"' in backend
+    assert 'idempotency_key=f"stock-trade:{trade_id}:rollback"' in backend
+    assert "db.stock_trade_ops.update_one" in backend
+    assert '"$inc": {"balance": -total_cost}' not in backend
+    assert '"$inc": {"balance": total_cost}' not in backend
     assert '"routes.stocks", "router"' in registry
 
     assert "/api/stocks/capabilities" in page
     assert "stocks-broker-unavailable" in page
     assert "capabilities.trading_available" in page
+    assert "tradeAttemptKeyRef" in page
+    assert '"Idempotency-Key": idempotencyKey' in page
+    assert "idempotency_key: idempotencyKey" in page
     assert "Live-Marktdaten · Handel noch nicht aktiviert" in page
 
 
