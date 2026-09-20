@@ -939,7 +939,7 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert 'Echter Versanddienstleister erforderlich' in source
     assert 'Echte Tracking-/Sendungsnummer erforderlich' in source
     assert '"processing": {"pending", "not_started"}' in source
-    assert '"shipped": {"pending", "processing"}' in source
+    assert '"shipped": {"processing"}' in source
     assert '"delivered": {"shipped"}' in source
     assert 'notification_id = f"auction-order:{order_id}:{req.status}"' in source
     assert 'tracking_number = (req.tracking_number or "").strip() or None' in source
