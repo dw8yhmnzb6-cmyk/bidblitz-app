@@ -18,7 +18,13 @@ async function api(path, opts = {}) {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
-  return r.json();
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const error = new Error(typeof data.detail === "string" ? data.detail : data.message || "Request failed");
+    error.detail = data.detail;
+    throw error;
+  }
+  return data;
 }
 
 const AuctionAdminPage = ({ onBack }) => {
