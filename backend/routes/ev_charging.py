@@ -1134,6 +1134,95 @@ async def finalize_session(session_id: str) -> None:
 
     user_id = sess.get("user_id")
     if not user_id:
+        # OCPI CPO-side roaming session: there is no BidBlitz customer wallet
+        # to debit. Create the CDR/receivable and wait for inter-party
+        # settlement instead of manufacturing a wallet movement.
+        if sess.get("ocpi_external") and sess.get("ocpi_partner_id"):
+            cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]}) or {}
+            operator_user_id = cp.get("operator_user_id") or cp.get("owner_merchant_id")
+            commission_pct = DEFAULT_PLATFORM_COMMISSION_PCT
+            if cp.get("commission_pct_override") is not None:
+                commission_pct = float(cp["commission_pct_override"])
+            elif operator_user_id:
+                op = await db.ev_operators.find_one({"user_id": str(operator_user_id)})
+                if op and op.get("commission_pct") is not None:
+                    commission_pct = float(op["commission_pct"])
+            platform_fee = round(gross * commission_pct / 100.0, 2)
+            operator_share = round(gross - platform_fee, 2)
+
+            existing_receipt = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+            receipt_no = (existing_receipt or {}).get("receipt_no") or await _next_receipt_no()
+            receipt_doc = {
+                "receipt_no": receipt_no,
+                "session_id": session_id,
+                "user_id": None,
+                "charge_point_id": sess["charge_point_id"],
+                "operator_user_id": str(operator_user_id) if operator_user_id else None,
+                "vat_rate": vat_rate,
+                "net_amount": net,
+                "vat_amount": vat,
+                "total_amount": gross,
+                "platform_fee": platform_fee,
+                "operator_share": operator_share,
+                "commission_pct": commission_pct,
+                "currency": sess.get("currency") or "EUR",
+                "settlement_ref": f"OCPIREC-{session_id}",
+                "line_items": [{
+                    "label": "OCPI Roaming Charge",
+                    "calc": f"{kwh:.3f} kWh",
+                    "amount": gross,
+                }],
+                "roaming": True,
+                "ocpi_partner_id": sess.get("ocpi_partner_id"),
+                "ocpi_token": sess.get("ocpi_token"),
+                "authorization_reference": sess.get("authorization_reference"),
+                "issued_at": (existing_receipt or {}).get("issued_at") or _utcnow_iso(),
+                "updated_at": _utcnow_iso(),
+            }
+            await db.ev_receipts.update_one(
+                {"session_id": session_id},
+                {"$set": receipt_doc},
+                upsert=True,
+            )
+            await db.ocpi_partner_receivables.update_one(
+                {"partner_id": sess.get("ocpi_partner_id"), "session_id": session_id},
+                {"$set": {
+                    "partner_id": sess.get("ocpi_partner_id"),
+                    "session_id": session_id,
+                    "receipt_no": receipt_no,
+                    "gross": gross,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "operator_user_id": str(operator_user_id) if operator_user_id else None,
+                    "currency": sess.get("currency") or "EUR",
+                    "status": "unsettled",
+                    "updated_at": _utcnow_iso(),
+                }, "$setOnInsert": {"created_at": _utcnow_iso()}},
+                upsert=True,
+            )
+            await db.ev_charging_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "final_cost": gross,
+                    "net_amount": net,
+                    "vat_amount": vat,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "receipt_no": receipt_no,
+                    "status": "completed",
+                    "duration_min": round(duration_min, 1),
+                    "settlement_state": "completed",
+                    "settlement_ref": f"OCPIREC-{session_id}",
+                    "settled_at": _utcnow_iso(),
+                }},
+            )
+            if sess.get("id_tag"):
+                await db.ev_authorizations.update_one(
+                    {"id_tag": sess["id_tag"]},
+                    {"$set": {"active": False, "used_at": _utcnow_iso()}},
+                )
+            return
+
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
             {"$set": {
