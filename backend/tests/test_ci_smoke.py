@@ -2071,6 +2071,8 @@ def _load_mobility_pricing_contract():
         "_normalize_city_key",
         "_merge_pricing_profile",
         "_resolve_pricing_context",
+        "_option_price",
+        "_require_supported_settlement",
     }
     selected = []
     for node in tree.body:
@@ -2081,7 +2083,7 @@ def _load_mobility_pricing_contract():
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in wanted_names:
             selected.append(node)
 
-    namespace = {"Optional": Optional}
+    namespace = {"Optional": Optional, "HTTPException": HTTPException}
     module = ast.Module(body=selected, type_ignores=[])
     exec(compile(ast.fix_missing_locations(module), "mobility_pricing_contract", "exec"), namespace)
     return namespace
@@ -2231,6 +2233,58 @@ def test_mobility_address_fallback_selects_hamburg_and_vienna_city_profiles():
     assert vienna["city"] == "Wien"
 
 
+def test_mobility_uae_city_fares_use_local_currency_and_fail_closed_settlement():
+    pricing = _load_mobility_pricing_contract()
+    merge_profile = pricing["_merge_pricing_profile"]
+    build_option = pricing["build_option"]
+    require_settlement = pricing["_require_supported_settlement"]
+
+    dubai_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["AE"],
+        pricing["CITY_PRICING_PROFILES"]["AE"]["dubai"],
+    )
+    dubai = build_option("taxi", 10.0, 20, 1.0, 55, dubai_profile)
+    assert dubai["currency"] == "AED"
+    assert dubai["price_local"] == 30.90
+    assert dubai["price_range_local"] == {"low": 30.40, "high": 37.50}
+    assert dubai["price_eur"] is None
+    assert dubai["booking_supported"] is False
+    with pytest.raises(HTTPException) as dubai_error:
+        require_settlement(dubai)
+    assert dubai_error.value.status_code == 503
+
+    abu_profile = merge_profile(
+        pricing["REGIONAL_PRICING_PROFILES"]["AE"],
+        pricing["CITY_PRICING_PROFILES"]["AE"]["abu_dhabi"],
+    )
+    abu = build_option("taxi", 5.0, 10, 1.0, 55, abu_profile)
+    assert abu["currency"] == "AED"
+    assert abu["price_local"] == 18.10
+    assert abu["price_range_local"] == {"low": 18.10, "high": 19.60}
+    assert abu["price_eur"] is None
+    assert abu["booking_supported"] is False
+
+
+def test_mobility_uae_resolver_selects_city_profiles_even_when_geocoder_fails():
+    pricing = _load_mobility_pricing_contract()
+    resolver = pricing["_resolve_pricing_context"]
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    resolver.__globals__["_nominatim_get"] = unavailable
+
+    dubai = asyncio.run(resolver(25.2048, 55.2708, "Dubai, UAE"))
+    assert dubai["profile_key"] == "AE:dubai"
+    assert dubai["profile_scope"] == "city"
+    assert dubai["currency"] == "AED"
+
+    abu = asyncio.run(resolver(24.4539, 54.3773, "Abu Dhabi, United Arab Emirates"))
+    assert abu["profile_key"] == "AE:abu_dhabi"
+    assert abu["profile_scope"] == "city"
+    assert abu["currency"] == "AED"
+
+
 def test_mobility_search_contract_supports_local_first_autocomplete():
     backend_source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
     frontend_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
@@ -2307,7 +2361,7 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'const visibleMarkers = preferredMode' in mobility
     assert '.filter((item) => item.type === preferredMode)' in mobility
     assert '}, [preferredMode]);' in mobility
-    assert 'function formatPrice(value, language = "de")' in mobility
+    assert 'function formatPrice(value, language = "de", currency = "EUR")' in mobility
     assert 'function formatCompactPrice(value, language = "de")' in mobility
     assert 'new Intl.NumberFormat(locale' in mobility
     assert 'notation: "compact"' in mobility
@@ -2317,6 +2371,9 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'data-testid="mobility-pricing-context"' in mobility
     assert 'mobility-price-range-' in mobility
     assert 'data-testid="mobility-pricing-source"' in mobility
+    assert 'option?.booking_supported === false || option?.price_eur == null' in mobility
+    assert '"FX-Verbindung fehlt"' in mobility
+    assert 'option.price_local ?? option.price_eur' in mobility
     assert 'option.pricing_basis' in mobility
     assert '.slice(0, 8).map((item, idx) =>' in mobility
     assert 'const countryCode = pickup.country_code || undefined;' in mobility
@@ -2328,6 +2385,9 @@ def test_mobility_map_keeps_map_visible_on_mobile():
     assert 'async def _resolve_pricing_context' in mobility_backend
     assert 'pricing_context = await _resolve_pricing_context' in mobility_backend
     assert 'country_code: Optional[str] = None' in mobility_backend
+    assert '"currency": "AED"' in mobility_backend
+    assert '"booking_supported": eur_settlement' in mobility_backend
+    assert '_require_supported_settlement(option)' in mobility_backend
     assert 'qs.set("country_code", String(countryCode).slice(0, 2))' in mobility_api
 
     assert 'const [showAllBids, setShowAllBids] = useState(false);' in auction_detail
