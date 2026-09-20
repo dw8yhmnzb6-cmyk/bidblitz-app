@@ -275,7 +275,8 @@ async def create_pick_task(req: PickTask, request: Request, store_id: str):
 
 @router.get("/pick/tasks/pending")
 async def pending_pick_tasks(request: Request, store_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     tasks = await db.pos_pick_tasks.find(
         {"store_id": store_id, "status": "pending"},
         {"_id": 0}
