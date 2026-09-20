@@ -2082,10 +2082,26 @@ def test_home_prioritizes_auctions_and_mining():
     assert 'id: "auctions"' in mobile and 'route: "/auctions"' in mobile
     assert 'id: "mining"' in mobile and 'route: "/mining"' in mobile
     assert 'filterStoreSafeItems([' in mobile
+    assert "const getTransactionRoute = transaction =>" in mobile
+    assert 'return "/mining";' in mobile
+    assert 'return "/auctions";' in mobile
+    assert 'return "/mobility-center";' in mobile
+    assert 'onNavigate(getTransactionRoute(transaction))' in mobile
 
     assert 'case "/mining":' in app
     assert '<MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />' in app
     assert 'case "/auctions":' in app
+
+
+def test_mobility_map_keeps_map_visible_on_mobile():
+    mobility = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzMobilityPlatformPage.jsx").read_text(encoding="utf-8")
+
+    assert 'h-[62vh] sm:h-[56vh] lg:h-[46vh]' in mobility
+    assert 'bottom-3 sm:bottom-auto sm:top-4' in mobility
+    assert 'flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar' in mobility
+    assert 'grid grid-cols-3 gap-2 mt-2 sm:flex sm:flex-wrap sm:mt-3' in mobility
+    assert mobility.count('hidden sm:inline-flex') >= 4
+    assert 'mt-0 sm:-mt-6 relative z-20 px-3 sm:px-4' in mobility
 
 
 def test_account_deletion_is_idempotent_and_revokes_access_without_hard_delete():
