@@ -1036,7 +1036,9 @@ def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = No
         summary_cards.append({
             "type": item.get("type"),
             "label": item.get("label"),
-            "price_eur": _round_money(item.get("price_eur")) if item.get("price_eur") is not None else None,\n            "price_local": _round_money(_option_price(item)),\n            "currency": item.get("currency") or "EUR",
+            "price_eur": _round_money(item.get("price_eur")) if item.get("price_eur") is not None else None,
+            "price_local": _round_money(_option_price(item)),
+            "currency": item.get("currency") or "EUR",
             "duration_min": int(item.get("duration_min") or 0),
             "distance_km": round(float(item.get("distance_km") or 0), 2),
             "eco_score": int(item.get("eco_score") or 0),
@@ -1539,7 +1541,8 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
+    _require_supported_settlement(option)
+    route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
 
     from routes.mobility_payments import process_payment
 
@@ -1692,7 +1695,8 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
     option = _find_option(route_payload["options"], req.transport_type or source.get("transport_type") or "taxi")
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
+    _require_supported_settlement(option)
+    route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
     ai_recommendation = await _generate_ai_route_recommendation(MobilityAiRecommendationRequest(
         pickup_address=source["pickup"]["address"],
         dropoff_address=source["dropoff"]["address"],
@@ -1783,7 +1787,8 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
-    _require_supported_settlement(option)\n    route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
+    _require_supported_settlement(option)
+    route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
 
     booking_id = f"mob-{uuid4().hex[:12]}"
     origin = req.origin_url.rstrip("/")
