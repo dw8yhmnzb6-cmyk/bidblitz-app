@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
-from core.config import APP_ENV, IS_PRODUCTION, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, FRONTEND_URL, BACKEND_URL, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET
+from core.config import APP_ENV, IS_PRODUCTION, TEST_MODE, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, FRONTEND_URL, BACKEND_URL, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET
 from core.database import db, create_indexes, close_connection
 from core.security import hash_password, verify_password
 from core.rate_limit import limiter
@@ -621,10 +621,11 @@ async def _run_post_startup_initialization():
                 start_auction_maintenance_loop,
                 start_bot_loop,
             )
-            await seed_demo_auctions()
+            if TEST_MODE:
+                await seed_demo_auctions()
             start_auction_maintenance_loop()
             start_bot_loop()
-            logger.info("✓ Auction maintenance + bot loops started")
+            logger.info("✓ Auction maintenance + guarded bot loops started")
         except Exception as e:
             logger.warning(f"Auction loops start failed: {e}")
 
