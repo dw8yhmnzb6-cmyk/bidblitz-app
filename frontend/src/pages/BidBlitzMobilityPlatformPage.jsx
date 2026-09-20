@@ -41,6 +41,20 @@ function formatPrice(value, language = "de") {
   }).format(Number(value || 0));
 }
 
+function formatCompactPrice(value, language = "de") {
+  const locale =
+    String(language || "de").startsWith("de") ? "de-DE" :
+    String(language || "").startsWith("sq") ? "sq-XK" :
+    String(language || "").startsWith("en") ? "en-US" :
+    language || "de-DE";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "EUR",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
+}
+
 function buildDirectBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson, paymentMethod = "wallet") {
   return {
     request_id: (globalThis.crypto?.randomUUID?.() || "mob-" + Date.now() + "-" + Math.random().toString(16).slice(2)),
@@ -618,7 +632,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             <h1 className="text-lg font-bold">{ui.title}</h1>
           </div>
         </div>
-        <div className="px-3 py-2 rounded-2xl bg-[#0F766E]/10 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold flex items-center gap-2" data-testid="mobility-wallet-balance"><Wallet size={14} /> {formatPrice(paymentOptions.wallet_balance, lang)}</div>
+        <div className="max-w-[44vw] shrink-0 px-3 py-2 rounded-2xl bg-[#0F766E]/10 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold flex items-center gap-2" data-testid="mobility-wallet-balance">
+          <Wallet size={14} className="shrink-0" />
+          <span className="truncate sm:hidden">{formatCompactPrice(paymentOptions.wallet_balance, lang)}</span>
+          <span className="hidden sm:inline">{formatPrice(paymentOptions.wallet_balance, lang)}</span>
+        </div>
       </div>
 
       <div className="relative">
