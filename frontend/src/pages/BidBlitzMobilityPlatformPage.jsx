@@ -488,11 +488,29 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     const sequence = ++searchSequenceRef.current;
     searchTimerRef.current = setTimeout(async () => {
       const prox = pickup.lat && pickup.lng ? { lat: pickup.lat, lng: pickup.lng } : {};
-      const data = await mobilitySearch(normalized, {
+      const countryCode = pickup.country_code || undefined;
+      const localResults = await mobilitySearch(normalized, {
         ...prox,
         lang: lang || "de",
-        countryCode: pickup.country_code || undefined,
+        countryCode,
       });
+      let data = localResults;
+      if (countryCode && localResults.length < 4) {
+        const globalResults = await mobilitySearch(normalized, {
+          ...prox,
+          lang: lang || "de",
+        });
+        const seen = new Set(localResults.map((item) => String(item.address || item.id).toLowerCase()));
+        data = [
+          ...localResults,
+          ...globalResults.filter((item) => {
+            const key = String(item.address || item.id).toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          }),
+        ].slice(0, 10);
+      }
       if (sequence !== searchSequenceRef.current) return;
       if (kind === "pickup") setPickupSuggestions(data);
       else setDropoffSuggestions(data);
