@@ -670,6 +670,10 @@ def test_marketplace_and_flash_sale_checkout_are_atomic_and_retry_safe():
     assert "marketplace-delivery-choice" in market_page
     assert "marketplace-orders-view" in market_page
     assert "fetchMarketplaceOrders" in market_page
+    assert '@router.get("/orders/purchases")' in market_source
+    assert '@router.get("/orders/sales")' in market_source
+    assert '"/api/marketplace/orders/purchases"' in market_page
+    assert '"/api/marketplace/orders/sales"' in market_page
     assert "orderActionKeysRef" in market_page
     assert "/confirm-received" in market_page
     assert "/ready-pickup" in market_page
