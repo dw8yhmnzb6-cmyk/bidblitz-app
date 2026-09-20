@@ -121,12 +121,23 @@ async def admin_decide(req: AdminDecisionBody, request: Request):
 
     if req.decision == "approve":
         final_role = req.assigned_role or pending.get("requested_role", "user")
-        if final_role not in VALID_ROLES and final_role != "admin":
-            raise HTTPException(status_code=400, detail="Invalid role")
-        # Update user role
+        if final_role not in VALID_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Privilegierte Admin-Rollen dürfen nur über die kanonische Admin-Kontoverwaltung geändert werden.",
+            )
+        # Update only a non-privileged target role.
         from bson import ObjectId
+        target = await db.users.find_one({"_id": ObjectId(req.user_id)}, {"role": 1})
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+        if str(target.get("role") or "") in {"admin", "super_admin"}:
+            raise HTTPException(
+                status_code=403,
+                detail="Privilegierte Admin-Rollen dürfen hier nicht geändert werden.",
+            )
         await db.users.update_one(
-            {"_id": ObjectId(req.user_id)},
+            {"_id": ObjectId(req.user_id), "role": {"$nin": ["admin", "super_admin"]}},
             {"$set": {"role": final_role, "role_approved_at": now}},
         )
         await db.role_requests.update_one(
@@ -154,12 +165,24 @@ async def admin_change_role(req: AdminChangeRoleBody, request: Request):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-    if req.new_role not in VALID_ROLES and req.new_role != "admin":
-        raise HTTPException(status_code=400, detail="Invalid role")
+    if req.new_role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Privilegierte Admin-Rollen dürfen nur über die kanonische Admin-Kontoverwaltung geändert werden.",
+        )
 
     from bson import ObjectId
+    target = await db.users.find_one({"_id": ObjectId(req.user_id)}, {"role": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if str(target.get("role") or "") in {"admin", "super_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Privilegierte Admin-Rollen dürfen hier nicht geändert werden.",
+        )
+
     result = await db.users.update_one(
-        {"_id": ObjectId(req.user_id)},
+        {"_id": ObjectId(req.user_id), "role": {"$nin": ["admin", "super_admin"]}},
         {"$set": {"role": req.new_role, "role_changed_at": datetime.now(timezone.utc).isoformat()}},
     )
     if result.modified_count == 0:
