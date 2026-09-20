@@ -925,7 +925,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                     {[routeSnapshot.pricing_context.city, routeSnapshot.pricing_context.region].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]">Schätzung</span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]" data-testid="mobility-pricing-scope">
+                    {routeSnapshot.pricing_context.profile_scope === "city" ? "Stadttarif" : "Landestarif"}
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#0F766E]">Schätzung</span>
+                </div>
               </div>
               <p className="mt-1.5 text-[11px] leading-4 text-[#18202a]/55">
                 Preise werden anhand der Tarifbasis am Abholort berechnet. Bei schwankenden Tarifen zeigen wir zusätzlich eine realistische Preisspanne.
