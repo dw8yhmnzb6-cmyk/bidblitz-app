@@ -70,6 +70,22 @@ class ChargeInvoiceUpdateRequest(BaseModel):
     serial_number: Optional[str] = None
 
 
+class ChargeWarrantyClaimRequest(BaseModel):
+    issue_type: str = "defect"
+    subject: str
+    description: str
+    preferred_resolution: str = "repair"
+
+
+class ChargeClaimMessageRequest(BaseModel):
+    message: str
+
+
+class ChargeClaimStatusRequest(BaseModel):
+    status: str
+    note: str = ""
+
+
 class ChargeCatalogOverrideRequest(BaseModel):
     visible: bool = True
     featured: bool = False
@@ -508,6 +524,35 @@ def _delete_attachment_blob(attachment: Dict[str, Any]) -> None:
 def _delete_document_blobs(doc: Dict[str, Any]) -> None:
     for attachment in doc.get("attachments") or []:
         _delete_attachment_blob(attachment)
+
+
+def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "claim_id": doc.get("claim_id"),
+        "registration_id": doc.get("registration_id"),
+        "user_id": doc.get("user_id"),
+        "product_name": doc.get("product_name") or "BidBlitz Charge Produkt",
+        "serial_number": doc.get("serial_number") or "",
+        "merchant_name": doc.get("merchant_name") or "BidBlitz Charge Händler",
+        "issue_type": doc.get("issue_type") or "defect",
+        "subject": doc.get("subject") or "Garantiefall",
+        "description": doc.get("description") or "",
+        "preferred_resolution": doc.get("preferred_resolution") or "repair",
+        "status": doc.get("status") or "open",
+        "admin_note": doc.get("admin_note") or "",
+        "created_at": doc.get("created_at") or "",
+        "updated_at": doc.get("updated_at") or doc.get("created_at") or "",
+        "resolved_at": doc.get("resolved_at") or "",
+        "messages": doc.get("messages") or [],
+    }
+
+
+def _validate_claim_status(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    allowed = {"open", "in_review", "approved", "rejected", "resolved", "cancelled"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Ungültiger Reklamationsstatus")
+    return normalized
 
 
 def _matches_merchant_context(merchant_name: Any, merchant_payload: Dict[str, Any], slug: str) -> bool:
@@ -990,6 +1035,8 @@ async def get_charge_dashboard(request: Request):
             "personalized_offers_total": len(personalized_offers),
             "active_rules_total": len(rules),
             "saved_products_total": saved_products_total,
+            "claims_total": await db.charge_warranty_claims.count_documents({"user_id": user_id}),
+            "claims_open": await db.charge_warranty_claims.count_documents({"user_id": user_id, "status": {"$in": ["open", "in_review", "approved"]}}),
         },
         "warranties": [_warranty_card(item) for item in warranties],
         "invoices": [_invoice_card(item) for item in invoices],
@@ -1325,7 +1372,217 @@ async def delete_invoice_attachment(
     }
 
 
-@router.get("/warranty/{registration_id}/pass")
+@router.post("/warranty/{registration_id}/claims")
+async def create_charge_warranty_claim(
+    registration_id: str,
+    req: ChargeWarrantyClaimRequest,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    warranty = await _find_user_warranty(user_id, registration_id)
+
+    subject = req.subject.strip()
+    description = req.description.strip()
+    if not subject or not description:
+        raise HTTPException(status_code=400, detail="Betreff und Beschreibung sind erforderlich")
+
+    active_existing = await db.charge_warranty_claims.find_one({
+        "user_id": user_id,
+        "registration_id": registration_id,
+        "status": {"$in": ["open", "in_review", "approved"]},
+    }, {"_id": 0})
+    if active_existing:
+        return {"ok": True, "claim": _claim_card(active_existing), "duplicate": True}
+
+    now = _now_iso()
+    claim = {
+        "claim_id": f"CHG-CLM-{uuid.uuid4().hex[:10].upper()}",
+        "registration_id": registration_id,
+        "user_id": user_id,
+        "user_email": user.get("email") or "",
+        "product_name": warranty.get("product_name") or "",
+        "serial_number": warranty.get("serial_number") or "",
+        "merchant_name": warranty.get("merchant_name") or "",
+        "invoice_number": warranty.get("invoice_number") or "",
+        "warranty_valid_until": _warranty_card(warranty).get("valid_until"),
+        "issue_type": req.issue_type.strip().lower() or "defect",
+        "subject": subject,
+        "description": description,
+        "preferred_resolution": req.preferred_resolution.strip().lower() or "repair",
+        "status": "open",
+        "messages": [{
+            "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
+            "author_role": "customer",
+            "author_id": user_id,
+            "message": description,
+            "created_at": now,
+        }],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.charge_warranty_claims.insert_one(claim)
+    claim.pop("_id", None)
+    return {"ok": True, "claim": _claim_card(claim)}
+
+
+@router.get("/claims")
+async def list_my_charge_claims(request: Request, limit: int = 100):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    rows = await db.charge_warranty_claims.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(min(max(limit, 1), 200)).to_list(200)
+    return {"claims": [_claim_card(item) for item in rows], "total": len(rows)}
+
+
+@router.get("/claims/{claim_id}")
+async def get_my_charge_claim(claim_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    return {"claim": _claim_card(claim)}
+
+
+@router.post("/claims/{claim_id}/messages")
+async def add_charge_claim_message(
+    claim_id: str,
+    req: ChargeClaimMessageRequest,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if claim.get("status") in {"resolved", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Dieser Garantiefall ist abgeschlossen")
+
+    message = req.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Nachricht darf nicht leer sein")
+    now = _now_iso()
+    entry = {
+        "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
+        "author_role": "customer",
+        "author_id": user_id,
+        "message": message,
+        "created_at": now,
+    }
+    await db.charge_warranty_claims.update_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"$push": {"messages": entry}, "$set": {"updated_at": now}},
+    )
+    return {"ok": True, "message": entry}
+
+
+@router.put("/claims/{claim_id}/cancel")
+async def cancel_my_charge_claim(claim_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if claim.get("status") in {"resolved", "rejected", "cancelled"}:
+        return {"ok": True, "claim": _claim_card(claim)}
+
+    now = _now_iso()
+    await db.charge_warranty_claims.update_one(
+        {"claim_id": claim_id, "user_id": user_id},
+        {"$set": {"status": "cancelled", "updated_at": now, "resolved_at": now}},
+    )
+    updated = {**claim, "status": "cancelled", "updated_at": now, "resolved_at": now}
+    return {"ok": True, "claim": _claim_card(updated)}
+
+
+@router.get("/admin/claims")
+async def admin_list_charge_claims(
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 300,
+):
+    await _require_admin(request)
+    query: Dict[str, Any] = {}
+    if status:
+        query["status"] = _validate_claim_status(status)
+    rows = await db.charge_warranty_claims.find(
+        query,
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(min(max(limit, 1), 500)).to_list(500)
+    return {
+        "claims": [_claim_card(item) for item in rows],
+        "summary": {
+            "total": len(rows),
+            "open": sum(1 for item in rows if item.get("status") == "open"),
+            "in_review": sum(1 for item in rows if item.get("status") == "in_review"),
+            "approved": sum(1 for item in rows if item.get("status") == "approved"),
+            "resolved": sum(1 for item in rows if item.get("status") == "resolved"),
+        },
+    }
+
+
+@router.put("/admin/claims/{claim_id}/status")
+async def admin_update_charge_claim_status(
+    claim_id: str,
+    req: ChargeClaimStatusRequest,
+    request: Request,
+):
+    admin = await _require_admin(request)
+    claim = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id},
+        {"_id": 0},
+    )
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+
+    status = _validate_claim_status(req.status)
+    now = _now_iso()
+    update: Dict[str, Any] = {
+        "status": status,
+        "admin_note": req.note.strip(),
+        "updated_at": now,
+        "updated_by": admin.get("email") or str(admin.get("_id") or "admin"),
+    }
+    if status in {"resolved", "rejected", "cancelled"}:
+        update["resolved_at"] = now
+
+    messages = []
+    if req.note.strip():
+        messages.append({
+            "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
+            "author_role": "admin",
+            "author_id": str(admin.get("_id") or "admin"),
+            "message": req.note.strip(),
+            "created_at": now,
+        })
+
+    mongo_update: Dict[str, Any] = {"$set": update}
+    if messages:
+        mongo_update["$push"] = {"messages": {"$each": messages}}
+    await db.charge_warranty_claims.update_one(
+        {"claim_id": claim_id},
+        mongo_update,
+    )
+    saved = await db.charge_warranty_claims.find_one(
+        {"claim_id": claim_id},
+        {"_id": 0},
+    )
+    return {"ok": True, "claim": _claim_card(saved or {**claim, **update})}
+
+
+@router.get("/warranty/{registration_id}/pass")@router.get("/warranty/{registration_id}/pass")
 async def get_charge_warranty_pass(registration_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user.get("_id"))
