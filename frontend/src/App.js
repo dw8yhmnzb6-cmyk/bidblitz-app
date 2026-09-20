@@ -1240,7 +1240,11 @@ function AppContent() {
       case "/stories":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StoriesPage onBack={() => handleNavigate("/more")} />;
       case "/live-auctions":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <LiveAuctionsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />
+            : <ProviderUnavailablePage title="Live Auktionen" description="Live-Gebote sind in Production deaktiviert, bis Escrow, Gewinnerzahlung und Settlement vollständig implementiert und freigegeben sind." onBack={() => handleNavigate("/more")} />;
       case "/social-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
       case "/blitzlearn":
