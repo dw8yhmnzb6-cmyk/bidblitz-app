@@ -141,11 +141,16 @@ def test_taxi_booking_reserves_exact_displayed_quote_once():
 
     assert 'locked_quote = await _load_taxi_price_quote(req.quote_id, user_id, req)' in taxi
     assert 'fare_total = round(float(locked_quote.get("fare_total")' in taxi
-    assert '{"quote_id": req.quote_id, "status": "active"}' in taxi
-    assert 'status in {"failed", "used", "claimed", "booking"}' in taxi
+    assert '"status": "booking"' in taxi
+    assert '"booking_idempotency_key": client_key' in taxi
+    assert 'status in {"failed", "used", "claimed"}' in taxi
+    assert 'status not in {"active", "booking"}' in taxi
+    assert '"status": "used"' in taxi
     assert 'pricing_source": "locked_server_quote" if locked_quote' in taxi
     assert 'quoteId: selectedEstimate.quote_id || null' in page
+    assert 'idempotencyKey: bookingAttemptRef.current.key' in page
     assert 'quote_id: quoteId || null' in api
+    assert 'idempotency_key: idempotencyKey || null' in api
 
 
 def test_taxi_geocoding_is_not_hardcoded_to_germany_austria_switzerland():
