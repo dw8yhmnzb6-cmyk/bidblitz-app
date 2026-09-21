@@ -225,6 +225,77 @@ const TrustBar = ({ t, recentWinners }) => (
 /* ════════════════════════════════════════════
    CATEGORIES
    ════════════════════════════════════════════ */
+const PremiumAuctionHero = ({ auction, onOpen, onBid, bidding, t, lang }) => {
+  if (!auction) return null;
+  const loc = localized(auction, lang);
+  const bidValue = Number(auction.bid_value_eur || 0.5);
+  const increment = Number(auction.price_increment || 0.01);
+  return (
+    <motion.section
+      data-testid="auction-premium-hero"
+      className="overflow-hidden rounded-[28px] border border-[#FFD166]/35"
+      style={{
+        background: "linear-gradient(135deg, rgba(255,209,102,0.10), rgba(8,12,22,0.98) 34%, rgba(0,224,255,0.05))",
+        boxShadow: "0 16px 46px rgba(255,209,102,0.10)",
+      }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex items-center justify-between border-b border-[#FFD166]/15 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Crown size={15} className="text-[#FFD166]" />
+          <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#FFD166]">Premium Auktion</span>
+        </div>
+        <span className="rounded-full border border-[#FFD166]/20 bg-[#FFD166]/10 px-2.5 py-1 text-[9px] font-black text-[#FFD166]">TOP DEAL</span>
+      </div>
+      <div className="grid gap-0 md:grid-cols-[0.9fr_1.1fr]">
+        <button type="button" onClick={onOpen} className="relative min-h-[250px] overflow-hidden bg-[#080C16] text-left">
+          {auction.image_url ? (
+            <img src={auction.image_url} alt={loc.title} className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center"><Package size={52} className="text-white/10" /></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050913] via-transparent to-black/15" />
+          <div className="absolute bottom-3 left-3 rounded-full border border-[#00E89D]/20 bg-[#00E89D]/15 px-3 py-1.5 text-[9px] font-black text-[#00E89D]">
+            Neu · Versand kostenlos
+          </div>
+        </button>
+        <div className="p-4 sm:p-5">
+          <button type="button" onClick={onOpen} className="w-full text-left">
+            <h2 className="text-[20px] font-black leading-tight text-white">{loc.title}</h2>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">{loc.description || "Premium Deal · Neu & OVP"}</p>
+          </button>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-[#00E0FF]/15 bg-[#00E0FF]/[0.05] p-3">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-white/30">Aktueller Preis</p>
+              <MoneyAmount value={auction.current_price} locale={lang} className="mt-1 text-[26px] font-black text-[#00E0FF]" />
+            </div>
+            <div className="rounded-2xl border border-[#FF4060]/15 bg-[#FF4060]/[0.04] p-3">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-white/30">Endet in</p>
+              <div className="mt-1 text-[#FF4060]"><Countdown endsAt={auction.ends_at} status={auction.status} size="sm" /></div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[10px] text-white/35">
+            <span>{auction.total_bids || 0} Gebote</span>
+            <span>Preis +{increment.toFixed(2).replace(".", ",")} € je Gebot</span>
+          </div>
+          <motion.button
+            type="button"
+            data-testid={`auction-premium-quick-bid-${auction.auction_id}`}
+            onClick={() => onBid?.(auction)}
+            disabled={bidding}
+            className="mt-4 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#00DFFB] to-[#54E8FF] text-[15px] font-black text-[#03131A] disabled:opacity-55"
+            whileTap={{ scale: 0.98 }}
+          >
+            {bidding ? <Loader2 size={16} className="animate-spin" /> : <Gavel size={17} />}
+            {bidding ? "Bietet…" : `${bidValue.toFixed(2).replace(".", ",")} € bieten`}
+          </motion.button>
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
 const CATS = [
   { id: "all", label: "All", color: accentCyan },
   { id: "phones", label: "Phones", color: accentPurple },
@@ -570,6 +641,8 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [winnerCheckoutLoading, setWinnerCheckoutLoading] = useState(false);
   const [winnerCheckoutPaying, setWinnerCheckoutPaying] = useState(false);
   const [winnerCheckoutError, setWinnerCheckoutError] = useState("");
+  const [biddingAuctionId, setBiddingAuctionId] = useState(null);
+  const quickBidKeysRef = useRef({});
   const [winnerCheckoutForm, setWinnerCheckoutForm] = useState({
     full_name: "",
     phone: "",
@@ -752,6 +825,63 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     }
   };
 
+  const handleQuickBid = async (auction) => {
+    if (!auction?.auction_id || biddingAuctionId) return;
+    if (isGuest) { onAuthRequired(); return; }
+    if (credits < 1) {
+      setShowCredits(true);
+      return;
+    }
+
+    const auctionId = auction.auction_id;
+    const owner = user?.id || user?.email || "unknown";
+    const storageKey = `bidblitz:auction-bid:${owner}:${auctionId}`;
+    let idempotencyKey = quickBidKeysRef.current[auctionId];
+    if (!idempotencyKey && typeof window !== "undefined") {
+      idempotencyKey = window.sessionStorage.getItem(storageKey);
+    }
+    if (!idempotencyKey) {
+      idempotencyKey = typeof crypto?.randomUUID === "function"
+        ? `auction-bid-${crypto.randomUUID()}`
+        : `auction-bid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (typeof window !== "undefined") window.sessionStorage.setItem(storageKey, idempotencyKey);
+    }
+    quickBidKeysRef.current[auctionId] = idempotencyKey;
+    setBiddingAuctionId(auctionId);
+
+    try {
+      const result = await api.placeBid({ auction_id: auctionId, idempotency_key: idempotencyKey });
+      delete quickBidKeysRef.current[auctionId];
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(storageKey);
+      setCredits(result.remaining_credits);
+      setAuctions((prev) => prev.map((item) => item.auction_id === auctionId ? {
+        ...item,
+        current_price: result.new_price,
+        ends_at: result.ends_at,
+        total_bids: result.total_bids,
+        last_bidder_id: user?.id,
+        last_bidder_name: user?.name,
+      } : item));
+      import("sonner").then(({ toast }) => toast.success("Gebot erfolgreich platziert"));
+    } catch (error) {
+      const retryable = error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+      if (!retryable) {
+        delete quickBidKeysRef.current[auctionId];
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(storageKey);
+      }
+      const msg = String(error?.message || "");
+      if (error?.status === 403 && msg.toLowerCase().includes("verif")) {
+        onNavigate?.("/profile/kyc");
+      } else if (msg.toLowerCase().includes("credit")) {
+        setShowCredits(true);
+      } else {
+        import("sonner").then(({ toast }) => toast.error(msg || "Gebot konnte nicht platziert werden"));
+      }
+    } finally {
+      setBiddingAuctionId(null);
+    }
+  };
+
   const toggleWatch = async (auctionId) => {
     if (isGuest) { onAuthRequired(); return; }
     try {
@@ -796,6 +926,8 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   };
 
   const active = applyFiltersAndSort(auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter)));
+  const premiumAuction = active.find(a => a.featured) || active[0] || null;
+  const regularActive = premiumAuction ? active.filter(a => a.auction_id !== premiumAuction.auction_id) : active;
   const ended = applyFiltersAndSort(auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter)));
   const activeCats = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
   const winners = auctions.filter(a => a.status === "ended" && a.winner_name);
@@ -856,6 +988,16 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       {isGuest && !isDemoMode && <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />}
 
       <div className="pb-8 relative z-10 space-y-3">
+        {premiumAuction && (
+          <PremiumAuctionHero
+            auction={premiumAuction}
+            onOpen={() => setSelected(premiumAuction.auction_id)}
+            onBid={handleQuickBid}
+            bidding={biddingAuctionId === premiumAuction.auction_id}
+            t={t}
+            lang={lang}
+          />
+        )}
         {/* Daily Reward */}
         {!isGuest && <DailyReward onClaimed={setCredits} />}
 
@@ -1059,7 +1201,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                 </div>
                 {/* Premium Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
-                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} lang={lang} />)}
+                  {regularActive.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} onBid={handleQuickBid} bidding={biddingAuctionId === a.auction_id} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} lang={lang} />)}
                 </div>
               </motion.div>
             )}
