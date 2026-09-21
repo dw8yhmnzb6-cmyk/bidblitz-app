@@ -328,3 +328,10 @@ def test_admin_user_list_labels_super_admin_accounts():
 
     assert '["admin", "super_admin"].includes(u.role)' in router
     assert 'u.role === "super_admin" ? "Super Admin" : "Admin"' in router
+
+
+def test_taxi_admin_routes_accept_super_admin():
+    taxi = read("backend/routes/taxi.py")
+
+    assert 'user.get("role") != "admin"' not in taxi
+    assert taxi.count('user.get("role") not in ("admin", "super_admin")') >= 12
