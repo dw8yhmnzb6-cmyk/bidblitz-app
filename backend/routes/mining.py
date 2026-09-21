@@ -733,7 +733,13 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
         idempotency_key=payment_idempotency_key,
     )
     if not result.success:
-        raise HTTPException(status_code=400, detail=result.error)
+        payment_status = getattr(result.status, "value", str(result.status))
+        if payment_status in {"pending", "reconciliation_required"}:
+            raise HTTPException(
+                status_code=503,
+                detail=result.error or "Mining-Kauf benötigt Wallet-Abstimmung; keine erneute Belastung wird ausgeführt.",
+            )
+        raise HTTPException(status_code=400, detail=result.error or "Mining-Kauf fehlgeschlagen")
 
     now = datetime.now(timezone.utc).isoformat()
     billing_info = {"type": billing, "price": price}
@@ -882,11 +888,31 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         idempotency_key=payment_idempotency_key,
     )
     if not result.success:
+        payment_status = getattr(result.status, "value", str(result.status))
+        if payment_status in {"pending", "reconciliation_required"}:
+            await db.mining_upgrade_operations.update_one(
+                {"operation_id": operation_id, "status": "processing"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "payment_status": payment_status,
+                    "error": result.error,
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=result.error or "Upgrade-Zahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt.",
+            )
         await db.mining_upgrade_operations.update_one(
             {"operation_id": operation_id, "status": "processing"},
-            {"$set": {"status": "failed", "error": result.error, "failed_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {
+                "status": "failed",
+                "payment_status": payment_status,
+                "error": result.error,
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
         )
-        raise HTTPException(status_code=400, detail=result.error)
+        raise HTTPException(status_code=400, detail=result.error or "Upgrade-Zahlung fehlgeschlagen")
 
     applied = await db.mining_miners.update_one(
         {
