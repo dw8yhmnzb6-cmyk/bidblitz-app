@@ -1633,16 +1633,9 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
 
 @router.get("/my-subscription")
 async def get_my_subscription(request: Request):
-    """Get user's active scooter subscription."""
+    """Get the same active subscription used by pricing and unlock."""
     user = await get_current_user(request)
-    sub = await db.scooter_subscriptions.find_one(
-        {
-            "user_email": user.get("email", ""),
-            "status": "active",
-            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
-        },
-        {"_id": 0},
-    )
+    sub = await _get_active_scooter_subscription(user)
     return {"subscription": sub}
 
 
