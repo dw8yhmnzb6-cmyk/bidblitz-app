@@ -395,6 +395,12 @@ def test_pos_payments_fail_closed_and_retry_safely():
     assert 'const correctlyWired = !["voucher", "invoice"].includes(key);' in pos_page
     assert 'key !== "tap_to_pay" && (key !== "card" || externalCardCertified)' in pos_page
     assert 'body.card_reference = `CARD-' not in pos_page
+    assert 'bidblitz:merchant-pos-cart:' in pos_page
+    assert 'window.localStorage.getItem(posCartRecoveryKey)' in pos_page
+    assert 'initialCartRecovery?.cart || []' in pos_page
+    assert 'initialCartRecovery?.cartSession || null' in pos_page
+    assert 'window.localStorage.setItem(' in pos_page
+    assert 'window.localStorage.removeItem(posCartRecoveryKey)' in pos_page
 
 
 def test_merchant_payout_balance_and_state_machine_contracts():
