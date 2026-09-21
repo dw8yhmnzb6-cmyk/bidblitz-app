@@ -932,6 +932,16 @@ def test_mining_and_gaming_rewards_cannot_be_double_claimed_or_overspent():
 
     assert '"status": "processing"' in mining_source
     assert '"status": "completed"' in mining_source
+    assert "async def _settle_daily_mining_reward" in mining_source
+    assert 'credit_marker = f"daily_reward_credits.{persisted_claim_id}"' in mining_source
+    assert 'ref_marker = f"referral_reward_credits.{persisted_claim_id}"' in mining_source
+    assert '{"txn_id": persisted_claim_id}' in mining_source
+    assert '{"txn_id": f"{persisted_claim_id}-REF"}' in mining_source
+    assert '"status": "reconciliation_required"' in mining_source
+    assert '{"user_id": user_id, "date": today, "status": "completed"}' in mining_source
+    assert '{"user_id": user_id, "status": "completed"}' in mining_source
+    assert 'marker = f"referral_bonus_markers.{user_id}"' in mining_source
+    assert '"operation_id": operation_id' in mining_source
     assert '"blz_balance": {"$gte": req.amount}' in mining_source
     assert "await credit_wallet(" in mining_source
     assert '"referred_id": user_id' in mining_source
