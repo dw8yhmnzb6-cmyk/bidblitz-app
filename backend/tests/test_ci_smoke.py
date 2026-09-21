@@ -2049,6 +2049,7 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_page
     assert 'const dash = await api("/api/mining/dashboard");' in mining_page
     assert 'api("/api/mining/dashboard").catch(() => ({}))' not in mining_page
     assert 'data-testid="mining-load-error"' in mining_page
