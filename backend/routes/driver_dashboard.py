@@ -443,62 +443,7 @@ async def accept_ride_request(request_id: str, request: Request):
         updated = await db.taxi_rides.find_one({"ride_id": request_id}, {"_id": 0})
         return {"ok": True, "ride": updated, "message": "Fahrt angenommen!"}
     
-    # Backward compatibility for legacy taxi_ride_requests.
-    ride_req = await db.taxi_ride_requests.find_one({
-        "request_id": request_id,
-        "driver_id": driver["driver_id"],
-        "status": "pending"
-    })
-    
-    if not ride_req:
-        raise HTTPException(status_code=404, detail="Anfrage nicht gefunden oder abgelaufen")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Create the ride
-    ride = {
-        "ride_id": secrets.token_hex(8),
-        "customer_id": ride_req["customer_id"],
-        "driver_id": driver["driver_id"],
-        "pickup": ride_req["pickup"],
-        "destination": ride_req["destination"],
-        "distance_km": ride_req.get("distance_km", 0),
-        "estimated_fare": ride_req.get("estimated_fare", 0),
-        "final_fare": None,
-        "driver_earnings": None,
-        "status": "accepted",
-        "accepted_at": now.isoformat(),
-        "arriving_at": None,
-        "started_at": None,
-        "completed_at": None,
-        "canceled_at": None,
-        "created_at": now.isoformat(),
-    }
-    
-    await db.taxi_rides.insert_one(ride)
-    
-    # Update request status
-    await db.taxi_ride_requests.update_one(
-        {"request_id": request_id},
-        {"$set": {"status": "accepted", "ride_id": ride["ride_id"]}}
-    )
-    
-    # Set driver as busy
-    await db.drivers.update_one(
-        {"driver_id": driver["driver_id"]},
-        {"$set": {"is_busy": True}}
-    )
-    
-    # Notify customer
-    await create_notification(
-        ride_req["customer_id"],
-        "Fahrer gefunden!",
-        f"Dein Fahrer ist unterwegs. Geschätzte Ankunft: {ride_req.get('eta_minutes', 5)} Min.",
-        "ride_accepted"
-    )
-    
-    ride.pop("_id", None)
-    return {"ok": True, "ride": ride, "message": "Fahrt angenommen!"}
+    raise HTTPException(status_code=404, detail="Kanonische Taxi-Anfrage nicht gefunden oder nicht mehr verfügbar")
 
 
 @router.post("/ride-requests/{request_id}/reject")
@@ -525,17 +470,7 @@ async def reject_ride_request(request_id: str, request: Request):
         )
         return {"ok": True, "message": "Anfrage abgelehnt"}
     
-    result = await db.taxi_ride_requests.update_one(
-        {"request_id": request_id, "driver_id": driver["driver_id"], "status": "pending"},
-        {"$set": {"status": "rejected", "rejected_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Anfrage nicht gefunden")
-    
-    # TODO: Reassign to next driver
-    
-    return {"ok": True, "message": "Anfrage abgelehnt"}
+    raise HTTPException(status_code=404, detail="Kanonische Taxi-Anfrage nicht gefunden oder nicht mehr verfügbar")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
