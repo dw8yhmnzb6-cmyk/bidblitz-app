@@ -625,3 +625,13 @@ def test_scooter_pause_resume_pending_confirmation_reconciles_from_telemetry():
     assert '"resume_unlock_confirmed_via": "device_telemetry"' in scooter
     assert 'pause_confirmed_from_telemetry = True' in scooter
     assert 'and not pause_confirmed_from_telemetry' in scooter
+
+
+def test_mobility_never_infers_pickup_from_default_map_center():
+    page = read("frontend/src/pages/BidBlitzMobilityPlatformPage.jsx")
+
+    assert 'setView([42.6489, 21.1743], 13)' in page  # visual map center only
+    assert "hydratePickupFallback" not in page
+    assert "pickupInitializedRef" not in page
+    assert "Location permission denied/unavailable: keep pickup unset." in page
+    assert "The map's visual center is never treated as the user's real pickup." in page
