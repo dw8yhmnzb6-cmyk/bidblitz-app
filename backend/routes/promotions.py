@@ -32,8 +32,13 @@ async def create_promotion(req: CreatePromotionRequest, request: Request):
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    normalized_name = req.name.strip()
+    existing = await db.promotions.find_one({"name": normalized_name}, {"_id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Promotion name already exists")
+
     promo = {
-        "name": req.name,
+        "name": normalized_name,
         "type": req.type,
         "description": req.description,
         "value": req.value,
@@ -49,7 +54,7 @@ async def create_promotion(req: CreatePromotionRequest, request: Request):
     }
     result = await db.promotions.insert_one(promo)
 
-    return {"success": True, "promotion_id": str(result.inserted_id), "name": req.name}
+    return {"success": True, "promotion_id": str(result.inserted_id), "name": normalized_name}
 
 
 @router.get("/active")
@@ -83,12 +88,20 @@ async def toggle_promotion(promo_name: str, request: Request):
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    promo = await db.promotions.find_one({"name": promo_name})
-    if not promo:
+    match_count = await db.promotions.count_documents({"name": promo_name})
+    if match_count == 0:
         raise HTTPException(status_code=404, detail="Promotion not found")
+    if match_count > 1:
+        raise HTTPException(status_code=409, detail="Promotion name is ambiguous; duplicate records require admin cleanup")
 
+    promo = await db.promotions.find_one({"name": promo_name})
     new_status = not promo.get("active", False)
-    await db.promotions.update_one({"name": promo_name}, {"$set": {"active": new_status}})
+    updated = await db.promotions.update_one(
+        {"_id": promo["_id"], "active": promo.get("active", False)},
+        {"$set": {"active": new_status}},
+    )
+    if updated.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Promotion changed concurrently; reload and retry")
 
     return {"success": True, "name": promo_name, "active": new_status}
 
