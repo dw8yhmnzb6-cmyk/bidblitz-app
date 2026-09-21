@@ -587,3 +587,11 @@ def test_scooter_qr_unlock_cannot_bypass_pricing_confirmation():
     assert "pricing_hash=req.pricing_hash" in scooter
     assert "idempotency_key=req.idempotency_key" in scooter
     assert "UnlockRequest(scooter_id=scooter_id)" not in scooter
+
+
+def test_scooter_admin_permissions_include_super_admin():
+    scooter = read("backend/routes/scooter.py")
+
+    assert scooter.count('if user.get("role") not in {"admin", "super_admin"}:') >= 5
+    assert scooter.count('if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":') >= 2
+    assert 'if user.get("role") != "admin":' not in scooter
