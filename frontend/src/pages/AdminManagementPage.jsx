@@ -591,6 +591,33 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
 // ═══════════════════════════════════════════════════════════
 // TRANSACTIONS TAB
 // ═══════════════════════════════════════════════════════════
+// Generic Admin refunds are only for standalone EUR debit transactions.
+const GENERIC_REFUND_BLOCKED_TYPES = new Set([
+  "refund", "transfer", "merchant_payment", "merchant_payment_received",
+  "p2p_send", "p2p_receive", "kids_transfer", "payout", "stripe_topup", "topup",
+]);
+
+const canGenericRefund = (tx = {}) => {
+  const type = String(tx.type || "");
+  const direction = String(tx.direction || "");
+  const currency = String(tx.currency || "EUR").toUpperCase();
+  const metadata = tx.metadata || {};
+  const hasCounterparty = Boolean(
+    metadata.counterparty_user_id || metadata.recipient_id || metadata.merchant_id
+  );
+  const amount = Math.abs(Number(tx.amount || 0));
+
+  return (
+    tx.status === "completed" &&
+    !tx.refunded &&
+    !GENERIC_REFUND_BLOCKED_TYPES.has(type) &&
+    !hasCounterparty &&
+    (!direction || direction === "debit") &&
+    currency === "EUR" &&
+    amount > 0
+  );
+};
+
 const TransactionsTab = () => {
   const [tx, setTx] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -659,7 +686,7 @@ const TransactionsTab = () => {
         <div className="space-y-2">
           {tx.map((t, i) => {
             const ref = t.reference || t.tx_id || `tx-${i}`;
-            const isRefundable = t.status === "completed" && !t.refunded && t.type !== "refund" && t.amount > 0;
+            const isRefundable = canGenericRefund(t);
             return (
               <div key={ref} className="bg-white rounded-xl p-3 shadow-sm" data-testid={`tx-${ref}`}>
                 <div className="flex items-start justify-between gap-2">
