@@ -1062,6 +1062,10 @@ def test_pos_cart_and_external_card_paths_fail_closed():
     assert 'captured_shift_id: q.shift_id' in checkout_source
     assert 'expected_total: q.total' in checkout_source
     assert 'Gutscheine können offline nicht sicher eingelöst werden' in checkout_source
+    assert 'import { TEST_MODE } from "../../config/testMode";' in checkout_source
+    assert 'if (!TEST_MODE) return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");' in checkout_source
+    assert 'if (!TEST_MODE && appliedVouchers.length > 0)' in checkout_source
+    assert 'data-testid="pos-voucher-preview-disabled"' in checkout_source
     assert 'lineDiscount' in checkout_source
 
 
