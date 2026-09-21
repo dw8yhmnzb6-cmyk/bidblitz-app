@@ -2584,47 +2584,135 @@ class ReserveRequest(BaseModel):
 
 @router.post("/reserve")
 async def reserve_scooter(req: ReserveRequest, request: Request):
-    """Reserve a scooter for {RESERVE_MINUTES} minutes."""
+    """Reserve exactly one available scooter and release any prior hold by this user."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    scooter = await db.scooters.find_one({"scooter_id": req.scooter_id})
-    if not scooter:
-        raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
-    if scooter.get("status") not in ("available",):
-        raise HTTPException(status_code=400, detail="Scooter ist nicht verfügbar")
-
-    # Cancel any previous reservation by this user
-    await db.scooter_reservations.update_many(
-        {"user_id": user_id, "status": "active"}, {"$set": {"status": "cancelled"}}
-    )
-
     now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    existing_target = await db.scooter_reservations.find_one(
+        {
+            "user_id": user_id,
+            "scooter_id": req.scooter_id,
+            "status": "active",
+            "expires_at": {"$gt": now_iso},
+        },
+        {"_id": 0},
+    )
+    if existing_target:
+        return {
+            "ok": True,
+            "reservation": existing_target,
+            "expires_at": existing_target["expires_at"],
+            "replayed": True,
+        }
+
+    # Release stale target holds first, but only when the device is not tied to a ride.
+    target = await db.scooters.find_one({"scooter_id": req.scooter_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
+    if (
+        target.get("status") == "reserved"
+        and str(target.get("reserved_until") or "") <= now_iso
+        and not target.get("current_ride_id")
+    ):
+        await db.scooters.update_one(
+            {
+                "scooter_id": req.scooter_id,
+                "status": "reserved",
+                "reserved_until": target.get("reserved_until"),
+            },
+            {
+                "$set": {"status": "available"},
+                "$unset": {"reserved_by": "", "reserved_until": ""},
+            },
+        )
+        await db.scooter_reservations.update_many(
+            {"scooter_id": req.scooter_id, "status": "active", "expires_at": {"$lte": now_iso}},
+            {"$set": {"status": "expired", "expired_at": now_iso}},
+        )
+
+    # A user may hold only one scooter. Release previous holds in both collections.
+    previous = await db.scooter_reservations.find(
+        {"user_id": user_id, "status": "active", "scooter_id": {"$ne": req.scooter_id}},
+        {"_id": 0, "reservation_id": 1, "scooter_id": 1},
+    ).to_list(20)
+    previous_ids = [row.get("reservation_id") for row in previous if row.get("reservation_id")]
+    if previous_ids:
+        await db.scooter_reservations.update_many(
+            {"reservation_id": {"$in": previous_ids}, "status": "active"},
+            {"$set": {"status": "cancelled", "cancelled_at": now_iso, "cancel_reason": "replaced_by_new_reservation"}},
+        )
+    for row in previous:
+        previous_scooter_id = row.get("scooter_id")
+        if previous_scooter_id:
+            await db.scooters.update_one(
+                {
+                    "scooter_id": previous_scooter_id,
+                    "status": "reserved",
+                    "reserved_by": user_id,
+                    "current_ride_id": {"$in": [None, ""]},
+                },
+                {
+                    "$set": {"status": "available"},
+                    "$unset": {"reserved_by": "", "reserved_until": ""},
+                },
+            )
+
     expires = now + timedelta(minutes=RESERVE_MINUTES)
+    expires_iso = expires.isoformat()
     res_id = secrets.token_hex(8)
+
+    claim = await db.scooters.update_one(
+        {
+            "scooter_id": req.scooter_id,
+            "status": "available",
+            "$or": [
+                {"current_ride_id": {"$exists": False}},
+                {"current_ride_id": None},
+                {"current_ride_id": ""},
+            ],
+        },
+        {
+            "$set": {
+                "status": "reserved",
+                "reserved_by": user_id,
+                "reserved_until": expires_iso,
+            }
+        },
+    )
+    if claim.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Scooter wurde gerade von einem anderen Nutzer reserviert")
 
     doc = {
         "reservation_id": res_id,
         "user_id": user_id,
         "scooter_id": req.scooter_id,
         "fee": RESERVE_FEE,
+        "fee_charged": False,
         "status": "active",
-        "created_at": now.isoformat(),
-        "expires_at": expires.isoformat(),
+        "created_at": now_iso,
+        "expires_at": expires_iso,
     }
-    await db.scooter_reservations.insert_one(doc)
+    try:
+        await db.scooter_reservations.insert_one(doc)
+    except Exception:
+        await db.scooters.update_one(
+            {"scooter_id": req.scooter_id, "status": "reserved", "reserved_by": user_id, "reserved_until": expires_iso},
+            {
+                "$set": {"status": "available"},
+                "$unset": {"reserved_by": "", "reserved_until": ""},
+            },
+        )
+        raise
     doc.pop("_id", None)
-
-    await db.scooters.update_one(
-        {"scooter_id": req.scooter_id},
-        {"$set": {"status": "reserved", "reserved_by": user_id, "reserved_until": expires.isoformat()}},
-    )
 
     return {
         "ok": True,
         "reservation": doc,
         "expires_in_seconds": RESERVE_MINUTES * 60,
-        "expires_at": expires.isoformat(),
+        "expires_at": expires_iso,
+        "replayed": False,
     }
 
 
