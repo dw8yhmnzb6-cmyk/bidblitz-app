@@ -1533,18 +1533,26 @@ async def admin_add_scooter(req: AddScooterRequest, request: Request):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     
-    # Check device_id not already used
-    existing = await db.scooters.find_one({"device_id": req.device_id})
+    device_id = str(req.device_id or "").strip()
+    qr_code = str(req.qr_code or "").strip()
+    if not device_id:
+        raise HTTPException(status_code=400, detail="Device ID erforderlich")
+
+    existing = await db.scooters.find_one({"device_id": device_id}, {"_id": 0, "scooter_id": 1})
     if existing:
-        raise HTTPException(status_code=400, detail="Device ID already registered")
+        raise HTTPException(status_code=409, detail="Device ID already registered")
+    if qr_code:
+        existing_qr = await db.scooters.find_one({"qr_code": qr_code}, {"_id": 0, "scooter_id": 1})
+        if existing_qr:
+            raise HTTPException(status_code=409, detail="QR-Code already registered")
     
     scooter_id = f"SC-{secrets.token_hex(4).upper()}"
     now = datetime.now(timezone.utc)
     
     scooter = {
         "scooter_id": scooter_id,
-        "device_id": req.device_id,
-        "qr_code": req.qr_code,
+        "device_id": device_id,
+        "qr_code": qr_code,
         "model": req.model,
         "location": {"lat": req.lat, "lng": req.lng},
         "battery": req.battery,
@@ -1558,7 +1566,7 @@ async def admin_add_scooter(req: AddScooterRequest, request: Request):
     await db.scooters.insert_one(scooter)
     scooter.pop("_id", None)
     
-    logger.info(f"Admin added scooter: {scooter_id} with device {req.device_id}")
+    logger.info(f"Admin added scooter: {scooter_id} with device {device_id}")
     return {"ok": True, "scooter": scooter}
 
 
@@ -1602,9 +1610,19 @@ async def admin_update_scooter(scooter_id: str, req: UpdateScooterAdminRequest, 
             raise HTTPException(status_code=409, detail="Aktiver Scooter-Lifecycle: Status kann nicht manuell überschrieben werden")
         update["status"] = req.status
     if req.device_id is not None:
-        if lifecycle_locked and req.device_id != scooter.get("device_id"):
+        normalized_device_id = str(req.device_id or "").strip()
+        if not normalized_device_id:
+            raise HTTPException(status_code=400, detail="Device ID erforderlich")
+        if lifecycle_locked and normalized_device_id != scooter.get("device_id"):
             raise HTTPException(status_code=409, detail="Aktiver Scooter-Lifecycle: Geräte-ID kann nicht geändert werden")
-        update["device_id"] = req.device_id
+        if normalized_device_id != scooter.get("device_id"):
+            duplicate_device = await db.scooters.find_one(
+                {"device_id": normalized_device_id, "scooter_id": {"$ne": scooter_id}},
+                {"_id": 0, "scooter_id": 1},
+            )
+            if duplicate_device:
+                raise HTTPException(status_code=409, detail="Device ID already registered")
+        update["device_id"] = normalized_device_id
     
     if update:
         await db.scooters.update_one({"scooter_id": scooter_id}, {"$set": update})
