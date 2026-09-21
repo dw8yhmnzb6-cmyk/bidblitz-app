@@ -213,3 +213,20 @@ def test_admin_transactions_render_real_currency_codes():
     assert "const formatAdminTransactionAmount = (tx = {}) => {" in page
     assert 'currency === "EUR" ? `€${value}` : `${value} ${currency}`' in page
     assert "{formatAdminTransactionAmount(t)}" in page
+
+
+def test_privileged_admin_auth_operations_require_privileged_manager():
+    backend = read("backend/routes/admin_management.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert '"can_manage_privileged_roles": _can_manage_privileged_roles(admin)' in backend
+    assert '{"role": {"$nin": ["admin", "super_admin"]}}' in backend
+    assert "Nur Hauptadmin/Super-Admin darf privilegierte Auth-Daten verändern" in backend
+    assert "Nur Hauptadmin/Super-Admin darf Passwort-Resets für privilegierte Konten auslösen" in backend
+
+    assert "const [permissions, setPermissions]" in page
+    assert "permissions={permissions}" in page
+    assert "const canManagePrivileged = Boolean(permissions?.can_manage_privileged_roles);" in page
+    assert "const privilegedActionBlocked = privilegedTarget && !canManagePrivileged;" in page
+    assert 'data-testid="customer-privileged-action-note"' in page
+    assert "disabled={loading || privilegedActionBlocked}" in page
