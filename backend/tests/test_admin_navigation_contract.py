@@ -368,4 +368,8 @@ def test_compliance_resolve_uses_stable_flag_ids():
     assert '{"_id": flag["_id"], "status": "open"}' in backend
     assert "Flag wurde bereits verarbeitet; bitte neu laden" in backend
     assert 'flag_id": str(flag["_id"])' in backend
-    assert 'encodeURIComponent(flag.flag_id || String(i))' in router
+    assert 'disabled={!flag.flag_id}' in router
+    assert 'if (!flag.flag_id)' in router
+    assert 'Compliance-Flag hat keine stabile ID. Bitte neu laden.' in router
+    assert 'encodeURIComponent(flag.flag_id)' in router
+    assert 'flag.flag_id || String(i)' not in router
