@@ -46,3 +46,13 @@ def test_key_admin_sections_open_existing_manager_pages():
     }
     for key, route in expected.items():
         assert re.search(rf'key:\s*"{re.escape(key)}"[^\n]*nav:\s*"{re.escape(route)}"', sections)
+
+
+def test_admin_module_query_selection_tracks_route_changes():
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert "const ModulesTab = ({ initialModule }) => {" in page
+    assert "useEffect(() => {" in page
+    assert "MODULE_DEFS.find((m) => m.key === initialModule) || null" in page
+    assert "setSelectedMod(requested)" in page
+    assert "}, [initialModule]);" in page
