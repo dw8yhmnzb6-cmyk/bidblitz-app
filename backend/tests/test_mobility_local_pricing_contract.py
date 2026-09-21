@@ -523,3 +523,22 @@ def test_scooter_device_telemetry_reconciles_recent_pending_commands():
     assert '"confirmed_via": "device_telemetry"' in scooter
     assert '"physical_state": "locked" if req.locked else "unlocked"' in scooter
     assert '"status": "success"' in scooter
+
+
+def test_scooter_reservation_lifecycle_is_atomic_and_unlockable_by_owner():
+    scooter = read("backend/routes/scooter.py")
+
+    assert '"status": "reserved"' in scooter
+    assert '"reserved_by": user_id' in scooter
+    assert '"reserved_until": {"$gt": now_claim_iso}' in scooter
+    assert "Scooter ist für einen anderen Nutzer reserviert" in scooter
+    assert '"status": "used", "used_at": now.isoformat(), "ride_id": ride_id' in scooter
+    assert '"reserved_by": ""' in scooter
+    assert '"reserved_until": ""' in scooter
+
+    assert "existing_target = await db.scooter_reservations.find_one" in scooter
+    assert '"cancel_reason": "replaced_by_new_reservation"' in scooter
+    assert '"status": "available"' in scooter
+    assert "claim.modified_count != 1" in scooter
+    assert "Scooter wurde gerade von einem anderen Nutzer reserviert" in scooter
+    assert '"fee_charged": False' in scooter
