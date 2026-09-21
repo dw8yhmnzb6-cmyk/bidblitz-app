@@ -321,3 +321,10 @@ def test_super_admin_is_accepted_by_changed_admin_backends():
 def test_admin_health_counts_super_admins():
     backend = read("backend/routes/admin.py")
     assert 'health["counts"]["admins"] = await db.users.count_documents({"role": {"$in": ["admin", "super_admin"]}})' in backend
+
+
+def test_admin_user_list_labels_super_admin_accounts():
+    router = read("frontend/src/components/AdminTabRouter.jsx")
+
+    assert '["admin", "super_admin"].includes(u.role)' in router
+    assert 'u.role === "super_admin" ? "Super Admin" : "Admin"' in router
