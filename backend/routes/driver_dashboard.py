@@ -83,6 +83,19 @@ def _driver_vehicle(driver: dict) -> dict:
     return driver.get("vehicle") or driver.get("car") or {}
 
 
+def _driver_ride_view(ride: dict) -> dict:
+    row = dict(ride or {})
+    row.pop("_id", None)
+    destination = row.get("destination") or row.get("dropoff") or {}
+    row["destination"] = destination
+    row["dropoff"] = row.get("dropoff") or destination
+    if row.get("estimated_fare") is None:
+        row["estimated_fare"] = row.get("fare_estimate", 0)
+    if row.get("distance_km") is None:
+        row["distance_km"] = row.get("distance_km_estimate", 0)
+    return row
+
+
 async def _pending_customer_rides(driver: dict, limit: int = 20) -> List[dict]:
     """Return live customer bookings from the canonical taxi_rides collection."""
     if not (driver.get("is_online") or driver.get("online")):
@@ -248,7 +261,7 @@ async def get_driver_status(request: Request):
     })
     
     if active_ride:
-        active_ride.pop("_id", None)
+        active_ride = _driver_ride_view(active_ride)
     
     # Get pending customer bookings from canonical taxi_rides.
     pending_requests = await _pending_customer_rides(driver, limit=10)
@@ -409,7 +422,7 @@ async def get_active_ride(request: Request):
     if not ride:
         return {"ride": None}
     
-    ride.pop("_id", None)
+    ride = _driver_ride_view(ride)
     
     # Get customer info
     from bson import ObjectId
@@ -511,8 +524,7 @@ async def get_ride_history(request: Request, limit: int = 50):
         "driver_id": driver["driver_id"]
     }).sort("created_at", -1).limit(limit).to_list(limit)
     
-    for r in rides:
-        r.pop("_id", None)
+    rides = [_driver_ride_view(r) for r in rides]
     
     total_earned = sum(r.get("driver_earnings", 0) for r in rides if r.get("status") == "completed")
     
