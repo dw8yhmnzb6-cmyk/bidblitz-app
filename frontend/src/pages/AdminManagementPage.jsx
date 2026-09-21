@@ -284,11 +284,6 @@ const CustomersTab = () => {
         </div>
       </div>
 
-      {readOnly && (
-        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="module-read-only-note">
-          {readOnlyReason || "Dieses Live-Modul ist hier nur lesbar."}
-        </div>
-      )}
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
@@ -823,10 +818,16 @@ const ModuleCRUD = ({ mod, onBack }) => {
         )}
       </div>
 
+      {readOnly && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="module-read-only-note">
+          {readOnlyReason || "Dieses Live-Modul ist hier nur lesbar."}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : items.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">Noch keine Einträge. Klick &quot;Neu&quot;.</p>
+        <p className="text-center text-gray-400 text-sm py-8">{readOnly ? "Keine Live-Daten vorhanden." : <>Noch keine Einträge. Klick &quot;Neu&quot;.</>}</p>
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {
