@@ -3601,6 +3601,10 @@ def test_auction_duration_contract_is_two_to_three_days():
     assert '"bot_final_phase_seconds": 300' in source
     assert '"bot_min_seconds": 300' in source
     assert "604800" not in source
+    assert "new_duration_seconds = current_duration_seconds + extension_seconds" in source
+    assert "if new_duration_seconds > 259200:" in source
+    assert "Auktions-Grunddauer darf maximal 72 Stunden betragen" in source
+    assert '"duration_seconds": new_duration_seconds' in source
 
 
 def test_auction_admin_timer_transitions_are_atomic():
