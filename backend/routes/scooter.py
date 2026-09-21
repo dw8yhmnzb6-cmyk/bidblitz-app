@@ -1102,10 +1102,29 @@ async def pause_ride(req: PauseRideRequest, request: Request):
         operation_key=f"ride:{ride['ride_id']}:pause-lock",
     )
     if not command.success:
-        await db.scooter_rides.update_one(
-            {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "pause"},
-            {"$unset": {"control_action": "", "control_started_at": ""}},
-        )
+        if command.data.get("confirmation_required"):
+            await db.scooter_rides.update_one(
+                {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "pause"},
+                {"$set": {
+                    "pause_lock_status": "pending_confirmation",
+                    "pause_lock_command_id": command.data.get("command_id"),
+                    "pause_lock_pending_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            await db.scooters.update_one(
+                {"scooter_id": ride["scooter_id"], "current_ride_id": ride["ride_id"]},
+                {"$set": {
+                    "device_state_uncertain": True,
+                    "device_state_uncertain_command": "pause_lock",
+                    "device_state_uncertain_reason": command.message,
+                    "device_state_uncertain_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        else:
+            await db.scooter_rides.update_one(
+                {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "pause"},
+                {"$unset": {"control_action": "", "control_started_at": ""}},
+            )
         raise HTTPException(status_code=503, detail="Scooter konnte für die Pause nicht sicher verriegelt werden")
 
     now = datetime.now(timezone.utc).isoformat()
@@ -1189,10 +1208,29 @@ async def resume_ride(req: PauseRideRequest, request: Request):
         operation_key=f"ride:{ride['ride_id']}:resume-unlock",
     )
     if not command.success:
-        await db.scooter_rides.update_one(
-            {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "resume"},
-            {"$unset": {"control_action": "", "control_started_at": ""}},
-        )
+        if command.data.get("confirmation_required"):
+            await db.scooter_rides.update_one(
+                {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "resume"},
+                {"$set": {
+                    "resume_unlock_status": "pending_confirmation",
+                    "resume_unlock_command_id": command.data.get("command_id"),
+                    "resume_unlock_pending_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            await db.scooters.update_one(
+                {"scooter_id": ride["scooter_id"], "current_ride_id": ride["ride_id"]},
+                {"$set": {
+                    "device_state_uncertain": True,
+                    "device_state_uncertain_command": "resume_unlock",
+                    "device_state_uncertain_reason": command.message,
+                    "device_state_uncertain_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        else:
+            await db.scooter_rides.update_one(
+                {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "resume"},
+                {"$unset": {"control_action": "", "control_started_at": ""}},
+            )
         raise HTTPException(status_code=503, detail="Scooter konnte nicht sicher entsperrt werden")
 
     now = datetime.now(timezone.utc).isoformat()
@@ -1735,7 +1773,92 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
             },
         )
 
-        # If device reports locked but status is in_use, something is wrong
+        current_ride_id = scooter.get("current_ride_id")
+        if current_ride_id:
+            current_ride = await db.scooter_rides.find_one(
+                {"ride_id": current_ride_id, "status": {"$in": ["active", "paused"]}},
+                {"_id": 0, "ride_id": 1, "status": 1, "control_action": 1},
+            )
+            if current_ride:
+                if req.locked and current_ride.get("status") == "active" and current_ride.get("control_action") == "pause":
+                    reconciled_at = now.isoformat()
+                    changed = await db.scooter_rides.update_one(
+                        {
+                            "ride_id": current_ride_id,
+                            "status": "active",
+                            "control_action": "pause",
+                        },
+                        {
+                            "$set": {
+                                "status": "paused",
+                                "paused_at": reconciled_at,
+                                "pause_lock_status": "confirmed",
+                                "pause_lock_confirmed_at": reconciled_at,
+                                "pause_lock_confirmed_via": "device_telemetry",
+                            },
+                            "$unset": {
+                                "control_action": "",
+                                "control_started_at": "",
+                                "pause_lock_pending_at": "",
+                            },
+                            "$push": {
+                                "pause_history": {
+                                    "action": "paused",
+                                    "at": reconciled_at,
+                                    "via": "device_telemetry",
+                                }
+                            },
+                        },
+                    )
+                    if changed.modified_count == 1:
+                        update["device_state_uncertain"] = False
+                        update["device_state_confirmed_at"] = reconciled_at
+                        unset_fields.update({
+                            "device_state_uncertain_command": "",
+                            "device_state_uncertain_reason": "",
+                            "device_state_uncertain_at": "",
+                        })
+                elif (not req.locked) and current_ride.get("status") == "paused" and current_ride.get("control_action") == "resume":
+                    reconciled_at = now.isoformat()
+                    changed = await db.scooter_rides.update_one(
+                        {
+                            "ride_id": current_ride_id,
+                            "status": "paused",
+                            "control_action": "resume",
+                        },
+                        {
+                            "$set": {
+                                "status": "active",
+                                "resumed_at": reconciled_at,
+                                "resume_unlock_status": "confirmed",
+                                "resume_unlock_confirmed_at": reconciled_at,
+                                "resume_unlock_confirmed_via": "device_telemetry",
+                            },
+                            "$unset": {
+                                "paused_at": "",
+                                "control_action": "",
+                                "control_started_at": "",
+                                "resume_unlock_pending_at": "",
+                            },
+                            "$push": {
+                                "pause_history": {
+                                    "action": "resumed",
+                                    "at": reconciled_at,
+                                    "via": "device_telemetry",
+                                }
+                            },
+                        },
+                    )
+                    if changed.modified_count == 1:
+                        update["device_state_uncertain"] = False
+                        update["device_state_confirmed_at"] = reconciled_at
+                        unset_fields.update({
+                            "device_state_uncertain_command": "",
+                            "device_state_uncertain_reason": "",
+                            "device_state_uncertain_at": "",
+                        })
+
+        # If device reports locked but status is in_use, something is wrong unless this confirms a pause.
         if req.locked and scooter.get("status") == "in_use":
             logger.warning(f"Scooter {scooter['scooter_id']} locked while in use!")
 
