@@ -184,3 +184,24 @@ def test_customer_admin_close_is_not_labeled_as_hard_delete():
     assert "Konto geschlossen" in page
     assert "Finanz- und Auditdaten bleiben erhalten" in page
     assert "Dauerhaft löschen" not in page
+
+
+def test_admin_generic_refund_ui_matches_backend_safety_rules():
+    backend = read("backend/routes/admin_management.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert '"refund",' in backend
+    assert '"transfer",' in backend
+    assert '"merchant_payment",' in backend
+    assert '"stripe_topup",' in backend
+    assert '"topup",' in backend
+    assert "counterparty_user_id" in backend
+    assert "recipient_id" in backend
+    assert "merchant_id" in backend
+
+    assert "GENERIC_REFUND_BLOCKED_TYPES" in page
+    assert '"refund", "transfer", "merchant_payment", "merchant_payment_received"' in page
+    assert "metadata.counterparty_user_id || metadata.recipient_id || metadata.merchant_id" in page
+    assert '(!direction || direction === "debit")' in page
+    assert 'currency === "EUR"' in page
+    assert "const isRefundable = canGenericRefund(t);" in page
