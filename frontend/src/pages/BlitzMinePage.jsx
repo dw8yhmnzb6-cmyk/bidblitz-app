@@ -84,7 +84,7 @@ const MissionCard = ({ quest, onAction }) => {
   );
 };
 
-const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQuests, onShare, onOpenLeaderboard }) => {
+const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQuests, onShare, onOpenLeaderboard, valueActionsEnabled }) => {
   const sessionReady = !!data?.session?.ready_to_claim;
   const quickReady = !!quickBonus?.available;
   const gap = competition?.gap_to_next_rank_blz || 0;
@@ -101,8 +101,14 @@ const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQues
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.24em] text-white/55 font-black">Heute für dich</p>
-          <h2 className="text-[22px] sm:text-[26px] font-black text-white leading-tight mt-1">Mehr öffnen. Mehr tippen. Mehr BLZ.</h2>
-          <p className="text-[12px] text-white/65 mt-2 max-w-[520px]">Sofort sichtbare Belohnungen, kurze Bonus-Zyklen und Wettbewerb sorgen dafür, dass Nutzer öfter zurückkommen.</p>
+          <h2 className="text-[22px] sm:text-[26px] font-black text-white leading-tight mt-1">
+            {valueActionsEnabled ? "Mehr öffnen. Mehr tippen. Mehr BLZ." : "BlitzMine Preview"}
+          </h2>
+          <p className="text-[12px] text-white/65 mt-2 max-w-[520px]">
+            {valueActionsEnabled
+              ? "Sofort sichtbare Belohnungen, kurze Bonus-Zyklen und Wettbewerb sorgen dafür, dass Nutzer öfter zurückkommen."
+              : "Belohnungen und Claims bleiben deaktiviert, bis ein verifizierter Mining-/Settlement-Provider live verbunden ist."}
+          </p>
         </div>
         <div className="rounded-2xl px-3 py-2 bg-black/25 border border-white/10" data-testid="blitz-rank-chip">
           <p className="text-[9px] uppercase tracking-[0.2em] text-white/40">Ranking</p>
@@ -131,7 +137,14 @@ const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQues
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button data-testid="blitz-open-quests-cta" onClick={onOpenQuests} className="rounded-2xl py-3 px-3 bg-white text-black text-[12px] font-black flex items-center justify-center gap-2"><Target size={14}/> Missionen</button>
-        <button data-testid="blitz-quick-claim-cta" onClick={onQuickClaim} className="rounded-2xl py-3 px-3 bg-[#FFD700] text-black text-[12px] font-black flex items-center justify-center gap-2"><Gift size={14}/> Bonus holen</button>
+        <button
+          data-testid="blitz-quick-claim-cta"
+          onClick={onQuickClaim}
+          disabled={!valueActionsEnabled}
+          className="rounded-2xl py-3 px-3 bg-[#FFD700] text-black text-[12px] font-black flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <Gift size={14}/> {valueActionsEnabled ? "Bonus holen" : "Preview"}
+        </button>
         <button data-testid="blitz-share-cta" onClick={onShare} className="rounded-2xl py-3 px-3 bg-[#A855F7] text-white text-[12px] font-black flex items-center justify-center gap-2"><Users size={14}/> Freunde holen</button>
         <button data-testid="blitz-open-board-cta" onClick={onOpenLeaderboard} className="rounded-2xl py-3 px-3 bg-[#00C2FF] text-black text-[12px] font-black flex items-center justify-center gap-2"><Trophy size={14}/> Ranking</button>
       </div>
@@ -1224,6 +1237,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           onQuickClaim={onQuickClaim}
           onOpenQuests={() => onNavigate?.("/quests")}
           onShare={onShare}
+          valueActionsEnabled={valueActionsEnabled}
           onOpenLeaderboard={() => {
             if (typeof document === "undefined") return;
             document.querySelector('[data-testid="blitz-leaderboard-widget"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
