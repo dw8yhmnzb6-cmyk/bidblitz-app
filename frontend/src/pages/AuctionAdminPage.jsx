@@ -160,6 +160,14 @@ const AuctionAdminPage = ({ onBack }) => {
 
   // ─── Image Edit ───
   const openImageEditor = (auction) => {
+    const realBidCount = Math.max(
+      0,
+      Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0),
+    );
+    if (auction.status === "ended" || auction.winner_id || realBidCount > 0) {
+      toast.error("Produktdaten sind nach dem ersten echten Gebot gesperrt.");
+      return;
+    }
     setImageUrlInput(auction.image_url || "");
     setShowImageModal(auction);
   };
@@ -996,8 +1004,19 @@ const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
     {/* Thumbnail (click to edit) */}
     <button
       onClick={onImageClick}
-      className="relative w-12 h-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-cyan-400 shrink-0 group"
-      title="Bild bearbeiten"
+      disabled={
+        auction.status === "ended" ||
+        Boolean(auction.winner_id) ||
+        Math.max(0, Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0)) > 0
+      }
+      className="relative w-12 h-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-cyan-400 shrink-0 group disabled:cursor-not-allowed disabled:opacity-40"
+      title={
+        auction.status === "ended" ||
+        Boolean(auction.winner_id) ||
+        Math.max(0, Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0)) > 0
+          ? "Produktdaten nach echtem Gebot gesperrt"
+          : "Bild bearbeiten"
+      }
       data-testid={`edit-image-${auction.auction_id}`}
     >
       {auction.image_url ? (
