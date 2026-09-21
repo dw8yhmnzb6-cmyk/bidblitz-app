@@ -173,3 +173,14 @@ def test_reengage_admin_stays_preview_only_outside_test_mode():
     assert 'data-testid="reengage-preview-only-note"' in page
     assert "Nur Preview – Aktionen deaktiviert" in page
     assert "preview.count === 0 || preview.actions_enabled === false" in page
+
+
+def test_customer_admin_close_is_not_labeled_as_hard_delete():
+    backend = read("backend/routes/admin_management.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert 'return {"ok": True, "closed": True, "hard_deleted": False}' in backend
+    assert "Konto schließen" in page
+    assert "Konto geschlossen" in page
+    assert "Finanz- und Auditdaten bleiben erhalten" in page
+    assert "Dauerhaft löschen" not in page
