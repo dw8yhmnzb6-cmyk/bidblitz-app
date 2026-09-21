@@ -359,18 +359,35 @@ export async function setDriverStatus(rideId, status) {
 }
 
 // ── Geocoding (Mapbox) ─────────────────────────────────────────────────────
-export async function forwardGeocode(query) {
+export async function forwardGeocode(query, { lat, lng, language = "de" } = {}) {
+  if (!query) return null;
+
+  // Use the same server-side geocoder as autocomplete so Taxi works in every
+  // supported country instead of being hard-coded to DE/AT/CH.
+  const qs = new URLSearchParams({ q: query, limit: "1", lang: language });
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    qs.set("lat", String(lat));
+    qs.set("lng", String(lng));
+  }
+  const proxy = await safeFetch(`${API}/api/taxi/geocode?${qs.toString()}`, cred);
+  if (proxy?.ok) {
+    const data = await readJson(proxy);
+    const feature = data?.features?.[0];
+    if (feature?.center) {
+      return { lat: feature.center[1], lng: feature.center[0], address: feature.place_name || query };
+    }
+  }
+
   if (!MAPBOX_TOKEN) return null;
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
     query,
-  )}.json?access_token=${MAPBOX_TOKEN}&country=de,at,ch&language=de&limit=1`;
+  )}.json?access_token=${MAPBOX_TOKEN}&language=${encodeURIComponent(language)}&limit=1`;
   const res = await safeFetch(url);
-  if (!res) return null;
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const data = await readJson(res);
-  const f = data?.features?.[0];
-  if (!f?.center) return null;
-  return { lat: f.center[1], lng: f.center[0], address: f.place_name || query };
+  const feature = data?.features?.[0];
+  if (!feature?.center) return null;
+  return { lat: feature.center[1], lng: feature.center[0], address: feature.place_name || query };
 }
 
 export async function reverseGeocode(lat, lng, signal) {
