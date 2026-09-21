@@ -522,6 +522,43 @@ async def get_nearby_scooters(request: Request, lat: Optional[float] = None, lng
     if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
         raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
     radius = max(0.1, min(float(radius), 20.0))
+
+    # Expired holds must not hide scooters from the rentable fleet indefinitely.
+    now_iso = datetime.now(timezone.utc).isoformat()
+    stale_reserved = await db.scooters.find(
+        {
+            "status": "reserved",
+            "reserved_until": {"$lte": now_iso},
+            "$or": [
+                {"current_ride_id": {"$exists": False}},
+                {"current_ride_id": None},
+                {"current_ride_id": ""},
+            ],
+        },
+        {"_id": 0, "scooter_id": 1, "reserved_by": 1, "reserved_until": 1},
+    ).limit(100).to_list(100)
+    for stale in stale_reserved:
+        release = await db.scooters.update_one(
+            {
+                "scooter_id": stale["scooter_id"],
+                "status": "reserved",
+                "reserved_until": stale.get("reserved_until"),
+            },
+            {
+                "$set": {"status": "available"},
+                "$unset": {"reserved_by": "", "reserved_until": ""},
+            },
+        )
+        if release.modified_count == 1:
+            await db.scooter_reservations.update_many(
+                {
+                    "scooter_id": stale["scooter_id"],
+                    "status": "active",
+                    "expires_at": {"$lte": now_iso},
+                },
+                {"$set": {"status": "expired", "expired_at": now_iso}},
+            )
+
     local_pricing = await _resolve_scooter_pricing(lat, lng)
     subscription = None
     try:
