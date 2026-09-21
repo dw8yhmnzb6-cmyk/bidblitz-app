@@ -76,6 +76,7 @@ jobs:
           backend/tests/test_ev_settlement.py
           backend/tests/test_mobility_local_pricing_contract.py
           backend/tests/test_admin_navigation_contract.py
+          backend/tests/test_parcel_survey_money_safety.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
