@@ -277,7 +277,7 @@ export async function validatePromoCode(code) {
 }
 
 export async function bookRideApi({
-  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null,
+  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null, idempotencyKey = null,
 }) {
   const body = {
     pickup_address: pickup.address || "",
@@ -303,15 +303,27 @@ export async function bookRideApi({
     recipient_phone: options.recipientPhone || null,
     booking_mode: options.bookingMode || "now",
     promo_code: promoCode || null,
+    idempotency_key: idempotencyKey || null,
   };
   const res = await safeFetch(`${API}/api/taxi/book`, {
     ...credJson,
     method: "POST",
+    headers: {
+      ...credJson.headers,
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: JSON.stringify(body),
   });
-  if (!res) return { ok: false, error: "Buchung momentan nicht möglich" };
+  if (!res) return { ok: false, error: "Buchung momentan nicht möglich", status: 0, retryable: true };
   const data = await readJson(res);
-  return res.ok ? { ok: true, ride: data?.ride } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };
+  return res.ok
+    ? { ok: true, ride: data?.ride, replayed: Boolean(data?.replayed), status: res.status }
+    : {
+        ok: false,
+        error: typeof data?.detail === "string" ? data.detail : data?.detail?.message || "Buchung fehlgeschlagen",
+        status: res.status,
+        retryable: res.status >= 500,
+      };
 }
 
 export async function cancelRideApi(rideId, reason = null) {
