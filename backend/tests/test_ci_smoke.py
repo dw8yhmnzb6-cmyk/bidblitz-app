@@ -1161,7 +1161,9 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert 'data-testid="auction-admin-engine"' in admin_page
     assert 'data-testid="auction-engine-modal"' in admin_page
     assert 'Gebotsumsatz-Ziel' in admin_page
-    assert 'data-testid="auction-engine-targetNetProfit"' in admin_page
+    assert 'data-testid={`auction-engine-${key}`}' in admin_page
+    assert '["Produktkosten", "productCost", 100000]' in admin_page
+    assert '["Nettoziel", "targetNetProfit", 100000]' in admin_page
     assert 'data-testid="auction-schedule-net-profit"' in admin_page
     assert 'Der Rechner steuert weder Timer noch Gewinner.' in admin_page
     assert 'product_cost_eur: Number(engineConfig.productCost)' in admin_page
