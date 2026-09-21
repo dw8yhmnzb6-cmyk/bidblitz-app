@@ -38,6 +38,55 @@ function miningFixed(value, digits = 2, fallback = 0) {
   return miningNumber(value, fallback).toFixed(digits);
 }
 
+function miningAttemptStorageKey(ownerId, kind) {
+  return `bidblitz:mining-attempt:${ownerId || "unknown"}:${kind}`;
+}
+
+function loadMiningAttemptMap(ownerId, kind) {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(miningAttemptStorageKey(ownerId, kind));
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([scope, key]) => typeof scope === "string" && typeof key === "string" && key.length >= 8)
+    );
+  } catch {
+    return {};
+  }
+}
+
+function persistMiningAttemptMap(ownerId, kind, map) {
+  if (typeof window === "undefined") return;
+  try {
+    const storageKey = miningAttemptStorageKey(ownerId, kind);
+    if (Object.keys(map).length) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(map));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Storage can be unavailable in private/restricted browser contexts.
+  }
+}
+
+function getOrCreateMiningAttemptKey(ref, ownerId, kind, scope, prefix) {
+  if (!ref.current[scope]) {
+    ref.current[scope] = typeof crypto?.randomUUID === "function"
+      ? `${prefix}-${crypto.randomUUID()}`
+      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    persistMiningAttemptMap(ownerId, kind, ref.current);
+  }
+  return ref.current[scope];
+}
+
+function clearMiningAttemptKey(ref, ownerId, kind, scope) {
+  if (ref.current[scope]) {
+    delete ref.current[scope];
+    persistMiningAttemptMap(ownerId, kind, ref.current);
+  }
+}
+
 function subscribeToSecondTick(callback) {
   const id = window.setInterval(callback, 1000);
   return () => window.clearInterval(id);
@@ -163,13 +212,14 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [listPrice, setListPrice] = useState("");
   const [listing, setListing] = useState(false);
   const [buyingListing, setBuyingListing] = useState(null);
-  const minerPurchaseKeysRef = useRef({});
-  const minerUpgradeKeysRef = useRef({});
-  const withdrawAttemptKeysRef = useRef({});
-  const sendAttemptKeysRef = useRef({});
-  const marketplacePurchaseKeysRef = useRef({});
-  const launchpadPurchaseKeysRef = useRef({});
-  const cardUpgradeKeysRef = useRef({});
+  const attemptOwnerId = user?.id || user?.email || "unknown";
+  const minerPurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "buy-miner"));
+  const minerUpgradeKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "upgrade-miner"));
+  const withdrawAttemptKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "withdraw"));
+  const sendAttemptKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "send"));
+  const marketplacePurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "marketplace-buy"));
+  const launchpadPurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "launchpad-buy"));
+  const cardUpgradeKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "card-upgrade"));
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
@@ -261,12 +311,9 @@ export default function MiningPage({ onBack, onNavigate }) {
   const buyMiner = async (pkgId) => {
     if (!requireMiningValue()) return;
     const attemptScope = `${pkgId}:${billingType}`;
-    if (!minerPurchaseKeysRef.current[attemptScope]) {
-      minerPurchaseKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
-        ? `mining-buy-${crypto.randomUUID()}`
-        : `mining-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = minerPurchaseKeysRef.current[attemptScope];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope, "mining-buy"
+    );
     setPurchaseError(null);
     setBuying(pkgId);
     try {
@@ -275,7 +322,7 @@ export default function MiningPage({ onBack, onNavigate }) {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ package_id: pkgId, billing: billingType, idempotency_key: idempotencyKey }),
       });
-      delete minerPurchaseKeysRef.current[attemptScope];
+      clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
       setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
@@ -283,7 +330,7 @@ export default function MiningPage({ onBack, onNavigate }) {
       toast.success(t("mining.purchased") || "Miner purchased!");
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete minerPurchaseKeysRef.current[attemptScope];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       const msg = e.message || "Purchase failed";
       if (msg.toLowerCase().includes("insufficient")) {
         setPurchaseError(t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.");
@@ -297,12 +344,9 @@ export default function MiningPage({ onBack, onNavigate }) {
   const upgradeMiner = async (minerId, type) => {
     if (!requireMiningValue()) return;
     const attemptScope = `${minerId}:${type}`;
-    if (!minerUpgradeKeysRef.current[attemptScope]) {
-      minerUpgradeKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
-        ? `mining-upgrade-${crypto.randomUUID()}`
-        : `mining-upgrade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = minerUpgradeKeysRef.current[attemptScope];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope, "mining-upgrade"
+    );
     setUpgrading(attemptScope);
     try {
       const r = await api("/api/mining/upgrade", {
@@ -310,11 +354,11 @@ export default function MiningPage({ onBack, onNavigate }) {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ miner_id: minerId, upgrade_type: type, idempotency_key: idempotencyKey }),
       });
-      delete minerUpgradeKeysRef.current[attemptScope];
+      clearMiningAttemptKey(minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope);
       toast.success(`Upgraded to Lv.${r.new_level}!`);
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete minerUpgradeKeysRef.current[attemptScope];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope);
       toast.error(e.message);
     }
     setUpgrading(null);
@@ -328,12 +372,9 @@ export default function MiningPage({ onBack, onNavigate }) {
       return;
     }
     const attemptScope = amt.toFixed(8);
-    if (!withdrawAttemptKeysRef.current[attemptScope]) {
-      withdrawAttemptKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
-        ? `mining-withdraw-${crypto.randomUUID()}`
-        : `mining-withdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = withdrawAttemptKeysRef.current[attemptScope];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope, "mining-withdraw"
+    );
     setWithdrawing(true);
     try {
       const r = await api("/api/mining/withdraw", {
@@ -341,13 +382,13 @@ export default function MiningPage({ onBack, onNavigate }) {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ amount: amt, idempotency_key: idempotencyKey }),
       });
-      delete withdrawAttemptKeysRef.current[attemptScope];
+      clearMiningAttemptKey(withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope);
       toast.success(`Converted ${amt.toFixed(4)} BLZ → €${miningFixed(r.received_eur, 2)}`);
       setShowWithdraw(false);
       setWithdrawAmt("");
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete withdrawAttemptKeysRef.current[attemptScope];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope);
       toast.error(e.message);
     }
     setWithdrawing(false);
@@ -362,12 +403,9 @@ export default function MiningPage({ onBack, onNavigate }) {
       return;
     }
     const attemptScope = `${normalizedEmail}:${amt.toFixed(8)}`;
-    if (!sendAttemptKeysRef.current[attemptScope]) {
-      sendAttemptKeysRef.current[attemptScope] = typeof crypto?.randomUUID === "function"
-        ? `mining-send-${crypto.randomUUID()}`
-        : `mining-send-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = sendAttemptKeysRef.current[attemptScope];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      sendAttemptKeysRef, attemptOwnerId, "send", attemptScope, "mining-send"
+    );
     setSending(true);
     try {
       await api("/api/mining/send", {
@@ -375,14 +413,14 @@ export default function MiningPage({ onBack, onNavigate }) {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ recipient_email: normalizedEmail, amount: amt, idempotency_key: idempotencyKey }),
       });
-      delete sendAttemptKeysRef.current[attemptScope];
+      clearMiningAttemptKey(sendAttemptKeysRef, attemptOwnerId, "send", attemptScope);
       toast.success(`Sent ${amt.toFixed(4)} BLZ!`);
       setShowSend(false);
       setSendAmt("");
       setSendEmail("");
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete sendAttemptKeysRef.current[attemptScope];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(sendAttemptKeysRef, attemptOwnerId, "send", attemptScope);
       toast.error(e.message);
     }
     setSending(false);
@@ -431,23 +469,20 @@ export default function MiningPage({ onBack, onNavigate }) {
   const buyFromMarketplace = async (listingId) => {
     if (!requireMiningValue()) return;
     setBuyingListing(listingId);
-    if (!marketplacePurchaseKeysRef.current[listingId]) {
-      marketplacePurchaseKeysRef.current[listingId] = typeof crypto?.randomUUID === "function"
-        ? `mining-market-${crypto.randomUUID()}`
-        : `mining-market-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = marketplacePurchaseKeysRef.current[listingId];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId, "mining-market"
+    );
     try {
       const r = await api("/api/mining/marketplace/buy", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ listing_id: listingId, idempotency_key: idempotencyKey }),
       });
-      delete marketplacePurchaseKeysRef.current[listingId];
+      clearMiningAttemptKey(marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId);
       toast.success(`Bought ${r.miner_name}!`);
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete marketplacePurchaseKeysRef.current[listingId];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId);
       toast.error(e.message);
     }
     setBuyingListing(null);
@@ -463,12 +498,9 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const buyLaunchpad = async (projectId) => {
     if (!requireMiningValue()) return;
-    if (!launchpadPurchaseKeysRef.current[projectId]) {
-      launchpadPurchaseKeysRef.current[projectId] = typeof crypto?.randomUUID === "function"
-        ? `mining-launch-${crypto.randomUUID()}`
-        : `mining-launch-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = launchpadPurchaseKeysRef.current[projectId];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId, "mining-launch"
+    );
     setBuyingLaunch(projectId);
     try {
       const r = await api("/api/mining/launchpad/buy", {
@@ -476,11 +508,11 @@ export default function MiningPage({ onBack, onNavigate }) {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ project_id: projectId, idempotency_key: idempotencyKey }),
       });
-      delete launchpadPurchaseKeysRef.current[projectId];
+      clearMiningAttemptKey(launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId);
       toast.success(`${r.miner_name} ${t("mining.activated") || "activated"}! (${r.hashrate} TH/s)`);
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete launchpadPurchaseKeysRef.current[projectId];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId);
       const msg = e.message || "";
       if (msg.includes("Insufficient")) {
         toast.error(t("mining.err_need_more") || "Guthaben reicht nicht. Lade dein Wallet auf.");
@@ -511,23 +543,20 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const upgradeCard = async (tier) => {
     if (!requireMiningValue()) return;
-    if (!cardUpgradeKeysRef.current[tier]) {
-      cardUpgradeKeysRef.current[tier] = typeof crypto?.randomUUID === "function"
-        ? `mining-card-upgrade-${crypto.randomUUID()}`
-        : `mining-card-upgrade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = cardUpgradeKeysRef.current[tier];
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier, "mining-card-upgrade"
+    );
     try {
       const r = await api("/api/mining/card/upgrade", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ tier, idempotency_key: idempotencyKey }),
       });
-      delete cardUpgradeKeysRef.current[tier];
+      clearMiningAttemptKey(cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier);
       toast.success(`Upgraded to ${r.new_tier}!`);
       load();
     } catch (e) {
-      if (!shouldKeepAttemptKey(e)) delete cardUpgradeKeysRef.current[tier];
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier);
       toast.error(e.message);
     }
   };
