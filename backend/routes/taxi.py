@@ -3170,7 +3170,7 @@ async def driver_start_ride(req: RideActionRequest, request: Request):
         {"$set": {
             "status": RideStatus.STARTED.value,
             "started_at": now.isoformat(),
-            "start_location": driver.get("location", ride.get("pickup", {})),
+            "start_location": driver.get("location") or driver.get("current_location") or ride.get("pickup", {}),
         },
         "$push": {"status_history": {"status": "started", "at": now.isoformat()}}}
     )
@@ -3244,7 +3244,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     
     # Calculate actual distance (from start to current driver location)
     start_loc = ride.get("start_location", ride.get("pickup", {}))
-    end_loc = driver.get("location", ride.get("dropoff", {}))
+    end_loc = driver.get("location") or driver.get("current_location") or ride.get("dropoff", {})
     
     distance_km = ride.get("distance_km_estimate", 5)
     if NumberErrorSafe(start_loc.get("lat"), start_loc.get("lng")) and NumberErrorSafe(end_loc.get("lat"), end_loc.get("lng")):
