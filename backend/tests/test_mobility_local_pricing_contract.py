@@ -433,3 +433,21 @@ def test_scooter_share_redemption_is_atomic_and_tariff_safe():
     assert "data.detail?.message" in page
     assert "Die Abrechnung bleibt beim Gastgeber." in page
     assert "String(s.currency || activeRental?.currency || pricing.currency || 'EUR').toUpperCase()" in page
+
+
+def test_admin_scooter_fleet_cannot_override_active_lifecycle():
+    scooter = read("backend/routes/scooter.py")
+    admin_page = read("frontend/src/components/admin/AdminScootersTab.jsx")
+
+    assert '"status": {"$in": ["active", "paused"]}' in scooter
+    assert '"expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}' in scooter
+    assert 'scooter.get("status") in {"in_use", "unlocking", "reserved"}' in scooter
+    assert "Aktiver Scooter-Lifecycle: Status kann nicht manuell überschrieben werden" in scooter
+    assert "Aktiver Scooter-Lifecycle: Geräte-ID kann nicht geändert werden" in scooter
+    assert "Scooter ist aktiv gebunden und kann nicht gelöscht werden" in scooter
+
+    assert "const lifecycleLocked = Boolean(" in admin_page
+    assert '["in_use", "unlocking", "reserved"].includes(scooter.status)' in admin_page
+    assert "disabled={lifecycleLocked}" in admin_page
+    assert "Aktiver Scooter-Lifecycle – Status gesperrt" in admin_page
+    assert "Aktiver Scooter-Lifecycle – Löschen gesperrt" in admin_page
