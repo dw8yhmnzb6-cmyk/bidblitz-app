@@ -277,7 +277,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         if bc.get("payment_reference") == reference and bc.get("payment_state") in {
             "processing", "reconciliation_required"
         }:
-            raise HTTPException(status_code=409, detail="Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung")
+            raise HTTPException(status_code=503, detail="Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung")
         raise HTTPException(status_code=409, detail="Barcode wurde bereits verwendet")
 
     expires = datetime.fromisoformat(bc["expires_at"])
@@ -323,7 +323,11 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
                 ),
                 "replayed": True,
             }
-        raise HTTPException(status_code=409, detail="Barcode wird bereits verarbeitet oder wurde verwendet")
+        if latest.get("payment_reference") == reference and latest.get("payment_state") in {
+            "processing", "reconciliation_required"
+        }:
+            raise HTTPException(status_code=503, detail="Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung")
+        raise HTTPException(status_code=409, detail="Barcode wurde bereits verwendet")
 
     customer_uid = str(bc["user_id"])
     customer_oid = ObjectId(customer_uid) if ObjectId.is_valid(customer_uid) else customer_uid
