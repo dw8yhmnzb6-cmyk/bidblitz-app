@@ -610,3 +610,18 @@ def test_scooter_severe_issue_defers_maintenance_until_ride_end():
     assert 'final_scooter_status = "maintenance" if maintenance_due else "available"' in scooter
     assert 'scooter_set["maintenance_pending"] = False' in scooter
     assert 'scooter_set["maintenance_started_at"] = completed_at' in scooter
+
+
+def test_scooter_pause_resume_pending_confirmation_reconciles_from_telemetry():
+    scooter = read("backend/routes/scooter.py")
+
+    assert '"pause_lock_status": "pending_confirmation"' in scooter
+    assert '"resume_unlock_status": "pending_confirmation"' in scooter
+    assert '"device_state_uncertain_command": "pause_lock"' in scooter
+    assert '"device_state_uncertain_command": "resume_unlock"' in scooter
+    assert 'current_ride.get("status") == "active" and current_ride.get("control_action") == "pause"' in scooter
+    assert 'current_ride.get("status") == "paused" and current_ride.get("control_action") == "resume"' in scooter
+    assert '"pause_lock_confirmed_via": "device_telemetry"' in scooter
+    assert '"resume_unlock_confirmed_via": "device_telemetry"' in scooter
+    assert 'pause_confirmed_from_telemetry = True' in scooter
+    assert 'and not pause_confirmed_from_telemetry' in scooter
