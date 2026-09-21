@@ -42,6 +42,15 @@ function parseAmountInput(value) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+function miningNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function miningFixed(value, digits = 2, fallback = 0) {
+  return miningNumber(value, fallback).toFixed(digits);
+}
+
 function subscribeToSecondTick(callback) {
   const id = window.setInterval(callback, 1000);
   return () => window.clearInterval(id);
@@ -88,14 +97,14 @@ function AutoRewardCard({ reward, data, t }) {
             {isClaimed ? (
               <>
                 <p className="text-[10px] text-[#00E89D] font-medium">
-                  +{reward.amount?.toFixed(4) || 0} BLZ {t("mining.auto_collected") || "collected"}
+                  +{miningFixed(reward?.amount, 4)} BLZ {t("mining.auto_collected") || "collected"}
                 </p>
                 {streak > 1 && (
                   <p className="text-[8px] text-[#FFD700]/60 font-medium mt-0.5">{streak} {t("mining.day_streak") || "day streak"}</p>
                 )}
               </>
             ) : (
-              <p className="text-[10px] text-white/30">{t("mining.auto_pending") || "Calculating reward..."} (+{reward?.amount?.toFixed(4) || 0} BLZ)</p>
+              <p className="text-[10px] text-white/30">{t("mining.auto_pending") || "Calculating reward..."} (+{miningFixed(reward?.amount, 4)} BLZ)</p>
             )}
           </div>
         </div>
@@ -312,7 +321,7 @@ export default function MiningPage({ onBack, onNavigate }) {
         body: JSON.stringify({ amount: amt, idempotency_key: idempotencyKey }),
       });
       delete withdrawAttemptKeysRef.current[attemptScope];
-      toast.success(`Converted ${amt.toFixed(4)} BLZ → €${r.received_eur.toFixed(2)}`);
+      toast.success(`Converted ${amt.toFixed(4)} BLZ → €${miningFixed(r.received_eur, 2)}`);
       setShowWithdraw(false);
       setWithdrawAmt("");
       load();
@@ -646,8 +655,8 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="flex items-start justify-between mb-5 relative z-10">
                   <div>
                     <p className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-bold mb-2">BLZ Balance</p>
-                    <p className="text-[32px] font-black text-white tracking-tight leading-none">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
-                    <p className="text-[15px] font-bold text-[#00E89D] mt-1.5">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
+                    <p className="text-[32px] font-black text-white tracking-tight leading-none">{miningFixed(w.blz_balance, 4)}</p>
+                    <p className="text-[15px] font-bold text-[#00E89D] mt-1.5">{"\u20AC"}{miningFixed(w.eur_value, 2)}</p>
                   </div>
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center" 
                     style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.2)", boxShadow: "0 4px 16px rgba(0,232,157,0.1)" }}>
@@ -725,8 +734,8 @@ export default function MiningPage({ onBack, onNavigate }) {
               {/* Mining Stats — Glass Cards */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Hashrate", value: `${m.total_hashrate?.toFixed(0) || 0}`, unit: "TH/s", color: "#00E89D", icon: Zap },
-                  { label: t("mining.daily") || "Täglich", value: `${m.daily_earnings_blz?.toFixed(4) || 0}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
+                  { label: "Hashrate", value: `${miningFixed(m.total_hashrate, 0)}`, unit: "TH/s", color: "#00E89D", icon: Zap },
+                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
                   { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, unit: "aktiv", color: "#A855F7", icon: Server },
                 ].map((s, i) => (
                   <motion.div key={s.label} className="rounded-2xl p-4 text-center relative overflow-hidden"
@@ -757,9 +766,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 </div>
                 <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                   {[
-                    { label: t("mining.earn_daily") || "Täglich", blz: m.daily_earnings_blz?.toFixed(4) || "0", eur: m.daily_earnings_eur?.toFixed(4) || "0", color: "#00E89D" },
-                    { label: t("mining.earn_monthly") || "Monatlich", blz: m.monthly_earnings_blz?.toFixed(2) || "0", eur: m.monthly_earnings_eur?.toFixed(2) || "0", color: "#00C2FF" },
-                    { label: t("mining.earn_yearly") || "Jährlich", blz: m.yearly_earnings_blz?.toFixed(0) || "0", eur: m.yearly_earnings_eur?.toFixed(0) || "0", color: "#FFD700" },
+                    { label: t("mining.earn_daily") || "Täglich", blz: miningFixed(m.daily_earnings_blz, 4), eur: miningFixed(m.daily_earnings_eur, 4), color: "#00E89D" },
+                    { label: t("mining.earn_monthly") || "Monatlich", blz: miningFixed(m.monthly_earnings_blz, 2), eur: miningFixed(m.monthly_earnings_eur, 2), color: "#00C2FF" },
+                    { label: t("mining.earn_yearly") || "Jährlich", blz: miningFixed(m.yearly_earnings_blz, 0), eur: miningFixed(m.yearly_earnings_eur, 0), color: "#FFD700" },
                   ].map(s => (
                     <div key={s.label} className="py-5 px-3 text-center">
                       <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
@@ -807,9 +816,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <p className="text-[10px] font-mono text-white/35">{mn.effective_hashrate || mn.hashrate} TH/s · Eff. {((mn.effective_efficiency || mn.efficiency) * 100).toFixed(0)}%</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-[13px] font-black font-mono text-[#00E89D]">+{mn.daily_blz?.toFixed(4) || "0"}</p>
+                          <p className="text-[13px] font-black font-mono text-[#00E89D]">+{miningFixed(mn.daily_blz, 4)}</p>
                           <p className="text-[9px] text-white/25 font-medium">BLZ/{t("mining.day") || "Tag"}</p>
-                          <p className="text-[9px] text-white/35 font-mono">{"\u20AC"}{mn.daily_eur?.toFixed(3) || "0"}</p>
+                          <p className="text-[9px] text-white/35 font-mono">{"\u20AC"}{miningFixed(mn.daily_eur, 3)}</p>
                         </div>
                       </motion.div>
                     );
@@ -830,7 +839,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                     <p className="text-[10px] text-[#A855F7] font-semibold">{t("mining.ref_boost") || "Referral Boost Active"}</p>
                     <p className="text-[8px] text-white/20">+{((ref.bonus_rate || 0.05) * 100).toFixed(0)}% {t("mining.ref_boost_desc") || "bonus on your earnings"}</p>
                   </div>
-                  <span className="text-[11px] font-bold font-mono text-[#A855F7]">+{ref.boost_bonus_blz?.toFixed(4) || "0"} BLZ/d</span>
+                  <span className="text-[11px] font-bold font-mono text-[#A855F7]">+{miningFixed(ref.boost_bonus_blz, 4)} BLZ/d</span>
                 </motion.div>
               )}
 
@@ -878,7 +887,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                             <p className="text-[8px] text-white/15">{tx.created_at?.slice(0, 16)}</p>
                           </div>
                           <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-[#FF4757]"}`}>
-                            {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)} BLZ` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
+                            {miningNumber(tx.amount_blz) !== 0 ? `${miningNumber(tx.amount_blz) > 0 ? "+" : ""}${miningFixed(tx.amount_blz, 4)} BLZ` : `€${miningFixed(Math.abs(miningNumber(tx.amount_eur)), 2)}`}
                           </span>
                         </div>
                       );
@@ -978,14 +987,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               {/* Balances */}
               <div className="rounded-2xl p-4 text-center" style={{ background: "rgba(0,232,157,0.03)", border: "1px solid rgba(0,232,157,0.08)" }}>
                 <p className="text-[10px] text-white/25 uppercase tracking-[0.1em] mb-1">BLZ Balance</p>
-                <p className="text-[28px] font-bold font-outfit text-white">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
-                <p className="text-[13px] text-[#00E89D] font-semibold">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
+                <p className="text-[28px] font-bold font-outfit text-white">{miningFixed(w.blz_balance, 4)}</p>
+                <p className="text-[13px] text-[#00E89D] font-semibold">{"\u20AC"}{miningFixed(w.eur_value, 2)}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: t("mining.total_mined") || "Mined", value: w.total_mined?.toFixed(2) || "0", color: "#00E89D" },
-                  { label: t("mining.withdrawn") || "Withdrawn", value: w.total_withdrawn?.toFixed(2) || "0", color: "#FF6B6B" },
+                  { label: t("mining.total_mined") || "Mined", value: miningFixed(w.total_mined, 2), color: "#00E89D" },
+                  { label: t("mining.withdrawn") || "Withdrawn", value: miningFixed(w.total_withdrawn, 2), color: "#FF6B6B" },
                   { label: "Rate", value: miningValueEnabled ? "€0.10/BLZ" : "Preview", color: "#FFD700" },
                 ].map(s => (
                   <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
@@ -1056,7 +1065,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                               </div>
                             </div>
                             <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-white/40"}`}>
-                              {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)}` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
+                              {miningNumber(tx.amount_blz) !== 0 ? `${miningNumber(tx.amount_blz) > 0 ? "+" : ""}${miningFixed(tx.amount_blz, 4)}` : `€${miningFixed(Math.abs(miningNumber(tx.amount_eur)), 2)}`}
                             </span>
                           </div>
                         );
@@ -1410,11 +1419,11 @@ export default function MiningPage({ onBack, onNavigate }) {
                     {/* Card Stats */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                        <p className="text-[12px] font-bold font-outfit text-white/60">{"\u20AC"}{c.total_spent?.toFixed(2) || "0.00"}</p>
+                        <p className="text-[12px] font-bold font-outfit text-white/60">{"\u20AC"}{miningFixed(c.total_spent, 2)}</p>
                         <p className="text-[8px] text-white/15 uppercase">{t("mining.card_spent") || "Total Spent"}</p>
                       </div>
                       <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                        <p className="text-[12px] font-bold font-outfit text-[#00E89D]">{c.total_cashback?.toFixed(2) || "0"} BLZ</p>
+                        <p className="text-[12px] font-bold font-outfit text-[#00E89D]">{miningFixed(c.total_cashback, 2)} BLZ</p>
                         <p className="text-[8px] text-white/15 uppercase">{t("mining.card_cashback_total") || "Total Cashback"}</p>
                       </div>
                     </div>
@@ -1468,7 +1477,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                                 <p className="text-[8px] text-white/15">{tx.created_at?.slice(0, 16)}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[11px] font-bold font-mono text-[#FF4757]">-{"\u20AC"}{tx.amount_eur?.toFixed(2)}</p>
+                                <p className="text-[11px] font-bold font-mono text-[#FF4757]">-{"\u20AC"}{miningFixed(tx.amount_eur, 2)}</p>
                                 {tx.cashback_blz > 0 && <p className="text-[8px] text-[#00E89D] font-mono">+{tx.cashback_blz} BLZ</p>}
                               </div>
                             </div>
@@ -1604,7 +1613,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.div className="h-full rounded-full" style={{ background: VIP_COLORS[vip.name] }}
                         initial={{ width: 0 }} animate={{ width: `${vip.progress || 0}%` }} transition={{ duration: 0.6 }} />
                     </div>
-                    <p className="text-[9px] text-white/15 mt-1">{m.total_hashrate?.toFixed(0) || 0} / {vip.next_level.min_hashrate} TH/s ({vip.progress?.toFixed(0) || 0}%)</p>
+                    <p className="text-[9px] text-white/15 mt-1">{miningFixed(m.total_hashrate, 0)} / {vip.next_level.min_hashrate} TH/s ({miningFixed(vip.progress, 0)}%)</p>
                   </div>
                 )}
               </motion.div>
@@ -1677,7 +1686,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               {purchaseSuccess.new_balance != null && (
                 <motion.p className="text-[10px] text-white/20 font-mono"
                   initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
-                  {t("mining.new_balance") || "New balance"}: {"\u20AC"}{purchaseSuccess.new_balance.toFixed(2)}
+                  {t("mining.new_balance") || "New balance"}: {"\u20AC"}{miningFixed(purchaseSuccess.new_balance, 2)}
                 </motion.p>
               )}
             </motion.div>
