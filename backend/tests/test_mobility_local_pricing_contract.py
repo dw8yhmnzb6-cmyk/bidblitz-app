@@ -477,3 +477,20 @@ def test_scooter_critical_iot_commands_require_physical_confirmation():
     assert '"confirmation_required": True' in scooter
     assert "Device command accepted but physical state is not confirmed" in scooter
     assert "Command confirmed by IoT provider" in scooter
+
+
+def test_scooter_uncertain_device_state_is_quarantined_until_locked_telemetry():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "async def _quarantine_uncertain_scooter_state(" in scooter
+    assert '"status": "offline"' in scooter
+    assert '"device_state_uncertain": True' in scooter
+    assert 'cmd_result.data.get("confirmation_required")' in scooter
+    assert 'command="lock_after_payment_failure"' in scooter
+    assert 'command="lock_after_assignment_failure"' in scooter
+
+    assert 'if scooter.get("device_state_uncertain") and not scooter.get("current_ride_id"):' in scooter
+    assert 'if req.locked:' in scooter
+    assert 'update["status"] = "available"' in scooter
+    assert 'update["device_state_uncertain"] = False' in scooter
+    assert 'update["device_state_uncertain_reason"] = "physical_unlocked_without_active_ride"' in scooter
