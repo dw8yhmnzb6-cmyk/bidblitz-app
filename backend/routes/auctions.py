@@ -2150,9 +2150,9 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
         "retail_price": req.retail_price,
         "starting_price": 0.00,
         "current_price": 0.00,
-        "price_increment": PRICE_INCREMENT,
-        "bid_value_eur": 0.50,
-        "revenue_target_eur": 0.0,
+        "price_increment": round(float(req.price_increment), 2),
+        "bid_value_eur": round(float(req.bid_value_eur), 2),
+        "revenue_target_eur": round(float(req.revenue_target_eur), 2),
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": req.duration_seconds,
         "ends_at": ends_at if req.start_now else "",
@@ -3414,6 +3414,9 @@ class ScheduleAuctionRequest(BaseModel):
     bot_enabled: bool = True
     bot_target_price: Optional[float] = None  # None = auto-calculate
     featured: bool = False
+    bid_value_eur: float = Field(default=0.50, ge=0.01, le=10.0)
+    price_increment: float = Field(default=0.01, ge=0.01, le=1.0)
+    revenue_target_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
 
 
 class BulkScheduleRequest(BaseModel):
@@ -3585,6 +3588,15 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
     }
     
     await db.auctions.insert_one(auction)
+    if req.featured:
+        await db.auctions.update_many(
+            {
+                "auction_id": {"$ne": auction_id},
+                "status": {"$in": ["active", "scheduled", "paused"]},
+                "featured": True,
+            },
+            {"$set": {"featured": False}},
+        )
     auction.pop("_id", None)
     
     return {
@@ -4067,6 +4079,16 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
         raise HTTPException(
             status_code=409,
             detail="Auktion erhielt gleichzeitig ein Gebot oder änderte den Status. Produktänderung wurde nicht angewendet.",
+        )
+
+    if updates.get("featured") is True:
+        await db.auctions.update_many(
+            {
+                "auction_id": {"$ne": auction_id},
+                "status": {"$in": ["active", "scheduled", "paused"]},
+                "featured": True,
+            },
+            {"$set": {"featured": False}},
         )
 
     return {"ok": True, "auction_id": auction_id, "updated_fields": list(updates.keys())}
