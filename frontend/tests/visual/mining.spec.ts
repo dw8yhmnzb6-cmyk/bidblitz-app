@@ -82,6 +82,7 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
   await expect(page.getByTestId('mining-trust-banner')).toBeVisible();
   await expect(page.getByTestId('mining-withdraw-btn')).toBeDisabled();
   await expect(page.getByTestId('mining-send-btn')).toBeDisabled();
+  await expect(page.getByTestId('mining-claim-daily-btn')).toHaveCount(0);
 
   for (const tab of ['dashboard', 'miners', 'wallet', 'shop', 'marketplace', 'card', 'launchpad', 'vip']) {
     await expect(page.getByTestId(`mining-tab-${tab}`)).toHaveCount(1);
