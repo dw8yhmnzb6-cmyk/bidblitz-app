@@ -230,3 +230,11 @@ def test_privileged_admin_auth_operations_require_privileged_manager():
     assert "const privilegedActionBlocked = privilegedTarget && !canManagePrivileged;" in page
     assert 'data-testid="customer-privileged-action-note"' in page
     assert "disabled={loading || privilegedActionBlocked}" in page
+
+
+def test_aggressive_auth_cleanup_requires_confirmation():
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert 'mode === "aggressive"' in page
+    assert "Aggressive Auth-Bereinigung wirklich ausführen?" in page
+    assert "Nur nicht-privilegierte Kundenkonten werden verarbeitet." in page
