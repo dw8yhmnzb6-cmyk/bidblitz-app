@@ -1077,7 +1077,13 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
     assert "ObjectId(rid) for rid in recipient_ids if ObjectId.is_valid(rid)" in merchant_source
     assert 'idempotent_replay=getattr(result, "idempotent_replay", False)' in engine_source
     assert "paymentAttemptKeyRef" in mobile_source
-    assert "idempotency_key: paymentAttemptKeyRef.current" in mobile_source
+    assert "AsyncStorage.getItem(paymentAttemptStorageKey)" in mobile_source
+    assert "AsyncStorage.setItem(paymentAttemptStorageKey, JSON.stringify(attempt))" in mobile_source
+    assert "AsyncStorage.removeItem(paymentAttemptStorageKey)" in mobile_source
+    assert "const idempotencyKey = await loadOrCreatePaymentAttemptKey();" in mobile_source
+    assert "idempotency_key: idempotencyKey" in mobile_source
+    assert "status > 0 && status < 500 && status !== 429" in mobile_source
+    assert "Der Zahlungsstatus ist unklar. Bitte denselben Versuch erneut ausführen." in mobile_source
 
 
 def test_auction_production_bots_cannot_manipulate_customer_auctions():
