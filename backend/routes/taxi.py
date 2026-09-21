@@ -1402,13 +1402,13 @@ async def calculate_fare_with_overrides(
                 55,
                 pricing_context,
             )
+            mode = (pricing_context.get("modes") or {}).get("taxi") or {}
             vehicle_multiplier = {
                 "standard": 1.0,
                 "premium": float(mode.get("premium_multiplier", 1.35) or 1.35),
                 "van": float(mode.get("van_multiplier", 1.20) or 1.20),
             }.get(car_type, 1.0)
             total = round(float(option.get("price_local") or 0) * vehicle_multiplier, 2)
-            mode = (pricing_context.get("modes") or {}).get("taxi") or {}
             base_fare = round(float(mode.get("base") or 0) * vehicle_multiplier, 2)
             booking_fee = round(float(mode.get("booking_fee") or 0) * vehicle_multiplier, 2)
             per_min = float(mode.get("per_min") or 0)
