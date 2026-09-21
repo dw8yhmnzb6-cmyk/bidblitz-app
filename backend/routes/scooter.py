@@ -567,6 +567,14 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         {"_id": 0},
     )
     if existing_ride:
+        if existing_ride.get("status") not in {"active", "paused", "completed"}:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "unlock_attempt_not_replayable",
+                    "message": "Dieser Scooter-Entsperrversuch wurde nicht erfolgreich abgeschlossen. Bitte neuen Versuch starten.",
+                },
+            )
         existing_ride["rental_id"] = existing_ride.get("ride_id")
         existing_ride["started_at"] = existing_ride.get("start_time")
         fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
@@ -633,7 +641,10 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     if req.pricing_hash and not secrets.compare_digest(req.pricing_hash, current_pricing_hash):
         raise HTTPException(
             status_code=409,
-            detail="Scooter-Tarif hat sich geändert. Bitte Preis neu laden und erneut bestätigen.",
+            detail={
+                "error": "pricing_changed",
+                "message": "Scooter-Tarif hat sich geändert. Bitte Preis neu laden und erneut bestätigen.",
+            },
         )
 
     ride_unlock_fee = float(effective_pricing["unlock_fee"])
