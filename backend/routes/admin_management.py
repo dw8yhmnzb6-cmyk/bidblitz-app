@@ -726,6 +726,7 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
     metadata = tx.get("metadata") or {}
     counterparty = metadata.get("counterparty_user_id") or metadata.get("recipient_id") or metadata.get("merchant_id")
     blocked_types = {
+        "refund",
         "transfer",
         "merchant_payment",
         "merchant_payment_received",
