@@ -1094,6 +1094,7 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert '"status": "paid_pending_fulfillment"' in source
     assert '"fulfillment_status": "pending"' in source
     assert '"winner_payment_status": "paid"' in source
+    assert 'status_code=503 if order_status == "reconciliation_required" else 400' in source
     assert 'class AuctionOrderFulfillmentRequest(BaseModel):' in source
     assert '@router.get("/admin/orders")' in source
     assert '@router.post("/admin/orders/{order_id}/fulfillment")' in source
@@ -1111,6 +1112,9 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert '"Idempotency-Key": body.idempotency_key' in api
     assert "WinnerCheckoutModal" in page
     assert "winnerCheckoutKeyRef" in page
+    assert "window.sessionStorage.getItem(attemptStorageKey)" in page
+    assert "window.sessionStorage.setItem(attemptStorageKey, winnerCheckoutKeyRef.current)" in page
+    assert "window.sessionStorage.removeItem(attemptStorageKey)" in page
     assert "e?.status === 400" in page
     assert "winnerCheckoutKeyRef.current = null" in page
     assert "winner-checkout-pay" in page
