@@ -192,7 +192,7 @@ function PricingOverviewCard({ selectedEstimate, bookingMode, regionFallback = '
       ) : null}
       {fixedFare ? (
         <div className="mt-3 rounded-2xl bg-[rgba(24,214,140,0.12)] px-4 py-3 text-sm font-semibold text-[var(--bb-accent-success)]">
-          Festpreis aktiv: <MoneyAmount value={fixedFare} locale="de" className="font-bold text-[var(--bb-accent-success)]" testId="taxi-fixed-fare" />
+          Festpreis aktiv: <MoneyAmount value={fixedFare} locale="de" currency={selectedEstimate.currency || 'EUR'} className="font-bold text-[var(--bb-accent-success)]" testId="taxi-fixed-fare" />
         </div>
       ) : null}
       {timeTariff?.label ? (
@@ -960,7 +960,7 @@ export default function TaxiPage({ onNavigate }) {
                   <div className="mt-4 flex items-center justify-between rounded-2xl bg-[var(--bb-bg-card)] px-4 py-3">
                     <div>
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Preis</div>
-                      <MoneyAmount value={selectedEstimate?.total || selectedEstimate?.fare || 0} locale="de" className="mt-1 block text-lg font-black text-white" testId="taxi-selected-price" />
+                      <MoneyAmount value={selectedEstimate?.total || selectedEstimate?.fare || 0} locale="de" currency={selectedEstimate?.currency || 'EUR'} className="mt-1 block text-lg font-black text-white" testId="taxi-selected-price" />
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Verfügbarkeit</div>
