@@ -70,6 +70,7 @@ export default function ScooterPage({ onNavigate }) {
   const timerRef = useRef(null);
   const pollingRef = useRef(null);
   const unlockAttemptKeyRef = useRef(null);
+  const unlockAttemptScooterRef = useRef(null);
   const endAttemptKeyRef = useRef(null);
   const subscriptionAttemptKeyRef = useRef(null);
   const pricingSelectionRequestRef = useRef(0);
@@ -271,10 +272,11 @@ export default function ScooterPage({ onNavigate }) {
     setError('');
     
     try {
-      if (!unlockAttemptKeyRef.current) {
+      if (!unlockAttemptKeyRef.current || unlockAttemptScooterRef.current !== scooter.scooter_id) {
         unlockAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
           ? `scooter-unlock-${crypto.randomUUID()}`
           : `scooter-unlock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        unlockAttemptScooterRef.current = scooter.scooter_id;
       }
       const idempotencyKey = unlockAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/unlock`, {
@@ -290,6 +292,8 @@ export default function ScooterPage({ onNavigate }) {
       
       if (res.ok) {
         const data = await res.json();
+        unlockAttemptKeyRef.current = null;
+        unlockAttemptScooterRef.current = null;
         const ride = data.rental || data.ride;
         setActiveRental(ride);
         setSelectedScooter(null);
@@ -298,8 +302,13 @@ export default function ScooterPage({ onNavigate }) {
         setUserBalance(Number(data.new_balance ?? userBalance));
         startRideTimer(ride);
       } else {
-        const err = await res.json();
-        if (res.status === 409) {
+        const err = await res.json().catch(() => ({}));
+        const errorCode = typeof err?.detail === 'object' ? err.detail?.error : null;
+        const detailMessage = typeof err?.detail === 'string'
+          ? err.detail
+          : err?.detail?.message || 'Entsperren fehlgeschlagen';
+
+        if (res.status === 409 && errorCode === 'pricing_changed') {
           const lat = Number(scooter?.lat ?? scooter?.location?.lat);
           const lng = Number(scooter?.lng ?? scooter?.location?.lng);
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -310,8 +319,11 @@ export default function ScooterPage({ onNavigate }) {
               setSelectedPricing(null);
             }
           }
+        } else if (res.status < 500) {
+          unlockAttemptKeyRef.current = null;
+          unlockAttemptScooterRef.current = null;
         }
-        setError(err.detail || 'Entsperren fehlgeschlagen');
+        setError(detailMessage);
       }
     } catch (err) {
       setError('Netzwerkfehler');
