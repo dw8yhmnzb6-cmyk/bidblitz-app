@@ -2041,6 +2041,7 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     mining_trust_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningTrustPage.jsx").read_text(encoding="utf-8")
     mining_trust_admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningTrustAdminPage.jsx").read_text(encoding="utf-8")
     app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    auth_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuthPage.jsx").read_text(encoding="utf-8")
     registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
 
     assert '"routes.mining", "router"' in registry
@@ -2053,6 +2054,10 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "<MiningPage" in mining_case
     assert 'if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {' in app_source
     assert "Bitte anmelden, um Mining zu öffnen." in app_source
+    assert 'ref.toUpperCase().startsWith("BLZ-")' in auth_page
+    assert '"/api/mining/apply-referral"' in auth_page
+    assert '"/api/affiliate/claim-signup-bonus"' in auth_page
+    assert 'api(referralEndpoint' in auth_page
 
     assert "def _safe_mining_float" in mining
     assert "def _normalize_mining_wallet" in mining
@@ -2094,6 +2099,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_page
     assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_admin_page
     assert 'const dash = await api("/api/mining/dashboard");' in mining_page
+    assert 'api("/api/mining/transactions").catch(() => ({ transactions: dash.recent_transactions || [] }))' in mining_page
+    assert 'recent_transactions: hist.transactions || dash.recent_transactions || []' in mining_page
     assert 'api("/api/mining/dashboard").catch(() => ({}))' not in mining_page
     assert 'data-testid="mining-load-error"' in mining_page
     assert 'data-testid="mining-retry-load"' in mining_page
