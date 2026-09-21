@@ -93,7 +93,15 @@ async def get_quotes(req: ParcelQuote, request: Request):
             "weight": req.weight,
         })
     quotes.sort(key=lambda x: x["price"])
-    return {"quotes": quotes}
+    return {
+        "quotes": quotes,
+        "booking_enabled": bool(TEST_MODE),
+        "provider_mode": "test" if TEST_MODE else "preview",
+        "production_message": (
+            None if TEST_MODE else
+            "Preisvergleich ist Preview. Echte Buchung, Versandlabel und Tracking werden erst nach verifizierter Carrier-API freigeschaltet."
+        ),
+    }
 
 
 @router.post("/book")
