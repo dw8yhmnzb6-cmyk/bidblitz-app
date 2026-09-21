@@ -78,6 +78,10 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
   await openRoute(page, '/mining', '[data-testid="mining-page"]');
 
   await expect(page.getByTestId('mining-provider-unavailable')).toBeVisible();
+  await expect(page.getByTestId('mining-menu-grid')).toBeVisible();
+  await expect(page.getByTestId('mining-level-card')).toBeVisible();
+  await expect(page.getByTestId('mining-quick-buy')).toBeVisible();
+  await expect(page.getByTestId('mining-dashboard-packages-empty')).toBeVisible();
   await expect(page.getByTestId('mining-blitzmine-banner')).toBeVisible();
   await expect(page.getByTestId('mining-trust-banner')).toBeVisible();
   await expect(page.getByTestId('mining-withdraw-btn')).toBeDisabled();
