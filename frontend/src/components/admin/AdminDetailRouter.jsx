@@ -59,6 +59,9 @@ export default function AdminDetailRouter({ data, setData, loading, error, onNav
     case "pay_requests": return <PayRequestsDetail data={data} setData={setData} />;
     case "api_keys": return <ApiKeysDetail />;
     case "marketing": return <MarketingDetail data={data} />;
+    case "surveys_admin": return <SurveysAdminDetail data={data} />;
+    case "parcels_admin": return <ParcelsAdminDetail data={data} />;
+    case "voice_admin": return <VoiceAdminDetail data={data} />;
     case "auctions": return <AuctionsDetail data={data} onNavigate={onNavigate} />;
     case "bot_config": return <BotConfigDetail data={data} />;
     case "winners": return <WinnersDetail data={data} />;
@@ -515,6 +518,116 @@ function MarketingDetail({ data }) {
         </div>
       </div>
       <p className="text-[10px] text-gray-400 text-center mt-3">Verwaltung in nächstem Update</p>
+    </div>
+  );
+}
+
+function SurveysAdminDetail({ data }) {
+  return (
+    <div className="space-y-3" data-testid="admin-detail-surveys">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          ["Aktiv", data.active_count || 0],
+          ["Abschlüsse", data.completion_count || 0],
+          ["Rewards", `€${Number(data.reward_total || 0).toFixed(2)}`],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-gray-100 bg-white p-3 text-center shadow-sm">
+            <p className="text-lg font-bold text-cyan-600">{value}</p>
+            <p className="text-[9px] text-gray-500">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-gray-100 bg-white p-3">
+        <p className="text-[11px] font-semibold text-gray-700">
+          Reward-Modus: {data.provider_mode === "test" ? "Test" : "Preview / fail-closed"}
+        </p>
+        <p className="mt-1 text-[9px] text-gray-400">
+          {data.reward_actions_enabled ? "Test-Rewards sind aktiviert." : "In Production werden ohne Sponsor-/Settlement-Provider keine Wallet-Rewards erzeugt."}
+        </p>
+      </div>
+      {(data.surveys || []).map((survey) => (
+        <div key={survey.id} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold text-gray-800">{survey.title}</p>
+              <p className="mt-0.5 text-[9px] text-gray-400">{survey.sponsor} · {survey.questions} Fragen · {survey.time_min} Min</p>
+            </div>
+            <span className="shrink-0 text-[11px] font-bold text-cyan-600">€{Number(survey.reward_eur || 0).toFixed(2)}</span>
+          </div>
+          <div className="mt-2 flex gap-3 text-[9px] text-gray-500">
+            <span>{survey.completed_count || 0} Abschlüsse</span>
+            <span>€{Number(survey.reward_total || 0).toFixed(2)} Rewards</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ParcelsAdminDetail({ data }) {
+  return (
+    <div className="space-y-3" data-testid="admin-detail-parcels">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          ["Pakete", data.count || 0],
+          ["Wert", `€${Number(data.total_value || 0).toFixed(2)}`],
+          ["Test", data.test_count || 0],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-gray-100 bg-white p-3 text-center shadow-sm">
+            <p className="text-lg font-bold text-orange-500">{value}</p>
+            <p className="text-[9px] text-gray-500">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <p className="text-[10px] font-semibold text-amber-800">
+          Carrier-Modus: {data.provider_mode === "test" ? "Test" : "Preview / keine Live-Buchung"}
+        </p>
+      </div>
+      {(data.parcels || []).length === 0 ? (
+        <div className="py-8 text-center text-sm text-gray-400">Noch keine Pakete vorhanden</div>
+      ) : (data.parcels || []).slice(0, 30).map((parcel) => (
+        <div key={parcel.parcel_id || parcel.tracking_number} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold text-gray-800">{parcel.parcel_id || "Paket"}</p>
+              <p className="mt-0.5 truncate text-[9px] text-gray-400">{parcel.carrier_name || parcel.carrier_id || "Carrier"} · {parcel.recipient_city || "—"}</p>
+            </div>
+            <span className="shrink-0 text-[11px] font-bold text-orange-500">€{Number(parcel.price || 0).toFixed(2)}</span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[9px] text-gray-500">
+            <span>{parcel.status || "—"}</span>
+            <span>{parcel.tracking_number || "keine Trackingnummer"}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VoiceAdminDetail({ data }) {
+  return (
+    <div className="space-y-3" data-testid="admin-detail-voice">
+      <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-gray-800">Voice Intent Parser</p>
+            <p className="mt-1 text-[10px] text-gray-500">{data.provider || "Provider"} · {data.model || "—"} · {data.language || "—"}</p>
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${data.configured ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+            {data.configured ? "Verbunden" : "Nicht konfiguriert"}
+          </span>
+        </div>
+      </div>
+      <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+        <p className="mb-2 text-[10px] font-semibold text-gray-600">Erlaubte Aktionen ({(data.allowed_actions || []).length})</p>
+        <div className="flex flex-wrap gap-1.5">
+          {(data.allowed_actions || []).map((action) => (
+            <span key={action} className="rounded-full bg-gray-100 px-2 py-1 text-[9px] font-medium text-gray-600">{action}</span>
+          ))}
+        </div>
+      </div>
+      <p className="text-center text-[9px] text-gray-400">API-Schlüssel und Provider-Credentials werden im Admin bewusst nicht angezeigt.</p>
     </div>
   );
 }
