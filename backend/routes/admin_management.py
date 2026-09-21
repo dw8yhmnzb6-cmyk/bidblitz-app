@@ -322,6 +322,18 @@ async def change_role(user_id: str, req: RoleRequest, request: Request):
 async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, request: Request):
     """KYC für Kunden manuell freischalten oder ablehnen."""
     admin = await _require_admin(request)
+    target = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1},
+    )
+    if not target:
+        raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    target_role = str(target.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf KYC privilegierter Konten ändern")
+
     now = datetime.now(timezone.utc).isoformat()
     approved = req.decision == "approve"
     reupload = req.decision == "reupload"
