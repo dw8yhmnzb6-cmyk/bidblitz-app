@@ -2163,6 +2163,10 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'has_persisted_daily_spend = today in daily_spend' in phase2
     assert 'marketplace_listing_id' in phase2
     assert 'marketplace_listing_price_blz' in phase2
+    assert 'ownership_already_applied' in phase2
+    assert '"status": "reconciliation_required", "reason": "seller_credit_failed"' in phase2
+    assert 'current.get("status") == "sold" and current.get("purchase_id") == purchase_id' in phase2
+    assert 'await record_marketplace_transactions(now)' in phase2
     assert '"status": "cancelling"' in phase2
     assert "Listing-Cancel benötigt Abstimmung" in phase2
     assert "class FreezeCardRequest(BaseModel):" in phase2
