@@ -104,8 +104,7 @@ async def list_customers(
     admin = await _require_admin(request)
     query = {
         "$and": [
-            {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
-            {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
+            {"account_closure_status": {"$ne": "admin_closed"}},
         ]
     }
     if q:
@@ -125,7 +124,11 @@ async def list_customers(
     if status == "banned":
         query["$and"].append({"banned": True})
     elif status == "active":
-        query["$and"].append({"banned": {"$ne": True}})
+        query["$and"].extend([
+            {"banned": {"$ne": True}},
+            {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
+            {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
+        ])
 
     canonical_balance, canonical_blz = await _canonical_admin_balances()
     if role == "admin":
