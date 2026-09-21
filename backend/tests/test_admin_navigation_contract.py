@@ -160,3 +160,16 @@ def test_dating_admin_cannot_create_or_hard_delete_user_bound_profiles():
     assert 'const moderationOnly = mod.key === "dating";' in page
     assert 'item-disable-' in page
     assert '{!moderationOnly && (' in page
+
+
+def test_reengage_admin_stays_preview_only_outside_test_mode():
+    backend = read("backend/routes/reengage.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert '"actions_enabled": bool(TEST_MODE)' in backend
+    assert '"provider_mode": "test" if TEST_MODE else "preview"' in backend
+    assert "Re-Engagement-Wallet-Gutschriften und E-Mails sind in Production deaktiviert." in backend
+    assert "preview.actions_enabled === false" in page
+    assert 'data-testid="reengage-preview-only-note"' in page
+    assert "Nur Preview – Aktionen deaktiviert" in page
+    assert "preview.count === 0 || preview.actions_enabled === false" in page
