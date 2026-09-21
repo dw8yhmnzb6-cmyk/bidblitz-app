@@ -6,9 +6,6 @@ import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
-const WHATSAPP_URL = "https://wa.me/?text=Hallo%20BidBlitz%2C%20ich%20interessiere%20mich%20f%C3%BCr%20eure%20Bitcoin-Mining-Infrastruktur.";
-const TELEGRAM_URL = "https://t.me/share/url?url=https://bidblitz.ae/mining-trust&text=Ich%20interessiere%20mich%20f%C3%BCr%20eure%20Mining-Infrastruktur";
-const PHONE_URL = "tel:+971000000000";
 
 const trustMedia = {
   dubai: "https://static.prod-images.emergentagent.com/jobs/2ac12b59-b16f-458d-9088-1c735ced669e/images/1cf85ab6d62f2971e243a0c551a8310646f1846376968d6a79dabb151cfe5b91.png",
@@ -421,12 +418,12 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <Clock3 size={13} /> {c.advisorResponse}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-advisor-whatsapp">
+              <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-advisor-whatsapp">
                 <MessageCircle size={16} /> {c.advisorPrimary}
-              </a>
-              <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-advisor-call">
+              </button>
+              <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-advisor-call">
                 <Phone size={16} /> {c.callBack}
-              </a>
+              </button>
             </div>
           </div>
 
@@ -529,9 +526,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
                 <p className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">{c.quickContactTitle}</p>
                 <p className="mt-2 text-xs text-emerald-100/70">{c.quickContactText}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-bold text-black" data-testid="mining-trust-whatsapp-button"><MessageCircle size={14} /> WhatsApp</a>
-                  <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-4 py-2 text-xs font-bold text-white" data-testid="mining-trust-telegram-button"><Send size={14} /> Telegram</a>
-                  <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white" data-testid="mining-trust-callback-button"><Phone size={14} /> {c.callBack}</a>
+                  <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 text-xs font-bold text-black" data-testid="mining-trust-whatsapp-button"><MessageCircle size={14} /> Kontakt</button>
+                  <button type="button" onClick={() => chooseOffer("Partnerschaft", "Bitte über einen verifizierten BidBlitz-Kontaktkanal zur Partnerschaft zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-xs font-bold text-white" data-testid="mining-trust-telegram-button"><Send size={14} /> Partner</button>
+                  <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white" data-testid="mining-trust-callback-button"><Phone size={14} /> {c.callBack}</button>
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mining-trust-lead-fast-box">
@@ -661,9 +658,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
       <div className="fixed bottom-4 left-1/2 z-[60] w-[calc(100%-1.25rem)] max-w-xl -translate-x-1/2" data-testid="mining-trust-sticky-contact-bar">
         <div className="rounded-full border border-white/10 bg-black/80 backdrop-blur-xl px-3 py-3 shadow-[0_16px_36px_rgba(0,0,0,0.35)]">
           <div className="grid grid-cols-3 gap-2">
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-3 py-3 text-[11px] font-bold text-black" data-testid="mining-trust-sticky-whatsapp"><MessageCircle size={14} />WhatsApp</a>
-            <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#229ED9] px-3 py-3 text-[11px] font-bold text-white" data-testid="mining-trust-sticky-telegram"><Send size={14} />Telegram</a>
-            <a href={PHONE_URL} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-3 text-[11px] font-semibold text-white" data-testid="mining-trust-sticky-call"><Phone size={14} />Call</a>
+            <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-3 py-3 text-[11px] font-bold text-black" data-testid="mining-trust-sticky-whatsapp"><MessageCircle size={14} />Kontakt</button>
+            <button type="button" onClick={() => chooseOffer("Partnerschaft", "Bitte über einen verifizierten BidBlitz-Kontaktkanal zur Partnerschaft zurückmelden.")} className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-500 px-3 py-3 text-[11px] font-bold text-white" data-testid="mining-trust-sticky-telegram"><Send size={14} />Partner</button>
+            <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-3 text-[11px] font-semibold text-white" data-testid="mining-trust-sticky-call"><Phone size={14} />Kontakt</button>
           </div>
         </div>
       </div>
