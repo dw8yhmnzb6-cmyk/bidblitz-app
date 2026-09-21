@@ -927,7 +927,7 @@ async def toggle_private_driver_online(request: Request):
 async def approve_private_driver(driver_id: str, request: Request):
     """Admin: Approve a private driver."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.private_drivers.update_one(
@@ -1016,7 +1016,7 @@ async def toggle_driver_online(request: Request):
 async def list_taxi_operators(request: Request, status: Optional[str] = None):
     """Admin: List all taxi operators."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     query = {}
@@ -1032,7 +1032,7 @@ async def list_taxi_operators(request: Request, status: Optional[str] = None):
 async def approve_taxi_operator(operator_id: str, request: Request):
     """Admin: Approve a taxi operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.taxi_operators.update_one(
@@ -1074,7 +1074,7 @@ async def approve_taxi_operator(operator_id: str, request: Request):
 async def reject_taxi_operator(operator_id: str, request: Request, reason: str = ""):
     """Admin: Reject a taxi operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.taxi_operators.update_one(
@@ -1096,7 +1096,7 @@ async def reject_taxi_operator(operator_id: str, request: Request, reason: str =
 async def set_operator_commission(operator_id: str, request: Request):
     """Admin: Manually set commission rate for an operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     body = await request.json()
@@ -3854,7 +3854,7 @@ async def get_driver_earnings(request: Request):
 async def admin_list_drivers(request: Request):
     """Admin: List all drivers."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     drivers = await db.drivers.find({}, {"_id": 0}).to_list(200)
@@ -3874,7 +3874,7 @@ async def admin_approve_driver(driver_id: str, request: Request):
     """Admin: Approve a driver. Also propagates vehicle_capabilities from
     any matching driver-onboarding application (by email) into drivers.car.*."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     driver = await db.drivers.find_one({"driver_id": driver_id})
@@ -3938,7 +3938,7 @@ async def admin_approve_driver(driver_id: str, request: Request):
 async def list_driver_applications(request: Request, status: Optional[str] = None):
     """Admin: List all driver onboarding applications (filter by status)."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     query = {}
     if status:
@@ -3962,7 +3962,7 @@ async def approve_driver_application(application_id: str, request: Request):
     """Admin: Approve an onboarding application. Creates a driver record
     in db.drivers with vehicle_capabilities propagated to car.* fields."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     app = await db.taxi_driver_applications.find_one({"application_id": application_id})
@@ -4032,7 +4032,7 @@ async def approve_driver_application(application_id: str, request: Request):
 async def reject_driver_application(application_id: str, request: Request):
     """Admin: Reject an onboarding application."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     res = await db.taxi_driver_applications.update_one(
         {"application_id": application_id},
@@ -4051,7 +4051,7 @@ async def reject_driver_application(application_id: str, request: Request):
 async def admin_suspend_driver(driver_id: str, request: Request):
     """Admin: Suspend a driver."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     await db.drivers.update_one(
@@ -4466,7 +4466,7 @@ async def get_ride_receipt_pdf(ride_id: str, request: Request):
     ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id and user.get("role") != "admin":
+    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id and user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Nicht berechtigt")
     if ride.get("status") not in ("completed", "cancelled"):
         raise HTTPException(status_code=400, detail="Fahrt noch nicht abgeschlossen")
