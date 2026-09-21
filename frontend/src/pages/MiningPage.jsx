@@ -9,22 +9,9 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
+import { request as api } from "../services/api";
 
-const API = process.env.REACT_APP_BACKEND_URL || "";
 const sl = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
-
-async function api(path, opts = {}) {
-  const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
-  let d = {};
-  try {
-    const cloned = r.clone();
-    d = await cloned.json();
-  } catch {
-    try { const text = await r.text(); d = { detail: text }; } catch { /* body consumed */ }
-  }
-  if (!r.ok) throw new Error(d.detail || d.message || "Request failed");
-  return d;
-}
 
 const TIER_ICONS = { cpu: Cpu, server: Server, zap: Zap, flame: Flame, atom: Atom };
 const TIER_COLORS = { starter: "#00E89D", pro: "#00C2FF", elite: "#A855F7", titan: "#FF6B6B", quantum: "#FFD700" };
