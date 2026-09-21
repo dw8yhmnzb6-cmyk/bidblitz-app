@@ -1100,6 +1100,23 @@ export default function MiningPage({ onBack, onNavigate }) {
               </div>
 
               {/* Package Cards */}
+              {packages.length === 0 && (
+                <div
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-8 text-center"
+                  data-testid="mining-shop-empty"
+                >
+                  <Cpu size={28} className="mx-auto mb-2 text-white/10" />
+                  <p className="text-[12px] font-semibold text-white/40">Mining-Pakete konnten nicht geladen werden</p>
+                  <p className="mt-1 text-[10px] text-white/20">Die Mining-Seite bleibt verfügbar. Lade die Pakete erneut.</p>
+                  <button
+                    onClick={load}
+                    className="mt-3 rounded-xl bg-[#00E89D]/10 px-4 py-2 text-[10px] font-bold text-[#00E89D]"
+                    data-testid="mining-shop-retry"
+                  >
+                    Erneut laden
+                  </button>
+                </div>
+              )}
               {packages.map((pkg, idx) => {
                 const Icon = TIER_ICONS[pkg.icon] || Cpu;
                 const color = TIER_COLORS[pkg.id] || "#00E89D";
