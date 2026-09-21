@@ -301,6 +301,12 @@ def test_admin_promotions_use_canonical_error_and_role_handling():
     assert 'user.get("role") != "admin"' not in backend
     assert 'request as apiRequest' in router
     assert 'apiRequest("/api/promotions/admin/create"' in router
+    assert 'normalized_name = req.name.strip()' in backend
+    assert 'Promotion name already exists' in backend
+    assert 'match_count = await db.promotions.count_documents({"name": promo_name})' in backend
+    assert 'Promotion name is ambiguous; duplicate records require admin cleanup' in backend
+    assert 'Promotion changed concurrently; reload and retry' in backend
+    assert 'encodeURIComponent(p.name)' in router
     assert 'fetch(`${API}/api/promotions/admin/create`' not in router
 
 
