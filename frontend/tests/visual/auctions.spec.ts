@@ -15,6 +15,10 @@ const VISUAL_AUCTION = {
   current_price: 12.5,
   retail_price: 1499,
   bid_cost: 0.5,
+  bid_value_eur: 0.5,
+  price_increment: 0.01,
+  revenue_target_eur: 50,
+  featured: true,
   total_bids: 24,
   unique_bidders: 8,
   ends_at: '2099-12-31T23:59:59.000Z',
@@ -89,6 +93,8 @@ for (const viewport of VISUAL_VIEWPORTS) {
     await mockVerifiedAuctionUser(page);
     await mockAuctionApi(page);
     await runRouteAudit(page, AUCTIONS_OVERVIEW_CONFIG, viewport);
+    await expect(page.getByTestId('auction-premium-hero')).toBeVisible();
+    await expect(page.getByTestId(`auction-premium-quick-bid-${VISUAL_AUCTION.auction_id}`)).toBeVisible();
   });
 
   test(`visual auction detail ${viewport.name}`, async ({ page }) => {
