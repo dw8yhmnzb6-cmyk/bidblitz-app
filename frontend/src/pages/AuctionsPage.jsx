@@ -758,7 +758,9 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       const r = await api.toggleWatchlist(auctionId);
       if (r.watched) setWatchlist(p => [...p, auctionId]);
       else setWatchlist(p => p.filter(id => id !== auctionId));
-    } catch (error) { void error; }
+    } catch (error) {
+      import("sonner").then(({ toast }) => toast.error(error?.message || "Watchlist konnte nicht geändert werden."));
+    }
   };
 
   const dismissNotif = () => {
