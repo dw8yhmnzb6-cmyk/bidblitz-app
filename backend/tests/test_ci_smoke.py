@@ -504,6 +504,10 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert '"subscription_id": (subscription or {}).get("sub_id")' in scooter_source
     assert "TransactionType.SUBSCRIPTION" in scooter_source
     assert 'claimed_sub_id not in (None, "", sub_id)' in scooter_source
+    assert 'claimed_subscription = await db.scooter_subscriptions.find_one(' in scooter_source
+    assert 'claimed_subscription.get("status") != "active"' in scooter_source
+    assert 'str(claimed_subscription.get("expires_at") or "") <= now.isoformat()' in scooter_source
+    assert 'if stale_claim:' in scooter_source
     assert 'payment_status in {"pending", "reconciliation_required"}' in scooter_source
     assert "Scooter-Abo-Zahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt" in scooter_source
     assert '"scooter_subscription_payment_status": "completed"' in scooter_source
