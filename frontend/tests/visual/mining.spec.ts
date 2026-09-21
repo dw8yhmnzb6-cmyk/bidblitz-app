@@ -55,6 +55,22 @@ async function mockMiningApi(page: Page) {
   });
 }
 
+test('mining guest route opens authentication instead of silently returning home', async ({ page }) => {
+  await page.route('**/api/auth/me', route =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ detail: 'Not authenticated' }) }),
+  );
+  await page.route('**/api/auth/refresh', route =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ detail: 'Not authenticated' }) }),
+  );
+  await prepareVisualPage(page, { name: '320x568-mining-guest-auth', width: 320, height: 568 });
+  await openRoute(page, '/mining', '[data-testid="auth-page"]');
+
+  await expect(page.getByTestId('auth-page')).toBeVisible();
+  await expect(page.getByTestId('login-email-input')).toBeVisible();
+  await expect(page.getByTestId('login-submit-btn')).toBeVisible();
+});
+
+
 test('mining preview stays usable at 320px and keeps value actions disabled', async ({ page }) => {
   await mockMiningUser(page);
   await mockMiningApi(page);
