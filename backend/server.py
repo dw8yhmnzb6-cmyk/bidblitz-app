@@ -591,6 +591,32 @@ async def _wallet_transfer_recovery_loop():
             logger.error(f"Wallet transfer recovery cycle failed: {exc}", exc_info=True)
 
 
+def _mining_auto_reward_interval_seconds() -> int:
+    try:
+        return max(300, int(os.environ.get("MINING_AUTO_REWARD_INTERVAL_SECONDS", "3600")))
+    except (TypeError, ValueError):
+        return 3600
+
+
+async def _mining_auto_reward_loop():
+    """Run test-only mining auto rewards on the single post-startup lock owner."""
+    if not TEST_MODE:
+        return
+    from routes.mining import process_auto_rewards
+
+    interval = _mining_auto_reward_interval_seconds()
+    while True:
+        try:
+            rewarded = await process_auto_rewards()
+            if rewarded:
+                logger.info(f"Mining auto-reward cycle: {rewarded} users rewarded")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error(f"Mining auto-reward cycle failed: {exc}", exc_info=True)
+        await asyncio.sleep(interval)
+
+
 async def _run_post_startup_initialization():
     """Heavy startup work runs after routers are loaded and health is already available."""
     try:
@@ -613,6 +639,21 @@ async def _run_post_startup_initialization():
         await seed_admin()
         await cleanup_legacy_admin_artifacts()
         await ensure_admin_driver_account()
+
+        # Mining auto rewards are test-only until a verified live provider exists.
+        if TEST_MODE:
+            try:
+                from routes.mining import process_auto_rewards
+                initial_mining_rewards = await process_auto_rewards()
+                if initial_mining_rewards:
+                    logger.info(f"Mining startup auto-reward: {initial_mining_rewards} users rewarded")
+                app.state.mining_auto_reward_task = asyncio.create_task(_mining_auto_reward_loop())
+                logger.info("✓ Test-mode mining auto-reward loop started")
+            except Exception as exc:
+                app.state.mining_auto_reward_task = None
+                logger.warning(f"Mining auto-reward startup failed: {exc}")
+        else:
+            app.state.mining_auto_reward_task = None
 
         # Seed demo auctions and start background bot+maintenance loops
         try:
@@ -696,6 +737,7 @@ async def startup_event():
     app.state.startup_status = "booting"
     app.state.routes_loaded = False
     app.state.wallet_transfer_recovery_task = None
+    app.state.mining_auto_reward_task = None
     lock_file = _acquire_post_startup_lock()
     app.state.post_startup_lock = lock_file
     if _should_use_sync_startup():
@@ -724,6 +766,13 @@ async def shutdown_event():
         wallet_recovery_task.cancel()
         try:
             await wallet_recovery_task
+        except asyncio.CancelledError:
+            pass
+    mining_reward_task = getattr(app.state, "mining_auto_reward_task", None)
+    if mining_reward_task and not mining_reward_task.done():
+        mining_reward_task.cancel()
+        try:
+            await mining_reward_task
         except asyncio.CancelledError:
             pass
     lock_file = getattr(app.state, "post_startup_lock", None)
