@@ -469,8 +469,14 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const toggleCardFreeze = async () => {
+    if (!requireMiningValue()) return;
+    const desiredFrozen = !cardData?.card?.frozen;
     try {
-      const r = await api("/api/mining/card/freeze", { method: "POST" });
+      const r = await api("/api/mining/card/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frozen: desiredFrozen }),
+      });
       toast.success(r.frozen ? (t("mining.card_frozen") || "Card frozen") : (t("mining.card_unfrozen") || "Card unfrozen"));
       load();
     } catch (e) { toast.error(e.message); }
@@ -478,11 +484,25 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const upgradeCard = async (tier) => {
     if (!requireMiningValue()) return;
+    if (!cardUpgradeKeysRef.current[tier]) {
+      cardUpgradeKeysRef.current[tier] = typeof crypto?.randomUUID === "function"
+        ? `mining-card-upgrade-${crypto.randomUUID()}`
+        : `mining-card-upgrade-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = cardUpgradeKeysRef.current[tier];
     try {
-      const r = await api("/api/mining/card/upgrade", { method: "POST", body: JSON.stringify({ tier }) });
+      const r = await api("/api/mining/card/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ tier, idempotency_key: idempotencyKey }),
+      });
+      delete cardUpgradeKeysRef.current[tier];
       toast.success(`Upgraded to ${r.new_tier}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) delete cardUpgradeKeysRef.current[tier];
+      toast.error(e.message);
+    }
   };
 
   const inputCls = "w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-white/15 font-medium outline-none bg-white/[0.03] border border-white/[0.06] focus:border-[#00E89D]/30";
