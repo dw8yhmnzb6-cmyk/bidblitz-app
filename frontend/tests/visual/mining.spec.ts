@@ -324,6 +324,7 @@ test('blitzmine preview hides value actions when provider is unavailable', async
   await expect(page.getByTestId('blitz-turbo-tap-btn')).toHaveCount(0);
   await expect(page.getByTestId('blitz-quick-bonus-claim-btn')).toHaveCount(0);
   await expect(page.getByTestId('lockup-new-btn')).toHaveCount(0);
+  await expect(page.getByTestId('blitz-test-reminder-btn')).toHaveCount(0);
 
   const widths = await page.evaluate(() => ({
     content: document.documentElement.scrollWidth,
