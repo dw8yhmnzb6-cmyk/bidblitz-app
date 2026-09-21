@@ -135,8 +135,8 @@ def apply_multi_tariff(fare: dict, zone: Optional[dict], time_info: dict) -> dic
     try:
         from .commission import DRIVER_COMMISSION, PLATFORM_COMMISSION  # type: ignore
     except Exception:
-        DRIVER_COMMISSION = 0.85
-        PLATFORM_COMMISSION = 0.15
+        DRIVER_COMMISSION = 0.80
+        PLATFORM_COMMISSION = 0.20
     out["driver_earnings"] = round(total * DRIVER_COMMISSION, 2)
     out["platform_fee"] = round(total * PLATFORM_COMMISSION, 2)
     return out
