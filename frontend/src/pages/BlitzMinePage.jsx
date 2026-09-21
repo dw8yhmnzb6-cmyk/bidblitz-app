@@ -1041,6 +1041,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
   const attemptOwnerId = user?.id || user?.email || "unknown";
+  const tapAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "tap"));
+  const boostAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "boost-tap"));
   const lockupAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "lockup"));
   const quickBonusAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "quick-bonus"));
   const claimAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "claim"));
@@ -1097,16 +1099,38 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     toast.error(data?.capabilities?.production_message || "BlitzMine ist noch nicht live verbunden.");
     return false;
   };
+  const shouldKeepBlitzAttemptKey = (error) =>
+    !!error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+
+  useEffect(() => {
+    if (data?.session?.started_at) {
+      clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", "start");
+    }
+  }, [data?.session?.started_at, attemptOwnerId]);
 
   const onTap = async () => {
     if (!requireValueAction()) return;
+    const tapScope = "start";
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      tapAttemptKeysRef, attemptOwnerId, "tap", tapScope, "blitz-tap"
+    );
     setLoading(true);
     try {
-      const res = await api("/api/blitz-mine/tap", { method: "POST" });
+      const res = await api("/api/blitz-mine/tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", tapScope);
       toast.success(res.message);
       await load();
-    } catch (e) { toast.error(e.message); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (!shouldKeepBlitzAttemptKey(e)) {
+        clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", tapScope);
+      }
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onClaim = async () => {
@@ -1174,13 +1198,28 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onBoostTap = async () => {
     if (!requireValueAction()) return;
+    const boost = data?.session?.boost || {};
+    const boostScope = `${data?.session?.started_at || "session"}:${boost.completed_rounds || 0}:${boost.current_round_taps || 0}`;
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope, "blitz-boost"
+    );
     setBoostBusy(true);
     try {
-      const res = await api("/api/blitz-mine/boost-tap", { method: "POST" });
+      const res = await api("/api/blitz-mine/boost-tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope);
       if (res.unlocked_round) toast.success(`Turbo-Runde fertig! +${fmt(res.boost.reward_per_round_blz, 2)} BLZ`);
       await load();
-    } catch (e) { toast.error(e.message); }
-    finally { setBoostBusy(false); }
+    } catch (e) {
+      if (!shouldKeepBlitzAttemptKey(e)) {
+        clearBlitzAttemptKey(boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope);
+      }
+      toast.error(e.message);
+    } finally {
+      setBoostBusy(false);
+    }
   };
 
   const onQuickClaim = async () => {
