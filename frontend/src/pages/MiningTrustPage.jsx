@@ -283,6 +283,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
   const [sending, setSending] = useState(false);
   const proofVerified = proofData?.proof_verified_live === true;
   const proofMetrics = proofVerified && proofData?.proof_metrics && Array.isArray(proofData.proof_metrics.locations) ? proofData.proof_metrics : null;
+  const proofTitle = proofVerified
+    ? c.title
+    : ((lang || "").startsWith("de") ? "Mining Infrastruktur Preview" : "Mining Infrastructure Preview");
 
   useEffect(() => {
     const load = async () => {
@@ -363,7 +366,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <Building2 size={13} /> {c.investorBadge}
             </div>
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl" data-testid="mining-trust-title">
-              {c.title}
+              {proofTitle}
             </h1>
             <p className="mt-4 max-w-3xl text-sm text-white/68 sm:text-base" data-testid="mining-trust-subtitle">
               {c.subtitle}
