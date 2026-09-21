@@ -2295,8 +2295,28 @@ async def book_ride(req: FlexBookRequest, request: Request):
             status_code=400,
             detail=f"Nicht genug Guthaben für diese Fahrt. Benötigt: €{fare_total:.2f}, verfügbar: €{balance:.2f}"
         )
-    
+
     now = datetime.now(timezone.utc)
+
+    if locked_quote:
+        quote_claim = await db.taxi_price_quotes.update_one(
+            {
+                "quote_id": req.quote_id,
+                "$or": [
+                    {"status": "active"},
+                    {"status": "booking", "booking_idempotency_key": client_key, "booking_user_id": user_id},
+                ],
+            },
+            {"$set": {
+                "status": "booking",
+                "booking_idempotency_key": client_key,
+                "booking_user_id": user_id,
+                "booking_ride_id": ride_id,
+                "booking_started_at": now.isoformat(),
+            }},
+        )
+        if quote_claim.matched_count != 1:
+            raise HTTPException(status_code=409, detail="Preisangebot wird bereits verwendet. Bitte Preis neu berechnen.")
 
     reservation = await debit_wallet(
         user_id=user_id,
@@ -2308,6 +2328,24 @@ async def book_ride(req: FlexBookRequest, request: Request):
         idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
     )
     if not reservation.success:
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {
+                    "quote_id": req.quote_id,
+                    "status": "booking",
+                    "booking_idempotency_key": client_key,
+                    "booking_user_id": user_id,
+                },
+                {
+                    "$set": {"status": "active", "booking_released_at": datetime.now(timezone.utc).isoformat()},
+                    "$unset": {
+                        "booking_idempotency_key": "",
+                        "booking_user_id": "",
+                        "booking_ride_id": "",
+                        "booking_started_at": "",
+                    },
+                },
+            )
         raise HTTPException(
             status_code=400,
             detail=f"Fahrbetrag konnte nicht reserviert werden: {reservation.error or 'Wallet nicht verfügbar'}",
@@ -2416,12 +2454,30 @@ async def book_ride(req: FlexBookRequest, request: Request):
             }},
             upsert=True,
         )
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+                {"$set": {
+                    "status": "failed",
+                    "failed_at": datetime.now(timezone.utc).isoformat(),
+                    "failed_reason": "ride_persist_rollback",
+                }},
+            )
         raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wurde zurückgebucht.")
 
     if write_result.upserted_id is None:
         current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0}) or {}
         if current.get("booking_request_fingerprint") != request_fingerprint:
             raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+                {"$set": {
+                    "status": "used",
+                    "used_at": datetime.now(timezone.utc).isoformat(),
+                    "ride_id": ride_id,
+                }},
+            )
         return {
             "ok": True,
             "ride": current,
@@ -2429,6 +2485,16 @@ async def book_ride(req: FlexBookRequest, request: Request):
             "message": "Taxi-Buchung bereits verarbeitet.",
             "replayed": True,
         }
+
+    if locked_quote:
+        await db.taxi_price_quotes.update_one(
+            {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+            {"$set": {
+                "status": "used",
+                "used_at": datetime.now(timezone.utc).isoformat(),
+                "ride_id": ride_id,
+            }},
+        )
 
     # Promo redemption tracking (idempotent per ride)
     if promo_applied:
