@@ -85,3 +85,12 @@ def test_scooter_subscription_admin_and_customer_share_same_plan_source():
     assert 'from routes.scooter import _get_scooter_plans' in backend
     assert '"enabled": False' in backend
     assert 'fields: ["plan_id", "name", "duration", "price", "duration_days", "unlock_fee", "free_minutes_per_day", "per_minute_rate"]' in page
+
+
+def test_admin_service_crud_uses_same_collections_as_public_modules():
+    backend = read("backend/routes/admin_management.py")
+
+    assert '"reinigung": ("reinigung_services", "name")' in backend
+    assert '"umzug": ("umzug_companies", "name")' in backend
+    assert '"telemedizin": ("doctors", "name")' in backend
+    assert '"fitness": ("gyms", "name")' in backend
