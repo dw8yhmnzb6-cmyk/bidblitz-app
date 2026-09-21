@@ -105,7 +105,7 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
   await page.getByTestId('mining-tab-dashboard').click();
   await expect(page.getByTestId('mining-earnings-preview-note')).toBeVisible();
   await expect(page.getByText('Mining Reward Preview', { exact: true })).toBeVisible();
-  await expect(page.getByText('keine BLZ-Erzeugung in Production', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('mining-blitzmine-banner')).toContainText('keine BLZ-Erzeugung in Production');
 
   await page.getByTestId('mining-tab-shop').click();
   await expect(page.getByText('Miner-Pakete Preview', { exact: true })).toBeVisible();
