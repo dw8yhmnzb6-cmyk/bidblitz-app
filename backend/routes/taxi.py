@@ -2941,7 +2941,7 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         "driver_id": driver["driver_id"],
         "status": {"$in": ["accepted", "arriving", "started"]}
     })
-    if active:
+    if active and active.get("ride_id") != req.ride_id:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
     # Read once for validation, then claim atomically below.
@@ -2963,9 +2963,6 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
     if ride["status"] != RideStatus.REQUESTED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
 
-    if not await _claim_driver_active_ride(driver["driver_id"], req.ride_id):
-        raise HTTPException(status_code=409, detail="Du hast bereits eine andere aktive Fahrt")
-
     now = datetime.now(timezone.utc)
     scheduled_at = ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at")
     if scheduled_at:
@@ -2979,6 +2976,9 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
             raise
         except Exception:
             logger.warning("Invalid scheduled_at on ride %s: %s", req.ride_id, scheduled_at)
+
+    if not await _claim_driver_active_ride(driver["driver_id"], req.ride_id):
+        raise HTTPException(status_code=409, detail="Du hast bereits eine andere aktive Fahrt")
 
     # Atomic claim: exactly one driver can transition requested -> accepted.
     claim = await db.taxi_rides.update_one(
