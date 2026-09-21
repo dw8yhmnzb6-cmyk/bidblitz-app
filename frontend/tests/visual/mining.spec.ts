@@ -87,6 +87,10 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
     await expect(page.getByTestId(`mining-tab-${tab}`)).toHaveCount(1);
   }
 
+  await page.getByTestId('mining-tab-shop').click();
+  await expect(page.getByTestId('mining-shop-empty')).toBeVisible();
+  await expect(page.getByTestId('mining-shop-retry')).toBeVisible();
+
   await page.getByTestId('mining-tab-card').click();
   await expect(page.getByTestId('mining-card-preview-unavailable')).toBeVisible();
 
