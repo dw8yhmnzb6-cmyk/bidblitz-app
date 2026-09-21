@@ -662,93 +662,15 @@ async def get_ride_history(request: Request, limit: int = 50):
 
 @router.post("/request-ride")
 async def customer_request_ride(request: Request):
-    """Customer requests a ride - finds nearest driver."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    body = await request.json()
-    pickup = body.get("pickup", {})
-    destination = body.get("destination", {})
-    
-    if not pickup.get("lat") or not pickup.get("lng"):
-        raise HTTPException(status_code=400, detail="Pickup location required")
-    if not destination.get("lat") or not destination.get("lng"):
-        raise HTTPException(status_code=400, detail="Destination required")
-    
-    # Calculate distance and fare
-    distance = haversine(
-        pickup["lat"], pickup["lng"],
-        destination["lat"], destination["lng"]
+    """Deprecated customer-side taxi entry point.
+
+    Customer bookings must use the canonical Taxi estimate/book lifecycle so
+    pricing, quote locking, idempotency, wallet reservation, and driver
+    assignment cannot diverge across two booking systems.
+    """
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser alte Taxi-Buchungspfad ist deaktiviert. Bitte die aktuelle Taxi-Buchung verwenden.",
     )
-    base_fare = 3.50
-    per_km = 1.80
-    estimated_fare = round(base_fare + (distance * per_km), 2)
-    
-    # Check customer balance
-    if user.get("balance", 0) < estimated_fare:
-        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
-    
-    # Find nearest online drivers
-    online_drivers = await db.drivers.find({
-        "is_verified": True,
-        "is_online": True,
-        "is_busy": {"$ne": True},
-        "status": "active",
-        "current_location.lat": {"$exists": True}
-    }).to_list(50)
-    
-    if not online_drivers:
-        raise HTTPException(status_code=404, detail="Keine Fahrer verfügbar")
-    
-    # Sort by distance
-    for d in online_drivers:
-        loc = d.get("current_location", {})
-        d["distance"] = haversine(
-            pickup["lat"], pickup["lng"],
-            loc.get("lat", 0), loc.get("lng", 0)
-        )
-    
-    online_drivers.sort(key=lambda x: x.get("distance", 999))
-    nearest = online_drivers[0]
-    
-    now = datetime.now(timezone.utc)
-    eta = max(1, int(nearest["distance"] * 3))
-    
-    # Create ride request
-    ride_request = {
-        "request_id": secrets.token_hex(8),
-        "customer_id": user_id,
-        "driver_id": nearest["driver_id"],
-        "pickup": pickup,
-        "destination": destination,
-        "distance_km": round(distance, 2),
-        "estimated_fare": estimated_fare,
-        "eta_minutes": eta,
-        "status": "pending",
-        "created_at": now.isoformat(),
-        "expires_at": (now + timedelta(seconds=60)).isoformat()
-    }
-    
-    await db.taxi_ride_requests.insert_one(ride_request)
-    
-    # Notify driver
-    await create_notification(
-        nearest.get("user_id", nearest["driver_id"]),
-        "Neue Fahrtanfrage!",
-        f"Entfernung: {nearest['distance']:.1f}km | Fahrpreis: €{estimated_fare:.2f}",
-        "new_ride_request"
-    )
-    
-    ride_request.pop("_id", None)
-    
-    return {
-        "ok": True,
-        "request": ride_request,
-        "driver": {
-            "name": nearest.get("name"),
-            "vehicle": nearest.get("vehicle"),
-            "rating": nearest.get("rating", 5.0),
-            "eta_minutes": eta
-        },
-        "message": "Fahrer wird gesucht..."
-    }
+
