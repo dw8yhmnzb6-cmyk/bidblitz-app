@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { usePushNotifications } from "../components/PushNotifications";
 import { request as api } from "../services/api";
+import { useUser } from "../store";
 import {
   ChevronLeft, Zap, Users, Lock, Trophy, TrendingUp, Plus, X,
   Flame, Sparkles, Share2, Shield, Clock, Check, Loader2,
@@ -42,6 +43,55 @@ const fmtDate = (isoString) => {
   }
 };
 const getWindowOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+
+function blitzAttemptStorageKey(ownerId, kind) {
+  return `bidblitz:blitzmine-attempt:${ownerId || "unknown"}:${kind}`;
+}
+
+function loadBlitzAttemptMap(ownerId, kind) {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(blitzAttemptStorageKey(ownerId, kind));
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([scope, key]) => typeof scope === "string" && typeof key === "string" && key.length >= 8)
+    );
+  } catch {
+    return {};
+  }
+}
+
+function persistBlitzAttemptMap(ownerId, kind, map) {
+  if (typeof window === "undefined") return;
+  try {
+    const storageKey = blitzAttemptStorageKey(ownerId, kind);
+    if (Object.keys(map).length) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(map));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+}
+
+function getOrCreateBlitzAttemptKey(ref, ownerId, kind, scope, prefix) {
+  if (!ref.current[scope]) {
+    ref.current[scope] = typeof crypto?.randomUUID === "function"
+      ? `${prefix}-${crypto.randomUUID()}`
+      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    persistBlitzAttemptMap(ownerId, kind, ref.current);
+  }
+  return ref.current[scope];
+}
+
+function clearBlitzAttemptKey(ref, ownerId, kind, scope) {
+  if (ref.current[scope]) {
+    delete ref.current[scope];
+    persistBlitzAttemptMap(ownerId, kind, ref.current);
+  }
+}
 const writeClipboardSafe = async (value) => {
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return false;
   try {
@@ -973,6 +1023,7 @@ const LeaderboardWidget = ({ items }) => {
 
 // ── Main Page ──
 const BlitzMinePage = ({ onBack, onNavigate }) => {
+  const user = useUser();
   const [data, setData] = useState(null);
   const [circle, setCircle] = useState(null);
   const [lockups, setLockups] = useState([]);
@@ -989,9 +1040,10 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [boostBusy, setBoostBusy] = useState(false);
   const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
-  const lockupAttemptKeyRef = useRef(null);
-  const quickBonusAttemptKeyRef = useRef(null);
-  const claimAttemptKeyRef = useRef(null);
+  const attemptOwnerId = user?.id || user?.email || "unknown";
+  const lockupAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "lockup"));
+  const quickBonusAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "quick-bonus"));
+  const claimAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "claim"));
   const push = usePushNotifications();
 
   const questRouteMap = {
@@ -1061,17 +1113,15 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     if (!requireValueAction()) return;
     setLoading(true);
     try {
-      if (!claimAttemptKeyRef.current) {
-        claimAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
-          ? `blitz-claim-${crypto.randomUUID()}`
-          : `blitz-claim-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
-      const idempotencyKey = claimAttemptKeyRef.current;
+      const claimScope = data?.session?.started_at || "current";
+      const idempotencyKey = getOrCreateBlitzAttemptKey(
+        claimAttemptKeysRef, attemptOwnerId, "claim", claimScope, "blitz-claim"
+      );
       const res = await api("/api/blitz-mine/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
       });
-      claimAttemptKeyRef.current = null;
+      clearBlitzAttemptKey(claimAttemptKeysRef, attemptOwnerId, "claim", claimScope);
       toast.success(`+${fmt(res.amount_blz, 4)} BLZ gesammelt! 🎉`);
       if (res.milestone_hit) {
         setMilestoneModal(res);
@@ -1098,18 +1148,16 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onCreateLockup = async (amount, duration_days) => {
     if (!requireValueAction()) return;
-    if (!lockupAttemptKeyRef.current) {
-      lockupAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
-        ? `blitz-lockup-${crypto.randomUUID()}`
-        : `blitz-lockup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    }
-    const idempotencyKey = lockupAttemptKeyRef.current;
+    const lockupScope = `${Number(amount).toFixed(4)}:${duration_days}`;
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      lockupAttemptKeysRef, attemptOwnerId, "lockup", lockupScope, "blitz-lockup"
+    );
     await api("/api/blitz-mine/lockup", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({ amount, duration_days, idempotency_key: idempotencyKey }),
     });
-    lockupAttemptKeyRef.current = null;
+    clearBlitzAttemptKey(lockupAttemptKeysRef, attemptOwnerId, "lockup", lockupScope);
     await load();
   };
 
@@ -1139,17 +1187,15 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     if (!requireValueAction()) return;
     setQuickBusy(true);
     try {
-      if (!quickBonusAttemptKeyRef.current) {
-        quickBonusAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
-          ? `blitz-quick-${crypto.randomUUID()}`
-          : `blitz-quick-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
-      const idempotencyKey = quickBonusAttemptKeyRef.current;
+      const quickScope = String(data?.quick_bonus?.total_claims || 0);
+      const idempotencyKey = getOrCreateBlitzAttemptKey(
+        quickBonusAttemptKeysRef, attemptOwnerId, "quick-bonus", quickScope, "blitz-quick"
+      );
       const res = await api("/api/blitz-mine/quick-bonus/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
       });
-      quickBonusAttemptKeyRef.current = null;
+      clearBlitzAttemptKey(quickBonusAttemptKeysRef, attemptOwnerId, "quick-bonus", quickScope);
       toast.success(`Quick Bonus: +${fmt(res.reward_blz, 2)} BLZ`);
       await load();
     } catch (e) { toast.error(e.message); }
