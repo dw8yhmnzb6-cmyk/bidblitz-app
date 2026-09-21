@@ -450,7 +450,10 @@ async def auth_health_report(request: Request):
 @router.post("/auth-health/cleanup")
 async def cleanup_legacy_passwords(req: CleanupLegacyPasswordsRequest, request: Request):
     admin = await _require_admin(request)
-    cursor = db.users.find({}, {"_id": 1, "email": 1, "password_hash": 1, "password": 1, "role": 1})
+    cursor = db.users.find(
+        {"role": {"$nin": ["admin", "super_admin"]}},
+        {"_id": 1, "email": 1, "password_hash": 1, "password": 1, "role": 1},
+    )
     cleaned_legacy = 0
     promoted_legacy = 0
     flagged_reset = 0
@@ -501,9 +504,17 @@ async def cleanup_legacy_passwords(req: CleanupLegacyPasswordsRequest, request: 
 @router.post("/customers/{user_id}/auth-fix")
 async def cleanup_single_customer_auth(user_id: str, req: CleanupSingleCustomerRequest, request: Request):
     admin = await _require_admin(request)
-    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1, "password_hash": 1, "password": 1, "force_password_change": 1})
+    user = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1, "password_hash": 1, "password": 1, "force_password_change": 1},
+    )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(user.get("canonical_email") or user.get("email") or "").strip().lower()
+    target_role = str(user.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf privilegierte Auth-Daten verändern")
 
     pwd_hash = (user.get("password_hash") or "").strip()
     legacy_pwd = (user.get("password") or "").strip()
@@ -546,9 +557,18 @@ async def cleanup_single_customer_auth(user_id: str, req: CleanupSingleCustomerR
 async def reset_password(user_id: str, req: ResetPasswordRequest, request: Request):
     """Sicheren Reset-Link per E-Mail senden (Admin-only)."""
     admin = await _require_admin(request)
-    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1})
+    user = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1},
+    )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(user.get("canonical_email") or user.get("email") or "").strip().lower()
+    target_role = str(user.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Passwort-Resets für privilegierte Konten auslösen")
+
     issued = await _issue_password_reset(user.get("email", ""), request=request, issued_by=str(admin.get("_id") or admin.get("id") or "admin"), reason=req.reason or "admin_security_reset", force_password_change=True)
     if not issued:
         raise HTTPException(404, "Kunde nicht gefunden")
