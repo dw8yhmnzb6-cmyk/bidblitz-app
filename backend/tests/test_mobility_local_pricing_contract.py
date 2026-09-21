@@ -410,4 +410,4 @@ def test_scooter_pause_pricing_matches_actual_billing():
     assert '"free_paused_minutes": 0' in scooter
     assert '"pause_billing_mode": "ride_rate"' in scooter
     assert '"pause_rate": pricing.get("per_minute", PER_MINUTE_RATE)' in scooter
-    assert "free_paused_minutes": 5" not in scooter
+    assert '"free_paused_minutes": 5' not in scooter
