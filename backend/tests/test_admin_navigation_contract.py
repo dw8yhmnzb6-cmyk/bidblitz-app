@@ -275,3 +275,17 @@ def test_admin_password_reset_form_stays_open_on_delivery_failure():
     assert "const resetPw = async () => {" in page
     assert "const ok = await doAction(" in page
     assert "if (ok) setShowPwForm(false);" in page
+
+
+def test_super_admin_uses_same_admin_route_gates():
+    app = read("frontend/src/App.js")
+    admin_page = read("frontend/src/pages/AdminPage.jsx")
+
+    assert 'const isAdminRole = ["admin", "super_admin"].includes(user?.role);' in app
+    assert 'if (path === "/admin" && (!user.isAuthenticated || !isAdminRole))' in app
+    assert 'return isAdminRole ? <AdminPage' in app
+    assert 'return isAdminRole ? <AdminManagementPage' in app
+    assert 'return isAdminRole ? <AdminWalletPage' in app
+    assert 'return isAdminRole ? <AdminMobilityPricingPage' in app
+    assert 'user.role === "admin" ? <Admin' not in app
+    assert 'if (!["admin", "super_admin"].includes(user.role)) {' in admin_page
