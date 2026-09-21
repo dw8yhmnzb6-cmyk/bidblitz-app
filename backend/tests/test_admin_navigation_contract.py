@@ -288,6 +288,8 @@ def test_super_admin_uses_same_admin_route_gates():
     assert 'return isAdminRole ? <AdminWalletPage' in app
     assert 'return isAdminRole ? <AdminMobilityPricingPage' in app
     assert 'user.role === "admin" ? <Admin' not in app
+    assert 'case "/admin/ai-assistant":' in app
+    assert 'return user.role === "admin"' in app
     assert 'if (!["admin", "super_admin"].includes(user.role)) {' in admin_page
 
 
