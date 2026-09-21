@@ -1390,19 +1390,29 @@ async def get_ride_history(request: Request, limit: int = 20):
         {"_id": 0}
     ).sort("end_time", -1).limit(limit).to_list(limit)
     
-    total_spent = sum(r.get("total_cost", 0) for r in rides)
-    total_distance = sum(r.get("distance_km", 0) for r in rides)
+    totals_by_currency = {}
+    total_distance = sum(float(r.get("distance_km", 0) or 0) for r in rides)
     
     for ride in rides:
+        currency = str(ride.get("currency") or "EUR").upper()
+        ride["currency"] = currency
         ride["rental_id"] = ride.get("ride_id")
         ride["total_minutes"] = ride.get("duration_minutes", 0)
+        totals_by_currency[currency] = round(
+            float(totals_by_currency.get(currency, 0) or 0) + float(ride.get("total_cost", 0) or 0),
+            2,
+        )
 
+    total_spent_eur = round(float(totals_by_currency.get("EUR", 0) or 0), 2)
     return {
         "rides": rides,
         "rentals": rides,
         "total": len(rides),
         "stats": {
-            "total_spent": round(total_spent, 2),
+            "total_spent": total_spent_eur,
+            "total_spent_eur": total_spent_eur,
+            "totals_by_currency": totals_by_currency,
+            "mixed_currency_history": len(totals_by_currency) > 1,
             "total_distance_km": round(total_distance, 2),
             "total_rides": len(rides),
         }
