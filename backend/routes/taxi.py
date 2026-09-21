@@ -1489,6 +1489,84 @@ async def calculate_fare_with_overrides(
     }
 
 
+TAXI_QUOTE_TTL_SECONDS = 120
+
+
+def _taxi_quote_coord_match(left, right, tolerance: float = 0.00002) -> bool:
+    try:
+        return abs(float(left) - float(right)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def _taxi_normalized_promo(value: Optional[str]) -> str:
+    return str(value or "").strip().upper()
+
+
+async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: FlexBookRequest) -> Optional[dict]:
+    if not quote_id:
+        return None
+
+    quote_doc = await db.taxi_price_quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if not quote_doc:
+        raise HTTPException(status_code=409, detail="Preisangebot nicht gefunden. Bitte Preis neu berechnen.")
+
+    quote_user_id = str(quote_doc.get("user_id") or "")
+    if quote_user_id and quote_user_id != str(user_id):
+        raise HTTPException(status_code=403, detail="Preisangebot gehört zu einem anderen Konto.")
+
+    status = str(quote_doc.get("status") or "active")
+    if status == "failed":
+        raise HTTPException(status_code=409, detail="Preisangebot ist nicht mehr verwendbar. Bitte Preis neu berechnen.")
+    if status == "used":
+        raise HTTPException(status_code=409, detail="Preisangebot wurde bereits verwendet.")
+
+    try:
+        expires_at = datetime.fromisoformat(str(quote_doc.get("expires_at") or ""))
+    except Exception:
+        expires_at = None
+    if not expires_at or expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=409, detail="Preisangebot ist abgelaufen. Bitte Preis neu berechnen.")
+
+    vehicle_type = req.vehicle_type.value if hasattr(req.vehicle_type, "value") else str(req.vehicle_type)
+    if str(quote_doc.get("vehicle_type") or "") != vehicle_type:
+        raise HTTPException(status_code=409, detail="Preisangebot passt nicht zur gewählten Fahrzeugklasse.")
+
+    if req.stops:
+        raise HTTPException(status_code=409, detail="Zwischenstopps erfordern eine neue Preisberechnung.")
+
+    for key, requested in (
+        ("pickup_lat", req.pickup_lat),
+        ("pickup_lng", req.pickup_lng),
+        ("dropoff_lat", req.dropoff_lat),
+        ("dropoff_lng", req.dropoff_lng),
+    ):
+        if not _taxi_quote_coord_match(quote_doc.get(key), requested):
+            raise HTTPException(status_code=409, detail="Route wurde geändert. Bitte Preis neu berechnen.")
+
+    if _taxi_normalized_promo(quote_doc.get("promo_code")) != _taxi_normalized_promo(req.promo_code):
+        raise HTTPException(status_code=409, detail="Promo-Code wurde geändert. Bitte Preis neu berechnen.")
+
+    return quote_doc
+
+
+def _taxi_quote_metadata(matched_zone: Optional[dict], time_info: dict) -> tuple[Optional[dict], dict]:
+    tariff_zone = None
+    if matched_zone:
+        tariff_zone = {
+            "id": matched_zone.get("id"),
+            "name": matched_zone.get("name"),
+        }
+    time_tariff = {
+        "multiplier": time_info.get("multiplier", 1.0),
+        "label": time_info.get("label", ""),
+        "night": bool(time_info.get("night")),
+        "weekend": bool(time_info.get("weekend")),
+        "holiday": bool(time_info.get("holiday")),
+    }
+    return tariff_zone, time_tariff
+
+
 def _looks_like_kosovo_airport(address: str, lat: float, lng: float) -> bool:
     hay = str(address or "").lower()
     airport_tokens = ["pristina international airport", "prishtina international airport", "flughafen kosovo", "airport adem jashari", "adem jashari", "prn"]
