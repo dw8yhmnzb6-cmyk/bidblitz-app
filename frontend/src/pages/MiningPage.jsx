@@ -158,6 +158,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const sendAttemptKeysRef = useRef({});
   const marketplacePurchaseKeysRef = useRef({});
   const launchpadPurchaseKeysRef = useRef({});
+  const cardUpgradeKeysRef = useRef({});
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
