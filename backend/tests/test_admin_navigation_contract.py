@@ -205,3 +205,11 @@ def test_admin_generic_refund_ui_matches_backend_safety_rules():
     assert '(!direction || direction === "debit")' in page
     assert 'currency === "EUR"' in page
     assert "const isRefundable = canGenericRefund(t);" in page
+
+
+def test_admin_transactions_render_real_currency_codes():
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert "const formatAdminTransactionAmount = (tx = {}) => {" in page
+    assert 'currency === "EUR" ? `€${value}` : `${value} ${currency}`' in page
+    assert "{formatAdminTransactionAmount(t)}" in page
