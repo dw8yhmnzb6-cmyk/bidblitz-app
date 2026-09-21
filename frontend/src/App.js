@@ -378,6 +378,7 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
+  const isAdminRole = isAdminRole;
   const isGuest = !user.isAuthenticated;
   const serverKycApproved = useEffectiveKycAccess({ isGuest, isDemoMode, user });
   const isKycVerified = KYC_DISABLED || serverKycApproved || isKycApprovedOrAdmin(user);
@@ -551,7 +552,7 @@ function AppContent() {
       return;
     }
     // Admin page requires admin role
-    if (path === "/admin" && (!user.isAuthenticated || user.role !== "admin")) {
+    if (path === "/admin" && (!user.isAuthenticated || !isAdminRole)) {
       requireAuth();
       return;
     }
@@ -679,11 +680,11 @@ function AppContent() {
       case "/merchant-connect":
         return <MerchantConnectPage onBack={() => handleNavigate("/merchant")} />;
       case "/influencer":
-        return user.role === "influencer" || user.role === "admin"
+        return user.role === "influencer" || isAdminRole
           ? <InfluencerDashboard onBack={() => handleNavigate("/more")} />
           : <InfluencerPage onBack={() => handleNavigate("/more")} />;
       case "/manager-dashboard":
-        return user.role === "manager" || user.role === "admin"
+        return user.role === "manager" || isAdminRole
           ? <ManagerDashboard onBack={() => handleNavigate("/more")} />
           : <HomePage {...homeProps} />;
       case "/investor":
@@ -744,7 +745,7 @@ function AppContent() {
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
       case "/mining-trust-admin":
-        return ["admin", "super_admin"].includes(user?.role)
+        return isAdminRole
           ? <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />
           : <HomePage {...homeProps} />;
       case "/nft":
@@ -754,48 +755,48 @@ function AppContent() {
             ? <NFTGeneratorPage onNavigate={handleNavigate} />
             : <ProviderUnavailablePage title="NFT Studio" description="NFT-Erzeugung, Minting und Handel werden erst aktiviert, wenn ein verifizierter Mint-/Custody-/Marketplace-Provider live verbunden ist. Es werden keine Wallet- oder Mining-Werte für lokale NFT-Simulationen bewegt." onBack={() => handleNavigate("/more")} />;
       case "/admin":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
           : <HomePage {...homeProps} />;
       case "/admin/monitoring":
-        return user.role === "admin"
+        return isAdminRole
           ? <MonitoringDashboard onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/investor-leads":
-        return user.role === "admin" ? <AdminInvestorLeadsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorLeadsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-dashboard":
-        return user.role === "admin" ? <AdminInvestorDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-documents":
-        return user.role === "admin" ? <AdminInvestorDocumentsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorDocumentsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-updates":
-        return user.role === "admin" ? <AdminInvestorUpdatesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorUpdatesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-meetings":
-        return user.role === "admin" ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/visual-qa":
-        return user.role === "admin" ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/master-roadmap":
-        return user.role === "admin" ? <AdminMasterRoadmapPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMasterRoadmapPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/investors/progress":
       case "/investor-progress":
         return <InvestorProgressPage onBack={() => handleNavigate("/")} />;
       case "/design-system":
-        return process.env.NODE_ENV !== "production" || user.role === "admin"
+        return process.env.NODE_ENV !== "production" || isAdminRole
           ? <DesignSystemPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/admin/ai-assistant":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/merchants":
-        return user.role === "admin"
+        return isAdminRole
           ? <MerchantAdminPage onNavigate={handleNavigate} onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/qr-management":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminQrManagementPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffManagementPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/staff/login":
@@ -810,25 +811,25 @@ function AppContent() {
       case "/staff/upgrade":
         return <StaffUpgradeScreen onSuccess={() => handleNavigate("/merchant/staff")} onBack={() => handleNavigate("/merchant/staff")} />;
       case "/staff/settings":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffSettingsPage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff/geofence":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <ManagerGeofencePage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff/chat":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffChatPage role="manager" onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/taxi/promos":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <TaxiPromoManagerPage onBack={() => handleNavigate("/merchant/dashboard")} />
           : <HomePage {...homeProps} />;
       case "/taxi/pro":
         return <HomePage {...homeProps} />;
       case "/merchant/staff/live-map":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <ManagerStaffLiveMapPage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/setup":
@@ -842,11 +843,11 @@ function AppContent() {
       case "/merchant/pos/hardware":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosHardwarePage onBack={() => handleNavigate("/merchant/pos")} />;
       case "/admin/feature-control":
-        return user.role === "admin" ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-settlements":
-        return user.role === "admin" ? <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-onboarding":
-        return user.role === "admin" ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/pool":
@@ -862,7 +863,7 @@ function AppContent() {
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/test/kyc":
@@ -894,27 +895,27 @@ function AppContent() {
         return <LegalPage slug={slug} onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       }
       case "/admin/legal":
-        return user.role === "admin" ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-features":
-        return user.role === "admin" ? <AdminMerchantFeaturesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantFeaturesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/audit-log":
-        return user.role === "admin" ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/biopay-audit":
-        return user.role === "admin" ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/diag":
-        return user.role === "admin" ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/rtk":
-        return user.role === "admin" ? <AdminRtkPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminRtkPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/pool":
-        return user.role === "admin" ? <PoolAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <PoolAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/staff/ui-audit":
         return <StaffUIAuditPage onBack={() => handleNavigate("/staff")} />;
       case "/admin/push-broadcast":
-        return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/analytics":
-        return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/deployment-info":
-        return user.role === "admin" ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
       case "/staff/gps":
@@ -924,9 +925,9 @@ function AppContent() {
       case "/pos/extended":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSExtendedPage onBack={() => handleNavigate("/pos")} />;
       case "/admin/wallet":
-        return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/smm":
-        return user.role === "admin" ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/arcade":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
@@ -944,40 +945,40 @@ function AppContent() {
       case "/instant-credit":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InstantCreditPage onBack={() => handleNavigate("/more")} />;
       case "/admin/manage":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/kyc":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="verification" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="verification" /> : <HomePage {...homeProps} />;
       case "/admin/pay-requests":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
       case "/admin/payouts":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
       case "/admin/credits":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="credits" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="credits" /> : <HomePage {...homeProps} />;
       case "/admin/testimonials":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
       case "/admin/pay-sdk":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
       case "/admin/loyalty-config":
       case "/admin/loyalty-analytics":
       case "/admin/coin-rates":
       case "/admin/cashback-rates":
-        return user.role === "admin" ? <LoyaltyPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <LoyaltyPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/scooter-fleet":
       case "/admin/scooter-add":
-        return user.role === "admin" ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/taxi-drivers":
-        return user.role === "admin" ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/mobility-pricing":
-        return user.role === "admin" ? <AdminMobilityPricingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMobilityPricingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/restaurants":
       case "/admin/qr-tables":
-        return user.role === "admin" ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/audi-ticket-system":
-        return user.role === "admin" ? <AudiTicketSalesPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AudiTicketSalesPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/biopay-audit-center":
-        return user.role === "admin" ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/system-health":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="flags" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="flags" /> : <HomePage {...homeProps} />;
       case "/admin/users":
       case "/admin/managers":
       case "/admin/employees":
@@ -1011,15 +1012,15 @@ function AppContent() {
       case "/admin/debug":
       case "/admin/health":
       case "/admin/database":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab={getAdminTabFromPath(currentPath)} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab={getAdminTabFromPath(currentPath)} /> : <HomePage {...homeProps} />;
       case "/admin/taxi":
-        return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/directory":
-        return user.role === "admin" ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/ads":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="promos" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="promos" /> : <HomePage {...homeProps} />;
       case "/admin/bookings":
-        return user.role === "admin" ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
@@ -1048,13 +1049,13 @@ function AppContent() {
       case "/marketing-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketingHubPage onBack={() => handleNavigate("/")} />;
       case "/admin/revenue":
-        return user.role === "admin" ? <AdminRevenueDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminRevenueDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/customers":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/payments":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
       case "/admin/modules":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
@@ -1064,7 +1065,7 @@ function AppContent() {
       case "/auctions":
         return <AuctionsPage {...pageProps} routeParams={routeParams} />;
       case "/auction-admin":
-        return user.role === "admin"
+        return isAdminRole
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
@@ -1188,7 +1189,7 @@ function AppContent() {
             childName={navState?.childName}
           />;
       case "/admin/auction-images":
-        return (!user.isAuthenticated || user.role !== "admin")
+        return (!user.isAuthenticated || !isAdminRole)
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
       case "/gaming":
@@ -1226,11 +1227,11 @@ function AppContent() {
       case "/ladesaeulen":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/admin/email-marketing":
-        return user.role === "admin"
+        return isAdminRole
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/charge-offer-rules":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminChargeOfferRulesPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/all-services":
@@ -1290,7 +1291,7 @@ function AppContent() {
       case "/livekit-stream":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
       case "/admin/landing-leads":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminLandingLeadsPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/datenschutz":
@@ -1392,7 +1393,7 @@ function AppContent() {
       default:
         // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
         if (currentPath.startsWith("/admin/")) {
-          if (user.role !== "admin") return <HomePage {...homeProps} />;
+          if (!isAdminRole) return <HomePage {...homeProps} />;
           const tab = getAdminTabFromPath(currentPath);
           return <AdminPage onNavigate={handleNavigate} defaultTab={tab} />;
         }
@@ -1449,7 +1450,7 @@ function AppContent() {
 
   const showActiveAccountBanner =
     user.isAuthenticated &&
-    user.role === "admin" &&
+    isAdminRole &&
     !isDemoMode &&
     !isCheckout &&
     !isPublicInvoicePayment &&
@@ -1462,7 +1463,7 @@ function AppContent() {
 
   const showTestBuildDebugLine =
     user.isAuthenticated &&
-    user.role === "admin" &&
+    isAdminRole &&
     TEST_MODE_FULL_ACCESS &&
     !isDemoMode &&
     !isCheckout &&
