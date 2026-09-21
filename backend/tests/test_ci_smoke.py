@@ -997,6 +997,9 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert '"bot_policy": (' in source
     assert '"test_only"' in source
     assert 'Production-Bots deaktiviert' in admin_page
+    assert 'config["bot_policy"] = "test_only"' in source
+    assert 'config_dict["bot_default_enabled"] = False' in source
+    assert 'Production: deaktiviert' in admin_page
     assert 'bot_last_bidder = str(raw_winner_id or "").startswith("bot_")' in source
     assert '"bot_last_bidder_requires_review"' in source
     assert '"requires_manual_review": needs_review' in source
