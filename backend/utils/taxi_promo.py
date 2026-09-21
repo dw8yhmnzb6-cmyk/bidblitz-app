@@ -165,8 +165,28 @@ async def reserve_redemption(user_id: str, code: str, ride_id: str, discount: fl
     normalized = code.strip().upper()
     redemption_id = _promo_redemption_id(user_id, normalized, ride_id)
     existing = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
-    if existing.get("status") in {"reserved", "completed"}:
-        return {"ok": True, "replayed": True, "status": existing.get("status")}
+    existing_status = existing.get("status")
+    if existing_status in {"reserved", "completed"}:
+        return {"ok": True, "replayed": True, "status": existing_status}
+    if existing_status == "reserving":
+        return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
+    if existing_status == "rejected" and existing.get("reason") == "already_used":
+        return {"ok": False, "reason": "already_used", "retryable": False}
+    if existing_status in {"released", "rejected"}:
+        reset = await db.taxi_promo_redemptions.update_one(
+            {"_id": redemption_id, "status": existing_status},
+            {"$set": {
+                "status": "reserving",
+                "discount": float(discount or 0),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }, "$unset": {
+                "reason": "",
+                "released_at": "",
+            }},
+        )
+        if reset.modified_count != 1:
+            return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
+        existing = {"status": "reserving"}
 
     validation = await validate_promo(normalized, user_id)
     if not validation.get("valid"):
@@ -184,26 +204,25 @@ async def reserve_redemption(user_id: str, code: str, ride_id: str, discount: fl
     usage_id = _promo_usage_id(user_id, normalized)
     now = datetime.now(timezone.utc).isoformat()
 
-    claim = await db.taxi_promo_redemptions.update_one(
-        {"_id": redemption_id},
-        {"$setOnInsert": {
-            "user_id": user_id,
-            "code": normalized,
-            "ride_id": ride_id,
-            "discount": float(discount or 0),
-            "status": "reserving",
-            "created_at": now,
-        }},
-        upsert=True,
-    )
-    if claim.upserted_id is None:
-        existing = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
-        status = existing.get("status")
-        if status in {"reserved", "completed"}:
-            return {"ok": True, "replayed": True, "status": status}
-        if status == "rejected":
-            return {"ok": False, "reason": existing.get("reason") or "already_used", "retryable": False}
-        return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
+    if not existing:
+        claim = await db.taxi_promo_redemptions.update_one(
+            {"_id": redemption_id},
+            {"$setOnInsert": {
+                "user_id": user_id,
+                "code": normalized,
+                "ride_id": ride_id,
+                "discount": float(discount or 0),
+                "status": "reserving",
+                "created_at": now,
+            }},
+            upsert=True,
+        )
+        if claim.upserted_id is None:
+            current = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
+            status = current.get("status")
+            if status in {"reserved", "completed"}:
+                return {"ok": True, "replayed": True, "status": status}
+            return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
 
     legacy_uses = await db.taxi_promo_redemptions.count_documents({
         "user_id": user_id,
