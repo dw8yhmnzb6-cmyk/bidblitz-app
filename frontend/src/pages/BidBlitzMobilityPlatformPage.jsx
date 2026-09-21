@@ -245,7 +245,6 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const nearbyLayerRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
-  const pickupInitializedRef = useRef(false);
   const activeFieldRef = useRef(activeField);
   const pickupStateRef = useRef(pickup);
   const dropoffStateRef = useRef(dropoff);
@@ -417,7 +416,6 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       mapRef.current?.setView([lat, lng], 15);
       loadNearby(lat, lng);
       if (dropoff.lat && dropoff.lng) calculateRoute(payload, dropoff);
-      pickupInitializedRef.current = true;
     }, () => {
       // Location permission denied/unavailable: keep pickup unset.
       // The map's visual center is never treated as the user's real pickup.
@@ -514,7 +512,6 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
         country_code: info?.country_code || "",
         postcode: info?.postcode || "",
       };
-      pickupInitializedRef.current = true;
       setPickup(payload);
       mapRef.current?.setView([lat, lng], 15);
       loadNearby(lat, lng);
