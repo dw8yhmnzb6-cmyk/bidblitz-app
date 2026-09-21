@@ -9,6 +9,9 @@ import {
 import { api } from "./dataLoaders";
 
 const MODULE_KEY_MAP = {
+  Immobilien: "immobilien",
+  Freelancer: "freelancer",
+  "E-Learning": "elearning",
   Handwerker: "handwerker",
   Gebrauchtwagen: "gebrauchtwagen",
   Reinigungsservices: "reinigung",
