@@ -1078,7 +1078,10 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
     assert 'idempotent_replay=getattr(result, "idempotent_replay", False)' in engine_source
     assert "paymentAttemptKeyRef" in mobile_source
     assert "AsyncStorage.getItem(paymentAttemptStorageKey)" in mobile_source
-    assert "AsyncStorage.setItem(paymentAttemptStorageKey, JSON.stringify(attempt))" in mobile_source
+    assert "const storedKey = storedAttempts[scope]" in mobile_source
+    assert "JSON.stringify({ ...storedAttempts, [scope]: attempt.key })" in mobile_source
+    assert "delete storedAttempts[current.scope]" in mobile_source
+    assert "Object.keys(storedAttempts).length > 0" in mobile_source
     assert "AsyncStorage.removeItem(paymentAttemptStorageKey)" in mobile_source
     assert "const idempotencyKey = await loadOrCreatePaymentAttemptKey();" in mobile_source
     assert "idempotency_key: idempotencyKey" in mobile_source
