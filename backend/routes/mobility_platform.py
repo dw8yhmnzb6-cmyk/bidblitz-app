@@ -95,6 +95,13 @@ REGIONAL_PRICING_PROFILES = {
         "strict_modes": True,
         "modes": {},
     },
+    "UNSUPPORTED": {
+        "region": "Nicht konfiguriert",
+        "currency": "EUR",
+        "source": "Kein verifizierter lokaler Mobility-Tarif",
+        "strict_modes": True,
+        "modes": {},
+    },
 }
 
 CITY_PRICING_PROFILES = {
@@ -297,6 +304,12 @@ CITY_PRICING_PROFILES = {
 }
 
 BALKAN_COUNTRY_CODES = {"AL", "MK", "ME", "RS", "BA"}
+EUROPE_COUNTRY_CODES = {
+    "AD", "AL", "AT", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK",
+    "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI",
+    "LT", "LU", "LV", "MC", "MD", "ME", "MK", "MT", "NL", "NO", "PL", "PT",
+    "RO", "RS", "RU", "SE", "SI", "SK", "SM", "TR", "UA", "VA", "XK",
+}
 
 
 def _regional_profile_key_for_country(country_code: str) -> str:
@@ -309,7 +322,9 @@ def _regional_profile_key_for_country(country_code: str) -> str:
         return "BALKANS"
     if code == "AE":
         return "AE"
-    return "EU"
+    if code in EUROPE_COUNTRY_CODES:
+        return "EU"
+    return "UNSUPPORTED"
 
 
 CITY_NAME_ALIASES = {
