@@ -886,7 +886,7 @@ async def get_fee_info(request: Request):
 @router.get("/admin/fees")
 async def get_admin_fees(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     rates = await get_fee_rates()
     return {"fees": {k: round(v * 100, 4) for k, v in rates.items()}}
@@ -895,7 +895,7 @@ async def get_admin_fees(request: Request):
 @router.post("/admin/fees")
 async def set_admin_fees(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     body = await request.json()
     fees = body.get("fees", {})
