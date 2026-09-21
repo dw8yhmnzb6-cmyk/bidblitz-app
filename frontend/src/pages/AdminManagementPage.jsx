@@ -467,8 +467,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
     setShowPwForm(false);
   };
   const del = () => {
-    if (!window.confirm(`Kunde ${customer.email} wirklich dauerhaft löschen?`)) return;
-    doAction(`/api/admin/customers/${customer.user_id}`, null, "Kunde gelöscht", "DELETE");
+    if (!window.confirm(`Konto von ${customer.email} wirklich schließen? Login wird gesperrt; Finanz- und Auditdaten bleiben erhalten.`)) return;
+    doAction(`/api/admin/customers/${customer.user_id}`, null, "Konto geschlossen", "DELETE");
   };
 
   return (
@@ -580,7 +580,7 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
             disabled={loading}
             className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2"
           >
-            <Trash2 size={14} /> Dauerhaft löschen
+            <Trash2 size={14} /> Konto schließen
           </button>
         </div>
       </motion.div>
