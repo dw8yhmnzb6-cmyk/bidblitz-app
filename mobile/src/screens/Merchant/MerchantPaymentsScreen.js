@@ -49,12 +49,17 @@ const MerchantPaymentsScreen = ({ navigation }) => {
       return paymentAttemptKeyRef.current.key;
     }
 
+    let storedAttempts = {};
     try {
       const raw = await AsyncStorage.getItem(paymentAttemptStorageKey);
-      const stored = raw ? JSON.parse(raw) : null;
-      if (stored?.scope === scope && typeof stored?.key === 'string' && stored.key.length >= 8) {
-        paymentAttemptKeyRef.current = stored;
-        return stored.key;
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        storedAttempts = parsed;
+      }
+      const storedKey = storedAttempts[scope];
+      if (typeof storedKey === 'string' && storedKey.length >= 8) {
+        paymentAttemptKeyRef.current = { scope, key: storedKey };
+        return storedKey;
       }
     } catch (error) {
       console.warn('Merchant payment attempt restore failed:', error);
@@ -66,7 +71,10 @@ const MerchantPaymentsScreen = ({ navigation }) => {
     };
     paymentAttemptKeyRef.current = attempt;
     try {
-      await AsyncStorage.setItem(paymentAttemptStorageKey, JSON.stringify(attempt));
+      await AsyncStorage.setItem(
+        paymentAttemptStorageKey,
+        JSON.stringify({ ...storedAttempts, [scope]: attempt.key }),
+      );
     } catch (error) {
       console.warn('Merchant payment attempt persist failed:', error);
     }
@@ -74,9 +82,19 @@ const MerchantPaymentsScreen = ({ navigation }) => {
   };
 
   const clearPaymentAttempt = async () => {
+    const current = paymentAttemptKeyRef.current;
     paymentAttemptKeyRef.current = null;
+    if (!current?.scope) return;
     try {
-      await AsyncStorage.removeItem(paymentAttemptStorageKey);
+      const raw = await AsyncStorage.getItem(paymentAttemptStorageKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const storedAttempts = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      delete storedAttempts[current.scope];
+      if (Object.keys(storedAttempts).length > 0) {
+        await AsyncStorage.setItem(paymentAttemptStorageKey, JSON.stringify(storedAttempts));
+      } else {
+        await AsyncStorage.removeItem(paymentAttemptStorageKey);
+      }
     } catch (error) {
       console.warn('Merchant payment attempt cleanup failed:', error);
     }
