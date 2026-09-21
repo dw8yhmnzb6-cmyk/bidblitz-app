@@ -2451,6 +2451,21 @@ async def update_dealer_charge_service_request_status(
 
     now = _now_iso()
     note = str(req.note or "").strip()[:1000]
+    schedule_changed = (
+        scheduled_date != str(service_request.get("scheduled_date") or "")
+        or scheduled_time != str(service_request.get("scheduled_time") or "")
+    )
+    note_changed = note != str(service_request.get("merchant_note") or "")
+    status_changed = status != current_status
+    if not (status_changed or schedule_changed or note_changed):
+        return {
+            "ok": True,
+            "status": current_status,
+            "scheduled_date": str(service_request.get("scheduled_date") or ""),
+            "scheduled_time": str(service_request.get("scheduled_time") or ""),
+            "reused": True,
+        }
+
     update_doc: Dict[str, Any] = {
         "status": status,
         "scheduled_date": scheduled_date,
@@ -2462,7 +2477,7 @@ async def update_dealer_charge_service_request_status(
         update_doc["completed_at"] = now
 
     mongo_update: Dict[str, Any] = {"$set": update_doc}
-    if status != str(service_request.get("status") or ""):
+    if status_changed or schedule_changed or note_changed:
         mongo_update["$push"] = {
             "status_history": {
                 "status": status,

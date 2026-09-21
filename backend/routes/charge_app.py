@@ -2394,7 +2394,11 @@ async def respond_charge_service_request(
     note = str(req.note or "").strip()[:1000]
     update_doc = {"status": next_status, "updated_at": now}
     if action == "decline":
-        update_doc.update({"scheduled_date": "", "scheduled_time": ""})
+        update_doc.update({
+            "scheduled_date": "",
+            "scheduled_time": "",
+            "merchant_note": "",
+        })
     history = {
         "status": next_status,
         "actor_role": "customer",
@@ -2413,8 +2417,14 @@ async def respond_charge_service_request(
         **update_doc,
         "status_history": [*(service_request.get("status_history") or []), history],
     }
+    response_hash = hashlib.sha256(
+        (
+            f"{action}|{service_request.get('scheduled_date') or ''}|"
+            f"{service_request.get('scheduled_time') or ''}|{note}"
+        ).encode("utf-8")
+    ).hexdigest()[:12]
     await safe_create_charge_notification(
-        event_key=f"charge_service_customer_response:{request_id}:{action}",
+        event_key=f"charge_service_customer_response:{request_id}:{response_hash}",
         user_id=str(service_request.get("merchant_user_id") or ""),
         title="Charge-Servicetermin beantwortet",
         message=(

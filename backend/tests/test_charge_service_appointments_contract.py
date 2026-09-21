@@ -80,3 +80,16 @@ def test_service_appointment_state_machine_is_fail_closed():
     assert 'Statuswechsel von {current_status} zu {status} ist nicht zulässig' in merchant
     assert 'const cancellable = ["requested", "confirmed", "reschedule_requested"]' in customer
     assert "const serviceActions = {" in portal
+
+
+def test_service_updates_are_retry_safe_and_history_complete():
+    charge = _py(CHARGE)
+    merchant = _py(MERCHANT)
+    assert "response_hash = hashlib.sha256" in charge
+    assert "charge_service_customer_response:{request_id}:{response_hash}" in charge
+    assert '"merchant_note": ""' in charge
+    assert "schedule_changed =" in merchant
+    assert "note_changed =" in merchant
+    assert "status_changed =" in merchant
+    assert '"reused": True' in merchant
+    assert "if status_changed or schedule_changed or note_changed:" in merchant
