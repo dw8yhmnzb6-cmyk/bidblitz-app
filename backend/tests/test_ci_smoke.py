@@ -2211,6 +2211,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "miningValueEnabled" in mining_page
     assert 'data-testid="mining-menu-grid"' in mining_page
     assert 'data-testid="mining-level-card"' in mining_page
+    assert 'data-testid="mining-level-next-threshold"' in mining_page
+    assert 'Level-Power' in mining_page
     assert 'data-testid="mining-quick-buy"' in mining_page
     assert "const MINING_TAB_CONFIG = [" in mining_page
     assert "const MINING_LEVELS = [" in mining_page
