@@ -782,10 +782,39 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
 
     scooter_id = scooter["scooter_id"]
     original_status = scooter.get("status") or "available"
+    now_claim_iso = datetime.now(timezone.utc).isoformat()
+
+    if original_status == "reserved":
+        reserved_by = str(scooter.get("reserved_by") or "")
+        reserved_until = str(scooter.get("reserved_until") or "")
+        if reserved_by != user_id:
+            raise HTTPException(status_code=409, detail="Scooter ist für einen anderen Nutzer reserviert")
+        if not reserved_until or reserved_until <= now_claim_iso:
+            await db.scooter_reservations.update_many(
+                {"user_id": user_id, "scooter_id": scooter_id, "status": "active"},
+                {"$set": {"status": "expired", "expired_at": now_claim_iso}},
+            )
+            await db.scooters.update_one(
+                {"_id": scooter["_id"], "status": "reserved", "reserved_by": user_id},
+                {
+                    "$set": {"status": "available"},
+                    "$unset": {"reserved_by": "", "reserved_until": ""},
+                },
+            )
+            scooter = await db.scooters.find_one({"_id": scooter["_id"]}) or scooter
+            original_status = scooter.get("status") or "available"
+
     claim = await db.scooters.update_one(
         {
             "_id": scooter["_id"],
-            "status": {"$in": ["available", "locked"]},
+            "$or": [
+                {"status": {"$in": ["available", "locked"]}},
+                {
+                    "status": "reserved",
+                    "reserved_by": user_id,
+                    "reserved_until": {"$gt": now_claim_iso},
+                },
+            ],
         },
         {
             "$set": {
@@ -908,7 +937,13 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
                 "current_user_id": user_id,
                 "unlocked_at": now.isoformat(),
             },
-            "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""},
+            "$unset": {
+                "unlock_claim_key": "",
+                "unlock_claim_user_id": "",
+                "unlock_claimed_at": "",
+                "reserved_by": "",
+                "reserved_until": "",
+            },
         },
     )
     if assigned.modified_count != 1:
@@ -941,6 +976,11 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
                     message=rollback_lock.message,
                 )
         raise HTTPException(status_code=409, detail="Scooter-Zuweisung fehlgeschlagen. Entsperrgebühr wurde zurückgebucht.")
+
+    await db.scooter_reservations.update_many(
+        {"user_id": user_id, "scooter_id": scooter_id, "status": "active"},
+        {"$set": {"status": "used", "used_at": now.isoformat(), "ride_id": ride_id}},
+    )
 
     ride["rental_id"] = ride_id
     return {
