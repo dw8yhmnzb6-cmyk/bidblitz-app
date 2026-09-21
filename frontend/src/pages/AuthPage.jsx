@@ -6,6 +6,7 @@ import {
 import { useUser, useI18n } from "../store";
 import KYCVerificationModal from "../components/KYCVerificationModal";
 import { TEST_MODE, TEST_MODE_FULL_ACCESS, isTestModeUser } from "../config/testMode";
+import { request as api } from "../services/api";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -161,15 +162,18 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
       if (typeof onAuthSuccess === "function") {
         onAuthSuccess();
       }
-      // Check for ?ref= in URL and auto-claim referral bonus
+      // Route referral codes to the correct subsystem.
+      // Mining BLZ codes must never be sent to the generic affiliate endpoint.
       try {
         const params = new URLSearchParams(window.location.search);
-        const ref = params.get("ref");
+        const ref = (params.get("ref") || "").trim();
         if (ref) {
-          fetch(`${process.env.REACT_APP_BACKEND_URL}/api/affiliate/claim-signup-bonus`, {
+          const isMiningReferral = ref.toUpperCase().startsWith("BLZ-");
+          const referralEndpoint = isMiningReferral
+            ? "/api/mining/apply-referral"
+            : "/api/affiliate/claim-signup-bonus";
+          api(referralEndpoint, {
             method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: ref }),
           }).catch(() => {});
         }
