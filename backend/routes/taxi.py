@@ -1516,8 +1516,10 @@ async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: Fle
         raise HTTPException(status_code=403, detail="Preisangebot gehört zu einem anderen Konto.")
 
     status = str(quote_doc.get("status") or "active")
-    if status in {"failed", "used", "claimed", "booking"}:
+    if status in {"failed", "used", "claimed"}:
         raise HTTPException(status_code=409, detail="Preisangebot ist nicht mehr frei verfügbar. Bitte Preis neu berechnen.")
+    if status not in {"active", "booking"}:
+        raise HTTPException(status_code=409, detail="Preisangebot hat einen ungültigen Status. Bitte Preis neu berechnen.")
 
     try:
         expires_at = datetime.fromisoformat(str(quote_doc.get("expires_at") or ""))
