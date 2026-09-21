@@ -56,6 +56,7 @@ def _mining_capabilities() -> dict:
         "live_mining_provider_connected": False,
         "value_actions_enabled": bool(TEST_MODE),
         "conversion_enabled": bool(TEST_MODE),
+        "reward_projection_enabled": bool(TEST_MODE),
         "marketplace_enabled": bool(TEST_MODE),
         "launchpad_enabled": bool(TEST_MODE),
         "production_message": (
@@ -515,6 +516,9 @@ async def mining_dashboard(request: Request):
     )
     vip = get_vip_level(total_hashrate)
     daily_earnings = calc_daily_earnings(total_hashrate, avg_efficiency, vip["bonus"])
+    reported_daily_earnings = daily_earnings if TEST_MODE else 0.0
+    reported_hashrate = total_hashrate if TEST_MODE else 0.0
+    reported_efficiency = avg_efficiency if TEST_MODE else 0.0
 
     # Calculate per-miner earnings for dashboard detail
     miners_enriched = []
@@ -533,12 +537,12 @@ async def mining_dashboard(request: Request):
             **mn,
             "effective_hashrate": round(eff_hash, 1),
             "effective_efficiency": round(eff_eff, 4),
-            "daily_blz": mn_daily,
-            "daily_eur": round(mn_daily * BLZ_TO_EUR, 4),
-            "monthly_blz": mn_monthly,
-            "monthly_eur": round(mn_monthly * BLZ_TO_EUR, 2),
-            "yearly_blz": mn_yearly,
-            "yearly_eur": round(mn_yearly * BLZ_TO_EUR, 2),
+            "daily_blz": mn_daily if TEST_MODE else 0.0,
+            "daily_eur": round(mn_daily * BLZ_TO_EUR, 4) if TEST_MODE else 0.0,
+            "monthly_blz": mn_monthly if TEST_MODE else 0.0,
+            "monthly_eur": round(mn_monthly * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
+            "yearly_blz": mn_yearly if TEST_MODE else 0.0,
+            "yearly_eur": round(mn_yearly * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
         })
 
     # Check if daily reward claimed (auto or manual)
@@ -577,7 +581,7 @@ async def mining_dashboard(request: Request):
     referral_boost_active = bool(my_referrer)
     referral_earnings_bonus = 0
     if my_referrer:
-        referral_earnings_bonus = round(daily_earnings * REFERRAL_BONUS_RATE, 8)
+        referral_earnings_bonus = round(daily_earnings * REFERRAL_BONUS_RATE, 8) if TEST_MODE else 0
 
     # Claim streak
     claim_history = await db.mining_claims.find(
@@ -612,32 +616,36 @@ async def mining_dashboard(request: Request):
         "wallet": {
             "blz_balance": _safe_mining_float(wallet.get("blz_balance")) if TEST_MODE else 0.0,
             "eur_value": round(_safe_mining_float(wallet.get("blz_balance")) * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
-            "total_mined": _safe_mining_float(wallet.get("total_mined")),
-            "total_withdrawn": _safe_mining_float(wallet.get("total_withdrawn")),
+            "total_mined": _safe_mining_float(wallet.get("total_mined")) if TEST_MODE else 0.0,
+            "total_withdrawn": _safe_mining_float(wallet.get("total_withdrawn")) if TEST_MODE else 0.0,
             "main_balance_eur": _safe_mining_float(user.get("balance")),
         },
         "mining": {
-            "total_hashrate": round(total_hashrate, 1),
-            "avg_efficiency": round(avg_efficiency, 4),
-            "daily_earnings_blz": daily_earnings,
-            "daily_earnings_eur": round(daily_earnings * BLZ_TO_EUR, 4),
-            "monthly_earnings_blz": round(daily_earnings * 30, 4),
-            "monthly_earnings_eur": round(daily_earnings * 30 * BLZ_TO_EUR, 2),
-            "yearly_earnings_blz": round(daily_earnings * 365, 4),
-            "yearly_earnings_eur": round(daily_earnings * 365 * BLZ_TO_EUR, 2),
-            "active_miners": len(miners),
+            "total_hashrate": round(reported_hashrate, 1),
+            "avg_efficiency": round(reported_efficiency, 4),
+            "daily_earnings_blz": reported_daily_earnings,
+            "daily_earnings_eur": round(reported_daily_earnings * BLZ_TO_EUR, 4),
+            "monthly_earnings_blz": round(reported_daily_earnings * 30, 4),
+            "monthly_earnings_eur": round(reported_daily_earnings * 30 * BLZ_TO_EUR, 2),
+            "yearly_earnings_blz": round(reported_daily_earnings * 365, 4),
+            "yearly_earnings_eur": round(reported_daily_earnings * 365 * BLZ_TO_EUR, 2),
+            "active_miners": len(miners) if TEST_MODE else 0,
         },
-        "vip": {
+        "vip": ({
             **vip,
             "next_level": next_vip,
             "progress": round(
                 (total_hashrate - vip["min_hashrate"]) /
                 (next_vip["min_hashrate"] - vip["min_hashrate"]) * 100, 1
             ) if next_vip else 100,
-        },
+        } if TEST_MODE else {
+            **VIP_LEVELS[0],
+            "next_level": None,
+            "progress": 0,
+        }),
         "daily_reward": {
-            "claimed": bool(claimed_today),
-            "amount": daily_earnings,
+            "claimed": bool(claimed_today) if TEST_MODE else False,
+            "amount": reported_daily_earnings,
             "auto": True,
             "type": claimed_today.get("type", "manual") if claimed_today else None,
             "last_reward_at": last_reward_at,
@@ -650,9 +658,9 @@ async def mining_dashboard(request: Request):
             "boost_active": referral_boost_active,
             "boost_bonus_blz": referral_earnings_bonus,
         },
-        "streak": streak,
-        "miners": miners_enriched,
-        "recent_transactions": recent_txns,
+        "streak": streak if TEST_MODE else 0,
+        "miners": miners_enriched if TEST_MODE else [],
+        "recent_transactions": recent_txns if TEST_MODE else [],
     }
 
 
@@ -673,12 +681,13 @@ async def get_packages(request: Request):
         orig_yearly = round(pkg["price_yearly"] / (1 - DISCOUNT_RATES["yearly"]), 2)
         enriched.append({
             **pkg,
-            "daily_blz": round(daily_blz, 4),
-            "daily_eur": round(daily_eur, 4),
-            "monthly_eur": round(monthly_eur, 2),
-            "yearly_eur": round(yearly_eur, 2),
-            "roi_days": roi_days,
-            "roi_pct": roi_pct,
+            "projection_available": bool(TEST_MODE),
+            "daily_blz": round(daily_blz, 4) if TEST_MODE else None,
+            "daily_eur": round(daily_eur, 4) if TEST_MODE else None,
+            "monthly_eur": round(monthly_eur, 2) if TEST_MODE else None,
+            "yearly_eur": round(yearly_eur, 2) if TEST_MODE else None,
+            "roi_days": roi_days if TEST_MODE else None,
+            "roi_pct": roi_pct if TEST_MODE else None,
             "pricing": {
                 "onetime": {"price": pkg["price_eur"], "original": pkg["price_eur"], "discount": 0},
                 "monthly": {"price": pkg["price_monthly"], "original": orig_monthly, "discount": DISCOUNT_RATES["monthly"]},
@@ -1464,6 +1473,15 @@ async def get_claim_history(request: Request):
     """Get full claim history for the user."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE:
+        return {
+            "claims": [],
+            "total_claims": 0,
+            "total_claimed_blz": 0.0,
+            "total_claimed_eur": 0.0,
+            "current_streak": 0,
+            "capabilities": _mining_capabilities(),
+        }
     claims = await db.mining_claims.find(
         {"user_id": user_id, "status": "completed"}, {"_id": 0}
     ).sort("claimed_at", -1).to_list(100)
@@ -1478,7 +1496,9 @@ async def get_claim_history(request: Request):
         else:
             break
 
-    total_claimed = sum(c.get("amount", 0) for c in claims)
+    for claim in claims:
+        claim["amount"] = _safe_mining_float(claim.get("amount"))
+    total_claimed = sum(claim.get("amount", 0.0) for claim in claims)
     return {
         "claims": claims,
         "total_claims": len(claims),
@@ -1509,7 +1529,12 @@ async def get_mining_transactions(request: Request):
     """Get mining transaction history."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if not TEST_MODE:
+        return {"transactions": [], "capabilities": _mining_capabilities()}
     txns = await db.mining_transactions.find(
         {"user_id": user_id}, {"_id": 0}
     ).sort("created_at", -1).to_list(50)
+    for tx in txns:
+        tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))
+        tx["amount_eur"] = _safe_mining_float(tx.get("amount_eur"))
     return {"transactions": txns}
