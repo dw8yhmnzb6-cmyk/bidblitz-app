@@ -25,6 +25,20 @@ FINAL_BATTLE_THRESHOLD = 60    # Final battle activates in last 60 seconds
 DEFAULT_DURATION_SECONDS = 172800  # Fallback 48 hours
 MAX_AUCTION_REMAINING_SECONDS = 72 * 3600
 
+PUBLIC_AUCTION_PRIVATE_FIELDS = {
+    "revenue_target_eur",
+    "product_cost_eur",
+    "shipping_cost_eur",
+    "other_costs_eur",
+    "target_net_profit_eur",
+}
+
+def _public_auction_view(auction: dict) -> dict:
+    public = dict(auction or {})
+    for field in PUBLIC_AUCTION_PRIVATE_FIELDS:
+        public.pop(field, None)
+    return public
+
 CREDIT_PACKAGES = {
     "10": {"credits": 10, "price": 5.00},      # 0.50/bid (base)
     "25": {"credits": 25, "price": 10.00},      # 0.40/bid (20% off)
@@ -719,6 +733,7 @@ async def list_auctions(request: Request, response: Response):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
 
+    auctions = [_public_auction_view(a) for a in auctions]
     return {"auctions": auctions}
 
 
@@ -758,6 +773,7 @@ async def get_active_auctions():
                 a["remaining_seconds"] = 0
                 a["final_battle"] = False
     
+    auctions = [_public_auction_view(a) for a in auctions]
     return {"auctions": auctions, "count": len(auctions)}
 
 
@@ -792,6 +808,7 @@ async def list_all_auctions(status: str = None, limit: int = 100):
                 a["remaining_seconds"] = 0
                 a["final_battle"] = False
     
+    auctions = [_public_auction_view(a) for a in auctions]
     return {"auctions": auctions, "total": len(auctions)}
 
 
@@ -1148,6 +1165,7 @@ async def get_auction(auction_id: str, request: Request):
         auction["remaining_seconds"] = 0
         auction["final_battle"] = False
 
+    auction = _public_auction_view(auction)
     return {"auction": auction, "bids": bids, "unique_bidders": len(unique_bidders)}
 
 
