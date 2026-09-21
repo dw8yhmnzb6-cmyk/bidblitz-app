@@ -4,12 +4,17 @@ import { toast } from "sonner";
 
 import { api } from "../../services/api";
 import { scanNFC } from "../../utils/nfcService";
+import { TEST_MODE } from "../../config/testMode";
 
 const lookupModes = [
   { id: "scan", label: "Scan", icon: ScanLine },
   { id: "nfc", label: "NFC", icon: Smartphone },
   { id: "customer_number", label: "Nummer", icon: UserRoundCheck },
 ];
+
+const BIOPAY_PROVIDER_VERIFIED =
+  TEST_MODE ||
+  String(process.env.REACT_APP_BIOPAY_PROVIDER_VERIFIED || "").trim().toLowerCase() === "true";
 
 export function POSBioPayPanel({ storeId, registerId }) {
   const [lookupMode, setLookupMode] = useState("scan");
@@ -95,6 +100,22 @@ export function POSBioPayPanel({ storeId, registerId }) {
       setBusy(false);
     }
   };
+
+  if (!BIOPAY_PROVIDER_VERIFIED) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-4" data-testid="pos-biopay-preview-disabled">
+        <div className="flex items-center gap-2">
+          <Hand size={18} className="text-amber-200" />
+          <div>
+            <h3 className="text-sm font-bold text-white">PalmPay / BioPay Preview</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-amber-100/70">
+              Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4" data-testid="pos-biopay-panel">
