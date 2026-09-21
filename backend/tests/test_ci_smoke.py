@@ -503,7 +503,16 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert '"free_minutes_remaining_at_start"' in scooter_source
     assert '"subscription_id": (subscription or {}).get("sub_id")' in scooter_source
     assert "TransactionType.SUBSCRIPTION" in scooter_source
+    assert 'claimed_sub_id not in (None, "", sub_id)' in scooter_source
+    assert 'payment_status in {"pending", "reconciliation_required"}' in scooter_source
+    assert "Scooter-Abo-Zahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt" in scooter_source
+    assert '"scooter_subscription_payment_status": "completed"' in scooter_source
 
+    assert "subscriptionAttemptRef" in scooter_page
+    assert "window.sessionStorage.getItem(attemptStorageKey)" in scooter_page
+    assert "window.sessionStorage.setItem(attemptStorageKey, subscriptionAttemptRef.current.key)" in scooter_page
+    assert "window.sessionStorage.removeItem(attemptStorageKey)" in scooter_page
+    assert "[400, 403, 404].includes(res.status)" in scooter_page
     assert "Math.random() - 0.5" not in scooter_page
     assert "52.52, lng: 13.405" not in scooter_page
     assert "'Idempotency-Key': idempotencyKey" in scooter_page
