@@ -2854,6 +2854,8 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert "lockupAttemptKeyRef" in page
     assert "quickBonusAttemptKeyRef" in page
     assert "claimAttemptKeyRef" in page
+    assert 'data-testid="lockup-preview-disabled"' in page
+    assert 'valueActionsEnabled={valueActionsEnabled}' in page
     assert page.count('"Idempotency-Key": idempotencyKey') >= 3
 
     assert '{"$inc": {"balance_blz": earnings}' not in backend
