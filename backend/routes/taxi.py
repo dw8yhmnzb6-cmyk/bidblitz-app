@@ -2520,6 +2520,27 @@ async def book_ride(req: FlexBookRequest, request: Request):
         idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
     )
     if not reservation.success:
+        reservation_state = str(getattr(reservation.status, "value", reservation.status))
+        if reservation_state in {"pending", "reconciliation_required"}:
+            await db.taxi_booking_attempts.update_one(
+                {"_id": f"{user_id}:{ride_id}"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "request_fingerprint": request_fingerprint,
+                    "ride_id": ride_id,
+                    "user_id": user_id,
+                    "wallet_status": reservation_state,
+                    "wallet_transaction_id": reservation.transaction_id,
+                    "wallet_error": reservation.error,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=reservation.error or "Taxi-Reservierung benötigt Wallet-Abstimmung; bitte denselben Buchungsversuch erneut senden.",
+            )
+
         if promo_reserved:
             from utils.taxi_promo import release_redemption
             await release_redemption(user_id, promo_applied["code"], ride_id)
