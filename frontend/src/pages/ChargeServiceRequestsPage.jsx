@@ -216,6 +216,25 @@ export default function ChargeServiceRequestsPage({ registrationId, onBack }) {
                         </div>
                         <p className="mt-3 text-xs font-semibold text-slate-700">{dateSummary(item)}</p>
                         {item.merchant_note ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{item.merchant_note}</p> : null}
+                        {(item.status_history || []).length ? (
+                          <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3" data-testid={`charge-service-history-${index}`}>
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Verlauf</p>
+                            <div className="mt-2 space-y-2">
+                              {[...(item.status_history || [])].slice(-4).reverse().map((entry, historyIndex) => (
+                                <div key={`${entry.created_at || historyIndex}-${entry.status || "status"}`} className="flex items-start gap-2">
+                                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-bold text-slate-700">
+                                      {statusLabel(entry.status)} · {historyActorLabel(entry.actor_role)}
+                                    </p>
+                                    {entry.note ? <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{entry.note}</p> : null}
+                                    {entry.created_at ? <p className="mt-0.5 text-[10px] text-slate-400">{formatServiceDateTime(entry.created_at)}</p> : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 flex-col gap-2">
                         {item.status === "reschedule_requested" ? (
@@ -296,4 +315,28 @@ function dateSummary(item) {
   const time = item.scheduled_time || item.preferred_time;
   if (!date) return "Noch kein Termin";
   return `${item.scheduled_date ? "Termin" : "Wunschtermin"}: ${date}${time ? ` · ${time}` : ""}`;
+}
+
+
+function historyActorLabel(role) {
+  const labels = {
+    customer: "Kunde",
+    merchant: "Händler",
+    admin: "BidBlitz",
+    system: "System",
+  };
+  return labels[role] || role || "System";
+}
+
+function formatServiceDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

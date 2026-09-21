@@ -93,3 +93,15 @@ def test_service_updates_are_retry_safe_and_history_complete():
     assert "status_changed =" in merchant
     assert '"reused": True' in merchant
     assert "if status_changed or schedule_changed or note_changed:" in merchant
+
+
+def test_customer_and_merchant_show_service_status_history():
+    customer = _text(CUSTOMER)
+    portal = _text(PORTAL)
+    assert "charge-service-history-" in customer
+    assert "historyActorLabel" in customer
+    assert "formatServiceDateTime" in customer
+    assert "merchant-dealer-service-history-" in portal
+    assert "chargeServiceStatusLabel" in portal
+    assert "chargeServiceActorLabel" in portal
+    assert "formatChargeServiceDateTime" in portal

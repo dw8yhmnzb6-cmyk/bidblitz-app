@@ -1041,6 +1041,25 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                           </div>
                           {item.note ? <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.note}</p> : null}
                           {item.merchant_note ? <p className="mt-2 rounded-xl bg-amber-400/10 px-3 py-2 text-[11px] leading-5 text-amber-200">{item.merchant_note}</p> : null}
+                          {(item.status_history || []).length ? (
+                            <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`merchant-dealer-service-history-${index}`}>
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Serviceverlauf</p>
+                              <div className="mt-2 space-y-2">
+                                {[...(item.status_history || [])].slice(-4).reverse().map((entry, historyIndex) => (
+                                  <div key={`${entry.created_at || historyIndex}-${entry.status || "status"}`} className="flex items-start gap-2">
+                                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-semibold text-slate-300">
+                                        {chargeServiceStatusLabel(entry.status)} · {chargeServiceActorLabel(entry.actor_role)}
+                                      </p>
+                                      {entry.note ? <p className="mt-0.5 text-[11px] leading-4 text-slate-400">{entry.note}</p> : null}
+                                      {entry.created_at ? <p className="mt-0.5 text-[10px] text-slate-600">{formatChargeServiceDateTime(entry.created_at)}</p> : null}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
 
                         {active ? (
@@ -2207,6 +2226,42 @@ function OpsFormCard({ title, icon: Icon, children, testid }) {
       <div className="space-y-2">{children}</div>
     </div>
   );
+}
+
+function chargeServiceStatusLabel(status) {
+  const labels = {
+    requested: "Angefragt",
+    confirmed: "Bestätigt",
+    reschedule_requested: "Neuer Termin vorgeschlagen",
+    in_service: "Im Service",
+    completed: "Abgeschlossen",
+    rejected: "Abgelehnt",
+    cancelled: "Storniert",
+  };
+  return labels[status] || status || "—";
+}
+
+function chargeServiceActorLabel(role) {
+  const labels = {
+    customer: "Kunde",
+    merchant: "Händler",
+    admin: "BidBlitz",
+    system: "System",
+  };
+  return labels[role] || role || "System";
+}
+
+function formatChargeServiceDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function OpsInput({ value, onChange, placeholder, testid }) {
