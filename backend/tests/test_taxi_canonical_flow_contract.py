@@ -201,3 +201,15 @@ def test_taxi_fare_split_is_canonical_80_20_everywhere():
     assert "PLATFORM_COMMISSION = 0.15" not in taxi
     assert "DRIVER_COMMISSION = 0.85" not in zone
     assert "PLATFORM_COMMISSION = 0.15" not in zone
+
+
+def test_driver_release_repairs_legacy_busy_rows_without_stealing_other_lock():
+    taxi = read("backend/routes/taxi.py")
+
+    start = taxi.index("async def _release_driver_active_ride")
+    end = taxi.index("async def _ensure_driver_accept_notification", start)
+    release = taxi[start:end]
+    assert '{"active_ride_id": ride_id}' in release
+    assert '{"active_ride_id": {"$exists": False}}' in release
+    assert '{"active_ride_id": None}' in release
+    assert '"$set": {"is_busy": False}' in release
