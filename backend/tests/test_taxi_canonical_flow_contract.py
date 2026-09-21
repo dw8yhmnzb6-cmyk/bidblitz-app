@@ -213,3 +213,13 @@ def test_driver_release_repairs_legacy_busy_rows_without_stealing_other_lock():
     assert '{"active_ride_id": {"$exists": False}}' in release
     assert '{"active_ride_id": None}' in release
     assert '"$set": {"is_busy": False}' in release
+
+
+def test_taxi_share_does_not_publish_fake_tracking_url():
+    page = read("frontend/src/pages/TaxiPage.jsx")
+
+    assert "Meine BidBlitz-Taxi-Fahrt:" in page
+    assert "navigator.share({ title: 'BidBlitz Taxi', text: shareText })" in page
+    assert "navigator.clipboard.writeText(shareText)" in page
+    assert "Fahrtdetails kopiert" in page
+    assert "url: window.location.href" not in page
