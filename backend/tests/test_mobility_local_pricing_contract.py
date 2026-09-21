@@ -47,7 +47,7 @@ def test_scooter_end_ui_surfaces_locked_currency_and_reconciliation_state():
     page = read("frontend/src/pages/ScooterPage.jsx")
 
     assert "const summaryCurrency = String(data.summary.currency || data.summary.amount_due_currency || activeRental.currency || pricing.currency || \'EUR\').toUpperCase();" in page
-    assert \'data.summary.payment_status === "reconciliation_required"\' in page
+    assert 'data.summary.payment_status === "reconciliation_required"' in page
     assert "Abrechnung wird geprüft:" in page
     assert "Gesamt: €${data.summary.total_cost.toFixed(2)}" not in page
 
