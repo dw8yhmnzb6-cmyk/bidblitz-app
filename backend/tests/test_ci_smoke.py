@@ -3701,3 +3701,11 @@ def test_mining_card_mutations_stay_test_only():
     freeze = source[freeze_start:freeze_end]
     assert "_require_mining_value_mode()" in freeze
     assert "toggle_freeze" in freeze
+
+
+def test_mining_marketplace_listing_is_disabled_in_preview():
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
+
+    assert 'data-testid="list-miner-btn"' in page
+    assert 'disabled={listing || !listMiner || !listPrice || !miningValueEnabled}' in page
+    assert "Mining Marketplace ist in Production nur als Preview verfügbar." in page
