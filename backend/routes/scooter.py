@@ -1544,14 +1544,34 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
     if req.signal_strength is not None:
         update["signal_strength"] = req.signal_strength
     
+    unset_fields = {}
     if req.locked is not None:
+        update["device_locked"] = bool(req.locked)
         # If device reports locked but status is in_use, something is wrong
         if req.locked and scooter.get("status") == "in_use":
             logger.warning(f"Scooter {scooter['scooter_id']} locked while in use!")
+
+        if scooter.get("device_state_uncertain") and not scooter.get("current_ride_id"):
+            if req.locked:
+                update["status"] = "available"
+                update["device_state_uncertain"] = False
+                update["device_state_confirmed_at"] = now.isoformat()
+                unset_fields.update({
+                    "device_state_uncertain_command": "",
+                    "device_state_uncertain_reason": "",
+                    "device_state_uncertain_at": "",
+                })
+            else:
+                update["status"] = "offline"
+                update["device_state_uncertain"] = True
+                update["device_state_uncertain_reason"] = "physical_unlocked_without_active_ride"
     
+    mutation = {"$set": update}
+    if unset_fields:
+        mutation["$unset"] = unset_fields
     await db.scooters.update_one(
         {"device_id": req.device_id},
-        {"$set": update}
+        mutation,
     )
     
     # Also update ride location if active
