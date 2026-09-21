@@ -73,6 +73,15 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
 
   await page.getByTestId('mining-tab-card').click();
   await expect(page.getByTestId('mining-card-preview-unavailable')).toBeVisible();
+
+  await page.getByTestId('mining-tab-marketplace').click();
+  await expect(page.getByTestId('mining-marketplace-empty')).toBeVisible();
+  await expect(page.getByText('Marketplace Preview', { exact: false })).toBeVisible();
+
+  await page.getByTestId('mining-tab-launchpad').click();
+  await expect(page.getByTestId('mining-launchpad-empty')).toBeVisible();
+  await expect(page.getByText('Launchpad Preview', { exact: false })).toBeVisible();
+
   await page.getByTestId('mining-tab-dashboard').click();
   await expect(page.getByTestId('mining-provider-unavailable')).toBeVisible();
 
