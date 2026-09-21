@@ -4091,7 +4091,11 @@ def test_biopay_requires_verified_provider_in_production():
     panel = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "pos" / "POSBioPayPanel.jsx").read_text(encoding="utf-8")
 
     assert 'BIOPAY_PROVIDER_VERIFIED' in backend
+    assert 'def _biopay_provider_declared()' in backend
+    assert 'def _biopay_provider_verified()' in backend
+    assert 'return TEST_MODE' in backend
     assert 'def _require_verified_biopay_provider()' in backend
+    assert 'serverseitige Hardware-Attestation ist noch nicht verifiziert' in backend
     assert 'BioPay ist in Production ohne verifizierte biometrische Provider-/Hardware-Attestation deaktiviert.' in backend
     assert backend.count('_require_verified_biopay_provider()') >= 7
     assert 'matched = template_token_fingerprint((template_token or "").strip()) == profile.get("token_fingerprint")' in service
@@ -4102,6 +4106,8 @@ def test_biopay_requires_verified_provider_in_production():
     assert '"attestation_status": "test_mode" if TEST_MODE else "unverified"' in service
 
     assert 'REACT_APP_BIOPAY_PROVIDER_VERIFIED' in panel
-    assert 'const BIOPAY_PROVIDER_VERIFIED' in panel
+    assert 'const BIOPAY_PROVIDER_DECLARED' in panel
+    assert 'const BIOPAY_PROVIDER_VERIFIED = TEST_MODE;' in panel
+    assert 'serverseitige Hardware-Attestation ist noch nicht verifiziert' in panel
     assert 'data-testid="pos-biopay-preview-disabled"' in panel
     assert 'Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.' in panel
