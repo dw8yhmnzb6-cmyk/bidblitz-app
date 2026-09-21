@@ -1072,7 +1072,7 @@ class LaunchpadBuyRequest(BaseModel):
 
 @router.post("/launchpad/buy")
 async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
-    """Buy one launchpad miner with canonical wallet debit and exactly-once supply reservation."""
+    """Buy one launchpad miner with canonical wallet debit and retry-safe fulfillment."""
     _require_mining_value_mode()
     from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 
@@ -1112,27 +1112,37 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         )
 
     now = datetime.now(timezone.utc).isoformat()
-    await db.mining_launchpad_buys.update_one(
-        {"user_id": user_id, "project_id": req.project_id},
-        {"$setOnInsert": {
-            "purchase_id": purchase_id,
-            "user_id": user_id,
-            "project_id": req.project_id,
-            "idempotency_key": idempotency_key,
-            "status": "processing",
-            "created_at": now,
-        }},
-        upsert=True,
-    )
+    price = round(float(project.get("price_eur") or 0), 2)
     purchase = await db.mining_launchpad_buys.find_one(
         {"user_id": user_id, "project_id": req.project_id},
         {"_id": 0},
-    ) or {}
-    if purchase.get("purchase_id") != purchase_id:
-        raise HTTPException(status_code=409, detail="Dieses Launchpad-Angebot wurde bereits mit einer anderen Kaufanfrage verwendet")
+    )
 
-    if purchase.get("status") == "completed":
-        miner = await db.mining_miners.find_one({"miner_id": purchase.get("miner_id")}, {"_id": 0}) or {}
+    if purchase and purchase.get("status") == "completed":
+        miner = await db.mining_miners.find_one({"miner_id": purchase.get("miner_id")}, {"_id": 0})
+        if not miner:
+            await db.mining_launchpad_buys.update_one(
+                {"user_id": user_id, "project_id": req.project_id, "status": "completed"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "completed_purchase_missing_miner",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Launchpad-Zahlung abgeschlossen; Miner-Fulfillment benötigt Abstimmung")
+        await db.mining_transactions.update_one(
+            {"txn_id": purchase.get("purchase_id") or purchase_id},
+            {"$setOnInsert": {
+                "txn_id": purchase.get("purchase_id") or purchase_id,
+                "user_id": user_id,
+                "type": "launchpad",
+                "amount_eur": -price,
+                "description": f"Launchpad: {project['name']} (Launch Edition)",
+                "wallet_transaction_id": purchase.get("payment_transaction_id"),
+                "created_at": purchase.get("completed_at") or purchase.get("created_at") or now,
+            }},
+            upsert=True,
+        )
         fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
         return {
             "ok": True,
@@ -1141,12 +1151,66 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
             "new_balance": round(float(fresh_user.get("balance") or 0), 2),
             "replayed": True,
         }
-    if purchase.get("status") == "reconciliation_required":
-        raise HTTPException(status_code=503, detail="Launchpad-Kauf benötigt finanzielle Abstimmung; keine erneute Belastung wird ausgeführt")
-    if purchase.get("status") in {"refunded", "failed"}:
-        raise HTTPException(status_code=409, detail="Launchpad-Kauf wurde beendet oder zurückgebucht")
 
-    price = round(float(project.get("price_eur") or 0), 2)
+    if purchase and purchase.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Launchpad-Kauf benötigt finanzielle Abstimmung; keine erneute Belastung wird ausgeführt")
+    if purchase and purchase.get("status") == "refunded":
+        raise HTTPException(status_code=409, detail="Launchpad-Kauf wurde zurückgebucht")
+    if purchase and purchase.get("status") == "failed":
+        if purchase.get("purchase_id") == purchase_id:
+            raise HTTPException(status_code=400, detail=purchase.get("error") or "Frühere Launchpad-Zahlung fehlgeschlagen; bitte neuen Kaufversuch starten")
+        reset = await db.mining_launchpad_buys.update_one(
+            {
+                "user_id": user_id,
+                "project_id": req.project_id,
+                "status": "failed",
+                "purchase_id": purchase.get("purchase_id"),
+            },
+            {
+                "$set": {
+                    "purchase_id": purchase_id,
+                    "idempotency_key": idempotency_key,
+                    "status": "processing",
+                    "created_at": now,
+                },
+                "$unset": {
+                    "error": "",
+                    "payment_status": "",
+                    "failed_at": "",
+                    "payment_transaction_id": "",
+                },
+            },
+        )
+        if reset.modified_count != 1:
+            raise HTTPException(status_code=409, detail="Launchpad-Kaufversuch wurde parallel verändert")
+        purchase = await db.mining_launchpad_buys.find_one(
+            {"user_id": user_id, "project_id": req.project_id},
+            {"_id": 0},
+        )
+
+    if not purchase:
+        await db.mining_launchpad_buys.update_one(
+            {"user_id": user_id, "project_id": req.project_id},
+            {"$setOnInsert": {
+                "purchase_id": purchase_id,
+                "user_id": user_id,
+                "project_id": req.project_id,
+                "idempotency_key": idempotency_key,
+                "status": "processing",
+                "created_at": now,
+            }},
+            upsert=True,
+        )
+        purchase = await db.mining_launchpad_buys.find_one(
+            {"user_id": user_id, "project_id": req.project_id},
+            {"_id": 0},
+        ) or {}
+
+    if purchase.get("purchase_id") != purchase_id:
+        raise HTTPException(status_code=409, detail="Dieses Launchpad-Angebot wird bereits mit einer anderen Kaufanfrage verarbeitet")
+    if purchase.get("status") != "processing":
+        raise HTTPException(status_code=409, detail="Launchpad-Kauf befindet sich in einem nicht fortsetzbaren Zustand")
+
     debit = await debit_wallet(
         user_id=user_id,
         amount=price,
@@ -1157,7 +1221,55 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         idempotency_key=idempotency_key,
     )
     if not debit.success:
+        payment_status = getattr(debit.status, "value", str(debit.status))
+        if payment_status == "reconciliation_required":
+            await db.mining_launchpad_buys.update_one(
+                {"purchase_id": purchase_id, "status": "processing"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "payment_status": payment_status,
+                    "error": debit.error,
+                    "payment_transaction_id": debit.transaction_id,
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=debit.error or "Launchpad-Zahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt.",
+            )
+        if payment_status == "pending":
+            await db.mining_launchpad_buys.update_one(
+                {"purchase_id": purchase_id, "status": "processing"},
+                {"$set": {
+                    "payment_status": "pending",
+                    "error": debit.error,
+                    "payment_transaction_id": debit.transaction_id,
+                    "payment_pending_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=debit.error or "Launchpad-Zahlung ist noch unklar; derselbe Kaufversuch muss reconciled werden.",
+            )
+        await db.mining_launchpad_buys.update_one(
+            {"purchase_id": purchase_id, "status": "processing"},
+            {"$set": {
+                "status": "failed",
+                "payment_status": payment_status,
+                "error": debit.error or "Wallet-Zahlung fehlgeschlagen",
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
         raise HTTPException(status_code=400, detail=debit.error or "Wallet-Zahlung fehlgeschlagen")
+
+    await db.mining_launchpad_buys.update_one(
+        {"purchase_id": purchase_id, "status": "processing"},
+        {"$set": {
+            "payment_status": "completed",
+            "payment_transaction_id": debit.transaction_id,
+            "payment_completed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
 
     marker_field = f"purchase_markers.{purchase_hash}"
     latest_project = await db.mining_launchpad.find_one({"project_id": req.project_id}) or project
@@ -1240,15 +1352,6 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         upsert=True,
     )
 
-    await db.mining_launchpad_buys.update_one(
-        {"purchase_id": purchase_id},
-        {"$set": {
-            "status": "completed",
-            "miner_id": miner_id,
-            "payment_transaction_id": debit.transaction_id,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-        }},
-    )
     await db.mining_transactions.update_one(
         {"txn_id": purchase_id},
         {"$setOnInsert": {
@@ -1262,6 +1365,29 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         }},
         upsert=True,
     )
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    finalized = await db.mining_launchpad_buys.update_one(
+        {"purchase_id": purchase_id, "status": "processing"},
+        {"$set": {
+            "status": "completed",
+            "miner_id": miner_id,
+            "payment_transaction_id": debit.transaction_id,
+            "completed_at": completed_at,
+        }},
+    )
+    if finalized.modified_count != 1:
+        current = await db.mining_launchpad_buys.find_one({"purchase_id": purchase_id}, {"_id": 0}) or {}
+        if current.get("status") != "completed":
+            await db.mining_launchpad_buys.update_one(
+                {"purchase_id": purchase_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "fulfillment_completed_purchase_finalize_not_confirmed",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Launchpad-Miner erstellt; Kaufabschluss benötigt Abstimmung")
 
     return {
         "ok": True,
