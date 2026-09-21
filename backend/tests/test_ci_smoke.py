@@ -494,6 +494,10 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert "async def _settle_outstanding_scooter_debts" in scooter_source
     assert '"status": "unlocking"' in scooter_source
     assert '"unlock_claim_key": claim_hash' in scooter_source
+    assert 'payment_status in {"pending", "reconciliation_required"}' in scooter_source
+    assert '"unlock_payment_reconciliation_required": True' in scooter_source
+    assert '"unlock_payment_transaction_id": payment_result.transaction_id' in scooter_source
+    assert "Scooter-Zahlung ist unklar und muss vor einem neuen Versuch abgestimmt werden." in scooter_source
     assert "idempotency_key=idempotency_key" in scooter_source
     assert 'idempotency_key=f"scooter-end:{ride_id}"' in scooter_source
     assert 'db.scooter_payment_due.update_one' in scooter_source
@@ -513,6 +517,10 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert '"scooter_subscription_payment_status": "completed"' in scooter_source
 
     assert "subscriptionAttemptRef" in scooter_page
+    assert "readScooterUnlockAttempt" in scooter_page
+    assert "persistScooterUnlockAttempt" in scooter_page
+    assert "bidblitz:scooter-unlock-attempt:" in scooter_page
+    assert "persistScooterUnlockAttempt(unlockAttemptOwnerId, null)" in scooter_page
     assert "window.sessionStorage.getItem(attemptStorageKey)" in scooter_page
     assert "window.sessionStorage.setItem(attemptStorageKey, subscriptionAttemptRef.current.key)" in scooter_page
     assert "window.sessionStorage.removeItem(attemptStorageKey)" in scooter_page
