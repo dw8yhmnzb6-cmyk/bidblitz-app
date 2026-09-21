@@ -820,6 +820,134 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     }
 
 
+class PauseRideRequest(BaseModel):
+    scooter_id: Optional[str] = None
+    ride_id: Optional[str] = None
+
+
+async def _get_owned_active_scooter_ride(user_id: str, req: PauseRideRequest) -> Optional[dict]:
+    query = {
+        "user_id": user_id,
+        "status": {"$in": ["active", "paused"]},
+    }
+    if req.ride_id:
+        query["ride_id"] = req.ride_id
+    elif req.scooter_id:
+        query["scooter_id"] = req.scooter_id
+    return await db.scooter_rides.find_one(query)
+
+
+@router.post("/pause")
+async def pause_ride(req: PauseRideRequest, request: Request):
+    """Lock the assigned scooter while keeping the ride reserved and billable."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    if not TEST_MODE and not _iot_live_configured():
+        raise HTTPException(status_code=503, detail="Scooter-IoT ist nicht verfügbar; Pause kann nicht sicher aktiviert werden")
+
+    ride = await _get_owned_active_scooter_ride(user_id, req)
+    if not ride:
+        raise HTTPException(status_code=404, detail="Keine aktive Scooter-Fahrt gefunden")
+    if ride.get("status") == "paused":
+        return {"ok": True, "status": "paused", "ride_id": ride.get("ride_id"), "replayed": True}
+    if ride.get("status") != "active":
+        raise HTTPException(status_code=409, detail="Fahrt kann in diesem Status nicht pausiert werden")
+
+    device_id = ride.get("device_id")
+    if not device_id:
+        raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden")
+
+    command = await send_device_command(device_id, DeviceCommand.LOCK)
+    if not command.success:
+        raise HTTPException(status_code=503, detail="Scooter konnte für die Pause nicht sicher verriegelt werden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    changed = await db.scooter_rides.update_one(
+        {
+            "ride_id": ride["ride_id"],
+            "user_id": user_id,
+            "status": "active",
+        },
+        {
+            "$set": {
+                "status": "paused",
+                "paused_at": now,
+                "pause_lock_status": "confirmed",
+            },
+            "$push": {
+                "pause_history": {
+                    "action": "paused",
+                    "at": now,
+                }
+            },
+        },
+    )
+    if changed.modified_count != 1:
+        current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
+        if current.get("status") == "paused":
+            return {"ok": True, "status": "paused", "ride_id": ride["ride_id"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Fahrtstatus hat sich geändert; bitte neu laden")
+
+    return {"ok": True, "status": "paused", "ride_id": ride["ride_id"], "replayed": False}
+
+
+@router.post("/resume")
+async def resume_ride(req: PauseRideRequest, request: Request):
+    """Unlock a paused assigned scooter; the ride remains owned by the same user."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    if not TEST_MODE and not _iot_live_configured():
+        raise HTTPException(status_code=503, detail="Scooter-IoT ist nicht verfügbar; Fahrt kann nicht sicher fortgesetzt werden")
+
+    ride = await _get_owned_active_scooter_ride(user_id, req)
+    if not ride:
+        raise HTTPException(status_code=404, detail="Keine pausierte Scooter-Fahrt gefunden")
+    if ride.get("status") == "active":
+        return {"ok": True, "status": "active", "ride_id": ride.get("ride_id"), "replayed": True}
+    if ride.get("status") != "paused":
+        raise HTTPException(status_code=409, detail="Fahrt kann in diesem Status nicht fortgesetzt werden")
+
+    device_id = ride.get("device_id")
+    if not device_id:
+        raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden")
+
+    command = await send_device_command(device_id, DeviceCommand.UNLOCK)
+    if not command.success:
+        raise HTTPException(status_code=503, detail="Scooter konnte nicht sicher entsperrt werden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    changed = await db.scooter_rides.update_one(
+        {
+            "ride_id": ride["ride_id"],
+            "user_id": user_id,
+            "status": "paused",
+        },
+        {
+            "$set": {
+                "status": "active",
+                "resumed_at": now,
+                "resume_unlock_status": "confirmed",
+            },
+            "$unset": {
+                "paused_at": "",
+            },
+            "$push": {
+                "pause_history": {
+                    "action": "resumed",
+                    "at": now,
+                }
+            },
+        },
+    )
+    if changed.modified_count != 1:
+        current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
+        if current.get("status") == "active":
+            return {"ok": True, "status": "active", "ride_id": ride["ride_id"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Fahrtstatus hat sich geändert; bitte neu laden")
+
+    return {"ok": True, "status": "active", "ride_id": ride["ride_id"], "replayed": False}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # END RIDE / LOCK
 # ══════════════════════════════════════════════════════════════════════════════
