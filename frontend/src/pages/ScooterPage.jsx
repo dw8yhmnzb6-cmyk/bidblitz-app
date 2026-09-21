@@ -641,6 +641,7 @@ export default function ScooterPage({ onNavigate }) {
       }
     } catch {
       // Keep the same key across network failures/reloads for safe reconciliation.
+      setError('Netzwerkfehler beim Abo-Abschluss. Der sichere Wiederholungsversuch bleibt erhalten.');
     } finally {
       setSubLoading(false);
     }
@@ -652,8 +653,17 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/cancel-subscription`, {
         method: 'POST', credentials: 'include',
       });
-      if (res.ok) { setMySub(null); alert('Abo gekündigt'); }
-    } catch {}
+      if (res.ok) {
+        setMySub(null);
+        setError('');
+        alert('Abo gekündigt');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setError(typeof data.detail === 'string' ? data.detail : 'Abo konnte nicht gekündigt werden.');
+    } catch {
+      setError('Netzwerkfehler beim Kündigen des Abos.');
+    }
   };
 
   const pageBottomPadding = selectedScooter
