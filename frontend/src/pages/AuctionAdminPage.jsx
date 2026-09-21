@@ -5,7 +5,7 @@ import {
   Trash2, Settings, BarChart3, TrendingUp, Users, RefreshCw,
   Calendar, Bot, Zap, Package, ChevronRight, Check, X,
   Timer, DollarSign, Target, Layers, AlertCircle, Activity,
-  Sliders, Power, Eye, Edit3, Save, Truck
+  Sliders, Power, Eye, Edit3, Save, Truck, Crown
 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store";
@@ -42,6 +42,13 @@ const AuctionAdminPage = ({ onBack }) => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
   const [botConfig, setBotConfig] = useState({ enabled: true, target: 0, minSeconds: 60 });
+  const [showEngineModal, setShowEngineModal] = useState(null);
+  const [engineConfig, setEngineConfig] = useState({
+    featured: false,
+    bidValue: 0.50,
+    increment: 0.01,
+    revenueTarget: 50.00,
+  });
   const [showImageModal, setShowImageModal] = useState(null); // auction object or null
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
@@ -168,6 +175,37 @@ const AuctionAdminPage = ({ onBack }) => {
     if (res.ok) {
       toast.success(res.bot_enabled ? "Bot aktiviert" : "Bot deaktiviert");
       loadData();
+    }
+  };
+
+  // ─── Auction Engine ───
+  const openEngineConfig = (auction) => {
+    setEngineConfig({
+      featured: Boolean(auction.featured),
+      bidValue: Number(auction.bid_value_eur ?? 0.50),
+      increment: Number(auction.price_increment ?? 0.01),
+      revenueTarget: Number(auction.revenue_target_eur ?? 50.00),
+    });
+    setShowEngineModal(auction);
+  };
+
+  const saveEngineConfig = async () => {
+    if (!showEngineModal) return;
+    try {
+      await api(`/api/auctions/admin/auction/${showEngineModal.auction_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          featured: Boolean(engineConfig.featured),
+          bid_value_eur: Number(engineConfig.bidValue),
+          price_increment: Number(engineConfig.increment),
+          revenue_target_eur: Number(engineConfig.revenueTarget),
+        }),
+      });
+      toast.success("Auktions-Engine gespeichert");
+      setShowEngineModal(null);
+      await loadData();
+    } catch (err) {
+      toast.error(err?.detail || err?.message || "Engine-Einstellungen konnten nicht gespeichert werden");
     }
   };
 
@@ -353,6 +391,7 @@ const AuctionAdminPage = ({ onBack }) => {
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {[
             { id: "overview", label: "Übersicht", icon: <BarChart3 size={14} /> },
+            { id: "engine", label: "Auktions-Engine", icon: <Target size={14} /> },
             { id: "bots", label: "Bot-System", icon: <Bot size={14} /> },
             { id: "active", label: `Aktiv/Pausiert (${activeAuctions.length})`, icon: <Play size={14} /> },
             { id: "orders", label: `Bestellungen (${orders.length})`, icon: <Truck size={14} /> },
@@ -416,11 +455,62 @@ const AuctionAdminPage = ({ onBack }) => {
               ) : (
                 <div className="space-y-2">
                   {activeAuctions.slice(0, 5).map((a) => (
-                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} onImageClick={() => openImageEditor(a)} />
+                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} onImageClick={() => openImageEditor(a)} onEngineClick={() => openEngineConfig(a)} />
                   ))}
                 </div>
               )}
             </Card>
+          </div>
+        )}
+
+        {/* ═══ AUCTION ENGINE TAB ═══ */}
+        {activeTab === "engine" && (
+          <div className="space-y-3" data-testid="auction-admin-engine">
+            <Card title="Auktions-Engine" icon={<Target size={16} className="text-cyan-400" />}>
+              <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.06] p-3 text-xs leading-relaxed text-cyan-100/70">
+                Pro Angebot kannst du den nominalen Gebotswert, den sichtbaren Preis-Schritt, das Gebotsumsatz-Ziel und die Premium-Hervorhebung steuern. Der Umsatzrechner ist eine Kalkulation – kein garantierter Gewinn.
+              </div>
+            </Card>
+            {activeAuctions.length === 0 ? (
+              <EmptyState icon={<Target size={32} />} text="Keine aktiven oder pausierten Auktionen" />
+            ) : activeAuctions.map((auction) => {
+              const bidValue = Number(auction.bid_value_eur ?? 0.50);
+              const increment = Number(auction.price_increment ?? 0.01);
+              const target = Number(auction.revenue_target_eur ?? 0);
+              const bidsNeeded = target > 0 && bidValue > 0 ? Math.ceil(target / bidValue) : 0;
+              const visibleEnd = Number(auction.current_price || 0) + bidsNeeded * increment;
+              return (
+                <div key={auction.auction_id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                      {auction.featured ? <Crown size={18} className="text-yellow-400" /> : <Gavel size={18} className="text-cyan-400" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold">{auction.title}</p>
+                        {auction.featured && <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black text-yellow-300">PREMIUM</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/40">
+                        <span>Gebot: €{bidValue.toFixed(2)}</span>
+                        <span>Preis +€{increment.toFixed(2)}</span>
+                        <span>Ziel: €{target.toFixed(2)}</span>
+                      </div>
+                      {bidsNeeded > 0 && (
+                        <p className="mt-1 text-[10px] text-cyan-300/70">≈ {bidsNeeded} Gebote · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)}</p>
+                      )}
+                    </div>
+                    <motion.button
+                      onClick={() => openEngineConfig(auction)}
+                      className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[10px] font-black text-cyan-300"
+                      whileTap={{ scale: 0.96 }}
+                      data-testid={`auction-engine-open-${auction.auction_id}`}
+                    >
+                      Konfigurieren
+                    </motion.button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -737,6 +827,7 @@ const AuctionAdminPage = ({ onBack }) => {
                   onEnd={handleEnd}
                   onDelete={handleDelete}
                   onBotConfig={() => openBotConfig(a)}
+                  onEngineConfig={() => openEngineConfig(a)}
                 />
               ))
             )}
@@ -793,6 +884,126 @@ const AuctionAdminPage = ({ onBack }) => {
                   <ChevronRight size={18} className="text-white/30" />
                 </motion.button>
               ))}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ AUCTION ENGINE MODAL ═══ */}
+      <AnimatePresence>
+        {showEngineModal && (
+          <Modal onClose={() => setShowEngineModal(null)} title="Auktions-Engine konfigurieren">
+            <div className="space-y-4" data-testid="auction-engine-modal">
+              <div className="rounded-xl border border-white/5 bg-white/[0.025] p-3">
+                <p className="text-sm font-semibold">{showEngineModal.title}</p>
+                <p className="mt-1 text-xs text-white/40">Vor dem ersten echten Gebot editierbar.</p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-yellow-400/15 bg-yellow-400/[0.05] p-3">
+                <div>
+                  <p className="text-sm font-semibold text-yellow-200">Premium-Auktion</p>
+                  <p className="text-[10px] text-white/40">Als große Top-Deal-Karte hervorheben</p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={() => setEngineConfig(v => ({ ...v, featured: !v.featured }))}
+                  className={`flex h-7 w-12 items-center rounded-full px-1 ${engineConfig.featured ? "bg-yellow-400" : "bg-white/10"}`}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div className="h-5 w-5 rounded-full bg-white" animate={{ x: engineConfig.featured ? 20 : 0 }} />
+                </motion.button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Gebotswert</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-bid-value"
+                      type="number"
+                      min="0.01"
+                      max="10"
+                      step="0.01"
+                      value={engineConfig.bidValue}
+                      onChange={e => setEngineConfig(v => ({ ...v, bidValue: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-cyan-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Preis-Schritt</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-increment"
+                      type="number"
+                      min="0.01"
+                      max="1"
+                      step="0.01"
+                      value={engineConfig.increment}
+                      onChange={e => setEngineConfig(v => ({ ...v, increment: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-cyan-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Gebotsumsatz-Ziel</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-revenue-target"
+                      type="number"
+                      min="0"
+                      max="100000"
+                      step="1"
+                      value={engineConfig.revenueTarget}
+                      onChange={e => setEngineConfig(v => ({ ...v, revenueTarget: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-yellow-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+              </div>
+
+              {(() => {
+                const bidValue = Math.max(0.01, Number(engineConfig.bidValue) || 0.50);
+                const increment = Math.max(0.01, Number(engineConfig.increment) || 0.01);
+                const target = Math.max(0, Number(engineConfig.revenueTarget) || 0);
+                const bidsNeeded = target > 0 ? Math.ceil(target / bidValue) : 0;
+                const visibleIncrease = bidsNeeded * increment;
+                const estimatedEnd = Number(showEngineModal.current_price || 0) + visibleIncrease;
+                return (
+                  <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-4">
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Benötigte Gebote</p>
+                        <p className="mt-1 text-lg font-black text-white">{bidsNeeded}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Preis steigt</p>
+                        <p className="mt-1 text-lg font-black text-cyan-300">€{visibleIncrease.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Sichtbarer Preis</p>
+                        <p className="mt-1 text-lg font-black text-yellow-300">€{estimatedEnd.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[10px] leading-relaxed text-white/35">
+                      Beispiel: €{target.toFixed(2)} Gebotsumsatz bei €{bidValue.toFixed(2)} nominalem Gebotswert = ca. {bidsNeeded} Gebote. Das ist Umsatz aus Bid-Credits, nicht garantierter Nettogewinn.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <motion.button
+                type="button"
+                data-testid="auction-engine-save"
+                onClick={saveEngineConfig}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 py-3 font-black text-[#03131A]"
+                whileTap={{ scale: 0.98 }}
+              >
+                <Save size={17} /> Engine speichern
+              </motion.button>
             </div>
           </Modal>
         )}
@@ -1035,7 +1246,7 @@ const ActionBtn = ({ icon, label, onClick, color }) => (
   </motion.button>
 );
 
-const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
+const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick, onEngineClick }) => (
   <div className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
     {/* Thumbnail (click to edit) */}
     <button
@@ -1078,6 +1289,14 @@ const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
     </div>
     <div className="flex items-center gap-2">
       <span className="text-xs text-yellow-400 font-mono">{formatTime(auction.remaining_seconds)}</span>
+      <motion.button
+        onClick={onEngineClick}
+        className="p-1.5 rounded-lg bg-cyan-500/10"
+        whileTap={{ scale: 0.9 }}
+        title="Auktions-Engine"
+      >
+        <Target size={14} className="text-cyan-400" />
+      </motion.button>
       <motion.button 
         onClick={onBotClick} 
         className={`p-1.5 rounded-lg ${auction.bot_enabled ? "bg-purple-500/20" : "bg-white/5"}`}
@@ -1123,7 +1342,7 @@ const BotAuctionRow = ({ auction, formatTime, onToggle, onConfigure }) => (
   </div>
 );
 
-const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDelete, onBotConfig }) => (
+const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDelete, onBotConfig, onEngineConfig }) => (
   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }} layout>
     <div className="flex items-start gap-3 mb-3">
       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] flex items-center justify-center flex-shrink-0">
@@ -1174,6 +1393,9 @@ const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDele
           <Play size={12} className="inline mr-1" /> Weiter
         </motion.button>
       )}
+      <motion.button onClick={onEngineConfig} className="flex-1 py-2 rounded-lg bg-cyan-500/10 text-cyan-400 text-xs font-medium" whileTap={{ scale: 0.97 }}>
+        <Target size={12} className="inline mr-1" /> Engine
+      </motion.button>
       <motion.button onClick={onBotConfig} className="flex-1 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-medium" whileTap={{ scale: 0.97 }}>
         <Bot size={12} className="inline mr-1" /> Bot
       </motion.button>
