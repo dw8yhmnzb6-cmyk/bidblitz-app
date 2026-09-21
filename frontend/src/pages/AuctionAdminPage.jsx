@@ -676,7 +676,10 @@ const AuctionAdminPage = ({ onBack }) => {
             {/* Global Bot Settings */}
             <Card title="Globale Bot-Einstellungen" icon={<Settings size={16} className="text-white/40" />}>
               <div className="space-y-3">
-                <SettingRow label="Standard Bot aktiv" value={config?.bot_default_enabled ? "Ja" : "Nein"} />
+                <SettingRow
+                  label="Standard Bot aktiv"
+                  value={config?.bot_policy === "test_only" ? "Production: deaktiviert" : (config?.bot_default_enabled ? "Ja" : "Nein")}
+                />
                 <SettingRow label="Standard Zielpreis" value={`${config?.bot_default_target_percent || 15}% vom UVP`} />
                 <SettingRow label="Mindestzeit vor Bid" value="60 Sekunden" />
                 <SettingRow label="Bid-Wahrscheinlichkeit" value="30-40%" />
