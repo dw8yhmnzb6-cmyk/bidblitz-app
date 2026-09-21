@@ -352,9 +352,12 @@ export default function MiningPage({ onBack, onNavigate }) {
       if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       const msg = e.message || "Purchase failed";
       if (msg.toLowerCase().includes("insufficient")) {
-        setPurchaseError(t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.");
+        const balanceMessage = t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.";
+        setPurchaseError(balanceMessage);
+        toast.error(balanceMessage);
       } else {
         setPurchaseError(msg);
+        toast.error(msg);
       }
     }
     setBuying(null);
@@ -835,7 +838,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <motion.button
                             type="button"
                             data-testid={`mining-quick-buy-${pkg.id}`}
-                            disabled={buying === pkg.id}
+                            disabled={Boolean(buying)}
                             onClick={() => {
                               if (miningValueEnabled) {
                                 buyMiner(pkg.id, "onetime");
@@ -849,7 +852,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                             className="mt-2 w-full rounded-xl py-2 text-[8px] font-black disabled:opacity-50"
                             style={{ background: `${color}16`, border: `1px solid ${color}25`, color }}
                           >
-                            {buying === pkg.id ? "..." : miningValueEnabled ? "Jetzt kaufen" : "Ansehen"}
+                            {buying ? (buying === pkg.id ? "Kauft…" : "Warten") : miningValueEnabled ? "Jetzt kaufen" : "Ansehen"}
                           </motion.button>
                         </div>
                       );
