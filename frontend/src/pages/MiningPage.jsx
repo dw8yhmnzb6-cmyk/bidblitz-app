@@ -48,7 +48,7 @@ function getNowSnapshot() {
 }
 
 // ── Auto-Reward Countdown Component ──
-function AutoRewardCard({ reward, data, t, valueActionsEnabled }) {
+function AutoRewardCard({ reward, data, t, valueActionsEnabled, onClaim, claimBusy }) {
   const nowMs = useSyncExternalStore(subscribeToSecondTick, getNowSnapshot, getNowSnapshot);
   let countdown = "";
   if (reward?.claimed && reward?.next_reward_at) {
@@ -117,6 +117,17 @@ function AutoRewardCard({ reward, data, t, valueActionsEnabled }) {
           )}
         </div>
       </div>
+      {valueActionsEnabled && !isClaimed && miningNumber(reward?.amount) > 0 && (
+        <button
+          type="button"
+          data-testid="mining-claim-daily-btn"
+          onClick={onClaim}
+          disabled={claimBusy}
+          className="mt-3 w-full rounded-xl border border-[#00E89D]/20 bg-[#00E89D]/10 px-3 py-2.5 text-[11px] font-bold text-[#00E89D] disabled:opacity-50"
+        >
+          {claimBusy ? "Claim läuft…" : "Jetzt " + miningFixed(reward?.amount, 4) + " BLZ claimen"}
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -162,6 +173,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
+  const [claimingReward, setClaimingReward] = useState(false);
 
   const fetchMiningData = useCallback(async () => {
     // Dashboard is required. Optional Phase-2 panels may fail independently without blanking the whole page.
@@ -231,6 +243,20 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
   const shouldKeepAttemptKey = (error) =>
     !!error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+
+  const claimDailyReward = async () => {
+    if (!requireMiningValue()) return;
+    setClaimingReward(true);
+    try {
+      const result = await api("/api/mining/claim-daily", { method: "POST" });
+      toast.success("+" + miningFixed(result.claimed, 4) + " BLZ geclaimt");
+      await load();
+    } catch (error) {
+      toast.error(error?.message || "Mining Reward konnte nicht geclaimt werden.");
+    } finally {
+      setClaimingReward(false);
+    }
+  };
 
   const buyMiner = async (pkgId) => {
     if (!requireMiningValue()) return;
@@ -849,7 +875,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               )}
 
               {/* Auto Daily Reward Status */}
-              <AutoRewardCard reward={reward} data={data} t={t} valueActionsEnabled={miningValueEnabled} />
+              <AutoRewardCard
+                reward={reward}
+                data={data}
+                t={t}
+                valueActionsEnabled={miningValueEnabled}
+                onClaim={claimDailyReward}
+                claimBusy={claimingReward}
+              />
 
               {/* Referral Boost Indicator */}
               {ref.boost_active && (
