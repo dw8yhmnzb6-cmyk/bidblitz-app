@@ -197,6 +197,8 @@ async def create_indexes():
     await safe_create_index(db.mining_referrals, "referrer_id")
     await safe_create_index(db.mining_referrals, "referred_id")
     await safe_create_index(db.mining_launchpad_buys, [("user_id", 1), ("project_id", 1)], unique=True, critical=True)
+    await safe_create_index(db.blitz_mine_sessions, "session_id", unique=True, sparse=True, critical=True)
+    await safe_create_index(db.blitz_mine_sessions, "active_slot", unique=True, sparse=True, critical=True)
     await safe_create_index(db.loyalty_reward_claims, "claim_id", unique=True, critical=True)
     await safe_create_index(db.user_loyalty, "user_id", unique=True, critical=True)
     
