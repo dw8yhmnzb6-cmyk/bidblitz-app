@@ -1052,6 +1052,7 @@ def test_mining_launchpad_and_loyalty_rewards_are_ledger_backed_and_exactly_once
 def test_pos_cart_and_external_card_paths_fail_closed():
     pos_source = (BACKEND_DIR / "routes" / "pos_system.py").read_text(encoding="utf-8")
     checkout_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "pos" / "POSCheckoutTab.jsx").read_text(encoding="utf-8")
+    simple_pos_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MerchantPosSimplePage.jsx").read_text(encoding="utf-8")
 
     assert '"store_id": store_id' in pos_source
     assert 'quantity: float = Field(default=1, gt=0' in pos_source
@@ -1081,6 +1082,8 @@ def test_pos_cart_and_external_card_paths_fail_closed():
     assert 'if (!NFC_CERTIFIED) {' in checkout_source
     assert 'NFC ist noch nicht für Production zertifiziert.' in checkout_source
     assert 'data-testid="pos-nfc-preview-disabled"' in checkout_source
+    assert 'import { TEST_MODE } from "../config/testMode";' in simple_pos_source
+    assert 'externalCardCertified = TEST_MODE && process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED === "true"' in simple_pos_source
     assert 'offline_sale_id: offlineSaleId' in checkout_source
     assert 'captured_shift_id: q.shift_id' in checkout_source
     assert 'expected_total: q.total' in checkout_source
