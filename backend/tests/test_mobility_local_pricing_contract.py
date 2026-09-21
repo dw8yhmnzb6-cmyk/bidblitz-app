@@ -247,3 +247,13 @@ def test_taxi_does_not_fall_back_to_legacy_default_for_strict_regions():
     assert '"pricing_source": "mobility_profile_unavailable"' in taxi
     assert '"booking_supported": False' in taxi
     assert '"Für diesen Standort ist noch kein verifizierter Taxi-Tarif freigeschaltet."' in taxi
+
+
+def test_taxi_does_not_issue_quotes_for_unsupported_or_non_eur_fares():
+    taxi = read("backend/routes/taxi.py")
+
+    assert 'item.get("booking_supported") is False' in taxi
+    assert 'str(item.get("currency") or "EUR").upper() != "EUR"' in taxi
+    assert 'float(item.get("fare") or 0) <= 0' in taxi
+    assert 'item["quote_id"] = None' in taxi
+    assert 'item["quote_expires_at"] = None' in taxi
