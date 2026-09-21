@@ -738,7 +738,7 @@ function AppContent() {
       case "/merchant-landing":
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
-        return (isGuest && !isDemoMode)
+        return isGuest
           ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
           : <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />;
       case "/mining-trust":
@@ -883,7 +883,7 @@ function AppContent() {
       case "/blitz-boost":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-mine":
-        return (isGuest && !isDemoMode)
+        return isGuest
           ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
           : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/legal/agb":
