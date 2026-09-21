@@ -508,6 +508,18 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert '"product_cost_eur": round(float(req.product_cost_eur), 2)' in auctions_source
     assert '"target_net_profit_eur": round(float(req.target_net_profit_eur), 2)' in auctions_source
     assert 'updates["featured"] = bool(req.featured)' in auctions_source
+    assert "PUBLIC_AUCTION_PRIVATE_FIELDS" in auctions_source
+    assert "def _public_auction_view(auction: dict) -> dict:" in auctions_source
+    for private_field in [
+        "revenue_target_eur",
+        "product_cost_eur",
+        "shipping_cost_eur",
+        "other_costs_eur",
+        "target_net_profit_eur",
+    ]:
+        assert f'"{private_field}"' in auctions_source
+    assert auctions_source.count("auctions = [_public_auction_view(a) for a in auctions]") >= 3
+    assert "auction = _public_auction_view(auction)" in auctions_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
 
