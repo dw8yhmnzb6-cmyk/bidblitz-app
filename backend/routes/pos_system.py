@@ -276,6 +276,94 @@ def _is_pending_payment_active(payment: dict) -> bool:
         return True
 
 
+POS_PAYMENT_INTENT_LEASE_SECONDS = 30
+
+
+async def _claim_pos_payment_intent(cart_id: str, method: str) -> tuple[str, Optional[dict], bool]:
+    """Serialize payment creation per cart without relying on historical unique indexes."""
+    intent_id = f"cart:{cart_id}"
+    for _ in range(4):
+        now = datetime.now(timezone.utc)
+        now_value = now.isoformat()
+        intent = await db.pos_payment_intents.find_one({"_id": intent_id})
+
+        if not intent:
+            payment_id = short_id("PAY", 12)
+            doc = {
+                "_id": intent_id,
+                "cart_id": cart_id,
+                "payment_id": payment_id,
+                "method": method,
+                "status": "creating",
+                "version": 1,
+                "lease_until": (now + timedelta(seconds=POS_PAYMENT_INTENT_LEASE_SECONDS)).isoformat(),
+                "created_at": now_value,
+                "updated_at": now_value,
+            }
+            try:
+                await db.pos_payment_intents.insert_one(doc)
+                return payment_id, None, True
+            except Exception:
+                continue
+
+        payment_id = str(intent.get("payment_id") or "")
+        payment = (
+            await db.pos_payments.find_one({"payment_id": payment_id}, {"_id": 0})
+            if payment_id
+            else None
+        )
+        if payment:
+            status = payment.get("status")
+            if status == PAYMENT_STATUS_PAID:
+                return payment_id, payment, False
+            if status == PAYMENT_STATUS_RECONCILIATION:
+                return payment_id, payment, False
+            if status == PAYMENT_STATUS_PENDING and _is_pending_payment_active(payment):
+                return payment_id, payment, False
+            if status not in {PAYMENT_STATUS_PENDING, PAYMENT_STATUS_EXPIRED, PAYMENT_STATUS_CANCELLED, PAYMENT_STATUS_REFUNDED}:
+                raise HTTPException(
+                    status_code=503,
+                    detail="POS-Zahlungszustand ist unbekannt und muss vor einem neuen Versuch abgestimmt werden.",
+                )
+
+        lease_until = str(intent.get("lease_until") or "")
+        if not payment and intent.get("status") == "creating" and lease_until > now_value:
+            raise HTTPException(
+                status_code=503,
+                detail="POS-Zahlungsversuch wird bereits erstellt. Bitte denselben Warenkorbstatus erneut prüfen.",
+            )
+
+        version = int(intent.get("version") or 1)
+        next_payment_id = short_id("PAY", 12)
+        claimed = await db.pos_payment_intents.update_one(
+            {"_id": intent_id, "version": version},
+            {
+                "$set": {
+                    "payment_id": next_payment_id,
+                    "method": method,
+                    "status": "creating",
+                    "lease_until": (now + timedelta(seconds=POS_PAYMENT_INTENT_LEASE_SECONDS)).isoformat(),
+                    "updated_at": now_value,
+                },
+                "$inc": {"version": 1},
+            },
+        )
+        if claimed.modified_count == 1:
+            return next_payment_id, None, True
+
+    raise HTTPException(
+        status_code=409,
+        detail="POS-Zahlungsversuch wurde parallel verändert. Bitte Zahlungsstatus erneut laden.",
+    )
+
+
+async def _set_pos_payment_intent_status(cart_id: str, payment_id: str, status: str) -> None:
+    await db.pos_payment_intents.update_one(
+        {"_id": f"cart:{cart_id}", "payment_id": payment_id},
+        {"$set": {"status": status, "updated_at": now_iso()}},
+    )
+
+
 class PaymentConfirm(BaseModel):
     payment_id: str
 
@@ -995,8 +1083,25 @@ async def create_payment(req: PaymentCreate, request: Request):
 
     fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE))
     total = float(cart["total"])
-    payment_id = short_id("PAY", 12)
     now = datetime.now(timezone.utc)
+
+    if req.method not in {"wallet_qr", "barcode", "cash", "card_external"}:
+        raise HTTPException(status_code=400, detail=f"Methode '{req.method}' nicht unterstützt")
+    if req.method == "cash" and (req.cash_received is None or req.cash_received < total):
+        raise HTTPException(status_code=400, detail=f"Bargeld zu wenig (€{total:.2f} nötig)")
+    if req.method == "card_external":
+        if not TEST_MODE:
+            raise HTTPException(
+                status_code=503,
+                detail="Externe Kartenzahlung bleibt in Production deaktiviert, bis die Terminal-Provider-Referenz serverseitig verifiziert wird.",
+            )
+        if os.environ.get("POS_EXTERNAL_CARD_CERTIFIED", "").lower() != "true":
+            raise HTTPException(
+                status_code=503,
+                detail="Testmodus-Terminal ist nicht als zertifizierter Simulator aktiviert.",
+            )
+        if not req.card_reference or req.card_reference.startswith("CARD-"):
+            raise HTTPException(status_code=400, detail="Verifizierte Provider-Referenz erforderlich")
 
     existing_pending = await db.pos_payments.find_one(
         {"cart_id": cart["cart_id"], "status": PAYMENT_STATUS_PENDING},
@@ -1050,6 +1155,40 @@ async def create_payment(req: PaymentCreate, request: Request):
             approval = await request_manager_approval(actor, "secure_payment", total, {"store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"], "description": f"POS Cart {cart['cart_id']}"}, "Large payment requires manager approval")
             return {"ok": True, "status": "approval_required", "approval": approval, "message": "Zahlung wartet auf Manager-Freigabe"}
 
+    payment_id, intent_payment, intent_claimed = await _claim_pos_payment_intent(cart["cart_id"], req.method)
+    if intent_payment:
+        if intent_payment.get("status") == PAYMENT_STATUS_PAID:
+            sale = await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0})
+            if not sale:
+                sale = await _finalise_sale(
+                    intent_payment,
+                    cart,
+                    intent_payment.get("customer_id"),
+                    intent_payment.get("method", req.method),
+                    float(intent_payment.get("fee_amount") or 0),
+                    float(cart.get("total") or 0),
+                )
+            return {
+                "ok": True,
+                "payment": intent_payment,
+                "sale": sale,
+                "status": "already_paid",
+                "message": "Dieser Warenkorb wurde bereits bezahlt.",
+            }
+        if intent_payment.get("status") == PAYMENT_STATUS_RECONCILIATION:
+            raise HTTPException(
+                status_code=503,
+                detail="POS-Zahlung benötigt Abstimmung; keine neue Zahlung wird erzeugt.",
+            )
+        if intent_payment.get("status") == PAYMENT_STATUS_PENDING and _is_pending_payment_active(intent_payment):
+            return {
+                "ok": True,
+                "payment": intent_payment,
+                "awaiting_customer": intent_payment.get("method") in ("wallet_qr", "barcode"),
+                "status": "pending_existing",
+                "message": "Bestehender Zahlungsversuch wird noch geprüft.",
+            }
+
     payment_doc = {
         "payment_id": payment_id,
         "idempotency_key": f"pos:{cart['cart_id']}:{req.method}",
@@ -1070,35 +1209,23 @@ async def create_payment(req: PaymentCreate, request: Request):
 
     # ─── Cash ───
     if req.method == "cash":
-        if req.cash_received is None or req.cash_received < total:
-            raise HTTPException(status_code=400, detail=f"Bargeld zu wenig (€{total:.2f} nötig)")
         payment_doc["status"] = PAYMENT_STATUS_PAID
         payment_doc["paid_at"] = now.isoformat()
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PAID)
         sale = await _finalise_sale(payment_doc, cart, None, "cash", 0, req.cash_received)
         return {"ok": True, "payment": payment_doc, "sale": sale}
 
     # ─── Card external ───
     # Fail closed until a certified terminal/provider integration verifies the charge.
     if req.method == "card_external":
-        if not TEST_MODE:
-            raise HTTPException(
-                status_code=503,
-                detail="Externe Kartenzahlung bleibt in Production deaktiviert, bis die Terminal-Provider-Referenz serverseitig verifiziert wird.",
-            )
-        if os.environ.get("POS_EXTERNAL_CARD_CERTIFIED", "").lower() != "true":
-            raise HTTPException(
-                status_code=503,
-                detail="Testmodus-Terminal ist nicht als zertifizierter Simulator aktiviert.",
-            )
-        if not req.card_reference or req.card_reference.startswith("CARD-"):
-            raise HTTPException(status_code=400, detail="Verifizierte Provider-Referenz erforderlich")
         payment_doc["status"] = PAYMENT_STATUS_PAID
         payment_doc["paid_at"] = now.isoformat()
         payment_doc["card_reference"] = req.card_reference
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PAID)
         sale = await _finalise_sale(payment_doc, cart, None, "card_external", 0, total)
         return {"ok": True, "payment": payment_doc, "sale": sale}
 
@@ -1121,6 +1248,7 @@ async def create_payment(req: PaymentCreate, request: Request):
 
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PENDING)
 
         if immediate_user:
             return await _settle_wallet_payment(payment_doc, cart, immediate_user, fee_rate)
