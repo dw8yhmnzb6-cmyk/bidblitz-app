@@ -1614,6 +1614,61 @@ async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: Fle
     return quote_doc
 
 
+async def _ensure_taxi_settlement_reporting(
+    *,
+    driver_id: str,
+    ride_id: str,
+    driver_earnings: float,
+    platform_fee: float,
+    settled_at: Optional[str] = None,
+) -> None:
+    """Idempotently project a settled ride into driver stats and platform revenue."""
+    marker_hash = hashlib.sha256(str(ride_id).encode("utf-8")).hexdigest()[:24]
+    timestamp = settled_at or datetime.now(timezone.utc).isoformat()
+
+    driver_marker = f"settled_ride_markers.{marker_hash}"
+    await db.drivers.update_one(
+        {"driver_id": driver_id, driver_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "total_rides": 1,
+                "total_earnings": float(driver_earnings or 0),
+            },
+            "$set": {
+                driver_marker: {
+                    "ride_id": ride_id,
+                    "amount": float(driver_earnings or 0),
+                    "settled_at": timestamp,
+                }
+            },
+        },
+    )
+
+    revenue_date = str(timestamp)[:10] if timestamp else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.platform_revenue.update_one(
+        {"date": revenue_date},
+        {"$setOnInsert": {"date": revenue_date}},
+        upsert=True,
+    )
+    revenue_marker = f"taxi_ride_markers.{marker_hash}"
+    await db.platform_revenue.update_one(
+        {"date": revenue_date, revenue_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "total": float(platform_fee or 0),
+                "by_source.taxi_fees": float(platform_fee or 0),
+            },
+            "$set": {
+                revenue_marker: {
+                    "ride_id": ride_id,
+                    "amount": float(platform_fee or 0),
+                    "settled_at": timestamp,
+                }
+            },
+        },
+    )
+
+
 def _taxi_quote_metadata(matched_zone: Optional[dict], time_info: dict) -> tuple[Optional[dict], dict]:
     tariff_zone = None
     if matched_zone:
@@ -2961,6 +3016,13 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             "driver_earnings": float(ride.get("driver_earnings") or 0),
             "platform_fee": float(ride.get("platform_fee") or 0),
         }
+        await _ensure_taxi_settlement_reporting(
+            driver_id=driver["driver_id"],
+            ride_id=req.ride_id,
+            driver_earnings=replay_fare["driver_earnings"],
+            platform_fee=replay_fare["platform_fee"],
+            settled_at=ride.get("completed_at") or ride.get("ended_at"),
+        )
         return {
             "ok": True,
             "ride_summary": {
@@ -3093,45 +3155,12 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             "platform_fee": float(current.get("platform_fee") or fare["platform_fee"]),
         }
 
-    marker_hash = hashlib.sha256(str(req.ride_id).encode("utf-8")).hexdigest()[:24]
-    driver_marker = f"settled_ride_markers.{marker_hash}"
-    await db.drivers.update_one(
-        {"driver_id": driver["driver_id"], driver_marker: {"$exists": False}},
-        {
-            "$inc": {
-                "total_rides": 1,
-                "total_earnings": fare["driver_earnings"],
-            },
-            "$set": {
-                driver_marker: {
-                    "ride_id": req.ride_id,
-                    "amount": fare["driver_earnings"],
-                    "settled_at": now.isoformat(),
-                }
-            },
-        },
-    )
-    
-    # Record platform revenue once per ride.
-    revenue_date = now.strftime("%Y-%m-%d")
-    await db.platform_revenue.update_one(
-        {"date": revenue_date},
-        {"$setOnInsert": {"date": revenue_date}},
-        upsert=True,
-    )
-    revenue_marker = f"taxi_ride_markers.{marker_hash}"
-    await db.platform_revenue.update_one(
-        {"date": revenue_date, revenue_marker: {"$exists": False}},
-        {
-            "$inc": {"total": fare["platform_fee"], "by_source.taxi_fees": fare["platform_fee"]},
-            "$set": {
-                revenue_marker: {
-                    "ride_id": req.ride_id,
-                    "amount": fare["platform_fee"],
-                    "settled_at": now.isoformat(),
-                }
-            },
-        },
+    await _ensure_taxi_settlement_reporting(
+        driver_id=driver["driver_id"],
+        ride_id=req.ride_id,
+        driver_earnings=fare["driver_earnings"],
+        platform_fee=fare["platform_fee"],
+        settled_at=now.isoformat(),
     )
     
     return {
