@@ -91,7 +91,7 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
             "min_balance": round(float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0), 2),
             "minimum_charge": round(float(mode.get("minimum", mode.get("base", UNLOCK_FEE)) or 0), 2),
             "currency": local_currency,
-            "profile_scope": context.get("profile_scope") or "country",
+            "profile_scope": (context.get("mode_scopes") or {}).get("scooter", context.get("profile_scope") or "country"),
             "source": context.get("source") or pricing["source"],
             "city": context.get("city") or "",
             "country": context.get("country") or context.get("region") or "",
@@ -108,7 +108,13 @@ async def _resolve_scooter_pricing(lat: Optional[float] = None, lng: Optional[fl
     except HTTPException:
         raise
     except Exception as exc:
-        logger.warning("Scooter tariff resolution failed, using fallback: %s", exc)
+        logger.warning("Scooter tariff resolution failed closed: %s", exc)
+        pricing.update({
+            "available": False,
+            "billing_supported": False,
+            "basis": "Lokaler Scooter-Tarif konnte nicht verifiziert werden. Fahrtstart ist vorübergehend gesperrt.",
+            "source": "pricing_resolution_failed",
+        })
         return pricing
 
 
