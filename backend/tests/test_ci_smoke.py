@@ -2150,6 +2150,11 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert "LaunchpadBuyRequest" in phase2
     assert 'Idempotency-Key erforderlich' in phase2
     assert 'idempotency_key=idempotency_key' in phase2
+    assert 'required_vip = str(project.get("min_vip") or "Bronze")' in phase2
+    assert 'detail=f"VIP-Level {required_vip} erforderlich"' in phase2
+    assert 'purchase.get("status") == "reconciliation_required"' in phase2
+    assert '"refund_error": refund.error' in phase2
+    assert "Rückbuchung benötigt finanzielle Abstimmung" in phase2
     assert "class CardSpendRequest(BaseModel):" in phase2
     assert "class UpgradeCardRequest(BaseModel):" in phase2
     assert phase2.count("idempotency_key: Optional[str] = None") >= 4
@@ -2161,6 +2166,8 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'card_upgrade_refunds' in phase2
     assert 'daily_spend = card.get("daily_spend_eur")' in phase2
     assert 'has_persisted_daily_spend = today in daily_spend' in phase2
+    assert '"card_number": str(card.get("card_number") or "TEST •••• 0000")' in phase2
+    assert '"is_demo": True' in phase2
     assert 'marketplace_listing_id' in phase2
     assert 'marketplace_listing_price_blz' in phase2
     assert 'ownership_already_applied' in phase2
@@ -2189,6 +2196,7 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert "launchpadPurchaseKeysRef" in mining_page
     assert "cardUpgradeKeysRef" in mining_page
     assert 'body: JSON.stringify({ frozen: desiredFrozen })' in mining_page
+    assert 'c.is_demo ? "Test Card" : "Card"' in mining_page
     assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 7
     assert mining_page.count("idempotency_key: idempotencyKey") >= 7
     assert "shouldKeepAttemptKey" in mining_page
