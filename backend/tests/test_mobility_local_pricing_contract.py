@@ -125,3 +125,10 @@ def test_scooter_local_minimum_fare_is_enforced_end_to_end():
     assert 'const minimumCharge = Number(rental.minimum_charge ?? pricing.minimum_charge' in page
     assert 'Math.min(Math.max(cost, minimumCharge)' in page
     assert '>Mindestpreis<' in page
+
+
+def test_taxi_local_mode_is_initialized_before_vehicle_multiplier():
+    taxi = read("backend/routes/taxi.py")
+    mode_pos = taxi.index('mode = (pricing_context.get("modes") or {}).get("taxi") or {}')
+    multiplier_pos = taxi.index('vehicle_multiplier = {', mode_pos)
+    assert mode_pos < multiplier_pos
