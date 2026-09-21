@@ -248,6 +248,8 @@ def test_banned_customers_remain_visible_in_admin_filters():
     handler = backend[start:end]
 
     assert '{"account_closure_status": {"$ne": "admin_closed"}}' in handler
+    assert '{"banned": True}' in handler
+    assert '"is_disabled": {"$ne": True}' in handler
     assert 'if status == "banned":' in handler
     assert 'query["$and"].append({"banned": True})' in handler
     active_block = handler[handler.index('elif status == "active":'):]
