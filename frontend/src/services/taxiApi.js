@@ -277,7 +277,8 @@ export async function validatePromoCode(code) {
 }
 
 export async function bookRideApi({
-  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null, idempotencyKey = null,
+  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null,
+  idempotencyKey, quoteId,
 }) {
   const body = {
     pickup_address: pickup.address || "",
@@ -303,27 +304,35 @@ export async function bookRideApi({
     recipient_phone: options.recipientPhone || null,
     booking_mode: options.bookingMode || "now",
     promo_code: promoCode || null,
+    quote_id: quoteId || null,
     idempotency_key: idempotencyKey || null,
   };
+  const headers = {
+    "Content-Type": "application/json",
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+  };
   const res = await safeFetch(`${API}/api/taxi/book`, {
-    ...credJson,
+    credentials: "include",
+    headers,
     method: "POST",
-    headers: {
-      ...credJson.headers,
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
     body: JSON.stringify(body),
   });
-  if (!res) return { ok: false, error: "Buchung momentan nicht möglich", status: 0, retryable: true };
+  if (!res) return { ok: false, error: "Buchung momentan nicht möglich", retryable: true, code: "network" };
   const data = await readJson(res);
-  return res.ok
-    ? { ok: true, ride: data?.ride, replayed: Boolean(data?.replayed), status: res.status }
-    : {
-        ok: false,
-        error: typeof data?.detail === "string" ? data.detail : data?.detail?.message || "Buchung fehlgeschlagen",
-        status: res.status,
-        retryable: res.status >= 500,
-      };
+  if (res.ok) {
+    return {
+      ok: true,
+      ride: data?.ride,
+      replayed: Boolean(data?.replayed),
+      matching_drivers: Number(data?.matching_drivers || 0),
+    };
+  }
+  return {
+    ok: false,
+    error: typeof data?.detail === "string" ? data.detail : data?.detail?.message || "Buchung fehlgeschlagen",
+    retryable: res.status >= 500,
+    status: res.status,
+  };
 }
 
 export async function cancelRideApi(rideId, reason = null) {
