@@ -109,6 +109,7 @@ const CustomersTab = () => {
   const [legacyLoading, setLegacyLoading] = useState(true);
   const [sendingResetId, setSendingResetId] = useState(null);
   const [fixingAuthId, setFixingAuthId] = useState(null);
+  const [permissions, setPermissions] = useState({ can_manage_privileged_roles: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,7 +121,9 @@ const CustomersTab = () => {
       else if (filter === "merchant") params.set("role", "merchant");
       const res = await fetch(`${API}/api/admin/customers?${params}`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Kunden konnten nicht geladen werden");
       setCustomers(data.customers || []);
+      setPermissions(data.permissions || { can_manage_privileged_roles: false });
     } catch (err) {
       toast.error("Fehler: " + err.message);
     }
@@ -326,6 +329,7 @@ const CustomersTab = () => {
       {selected && (
         <CustomerDetailModal
           customer={selected}
+          permissions={permissions}
           onClose={() => setSelected(null)}
           onChanged={() => { setSelected(null); load(); }}
         />
@@ -435,8 +439,11 @@ const AuthHealthTab = () => {
   );
 };
 
-const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
+const CustomerDetailModal = ({ customer, permissions, onClose, onChanged }) => {
   const [loading, setLoading] = useState(false);
+  const canManagePrivileged = Boolean(permissions?.can_manage_privileged_roles);
+  const privilegedTarget = ["admin", "super_admin"].includes(String(customer.role || ""));
+  const privilegedActionBlocked = privilegedTarget && !canManagePrivileged;
   const [showPwForm, setShowPwForm] = useState(false);
 
   const doAction = async (url, body, successMsg, method = "POST") => {
@@ -507,6 +514,12 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           </div>
         )}
 
+        {privilegedActionBlocked && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="customer-privileged-action-note">
+            Dieses privilegierte Konto kann nur vom Hauptadmin/Super-Admin sicherheitsrelevant geändert werden.
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -530,8 +543,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <button
             data-testid="customer-action-ban"
             onClick={ban}
-            disabled={loading}
-            className={`w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 ${
+            disabled={loading || privilegedActionBlocked}
+            className={`w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 ${
               customer.banned ? "bg-green-500 text-white" : "bg-red-500 text-white"
             }`}
           >
@@ -544,7 +557,11 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
                 key={r}
                 data-testid={`customer-role-${r}`}
                 onClick={() => setRole(r)}
-                disabled={loading || customer.role === r}
+                disabled={
+                  loading ||
+                  customer.role === r ||
+                  (!canManagePrivileged && (r === "admin" || privilegedTarget))
+                }
                 className={`py-2 rounded-xl text-[11px] font-semibold ${
                   customer.role === r ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"
                 }`}
@@ -558,7 +575,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
             <button
               data-testid="customer-action-pw"
               onClick={() => setShowPwForm(true)}
-              className="w-full py-2.5 rounded-xl bg-gray-100 text-[13px] font-semibold flex items-center justify-center gap-2"
+              disabled={privilegedActionBlocked}
+              className="w-full py-2.5 rounded-xl bg-gray-100 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Key size={14} /> Reset-Link senden
             </button>
@@ -577,8 +595,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <button
             data-testid="customer-action-delete"
             onClick={del}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2"
+            disabled={loading || privilegedActionBlocked}
+            className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Trash2 size={14} /> Konto schließen
           </button>
