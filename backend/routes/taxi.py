@@ -8,6 +8,7 @@ import secrets
 import math
 import logging
 import hashlib
+import json
 from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -1215,6 +1216,22 @@ class RideMessageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=400)
 
 
+def _require_taxi_booking_idempotency_key(req: FlexBookRequest, request: Request) -> str:
+    key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
+
+
+def _taxi_booking_request_fingerprint(req: FlexBookRequest) -> str:
+    if hasattr(req, "model_dump"):
+        payload = req.model_dump(exclude={"idempotency_key"})
+    else:
+        payload = req.dict(exclude={"idempotency_key"})
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
 def NumberErrorSafe(lat, lng) -> bool:
     try:
         return lat is not None and lng is not None and math.isfinite(float(lat)) and math.isfinite(float(lng))
@@ -1998,7 +2015,26 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+    client_key = _require_taxi_booking_idempotency_key(req, request)
+    request_fingerprint = _taxi_booking_request_fingerprint(req)
+    ride_digest = hashlib.sha256(f"{user_id}:{client_key}".encode("utf-8")).hexdigest()
+    ride_id = ride_digest[:16]
+
+    existing_ride = await db.taxi_rides.find_one(
+        {"_id": ride_id, "customer_id": user_id},
+        {"_id": 0},
+    )
+    if existing_ride:
+        if existing_ride.get("booking_request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        return {
+            "ok": True,
+            "ride": existing_ride,
+            "matching_drivers": int(existing_ride.get("matching_drivers_notified") or 0),
+            "message": "Taxi-Buchung bereits verarbeitet.",
+            "replayed": True,
+        }
+
     balance = float(user.get("balance", 0) or 0)
     
     active = await db.taxi_rides.find_one({
@@ -2098,7 +2134,6 @@ async def book_ride(req: FlexBookRequest, request: Request):
         )
     
     now = datetime.now(timezone.utc)
-    ride_id = secrets.token_hex(8)
 
     reservation = await debit_wallet(
         user_id=user_id,
@@ -2107,7 +2142,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         description=f"Taxi-Reservierung: {p_addr or 'Abholung'} → {d_addr or 'Ziel'}",
         reference=f"TAXI-HOLD-{ride_id[:8].upper()}",
         metadata={"ride_id": ride_id, "kind": "taxi_reservation"},
-        idempotency_key=f"taxi-reserve:{ride_id}",
+        idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
     )
     if not reservation.success:
         raise HTTPException(
@@ -2118,6 +2153,8 @@ async def book_ride(req: FlexBookRequest, request: Request):
     ride = {
         "ride_id": ride_id,
         "customer_id": user_id,
+        "booking_idempotency_key": client_key,
+        "booking_request_fingerprint": request_fingerprint,
         "customer_name": user.get("name", ""),
         "customer_phone": user.get("phone", ""),
         "driver_id": None,
@@ -2180,10 +2217,24 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
     
+    ride_doc = {"_id": ride_id, **ride}
     try:
-        await db.taxi_rides.insert_one(ride)
+        write_result = await db.taxi_rides.update_one(
+            {"_id": ride_id, "customer_id": user_id},
+            {"$setOnInsert": ride_doc},
+            upsert=True,
+        )
     except Exception as exc:
-        logger.exception("Taxi ride insert failed after wallet reservation: %s", exc)
+        current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0})
+        if current and current.get("booking_request_fingerprint") == request_fingerprint:
+            return {
+                "ok": True,
+                "ride": current,
+                "matching_drivers": int(current.get("matching_drivers_notified") or 0),
+                "message": "Taxi-Buchung bereits verarbeitet.",
+                "replayed": True,
+            }
+        logger.exception("Taxi ride persist failed after wallet reservation: %s", exc)
         try:
             await credit_wallet(
                 user_id=user_id,
@@ -2198,7 +2249,18 @@ async def book_ride(req: FlexBookRequest, request: Request):
         except Exception as refund_exc:
             logger.exception("Taxi booking reservation rollback failed: %s", refund_exc)
         raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wird zurückgebucht.")
-    ride.pop("_id", None)
+
+    if write_result.upserted_id is None:
+        current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0}) or {}
+        if current.get("booking_request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        return {
+            "ok": True,
+            "ride": current,
+            "matching_drivers": int(current.get("matching_drivers_notified") or 0),
+            "message": "Taxi-Buchung bereits verarbeitet.",
+            "replayed": True,
+        }
 
     # Promo redemption tracking (idempotent per ride)
     if promo_applied:
@@ -2282,11 +2344,18 @@ async def book_ride(req: FlexBookRequest, request: Request):
             "created_at": now.isoformat(),
         })
     
+    await db.taxi_rides.update_one(
+        {"_id": ride_id, "customer_id": user_id},
+        {"$set": {"matching_drivers_notified": len(matching_drivers)}},
+    )
+    ride["matching_drivers_notified"] = len(matching_drivers)
+
     return {
         "ok": True,
         "ride": ride,
         "matching_drivers": len(matching_drivers),
         "message": f"Fahrt angefragt. {len(matching_drivers)} Fahrer in der Nähe.",
+        "replayed": False,
     }
 
 
