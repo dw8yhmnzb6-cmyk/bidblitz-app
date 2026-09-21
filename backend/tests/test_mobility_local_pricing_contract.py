@@ -314,3 +314,20 @@ def test_scooter_debt_settlement_happens_after_tariff_confirmation():
     debt_pos = scooter.index("outstanding = await _settle_outstanding_scooter_debts(user)", hash_pos)
     device_pos = scooter.index("device_id = scooter.get(\"device_id\")", debt_pos)
     assert hash_pos < debt_pos < device_pos
+
+
+def test_scooter_unlock_replay_never_treats_cancelled_attempt_as_success():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert 'existing_ride.get("status") not in {"active", "paused", "completed"}' in scooter
+    assert '"error": "unlock_attempt_not_replayable"' in scooter
+    assert '"error": "pricing_changed"' in scooter
+
+    assert "const unlockAttemptScooterRef = useRef(null);" in page
+    assert "unlockAttemptScooterRef.current !== scooter.scooter_id" in page
+    assert "unlockAttemptScooterRef.current = scooter.scooter_id" in page
+    assert "unlockAttemptKeyRef.current = null;" in page
+    assert "unlockAttemptScooterRef.current = null;" in page
+    assert "errorCode === 'pricing_changed'" in page
+    assert "const detailMessage = typeof err?.detail === 'string'" in page
