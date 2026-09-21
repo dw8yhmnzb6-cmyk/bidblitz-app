@@ -56,3 +56,32 @@ def test_admin_module_query_selection_tracks_route_changes():
     assert "MODULE_DEFS.find((m) => m.key === initialModule) || null" in page
     assert "setSelectedMod(requested)" in page
     assert "}, [initialModule]);" in page
+
+
+def test_live_ev_admin_uses_canonical_sources_and_stays_read_only():
+    backend = read("backend/routes/admin_management.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+    ladesaeulen = read("backend/routes/ladesaeulen.py")
+
+    assert '"ladesaeulen": ("ev_stations", "name")' in backend
+    assert 'if module_key == "ladesaeulen" and not TEST_MODE:' in backend
+    assert '"collection": "ev_charge_points"' in backend
+    assert '"read_only": True' in backend
+    assert 'data-testid="module-read-only-note"' in page
+    assert 'db.ev_stations.find' in ladesaeulen
+    assert 'db.ev_charge_points.find' in ladesaeulen
+
+
+def test_scooter_subscription_admin_and_customer_share_same_plan_source():
+    backend = read("backend/routes/admin_management.py")
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert "async def _get_scooter_plans()" in scooter
+    assert "plans = await _get_scooter_plans()" in scooter
+    assert 'await db.scooter_plans.find({}, {"_id": 0})' in scooter
+    assert 'if row.get("enabled") is False:' in scooter
+    assert 'if module_key == "scooter-abos":' in backend
+    assert 'from routes.scooter import _get_scooter_plans' in backend
+    assert '"enabled": False' in backend
+    assert 'fields: ["plan_id", "name", "duration", "price", "duration_days", "unlock_fee", "free_minutes_per_day", "per_minute_rate"]' in page
