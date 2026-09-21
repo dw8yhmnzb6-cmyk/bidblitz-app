@@ -693,7 +693,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         raise HTTPException(status_code=503, detail="Scooter-Modul ist deaktiviert")
     if not TEST_MODE and not _iot_live_configured():
         raise HTTPException(status_code=503, detail="Scooter-IoT ist noch nicht für Livebetrieb verbunden")
-    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+    if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":
         raise HTTPException(
             status_code=403,
             detail={
@@ -1820,7 +1820,7 @@ class UpdateScooterAdminRequest(BaseModel):
 async def admin_add_scooter(req: AddScooterRequest, request: Request):
     """Admin: Add a new scooter with IoT device."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     device_id = str(req.device_id or "").strip()
@@ -1864,7 +1864,7 @@ async def admin_add_scooter(req: AddScooterRequest, request: Request):
 async def admin_update_scooter(scooter_id: str, req: UpdateScooterAdminRequest, request: Request):
     """Admin: Update scooter details."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     scooter = await db.scooters.find_one({"scooter_id": scooter_id})
@@ -1925,7 +1925,7 @@ async def admin_update_scooter(scooter_id: str, req: UpdateScooterAdminRequest, 
 async def admin_delete_scooter(scooter_id: str, request: Request):
     """Admin: Remove scooter from fleet."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     scooter = await db.scooters.find_one({"scooter_id": scooter_id})
@@ -1960,7 +1960,7 @@ async def admin_delete_scooter(scooter_id: str, request: Request):
 async def admin_send_command(scooter_id: str, request: Request):
     """Admin: Send command to scooter device."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     body = await request.json()
@@ -2030,7 +2030,7 @@ async def admin_send_command(scooter_id: str, request: Request):
 async def admin_get_fleet(request: Request):
     """Admin: Get full fleet overview with stats."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     scooters = await db.scooters.find({}, {"_id": 0}).to_list(500)
@@ -2394,7 +2394,7 @@ async def redeem_share_code(req: RedeemShareCodeRequest, request: Request):
     guest_id = str(user["_id"])
     guest_email = user.get("email", "")
 
-    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+    if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":
         raise HTTPException(
             status_code=403,
             detail={
