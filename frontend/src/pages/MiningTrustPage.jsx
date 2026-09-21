@@ -20,7 +20,7 @@ const copy = {
   de: {
     badge: "Mining Infrastruktur",
     title: "Unsere Bitcoin-Mining-Server",
-    subtitle: "Transparenz schafft Vertrauen: Wir zeigen unsere Mining-Infrastruktur, unsere ASIC-Systeme und unsere Standorte in Dubai und Abu Dhabi.",
+    subtitle: "Preview der geplanten Mining-Trust-Seite. Hardware, Standorte, Hashrate, Uptime und Videos gelten erst nach verifizierter Provider- und Standortbestätigung als live.",
     ctaPrimary: "Zum Mining",
     ctaSecondary: "Kontakt anfragen",
     leadTitle: "Investor / Kunde anfragen",
@@ -48,7 +48,7 @@ const copy = {
     audienceTitle: "Für wen ist unser Mining gedacht?",
     audiences: [
       { title: "Für Investoren", text: "Für Kunden, die seriöse Infrastruktur, Standort-Proof und einen direkten Einstieg in Mining-Modelle suchen." },
-      { title: "Für Partner", text: "Für strategische Partner, Vermittler oder Business-Netzwerke, die auf echte Infrastruktur setzen wollen." },
+      { title: "Für Partner", text: "Für strategische Partner, Vermittler oder Business-Netzwerke, die nach verifizierter Anbindung mit dokumentierter Infrastruktur arbeiten wollen." },
       { title: "Für Hosting-Kunden", text: "Für Kunden mit Fokus auf laufenden Betrieb, Monitoring, Standort-Vertrauen und Mining-Service." },
     ],
     offersTitle: "Klare Angebotskarten",
@@ -60,47 +60,47 @@ const copy = {
     ],
     faqTitle: "Häufige Fragen",
     faqs: [
-      { q: "Wo stehen die Server?", a: "Aktuell zeigen wir Dubai und Abu Dhabi als sichtbare Infrastruktur-Standorte auf der Mining-Trust-Seite." },
+      { q: "Wo stehen die Server?", a: "Dubai und Abu Dhabi sind derzeit Preview-Standorte. Ein Live-Standort gilt erst nach verifiziertem Standort-Proof als bestätigt." },
       { q: "Kann ich die Infrastruktur sehen?", a: "Ja. Fotos, Videos und Proof-Elemente werden direkt auf der Seite gezeigt, damit Kunden Vertrauen aufbauen können." },
       { q: "Wie schnell erhalte ich eine Antwort?", a: "Anfragen aus dem Formular oder über die Schnellkontakte können direkt im Lead-CRM bearbeitet werden." },
       { q: "Kann ich einen Standortbesuch anfragen?", a: "Ja. Nutze einfach die Schnell-Auswahl „Standortbesuch“ oder sende eine kurze Anfrage." },
     ],
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
-    mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
+    mapText: "Dubai und Abu Dhabi werden als Preview-Standorte dargestellt. Sie sind ohne verifizierten Standort-Proof keine Live-Bestätigung.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Standorte aufgebaut", text: "Mining-Infrastruktur in Dubai und Abu Dhabi als sichtbare Vertrauensbasis positioniert." },
-      { title: "ASIC-Betrieb aktiv", text: "Professionelle Bitcoin-Mining-Hardware mit Fokus auf Dauerbetrieb und Monitoring." },
+      { title: "Standort-Proof vorgesehen", text: "Dubai und Abu Dhabi sind als Preview vorgesehen; Live-Status wird erst nach verifiziertem Standort-Proof angezeigt." },
+      { title: "ASIC-Betrieb nicht verifiziert", text: "Hardware- und Betriebsstatus bleiben Preview, bis ein verifizierter Provider- oder Hardware-Nachweis vorliegt." },
       { title: "Video Proof bereit", text: "Die Seite ist vorbereitet, eure echten Standort-Videos direkt einzubinden." },
     ],
     metricsLiveTitle: "Live Mining Kennzahlen",
     metricsLive: [
-      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "sichtbarer Infrastruktur-Score" },
-      { label: "Uptime Ziel", value: "99.4%", note: "Betriebs- und Monitoringfokus" },
-      { label: "Cooling Status", value: "Stabil", note: "aktive Kühlung & Heatflow" },
-      { label: "Monitoring", value: "24/7", note: "Operations Team & Alerts" },
+      { label: "Hashrate Cluster", value: "Nicht verifiziert", note: "wird erst nach Live-Proof angezeigt" },
+      { label: "Uptime", value: "Nicht verifiziert", note: "keine Live-Uptime ohne Provider-Proof" },
+      { label: "Cooling Status", value: "Nicht verifiziert", note: "keine Hardware-Bestätigung vorhanden" },
+      { label: "Monitoring", value: "Nicht verifiziert", note: "wird erst nach Live-Anbindung bestätigt" },
     ],
     footerEyebrow: "Bitcoin Mining Transparenz",
     footerTitle: "Zeig Infrastruktur. Gewinne Vertrauen.",
-    footerText: "Diese Seite ist dafür gebaut, Kundinnen und Kunden echte Server, echte ASIC-Hardware und eure echten Standort-Videos sichtbar zu machen.",
+    footerText: "Diese Preview-Seite ist dafür gebaut, verifizierte Server-, ASIC- und Standort-Nachweise sichtbar zu machen, sobald sie tatsächlich bestätigt sind.",
     footerServices: "Alle Services",
     stats: [
-      { label: "Server-Standorte", value: "Dubai · Abu Dhabi" },
-      { label: "Betriebsmodell", value: "24/7 Infrastruktur" },
-      { label: "Systemtyp", value: "ASIC Bitcoin Server" },
-      { label: "Status", value: "Aktive Kühlung & Monitoring" },
+      { label: "Server-Standorte", value: "Preview · nicht verifiziert" },
+      { label: "Betriebsmodell", value: "Noch nicht live bestätigt" },
+      { label: "Systemtyp", value: "ASIC Preview" },
+      { label: "Status", value: "Live-Proof ausstehend" },
     ],
     sections: {
       proof: "Visueller Nachweis unserer Hardware",
-      dubai: "Dubai Serverhalle",
-      dubaiText: "Skalierbare Reihen aus Bitcoin-Minern mit professioneller Strom- und Kühlungsinfrastruktur.",
-      abuDhabi: "Abu Dhabi Infrastruktur",
-      abuDhabiText: "Industrielle Rack-Strukturen für laufenden Mining-Betrieb mit Fokus auf Stabilität und Vertrauen.",
+      dubai: "Dubai Preview-Visual",
+      dubaiText: "Illustratives Preview-Visual. Keine Live-Hardware- oder Standortbestätigung ohne verifizierten Proof.",
+      abuDhabi: "Abu Dhabi Preview-Visual",
+      abuDhabiText: "Illustratives Preview-Visual. Der reale Betrieb wird erst nach verifizierter Bestätigung als live dargestellt.",
       asic: "ASIC Detailaufnahme",
-      asicText: "Nahaufnahme echter Mining-Hardware zur Darstellung von Technik, Kühlung und Betriebsqualität.",
+      asicText: "Illustratives ASIC-Visual. Kein Nachweis konkreter Live-Hardware, solange kein verifizierter Provider-Proof vorliegt.",
       video: "Videos aus Dubai & Abu Dhabi",
-      videoText: "Hier platzieren wir eure echten Videos aus Dubai und Abu Dhabi, damit Kunden sehen, dass die Server real laufen.",
+      videoText: "Hier werden erst nach Prüfung echte Standort-Videos eingebunden. Platzhalter sind keine Bestätigung eines laufenden Servers.",
       metric: "Vertrauensmetriken",
     },
     metrics: [
@@ -110,14 +110,14 @@ const copy = {
       { icon: Bitcoin, title: "Bitcoin Fokus", text: "Sichtbar auf Bitcoin-Mining und ASIC-Hardware spezialisiert." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Echtes Rechenzentrum / Servergang" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Container / Rack-Setup / Kühlung" },
+      { city: "Dubai", label: "Video Slot 01", note: "Preview-Platzhalter · nicht verifiziert" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Preview-Platzhalter · nicht verifiziert" },
     ],
   },
   en: {
     badge: "Mining Infrastructure",
     title: "Our Bitcoin Mining Servers",
-    subtitle: "Transparency creates trust: we show our mining infrastructure, ASIC systems, and our locations in Dubai and Abu Dhabi.",
+    subtitle: "Preview of the planned Mining Trust page. Hardware, locations, hashrate, uptime, and videos are only treated as live after verified provider and site proof.",
     ctaPrimary: "Open Mining",
     ctaSecondary: "Request Contact",
     leadTitle: "Investor / Client Inquiry",
@@ -157,47 +157,47 @@ const copy = {
     ],
     faqTitle: "Frequently Asked Questions",
     faqs: [
-      { q: "Where are the servers located?", a: "We currently show Dubai and Abu Dhabi as visible infrastructure locations on the mining trust page." },
+      { q: "Where are the servers located?", a: "Dubai and Abu Dhabi are currently preview locations. A site is only confirmed as live after verified site proof." },
       { q: "Can I see the infrastructure?", a: "Yes. Photos, videos, and proof elements are shown directly on the page to build trust." },
       { q: "How fast will I get a response?", a: "Inquiries from the form or quick contact options can be processed directly in the lead CRM." },
       { q: "Can I request a site visit?", a: "Yes. Simply use the quick option 'Site Visit' or send a short inquiry." },
     ],
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
-    mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
+    mapText: "Dubai and Abu Dhabi are shown as preview locations. Without verified site proof, they are not a live-location confirmation.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Locations established", text: "Mining infrastructure in Dubai and Abu Dhabi positioned as visible trust anchors." },
-      { title: "ASIC operations active", text: "Professional bitcoin mining hardware focused on continuous operation and monitoring." },
+      { title: "Site proof planned", text: "Dubai and Abu Dhabi are preview locations; live status is shown only after verified site proof." },
+      { title: "ASIC operations unverified", text: "Hardware and operating status remain preview-only until verified provider or hardware proof is available." },
       { title: "Video proof ready", text: "The page is prepared to embed your real location videos directly." },
     ],
     metricsLiveTitle: "Live Mining Metrics",
     metricsLive: [
-      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "visible infrastructure score" },
-      { label: "Uptime Target", value: "99.4%", note: "operations and monitoring focus" },
-      { label: "Cooling Status", value: "Stable", note: "active cooling & heatflow" },
-      { label: "Monitoring", value: "24/7", note: "operations team & alerts" },
+      { label: "Hashrate Cluster", value: "Not verified", note: "shown only after live proof" },
+      { label: "Uptime", value: "Not verified", note: "no live uptime without provider proof" },
+      { label: "Cooling Status", value: "Not verified", note: "no hardware confirmation available" },
+      { label: "Monitoring", value: "Not verified", note: "confirmed only after live integration" },
     ],
     footerEyebrow: "Bitcoin Mining Transparency",
     footerTitle: "Show infrastructure. Build trust.",
-    footerText: "This page is designed to show customers real servers, real ASIC hardware, and your real location videos clearly and professionally.",
+    footerText: "This preview page is designed to show verified server, ASIC, and site evidence once it has actually been confirmed.",
     footerServices: "All Services",
     stats: [
-      { label: "Server Locations", value: "Dubai · Abu Dhabi" },
-      { label: "Operating Model", value: "24/7 Infrastructure" },
-      { label: "System Type", value: "ASIC Bitcoin Servers" },
-      { label: "Status", value: "Active Cooling & Monitoring" },
+      { label: "Server Locations", value: "Preview · not verified" },
+      { label: "Operating Model", value: "Not live-confirmed yet" },
+      { label: "System Type", value: "ASIC Preview" },
+      { label: "Status", value: "Live proof pending" },
     ],
     sections: {
       proof: "Visual proof of our hardware",
-      dubai: "Dubai Server Hall",
-      dubaiText: "Scalable rows of bitcoin miners with professional power and cooling infrastructure.",
-      abuDhabi: "Abu Dhabi Infrastructure",
-      abuDhabiText: "Industrial rack structures for running mining operations with a focus on stability and trust.",
+      dubai: "Dubai Preview Visual",
+      dubaiText: "Illustrative preview visual. No live hardware or site confirmation without verified proof.",
+      abuDhabi: "Abu Dhabi Preview Visual",
+      abuDhabiText: "Illustrative preview visual. Real operations are only shown as live after verified confirmation.",
       asic: "ASIC Close-up",
       asicText: "Close-up mining hardware detail to show technology, cooling, and operational quality.",
       video: "Videos from Dubai & Abu Dhabi",
-      videoText: "This is where your real Dubai and Abu Dhabi videos will be placed so customers can see the servers are real.",
+      videoText: "Verified site videos will be placed here after review. Placeholders do not confirm that any server is currently running.",
       metric: "Trust Metrics",
     },
     metrics: [
@@ -207,8 +207,8 @@ const copy = {
       { icon: Bitcoin, title: "Bitcoin Focus", text: "Clearly specialized in bitcoin mining and ASIC hardware." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Real data-center / server corridor" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Container / rack setup / cooling" },
+      { city: "Dubai", label: "Video Slot 01", note: "Preview placeholder · not verified" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Preview placeholder · not verified" },
     ],
   },
 };
@@ -284,6 +284,8 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
   const [proofData, setProofData] = useState(null);
   const [leadForm, setLeadForm] = useState({ name: "", email: "", topic: "", company: "", message: "" });
   const [sending, setSending] = useState(false);
+  const proofVerified = proofData?.proof_verified_live === true;
+  const proofMetrics = proofVerified && proofData?.proof_metrics && Array.isArray(proofData.proof_metrics.locations) ? proofData.proof_metrics : null;
 
   useEffect(() => {
     const load = async () => {
@@ -352,7 +354,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+        {!proofVerified && (\n          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100/80" data-testid="mining-trust-unverified-banner">\n            Preview · Keine verifizierte Live-Hardware-, Standort-, Hashrate- oder Provider-Bestätigung. Wert- und Proof-Angaben bleiben bis zur Verifizierung deaktiviert.\n          </div>\n        )}\n\n        <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold text-white/70" data-testid="mining-trust-investor-badge">
               <Building2 size={13} /> {c.investorBadge}
@@ -375,11 +377,11 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2" data-testid="mining-trust-stats-grid">
-            {(proofData ? [
-              { label: c.stats[0].label, value: proofData.proof_metrics.locations.map((x) => x.city).join(" · ") },
-              { label: c.stats[1].label, value: `${proofData.network.active_miners} aktive Miner` },
-              { label: c.stats[2].label, value: `${proofData.network.registered_hashrate_phs} PH/s registriert` },
-              { label: c.stats[3].label, value: `${proofData.proof_metrics.monitoring}` },
+            {(proofMetrics ? [
+              { label: c.stats[0].label, value: proofMetrics.locations.map((x) => x.city).join(" · ") },
+              { label: c.stats[1].label, value: `${proofData?.network?.active_miners ?? 0} aktive Miner` },
+              { label: c.stats[2].label, value: `${proofData?.network?.registered_hashrate_phs ?? 0} PH/s registriert` },
+              { label: c.stats[3].label, value: `${proofMetrics.monitoring}` },
             ] : c.stats).map((item, index) => (
               <div key={`${item.label}-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={`mining-trust-stat-${index}`}>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">{item.label}</p>
@@ -478,7 +480,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {[Gauge, Activity, Waves, BarChart3].map((Icon, index) => {
                 const fallback = c.metricsLive[index];
-                const metrics = proofData?.proof_metrics;
+                const metrics = proofMetrics;
                 const item = metrics ? [
                   { label: c.metricsLive[0].label, value: `${metrics.hashrate_cluster_phs} PH/s`, note: fallback.note },
                   { label: c.metricsLive[1].label, value: `${metrics.uptime_percent}%`, note: fallback.note },
