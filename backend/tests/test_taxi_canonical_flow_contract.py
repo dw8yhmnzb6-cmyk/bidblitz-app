@@ -223,3 +223,14 @@ def test_taxi_share_does_not_publish_fake_tracking_url():
     assert "navigator.clipboard.writeText(shareText)" in page
     assert "Fahrtdetails kopiert" in page
     assert "url: window.location.href" not in page
+
+
+def test_taxi_unclear_wallet_reservation_keeps_same_booking_attempt():
+    taxi = read("backend/routes/taxi.py")
+
+    assert 'reservation_state in {"pending", "reconciliation_required"}' in taxi
+    assert '"status": "reconciliation_required"' in taxi
+    assert '"wallet_status": reservation_state' in taxi
+    assert '"wallet_transaction_id": reservation.transaction_id' in taxi
+    assert 'status_code=503' in taxi
+    assert "Taxi-Reservierung benötigt Wallet-Abstimmung" in taxi
