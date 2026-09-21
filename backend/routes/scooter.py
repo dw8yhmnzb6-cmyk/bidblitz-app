@@ -564,6 +564,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     ride_unlock_fee = float((subscription or {}).get("unlock_fee", local_pricing["unlock_fee"]))
     ride_rate = float((subscription or {}).get("per_minute_rate", local_pricing["per_minute"]))
     ride_daily_cap = float((subscription or {}).get("daily_cap", local_pricing["daily_cap"]))
+    ride_minimum_charge = float((subscription or {}).get("minimum_charge", local_pricing.get("minimum_charge", ride_unlock_fee)) or 0)
     ride_currency = str((subscription or {}).get("currency") or local_pricing.get("currency") or "EUR").upper()
     if ride_currency != "EUR":
         raise HTTPException(
@@ -649,6 +650,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         "unlock_fee": ride_unlock_fee,
         "per_minute_rate": ride_rate,
         "daily_cap": ride_daily_cap,
+        "minimum_charge": ride_minimum_charge,
         "currency": ride_currency,
         "pricing_context": {
             "profile_scope": local_pricing.get("profile_scope"),
@@ -818,7 +820,8 @@ async def end_ride(req: EndRideRequest, request: Request):
         billable_minutes = max(0.0, duration_minutes - free_minutes_used)
         ride_cost = round(billable_minutes * rate, 2)
         daily_cap = float(ride.get("daily_cap") or MAX_DAILY_CAP)
-        total_cost = min(round(unlock_fee + ride_cost, 2), daily_cap)
+        minimum_charge = max(0.0, float(ride.get("minimum_charge") or 0))
+        total_cost = min(max(round(unlock_fee + ride_cost, 2), minimum_charge), daily_cap)
         ride_cost_to_deduct = max(0.0, round(total_cost - unlock_fee, 2))
 
         end_location = ride.get("current_location") or ride.get("start_location", {})
@@ -1021,7 +1024,8 @@ async def get_active_ride(request: Request):
     free_remaining = max(0.0, float(ride.get("free_minutes_remaining_at_start") or 0))
     billable_minutes = max(0.0, elapsed_minutes - free_remaining)
     daily_cap = float(ride.get("daily_cap") or MAX_DAILY_CAP)
-    current_cost = min(round(unlock_fee + (billable_minutes * rate), 2), daily_cap)
+    minimum_charge = max(0.0, float(ride.get("minimum_charge") or 0))
+    current_cost = min(max(round(unlock_fee + (billable_minutes * rate), 2), minimum_charge), daily_cap)
 
     ride["rental_id"] = ride.get("ride_id")
     ride["started_at"] = ride.get("start_time")
