@@ -1518,16 +1518,30 @@ async def end_ride(req: EndRideRequest, request: Request):
     if ride_currency == "EUR":
         scooter_inc["total_revenue"] = float(settlement.get("total_cost") or 0)
 
+    fleet_state = await db.scooters.find_one(
+        {"scooter_id": scooter_id, "current_ride_id": ride_id},
+        {"_id": 0, "needs_maintenance": 1, "maintenance_pending": 1},
+    ) or {}
+    maintenance_due = bool(
+        fleet_state.get("needs_maintenance") or fleet_state.get("maintenance_pending")
+    )
+    final_scooter_status = "maintenance" if maintenance_due else "available"
+
+    scooter_set = {
+        "status": final_scooter_status,
+        "location": end_location,
+        "current_ride_id": None,
+        "current_user_id": None,
+        "last_ride_end": completed_at,
+    }
+    if maintenance_due:
+        scooter_set["maintenance_pending"] = False
+        scooter_set["maintenance_started_at"] = completed_at
+
     await db.scooters.update_one(
         {"scooter_id": scooter_id, "current_ride_id": ride_id},
         {
-            "$set": {
-                "status": "available",
-                "location": end_location,
-                "current_ride_id": None,
-                "current_user_id": None,
-                "last_ride_end": completed_at,
-            },
+            "$set": scooter_set,
             "$inc": scooter_inc,
         },
     )
@@ -2615,10 +2629,10 @@ async def unlock_via_qr(req: QrUnlockRequest, request: Request):
 
 class ReportIssueRequest(BaseModel):
     scooter_id: str
-    category: str  # "damage" | "battery" | "lights" | "brakes" | "tire" | "vandalism" | "other"
+    category: str = Field(..., pattern="^(damage|battery|lights|brakes|tire|vandalism|other)$")
     description: str = Field("", max_length=500)
     photo_url: Optional[str] = None
-    severity: str = "medium"  # "low" | "medium" | "high"
+    severity: str = Field(default="medium", pattern="^(low|medium|high)$")
 
 
 @router.post("/report-issue")
@@ -2649,12 +2663,40 @@ async def report_scooter_issue(req: ReportIssueRequest, request: Request):
     await db.scooter_issues.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-flag scooter as maintenance for severe issues
+    # Severe issues flag maintenance immediately, but never break an active ride lifecycle.
     if req.severity == "high":
-        await db.scooters.update_one(
-            {"scooter_id": req.scooter_id},
-            {"$set": {"status": "maintenance", "needs_maintenance": True}},
+        safe_transition = await db.scooters.update_one(
+            {
+                "scooter_id": req.scooter_id,
+                "status": {"$in": ["available", "locked", "offline"]},
+                "$or": [
+                    {"current_ride_id": {"$exists": False}},
+                    {"current_ride_id": None},
+                    {"current_ride_id": ""},
+                ],
+            },
+            {
+                "$set": {
+                    "status": "maintenance",
+                    "needs_maintenance": True,
+                    "maintenance_pending": False,
+                    "maintenance_reason": req.category,
+                    "maintenance_flagged_at": now,
+                }
+            },
         )
+        if safe_transition.modified_count != 1:
+            await db.scooters.update_one(
+                {"scooter_id": req.scooter_id},
+                {
+                    "$set": {
+                        "needs_maintenance": True,
+                        "maintenance_pending": True,
+                        "maintenance_reason": req.category,
+                        "maintenance_flagged_at": now,
+                    }
+                },
+            )
 
     # Notify admin
     await db.notifications.insert_one({
