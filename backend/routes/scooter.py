@@ -1664,11 +1664,13 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
 
         # Reconcile provider-accepted critical commands with authenticated physical telemetry.
         confirmed_command = DeviceCommand.LOCK.value if req.locked else DeviceCommand.UNLOCK.value
+        confirmation_cutoff = (now - timedelta(minutes=2)).isoformat()
         await db.scooter_device_commands.update_many(
             {
                 "device_id": req.device_id,
                 "command": confirmed_command,
                 "status": "pending_confirmation",
+                "last_attempt_at": {"$gte": confirmation_cutoff},
             },
             {
                 "$set": {
