@@ -132,3 +132,12 @@ def test_admin_created_service_rows_receive_public_canonical_ids():
         assert f'"{module_key}": "{id_field}"' in backend
     assert "canonical_id_field = MODULE_ID_FIELDS.get(module_key)" in backend
     assert "data[canonical_id_field] = data.get(canonical_id_field) or data["id"]" in backend
+
+
+def test_admin_created_rows_are_visible_to_public_service_filters():
+    backend = read("backend/routes/admin_management.py")
+
+    assert 'elif module_key in {"handwerker", "tierbetreuung", "telemedizin"}:' in backend
+    assert 'data["available"] = True if data.get("available") is None else bool(data.get("available"))' in backend
+    assert 'elif module_key == "gebrauchtwagen":' in backend
+    assert 'data["status"] = data.get("status") or "active"' in backend
