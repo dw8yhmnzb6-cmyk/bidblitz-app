@@ -2049,6 +2049,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert 'any(str(claim.get("date") or "") == d for claim in claim_history)' in mining
     assert '_safe_mining_float(wallet.get("total_mined"))' in mining
     assert '_safe_mining_float(user.get("balance"))' in mining
+    assert 'tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))' in mining
+    assert 'tx["amount_eur"] = _safe_mining_float(tx.get("amount_eur"))' in mining
 
     assert "def _require_mining_value_mode" in mining
     assert '"live_mining_provider_connected": False' in mining
@@ -2062,6 +2064,11 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert '"listings": [], "capabilities": _mining_capabilities()' in phase2
     assert '"has_card": False' in phase2
     assert '"projects": [], "capabilities": _mining_capabilities()' in phase2
+    assert '"tiers": CARD_TIERS' in phase2
+    assert '"remaining_limit": round(max(0.0, card["daily_limit"] - today_spent), 2)' in phase2
+    assert '"recent_transactions": recent_transactions' in phase2
+    assert '_safe_mining_float(tx.get("amount_eur"))' in phase2
+    assert '_safe_mining_float(tx.get("amount_blz"))' in phase2
 
     assert "def _require_blitz_mine_value_mode" in blitz
     assert '"value_actions_enabled": bool(TEST_MODE)' in blitz
@@ -2078,6 +2085,10 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert 'data-testid="mining-load-error"' in mining_page
     assert 'data-testid="mining-retry-load"' in mining_page
     assert "Mining konnte nicht geladen werden" in mining_page
+    assert "function miningNumber(value, fallback = 0)" in mining_page
+    assert "function miningFixed(value, digits = 2, fallback = 0)" in mining_page
+    assert "miningFixed(tx.amount_blz, 4)" in mining_page
+    assert "miningFixed(tx.amount_eur, 2)" in mining_page
     assert "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert." in mining_page
     assert "Entdecke die BidBlitz Mining Preview. Code:" in mining_page
     assert 'disabled={buyingListing === ls.listing_id || !miningValueEnabled}' in mining_page
