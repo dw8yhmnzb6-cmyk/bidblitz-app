@@ -10,6 +10,36 @@ import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const scooterUnlockStorageKey = (ownerId) => `bidblitz:scooter-unlock-attempt:${ownerId || 'unknown'}`;
+
+const readScooterUnlockAttempt = (ownerId) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(scooterUnlockStorageKey(ownerId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.key !== 'string' || parsed.key.length < 8) return null;
+    if (typeof parsed.scooter_id !== 'string' || !parsed.scooter_id) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const persistScooterUnlockAttempt = (ownerId, attempt) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const storageKey = scooterUnlockStorageKey(ownerId);
+    if (attempt) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+};
+
 // Battery level colors
 const getBatteryColor = (percent) => {
   if (percent >= 60) return 'text-green-400';
@@ -71,8 +101,10 @@ export default function ScooterPage({ onNavigate }) {
   // Refs
   const timerRef = useRef(null);
   const pollingRef = useRef(null);
-  const unlockAttemptKeyRef = useRef(null);
-  const unlockAttemptScooterRef = useRef(null);
+  const unlockAttemptOwnerId = user?.id || user?.email || 'unknown';
+  const initialUnlockAttempt = readScooterUnlockAttempt(unlockAttemptOwnerId);
+  const unlockAttemptKeyRef = useRef(initialUnlockAttempt?.key || null);
+  const unlockAttemptScooterRef = useRef(initialUnlockAttempt?.scooter_id || null);
   const endAttemptKeyRef = useRef(null);
   const subscriptionAttemptRef = useRef({ planId: null, key: null });
   const pricingSelectionRequestRef = useRef(0);
@@ -88,6 +120,12 @@ export default function ScooterPage({ onNavigate }) {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const saved = readScooterUnlockAttempt(unlockAttemptOwnerId);
+    unlockAttemptKeyRef.current = saved?.key || null;
+    unlockAttemptScooterRef.current = saved?.scooter_id || null;
+  }, [unlockAttemptOwnerId]);
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -216,6 +254,9 @@ export default function ScooterPage({ onNavigate }) {
         const data = await res.json();
         const ride = data.rental || data.ride;
         if ((data.has_active_rental || data.has_active) && ride) {
+          unlockAttemptKeyRef.current = null;
+          unlockAttemptScooterRef.current = null;
+          persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
           setActiveRental(ride);
           setView('riding');
           startRideTimer(ride);
@@ -279,6 +320,11 @@ export default function ScooterPage({ onNavigate }) {
           ? `scooter-unlock-${crypto.randomUUID()}`
           : `scooter-unlock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         unlockAttemptScooterRef.current = scooter.scooter_id;
+        persistScooterUnlockAttempt(unlockAttemptOwnerId, {
+          key: unlockAttemptKeyRef.current,
+          scooter_id: scooter.scooter_id,
+          created_at: new Date().toISOString(),
+        });
       }
       const idempotencyKey = unlockAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/unlock`, {
@@ -296,6 +342,7 @@ export default function ScooterPage({ onNavigate }) {
         const data = await res.json();
         unlockAttemptKeyRef.current = null;
         unlockAttemptScooterRef.current = null;
+        persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
         const ride = data.rental || data.ride;
         setActiveRental(ride);
         setSelectedScooter(null);
@@ -324,6 +371,7 @@ export default function ScooterPage({ onNavigate }) {
         } else if (res.status < 500) {
           unlockAttemptKeyRef.current = null;
           unlockAttemptScooterRef.current = null;
+          persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
         }
         setError(detailMessage);
       }
