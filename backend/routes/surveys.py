@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
-import secrets
 
 router = APIRouter(prefix="/api/surveys", tags=["surveys"])
 
@@ -23,18 +23,107 @@ class CompleteSurvey(BaseModel):
 @router.get("/available")
 async def available_surveys(request: Request):
     user = await get_current_user(request)
-    completed = await db.survey_completions.find({"user_email": user.get("email","")}, {"survey_id": 1, "_id": 0}).to_list(100)
-    done_ids = {c["survey_id"] for c in completed}
-    available = [s for s in SURVEYS if s["id"] not in done_ids]
-    return {"surveys": available, "completed_count": len(done_ids), "total_earned": len(done_ids) * 3}
+    user_id = str(user.get("_id") or user.get("id") or "")
+    email = user.get("email", "")
+    completed = await db.survey_completions.find(
+        {
+            "$or": [
+                {"user_id": user_id},
+                {"user_email": email},
+            ]
+        },
+        {"survey_id": 1, "reward": 1, "_id": 0},
+    ).to_list(100)
+    done_ids = {item["survey_id"] for item in completed if item.get("survey_id")}
+    available = [survey for survey in SURVEYS if survey["id"] not in done_ids]
+    return {
+        "surveys": available,
+        "completed_count": len(done_ids),
+        "total_earned": round(sum(float(item.get("reward") or 0) for item in completed), 2),
+        "reward_actions_enabled": bool(TEST_MODE),
+        "production_message": None if TEST_MODE else "Umfrage-Rewards sind Preview, bis ein verifizierter Sponsor-/Settlement-Provider angebunden ist.",
+    }
 
 @router.post("/complete")
 async def complete_survey(req: CompleteSurvey, request: Request):
+    """Credit a survey reward exactly once in test mode; production stays fail-closed without sponsor settlement."""
+    from core.payment_engine import credit_wallet, TransactionType
+
     user = await get_current_user(request)
-    survey = next((s for s in SURVEYS if s["id"] == req.survey_id), None)
-    if not survey: raise HTTPException(404, "Umfrage nicht gefunden")
-    existing = await db.survey_completions.find_one({"user_email": user.get("email",""), "survey_id": req.survey_id})
-    if existing: raise HTTPException(400, "Bereits abgeschlossen")
-    await db.survey_completions.insert_one({"user_email": user.get("email",""), "survey_id": req.survey_id, "reward": survey["reward_eur"], "created_at": datetime.now(timezone.utc).isoformat()})
-    await db.users.update_one({"email": user.get("email","")}, {"$inc": {"balance": survey["reward_eur"]}})
-    return {"ok": True, "reward": survey["reward_eur"], "message": f"+{survey['reward_eur']} EUR verdient! Danke fuer die Teilnahme."}
+    user_id = str(user.get("_id") or user.get("id") or "")
+    email = user.get("email", "")
+    survey = next((item for item in SURVEYS if item["id"] == req.survey_id), None)
+    if not survey:
+        raise HTTPException(status_code=404, detail="Umfrage nicht gefunden")
+
+    existing = await db.survey_completions.find_one(
+        {
+            "survey_id": req.survey_id,
+            "$or": [
+                {"user_id": user_id},
+                {"user_email": email},
+            ],
+        },
+        {"_id": 0},
+    )
+    if existing:
+        fresh = await db.users.find_one({"_id": user["_id"]}, {"_id": 0, "balance": 1}) or {}
+        return {
+            "ok": True,
+            "reward": float(existing.get("reward") or survey["reward_eur"]),
+            "new_balance": round(float(fresh.get("balance") or 0), 2),
+            "replayed": True,
+            "message": "Umfrage wurde bereits vergütet.",
+        }
+
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Umfrage-Rewards sind in Production noch Preview. "
+                "Ohne verifizierten Sponsor-/Settlement-Provider wird kein EUR-Wallet-Guthaben erzeugt."
+            ),
+        )
+
+    reward = round(float(survey["reward_eur"]), 2)
+    reward_result = await credit_wallet(
+        user_id=user_id,
+        amount=reward,
+        tx_type=TransactionType.REWARD,
+        description=f"Umfrage Preview: {survey['title']}",
+        reference=f"SURVEY-{req.survey_id.upper()}",
+        source="survey_reward_test",
+        metadata={
+            "survey_id": req.survey_id,
+            "sponsor": survey.get("sponsor"),
+            "kind": "survey_reward_test",
+        },
+        idempotency_key=f"survey-reward:{user_id}:{req.survey_id}",
+    )
+    if not reward_result.success:
+        raise HTTPException(status_code=409, detail=reward_result.error or "Umfrage-Reward konnte nicht gebucht werden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    completion_id = f"survey:{user_id}:{req.survey_id}"
+    completion = {
+        "completion_id": completion_id,
+        "user_id": user_id,
+        "user_email": email,
+        "survey_id": req.survey_id,
+        "reward": reward,
+        "reward_transaction_id": reward_result.transaction_id,
+        "reward_mode": "test",
+        "created_at": now,
+    }
+    await db.survey_completions.update_one(
+        {"completion_id": completion_id},
+        {"$setOnInsert": completion},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "reward": reward,
+        "new_balance": reward_result.new_balance,
+        "replayed": bool(reward_result.idempotent_replay),
+        "message": f"+{reward:.2f} EUR Test-Reward verbucht.",
+    }
