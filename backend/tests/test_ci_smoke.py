@@ -488,6 +488,17 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "window.sessionStorage.removeItem(bidStorageKey)" in detail_source
     assert "Auto-Bid konnte nicht beendet werden." in detail_source
     assert "Watchlist konnte nicht geändert werden." in page_source
+    assert "handleQuickBid" in page_source
+    assert 'window.sessionStorage.setItem(storageKey, idempotencyKey)' in page_source
+    assert 'window.sessionStorage.removeItem(storageKey)' in page_source
+    assert 'data-testid="auction-premium-hero"' in page_source
+    assert 'auction-premium-quick-bid-' in page_source
+    assert 'data-testid={`auction-quick-bid-${auction.auction_id}`}' in (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionGridCard.jsx").read_text(encoding="utf-8")
+    assert 'auction_increment = max(0.01' in auctions_source
+    assert 'snapshot.get("price_increment") or PRICE_INCREMENT' in auctions_source
+    assert "bid_value_eur: Optional[float]" in auctions_source
+    assert "revenue_target_eur: Optional[float]" in auctions_source
+    assert 'updates["featured"] = bool(req.featured)' in auctions_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
 
@@ -1138,6 +1149,10 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert '"bot_policy": (' in source
     assert '"test_only"' in source
     assert 'Production-Bots deaktiviert' in admin_page
+    assert 'data-testid="auction-admin-engine"' in admin_page
+    assert 'data-testid="auction-engine-modal"' in admin_page
+    assert 'Gebotsumsatz-Ziel' in admin_page
+    assert 'Das ist Umsatz aus Bid-Credits, nicht garantierter Nettogewinn.' in admin_page
     assert 'config["bot_policy"] = "test_only"' in source
     assert 'config_dict["bot_default_enabled"] = False' in source
     assert 'Production: deaktiviert' in admin_page
