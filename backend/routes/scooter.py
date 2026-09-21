@@ -2349,25 +2349,43 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
     if active:
         raise HTTPException(400, "Du hast bereits ein aktives Abo")
 
-    await db.users.update_one(
-        {"_id": user["_id"], "active_scooter_subscription_id": {"$ne": None}},
-        {"$set": {"active_scooter_subscription_id": None}},
-    )
+    current_claim = await db.users.find_one(
+        {"_id": user["_id"]},
+        {"active_scooter_subscription_id": 1, "_id": 0},
+    ) or {}
+    claimed_sub_id = current_claim.get("active_scooter_subscription_id")
+    if claimed_sub_id not in (None, "", sub_id):
+        raise HTTPException(
+            status_code=503,
+            detail="Eine andere Scooter-Abo-Anfrage wird bereits verarbeitet oder benötigt Abstimmung",
+        )
+
     claim = await db.users.update_one(
         {
             "_id": user["_id"],
             "$or": [
                 {"active_scooter_subscription_id": {"$exists": False}},
                 {"active_scooter_subscription_id": None},
+                {"active_scooter_subscription_id": ""},
                 {"active_scooter_subscription_id": sub_id},
             ],
         },
-        {"$set": {"active_scooter_subscription_id": sub_id, "scooter_subscription_claimed_at": now.isoformat()}},
+        {"$set": {
+            "active_scooter_subscription_id": sub_id,
+            "scooter_subscription_claimed_at": now.isoformat(),
+            "scooter_subscription_claim_idempotency_key": idempotency_key,
+        }},
     )
     if claim.modified_count != 1:
-        current = await db.users.find_one({"_id": user["_id"]}, {"active_scooter_subscription_id": 1, "_id": 0}) or {}
+        current = await db.users.find_one(
+            {"_id": user["_id"]},
+            {"active_scooter_subscription_id": 1, "_id": 0},
+        ) or {}
         if current.get("active_scooter_subscription_id") != sub_id:
-            raise HTTPException(status_code=409, detail="Eine andere Abo-Anfrage wird bereits verarbeitet")
+            raise HTTPException(
+                status_code=503,
+                detail="Eine andere Scooter-Abo-Anfrage wird bereits verarbeitet oder benötigt Abstimmung",
+            )
 
     result = await debit_wallet(
         user_id=user_id,
@@ -2379,9 +2397,31 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
         idempotency_key=idempotency_key,
     )
     if not result.success:
+        payment_status = str(getattr(result.status, "value", result.status))
+        if payment_status in {"pending", "reconciliation_required"}:
+            await db.users.update_one(
+                {"_id": user["_id"], "active_scooter_subscription_id": sub_id},
+                {"$set": {
+                    "scooter_subscription_payment_status": payment_status,
+                    "scooter_subscription_payment_error": result.error,
+                    "scooter_subscription_reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=result.error or "Scooter-Abo-Zahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt",
+            )
         await db.users.update_one(
             {"_id": user["_id"], "active_scooter_subscription_id": sub_id},
-            {"$set": {"active_scooter_subscription_id": None}},
+            {
+                "$set": {"active_scooter_subscription_id": None},
+                "$unset": {
+                    "scooter_subscription_claim_idempotency_key": "",
+                    "scooter_subscription_payment_status": "",
+                    "scooter_subscription_payment_error": "",
+                    "scooter_subscription_reconciliation_required_at": "",
+                },
+            },
         )
         raise HTTPException(status_code=400, detail=result.error or "Abo-Zahlung fehlgeschlagen")
 
@@ -2409,6 +2449,16 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
         {"sub_id": sub_id, "user_id": user_id},
         {"$setOnInsert": subscription},
         upsert=True,
+    )
+    await db.users.update_one(
+        {"_id": user["_id"], "active_scooter_subscription_id": sub_id},
+        {"$set": {
+            "scooter_subscription_payment_status": "completed",
+            "scooter_subscription_payment_transaction_id": result.transaction_id,
+        }, "$unset": {
+            "scooter_subscription_payment_error": "",
+            "scooter_subscription_reconciliation_required_at": "",
+        }},
     )
     subscription = await db.scooter_subscriptions.find_one({"sub_id": sub_id, "user_id": user_id}, {"_id": 0}) or subscription
     return {"ok": True, "subscription": subscription, "new_balance": result.new_balance, "replayed": False}
