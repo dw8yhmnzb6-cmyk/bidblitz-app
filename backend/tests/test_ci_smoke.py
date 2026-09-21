@@ -2086,6 +2086,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "return 0" in mining
     assert "_require_mining_value_mode()" in mining
     assert '"proof_verified_live": False' in mining
+    assert 'user.get("role") not in ("admin", "super_admin")' in mining
+    assert mining.count('user.get("role") not in ("admin", "super_admin")') >= 5
 
     assert "from routes.mining import _require_mining_value_mode" in phase2
     assert '"listings": [], "capabilities": _mining_capabilities()' in phase2
