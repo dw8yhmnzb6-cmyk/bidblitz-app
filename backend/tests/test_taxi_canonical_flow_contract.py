@@ -163,3 +163,17 @@ def test_taxi_trip_start_and_end_use_normalized_driver_location():
 
     assert '"start_location": driver.get("location") or driver.get("current_location") or ride.get("pickup", {})' in taxi
     assert 'end_loc = driver.get("location") or driver.get("current_location") or ride.get("dropoff", {})' in taxi
+
+
+def test_driver_busy_flag_tracks_canonical_active_ride_lock():
+    taxi = read("backend/routes/taxi.py")
+
+    claim_start = taxi.index("async def _claim_driver_active_ride")
+    release_start = taxi.index("async def _release_driver_active_ride", claim_start)
+    accept_start = taxi.index('@router.post("/driver/accept")', release_start)
+    claim_block = taxi[claim_start:release_start]
+    release_block = taxi[release_start:accept_start]
+
+    assert '"is_busy": True' in claim_block
+    assert '"$set": {"is_busy": False}' in claim_block
+    assert '"$set": {"is_busy": False}' in release_block
