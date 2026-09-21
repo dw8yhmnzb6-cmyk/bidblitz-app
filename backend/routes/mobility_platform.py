@@ -2443,7 +2443,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         loc = driver_loc_map.get(driver.get("driver_id")) or driver.get("location") or {}
         dlat = loc.get("lat")
         dlng = loc.get("lng")
-        if not dlat or not dlng:
+        if dlat is None or dlng is None:
             continue
         distance_km = haversine_distance(lat, lng, dlat, dlng)
         if distance_km > radius_km:
@@ -2464,9 +2464,9 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
 
     for scooter in scooter_rows:
         loc = scooter.get("location") or {}
-        slat = loc.get("lat") or scooter.get("lat")
-        slng = loc.get("lng") or scooter.get("lng")
-        if not slat or not slng:
+        slat = loc.get("lat") if loc.get("lat") is not None else scooter.get("lat")
+        slng = loc.get("lng") if loc.get("lng") is not None else scooter.get("lng")
+        if slat is None or slng is None:
             continue
         distance_km = haversine_distance(lat, lng, slat, slng)
         if distance_km > radius_km:
@@ -2507,7 +2507,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for car in car_rows:
         clat = car.get("lat")
         clng = car.get("lng")
-        if not clat or not clng:
+        if clat is None or clng is None:
             continue
         distance_km = haversine_distance(lat, lng, clat, clng)
         if distance_km > radius_km:
@@ -2529,7 +2529,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for index, car in enumerate(car_rows[:3]):
         clat = car.get("lat")
         clng = car.get("lng")
-        if not clat or not clng:
+        if clat is None or clng is None:
             continue
         counts["car_sharing"] += 1
         markers.append(_service_marker(
@@ -2548,7 +2548,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for station in ev_rows:
         elat = station.get("lat")
         elng = station.get("lng")
-        if not elat or not elng:
+        if elat is None or elng is None:
             continue
         distance_km = haversine_distance(lat, lng, elat, elng)
         if distance_km > radius_km:
