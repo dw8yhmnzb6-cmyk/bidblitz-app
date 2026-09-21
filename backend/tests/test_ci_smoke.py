@@ -294,6 +294,8 @@ def test_taxi_customer_driver_wallet_flow_stays_unified():
     assert "from routes.taxi import driver_arriving, driver_start_ride, driver_end_ride, cancel_ride" in driver_source
     assert "result = await driver_end_ride(action, request)" in driver_source
 
+    assert 'if not NumberErrorSafe(p_lat, p_lng) or not NumberErrorSafe(d_lat, d_lng):' in taxi_source
+    assert 'if not p_lat or not d_lat:' not in taxi_source
     assert '"payment_status": "reserved"' in taxi_source
     assert '"payment_reserved_amount": round(fare_total, 2)' in taxi_source
     assert 'payment_source = "reserved_at_booking"' in taxi_source
