@@ -3654,3 +3654,16 @@ def test_auction_delete_is_serialized_against_live_bids():
     assert '"delete_claim_id": delete_claim_id' in source
     assert "await db.auto_bids.delete_many" in source
     assert "await db.watchlist.delete_many" in source
+
+
+def test_auction_product_edits_lock_against_first_real_bid():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert "def _auction_product_edit_snapshot_filter" in source
+    assert '"current_price": auction.get("current_price")' in source
+    assert '"ends_at": auction.get("ends_at")' in source
+    assert '"last_bidder_id": auction.get("last_bidder_id")' in source
+    assert '"total_bids": auction.get("total_bids")' in source
+    assert "Produktänderung wurde nicht angewendet." in source
+    assert "Bildänderung wurde nicht angewendet." in source
+    assert "filepath.unlink(missing_ok=True)" in source
