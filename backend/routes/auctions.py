@@ -563,7 +563,7 @@ class AuctionOrderFulfillmentRequest(BaseModel):
 @router.get("/admin/orders")
 async def admin_auction_orders(request: Request, status: Optional[str] = None):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     query = {"payment_status": "paid"}
     if status:
@@ -577,7 +577,7 @@ async def admin_auction_orders(request: Request, status: Optional[str] = None):
 @router.post("/admin/orders/{order_id}/fulfillment")
 async def update_auction_order_fulfillment(order_id: str, req: AuctionOrderFulfillmentRequest, request: Request):
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0})
@@ -1152,7 +1152,7 @@ class BidRequest(BaseModel):
 async def place_bid(req: BidRequest, request: Request):
     """Place one idempotent bid: exactly one credit -> exactly one €0.01 increment."""
     user = await get_current_user(request)
-    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+    if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":
         raise HTTPException(
             status_code=403,
             detail={
@@ -1476,7 +1476,7 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
             )
             continue
 
-        if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":
             await db.auto_bids.update_one(
                 {"_id": ab["_id"]},
                 {
@@ -1625,7 +1625,7 @@ async def set_auto_bid(req: AutoBidRequest, request: Request):
     """Set auto-bid for an auction."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+    if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":
         raise HTTPException(
             status_code=403,
             detail={
@@ -2124,7 +2124,7 @@ class CreateAuctionRequest(BaseModel):
 async def create_auction(req: CreateAuctionRequest, request: Request):
     """Admin creates a new auction."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     now = datetime.now(timezone.utc)
@@ -2857,7 +2857,7 @@ async def admin_reseed_auctions(request: Request):
 async def refresh_auctions(request: Request):
     """Admin: End all active auctions and launch fresh ones from catalog."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     now = datetime.now(timezone.utc)
@@ -2885,7 +2885,7 @@ async def refresh_auctions(request: Request):
 async def get_catalog(request: Request):
     """Admin: View the current product catalog."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     return {"catalog": ACTIVE_AUCTION_CATALOG, "total": len(ACTIVE_AUCTION_CATALOG)}
 
@@ -2989,7 +2989,7 @@ BOT_STRATEGIES = {
 async def admin_list_auctions(request: Request):
     """Admin: list all auctions with bot config."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     auctions = await db.auctions.find(
@@ -3032,7 +3032,7 @@ async def admin_list_auctions(request: Request):
 async def get_bot_strategies(request: Request):
     """Admin: Get available bot strategies."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     return {
@@ -3051,7 +3051,7 @@ async def get_bot_strategies(request: Request):
 async def set_bot_config(req: BotConfigRequest, request: Request):
     """Admin: configure bot for an auction with extended options."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     auction = await db.auctions.find_one({"auction_id": req.auction_id})
@@ -3096,7 +3096,7 @@ async def set_bot_config(req: BotConfigRequest, request: Request):
 async def set_bot_strategy(req: BotStrategyRequest, request: Request):
     """Admin: set bot strategy for an auction."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     if req.strategy not in BOT_STRATEGIES:
@@ -3410,7 +3410,7 @@ class BulkScheduleRequest(BaseModel):
 async def get_automation_config(request: Request):
     """Admin: Get current automation configuration."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     config = await db.auction_automation_config.find_one({"_id": "global"})
@@ -3468,7 +3468,7 @@ async def get_automation_config(request: Request):
 async def set_automation_config(req: AutomationConfigRequest, request: Request):
     """Admin: Update automation configuration."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     config_dict = req.dict()
@@ -3488,7 +3488,7 @@ async def set_automation_config(req: AutomationConfigRequest, request: Request):
 async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request):
     """Admin: Schedule a single auction from catalog."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     if req.product_index >= len(ACTIVE_AUCTION_CATALOG):
@@ -3564,7 +3564,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
 async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
     """Admin: Schedule multiple auctions with staggered start times."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     now = datetime.now(timezone.utc)
@@ -3629,7 +3629,7 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
 async def pause_auction(auction_id: str, request: Request):
     """Admin: Pause an active auction."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     auction = await db.auctions.find_one({"auction_id": auction_id})
@@ -3659,7 +3659,7 @@ async def pause_auction(auction_id: str, request: Request):
 async def resume_auction(auction_id: str, request: Request):
     """Admin: Resume a paused auction."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     auction = await db.auctions.find_one({"auction_id": auction_id})
@@ -3690,7 +3690,7 @@ async def resume_auction(auction_id: str, request: Request):
 async def force_end_auction(auction_id: str, request: Request):
     """Admin: force-end an auction without racing a concurrent bid."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     finalized = None
@@ -3754,7 +3754,7 @@ async def force_end_auction(auction_id: str, request: Request):
 async def extend_auction(auction_id: str, request: Request):
     """Admin: Extend auction time."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     body = await request.json()
@@ -3782,7 +3782,7 @@ async def extend_auction(auction_id: str, request: Request):
 async def delete_auction(auction_id: str, request: Request):
     """Admin: Delete an auction (only if no bids)."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     auction = await db.auctions.find_one({"auction_id": auction_id})
@@ -3811,7 +3811,7 @@ class UpdateAuctionRequest(BaseModel):
 async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Request):
     """Admin: Update auction details (image, title, description, retail price)."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     auction = await db.auctions.find_one({"auction_id": auction_id})
@@ -3844,7 +3844,7 @@ async def upload_auction_image(auction_id: str, request: Request):
     """Admin: Upload a product image file for an auction (multipart/form-data)."""
     from fastapi import UploadFile, File
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
 
     auction = await db.auctions.find_one({"auction_id": auction_id})
@@ -3889,7 +3889,7 @@ async def upload_auction_image(auction_id: str, request: Request):
 async def get_auction_stats(request: Request):
     """Admin: Get comprehensive auction statistics."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     
     now = datetime.now(timezone.utc)
