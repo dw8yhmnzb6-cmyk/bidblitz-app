@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Briefcase, CalendarClock, Check, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -375,6 +375,7 @@ export default function TaxiPage({ onNavigate }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatDraft, setChatDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const bookingAttemptRef = useRef({ scope: null, key: null });
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -613,19 +614,40 @@ export default function TaxiPage({ onNavigate }) {
       toast.error('Bitte Zeit für spätere Buchung auswählen.');
       return;
     }
+    const bookingScope = selectedEstimate.quote_id || [
+      selectedEstimate.vehicle_type,
+      pickup.lat,
+      pickup.lng,
+      dropoff.lat,
+      dropoff.lng,
+      normalizedScheduledAt || 'now',
+    ].join(':');
+    if (bookingAttemptRef.current.scope !== bookingScope || !bookingAttemptRef.current.key) {
+      bookingAttemptRef.current = {
+        scope: bookingScope,
+        key: typeof crypto?.randomUUID === 'function'
+          ? `taxi-book-${crypto.randomUUID()}`
+          : `taxi-book-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      };
+    }
+
     setBooking(true);
     const result = await api.bookRideApi({
       pickup,
       dropoff,
       vehicleType: selectedEstimate.vehicle_type,
       paymentMethod: 'wallet',
+      quoteId: selectedEstimate.quote_id || null,
+      idempotencyKey: bookingAttemptRef.current.key,
       options: { bookingMode, scheduledAt: normalizedScheduledAt },
     });
     setBooking(false);
     if (!result.ok) {
+      if (!result.retryable) bookingAttemptRef.current = { scope: null, key: null };
       setError(result.error || 'Buchung fehlgeschlagen');
       return;
     }
+    bookingAttemptRef.current = { scope: null, key: null };
     setActiveRide(result.ride);
     setSheetMode('status');
   }, [bookingMode, dropoff, pickup, scheduledAt, selectedEstimate]);
