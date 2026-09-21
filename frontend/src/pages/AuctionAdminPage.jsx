@@ -45,6 +45,10 @@ const AuctionAdminPage = ({ onBack }) => {
     bidValue: 0.50,
     increment: 0.01,
     revenueTarget: 50.00,
+    productCost: 0.00,
+    shippingCost: 0.00,
+    otherCosts: 0.00,
+    targetNetProfit: 50.00,
     duration: 48,
   });
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
@@ -55,6 +59,10 @@ const AuctionAdminPage = ({ onBack }) => {
     bidValue: 0.50,
     increment: 0.01,
     revenueTarget: 50.00,
+    productCost: 0.00,
+    shippingCost: 0.00,
+    otherCosts: 0.00,
+    targetNetProfit: 50.00,
   });
   const [showImageModal, setShowImageModal] = useState(null); // auction object or null
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -192,6 +200,10 @@ const AuctionAdminPage = ({ onBack }) => {
       bidValue: Number(auction.bid_value_eur ?? 0.50),
       increment: Number(auction.price_increment ?? 0.01),
       revenueTarget: Number(auction.revenue_target_eur ?? 50.00),
+      productCost: Number(auction.product_cost_eur ?? 0),
+      shippingCost: Number(auction.shipping_cost_eur ?? 0),
+      otherCosts: Number(auction.other_costs_eur ?? 0),
+      targetNetProfit: Number(auction.target_net_profit_eur ?? 50.00),
     });
     setShowEngineModal(auction);
   };
@@ -206,6 +218,10 @@ const AuctionAdminPage = ({ onBack }) => {
           bid_value_eur: Number(engineConfig.bidValue),
           price_increment: Number(engineConfig.increment),
           revenue_target_eur: Number(engineConfig.revenueTarget),
+          product_cost_eur: Number(engineConfig.productCost),
+          shipping_cost_eur: Number(engineConfig.shippingCost),
+          other_costs_eur: Number(engineConfig.otherCosts),
+          target_net_profit_eur: Number(engineConfig.targetNetProfit),
         }),
       });
       toast.success("Auktions-Engine gespeichert");
@@ -328,6 +344,10 @@ const AuctionAdminPage = ({ onBack }) => {
         bid_value_eur: Number(options.bidValue || 0.50),
         price_increment: Number(options.increment || 0.01),
         revenue_target_eur: Number(options.revenueTarget || 0),
+        product_cost_eur: Number(options.productCost || 0),
+        shipping_cost_eur: Number(options.shippingCost || 0),
+        other_costs_eur: Number(options.otherCosts || 0),
+        target_net_profit_eur: Number(options.targetNetProfit || 0),
       }),
     });
     if (res.ok) {
@@ -478,7 +498,7 @@ const AuctionAdminPage = ({ onBack }) => {
           <div className="space-y-3" data-testid="auction-admin-engine">
             <Card title="Auktions-Engine" icon={<Target size={16} className="text-cyan-400" />}>
               <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.06] p-3 text-xs leading-relaxed text-cyan-100/70">
-                Pro Angebot kannst du den nominalen Gebotswert, den sichtbaren Preis-Schritt, das Gebotsumsatz-Ziel und die Premium-Hervorhebung steuern. Der Umsatzrechner ist eine Kalkulation – kein garantierter Gewinn.
+                Pro Angebot steuerst du Premium, nominalen Gebotswert und sichtbaren Preis-Schritt. Zusätzlich kalkuliert die Engine Produktkosten, Versand, sonstige Kosten und dein Nettoziel. Die Kalkulation verändert nicht automatisch Timer oder Gewinner.
               </div>
             </Card>
             {activeAuctions.length === 0 ? (
@@ -487,8 +507,17 @@ const AuctionAdminPage = ({ onBack }) => {
               const bidValue = Number(auction.bid_value_eur ?? 0.50);
               const increment = Number(auction.price_increment ?? 0.01);
               const target = Number(auction.revenue_target_eur ?? 0);
-              const bidsNeeded = target > 0 && bidValue > 0 ? Math.ceil(target / bidValue) : 0;
-              const visibleEnd = Number(auction.current_price || 0) + bidsNeeded * increment;
+              const costs = Number(auction.product_cost_eur ?? 0) + Number(auction.shipping_cost_eur ?? 0) + Number(auction.other_costs_eur ?? 0);
+              const netTarget = Number(auction.target_net_profit_eur ?? 0);
+              const currentPrice = Number(auction.current_price || 0);
+              const bidsForRevenue = target > 0 && bidValue > 0 ? Math.ceil(target / bidValue) : 0;
+              const bidsForNet = netTarget > 0 && (bidValue + increment) > 0
+                ? Math.max(0, Math.ceil((costs + netTarget - currentPrice) / (bidValue + increment)))
+                : 0;
+              const bidsNeeded = Math.max(bidsForRevenue, bidsForNet);
+              const visibleEnd = currentPrice + bidsNeeded * increment;
+              const estimatedBidRevenue = bidsNeeded * bidValue;
+              const estimatedContribution = estimatedBidRevenue + visibleEnd - costs;
               return (
                 <div key={auction.auction_id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
                   <div className="flex items-start gap-3">
@@ -503,10 +532,13 @@ const AuctionAdminPage = ({ onBack }) => {
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/40">
                         <span>Gebot: €{bidValue.toFixed(2)}</span>
                         <span>Preis +€{increment.toFixed(2)}</span>
-                        <span>Ziel: €{target.toFixed(2)}</span>
+                        <span>Gebotsumsatz: €{target.toFixed(2)}</span>
+                        <span>Nettoziel: €{netTarget.toFixed(2)}</span>
                       </div>
                       {bidsNeeded > 0 && (
-                        <p className="mt-1 text-[10px] text-cyan-300/70">≈ {bidsNeeded} Gebote · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)}</p>
+                        <p className="mt-1 text-[10px] text-cyan-300/70">
+                          ≈ {bidsNeeded} Gebote · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)} · Deckungsbeitrag ≈ €{estimatedContribution.toFixed(2)}
+                        </p>
                       )}
                     </div>
                     <motion.button
