@@ -147,10 +147,16 @@ def test_dating_admin_cannot_create_or_hard_delete_user_bound_profiles():
     backend = read("backend/routes/admin_management.py")
     page = read("frontend/src/pages/AdminManagementPage.jsx")
 
+    delete_segment = backend[backend.index('async def module_delete'):backend.index('# ═══════════════════════════════════════════════════════════════\n# LIVE ANALYTICS')]
+
     assert 'if module_key == "dating":' in backend
     assert "Dating-Profile werden nur aus echten Nutzerkonten erstellt." in backend
     assert '"create_disabled": True' in backend
     assert '"create_disabled_reason": "Dating-Profile entstehen ausschließlich aus echten Nutzerkonten.' in backend
-    assert '{"$set": {"active": False, "moderated_disabled_at": now}}' in backend
+    assert '{"$set": {"active": False, "moderated_disabled_at": now}}' in delete_segment
+    assert 'return {"ok": True, "disabled": True, "hard_deleted": False}' in delete_segment
     assert 'data-testid="module-create-disabled-note"' in page
     assert '{!readOnly && !createDisabled && (' in page
+    assert 'const moderationOnly = mod.key === "dating";' in page
+    assert 'item-disable-' in page
+    assert '{!moderationOnly && (' in page
