@@ -1923,8 +1923,45 @@ async def admin_send_command(scooter_id: str, request: Request):
         cmd = DeviceCommand(command)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Unknown command: {command}")
-    
-    result = await send_device_command(device_id, cmd)
+
+    critical_command = cmd in {DeviceCommand.UNLOCK, DeviceCommand.LOCK}
+    operation_key = str(
+        body.get("idempotency_key")
+        or request.headers.get("Idempotency-Key")
+        or ""
+    ).strip()
+    if critical_command:
+        if not 8 <= len(operation_key) <= 200:
+            raise HTTPException(status_code=400, detail="Idempotency-Key für kritischen Gerätebefehl erforderlich")
+
+        active_ride = await db.scooter_rides.find_one(
+            {"scooter_id": scooter_id, "status": {"$in": ["active", "paused"]}},
+            {"_id": 0, "ride_id": 1},
+        )
+        active_reservation = await db.scooter_reservations.find_one(
+            {
+                "scooter_id": scooter_id,
+                "status": "active",
+                "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+            },
+            {"_id": 0, "reservation_id": 1},
+        )
+        if (
+            active_ride
+            or active_reservation
+            or scooter.get("current_ride_id")
+            or scooter.get("status") in {"in_use", "unlocking", "reserved"}
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Kritischer Gerätebefehl ist während eines aktiven Scooter-Lifecycles gesperrt",
+            )
+
+    result = await send_device_command(
+        device_id,
+        cmd,
+        operation_key=(f"admin:{scooter_id}:{operation_key}" if operation_key else None),
+    )
     
     return {
         "ok": result.success,
