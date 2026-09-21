@@ -1063,6 +1063,8 @@ def test_pos_cart_and_external_card_paths_fail_closed():
     assert 'data-testid="pos-card-preview-disabled"' in checkout_source
     assert 'REACT_APP_POS_NFC_CERTIFIED' in checkout_source
     assert '{NFC_CERTIFIED ? (' in checkout_source
+    assert 'if (!NFC_CERTIFIED) {' in checkout_source
+    assert 'NFC ist noch nicht für Production zertifiziert.' in checkout_source
     assert 'data-testid="pos-nfc-preview-disabled"' in checkout_source
     assert 'offline_sale_id: offlineSaleId' in checkout_source
     assert 'captured_shift_id: q.shift_id' in checkout_source
