@@ -920,7 +920,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               />
 
               {/* Referral Boost Indicator */}
-              {ref.boost_active && (
+              {miningValueEnabled && ref.boost_active && (
                 <motion.div className="rounded-xl px-3.5 py-2.5 flex items-center gap-2"
                   style={{ background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.1)" }}
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
@@ -957,7 +957,11 @@ export default function MiningPage({ onBack, onNavigate }) {
                     <Share2 size={14} className="text-[#00C2FF]" />
                   </motion.button>
                 </div>
-                <p className="text-[9px] text-white/15 mt-1.5">{t("mining.referral_desc") || "Share & earn 5% of your referrals' mining rewards"}</p>
+                <p className="text-[9px] text-white/15 mt-1.5">
+                  {miningValueEnabled
+                    ? (t("mining.referral_desc") || "Share & earn 5% of your referrals' mining rewards")
+                    : "Referral Preview · Bonus-Rewards bleiben bis zur verifizierten Mining-/Settlement-Anbindung deaktiviert."}
+                </p>
               </motion.div>
 
               {/* Recent Txns */}
