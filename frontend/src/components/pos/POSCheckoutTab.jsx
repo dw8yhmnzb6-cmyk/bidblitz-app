@@ -424,6 +424,9 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   };
 
   const startNFC = async () => {
+    if (!NFC_CERTIFIED) {
+      return toast.error("NFC ist noch nicht für Production zertifiziert.");
+    }
     if (cart.length === 0) return toast.error("Cart leer");
     try {
       const c = await apiCall("/api/pos/cart/create", {
