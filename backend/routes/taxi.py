@@ -19,6 +19,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from utils.commission import DRIVER_COMMISSION, PLATFORM_COMMISSION
 from models.taxi import (
     OperatorRegistration,
     FavoriteLocationRequest,
@@ -1185,8 +1186,6 @@ def detect_region(lat: float, lng: float) -> str:
         return "dubai"
     return "default"
 
-DRIVER_COMMISSION = 0.85  # Driver gets 85%
-PLATFORM_COMMISSION = 0.15  # Platform gets 15%
 CANCELLATION_FEE = 3.00
 MIN_WALLET_BALANCE = 10.00
 
