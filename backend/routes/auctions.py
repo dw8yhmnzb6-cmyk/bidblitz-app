@@ -1370,37 +1370,71 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
         now_iso = now.isoformat()
         max_bids = int(ab.get("max_bids") or 0)
         placed = int(ab.get("bids_placed") or 0)
-        if placed >= max_bids:
-            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False, "processing": False}})
-            continue
-
         processing_until = ab.get("processing_until")
+        processing_slot = ab.get("processing_slot")
+
         if ab.get("processing") and processing_until and processing_until > now_iso:
             continue
 
-        next_slot = placed + 1
+        resume_slot = None
+        if ab.get("processing") and processing_slot is not None:
+            try:
+                candidate_slot = int(processing_slot)
+                if candidate_slot >= 1 and candidate_slot <= max_bids:
+                    resume_slot = candidate_slot
+            except (TypeError, ValueError):
+                resume_slot = None
+
+        if placed >= max_bids and resume_slot is None:
+            await db.auto_bids.update_one(
+                {"_id": ab["_id"]},
+                {"$set": {"active": False, "processing": False, "processing_until": None}, "$unset": {"processing_slot": ""}},
+            )
+            continue
+
         lock_until = (now + timedelta(seconds=30)).isoformat()
-        claimed = await db.auto_bids.update_one(
-            {
-                "_id": ab["_id"],
-                "active": True,
-                "bids_placed": placed,
-                "$or": [
-                    {"processing": {"$ne": True}},
-                    {"processing_until": {"$lte": now_iso}},
-                    {"processing_until": None},
-                ],
-            },
-            {
-                "$set": {
+        if resume_slot is not None:
+            next_slot = resume_slot
+            claimed = await db.auto_bids.update_one(
+                {
+                    "_id": ab["_id"],
+                    "active": True,
                     "processing": True,
                     "processing_slot": next_slot,
+                    "$or": [
+                        {"processing_until": {"$lte": now_iso}},
+                        {"processing_until": None},
+                    ],
+                },
+                {"$set": {
                     "processing_until": lock_until,
                     "processing_started_at": now_iso,
+                    "processing_recovered_at": now_iso,
+                }},
+            )
+        else:
+            next_slot = placed + 1
+            claimed = await db.auto_bids.update_one(
+                {
+                    "_id": ab["_id"],
+                    "active": True,
+                    "bids_placed": placed,
+                    "$or": [
+                        {"processing": {"$ne": True}},
+                        {"processing_until": {"$lte": now_iso}},
+                        {"processing_until": None},
+                    ],
                 },
-                "$inc": {"bids_placed": 1},
-            },
-        )
+                {
+                    "$set": {
+                        "processing": True,
+                        "processing_slot": next_slot,
+                        "processing_until": lock_until,
+                        "processing_started_at": now_iso,
+                    },
+                    "$inc": {"bids_placed": 1},
+                },
+            )
         if claimed.modified_count != 1:
             continue
 
