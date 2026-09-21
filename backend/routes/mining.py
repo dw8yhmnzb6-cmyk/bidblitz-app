@@ -158,17 +158,19 @@ async def mining_trust_public():
         total_hashrate = 0.0
 
     videos = await db.mining_trust_videos.find({}, {"_id": 0}).sort("city", 1).to_list(20)
+    public_network = {
+        "active_miners": total_miners if TEST_MODE else 0,
+        "wallets": total_users if TEST_MODE else 0,
+        "registered_hashrate_ths": round(total_hashrate, 1) if TEST_MODE else 0,
+        "registered_hashrate_phs": round(total_hashrate / 1000, 2) if (TEST_MODE and total_hashrate) else 0,
+    }
     return {
         "proof_metrics": PUBLIC_MINING_PROOF_METRICS if TEST_MODE else {},
         "proof_verified_live": False,
+        "videos_verified_live": False,
         "capabilities": _mining_capabilities(),
-        "network": {
-            "active_miners": total_miners,
-            "wallets": total_users,
-            "registered_hashrate_ths": round(total_hashrate, 1),
-            "registered_hashrate_phs": round(total_hashrate / 1000, 2) if total_hashrate else 0,
-        },
-        "videos": videos,
+        "network": public_network,
+        "videos": videos if TEST_MODE else [],
     }
 
 
