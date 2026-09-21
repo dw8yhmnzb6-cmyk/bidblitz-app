@@ -680,7 +680,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     if not customer_debit.success:
         debit_state = str(getattr(customer_debit.status, "value", customer_debit.status))
         raise HTTPException(
-            status_code=409 if debit_state in {"pending", "reconciliation_required"} else 400,
+            status_code=503 if debit_state in {"pending", "reconciliation_required"} else 400,
             detail=customer_debit.error or "Payment failed",
         )
 
