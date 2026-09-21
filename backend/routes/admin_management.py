@@ -854,6 +854,15 @@ async def module_create(module_key: str, data: dict, request: Request):
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["id"] = data.get("id") or f"{module_key[:3].upper()}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')[:14]}"
+    if module_key == "immobilien":
+        data["listing_id"] = data.get("listing_id") or data["id"]
+        data["status"] = data.get("status") or "active"
+    elif module_key == "freelancer":
+        data["freelancer_id"] = data.get("freelancer_id") or data["id"]
+        data["available"] = True if data.get("available") is None else bool(data.get("available"))
+    elif module_key == "elearning":
+        data["course_id"] = data.get("course_id") or data["id"]
+        data["status"] = data.get("status") or "published"
     await db[coll_name].insert_one(data)
     data.pop("_id", None)
     return {"ok": True, "item": data}
