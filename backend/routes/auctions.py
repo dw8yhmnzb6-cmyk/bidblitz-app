@@ -3655,18 +3655,34 @@ async def pause_auction(auction_id: str, request: Request):
     
     now = datetime.now(timezone.utc)
     ends_at = datetime.fromisoformat(auction["ends_at"])
-    remaining = (ends_at - now).total_seconds()
-    
-    await db.auctions.update_one(
-        {"auction_id": auction_id},
+    remaining = max(0.0, (ends_at - now).total_seconds())
+
+    changed = await db.auctions.update_one(
+        {
+            "auction_id": auction_id,
+            "status": "active",
+            "ends_at": auction.get("ends_at"),
+            "current_price": auction.get("current_price"),
+            "last_bidder_id": auction.get("last_bidder_id"),
+        },
         {"$set": {
             "status": "paused",
             "paused_at": now.isoformat(),
-            "remaining_when_paused": max(0, remaining),
-        }}
+            "remaining_when_paused": remaining,
+        }},
     )
-    
-    return {"ok": True, "status": "paused", "remaining_seconds": remaining}
+    if changed.modified_count != 1:
+        fresh = await db.auctions.find_one({"auction_id": auction_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "paused":
+            return {
+                "ok": True,
+                "status": "paused",
+                "remaining_seconds": float(fresh.get("remaining_when_paused") or 0),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Bitte neu laden und erneut versuchen.")
+
+    return {"ok": True, "status": "paused", "remaining_seconds": remaining, "replayed": False}
 
 
 @router.post("/admin/auction/{auction_id}/resume")
@@ -3684,20 +3700,31 @@ async def resume_auction(auction_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Only paused auctions can be resumed")
     
     now = datetime.now(timezone.utc)
-    remaining = auction.get("remaining_when_paused", 300)
+    remaining = max(0.0, float(auction.get("remaining_when_paused", 300) or 0))
     new_ends_at = now + timedelta(seconds=remaining)
-    
-    await db.auctions.update_one(
-        {"auction_id": auction_id},
-        {"$set": {
-            "status": "active",
-            "ends_at": new_ends_at.isoformat(),
-            "resumed_at": now.isoformat(),
+
+    changed = await db.auctions.update_one(
+        {
+            "auction_id": auction_id,
+            "status": "paused",
+            "remaining_when_paused": auction.get("remaining_when_paused"),
         },
-        "$unset": {"paused_at": "", "remaining_when_paused": ""}}
+        {
+            "$set": {
+                "status": "active",
+                "ends_at": new_ends_at.isoformat(),
+                "resumed_at": now.isoformat(),
+            },
+            "$unset": {"paused_at": "", "remaining_when_paused": ""},
+        },
     )
-    
-    return {"ok": True, "status": "active", "ends_at": new_ends_at.isoformat()}
+    if changed.modified_count != 1:
+        fresh = await db.auctions.find_one({"auction_id": auction_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "active":
+            return {"ok": True, "status": "active", "ends_at": fresh.get("ends_at"), "replayed": True}
+        raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Resume wurde nicht angewendet.")
+
+    return {"ok": True, "status": "active", "ends_at": new_ends_at.isoformat(), "replayed": False}
 
 
 @router.post("/admin/auction/{auction_id}/end")
@@ -3772,24 +3799,61 @@ async def extend_auction(auction_id: str, request: Request):
         raise HTTPException(status_code=403, detail="Admin only")
     
     body = await request.json()
-    extend_minutes = body.get("minutes", 60)
-    
+    try:
+        extend_minutes = int(body.get("minutes", 60))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültige Verlängerung")
+    if not 1 <= extend_minutes <= 1440:
+        raise HTTPException(status_code=400, detail="Verlängerung muss zwischen 1 und 1440 Minuten liegen")
+
     auction = await db.auctions.find_one({"auction_id": auction_id})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     
     if auction["status"] not in ("active", "paused"):
         raise HTTPException(status_code=400, detail="Cannot extend ended auction")
-    
+
+    if auction["status"] == "paused":
+        current_remaining = max(0.0, float(auction.get("remaining_when_paused") or 0))
+        new_remaining = current_remaining + (extend_minutes * 60)
+        changed = await db.auctions.update_one(
+            {
+                "auction_id": auction_id,
+                "status": "paused",
+                "remaining_when_paused": auction.get("remaining_when_paused"),
+            },
+            {"$set": {"remaining_when_paused": new_remaining}},
+        )
+        if changed.modified_count != 1:
+            raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Verlängerung wurde nicht angewendet.")
+        return {
+            "ok": True,
+            "status": "paused",
+            "remaining_seconds": new_remaining,
+            "extended_minutes": extend_minutes,
+        }
+
     current_ends = datetime.fromisoformat(auction["ends_at"])
     new_ends = current_ends + timedelta(minutes=extend_minutes)
-    
-    await db.auctions.update_one(
-        {"auction_id": auction_id},
-        {"$set": {"ends_at": new_ends.isoformat()}}
+    changed = await db.auctions.update_one(
+        {
+            "auction_id": auction_id,
+            "status": "active",
+            "ends_at": auction.get("ends_at"),
+            "current_price": auction.get("current_price"),
+            "last_bidder_id": auction.get("last_bidder_id"),
+        },
+        {"$set": {"ends_at": new_ends.isoformat()}},
     )
-    
-    return {"ok": True, "new_ends_at": new_ends.isoformat(), "extended_minutes": extend_minutes}
+    if changed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Verlängerung wurde nicht angewendet.")
+
+    return {
+        "ok": True,
+        "status": "active",
+        "new_ends_at": new_ends.isoformat(),
+        "extended_minutes": extend_minutes,
+    }
 
 
 @router.delete("/admin/auction/{auction_id}")
