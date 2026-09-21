@@ -34,6 +34,7 @@ const AuctionAdminPage = ({ onBack }) => {
   const [stats, setStats] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [config, setConfig] = useState(null);
+  const botControlsEffective = config?.bot_controls_effective === true;
   const [orders, setOrders] = useState([]);
   const [fulfillmentDrafts, setFulfillmentDrafts] = useState({});
   const [updatingOrder, setUpdatingOrder] = useState(null);
@@ -114,6 +115,10 @@ const AuctionAdminPage = ({ onBack }) => {
 
   // ─── Bot Actions ───
   const openBotConfig = (auction) => {
+    if (!botControlsEffective && !auction?.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     setBotConfig({
       enabled: auction.bot_enabled || false,
       target: auction.bot_target_price || Math.round(auction.retail_price * 0.15),
@@ -124,6 +129,10 @@ const AuctionAdminPage = ({ onBack }) => {
 
   const saveBotConfig = async () => {
     if (!showBotModal) return;
+    if (!botControlsEffective && !showBotModal.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     const res = await api("/api/auctions/admin/bot-config", {
       method: "POST",
       body: JSON.stringify({
@@ -143,6 +152,10 @@ const AuctionAdminPage = ({ onBack }) => {
   };
 
   const toggleBotQuick = async (auction) => {
+    if (!botControlsEffective && !auction?.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     const res = await api("/api/auctions/admin/bot-config", {
       method: "POST",
       body: JSON.stringify({
@@ -490,6 +503,14 @@ const AuctionAdminPage = ({ onBack }) => {
         {/* ═══ BOT SYSTEM TAB ═══ */}
         {activeTab === "bots" && (
           <div className="space-y-4">
+            {!botControlsEffective && (
+              <div
+                className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-200"
+                data-testid="auction-bot-production-policy"
+              >
+                Production: Bot-Steuerung ist für normale Kundenauktionen deaktiviert. Nur klar markierte bot_only Demo-/Testauktionen dürfen Bot-Funktionen verwenden.
+              </div>
+            )}
             {/* Bot Stats Card */}
             <Card title="Bot-Statistiken" icon={<Activity size={16} className="text-purple-400" />}>
               <div className="grid grid-cols-2 gap-4">
@@ -549,11 +570,14 @@ const AuctionAdminPage = ({ onBack }) => {
                     max="100"
                     step="5"
                     value={config?.customer_win_rate_percent ?? 20}
+                    disabled={!botControlsEffective}
                     onChange={(e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       setConfig((c) => ({ ...(c || {}), customer_win_rate_percent: v }));
                     }}
                     onMouseUp={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -566,6 +590,7 @@ const AuctionAdminPage = ({ onBack }) => {
                       }
                     }}
                     onTouchEnd={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -577,7 +602,7 @@ const AuctionAdminPage = ({ onBack }) => {
                         toast.error("Speichern fehlgeschlagen");
                       }
                     }}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400 disabled:cursor-not-allowed disabled:opacity-35"
                     data-testid="winrate-slider"
                   />
                   <div className="flex justify-between text-[10px] text-white/40 mt-1">
@@ -609,7 +634,9 @@ const AuctionAdminPage = ({ onBack }) => {
                 </div>
 
                 <p className="text-[10px] text-white/40 italic">
-                  💡 Diese Einstellung wirkt in den letzten 5 Min jeder Auktion: wenn ein echter Kunde führt und das "Kunde gewinnt"-Los gezogen wurde, halten sich die Bots zurück.
+                  {botControlsEffective
+                    ? 'Diese Einstellung gilt nur im freigeschalteten Bot-Testmodus.'
+                    : 'Production-Kundenauktionen werden nicht über eine Win-Rate-Steuerung beeinflusst.'}
                 </p>
               </div>
             </Card>
@@ -630,11 +657,14 @@ const AuctionAdminPage = ({ onBack }) => {
                     max="100"
                     step="5"
                     value={config?.bot_aggression_level ?? 50}
+                    disabled={!botControlsEffective}
                     onChange={(e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       setConfig((c) => ({ ...(c || {}), bot_aggression_level: v }));
                     }}
                     onMouseUp={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -647,6 +677,7 @@ const AuctionAdminPage = ({ onBack }) => {
                       }
                     }}
                     onTouchEnd={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -658,7 +689,7 @@ const AuctionAdminPage = ({ onBack }) => {
                         toast.error("Speichern fehlgeschlagen");
                       }
                     }}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-35"
                     data-testid="aggression-slider"
                   />
                   <div className="flex justify-between text-[10px] text-white/40 mt-1">
@@ -668,7 +699,9 @@ const AuctionAdminPage = ({ onBack }) => {
                   </div>
                 </div>
                 <p className="text-[10px] text-white/40 italic">
-                  💡 Bei <span className="text-cyan-400">100</span> bieten Bots fast in jeder Sekunde — User hat keine Chance zu überlegen. Bei <span className="text-cyan-400">0</span> warten Bots 8-15 s zwischen Bids → Kunde hat viel Reaktionszeit.
+                  {botControlsEffective
+                    ? 'Bot-Aggressivität gilt nur im freigeschalteten Bot-Testmodus.'
+                    : 'Production-Kundenauktionen nutzen keine Bot-Aggressivitätssteuerung.'}
                 </p>
               </div>
             </Card>
