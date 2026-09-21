@@ -456,6 +456,9 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
 
     assert "idempotency_key: idempotencyKey" in credits_source
     assert "idempotency_key: idempotencyKey" in detail_source
+    assert "window.sessionStorage.getItem(bidStorageKey)" in detail_source
+    assert "window.sessionStorage.setItem(bidStorageKey, bidAttemptKeyRef.current)" in detail_source
+    assert "window.sessionStorage.removeItem(bidStorageKey)" in detail_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
 
