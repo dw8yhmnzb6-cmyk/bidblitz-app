@@ -238,3 +238,18 @@ def test_aggressive_auth_cleanup_requires_confirmation():
     assert 'mode === "aggressive"' in page
     assert "Aggressive Auth-Bereinigung wirklich ausführen?" in page
     assert "Nur nicht-privilegierte Kundenkonten werden verarbeitet." in page
+
+
+def test_banned_customers_remain_visible_in_admin_filters():
+    backend = read("backend/routes/admin_management.py")
+
+    start = backend.index('@router.get("/customers")')
+    end = backend.index('@router.get("/customers/{user_id}")', start)
+    handler = backend[start:end]
+
+    assert '{"account_closure_status": {"$ne": "admin_closed"}}' in handler
+    assert 'if status == "banned":' in handler
+    assert 'query["$and"].append({"banned": True})' in handler
+    active_block = handler[handler.index('elif status == "active":'):]
+    assert '{"banned": {"$ne": True}}' in active_block
+    assert '"login_disabled": {"$ne": True}' in active_block
