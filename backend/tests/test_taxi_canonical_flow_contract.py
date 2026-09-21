@@ -95,3 +95,20 @@ def test_taxi_booking_retry_repairs_quote_and_promo_without_second_charge():
     assert '"auth_required"' in promo
     assert '"Idempotency-Key": idempotencyKey' in api
     assert "bookingAttemptRef" in page
+
+
+def test_taxi_promo_is_reserved_before_wallet_and_released_on_failure():
+    taxi = read("backend/routes/taxi.py")
+    promo = read("backend/utils/taxi_promo.py")
+
+    reserve_pos = taxi.index("promo_reservation = await reserve_redemption(")
+    wallet_pos = taxi.index("reservation = await debit_wallet(", reserve_pos)
+    assert reserve_pos < wallet_pos
+    assert "await release_redemption(user_id, promo_applied[\"code\"], ride_id)" in taxi
+    assert "await record_redemption(user_id, promo_applied[\"code\"], ride_id, promo_applied[\"discount\"])" in taxi
+
+    assert 'reason": "auth_required"' in promo
+    assert 'existing_status == "reserving"' in promo
+    assert 'existing_status in {"released", "rejected"}' in promo
+    assert '"uses": {"$lt": max_uses}' in promo
+    assert '"$pull": {"ride_ids": ride_id}' in promo
