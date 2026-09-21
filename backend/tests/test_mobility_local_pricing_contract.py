@@ -161,3 +161,33 @@ def test_taxi_geocoding_is_not_hardcoded_to_germany_austria_switzerland():
     assert "/api/taxi/geocode?" in api
     assert 'qs.set("lat", String(lat))' in api
     assert 'qs.set("lng", String(lng))' in api
+
+
+def test_taxi_ride_completion_is_retry_safe_and_charges_only_delta():
+    taxi = read("backend/routes/taxi.py")
+
+    assert 'additional_charge = round(max(0.0, float(fare["total"]) - reserved_amount), 2)' in taxi
+    assert 'amount=additional_charge' in taxi
+    assert 'idempotency_key=f"taxi-settle-delta:{req.ride_id}"' in taxi
+    assert 'idempotency_key=f"taxi-driver-earning:{req.ride_id}"' in taxi
+    assert '{"ride_id": req.ride_id, "status": RideStatus.STARTED.value}' in taxi
+    assert 'async def _ensure_taxi_settlement_reporting(' in taxi
+    assert 'driver_marker = f"settled_ride_markers.{marker_hash}"' in taxi
+    assert 'revenue_marker = f"taxi_ride_markers.{marker_hash}"' in taxi
+    assert 'ride["status"] == RideStatus.COMPLETED.value and ride.get("payment_status") == "settled"' in taxi
+    assert '"replayed": True' in taxi
+
+
+def test_taxi_promo_usage_is_reserved_before_wallet_value_moves():
+    taxi = read("backend/routes/taxi.py")
+    promo = read("backend/utils/taxi_promo.py")
+
+    reserve_pos = taxi.index("promo_reservation = await reserve_redemption(")
+    debit_pos = taxi.index("reservation = await debit_wallet(", reserve_pos)
+    assert reserve_pos < debit_pos
+    assert 'await release_redemption(user_id, promo_applied["code"], ride_id)' in taxi
+    assert 'await record_redemption(user_id, promo_applied["code"], ride_id, promo_applied["discount"])' in taxi
+    assert 'reason": "auth_required"' in promo
+    assert 'existing_status == "reserving"' in promo
+    assert 'existing_status in {"released", "rejected"}' in promo
+    assert '"uses": {"$lt": max_uses}' in promo
