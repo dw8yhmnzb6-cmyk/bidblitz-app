@@ -181,7 +181,26 @@ function AutoRewardCard({ reward, data, t, valueActionsEnabled, onClaim, claimBu
   );
 }
 
-const tabs = ["dashboard", "miners", "wallet", "shop", "marketplace", "card", "launchpad", "vip"];
+const MINING_TAB_CONFIG = [
+  { key: "dashboard", label: "Dashboard", icon: BarChart3, color: "#00E89D" },
+  { key: "miners", label: "Miner", icon: Cpu, color: "#B9F2FF" },
+  { key: "wallet", label: "Wallet", icon: Wallet, color: "#00C2FF" },
+  { key: "shop", label: "Shop", icon: ShoppingBag, color: "#FFD700" },
+  { key: "marketplace", label: "Markt", icon: Tag, color: "#A855F7" },
+  { key: "card", label: "Karte", icon: CreditCard, color: "#38BDF8" },
+  { key: "launchpad", label: "Launch", icon: Rocket, color: "#FF7A59" },
+  { key: "vip", label: "VIP", icon: Star, color: "#FFD700" },
+];
+
+const MINING_LEVELS = [
+  { name: "Bronze", label: "Bronze", bonus: 0, color: "#CD7F32" },
+  { name: "Silver", label: "Silber", bonus: 0.02, color: "#C0C0C0" },
+  { name: "Gold", label: "Gold", bonus: 0.05, color: "#FFD700" },
+  { name: "Platinum", label: "Platin", bonus: 0.10, color: "#E5E4E2" },
+  { name: "Diamond", label: "Diamant", bonus: 0.15, color: "#B9F2FF" },
+];
+
+const tabs = MINING_TAB_CONFIG.map(item => item.key);
 
 export default function MiningPage({ onBack, onNavigate }) {
   const user = useUser();
@@ -308,9 +327,10 @@ export default function MiningPage({ onBack, onNavigate }) {
     }
   };
 
-  const buyMiner = async (pkgId) => {
+  const buyMiner = async (pkgId, billingOverride = billingType) => {
     if (!requireMiningValue()) return;
-    const attemptScope = `${pkgId}:${billingType}`;
+    const effectiveBilling = billingOverride || "onetime";
+    const attemptScope = `${pkgId}:${effectiveBilling}`;
     const idempotencyKey = getOrCreateMiningAttemptKey(
       minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope, "mining-buy"
     );
@@ -320,7 +340,7 @@ export default function MiningPage({ onBack, onNavigate }) {
       const r = await api("/api/mining/buy-miner", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ package_id: pkgId, billing: billingType, idempotency_key: idempotencyKey }),
+        body: JSON.stringify({ package_id: pkgId, billing: effectiveBilling, idempotency_key: idempotencyKey }),
       });
       clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       setConfirmPkg(null);
@@ -598,6 +618,10 @@ export default function MiningPage({ onBack, onNavigate }) {
   const miners = data?.miners || [];
   const txns = data?.recent_transactions || [];
   const parsedWithdrawAmt = parseAmountInput(withdrawAmt);
+  const currentLevelIndex = Math.max(0, MINING_LEVELS.findIndex(level => level.name === (vip.name || "Bronze")));
+  const currentLevel = MINING_LEVELS[currentLevelIndex] || MINING_LEVELS[0];
+  const nextLevel = MINING_LEVELS[Math.min(currentLevelIndex + 1, MINING_LEVELS.length - 1)];
+  const quickPackages = packages.slice(0, 3);
 
   return (
     <motion.div data-testid="mining-page" className="min-h-screen pb-24 relative" style={{ background: "#030303" }}
@@ -624,30 +648,42 @@ export default function MiningPage({ onBack, onNavigate }) {
       </div>
 
       {!miningValueEnabled && (
-        <div className="px-5 mb-4 relative z-10" data-testid="mining-provider-unavailable">
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-            <p className="text-[12px] font-bold text-amber-300">Mining nur als Preview</p>
-            <p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">
-              {data?.capabilities?.production_message || "Kauf, Ertrag, Transfer und BLZ→EUR werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
-            </p>
+        <div className="px-5 mb-3 relative z-10" data-testid="mining-provider-unavailable">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] px-3.5 py-3 flex items-start gap-2.5">
+            <Shield size={15} className="mt-0.5 flex-shrink-0 text-amber-300" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-amber-300">Mining Preview</p>
+              <p className="mt-0.5 text-[9px] leading-relaxed text-amber-100/65">
+                {data?.capabilities?.production_message || "Kauf, Ertrag, Transfer und BLZ→EUR werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab Bar */}
-      <div className="px-5 mb-4 relative z-10">
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {tabs.map(tb => {
-            const tabLabels = { dashboard: "Dashboard", miners: "Miner", wallet: "Wallet", shop: "Shop", marketplace: "Markt", card: "Karte", launchpad: "Launch", vip: "VIP" };
+      {/* Mining navigation — all modules visible without horizontal scrolling */}
+      <div className="px-5 mb-3 relative z-10" data-testid="mining-menu-grid">
+        <div className="grid grid-cols-4 gap-2">
+          {MINING_TAB_CONFIG.map(item => {
+            const Icon = item.icon;
+            const active = tab === item.key;
             return (
-              <motion.button key={tb} onClick={() => setTab(tb)} whileTap={{ scale: 0.95 }}
-                data-testid={`mining-tab-${tb}`}
-                className={`flex-shrink-0 px-3.5 py-2.5 rounded-xl text-[11px] font-bold capitalize transition-all ${
-                  tab === tb 
-                    ? "bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/30 shadow-lg shadow-[#00E89D]/5" 
-                    : "bg-white/[0.03] text-white/30 border border-white/[0.06] hover:text-white/50"
-                }`}>
-                {t(`mining.tab_${tb}`) || tabLabels[tb] || tb}
+              <motion.button
+                key={item.key}
+                onClick={() => setTab(item.key)}
+                whileTap={{ scale: 0.94 }}
+                data-testid={`mining-tab-${item.key}`}
+                className="min-w-0 rounded-2xl px-1.5 py-2.5 flex flex-col items-center justify-center gap-1.5 transition-all"
+                style={{
+                  background: active ? `${item.color}12` : "rgba(255,255,255,0.025)",
+                  border: `1px solid ${active ? `${item.color}55` : "rgba(255,255,255,0.06)"}`,
+                  boxShadow: active ? `0 6px 18px ${item.color}10` : "none",
+                }}
+              >
+                <Icon size={16} style={{ color: active ? item.color : "rgba(255,255,255,0.42)" }} />
+                <span className="w-full truncate text-center text-[9px] font-bold" style={{ color: active ? item.color : "rgba(255,255,255,0.42)" }}>
+                  {t(`mining.tab_${item.key}`) || item.label}
+                </span>
               </motion.button>
             );
           })}
