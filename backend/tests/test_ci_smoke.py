@@ -2086,6 +2086,9 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "return 0" in mining
     assert "_require_mining_value_mode()" in mining
     assert '"proof_verified_live": False' in mining
+    assert '"videos_verified_live": False' in mining
+    assert '"active_miners": total_miners if TEST_MODE else 0' in mining
+    assert '"videos": videos if TEST_MODE else []' in mining
     assert 'user.get("role") not in ("admin", "super_admin")' in mining
     assert mining.count('user.get("role") not in ("admin", "super_admin")') >= 5
 
