@@ -152,7 +152,7 @@ async def list_miner_for_sale(req: ListMinerRequest, request: Request):
 
 @router.post("/marketplace/buy")
 async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
-    """Buy one active listing exactly once; preview value flow stays TEST_MODE-only."""
+    """Buy one active listing exactly once and resume safely after partial completion."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -167,13 +167,12 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
     existing_purchase = await db.mining_marketplace_purchases.find_one({"_id": purchase_id}, {"_id": 0})
     if existing_purchase and existing_purchase.get("listing_id") != req.listing_id:
         raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Daten verwendet")
-    if existing_purchase and existing_purchase.get("status") == "completed":
-        return {
-            "ok": True,
-            "miner_name": existing_purchase.get("miner_name"),
-            "purchase_id": purchase_id,
-            "replayed": True,
-        }
+    if existing_purchase and existing_purchase.get("buyer_id") not in (None, user_id):
+        raise HTTPException(status_code=409, detail="Idempotency-Key gehört zu einem anderen Käufer")
+    if existing_purchase and existing_purchase.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Marketplace-Kauf benötigt Abstimmung; keine erneute Belastung wird ausgeführt")
+    if existing_purchase and existing_purchase.get("status") in {"failed", "failed_refunded", "refunded"}:
+        raise HTTPException(status_code=409, detail="Früherer Marketplace-Kauf wurde beendet oder zurückgebucht")
 
     listing = await db.mining_marketplace.find_one({"listing_id": req.listing_id})
     if not listing:
@@ -196,33 +195,83 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
         }},
         upsert=True,
     )
+    purchase = await db.mining_marketplace_purchases.find_one({"_id": purchase_id}, {"_id": 0}) or {}
+    if purchase.get("listing_id") != req.listing_id or purchase.get("buyer_id") != user_id:
+        raise HTTPException(status_code=409, detail="Marketplace-Kaufdaten stimmen nicht mit dem Idempotency-Key überein")
 
-    claim = await db.mining_marketplace.update_one(
-        {
-            "listing_id": req.listing_id,
-            "status": "active",
-            "seller_id": {"$ne": user_id},
-        },
-        {"$set": {
-            "status": "processing",
-            "purchase_id": purchase_id,
-            "buyer_id": user_id,
-            "purchase_started_at": datetime.now(timezone.utc).isoformat(),
-        }},
-    )
-    if claim.modified_count != 1:
-        current = await db.mining_marketplace.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
-        if current.get("status") == "sold" and current.get("purchase_id") == purchase_id:
-            purchase = await db.mining_marketplace_purchases.find_one({"_id": purchase_id}, {"_id": 0}) or {}
-            return {
-                "ok": True,
-                "miner_name": purchase.get("miner_name") or current.get("miner_name"),
+    price = round(float(purchase.get("price_blz") or listing.get("price_blz") or 0), 4)
+    seller_id = str(purchase.get("seller_id") or listing.get("seller_id") or "")
+    miner_id = purchase.get("miner_id") or listing.get("miner_id")
+    miner_name = purchase.get("miner_name") or listing.get("miner_name") or ""
+    if price <= 0 or not seller_id or not miner_id:
+        await db.mining_marketplace_purchases.update_one(
+            {"_id": purchase_id},
+            {"$set": {"status": "reconciliation_required", "reason": "invalid_persisted_purchase_data"}},
+        )
+        raise HTTPException(status_code=503, detail="Marketplace-Kaufdaten benötigen Abstimmung")
+
+    async def record_marketplace_transactions(now_iso: str) -> None:
+        for suffix, uid, amt, tx_type, desc in [
+            ("BUY", user_id, -price, "marketplace_buy", f"Bought {miner_name} on marketplace"),
+            ("SELL", seller_id, price, "marketplace_sell", f"Sold {miner_name} on marketplace"),
+        ]:
+            await db.mining_transactions.update_one(
+                {"txn_id": f"{purchase_id}-{suffix}"},
+                {"$setOnInsert": {
+                    "txn_id": f"{purchase_id}-{suffix}",
+                    "user_id": uid,
+                    "type": tx_type,
+                    "amount_blz": amt,
+                    "description": desc,
+                    "purchase_id": purchase_id,
+                    "created_at": now_iso,
+                }},
+                upsert=True,
+            )
+
+    if purchase.get("status") == "completed":
+        await record_marketplace_transactions(purchase.get("completed_at") or datetime.now(timezone.utc).isoformat())
+        return {"ok": True, "miner_name": miner_name, "purchase_id": purchase_id, "replayed": True}
+
+    listing_status = listing.get("status")
+    if listing_status == "sold":
+        if listing.get("purchase_id") != purchase_id or listing.get("buyer_id") != user_id:
+            raise HTTPException(status_code=409, detail="Listing wurde von einem anderen Kauf abgeschlossen")
+        now = listing.get("sold_at") or datetime.now(timezone.utc).isoformat()
+        await db.mining_marketplace_purchases.update_one(
+            {"_id": purchase_id},
+            {"$set": {"status": "completed", "completed_at": now}},
+        )
+        await record_marketplace_transactions(now)
+        return {"ok": True, "miner_name": miner_name, "purchase_id": purchase_id, "replayed": True}
+
+    if listing_status == "active":
+        claim = await db.mining_marketplace.update_one(
+            {
+                "listing_id": req.listing_id,
+                "status": "active",
+                "seller_id": seller_id,
+            },
+            {"$set": {
+                "status": "processing",
                 "purchase_id": purchase_id,
-                "replayed": True,
-            }
-        raise HTTPException(status_code=409, detail="Listing wird bereits gekauft oder ist nicht mehr verfügbar")
+                "buyer_id": user_id,
+                "purchase_started_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.modified_count != 1:
+            listing = await db.mining_marketplace.find_one({"listing_id": req.listing_id}) or {}
+            listing_status = listing.get("status")
+        else:
+            listing_status = "processing"
 
-    price = round(float(listing.get("price_blz") or 0), 4)
+    if listing_status != "processing" or listing.get("purchase_id") not in (None, purchase_id) or listing.get("buyer_id") not in (None, user_id):
+        current = await db.mining_marketplace.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
+        if current.get("status") == "processing" and current.get("purchase_id") == purchase_id and current.get("buyer_id") == user_id:
+            listing = current
+        else:
+            raise HTTPException(status_code=409, detail="Listing wird bereits gekauft oder ist nicht mehr verfügbar")
+
     buyer_marker = f"marketplace_purchase_markers.{purchase_id}"
     buyer_debit = await db.mining_wallets.update_one(
         {
@@ -257,45 +306,78 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
 
     ownership = await db.mining_miners.update_one(
         {
-            "miner_id": listing["miner_id"],
-            "user_id": listing["seller_id"],
+            "miner_id": miner_id,
+            "user_id": seller_id,
             "status": "listed",
         },
-        {"$set": {"user_id": user_id, "status": "active", "marketplace_purchase_id": purchase_id}},
+        {
+            "$set": {"user_id": user_id, "status": "active", "marketplace_purchase_id": purchase_id},
+            "$unset": {
+                "marketplace_listing_id": "",
+                "marketplace_listing_price_blz": "",
+                "marketplace_listed_at": "",
+            },
+        },
     )
     if ownership.modified_count != 1:
-        await db.mining_wallets.update_one(
-            {
-                "user_id": user_id,
-                buyer_marker: {"$exists": True},
-                f"marketplace_purchase_refunds.{purchase_id}": {"$exists": False},
-            },
-            {
-                "$inc": {"blz_balance": price},
-                "$set": {f"marketplace_purchase_refunds.{purchase_id}": {
-                    "amount_blz": price,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            },
+        fresh_miner = await db.mining_miners.find_one({"miner_id": miner_id}) or {}
+        ownership_already_applied = (
+            str(fresh_miner.get("user_id") or "") == user_id
+            and fresh_miner.get("status") == "active"
+            and fresh_miner.get("marketplace_purchase_id") == purchase_id
         )
-        await db.mining_marketplace.update_one(
-            {"listing_id": req.listing_id, "status": "processing", "purchase_id": purchase_id},
-            {"$set": {"status": "active"}, "$unset": {"purchase_id": "", "buyer_id": "", "purchase_started_at": ""}},
-        )
-        await db.mining_marketplace_purchases.update_one(
-            {"_id": purchase_id},
-            {"$set": {"status": "failed_refunded", "reason": "ownership_transfer_failed"}},
-        )
-        raise HTTPException(status_code=409, detail="Miner ownership changed; BLZ wurden zurückgebucht")
+        if not ownership_already_applied:
+            refund_marker = f"marketplace_purchase_refunds.{purchase_id}"
+            refund = await db.mining_wallets.update_one(
+                {
+                    "user_id": user_id,
+                    buyer_marker: {"$exists": True},
+                    refund_marker: {"$exists": False},
+                },
+                {
+                    "$inc": {"blz_balance": price},
+                    "$set": {refund_marker: {
+                        "amount_blz": price,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                },
+            )
+            refund_wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+            refund_confirmed = refund.modified_count == 1 or bool(
+                (refund_wallet.get("marketplace_purchase_refunds") or {}).get(purchase_id)
+            )
+            if not refund_confirmed:
+                await db.mining_marketplace_purchases.update_one(
+                    {"_id": purchase_id},
+                    {"$set": {"status": "reconciliation_required", "reason": "ownership_failed_refund_not_confirmed"}},
+                )
+                raise HTTPException(status_code=503, detail="Marketplace-Kauf benötigt Abstimmung; Rückbuchung nicht bestätigt")
+
+            if str(fresh_miner.get("user_id") or "") == seller_id and fresh_miner.get("status") == "listed":
+                await db.mining_marketplace.update_one(
+                    {"listing_id": req.listing_id, "status": "processing", "purchase_id": purchase_id},
+                    {"$set": {"status": "active"}, "$unset": {"purchase_id": "", "buyer_id": "", "purchase_started_at": ""}},
+                )
+                await db.mining_marketplace_purchases.update_one(
+                    {"_id": purchase_id},
+                    {"$set": {"status": "failed_refunded", "reason": "ownership_transfer_failed"}},
+                )
+                raise HTTPException(status_code=409, detail="Miner ownership changed; BLZ wurden zurückgebucht")
+
+            await db.mining_marketplace_purchases.update_one(
+                {"_id": purchase_id},
+                {"$set": {"status": "reconciliation_required", "reason": "ownership_state_unclear_after_refund"}},
+            )
+            raise HTTPException(status_code=503, detail="BLZ wurden zurückgebucht; Miner-Ownership benötigt Abstimmung")
 
     seller_marker = f"marketplace_sale_markers.{purchase_id}"
     await db.mining_wallets.update_one(
-        {"user_id": listing["seller_id"]},
-        {"$setOnInsert": {"user_id": listing["seller_id"], "blz_balance": 0.0}},
+        {"user_id": seller_id},
+        {"$setOnInsert": {"user_id": seller_id, "blz_balance": 0.0}},
         upsert=True,
     )
     seller_credit = await db.mining_wallets.update_one(
-        {"user_id": listing["seller_id"], seller_marker: {"$exists": False}},
+        {"user_id": seller_id, seller_marker: {"$exists": False}},
         {
             "$inc": {"blz_balance": price},
             "$set": {seller_marker: {
@@ -307,7 +389,7 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
     )
     if seller_credit.modified_count != 1:
         existing_credit = await db.mining_wallets.find_one(
-            {"user_id": listing["seller_id"], seller_marker: {"$exists": True}},
+            {"user_id": seller_id, seller_marker: {"$exists": True}},
             {"_id": 1},
         )
         if not existing_credit:
@@ -315,48 +397,29 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
                 {"_id": purchase_id},
                 {"$set": {"status": "reconciliation_required", "reason": "seller_credit_failed"}},
             )
-            raise HTTPException(status_code=500, detail="Miner übertragen; Verkäufergutschrift benötigt Abstimmung")
+            raise HTTPException(status_code=503, detail="Miner übertragen; Verkäufergutschrift benötigt Abstimmung")
 
     now = datetime.now(timezone.utc).isoformat()
     finalized = await db.mining_marketplace.update_one(
-        {"listing_id": req.listing_id, "status": "processing", "purchase_id": purchase_id},
+        {"listing_id": req.listing_id, "status": "processing", "purchase_id": purchase_id, "buyer_id": user_id},
         {"$set": {"status": "sold", "sold_at": now}},
     )
     if finalized.modified_count != 1:
-        await db.mining_marketplace_purchases.update_one(
-            {"_id": purchase_id},
-            {"$set": {"status": "reconciliation_required", "reason": "listing_finalize_failed"}},
-        )
-        raise HTTPException(status_code=500, detail="Zahlung abgeschlossen; Listing-Abschluss benötigt Abstimmung")
+        current = await db.mining_marketplace.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
+        if not (current.get("status") == "sold" and current.get("purchase_id") == purchase_id and current.get("buyer_id") == user_id):
+            await db.mining_marketplace_purchases.update_one(
+                {"_id": purchase_id},
+                {"$set": {"status": "reconciliation_required", "reason": "listing_finalize_failed"}},
+            )
+            raise HTTPException(status_code=503, detail="Zahlung abgeschlossen; Listing-Abschluss benötigt Abstimmung")
 
     await db.mining_marketplace_purchases.update_one(
         {"_id": purchase_id},
         {"$set": {"status": "completed", "completed_at": now}},
     )
-    for suffix, uid, amt, tx_type, desc in [
-        ("BUY", user_id, -price, "marketplace_buy", f"Bought {listing['miner_name']} on marketplace"),
-        ("SELL", listing["seller_id"], price, "marketplace_sell", f"Sold {listing['miner_name']} on marketplace"),
-    ]:
-        await db.mining_transactions.update_one(
-            {"txn_id": f"{purchase_id}-{suffix}"},
-            {"$setOnInsert": {
-                "txn_id": f"{purchase_id}-{suffix}",
-                "user_id": uid,
-                "type": tx_type,
-                "amount_blz": amt,
-                "description": desc,
-                "purchase_id": purchase_id,
-                "created_at": now,
-            }},
-            upsert=True,
-        )
+    await record_marketplace_transactions(now)
 
-    return {
-        "ok": True,
-        "miner_name": listing["miner_name"],
-        "purchase_id": purchase_id,
-        "replayed": False,
-    }
+    return {"ok": True, "miner_name": miner_name, "purchase_id": purchase_id, "replayed": bool(existing_purchase)}
 
 
 @router.post("/marketplace/cancel")
