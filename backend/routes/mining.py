@@ -464,6 +464,9 @@ async def mining_dashboard(request: Request):
     recent_txns = await db.mining_transactions.find(
         {"user_id": user_id}, {"_id": 0}
     ).sort("created_at", -1).to_list(10)
+    for tx in recent_txns:
+        tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))
+        tx["amount_eur"] = _safe_mining_float(tx.get("amount_eur"))
 
     # Next VIP
     next_vip = None
