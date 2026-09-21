@@ -1083,8 +1083,14 @@ export default function MiningPage({ onBack, onNavigate }) {
 
               {/* Title */}
               <div className="text-center mb-2">
-                <h2 className="text-[18px] font-bold font-outfit text-white">{t("mining.shop_create") || "Miner erstellen"}</h2>
-                <p className="text-[11px] text-white/30 mt-0.5">{t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen"}</p>
+                <h2 className="text-[18px] font-bold font-outfit text-white">
+                  {miningValueEnabled ? (t("mining.shop_create") || "Miner erstellen") : "Miner-Pakete Preview"}
+                </h2>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  {miningValueEnabled
+                    ? (t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen")
+                    : "Preise und Erträge sind Vorschauwerte. In Production findet kein Kauf und keine BLZ-Erzeugung statt."}
+                </p>
               </div>
 
               {/* Billing Toggle: Einmalig / Monatlich / Jährlich */}
@@ -1233,18 +1239,27 @@ export default function MiningPage({ onBack, onNavigate }) {
 
                     {/* Price + Balance */}
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] text-white/40">{t("mining.today_due") || "Heute fällig"}</span>
+                      <span className="text-[11px] text-white/40">
+                        {miningValueEnabled ? (t("mining.today_due") || "Heute fällig") : "Vorschaupreis"}
+                      </span>
                       <span className="text-[16px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{price.toFixed(2)}</span>
                     </div>
 
-                    <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
-                      <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
-                      <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
-                    </div>
-
-                    {!canAfford && (
-                      <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium px-1">
-                        {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
+                    {miningValueEnabled ? (
+                      <>
+                        <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
+                          <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
+                        </div>
+                        {!canAfford && (
+                          <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium px-1">
+                            {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="rounded-xl border border-amber-300/10 bg-amber-300/5 px-3 py-2 text-center text-[9px] text-amber-200/70" data-testid="mining-shop-preview-note">
+                        Preview-only · kein Wallet-Debit, kein Abo und keine Miner-Aktivierung in Production.
                       </p>
                     )}
 
@@ -1255,7 +1270,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       </div>
                     )}
 
-                    {billingType !== "onetime" && (
+                    {billingType !== "onetime" && miningValueEnabled && (
                       <p className="text-[8px] text-white/15 text-center">
                         {billingType === "monthly"
                           ? (t("mining.renew_monthly") || `Verlängert sich automatisch für €${price.toFixed(2)} / Monat`)
@@ -1272,7 +1287,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                       style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}
                       whileTap={canAfford ? { scale: 0.96 } : {}}>
                       {buying ? <Loader2 size={14} className="animate-spin" /> : (
-                        <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                        miningValueEnabled
+                          ? <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                          : <>Preview · Kauf deaktiviert <ChevronRight size={14} /></>
                       )}
                     </motion.button>
                   </motion.div>
