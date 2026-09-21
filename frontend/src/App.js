@@ -784,7 +784,7 @@ function AppContent() {
           ? <DesignSystemPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/admin/ai-assistant":
-        return isAdminRole
+        return user.role === "admin"
           ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/merchants":
