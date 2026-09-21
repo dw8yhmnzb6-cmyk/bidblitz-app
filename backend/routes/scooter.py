@@ -2996,11 +2996,27 @@ async def cancel_reservation(request: Request):
     if not res:
         return {"ok": True, "message": "Keine aktive Reservierung"}
 
-    await db.scooter_reservations.update_one(
-        {"reservation_id": res["reservation_id"]}, {"$set": {"status": "cancelled"}}
+    cancelled = await db.scooter_reservations.update_one(
+        {"reservation_id": res["reservation_id"], "user_id": user_id, "status": "active"},
+        {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
     )
-    await db.scooters.update_one(
-        {"scooter_id": res["scooter_id"]},
-        {"$set": {"status": "available"}, "$unset": {"reserved_by": "", "reserved_until": ""}},
+    if cancelled.modified_count != 1:
+        return {"ok": True, "message": "Reservierung wurde bereits verarbeitet", "replayed": True}
+
+    released = await db.scooters.update_one(
+        {
+            "scooter_id": res["scooter_id"],
+            "status": "reserved",
+            "reserved_by": user_id,
+            "$or": [
+                {"current_ride_id": {"$exists": False}},
+                {"current_ride_id": None},
+                {"current_ride_id": ""},
+            ],
+        },
+        {
+            "$set": {"status": "available"},
+            "$unset": {"reserved_by": "", "reserved_until": ""},
+        },
     )
-    return {"ok": True}
+    return {"ok": True, "released": released.modified_count == 1, "replayed": False}
