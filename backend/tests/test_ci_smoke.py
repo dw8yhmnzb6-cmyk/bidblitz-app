@@ -2981,7 +2981,8 @@ def test_mining_marketplace_purchase_is_atomic_and_retry_safe():
     assert "marketplacePurchaseKeysRef" in page
     assert '"Idempotency-Key": idempotencyKey' in page
     assert "idempotency_key: idempotencyKey" in page
-    assert "delete marketplacePurchaseKeysRef.current[listingId]" in page
+    assert 'clearMiningAttemptKey(marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId)' in page
+    assert 'loadMiningAttemptMap(attemptOwnerId, "marketplace-buy")' in page
 
 def test_legacy_express_checkout_stripe_charges_are_fail_closed():
     source = (BACKEND_DIR / "routes" / "express_checkout_stripe.py").read_text(encoding="utf-8")
