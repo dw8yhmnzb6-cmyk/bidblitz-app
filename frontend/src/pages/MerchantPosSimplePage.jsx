@@ -7,6 +7,7 @@ import { useI18n, useUser } from "../store";
 import { useNetwork } from "../store/NetworkContext";
 import { api } from "../services/api";
 import { tracker } from "../services/tracker";
+import { TEST_MODE } from "../config/testMode";
 import { PosCartPanel } from "../components/merchant-pos/PosCartPanel";
 import { PosConnectionStatus } from "../components/merchant-pos/PosConnectionStatus";
 import { getPosCopy } from "../components/merchant-pos/posCopy";
@@ -225,7 +226,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       const featureKey = `merchant.pos.payment.${key === "card" ? "card" : key}`;
       const enabledByFeature = meta ? isEnabled(featureKey, user, { platform: "web", country: setup?.progress?.business_info?.country || "DE" }) : true;
       const enabledBySetup = paymentMethods[key] === "enabled" || paymentMethods[key] === true;
-      const externalCardCertified = process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED === "true";
+      const externalCardCertified = TEST_MODE && process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED === "true";
       const correctlyWired = !["voucher", "invoice"].includes(key);
       const certified = key !== "tap_to_pay" && (key !== "card" || externalCardCertified);
       const enabled = Boolean(enabledByFeature && enabledBySetup && certified && correctlyWired);
