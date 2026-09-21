@@ -455,6 +455,12 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "auction_first_purchase_bonus_awarded" in auctions_source
 
     assert "idempotency_key: idempotencyKey" in credits_source
+    assert "purchaseAttemptRef" in credits_source
+    assert "window.sessionStorage.getItem(attemptStorageKey)" in credits_source
+    assert "window.sessionStorage.setItem(attemptStorageKey, purchaseAttemptRef.current.key)" in credits_source
+    assert "window.sessionStorage.removeItem(attemptStorageKey)" in credits_source
+    assert 'if (payMethod === "wallet" && balance < selectedPkg.price)' in credits_source
+    assert "const terminal = [400, 403, 404].includes" in credits_source
     assert "idempotency_key: idempotencyKey" in detail_source
     assert "window.sessionStorage.getItem(bidStorageKey)" in detail_source
     assert "window.sessionStorage.setItem(bidStorageKey, bidAttemptKeyRef.current)" in detail_source
