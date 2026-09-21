@@ -2844,7 +2844,7 @@ async def get_driver_requests(request: Request):
     nearby_requests = []
     for ride in rides:
         pickup = ride.get("pickup", {})
-        if pickup.get("lat"):
+        if NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
             dist = haversine_distance(loc["lat"], loc["lng"], pickup["lat"], pickup["lng"])
             if dist <= 10:
                 ride["distance_to_pickup_km"] = round(dist, 2)
@@ -3195,7 +3195,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     end_loc = driver.get("location", ride.get("dropoff", {}))
     
     distance_km = ride.get("distance_km_estimate", 5)
-    if start_loc.get("lat") and end_loc.get("lat"):
+    if NumberErrorSafe(start_loc.get("lat"), start_loc.get("lng")) and NumberErrorSafe(end_loc.get("lat"), end_loc.get("lng")):
         distance_km = haversine_distance(
             start_loc["lat"], start_loc["lng"],
             end_loc["lat"], end_loc["lng"]
@@ -3574,7 +3574,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     pickup = ride.get("pickup") or {}
     eta = None
     try:
-        if loc.get("lat") is not None and pickup.get("lat") is not None:
+        if NumberErrorSafe(loc.get("lat"), loc.get("lng")) and NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
             # haversine in km
             from math import radians, sin, cos, asin, sqrt
             lat1, lon1 = radians(loc["lat"]), radians(loc["lng"])
@@ -3591,7 +3591,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     target = ride.get("dropoff") if ride.get("status") == RideStatus.STARTED.value else ride.get("pickup")
     driver_bearing = None
     try:
-        if loc.get("lat") is not None and target and target.get("lat") is not None:
+        if target and NumberErrorSafe(loc.get("lat"), loc.get("lng")) and NumberErrorSafe(target.get("lat"), target.get("lng")):
             driver_bearing = calculate_bearing(loc["lat"], loc["lng"], target["lat"], target["lng"])
     except Exception:
         driver_bearing = None
@@ -3611,7 +3611,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
             "type": car.get("type"),
         },
     }
-    if loc.get("lat") is not None:
+    if NumberErrorSafe(loc.get("lat"), loc.get("lng")):
         ride["driver_lat"] = loc["lat"]
         ride["driver_lng"] = loc["lng"]
     if driver_bearing is not None:
