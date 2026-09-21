@@ -127,6 +127,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [tab, setTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState("");
   const [packages, setPackages] = useState([]);
   const [buying, setBuying] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
@@ -160,8 +161,9 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [buyingLaunch, setBuyingLaunch] = useState(null);
 
   const fetchMiningData = useCallback(async () => {
-    const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
-      api("/api/mining/dashboard").catch(() => ({})),
+    // Dashboard is required. Optional Phase-2 panels may fail independently without blanking the whole page.
+    const dash = await api("/api/mining/dashboard");
+    const [pkgs, costs, mkt, crd, lp] = await Promise.all([
       api("/api/mining/packages").catch(() => ({ packages: [] })),
       api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
       api("/api/mining/marketplace").catch(() => ({ listings: [] })),
@@ -173,6 +175,7 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
       setData(dash);
@@ -183,8 +186,11 @@ export default function MiningPage({ onBack, onNavigate }) {
       setLaunchpad(lp.projects || []);
     } catch (e) {
       console.error(e);
+      setData(null);
+      setLoadError(e?.message || "Mining-Daten konnten nicht geladen werden.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [fetchMiningData]);
 
   useEffect(() => {
@@ -193,6 +199,7 @@ export default function MiningPage({ onBack, onNavigate }) {
       try {
         const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
         if (!active) return;
+        setLoadError("");
         setData(dash);
         setPackages(pkgs.packages || []);
         setUpgradeCosts(costs.costs || {});
@@ -201,6 +208,9 @@ export default function MiningPage({ onBack, onNavigate }) {
         setLaunchpad(lp.projects || []);
       } catch (e) {
         console.error(e);
+        if (!active) return;
+        setData(null);
+        setLoadError(e?.message || "Mining-Daten konnten nicht geladen werden.");
       }
       if (active) setLoading(false);
     })();
@@ -478,6 +488,25 @@ export default function MiningPage({ onBack, onNavigate }) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#030303" }}>
         <Loader2 size={24} className="animate-spin text-[#00E89D]" />
+      </div>
+    );
+  }
+
+  if (!data && loadError) {
+    return (
+      <div className="min-h-screen px-5 py-8 flex items-center justify-center" style={{ background: "#030303" }} data-testid="mining-load-error">
+        <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-center">
+          <p className="text-sm font-bold text-red-300">Mining konnte nicht geladen werden</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/50">{loadError}</p>
+          <div className="mt-4 flex gap-2">
+            <button onClick={onBack} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-white/70">
+              Zurück
+            </button>
+            <button onClick={load} data-testid="mining-retry-load" className="flex-1 rounded-xl bg-[#00E89D]/15 px-4 py-3 text-xs font-bold text-[#00E89D]">
+              Erneut laden
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
