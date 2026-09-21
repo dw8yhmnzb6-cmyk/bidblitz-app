@@ -927,7 +927,7 @@ async def get_terminal_summary(request: Request):
     uid = str(user["_id"])
 
     mp = await db.merchant_profiles.find_one({"user_id": uid})
-    if not mp and user.get("role") not in ("merchant", "admin"):
+    if not mp and user.get("role") not in ("merchant", "admin", "super_admin"):
         staff = await db.merchant_staff.find_one({"user_id": uid, "status": "active"})
         if not staff:
             raise HTTPException(status_code=403, detail="No access")
@@ -1211,7 +1211,7 @@ async def get_receipt_pdf(transaction_id: str, request: Request):
     """Download PDF receipt for a transaction."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    is_admin = user.get("role") == "admin"
+    is_admin = user.get("role") in ("admin", "super_admin")
 
     # Find transaction by id field (not _id)
     txn = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
@@ -1245,7 +1245,7 @@ async def get_receipt_data(transaction_id: str, request: Request):
     """Get receipt data for a transaction (JSON for frontend display/print)."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    is_admin = user.get("role") == "admin"
+    is_admin = user.get("role") in ("admin", "super_admin")
 
     txn = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
     if not txn:
