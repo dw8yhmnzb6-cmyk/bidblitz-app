@@ -359,6 +359,9 @@ const AuthHealthTab = () => {
   useEffect(() => { load(); }, [load]);
 
   const runCleanup = async (mode = "safe") => {
+    if (mode === "aggressive" && !window.confirm("Aggressive Auth-Bereinigung wirklich ausführen? Nur nicht-privilegierte Kundenkonten werden verarbeitet.")) {
+      return;
+    }
     setCleanupLoading(true);
     try {
       const res = await fetch(`${API}/api/admin/auth-health/cleanup`, {
