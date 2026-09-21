@@ -451,3 +451,18 @@ def test_admin_scooter_fleet_cannot_override_active_lifecycle():
     assert "disabled={lifecycleLocked}" in admin_page
     assert "Aktiver Scooter-Lifecycle – Status gesperrt" in admin_page
     assert "Aktiver Scooter-Lifecycle – Löschen gesperrt" in admin_page
+
+
+def test_admin_scooter_hardware_identity_is_unique_and_errors_visible():
+    scooter = read("backend/routes/scooter.py")
+    admin_page = read("frontend/src/components/admin/AdminScootersTab.jsx")
+
+    assert 'existing = await db.scooters.find_one({"device_id": device_id}' in scooter
+    assert 'existing_qr = await db.scooters.find_one({"qr_code": qr_code}' in scooter
+    assert "QR-Code already registered" in scooter
+    assert '"device_id": normalized_device_id, "scooter_id": {"$ne": scooter_id}' in scooter
+    assert "Device ID already registered" in scooter
+    assert "Device ID erforderlich" in scooter
+
+    assert "setError(e?.message || String(e))" in admin_page
+    assert "catch { /* noop */ }" not in admin_page
