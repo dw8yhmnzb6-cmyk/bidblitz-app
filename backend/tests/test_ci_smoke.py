@@ -3667,3 +3667,11 @@ def test_auction_product_edits_lock_against_first_real_bid():
     assert "Produktänderung wurde nicht angewendet." in source
     assert "Bildänderung wurde nicht angewendet." in source
     assert "filepath.unlink(missing_ok=True)" in source
+
+
+def test_auction_admin_keeps_paused_auctions_resumable():
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionAdminPage.jsx").read_text(encoding="utf-8")
+
+    assert 'const activeAuctions = auctions.filter(a => ["active", "paused"].includes(a.status));' in page
+    assert 'auction.status === "paused"' in page
+    assert 'onResume(auction.auction_id)' in page
