@@ -1037,6 +1037,23 @@ async def module_delete(module_key: str, item_id: str, request: Request):
     await _require_admin(request)
     if module_key == "ladesaeulen" and not TEST_MODE:
         raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
+    if module_key == "dating":
+        now = datetime.now(timezone.utc).isoformat()
+        result = await db.dating_profiles.update_one(
+            {"$or": [{"profile_id": item_id}, {"id": item_id}]},
+            {"$set": {"active": False, "moderated_disabled_at": now}},
+        )
+        if result.matched_count == 0:
+            try:
+                result = await db.dating_profiles.update_one(
+                    {"_id": _oid(item_id)},
+                    {"$set": {"active": False, "moderated_disabled_at": now}},
+                )
+            except Exception:
+                pass
+        if result.matched_count == 0:
+            raise HTTPException(404, "Dating-Profil nicht gefunden")
+        return {"ok": True, "disabled": True, "hard_deleted": False}
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     if module_key == "scooter-abos":
