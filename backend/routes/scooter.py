@@ -1497,6 +1497,7 @@ def _coerce_scooter_plan(raw: dict, fallback: Optional[dict] = None) -> Optional
         "plan_id": plan_id,
         "name": name,
         "price": round(price, 2),
+        "duration": str(source.get("duration") or "custom"),
         "duration_days": duration_days,
         "unlock_fee": round(unlock_fee, 2),
         "free_minutes_per_day": free_minutes,
