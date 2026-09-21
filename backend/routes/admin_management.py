@@ -868,11 +868,6 @@ MODULE_ID_FIELDS = {
 async def module_create(module_key: str, data: dict, request: Request):
     """Neuen Eintrag in Service-Modul anlegen."""
     await _require_admin(request)
-    if module_key == "scooter-abos":
-        from routes.scooter import _get_scooter_plans
-        plans = await _get_scooter_plans()
-        items = [{**plan, "id": plan["plan_id"]} for plan in plans]
-        return {"items": items, "count": len(items), "collection": "scooter_plans"}
     if module_key == "ladesaeulen" and not TEST_MODE:
         raise HTTPException(409, "Live-OCPP-Ladesäulen werden über die verifizierte EV-Geräteverwaltung provisioniert; generisches CRUD ist read-only.")
     if module_key not in MODULE_COLLECTIONS:
@@ -920,6 +915,11 @@ async def module_create(module_key: str, data: dict, request: Request):
 async def module_list(module_key: str, request: Request, limit: int = 100):
     """Liste alle Einträge eines Service-Moduls."""
     await _require_admin(request)
+    if module_key == "scooter-abos":
+        from routes.scooter import _get_scooter_plans
+        plans = await _get_scooter_plans()
+        items = [{**plan, "id": plan["plan_id"]} for plan in plans]
+        return {"items": items, "count": len(items), "collection": "scooter_plans"}
     if module_key == "ladesaeulen" and not TEST_MODE:
         charge_points = await db.ev_charge_points.find(
             {"active": {"$ne": False}},
