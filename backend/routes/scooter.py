@@ -1302,6 +1302,10 @@ async def end_ride(req: EndRideRequest, request: Request):
             "$inc": scooter_inc,
         },
     )
+    await db.scooter_shares.update_many(
+        {"ride_id": ride_id, "status": "active"},
+        {"$set": {"status": "ended", "ended_at": completed_at}},
+    )
 
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     return {
@@ -1943,22 +1947,32 @@ async def create_share_code(req: ShareScooterRequest, request: Request):
     if not ride:
         raise HTTPException(400, "Keine aktive Fahrt gefunden")
 
-    # Check existing share
+    now = datetime.now(timezone.utc)
+
+    # Reuse only an actually valid active share; stale active rows are expired first.
     existing = await db.scooter_shares.find_one({
         "ride_id": req.ride_id,
         "status": "active",
     })
     if existing:
-        return {
-            "ok": True,
-            "code": existing["code"],
-            "expires_at": existing["expires_at"],
-            "already_existed": True,
-        }
+        try:
+            existing_expires = datetime.fromisoformat(str(existing.get("expires_at") or "").replace("Z", "+00:00"))
+        except Exception:
+            existing_expires = now - timedelta(seconds=1)
+        if existing_expires > now:
+            return {
+                "ok": True,
+                "code": existing["code"],
+                "expires_at": existing["expires_at"],
+                "already_existed": True,
+            }
+        await db.scooter_shares.update_one(
+            {"_id": existing["_id"], "status": "active"},
+            {"$set": {"status": "expired", "expired_at": now.isoformat()}},
+        )
 
     # Generate a sufficiently strong human-readable share code.
     code = f"BLZ-{secrets.token_hex(4).upper()}"
-    now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=req.duration_minutes)
 
     share = {
