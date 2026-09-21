@@ -363,3 +363,21 @@ def test_scooter_my_subscription_uses_same_identity_lookup_as_pricing():
     handler = scooter[start:end]
     assert "sub = await _get_active_scooter_subscription(user)" in handler
     assert '"user_email": user.get("email", "")' not in handler
+
+
+def test_scooter_pause_resume_use_real_iot_state_transitions():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert '@router.post("/pause")' in scooter
+    assert '@router.post("/resume")' in scooter
+    assert "command = await send_device_command(device_id, DeviceCommand.LOCK)" in scooter
+    assert "command = await send_device_command(device_id, DeviceCommand.UNLOCK)" in scooter
+    assert "if not TEST_MODE and not _iot_live_configured():" in scooter
+    assert '"status": "paused"' in scooter
+    assert '"status": "active"' in scooter
+    assert "/api/scooter/pause" in page
+    assert "/api/scooter/resume" in page
+    assert "pricing.pause_rate" not in page
+    assert "Scooter bleibt reserviert" in page
+    assert "Der normale Fahrtarif läuft weiter" in page
