@@ -382,7 +382,14 @@ def test_pos_payments_fail_closed_and_retry_safely():
     pos_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MerchantPosSimplePage.jsx").read_text(encoding="utf-8")
 
     assert 'POS_EXTERNAL_CARD_CERTIFIED' in pos_source
+    assert 'from core.config import TEST_MODE' in pos_source
+    assert 'if not TEST_MODE:' in pos_source
+    assert 'Externe Kartenzahlung bleibt in Production deaktiviert' in pos_source
     assert 'Verifizierte Provider-Referenz erforderlich' in pos_source
+    assert 'debit_state in {"pending", "reconciliation_required"}' in pos_source
+    assert 'credit_state in {"pending", "reconciliation_required"}' in pos_source
+    assert 'keine automatische Rückbuchung wird ausgeführt' in pos_source
+    assert 'status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500' in pos_source
     assert 'idempotency_key=f"pos-rollback:{payment[\'payment_id\']}"' in pos_source
     assert 'PAYMENT_STATUS_RECONCILIATION = "reconciliation_required"' in pos_source
 
@@ -1059,6 +1066,7 @@ def test_pos_cart_and_external_card_paths_fail_closed():
     assert 'cardRef || `CARD-${Date.now()}`' not in checkout_source
     assert 'providerReference = cardRef.trim()' in checkout_source
     assert 'REACT_APP_POS_EXTERNAL_CARD_CERTIFIED' in checkout_source
+    assert 'const EXTERNAL_CARD_CERTIFIED = TEST_MODE &&' in checkout_source
     assert 'if (paymentMethod === "card_external" && !EXTERNAL_CARD_CERTIFIED)' in checkout_source
     assert 'data-testid="pos-card-preview-disabled"' in checkout_source
     assert 'REACT_APP_POS_NFC_CERTIFIED' in checkout_source
