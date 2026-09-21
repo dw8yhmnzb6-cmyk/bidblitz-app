@@ -269,7 +269,7 @@ const QuickBonusWidget = ({ quickBonus, onClaim, busy }) => {
   );
 };
 
-const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTest }) => {
+const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTest, allowTestPush }) => {
   if (!reminders) return null;
   const rows = [
     { key: "claim_ready_enabled", label: "Claim Reminder", desc: "Push, wenn deine Session fertig ist." },
@@ -305,9 +305,11 @@ const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTes
           </div>
         ))}
       </div>
-      <button data-testid="blitz-test-reminder-btn" onClick={() => onTest("claim_ready")} className="w-full rounded-xl py-2.5 bg-white/8 border border-white/10 text-[12px] font-bold text-white">
-        Test-Reminder senden
-      </button>
+      {allowTestPush && (
+        <button data-testid="blitz-test-reminder-btn" onClick={() => onTest("claim_ready")} className="w-full rounded-xl py-2.5 bg-white/8 border border-white/10 text-[12px] font-bold text-white">
+          Test-Reminder senden
+        </button>
+      )}
     </div>
   );
 };
@@ -1426,6 +1428,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           }}
           onToggle={updateReminder}
           onTest={sendReminderTest}
+          allowTestPush={valueActionsEnabled}
         />
 
         {/* Lockup */}
