@@ -1342,6 +1342,18 @@ export default function MiningPage({ onBack, onNavigate }) {
           {/* ════ CARD ════ */}
           {tab === "card" && (
             <motion.div key="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {!cardData?.card && (
+                <div
+                  className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] px-4 py-5 text-center"
+                  data-testid="mining-card-preview-unavailable"
+                >
+                  <CreditCard size={28} className="mx-auto mb-2 text-amber-300/70" />
+                  <p className="text-[13px] font-bold text-amber-200">Mining Card noch nicht live</p>
+                  <p className="mt-2 text-[10px] leading-relaxed text-white/40">
+                    {cardData?.message || data?.capabilities?.production_message || "Die Mining Card wird erst nach Anbindung eines verifizierten Karten-Issuers aktiviert."}
+                  </p>
+                </div>
+              )}
               {cardData?.card && (() => {
                 const c = cardData.card;
                 const cardColor = c.color || "#C0C0C0";
