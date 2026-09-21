@@ -219,7 +219,7 @@ export async function fetchRideHistory() {
   return data?.rides || [];
 }
 
-export async function estimateRide({ pickup, dropoff, promoCode }) {
+export async function estimateRide({ pickup, dropoff, promoCode, scheduledAt = null }) {
   const body = {
     pickup_address: pickup.address || "",
     pickup_lat: pickup.lat,
@@ -227,6 +227,7 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
     dropoff_address: dropoff.address || "",
     dropoff_lat: dropoff.lat,
     dropoff_lng: dropoff.lng,
+    scheduled_at: scheduledAt || null,
   };
   if (promoCode) body.promo_code = promoCode;
   const res = await safeFetch(`${API}/api/taxi/estimate`, {
