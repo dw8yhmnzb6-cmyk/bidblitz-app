@@ -476,7 +476,8 @@ async def upgrade_card(req: UpgradeCardRequest, request: Request):
 
 @router.post("/card/freeze")
 async def toggle_freeze(request: Request):
-    """Toggle card freeze."""
+    """Toggle card freeze only while the test card simulator is enabled."""
+    _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     card = await db.mining_cards.find_one({"user_id": user_id})
