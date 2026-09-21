@@ -697,54 +697,215 @@ export default function MiningPage({ onBack, onNavigate }) {
           {tab === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
 
-              {/* ── BlitzMine (Pi-Style Tap-to-Earn) Banner ── */}
-              <motion.button
-                data-testid="mining-blitzmine-banner"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate?.("/blitz-mine")}
-                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+              {/* Mining Level — gamified progression using the existing VIP rules */}
+              <motion.div
+                data-testid="mining-level-card"
+                className="rounded-3xl p-4 relative overflow-hidden"
                 style={{
-                  background: "linear-gradient(135deg, rgba(255,215,0,0.10), rgba(0,194,255,0.06))",
-                  border: "1px solid rgba(255,215,0,0.25)",
-                  boxShadow: "0 4px 20px rgba(255,215,0,0.08)",
+                  background: "linear-gradient(135deg, rgba(0,232,157,0.07), rgba(0,194,255,0.05) 55%, rgba(185,242,255,0.04))",
+                  border: "1px solid rgba(0,232,157,0.18)",
+                  boxShadow: "0 8px 28px rgba(0,232,157,0.05)",
                 }}
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "radial-gradient(circle, #FFD70030, transparent)", border: "1px solid #FFD700" }}>
-                  <Zap size={20} className="text-[#FFD700]" />
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-[13px] font-black text-white">Dein Mining Level</p>
+                    <p className="text-[9px] text-white/35 mt-0.5">
+                      {miningValueEnabled ? "Mehr Mining-Power bringt dich ins nächste Level." : "Level-System Preview · Bonusregeln noch nicht live."}
+                    </p>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => setTab("vip")}
+                    whileTap={{ scale: 0.94 }}
+                    className="flex-shrink-0 rounded-xl px-2.5 py-1.5 text-[9px] font-bold"
+                    style={{ color: currentLevel.color, background: `${currentLevel.color}10`, border: `1px solid ${currentLevel.color}25` }}
+                  >
+                    {vip.name || "Bronze"} <ChevronRight size={10} className="inline" />
+                  </motion.button>
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-[13px] font-bold text-white">BlitzMine <span className="text-[9px] text-[#FFD700] font-semibold">NEU</span></p>
-                  <p className="text-[10px] text-white/60">{miningValueEnabled ? "Tippe täglich – BlitzMine" : "BlitzMine Preview · keine BLZ-Erzeugung in Production"}</p>
-                </div>
-                <ChevronRight size={16} className="text-white/40" />
-              </motion.button>
 
-              <motion.button
-                data-testid="mining-trust-banner"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate?.("/mining-trust")}
-                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
-                style={{
-                  background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(59,130,246,0.06))",
-                  border: "1px solid rgba(245,158,11,0.28)",
-                  boxShadow: "0 4px 20px rgba(245,158,11,0.08)",
-                }}
-                initial={{ opacity: 0, y: -8 }}
+                <div className="grid grid-cols-5 gap-1.5">
+                  {MINING_LEVELS.map((level, index) => {
+                    const unlocked = miningValueEnabled && index <= currentLevelIndex;
+                    const isCurrent = miningValueEnabled && index === currentLevelIndex;
+                    return (
+                      <button
+                        key={level.name}
+                        type="button"
+                        onClick={() => setTab("vip")}
+                        className="min-w-0 rounded-xl px-1 py-2 text-center"
+                        style={{
+                          background: isCurrent ? `${level.color}12` : "rgba(255,255,255,0.02)",
+                          border: `1px solid ${isCurrent ? `${level.color}45` : "rgba(255,255,255,0.05)"}`,
+                        }}
+                      >
+                        <div
+                          className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full"
+                          style={{
+                            background: unlocked || isCurrent ? `${level.color}18` : "rgba(255,255,255,0.035)",
+                            border: `1px solid ${unlocked || isCurrent ? `${level.color}45` : "rgba(255,255,255,0.08)"}`,
+                          }}
+                        >
+                          <Star size={12} style={{ color: unlocked || isCurrent ? level.color : "rgba(255,255,255,0.28)" }} />
+                        </div>
+                        <p className="truncate text-[8px] font-black" style={{ color: unlocked || isCurrent ? level.color : "rgba(255,255,255,0.38)" }}>
+                          {level.label}
+                        </p>
+                        <p className="mt-0.5 text-[7px] font-bold text-white/25">
+                          {level.bonus > 0 ? `+${Math.round(level.bonus * 100)}%` : "START"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: `linear-gradient(90deg, ${currentLevel.color}, ${nextLevel.color})` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${miningValueEnabled ? Math.max(4, Math.min(100, miningNumber(vip.progress))) : 4}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <span className="text-[8px] font-semibold text-white/30">
+                      {miningValueEnabled
+                        ? `${miningFixed(vip.progress, 0)}% bis ${vip.next_level?.name || "Max-Level"}`
+                        : "Preview · Bonus noch deaktiviert"}
+                    </span>
+                    <span className="text-[8px] font-bold" style={{ color: currentLevel.color }}>
+                      {miningValueEnabled ? `Aktiv: +${Math.round(miningNumber(vip.bonus) * 100)}%` : "Noch nicht live"}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="mt-3 flex items-center gap-2.5 rounded-2xl px-3 py-2.5"
+                  style={{ background: "linear-gradient(90deg, rgba(255,215,0,0.08), rgba(0,232,157,0.05))", border: "1px solid rgba(255,215,0,0.13)" }}
+                >
+                  <Gift size={16} className="flex-shrink-0 text-[#FFD700]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black text-[#FFD700]">Mehr Power → höheres Level → mehr Vorteile</p>
+                    <p className="mt-0.5 text-[8px] text-white/35">Bronze, Silber, Gold, Platin und Diamant machen Fortschritt sofort sichtbar.</p>
+                  </div>
+                  <ChevronRight size={13} className="flex-shrink-0 text-white/25" />
+                </div>
+              </motion.div>
+
+              {/* Fast purchase — no need to open the full shop first */}
+              <motion.div
+                data-testid="mining-quick-buy"
+                className="rounded-3xl p-3.5"
+                style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.06)" }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
               >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent)", border: "1px solid rgba(245,158,11,0.85)" }}>
-                  <Shield size={20} className="text-[#F59E0B]" />
+                <div className="mb-2.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-[12px] font-black text-white">Beliebte Miner</p>
+                    <p className="text-[8px] text-white/30">Direkt auswählen und in wenigen Sekunden kaufen.</p>
+                  </div>
+                  <button type="button" onClick={() => setTab("shop")} className="flex items-center gap-0.5 text-[9px] font-bold text-[#00C2FF]">
+                    Alle <ChevronRight size={10} />
+                  </button>
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-[13px] font-bold text-white">Mining Server & Vertrauen <span className="text-[9px] text-[#F59E0B] font-semibold">NEU</span></p>
-                  <p className="text-[10px] text-white/60">Dubai · Abu Dhabi · ASIC-Fotos · Infrastruktur transparent zeigen</p>
-                </div>
-                <ChevronRight size={16} className="text-white/40" />
-              </motion.button>
+
+                {quickPackages.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {quickPackages.map(pkg => {
+                      const Icon = TIER_ICONS[pkg.icon] || Cpu;
+                      const color = TIER_COLORS[pkg.id] || "#00E89D";
+                      return (
+                        <div
+                          key={pkg.id}
+                          className="min-w-0 rounded-2xl p-2.5"
+                          style={{ background: `${color}06`, border: `1px solid ${color}18` }}
+                        >
+                          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: `${color}12` }}>
+                            <Icon size={15} style={{ color }} />
+                          </div>
+                          <p className="truncate text-[9px] font-black text-white">{pkg.name}</p>
+                          <p className="mt-0.5 text-[8px] font-mono text-white/35">{pkg.hashrate} TH/s</p>
+                          <p className="mt-2 text-[13px] font-black" style={{ color }}>€{miningFixed(pkg.price_eur, 2)}</p>
+                          <motion.button
+                            type="button"
+                            data-testid={`mining-quick-buy-${pkg.id}`}
+                            disabled={buying === pkg.id}
+                            onClick={() => {
+                              if (miningValueEnabled) {
+                                buyMiner(pkg.id, "onetime");
+                              } else {
+                                setBillingType("onetime");
+                                setConfirmPkg(pkg);
+                                setTab("shop");
+                              }
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            className="mt-2 w-full rounded-xl py-2 text-[8px] font-black disabled:opacity-50"
+                            style={{ background: `${color}16`, border: `1px solid ${color}25`, color }}
+                          >
+                            {buying === pkg.id ? "..." : miningValueEnabled ? "Jetzt kaufen" : "Ansehen"}
+                          </motion.button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="mining-dashboard-packages-empty"
+                    onClick={() => setTab("shop")}
+                    className="w-full rounded-2xl border border-white/[0.05] bg-white/[0.02] px-3 py-4 text-[10px] font-bold text-white/40"
+                  >
+                    Miner-Pakete öffnen <ChevronRight size={11} className="ml-1 inline" />
+                  </button>
+                )}
+              </motion.div>
+
+              {/* Secondary mining areas stay visible, but compact */}
+              <div className="grid grid-cols-2 gap-2">
+                <motion.button
+                  data-testid="mining-blitzmine-banner"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => onNavigate?.("/blitz-mine")}
+                  className="min-w-0 rounded-2xl p-3 text-left"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(255,215,0,0.08), rgba(0,194,255,0.04))",
+                    border: "1px solid rgba(255,215,0,0.18)",
+                  }}
+                >
+                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/10">
+                    <Zap size={15} className="text-[#FFD700]" />
+                  </div>
+                  <p className="text-[10px] font-black text-white">BlitzMine <span className="text-[7px] text-[#FFD700]">NEU</span></p>
+                  <p className="mt-0.5 text-[8px] leading-snug text-white/35">
+                    {miningValueEnabled ? "Täglich tippen" : "Preview · keine BLZ-Erzeugung in Production"}
+                  </p>
+                </motion.button>
+
+                <motion.button
+                  data-testid="mining-trust-banner"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => onNavigate?.("/mining-trust")}
+                  className="min-w-0 rounded-2xl p-3 text-left"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(59,130,246,0.04))",
+                    border: "1px solid rgba(245,158,11,0.18)",
+                  }}
+                >
+                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/10">
+                    <Shield size={15} className="text-[#F59E0B]" />
+                  </div>
+                  <p className="text-[10px] font-black text-white">Server & Vertrauen</p>
+                  <p className="mt-0.5 text-[8px] leading-snug text-white/35">Standorte, ASICs und Proof-Status ansehen</p>
+                </motion.button>
+              </div>
 
               {/* Balance Card — Premium Glassmorphism */}
               <motion.div className="rounded-3xl p-5 relative overflow-hidden"
