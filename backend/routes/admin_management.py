@@ -827,6 +827,9 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
 
 # Map admin module keys → MongoDB collection + primary key strategy
 MODULE_COLLECTIONS = {
+    "immobilien": ("real_estate", "title"),
+    "freelancer": ("freelancers", "name"),
+    "elearning": ("elearning_courses", "title"),
     "handwerker": ("handwerker", "name"),
     "gebrauchtwagen": ("gebrauchtwagen", "title"),
     "reinigung": ("cleaning_services", "name"),
@@ -863,8 +866,15 @@ async def module_list(module_key: str, request: Request, limit: int = 100):
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
-    cursor = db[coll_name].find({}, {"_id": 0}).limit(limit)
-    items = await cursor.to_list(length=limit)
+    cursor = db[coll_name].find({}).limit(limit)
+    raw_items = await cursor.to_list(length=limit)
+    items = []
+    for raw in raw_items:
+        item = dict(raw)
+        mongo_id = item.pop("_id", None)
+        if not item.get("id") and mongo_id is not None:
+            item["id"] = str(mongo_id)
+        items.append(item)
     return {"items": items, "count": len(items), "collection": coll_name}
 
 
