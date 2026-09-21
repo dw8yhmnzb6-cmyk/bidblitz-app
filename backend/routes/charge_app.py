@@ -93,6 +93,11 @@ class ChargeServiceRequestCreate(BaseModel):
     note: str = ""
 
 
+class ChargeServiceRequestResponse(BaseModel):
+    action: str
+    note: str = ""
+
+
 class ChargeWarrantyClaimRequest(BaseModel):
     issue_type: str = "defect"
     subject: str
@@ -1209,7 +1214,7 @@ async def get_charge_purchase_candidates(request: Request, limit: int = 100):
     }
 
 
-@router.get("/product-lookup")@router.get("/product-lookup")
+@router.get("/product-lookup")
 async def lookup_charge_product(code: str, request: Request):
     await get_current_user(request)
     value = str(code or "").strip()
@@ -2350,7 +2355,65 @@ async def cancel_charge_service_request(request_id: str, request: Request):
     return {"ok": True, "service_request": _service_request_card(service_request)}
 
 
-@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")@router.post("/warranty/{registration_id}/transfer")
+@router.put("/service-requests/{request_id}/respond")
+async def respond_charge_service_request(
+    request_id: str,
+    req: ChargeServiceRequestResponse,
+    request: Request,
+):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
+    service_request = await db.charge_service_requests.find_one(
+        {"request_id": request_id, "customer_user_id": user_id},
+        {"_id": 0},
+    )
+    if not service_request:
+        raise HTTPException(status_code=404, detail="Serviceanfrage nicht gefunden")
+    if service_request.get("status") != "reschedule_requested":
+        raise HTTPException(status_code=409, detail="Für diese Serviceanfrage liegt kein neuer Terminvorschlag vor")
+
+    action = str(req.action or "").strip().lower()
+    if action not in {"accept", "decline"}:
+        raise HTTPException(status_code=400, detail="Ungültige Antwort auf Terminvorschlag")
+
+    now = _now_iso()
+    next_status = "confirmed" if action == "accept" else "requested"
+    note = str(req.note or "").strip()[:1000]
+    update_doc = {"status": next_status, "updated_at": now}
+    if action == "decline":
+        update_doc.update({"scheduled_date": "", "scheduled_time": ""})
+    history = {
+        "status": next_status,
+        "actor_role": "customer",
+        "actor_id": user_id,
+        "note": note or ("Terminvorschlag angenommen" if action == "accept" else "Terminvorschlag abgelehnt"),
+        "created_at": now,
+    }
+    await db.charge_service_requests.update_one(
+        {"request_id": request_id, "customer_user_id": user_id, "status": "reschedule_requested"},
+        {"$set": update_doc, "$push": {"status_history": history}},
+    )
+    service_request = {
+        **service_request,
+        **update_doc,
+        "status_history": [*(service_request.get("status_history") or []), history],
+    }
+    await safe_create_charge_notification(
+        event_key=f"charge_service_customer_response:{request_id}:{action}",
+        user_id=str(service_request.get("merchant_user_id") or ""),
+        title="Charge-Servicetermin beantwortet",
+        message=(
+            f"Der Kunde hat den Terminvorschlag für {service_request.get('product_name') or 'das Charge-Produkt'} angenommen."
+            if action == "accept"
+            else f"Der Kunde bittet für {service_request.get('product_name') or 'das Charge-Produkt'} um einen neuen Terminvorschlag."
+        ),
+        action_url="/merchant-portal",
+        metadata={"request_id": request_id, "action": action},
+    )
+    return {"ok": True, "service_request": _service_request_card(service_request)}
+
+
+@router.post("/warranty/{registration_id}/transfer")
 async def create_charge_warranty_transfer(
     registration_id: str,
     req: ChargeWarrantyTransferRequest,

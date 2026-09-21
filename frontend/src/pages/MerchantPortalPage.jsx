@@ -67,6 +67,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [brandProfileForm, setBrandProfileForm] = useState({ hero_claim: "", package_tier: "premium", display_mode: "counter_display", warranty_badge: "24 Monate Garantie", accent_finish: "matte_black", packaging_notes: "" });
   const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
   const [dealerWarrantyNotes, setDealerWarrantyNotes] = useState({});
+  const [dealerServiceDrafts, setDealerServiceDrafts] = useState({});
 
   const loadDash = useCallback(async () => {
     try {
@@ -513,6 +514,36 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     await updateWarrantyStatus(item.claim_id, status, note);
   }, [dealerWarrantyNotes, updateWarrantyStatus]);
 
+  const updateDealerServiceRequest = useCallback(async (item, status) => {
+    const draft = dealerServiceDrafts[item.request_id] || {};
+    const scheduledDate = draft.scheduled_date ?? item.scheduled_date ?? item.preferred_date ?? "";
+    const scheduledTime = draft.scheduled_time ?? item.scheduled_time ?? item.preferred_time ?? "";
+    if (["confirmed", "reschedule_requested"].includes(status) && !scheduledDate) {
+      toast.error("Bitte zuerst ein Datum auswählen");
+      return;
+    }
+    setDealerBusy(`service-${item.request_id}`);
+    try {
+      await api.updateMerchantDealerServiceRequestStatus(item.request_id, {
+        status,
+        scheduled_date: scheduledDate,
+        scheduled_time: scheduledTime,
+        note: (draft.note || "").trim(),
+      });
+      setDealerServiceDrafts((current) => {
+        const next = { ...current };
+        delete next[item.request_id];
+        return next;
+      });
+      toast.success(status === "confirmed" ? "Servicetermin bestätigt" : "Serviceanfrage aktualisiert");
+      await loadDealerWarranty();
+    } catch (error) {
+      toast.error(error.message || "Serviceanfrage konnte nicht aktualisiert werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [dealerServiceDrafts, loadDealerWarranty]);
+
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "inventory", label: "Lagerbestand", icon: Boxes },
@@ -926,6 +957,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               ["Gelöst", dealerWarranty?.summary?.resolved_total ?? 0],
               ["Austausch", dealerWarranty?.summary?.replacement_total ?? 0],
               ["Kundenfälle", dealerWarranty?.summary?.customer_charge_claims_total ?? 0],
+              ["Service offen", dealerWarranty?.summary?.service_requests_open ?? 0],
             ]}
             testid="merchant-dealer-warranty-hero"
           />
@@ -977,6 +1009,95 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                   </div>
                 </div>
               )}
+
+              <DealerListCard title="Servicetermine" icon={Wrench} testid="merchant-dealer-service-list-card">
+                {(dealerWarranty?.service_requests || []).length === 0 ? <EmptyDealerState label="Noch keine Serviceanfragen vorhanden" /> : (dealerWarranty?.service_requests || []).map((item, index) => {
+                  const draft = dealerServiceDrafts[item.request_id] || {};
+                  const active = ["requested", "confirmed", "reschedule_requested", "in_service"].includes(item.status);
+                  return (
+                    <div key={item.request_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-service-request-${index}`}>
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-white">{item.product_name || "Charge Produkt"} · {item.request_id}</p>
+                          <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                            {item.customer_email || "Kunde"} · SN {item.serial_number || "—"} · {item.service_type || "service"}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200">{item.status || "requested"}</span>
+                            <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">
+                              Wunsch {item.preferred_date || "—"} {item.preferred_time || ""}
+                            </span>
+                            {item.scheduled_date ? (
+                              <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-200">
+                                Termin {item.scheduled_date} {item.scheduled_time || ""}
+                              </span>
+                            ) : null}
+                          </div>
+                          {item.note ? <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.note}</p> : null}
+                          {item.merchant_note ? <p className="mt-2 rounded-xl bg-amber-400/10 px-3 py-2 text-[11px] leading-5 text-amber-200">{item.merchant_note}</p> : null}
+                        </div>
+
+                        {active ? (
+                          <div className="w-full space-y-2 lg:w-[340px]">
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="date"
+                                value={draft.scheduled_date ?? item.scheduled_date ?? item.preferred_date ?? ""}
+                                onChange={(event) => setDealerServiceDrafts((current) => ({
+                                  ...current,
+                                  [item.request_id]: { ...(current[item.request_id] || {}), scheduled_date: event.target.value },
+                                }))}
+                                className="h-10 rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none"
+                                data-testid={`merchant-dealer-service-date-${index}`}
+                              />
+                              <input
+                                type="time"
+                                value={draft.scheduled_time ?? item.scheduled_time ?? item.preferred_time ?? ""}
+                                onChange={(event) => setDealerServiceDrafts((current) => ({
+                                  ...current,
+                                  [item.request_id]: { ...(current[item.request_id] || {}), scheduled_time: event.target.value },
+                                }))}
+                                className="h-10 rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none"
+                                data-testid={`merchant-dealer-service-time-${index}`}
+                              />
+                            </div>
+                            <textarea
+                              value={draft.note || ""}
+                              onChange={(event) => setDealerServiceDrafts((current) => ({
+                                ...current,
+                                [item.request_id]: { ...(current[item.request_id] || {}), note: event.target.value },
+                              }))}
+                              rows={2}
+                              placeholder="Hinweis an den Kunden"
+                              className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-slate-500"
+                              data-testid={`merchant-dealer-service-note-${index}`}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                ["confirmed", "Bestätigen"],
+                                ["reschedule_requested", "Neuer Termin"],
+                                ["in_service", "Im Service"],
+                                ["completed", "Abschließen"],
+                                ["rejected", "Ablehnen"],
+                              ].map(([status, label]) => (
+                                <button
+                                  key={status}
+                                  onClick={() => updateDealerServiceRequest(item, status)}
+                                  disabled={dealerBusy === `service-${item.request_id}`}
+                                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                                  data-testid={`merchant-dealer-service-${status}-${index}`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </DealerListCard>
 
               <DealerListCard title="Aktuelle Garantiefälle" icon={ShieldCheck} testid="merchant-dealer-warranty-list-card">
                 {(dealerWarranty?.claims || []).length === 0 ? <EmptyDealerState label="Noch keine Garantiefälle vorhanden" /> : (dealerWarranty?.claims || []).map((item, index) => (

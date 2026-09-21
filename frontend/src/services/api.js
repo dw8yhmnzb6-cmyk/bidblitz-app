@@ -476,6 +476,7 @@ export const api = {
   createChargeServiceRequest: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/service-requests`, { method: "POST", body: JSON.stringify(body) }),
   getChargeServiceRequests: () => request("/api/charge-app/service-requests"),
   cancelChargeServiceRequest: (requestId) => request(`/api/charge-app/service-requests/${encodeURIComponent(requestId)}/cancel`, { method: "PUT" }),
+  respondChargeServiceRequest: (requestId, body) => request(`/api/charge-app/service-requests/${encodeURIComponent(requestId)}/respond`, { method: "PUT", body: JSON.stringify(body) }),
   verifyChargeWarrantyPass: (registrationId, signature) => request(`/api/charge-app/warranty/verify/${encodeURIComponent(registrationId)}?sig=${encodeURIComponent(signature)}`),
   createChargeWarrantyTransfer: (registrationId, body) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/transfer`, { method: "POST", body: JSON.stringify(body) }),
   getChargeWarrantyTransfers: () => request("/api/charge-app/warranty-transfers"),

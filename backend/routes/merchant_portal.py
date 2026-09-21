@@ -2490,7 +2490,7 @@ async def update_dealer_charge_service_request_status(
     }
 
 
-@router.post("/dealer/warranty/create")@router.post("/dealer/warranty/create")
+@router.post("/dealer/warranty/create")
 async def create_dealer_warranty(req: DealerWarrantyCreateRequest, request: Request):
     user = await require_merchant(request)
     enterprise = await _build_enterprise_overview_data(user)

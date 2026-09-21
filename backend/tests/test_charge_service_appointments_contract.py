@@ -1,0 +1,63 @@
+"""Static regression guards for BidBlitz Charge service appointments."""
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+CHARGE = ROOT / "backend" / "routes" / "charge_app.py"
+MERCHANT = ROOT / "backend" / "routes" / "merchant_portal.py"
+API = ROOT / "frontend" / "src" / "services" / "api.js"
+CUSTOMER = ROOT / "frontend" / "src" / "pages" / "ChargeServiceRequestsPage.jsx"
+PORTAL = ROOT / "frontend" / "src" / "pages" / "MerchantPortalPage.jsx"
+
+
+def _py(path: Path) -> str:
+    text = path.read_text(encoding="utf-8")
+    ast.parse(text)
+    return text
+
+
+def _text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def test_charge_routes_have_no_accidental_duplicate_decorators():
+    charge = _py(CHARGE)
+    merchant = _py(MERCHANT)
+    assert charge.count('@router.get("/product-lookup")') == 1
+    assert charge.count('@router.post("/warranty/{registration_id}/transfer")') == 1
+    assert merchant.count('@router.post("/dealer/warranty/create")') == 1
+
+
+def test_customer_can_accept_or_decline_merchant_reschedule():
+    charge = _py(CHARGE)
+    api = _text(API)
+    customer = _text(CUSTOMER)
+    assert '@router.put("/service-requests/{request_id}/respond")' in charge
+    assert 'action not in {"accept", "decline"}' in charge
+    assert 'next_status = "confirmed" if action == "accept" else "requested"' in charge
+    assert 'charge_service_customer_response:' in charge
+    assert "respondChargeServiceRequest" in api
+    assert "respondToProposal" in customer
+    assert "Termin annehmen" in customer
+    assert "Anderen Termin wünschen" in customer
+
+
+def test_merchant_portal_exposes_real_service_appointment_controls():
+    merchant = _py(MERCHANT)
+    portal = _text(PORTAL)
+    api = _text(API)
+    assert '@router.post("/dealer/service-requests/{request_id}/status")' in merchant
+    assert '"reschedule_requested"' in merchant
+    assert "updateMerchantDealerServiceRequestStatus" in api
+    assert "updateDealerServiceRequest" in portal
+    assert 'title="Servicetermine"' in portal
+    assert "merchant-dealer-service-date-" in portal
+    assert "merchant-dealer-service-time-" in portal
+    assert 'data-testid={`merchant-dealer-service-${status}-${index}`}' in portal
+    assert '["confirmed", "Bestätigen"]' in portal
+    assert '["reschedule_requested", "Neuer Termin"]' in portal
+    assert '["in_service", "Im Service"]' in portal
+    assert '["completed", "Abschließen"]' in portal
+    assert '["rejected", "Ablehnen"]' in portal
