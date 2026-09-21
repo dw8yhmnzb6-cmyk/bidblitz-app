@@ -870,6 +870,11 @@ async def module_create(module_key: str, data: dict, request: Request):
     await _require_admin(request)
     if module_key == "ladesaeulen" and not TEST_MODE:
         raise HTTPException(409, "Live-OCPP-Ladesäulen werden über die verifizierte EV-Geräteverwaltung provisioniert; generisches CRUD ist read-only.")
+    if module_key == "dating":
+        raise HTTPException(
+            409,
+            "Dating-Profile werden nur aus echten Nutzerkonten erstellt. Im Admin können bestehende Profile moderiert werden.",
+        )
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     if module_key == "scooter-abos":
@@ -961,7 +966,13 @@ async def module_list(module_key: str, request: Request, limit: int = 100):
         if not item.get("id") and mongo_id is not None:
             item["id"] = str(mongo_id)
         items.append(item)
-    return {"items": items, "count": len(items), "collection": coll_name}
+    response = {"items": items, "count": len(items), "collection": coll_name}
+    if module_key == "dating":
+        response.update({
+            "create_disabled": True,
+            "create_disabled_reason": "Dating-Profile entstehen ausschließlich aus echten Nutzerkonten. Bestehende Profile können hier moderiert werden.",
+        })
+    return response
 
 
 @router.put("/module/{module_key}/{item_id}")
@@ -970,6 +981,23 @@ async def module_update(module_key: str, item_id: str, data: dict, request: Requ
     await _require_admin(request)
     if module_key == "ladesaeulen" and not TEST_MODE:
         raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
+    if module_key == "dating":
+        now = datetime.now(timezone.utc).isoformat()
+        result = await db.dating_profiles.update_one(
+            {"$or": [{"profile_id": item_id}, {"id": item_id}]},
+            {"$set": {"active": False, "moderated_disabled_at": now}},
+        )
+        if result.matched_count == 0:
+            try:
+                result = await db.dating_profiles.update_one(
+                    {"_id": _oid(item_id)},
+                    {"$set": {"active": False, "moderated_disabled_at": now}},
+                )
+            except Exception:
+                pass
+        if result.matched_count == 0:
+            raise HTTPException(404, "Dating-Profil nicht gefunden")
+        return {"ok": True, "disabled": True}
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     if module_key == "scooter-abos":
