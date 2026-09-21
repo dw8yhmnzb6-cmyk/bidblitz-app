@@ -5,6 +5,7 @@ import { printReceipt } from "../../utils/escposPrinter";
 import { POSVoucherSale, POSWalletTopUp } from "./POSVoucherComponents";
 import { POSSecurePaymentPanel } from "./POSSecurePaymentPanel";
 import { POSBioPayPanel } from "./POSBioPayPanel";
+import { TEST_MODE } from "../../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -269,6 +270,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   }));
 
   const checkVoucher = async () => {
+    if (!TEST_MODE) return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");
     if (!voucherPayCode.trim()) return toast.error("Code eingeben");
     setVoucherChecking(true);
     try {
@@ -291,6 +293,9 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
   const pay = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
+    if (!TEST_MODE && appliedVouchers.length > 0) {
+      return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");
+    }
 
     // Offline-Modus: Cash-Verkauf lokal erfassen und später exakt einmal synchronisieren.
     if (!online) {
@@ -659,16 +664,22 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
           </div>
 
           {/* Gutschein einlösen */}
-          <div className="flex gap-1 mb-3">
-            <input value={voucherPayCode} onChange={(e) => setVoucherPayCode(e.target.value)}
-              placeholder="Gutschein-Code (GS-XXXXXX)" className="flex-1 px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-[11px] font-mono"
-              data-testid="pos-voucher-code-input" />
-            <button onClick={checkVoucher} disabled={voucherChecking}
-              className="px-3 py-2 rounded-lg bg-[#FF4060]/20 text-[#FF4060] text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-              data-testid="pos-voucher-apply">
-              <Ticket size={11} /> Anwenden
-            </button>
-          </div>
+          {TEST_MODE ? (
+            <div className="flex gap-1 mb-3">
+              <input value={voucherPayCode} onChange={(e) => setVoucherPayCode(e.target.value)}
+                placeholder="Gutschein-Code (GS-XXXXXX)" className="flex-1 px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-[11px] font-mono"
+                data-testid="pos-voucher-code-input" />
+              <button onClick={checkVoucher} disabled={voucherChecking}
+                className="px-3 py-2 rounded-lg bg-[#FF4060]/20 text-[#FF4060] text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+                data-testid="pos-voucher-apply">
+                <Ticket size={11} /> Anwenden
+              </button>
+            </div>
+          ) : (
+            <div data-testid="pos-voucher-preview-disabled" className="mb-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2 text-[10px] leading-relaxed text-amber-100/70">
+              Gutschein-Zahlung Preview · in Production bis zum kanonischen Cart-Settlement deaktiviert.
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 mb-3">
             <PayBtn icon={QrCode} label="QR Wallet" active={paymentMethod === "wallet_qr"} onClick={() => setPaymentMethod("wallet_qr")} testid="pos-pay-qr" />
