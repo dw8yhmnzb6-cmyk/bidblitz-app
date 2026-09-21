@@ -139,3 +139,20 @@ def test_driver_dashboard_accepts_canonical_taxi_driver_schema():
     assert '"is_online": bool(driver.get("is_online") or driver.get("online"))' in driver
     assert '"current_location": _driver_location(driver)' in driver
     assert '"balance": round(float(user.get("balance", 0) or 0), 2)' in driver
+
+
+def test_driver_dashboard_delegates_acceptance_to_canonical_taxi_handler():
+    driver = read("backend/routes/driver_dashboard.py")
+    taxi = read("backend/routes/taxi.py")
+
+    accept_start = driver.index('@router.post("/ride-requests/{request_id}/accept")')
+    reject_start = driver.index('@router.post("/ride-requests/{request_id}/reject")', accept_start)
+    accept_handler = driver[accept_start:reject_start]
+
+    assert "from routes.taxi import driver_accept_ride" in accept_handler
+    assert "return await driver_accept_ride(RideActionRequest(ride_id=request_id), request)" in accept_handler
+    assert 'db.taxi_rides.update_one' not in accept_handler
+    assert "_claim_driver_active_ride" in taxi
+    assert "_ensure_driver_accept_notification" in taxi
+    assert 'driver["driver_id"] in (ride.get("rejected_driver_ids") or [])' in taxi
+    assert "distance_to_pickup > 10" in taxi
