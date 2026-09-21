@@ -3601,3 +3601,18 @@ def test_auction_duration_contract_is_two_to_three_days():
     assert '"bot_final_phase_seconds": 300' in source
     assert '"bot_min_seconds": 300' in source
     assert "604800" not in source
+
+
+def test_auction_admin_timer_transitions_are_atomic():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert '"status": "active",' in source
+    assert '"ends_at": auction.get("ends_at")' in source
+    assert '"current_price": auction.get("current_price")' in source
+    assert '"last_bidder_id": auction.get("last_bidder_id")' in source
+    assert '"remaining_when_paused": auction.get("remaining_when_paused")' in source
+    assert "Resume wurde nicht angewendet." in source
+    assert "Verlängerung wurde nicht angewendet." in source
+    assert "current_remaining = max(0.0, float(auction.get(" in source
+    assert '"remaining_when_paused": new_remaining' in source
+    assert "Verlängerung muss zwischen 1 und 1440 Minuten liegen" in source
