@@ -58,6 +58,30 @@ def test_public_commerce_and_payment_endpoints(client):
     assert invalid_pay.status_code == 404
 
 
+def test_mining_routes_are_registered_in_fastapi_app(client):
+    paths = {getattr(route, "path", "") for route in server.app.routes}
+    for path in [
+        "/api/mining/capabilities",
+        "/api/mining/dashboard",
+        "/api/mining/packages",
+        "/api/mining/upgrade-costs",
+        "/api/mining/marketplace",
+        "/api/mining/card",
+        "/api/mining/launchpad",
+    ]:
+        assert path in paths
+
+    capabilities = client.get("/api/mining/capabilities")
+    assert capabilities.status_code == 200
+    assert "value_actions_enabled" in capabilities.json()
+
+    # Authenticated mining pages may reject anonymous requests, but must never be missing.
+    dashboard = client.get("/api/mining/dashboard")
+    assert dashboard.status_code in {401, 403}
+    marketplace = client.get("/api/mining/marketplace")
+    assert marketplace.status_code in {401, 403}
+
+
 def test_auth_register_and_login_contract(client):
     email = f"ci_smoke_{uuid.uuid4().hex[:8]}@test.com"
 
