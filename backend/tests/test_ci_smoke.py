@@ -1058,6 +1058,9 @@ def test_pos_cart_and_external_card_paths_fail_closed():
 
     assert 'cardRef || `CARD-${Date.now()}`' not in checkout_source
     assert 'providerReference = cardRef.trim()' in checkout_source
+    assert 'REACT_APP_POS_EXTERNAL_CARD_CERTIFIED' in checkout_source
+    assert 'if (paymentMethod === "card_external" && !EXTERNAL_CARD_CERTIFIED)' in checkout_source
+    assert 'data-testid="pos-card-preview-disabled"' in checkout_source
     assert 'offline_sale_id: offlineSaleId' in checkout_source
     assert 'captured_shift_id: q.shift_id' in checkout_source
     assert 'expected_total: q.total' in checkout_source
