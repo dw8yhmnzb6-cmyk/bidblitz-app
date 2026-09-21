@@ -230,6 +230,9 @@ async def create_indexes():
     await safe_create_index(db.taxi_rides, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.taxi_rides, [("driver_id", 1), ("status", 1)])
     await safe_create_index(db.taxi_rides, "status")
+    await safe_create_index(db.taxi_price_quotes, "quote_id", unique=True, critical=True)
+    await safe_create_index(db.taxi_price_quotes, [("status", 1), ("expires_at", 1)])
+    await safe_create_index(db.taxi_booking_attempts, [("status", 1), ("updated_at", -1)])
     
     await safe_create_index(db.scooter_rides, [("user_id", 1), ("created_at", -1)])
     await safe_create_index(db.mobility_payments, "payment_id", unique=True, critical=True)
