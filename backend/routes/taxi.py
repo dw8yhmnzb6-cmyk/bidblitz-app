@@ -2746,6 +2746,8 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     matching_drivers = []
     for d in nearby_drivers:
+        if d.get("is_busy") or d.get("active_ride_id"):
+            continue
         loc = d.get("location") or d.get("current_location") or {}
         car = d.get("car") or d.get("vehicle") or {}
         effective_type = car.get("type") or car.get("vehicle_type") or "standard"
@@ -2815,9 +2817,16 @@ async def get_driver_requests(request: Request):
     driver = await db.drivers.find_one({"user_id": user_id})
     if not driver:
         raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
-    
+    driver_verified = (
+        (driver.get("verified") is True and driver.get("status") == "approved")
+        or (driver.get("is_verified") is True and driver.get("status") == "active")
+    )
+    if not driver_verified:
+        raise HTTPException(status_code=403, detail="Fahrer ist noch nicht freigeschaltet")
     if not (driver.get("online") or driver.get("is_online")):
         return {"requests": [], "message": "Du bist offline"}
+    if driver.get("is_busy") or driver.get("active_ride_id"):
+        return {"requests": [], "message": "Du hast bereits eine aktive Fahrt"}
     
     loc = driver.get("location") or driver.get("current_location") or {}
     if not NumberErrorSafe(loc.get("lat"), loc.get("lng")):
@@ -2832,6 +2841,7 @@ async def get_driver_requests(request: Request):
     rides = await db.taxi_rides.find({
         "status": RideStatus.REQUESTED.value,
         "car_type": driver_car_type,
+        "rejected_driver_ids": {"$ne": driver["driver_id"]},
         "$or": [
             {"scheduled_at": None},
             {"scheduled_at": {"$lte": dispatch_cutoff}},
