@@ -462,19 +462,26 @@ const CustomerDetailModal = ({ customer, permissions, onClose, onChanged }) => {
       if (!res.ok) throw new Error(data.detail || "Fehler");
       toast.success(successMsg);
       onChanged();
+      return true;
     } catch (err) {
       toast.error(err.message);
+      return false;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const ban = () => doAction(`/api/admin/customers/${customer.user_id}/ban`, { banned: !customer.banned, reason: "Admin action" }, customer.banned ? "Kunde entsperrt" : "Kunde gesperrt");
   const setRole = (role) => doAction(`/api/admin/customers/${customer.user_id}/role`, { role }, `Rolle: ${role}`);
   const approveKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "approve", reason: "Manuell durch Admin freigeschaltet" }, "KYC freigeschaltet");
   const rejectKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "reject", reason: "Manuell durch Admin abgelehnt" }, "KYC abgelehnt");
-  const resetPw = () => {
-    doAction(`/api/admin/customers/${customer.user_id}/reset-password`, { reason: "Admin security reset" }, "Reset-Link gesendet");
-    setShowPwForm(false);
+  const resetPw = async () => {
+    const ok = await doAction(
+      `/api/admin/customers/${customer.user_id}/reset-password`,
+      { reason: "Admin security reset" },
+      "Reset-Link gesendet",
+    );
+    if (ok) setShowPwForm(false);
   };
   const del = () => {
     if (!window.confirm(`Konto von ${customer.email} wirklich schließen? Login wird gesperrt; Finanz- und Auditdaten bleiben erhalten.`)) return;
