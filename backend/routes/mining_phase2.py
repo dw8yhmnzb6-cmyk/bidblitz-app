@@ -47,22 +47,52 @@ async def get_marketplace(request: Request):
 
 @router.post("/marketplace/list")
 async def list_miner_for_sale(req: ListMinerRequest, request: Request):
-    """List a miner for sale on the marketplace."""
+    """List one owned miner with an atomic active→listed transition."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    price_blz = round(float(req.price_blz), 4)
 
-    miner = await db.mining_miners.find_one({"miner_id": req.miner_id, "user_id": user_id, "status": "active"})
+    miner = await db.mining_miners.find_one({"miner_id": req.miner_id, "user_id": user_id})
     if not miner:
-        raise HTTPException(status_code=404, detail="Miner not found or not active")
+        raise HTTPException(status_code=404, detail="Miner not found")
 
-    existing = await db.mining_marketplace.find_one({"miner_id": req.miner_id, "status": "active"})
-    if existing:
-        raise HTTPException(status_code=400, detail="Miner already listed")
+    if miner.get("status") == "listed":
+        listing_id = miner.get("marketplace_listing_id")
+        listed_price = round(float(miner.get("marketplace_listing_price_blz") or 0), 4)
+        if listing_id and listed_price == price_blz:
+            existing = await db.mining_marketplace.find_one({"listing_id": listing_id}, {"_id": 0})
+            if existing:
+                return {"listing": existing, "replayed": True}
+            # Recover a crash after the miner reservation but before listing persistence.
+        else:
+            raise HTTPException(status_code=409, detail="Miner already listed")
+    elif miner.get("status") != "active":
+        raise HTTPException(status_code=409, detail="Miner is not available for listing")
+    else:
+        listing_id = secrets.token_hex(6)
+        reserved = await db.mining_miners.update_one(
+            {"miner_id": req.miner_id, "user_id": user_id, "status": "active"},
+            {"$set": {
+                "status": "listed",
+                "marketplace_listing_id": listing_id,
+                "marketplace_listing_price_blz": price_blz,
+                "marketplace_listed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if reserved.modified_count != 1:
+            fresh = await db.mining_miners.find_one({"miner_id": req.miner_id, "user_id": user_id}) or {}
+            if (
+                fresh.get("status") == "listed"
+                and fresh.get("marketplace_listing_id")
+                and round(float(fresh.get("marketplace_listing_price_blz") or 0), 4) == price_blz
+            ):
+                listing_id = fresh["marketplace_listing_id"]
+                miner = fresh
+            else:
+                raise HTTPException(status_code=409, detail="Miner listing state changed")
 
-    listing_id = secrets.token_hex(6)
     now = datetime.now(timezone.utc).isoformat()
-
     listing = {
         "listing_id": listing_id,
         "miner_id": req.miner_id,
@@ -75,17 +105,49 @@ async def list_miner_for_sale(req: ListMinerRequest, request: Request):
         "power_level": miner.get("power_level", 0),
         "efficiency_level": miner.get("efficiency_level", 0),
         "icon": miner.get("icon", "cpu"),
-        "price_blz": req.price_blz,
-        "price_eur": round(req.price_blz * BLZ_TO_EUR, 2),
+        "price_blz": price_blz,
+        "price_eur": round(price_blz * BLZ_TO_EUR, 2),
         "status": "active",
         "listed_at": now,
     }
-    await db.mining_marketplace.insert_one(listing)
-    listing.pop("_id", None)
+    try:
+        await db.mining_marketplace.update_one(
+            {"listing_id": listing_id},
+            {"$setOnInsert": listing},
+            upsert=True,
+        )
+    except Exception as exc:
+        rolled_back = await db.mining_miners.update_one(
+            {
+                "miner_id": req.miner_id,
+                "user_id": user_id,
+                "status": "listed",
+                "marketplace_listing_id": listing_id,
+            },
+            {
+                "$set": {"status": "active"},
+                "$unset": {
+                    "marketplace_listing_id": "",
+                    "marketplace_listing_price_blz": "",
+                    "marketplace_listed_at": "",
+                },
+            },
+        )
+        if rolled_back.modified_count != 1:
+            raise HTTPException(
+                status_code=503,
+                detail="Listing-Speicherung fehlgeschlagen; Miner-Zustand benötigt Abstimmung",
+            ) from exc
+        raise HTTPException(status_code=500, detail="Listing konnte nicht sicher gespeichert werden") from exc
 
-    await db.mining_miners.update_one({"miner_id": req.miner_id}, {"$set": {"status": "listed"}})
-
-    return {"listing": listing}
+    stored = await db.mining_marketplace.find_one({"listing_id": listing_id}, {"_id": 0}) or listing
+    if (
+        stored.get("miner_id") != req.miner_id
+        or stored.get("seller_id") != user_id
+        or round(float(stored.get("price_blz") or 0), 4) != price_blz
+    ):
+        raise HTTPException(status_code=503, detail="Listing-Daten benötigen Abstimmung")
+    return {"listing": stored, "replayed": miner.get("status") == "listed" and bool(miner.get("marketplace_listing_id"))}
 
 
 @router.post("/marketplace/buy")
@@ -299,29 +361,78 @@ async def buy_marketplace_listing(req: BuyListingRequest, request: Request):
 
 @router.post("/marketplace/cancel")
 async def cancel_listing(req: BuyListingRequest, request: Request):
-    """Cancel own marketplace listing."""
+    """Cancel an owned listing with retry-safe miner restoration."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
-    listing = await db.mining_marketplace.find_one({"listing_id": req.listing_id, "status": "active"})
+    listing = await db.mining_marketplace.find_one({"listing_id": req.listing_id})
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    if listing["seller_id"] != user_id:
+    if listing.get("seller_id") != user_id:
         raise HTTPException(status_code=403, detail="Not your listing")
+    if listing.get("status") == "cancelled":
+        await db.mining_miners.update_one(
+            {
+                "miner_id": listing["miner_id"],
+                "user_id": user_id,
+                "status": "listed",
+                "marketplace_listing_id": req.listing_id,
+            },
+            {
+                "$set": {"status": "active"},
+                "$unset": {
+                    "marketplace_listing_id": "",
+                    "marketplace_listing_price_blz": "",
+                    "marketplace_listed_at": "",
+                },
+            },
+        )
+        return {"ok": True, "replayed": True}
+    if listing.get("status") not in {"active", "cancelling"}:
+        raise HTTPException(status_code=409, detail="Listing wird bereits gekauft oder ist nicht mehr stornierbar")
 
-    cancelled = await db.mining_marketplace.update_one(
-        {"listing_id": req.listing_id, "seller_id": user_id, "status": "active"},
+    if listing.get("status") == "active":
+        claimed = await db.mining_marketplace.update_one(
+            {"listing_id": req.listing_id, "seller_id": user_id, "status": "active"},
+            {"$set": {"status": "cancelling", "cancel_started_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        if claimed.modified_count != 1:
+            listing = await db.mining_marketplace.find_one({"listing_id": req.listing_id}) or {}
+            if listing.get("status") not in {"cancelling", "cancelled"}:
+                raise HTTPException(status_code=409, detail="Listing wird bereits verarbeitet oder wurde verkauft")
+
+    restored = await db.mining_miners.update_one(
+        {
+            "miner_id": listing["miner_id"],
+            "user_id": user_id,
+            "status": "listed",
+            "marketplace_listing_id": req.listing_id,
+        },
+        {
+            "$set": {"status": "active"},
+            "$unset": {
+                "marketplace_listing_id": "",
+                "marketplace_listing_price_blz": "",
+                "marketplace_listed_at": "",
+            },
+        },
+    )
+    if restored.modified_count != 1:
+        miner = await db.mining_miners.find_one({"miner_id": listing["miner_id"], "user_id": user_id}) or {}
+        if miner.get("status") != "active":
+            raise HTTPException(status_code=503, detail="Listing-Cancel benötigt Abstimmung; Miner wurde nicht freigegeben")
+
+    finalized = await db.mining_marketplace.update_one(
+        {"listing_id": req.listing_id, "seller_id": user_id, "status": "cancelling"},
         {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
     )
-    if cancelled.modified_count != 1:
-        raise HTTPException(status_code=409, detail="Listing wird bereits verarbeitet oder wurde verkauft")
-    await db.mining_miners.update_one(
-        {"miner_id": listing["miner_id"], "user_id": user_id, "status": "listed"},
-        {"$set": {"status": "active"}},
-    )
+    if finalized.modified_count != 1:
+        current = await db.mining_marketplace.find_one({"listing_id": req.listing_id}, {"_id": 0}) or {}
+        if current.get("status") != "cancelled":
+            raise HTTPException(status_code=503, detail="Miner wurde freigegeben; Listing-Abschluss benötigt Abstimmung")
 
-    return {"ok": True}
+    return {"ok": True, "replayed": listing.get("status") == "cancelling"}
 
 
 # ══════════════════════════════════════
