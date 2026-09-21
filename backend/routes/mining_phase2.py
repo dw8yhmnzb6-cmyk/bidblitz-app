@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.config import TEST_MODE
 from core.security import get_current_user
-from routes.mining import _require_mining_value_mode, _mining_capabilities
+from routes.mining import _require_mining_value_mode, _mining_capabilities, _safe_mining_float
 
 router = APIRouter(prefix="/api/mining", tags=["mining-phase2"])
 
@@ -366,7 +366,35 @@ async def get_mining_card(request: Request):
         }
         await db.mining_cards.insert_one(dict(card))
         card.pop("_id", None)
-    return {"has_card": True, "card": card, "issuer_live": False, "capabilities": _mining_capabilities()}
+    card = {
+        **card,
+        "daily_limit": _safe_mining_float(card.get("daily_limit"), 100.0),
+        "cashback_rate": _safe_mining_float(card.get("cashback_rate"), 0.01),
+        "total_spent": _safe_mining_float(card.get("total_spent")),
+        "total_cashback": _safe_mining_float(card.get("total_cashback")),
+    }
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    recent_transactions = await db.mining_card_txns.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(20).to_list(20)
+    today_spent = 0.0
+    for tx in recent_transactions:
+        tx["amount_eur"] = _safe_mining_float(tx.get("amount_eur"))
+        tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))
+        tx["cashback_blz"] = _safe_mining_float(tx.get("cashback_blz"))
+        if str(tx.get("date") or "") == today:
+            today_spent += tx["amount_eur"]
+
+    return {
+        "has_card": True,
+        "card": card,
+        "tiers": CARD_TIERS,
+        "remaining_limit": round(max(0.0, card["daily_limit"] - today_spent), 2),
+        "recent_transactions": recent_transactions,
+        "issuer_live": False,
+        "capabilities": _mining_capabilities(),
+    }
 
 class CardSpendRequest(BaseModel):
     amount_eur: float = Field(..., gt=0, le=10000)
