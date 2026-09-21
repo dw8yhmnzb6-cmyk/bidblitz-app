@@ -497,7 +497,7 @@ const SecurityCircleWidget = ({ circle, onAdd, onRemove }) => {
 };
 
 // ── Lockup Widget ──
-const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
+const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease, valueActionsEnabled }) => {
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [duration, setDuration] = useState(365);
@@ -555,18 +555,28 @@ const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
                 +{(l.bonus_rate * 100).toFixed(0)}% · bis {fmtDate(l.ends_at)}
               </p>
             </div>
-            <button
-              data-testid={`lockup-release-${i}`}
-              onClick={() => onRelease(l._id || l.id)}
-              className="text-[10px] text-red-400 hover:text-red-300"
-            >
-              <Unlock size={14} />
-            </button>
+            {valueActionsEnabled ? (
+              <button
+                data-testid={`lockup-release-${i}`}
+                onClick={() => onRelease(l._id || l.id)}
+                className="text-[10px] text-red-400 hover:text-red-300"
+              >
+                <Unlock size={14} />
+              </button>
+            ) : (
+              <span className="rounded-lg border border-amber-400/15 bg-amber-400/[0.06] px-2 py-1 text-[8px] font-semibold text-amber-200/70">
+                Preview
+              </span>
+            )}
           </div>
         ))}
       </div>
 
-      {!showForm ? (
+      {!valueActionsEnabled ? (
+        <div data-testid="lockup-preview-disabled" className="w-full rounded-xl border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2.5 text-center text-[10px] leading-relaxed text-amber-100/70">
+          Lockup Preview · Erstellen und Auflösen bleiben ohne verifizierten Mining-/Settlement-Provider deaktiviert.
+        </div>
+      ) : !showForm ? (
         <motion.button
           data-testid="lockup-new-btn"
           whileTap={{ scale: 0.96 }}
@@ -1340,6 +1350,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           balance={data?.balance_blz || 0}
           onCreate={onCreateLockup}
           onRelease={onReleaseLockup}
+          valueActionsEnabled={valueActionsEnabled}
         />
 
         {/* Leaderboard */}
