@@ -253,3 +253,13 @@ def test_banned_customers_remain_visible_in_admin_filters():
     active_block = handler[handler.index('elif status == "active":'):]
     assert '{"banned": {"$ne": True}}' in active_block
     assert '"login_disabled": {"$ne": True}' in active_block
+
+
+def test_privileged_kyc_decisions_require_privileged_manager():
+    backend = read("backend/routes/admin_management.py")
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert "Nur Hauptadmin/Super-Admin darf KYC privilegierter Konten ändern" in backend
+    assert 'target_role in {"admin", "super_admin"}' in backend
+    assert 'disabled={loading || privilegedActionBlocked || customer.kyc_status === "approved"}' in page
+    assert 'disabled={loading || privilegedActionBlocked || customer.kyc_status === "rejected"}' in page
