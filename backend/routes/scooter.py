@@ -346,6 +346,39 @@ async def send_device_command(device_id: str, command: DeviceCommand, params: di
             data = response.json()
         except Exception:
             data = {"raw": response.text[:500]}
+
+        critical_state_command = command in {DeviceCommand.UNLOCK, DeviceCommand.LOCK}
+        provider_state = str(
+            data.get("status")
+            or data.get("state")
+            or data.get("result")
+            or ""
+        ).strip().lower()
+        explicitly_confirmed = (
+            data.get("confirmed") is True
+            or data.get("success") is True
+            or provider_state in {
+                "success", "succeeded", "confirmed", "completed", "ok", "locked", "unlocked",
+            }
+        )
+        if critical_state_command and (response.status_code == 202 or not explicitly_confirmed):
+            await db.scooter_device_commands.update_one(
+                {"command_id": command_id},
+                {"$set": {
+                    "status": "pending_confirmation",
+                    "mode": "live",
+                    "provider_status": response.status_code,
+                    "response": data,
+                    "confirmation_required": True,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            return DeviceCommandResult(
+                False,
+                "Device command accepted but physical state is not confirmed",
+                {**data, "command_id": command_id, "confirmation_required": True},
+            )
+
         await db.scooter_device_commands.update_one(
             {"command_id": command_id},
             {"$set": {
@@ -356,7 +389,7 @@ async def send_device_command(device_id: str, command: DeviceCommand, params: di
                 "completed_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        return DeviceCommandResult(True, "Command accepted by IoT provider", data)
+        return DeviceCommandResult(True, "Command confirmed by IoT provider", data)
     except httpx.TimeoutException:
         await db.scooter_device_commands.update_one(
             {"command_id": command_id},
