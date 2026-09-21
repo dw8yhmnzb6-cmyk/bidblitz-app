@@ -202,7 +202,7 @@ export default function ChargeServiceRequestsPage({ registrationId, onBack }) {
           ) : (
             <div className="space-y-3">
               {rows.map((item, index) => {
-                const active = ["requested", "confirmed", "reschedule_requested", "in_service"].includes(item.status);
+                const cancellable = ["requested", "confirmed", "reschedule_requested"].includes(item.status);
                 return (
                   <article key={item.request_id} className="rounded-[24px] border border-[#E1D7C7] bg-white p-4" data-testid={`charge-service-item-${index}`}>
                     <div className="flex items-start gap-3">
@@ -238,7 +238,7 @@ export default function ChargeServiceRequestsPage({ registrationId, onBack }) {
                             </button>
                           </>
                         ) : null}
-                        {active ? (
+                        {cancellable ? (
                           <button
                             onClick={() => cancel(item.request_id)}
                             disabled={busy === `cancel-${item.request_id}`}

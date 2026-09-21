@@ -61,3 +61,22 @@ def test_merchant_portal_exposes_real_service_appointment_controls():
     assert '["in_service", "Im Service"]' in portal
     assert '["completed", "Abschließen"]' in portal
     assert '["rejected", "Ablehnen"]' in portal
+
+
+def test_service_appointment_state_machine_is_fail_closed():
+    charge = _py(CHARGE)
+    merchant = _py(MERCHANT)
+    customer = _text(CUSTOMER)
+    portal = _text(PORTAL)
+    assert "_SERVICE_CUSTOMER_CANCELLABLE" in charge
+    assert '"in_service"' not in charge.split("_SERVICE_CUSTOMER_CANCELLABLE =", 1)[1].split("}", 1)[0]
+    assert '"status": current_status' in charge
+    assert 'getattr(result, "matched_count", 1) == 0' in charge
+    assert "_CHARGE_SERVICE_TRANSITIONS" in merchant
+    assert '"requested": {"confirmed", "reschedule_requested", "rejected"}' in merchant
+    assert '"confirmed": {"reschedule_requested", "in_service", "rejected"}' in merchant
+    assert '"in_service": {"completed", "rejected"}' in merchant
+    assert '"status": current_status' in merchant
+    assert 'Statuswechsel von {current_status} zu {status} ist nicht zulässig' in merchant
+    assert 'const cancellable = ["requested", "confirmed", "reschedule_requested"]' in customer
+    assert "const serviceActions = {" in portal

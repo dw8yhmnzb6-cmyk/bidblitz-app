@@ -1013,7 +1013,13 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               <DealerListCard title="Servicetermine" icon={Wrench} testid="merchant-dealer-service-list-card">
                 {(dealerWarranty?.service_requests || []).length === 0 ? <EmptyDealerState label="Noch keine Serviceanfragen vorhanden" /> : (dealerWarranty?.service_requests || []).map((item, index) => {
                   const draft = dealerServiceDrafts[item.request_id] || {};
-                  const active = ["requested", "confirmed", "reschedule_requested", "in_service"].includes(item.status);
+                  const serviceActions = {
+                    requested: [["confirmed", "Bestätigen"], ["reschedule_requested", "Neuer Termin"], ["rejected", "Ablehnen"]],
+                    reschedule_requested: [["confirmed", "Bestätigen"], ["reschedule_requested", "Termin ändern"], ["rejected", "Ablehnen"]],
+                    confirmed: [["reschedule_requested", "Neuer Termin"], ["in_service", "Im Service"], ["rejected", "Ablehnen"]],
+                    in_service: [["completed", "Abschließen"], ["rejected", "Ablehnen"]],
+                  }[item.status] || [];
+                  const active = serviceActions.length > 0;
                   return (
                     <div key={item.request_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-service-request-${index}`}>
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1073,13 +1079,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                               data-testid={`merchant-dealer-service-note-${index}`}
                             />
                             <div className="flex flex-wrap gap-2">
-                              {[
-                                ["confirmed", "Bestätigen"],
-                                ["reschedule_requested", "Neuer Termin"],
-                                ["in_service", "Im Service"],
-                                ["completed", "Abschließen"],
-                                ["rejected", "Ablehnen"],
-                              ].map(([status, label]) => (
+                              {serviceActions.map(([status, label]) => (
                                 <button
                                   key={status}
                                   onClick={() => updateDealerServiceRequest(item, status)}

@@ -98,6 +98,10 @@ class ChargeServiceRequestResponse(BaseModel):
     note: str = ""
 
 
+
+
+_SERVICE_CUSTOMER_CANCELLABLE = {"requested", "confirmed", "reschedule_requested"}
+
 class ChargeWarrantyClaimRequest(BaseModel):
     issue_type: str = "defect"
     subject: str
@@ -2320,8 +2324,11 @@ async def cancel_charge_service_request(request_id: str, request: Request):
     )
     if not service_request:
         raise HTTPException(status_code=404, detail="Serviceanfrage nicht gefunden")
-    if service_request.get("status") in {"completed", "rejected", "cancelled"}:
+    current_status = str(service_request.get("status") or "")
+    if current_status == "cancelled":
         return {"ok": True, "service_request": _service_request_card(service_request)}
+    if current_status not in _SERVICE_CUSTOMER_CANCELLABLE:
+        raise HTTPException(status_code=409, detail="Serviceanfrage kann in diesem Status nicht storniert werden")
 
     now = _now_iso()
     history = {
@@ -2331,13 +2338,19 @@ async def cancel_charge_service_request(request_id: str, request: Request):
         "note": "Serviceanfrage vom Kunden storniert",
         "created_at": now,
     }
-    await db.charge_service_requests.update_one(
-        {"request_id": request_id, "customer_user_id": user_id},
+    result = await db.charge_service_requests.update_one(
+        {
+            "request_id": request_id,
+            "customer_user_id": user_id,
+            "status": current_status,
+        },
         {
             "$set": {"status": "cancelled", "updated_at": now},
             "$push": {"status_history": history},
         },
     )
+    if result is not None and getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(status_code=409, detail="Serviceanfrage wurde zwischenzeitlich aktualisiert")
     service_request = {
         **service_request,
         "status": "cancelled",
@@ -2389,10 +2402,12 @@ async def respond_charge_service_request(
         "note": note or ("Terminvorschlag angenommen" if action == "accept" else "Terminvorschlag abgelehnt"),
         "created_at": now,
     }
-    await db.charge_service_requests.update_one(
+    result = await db.charge_service_requests.update_one(
         {"request_id": request_id, "customer_user_id": user_id, "status": "reschedule_requested"},
         {"$set": update_doc, "$push": {"status_history": history}},
     )
+    if result is not None and getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(status_code=409, detail="Terminvorschlag wurde zwischenzeitlich aktualisiert")
     service_request = {
         **service_request,
         **update_doc,

@@ -153,6 +153,17 @@ class DealerChargeServiceStatusUpdateRequest(BaseModel):
     note: str = ""
 
 
+_CHARGE_SERVICE_TRANSITIONS = {
+    "requested": {"confirmed", "reschedule_requested", "rejected"},
+    "reschedule_requested": {"confirmed", "reschedule_requested", "rejected"},
+    "confirmed": {"reschedule_requested", "in_service", "rejected"},
+    "in_service": {"completed", "rejected"},
+    "completed": set(),
+    "rejected": set(),
+    "cancelled": set(),
+}
+
+
 class DealerBrandProfileUpdateRequest(BaseModel):
     hero_claim: str = ""
     package_tier: str = "premium"
@@ -2423,6 +2434,14 @@ async def update_dealer_charge_service_request_status(
     if status not in allowed:
         raise HTTPException(status_code=400, detail="Ungültiger Servicestatus")
 
+    current_status = str(service_request.get("status") or "requested").strip().lower()
+    valid_next = _CHARGE_SERVICE_TRANSITIONS.get(current_status, set())
+    if status != current_status and status not in valid_next:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Statuswechsel von {current_status} zu {status} ist nicht zulässig",
+        )
+
     scheduled_date = str(req.scheduled_date or "").strip()
     scheduled_time = str(req.scheduled_time or "").strip()
     if status in {"confirmed", "reschedule_requested"} and not scheduled_date:
@@ -2453,10 +2472,12 @@ async def update_dealer_charge_service_request_status(
                 "created_at": now,
             }
         }
-    await db.charge_service_requests.update_one(
-        {"request_id": request_id},
+    result = await db.charge_service_requests.update_one(
+        {"request_id": request_id, "status": current_status},
         mongo_update,
     )
+    if result is not None and getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(status_code=409, detail="Serviceanfrage wurde zwischenzeitlich aktualisiert")
 
     notification_hash = hashlib.sha256(
         f"{status}|{scheduled_date}|{scheduled_time}|{note}".encode("utf-8")
