@@ -3885,7 +3885,7 @@ async def extend_auction(auction_id: str, request: Request):
 
 @router.delete("/admin/auction/{auction_id}")
 async def delete_auction(auction_id: str, request: Request):
-    """Admin: Delete an auction (only if no bids)."""
+    """Admin: atomically freeze an auction before deleting it when no real bids exist."""
     user = await get_current_user(request)
     if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
@@ -3893,15 +3893,67 @@ async def delete_auction(auction_id: str, request: Request):
     auction = await db.auctions.find_one({"auction_id": auction_id})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
-    
-    bid_count = await db.auction_bids.count_documents({"auction_id": auction_id, "is_bot": {"$ne": True}})
+
+    original_status = auction.get("status")
+    if original_status == "deleting":
+        raise HTTPException(status_code=409, detail="Auktion wird bereits gelöscht")
+
+    delete_claim_id = secrets.token_hex(8)
+    claimed_at = datetime.now(timezone.utc).isoformat()
+    claim = await db.auctions.update_one(
+        {
+            "auction_id": auction_id,
+            "status": original_status,
+            "current_price": auction.get("current_price"),
+            "ends_at": auction.get("ends_at"),
+            "last_bidder_id": auction.get("last_bidder_id"),
+        },
+        {"$set": {
+            "status": "deleting",
+            "delete_claim_id": delete_claim_id,
+            "delete_claimed_at": claimed_at,
+            "delete_claimed_by": str(user.get("_id") or ""),
+        }},
+    )
+    if claim.modified_count != 1:
+        fresh = await db.auctions.find_one({"auction_id": auction_id}, {"_id": 0})
+        if not fresh:
+            raise HTTPException(status_code=404, detail="Auction not found")
+        raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Löschen wurde nicht gestartet")
+
+    bid_count = await db.auction_bids.count_documents(
+        {"auction_id": auction_id, "is_bot": {"$ne": True}}
+    )
     if bid_count > 0:
-        raise HTTPException(status_code=400, detail=f"Cannot delete: {bid_count} real user bids exist")
-    
-    # Delete auction and bot bids
+        await db.auctions.update_one(
+            {"auction_id": auction_id, "status": "deleting", "delete_claim_id": delete_claim_id},
+            {
+                "$set": {"status": original_status},
+                "$unset": {
+                    "delete_claim_id": "",
+                    "delete_claimed_at": "",
+                    "delete_claimed_by": "",
+                },
+            },
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete: {bid_count} real user bids exist",
+        )
+
+    deleted = await db.auctions.delete_one({
+        "auction_id": auction_id,
+        "status": "deleting",
+        "delete_claim_id": delete_claim_id,
+    })
+    if deleted.deleted_count != 1:
+        raise HTTPException(status_code=409, detail="Auktion konnte nicht sicher gelöscht werden")
+
+    # Cleanup only after the auction document is gone, so no new bid can attach.
     await db.auction_bids.delete_many({"auction_id": auction_id})
-    await db.auctions.delete_one({"auction_id": auction_id})
-    
+    await db.auto_bids.delete_many({"auction_id": auction_id})
+    await db.watchlist.delete_many({"auction_id": auction_id})
+
     return {"ok": True, "deleted": auction_id}
 
 
