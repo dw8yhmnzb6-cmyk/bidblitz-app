@@ -945,6 +945,30 @@ const AuctionAdminPage = ({ onBack }) => {
                     className="mt-1 w-full bg-transparent text-base font-black text-yellow-300 outline-none" />
                 </label>
                 <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Nettoziel €</span>
+                  <input data-testid="auction-schedule-net-profit" type="number" min="0" max="100000" step="1" value={scheduleConfig.targetNetProfit}
+                    onChange={e => setScheduleConfig(v => ({ ...v, targetNetProfit: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-emerald-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Produktkosten €</span>
+                  <input type="number" min="0" max="100000" step="1" value={scheduleConfig.productCost}
+                    onChange={e => setScheduleConfig(v => ({ ...v, productCost: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Versand €</span>
+                  <input type="number" min="0" max="10000" step="1" value={scheduleConfig.shippingCost}
+                    onChange={e => setScheduleConfig(v => ({ ...v, shippingCost: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Sonstige Kosten €</span>
+                  <input type="number" min="0" max="10000" step="1" value={scheduleConfig.otherCosts}
+                    onChange={e => setScheduleConfig(v => ({ ...v, otherCosts: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
                   <span className="text-[9px] uppercase tracking-wider text-white/35">Dauer Stunden</span>
                   <select value={scheduleConfig.duration}
                     onChange={e => setScheduleConfig(v => ({ ...v, duration: Number(e.target.value) }))}
@@ -957,12 +981,23 @@ const AuctionAdminPage = ({ onBack }) => {
               {(() => {
                 const bidValue = Math.max(0.01, Number(scheduleConfig.bidValue) || 0.50);
                 const increment = Math.max(0.01, Number(scheduleConfig.increment) || 0.01);
-                const target = Math.max(0, Number(scheduleConfig.revenueTarget) || 0);
-                const bids = target > 0 ? Math.ceil(target / bidValue) : 0;
+                const revenueTarget = Math.max(0, Number(scheduleConfig.revenueTarget) || 0);
+                const costs = Math.max(0, Number(scheduleConfig.productCost) || 0)
+                  + Math.max(0, Number(scheduleConfig.shippingCost) || 0)
+                  + Math.max(0, Number(scheduleConfig.otherCosts) || 0);
+                const netTarget = Math.max(0, Number(scheduleConfig.targetNetProfit) || 0);
+                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / bidValue) : 0;
+                const bidsForNet = netTarget > 0 ? Math.max(0, Math.ceil((costs + netTarget) / (bidValue + increment))) : 0;
+                const bids = Math.max(bidsForRevenue, bidsForNet);
+                const visiblePrice = bids * increment;
+                const bidRevenue = bids * bidValue;
+                const contribution = bidRevenue + visiblePrice - costs;
                 return (
-                  <p className="text-[10px] text-cyan-100/60">
-                    Beispiel: €{target.toFixed(2)} Ziel ÷ €{bidValue.toFixed(2)} = ca. {bids} Gebote · sichtbarer Preis steigt dabei um ca. €{(bids * increment).toFixed(2)}.
-                  </p>
+                  <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3 text-[10px] text-white/55">
+                    <p><span className="font-black text-emerald-300">{bids} Gebote</span> · Gebotsumsatz ≈ €{bidRevenue.toFixed(2)} · sichtbarer Preis ≈ €{visiblePrice.toFixed(2)}</p>
+                    <p className="mt-1">Geschätzter Deckungsbeitrag ≈ <span className="font-black text-emerald-300">€{contribution.toFixed(2)}</span> bei Kosten von €{costs.toFixed(2)}.</p>
+                    <p className="mt-1 text-white/35">Nur Kalkulation. Rabatte auf Credit-Pakete, Steuern und weitere Gebühren bitte unter „Sonstige Kosten“ berücksichtigen.</p>
+                  </div>
                 );
               })()}
             </div>
@@ -1062,31 +1097,72 @@ const AuctionAdminPage = ({ onBack }) => {
                 </label>
               </div>
 
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ["Produktkosten", "productCost", 100000],
+                  ["Versand", "shippingCost", 10000],
+                  ["Sonstige Kosten", "otherCosts", 10000],
+                  ["Nettoziel", "targetNetProfit", 100000],
+                ].map(([label, key, max]) => (
+                  <label key={key} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/35">{label}</span>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        data-testid={`auction-engine-${key}`}
+                        type="number"
+                        min="0"
+                        max={max}
+                        step="1"
+                        value={engineConfig[key]}
+                        onChange={e => setEngineConfig(v => ({ ...v, [key]: e.target.value }))}
+                        className={`w-full bg-transparent text-base font-black outline-none ${key === "targetNetProfit" ? "text-emerald-300" : "text-white"}`}
+                      />
+                      <span className="text-sm text-white/40">€</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
               {(() => {
                 const bidValue = Math.max(0.01, Number(engineConfig.bidValue) || 0.50);
                 const increment = Math.max(0.01, Number(engineConfig.increment) || 0.01);
-                const target = Math.max(0, Number(engineConfig.revenueTarget) || 0);
-                const bidsNeeded = target > 0 ? Math.ceil(target / bidValue) : 0;
+                const revenueTarget = Math.max(0, Number(engineConfig.revenueTarget) || 0);
+                const costs = Math.max(0, Number(engineConfig.productCost) || 0)
+                  + Math.max(0, Number(engineConfig.shippingCost) || 0)
+                  + Math.max(0, Number(engineConfig.otherCosts) || 0);
+                const netTarget = Math.max(0, Number(engineConfig.targetNetProfit) || 0);
+                const currentPrice = Number(showEngineModal.current_price || 0);
+                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / bidValue) : 0;
+                const bidsForNet = netTarget > 0
+                  ? Math.max(0, Math.ceil((costs + netTarget - currentPrice) / (bidValue + increment)))
+                  : 0;
+                const bidsNeeded = Math.max(bidsForRevenue, bidsForNet);
                 const visibleIncrease = bidsNeeded * increment;
-                const estimatedEnd = Number(showEngineModal.current_price || 0) + visibleIncrease;
+                const estimatedEnd = currentPrice + visibleIncrease;
+                const bidRevenue = bidsNeeded * bidValue;
+                const estimatedContribution = bidRevenue + estimatedEnd - costs;
                 return (
                   <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-4">
-                    <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
                       <div>
                         <p className="text-[9px] uppercase tracking-wider text-white/35">Benötigte Gebote</p>
                         <p className="mt-1 text-lg font-black text-white">{bidsNeeded}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase tracking-wider text-white/35">Preis steigt</p>
-                        <p className="mt-1 text-lg font-black text-cyan-300">€{visibleIncrease.toFixed(2)}</p>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Gebotsumsatz</p>
+                        <p className="mt-1 text-lg font-black text-cyan-300">€{bidRevenue.toFixed(2)}</p>
                       </div>
                       <div>
                         <p className="text-[9px] uppercase tracking-wider text-white/35">Sichtbarer Preis</p>
                         <p className="mt-1 text-lg font-black text-yellow-300">€{estimatedEnd.toFixed(2)}</p>
                       </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Deckungsbeitrag</p>
+                        <p className="mt-1 text-lg font-black text-emerald-300">€{estimatedContribution.toFixed(2)}</p>
+                      </div>
                     </div>
                     <p className="mt-3 text-[10px] leading-relaxed text-white/35">
-                      Beispiel: €{target.toFixed(2)} Gebotsumsatz bei €{bidValue.toFixed(2)} nominalem Gebotswert = ca. {bidsNeeded} Gebote. Das ist Umsatz aus Bid-Credits, nicht garantierter Nettogewinn.
+                      Nettoziel €{netTarget.toFixed(2)} · Kosten €{costs.toFixed(2)}. Kalkulation mit nominalem Gebotswert; Credit-Rabatte, Steuern und Payment-Gebühren müssen in den Kosten berücksichtigt werden. Der Rechner steuert weder Timer noch Gewinner.
                     </p>
                   </div>
                 );
