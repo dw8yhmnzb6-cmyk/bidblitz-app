@@ -1725,7 +1725,8 @@ async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
         idempotency_key=idempotency_key,
     )
     if not result.success:
-        status_code = 409 if result.status.value in {"pending", "reconciliation_required"} else 400
+        payment_state = str(getattr(result.status, "value", result.status))
+        status_code = 503 if payment_state in {"pending", "reconciliation_required"} else 400
         raise HTTPException(status_code=status_code, detail=result.error or "Credit purchase failed")
 
     _, grant_ok = await _grant_bid_credits_once(
