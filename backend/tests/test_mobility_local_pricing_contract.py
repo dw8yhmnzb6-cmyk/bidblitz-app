@@ -494,3 +494,20 @@ def test_scooter_uncertain_device_state_is_quarantined_until_locked_telemetry():
     assert 'update["status"] = "available"' in scooter
     assert 'update["device_state_uncertain"] = False' in scooter
     assert 'update["device_state_uncertain_reason"] = "physical_unlocked_without_active_ride"' in scooter
+
+
+def test_scooter_physical_command_retries_use_stable_operation_keys():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "operation_key: Optional[str] = None" in scooter
+    assert 'f"{device_id}:{command.value}:{operation_key}"' in scooter
+    assert 'command_id = f"SCMD-{command_hash.upper()}"' in scooter
+    assert '"Idempotency-Key": f"scooter-command:{command_id}"' in scooter
+    assert '"attempt_count": 1' in scooter
+    assert '"replayed": True' in scooter
+    assert 'operation_key=f"ride:{ride_id}:unlock"' in scooter
+    assert 'operation_key=f"ride:{ride_id}:rollback-lock-payment"' in scooter
+    assert 'operation_key=f"ride:{ride_id}:rollback-lock-assignment"' in scooter
+    assert 'operation_key=f"ride:{ride[\'ride_id\']}:pause-lock"' in scooter
+    assert 'operation_key=f"ride:{ride[\'ride_id\']}:resume-unlock"' in scooter
+    assert 'operation_key=f"ride:{ride_id}:end-lock"' in scooter
