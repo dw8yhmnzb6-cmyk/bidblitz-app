@@ -595,3 +595,15 @@ def test_scooter_admin_permissions_include_super_admin():
     assert scooter.count('if user.get("role") not in {"admin", "super_admin"}:') >= 5
     assert scooter.count('if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":') >= 2
     assert 'if user.get("role") != "admin":' not in scooter
+
+
+def test_scooter_severe_issue_defers_maintenance_until_ride_end():
+    scooter = read("backend/routes/scooter.py")
+
+    assert 'category: str = Field(..., pattern="^(damage|battery|lights|brakes|tire|vandalism|other)$")' in scooter
+    assert 'severity: str = Field(default="medium", pattern="^(low|medium|high)$")' in scooter
+    assert '"maintenance_pending": True' in scooter
+    assert '"status": {"$in": ["available", "locked", "offline"]}' in scooter
+    assert 'final_scooter_status = "maintenance" if maintenance_due else "available"' in scooter
+    assert 'scooter_set["maintenance_pending"] = False' in scooter
+    assert 'scooter_set["maintenance_started_at"] = completed_at' in scooter
