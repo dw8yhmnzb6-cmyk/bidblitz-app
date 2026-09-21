@@ -914,8 +914,12 @@ export default function MiningPage({ onBack, onNavigate }) {
               {miners.map((mn, idx) => {
                 const Icon = TIER_ICONS[mn.icon] || Cpu;
                 const color = TIER_COLORS[mn.package_id] || "#00E89D";
-                const effectiveHash = (mn.hashrate * (1 + mn.power_level * 0.1)).toFixed(1);
-                const effectiveEff = ((mn.efficiency + mn.efficiency_level * 0.01) * 100).toFixed(1);
+                const effectiveHash = Number(
+                  mn.effective_hashrate ?? (Number(mn.hashrate || 0) * (1 + Number(mn.power_level || 0) * 0.1))
+                ).toFixed(1);
+                const effectiveEff = (
+                  Number(mn.effective_efficiency ?? (Number(mn.efficiency ?? 0.85) + Number(mn.efficiency_level || 0) * 0.01)) * 100
+                ).toFixed(1);
                 const pCost = upgradeCosts?.power?.[mn.power_level + 1];
                 const eCost = upgradeCosts?.efficiency?.[mn.efficiency_level + 1];
 
@@ -982,7 +986,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                 {[
                   { label: t("mining.total_mined") || "Mined", value: w.total_mined?.toFixed(2) || "0", color: "#00E89D" },
                   { label: t("mining.withdrawn") || "Withdrawn", value: w.total_withdrawn?.toFixed(2) || "0", color: "#FF6B6B" },
-                  { label: "Rate", value: "€0.10/BLZ", color: "#FFD700" },
+                  { label: "Rate", value: miningValueEnabled ? "€0.10/BLZ" : "Preview", color: "#FFD700" },
                 ].map(s => (
                   <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
                     <p className="text-[12px] font-bold font-outfit" style={{ color: s.color }}>{s.value}</p>
@@ -1289,10 +1293,14 @@ export default function MiningPage({ onBack, onNavigate }) {
 
               {/* Listings */}
               {marketplace.length === 0 && (
-                <div className="text-center py-10">
+                <div className="text-center py-10" data-testid="mining-marketplace-empty">
                   <ShoppingBag size={28} className="mx-auto text-white/10 mb-2" />
                   <p className="text-[12px] text-white/25">{t("mining.mkt_empty") || "No listings yet"}</p>
-                  <p className="text-[10px] text-white/15">{t("mining.mkt_empty_d") || "Be the first to list a miner for sale"}</p>
+                  <p className="text-[10px] text-white/15">
+                    {miningValueEnabled
+                      ? (t("mining.mkt_empty_d") || "Be the first to list a miner for sale")
+                      : "Marketplace Preview · Handel wird erst mit verifiziertem Mining-/Settlement-Provider aktiviert."}
+                  </p>
                 </div>
               )}
 
@@ -1483,9 +1491,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               </div>
 
               {launchpad.length === 0 && (
-                <div className="text-center py-10">
+                <div className="text-center py-10" data-testid="mining-launchpad-empty">
                   <Rocket size={28} className="mx-auto text-white/10 mb-2" />
                   <p className="text-[12px] text-white/25">{t("mining.lp_empty") || "No active launches"}</p>
+                  {!miningValueEnabled && (
+                    <p className="mt-1 text-[10px] text-white/15">
+                      Launchpad Preview · Käufe werden erst nach Live-Provider-Anbindung freigeschaltet.
+                    </p>
+                  )}
                 </div>
               )}
 
