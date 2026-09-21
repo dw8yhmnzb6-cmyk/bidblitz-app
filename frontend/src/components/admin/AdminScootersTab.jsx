@@ -70,7 +70,7 @@ export default function AdminScootersTab({
                     setNewScooter({ device_id: "", qr_code: "", model: "Ninebot Max G30", lat: 52.52, lng: 13.405, battery: 100 });
                     setShowAdd(false);
                     reload();
-                  } catch (e) { setError(e); }
+                  } catch (e) { setError(e?.message || String(e)); }
                   setSaving(false);
                 }}
                 className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:opacity-50 flex items-center justify-center gap-2">
@@ -139,7 +139,7 @@ export default function AdminScootersTab({
                       onClick={async () => {
                         const newStatus = scooter.status === "available" ? "maintenance" : "available";
                         try { await adminApi(`/api/scooter/admin/${scooter.scooter_id}`, { method: "PUT", body: JSON.stringify({ status: newStatus }) }); reload(); }
-                        catch { /* noop */ }
+                        catch (e) { setError(e?.message || String(e)); }
                       }}
                       className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#00C2FF] disabled:cursor-not-allowed disabled:opacity-30">
                       <Settings size={14} />
@@ -150,7 +150,7 @@ export default function AdminScootersTab({
                       onClick={async () => {
                         if (window.confirm(`Scooter ${scooter.scooter_id} wirklich löschen?`)) {
                           try { await adminApi(`/api/scooter/admin/${scooter.scooter_id}`, { method: "DELETE" }); reload(); }
-                          catch { /* noop */ }
+                          catch (e) { setError(e?.message || String(e)); }
                         }
                       }}
                       className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#FF4757] disabled:cursor-not-allowed disabled:opacity-30">
