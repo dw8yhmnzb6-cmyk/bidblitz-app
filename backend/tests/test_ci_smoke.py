@@ -3595,6 +3595,8 @@ def test_auction_duration_contract_is_two_to_three_days():
 
     assert "duration_seconds: int = Field(default=172800, ge=172800, le=259200)" in source
     assert "default_duration_hours: int = Field(default=48, ge=48, le=72)" in source
+    assert "DEFAULT_DURATION_SECONDS = 172800" in source
+    assert "MAX_AUCTION_REMAINING_SECONDS = 72 * 3600" in source
     assert source.count("duration_hours: int = Field(default=48, ge=48, le=72)") >= 2
     assert "duration_hours = 48 if int(slot_index or 0) % 2 == 0 else 72" in source
     assert "duration_seconds = duration_hours * 3600" in source
@@ -3620,3 +3622,6 @@ def test_auction_admin_timer_transitions_are_atomic():
     assert "current_remaining = max(0.0, float(auction.get(" in source
     assert '"remaining_when_paused": new_remaining' in source
     assert "Verlängerung muss zwischen 1 und 1440 Minuten liegen" in source
+    assert "new_remaining > MAX_AUCTION_REMAINING_SECONDS" in source
+    assert "new_ends > max_ends" in source
+    assert "Auktion darf maximal 72 Stunden Restlaufzeit haben" in source
