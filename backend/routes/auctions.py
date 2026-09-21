@@ -2116,7 +2116,7 @@ class CreateAuctionRequest(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     retail_price: float = Field(..., gt=0, le=2000, description="Max €2000 retail price")
-    duration_seconds: int = Field(default=300, ge=60, le=3600)
+    duration_seconds: int = Field(default=172800, ge=172800, le=259200)
     start_now: bool = True
 
 
@@ -3375,7 +3375,7 @@ class AutomationConfigRequest(BaseModel):
     auto_create_enabled: bool = True
     min_active_auctions: int = Field(default=5, ge=1, le=50)
     max_active_auctions: int = Field(default=20, ge=1, le=100)
-    default_duration_hours: int = Field(default=48, ge=1, le=168)
+    default_duration_hours: int = Field(default=48, ge=48, le=72)
     auto_end_expired: bool = True
     auto_restart_ended: bool = False
     bot_default_enabled: bool = True
@@ -3393,7 +3393,7 @@ class AutomationConfigRequest(BaseModel):
 class ScheduleAuctionRequest(BaseModel):
     product_index: int = Field(..., ge=0)  # Index in PRODUCT_CATALOG
     start_at: Optional[str] = None  # ISO datetime, None = start immediately
-    duration_hours: int = Field(default=48, ge=1, le=168)
+    duration_hours: int = Field(default=48, ge=48, le=72)
     bot_enabled: bool = True
     bot_target_price: Optional[float] = None  # None = auto-calculate
     featured: bool = False
@@ -3402,7 +3402,7 @@ class ScheduleAuctionRequest(BaseModel):
 class BulkScheduleRequest(BaseModel):
     product_indices: list  # List of indices
     stagger_minutes: int = Field(default=30, ge=0, le=1440)
-    duration_hours: int = Field(default=48, ge=1, le=168)
+    duration_hours: int = Field(default=48, ge=48, le=72)
     bot_enabled: bool = True
 
 
