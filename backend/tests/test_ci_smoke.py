@@ -492,6 +492,10 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     scooter_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "ScooterPage.jsx").read_text(encoding="utf-8")
 
     assert "async def _settle_outstanding_scooter_debts" in scooter_source
+    assert '{"user_id": user_id, "settlement_reconciliation_required": True}' in scooter_source
+    assert 'idempotency_key=f"scooter-end:{ride_id}"' in scooter_source
+    assert '"payment_status": "paid_reconciled"' in scooter_source
+    assert '"settlement_reconciliation_required": False' in scooter_source
     assert '"status": "unlocking"' in scooter_source
     assert '"unlock_claim_key": claim_hash' in scooter_source
     assert 'payment_status in {"pending", "reconciliation_required"}' in scooter_source
