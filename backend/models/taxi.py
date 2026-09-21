@@ -174,6 +174,7 @@ class FlexBookRequest(BaseModel):
     scheduled_at: Optional[str] = None  # ISO datetime; None => "Jetzt"
     promo_code: Optional[str] = Field(None, max_length=32)
     quote_id: Optional[str] = Field(None, min_length=16, max_length=80)
+    idempotency_key: Optional[str] = Field(None, min_length=8, max_length=200)
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""
