@@ -37,10 +37,19 @@ async function mockScooterApi(page: Page) {
   };
 
   await page.route('**/api/scooter/**', async route => {
-    const pathname = new URL(route.request().url()).pathname.replace(/^\/undefined(?=\/api\/)/, '');
+    const url = new URL(route.request().url());
+    const pathname = url.pathname.replace(/^\/undefined(?=\/api\/)/, '');
     let body: unknown = {};
     if (pathname === '/api/scooter/pricing') {
-      body = { ...pricing, free_paused_minutes: 5, max_speed_kmh: 25, subscription_plans: [] };
+      const selectedScooterPricing = url.searchParams.get('lat') === '42.6629'
+        && url.searchParams.get('lng') === '21.1655';
+      body = {
+        ...pricing,
+        ...(selectedScooterPricing ? { unlock_fee: 0.35, basis: 'Tarif am ausgewählten Scooter-Standort' } : {}),
+        free_paused_minutes: 5,
+        max_speed_kmh: 25,
+        subscription_plans: [],
+      };
     } else if (pathname === '/api/scooter/nearby') {
       body = {
         module_enabled: true,
@@ -88,7 +97,7 @@ test('scooter local city pricing stays usable at 320px', async ({ page }) => {
 
   await page.getByText('BB-SC-001').first().click();
   await expect(page.getByTestId('scooter-unlock-sheet')).toBeVisible();
-  await expect(page.getByTestId('scooter-unlock-button')).toContainText('0.20');
+  await expect(page.getByTestId('scooter-unlock-button')).toContainText('0.35');
 
   const widths = await page.evaluate(() => ({
     content: document.documentElement.scrollWidth,
