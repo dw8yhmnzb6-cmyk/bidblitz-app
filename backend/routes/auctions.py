@@ -3813,6 +3813,15 @@ async def extend_auction(auction_id: str, request: Request):
     if auction["status"] not in ("active", "paused"):
         raise HTTPException(status_code=400, detail="Cannot extend ended auction")
 
+    extension_seconds = extend_minutes * 60
+    current_duration_seconds = int(auction.get("duration_seconds") or 172800)
+    new_duration_seconds = current_duration_seconds + extension_seconds
+    if new_duration_seconds > 259200:
+        raise HTTPException(
+            status_code=409,
+            detail="Auktions-Grunddauer darf maximal 72 Stunden betragen",
+        )
+
     if auction["status"] == "paused":
         current_remaining = max(0.0, float(auction.get("remaining_when_paused") or 0))
         new_remaining = current_remaining + (extend_minutes * 60)
@@ -3822,7 +3831,10 @@ async def extend_auction(auction_id: str, request: Request):
                 "status": "paused",
                 "remaining_when_paused": auction.get("remaining_when_paused"),
             },
-            {"$set": {"remaining_when_paused": new_remaining}},
+            {"$set": {
+                "remaining_when_paused": new_remaining,
+                "duration_seconds": new_duration_seconds,
+            }},
         )
         if changed.modified_count != 1:
             raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Verlängerung wurde nicht angewendet.")
@@ -3843,7 +3855,10 @@ async def extend_auction(auction_id: str, request: Request):
             "current_price": auction.get("current_price"),
             "last_bidder_id": auction.get("last_bidder_id"),
         },
-        {"$set": {"ends_at": new_ends.isoformat()}},
+        {"$set": {
+            "ends_at": new_ends.isoformat(),
+            "duration_seconds": new_duration_seconds,
+        }},
     )
     if changed.modified_count != 1:
         raise HTTPException(status_code=409, detail="Auktion änderte sich gleichzeitig. Verlängerung wurde nicht angewendet.")
