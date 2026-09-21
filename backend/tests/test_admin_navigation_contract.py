@@ -263,3 +263,13 @@ def test_privileged_kyc_decisions_require_privileged_manager():
     assert 'target_role in {"admin", "super_admin"}' in backend
     assert 'disabled={loading || privilegedActionBlocked || customer.kyc_status === "approved"}' in page
     assert 'disabled={loading || privilegedActionBlocked || customer.kyc_status === "rejected"}' in page
+
+
+def test_admin_password_reset_form_stays_open_on_delivery_failure():
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    assert "return true;" in page
+    assert "return false;" in page
+    assert "const resetPw = async () => {" in page
+    assert "const ok = await doAction(" in page
+    assert "if (ok) setShowPwForm(false);" in page
