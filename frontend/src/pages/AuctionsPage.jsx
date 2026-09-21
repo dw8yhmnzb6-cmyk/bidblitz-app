@@ -249,7 +249,7 @@ const PremiumAuctionHero = ({ auction, onOpen, onBid, bidding, t, lang }) => {
         <span className="rounded-full border border-[#FFD166]/20 bg-[#FFD166]/10 px-2.5 py-1 text-[9px] font-black text-[#FFD166]">TOP DEAL</span>
       </div>
       <div className="grid gap-0 md:grid-cols-[0.9fr_1.1fr]">
-        <button type="button" onClick={onOpen} className="relative min-h-[250px] overflow-hidden bg-[#080C16] text-left">
+        <button type="button" data-testid={`auction-card-${auction.auction_id}`} onClick={onOpen} className="relative min-h-[250px] overflow-hidden bg-[#080C16] text-left">
           {auction.image_url ? (
             <img src={auction.image_url} alt={loc.title} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
