@@ -618,6 +618,21 @@ const canGenericRefund = (tx = {}) => {
   );
 };
 
+
+const formatAdminTransactionAmount = (tx = {}) => {
+  const currency = String(tx.currency || "EUR").toUpperCase();
+  if (currency === "BLZ") return `${Number(tx.amount ?? tx.amount_blz ?? 0)} BLZ`;
+  if (tx.amount !== undefined && tx.amount !== null) {
+    const value = Number(tx.amount || 0).toFixed(2);
+    return currency === "EUR" ? `€${value}` : `${value} ${currency}`;
+  }
+  if (tx.amount_eur !== undefined && tx.amount_eur !== null) {
+    return `€${Number(tx.amount_eur || 0).toFixed(2)}`;
+  }
+  if (tx.coins !== undefined && tx.coins !== null) return `${tx.coins} Coins`;
+  return "—";
+};
+
 const TransactionsTab = () => {
   const [tx, setTx] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -709,10 +724,7 @@ const TransactionsTab = () => {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-[14px] font-bold" style={{ color: t.type === "refund" ? "#A855F7" : "#1f2937" }}>
-                      {t.currency === "BLZ" ? `${t.amount || t.amount_blz || 0} BLZ` :
-                       t.amount ? `€${Number(t.amount).toFixed(2)}` :
-                       t.amount_eur ? `€${Number(t.amount_eur).toFixed(2)}` :
-                       t.coins ? `${t.coins} Coins` : "—"}
+                      {formatAdminTransactionAmount(t)}
                     </p>
                     {isRefundable && (
                       <button
