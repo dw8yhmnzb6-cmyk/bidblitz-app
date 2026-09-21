@@ -4063,3 +4063,21 @@ def test_auction_credit_purchase_unknown_wallet_state_is_retryable():
 
     assert 'payment_state = str(getattr(result.status, "value", result.status))' in source
     assert 'status_code = 503 if payment_state in {"pending", "reconciliation_required"} else 400' in source
+
+
+def test_biopay_requires_verified_provider_in_production():
+    backend = (BACKEND_DIR / "routes" / "biopay.py").read_text(encoding="utf-8")
+    service = (BACKEND_DIR / "services" / "biopay.py").read_text(encoding="utf-8")
+    panel = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "pos" / "POSBioPayPanel.jsx").read_text(encoding="utf-8")
+
+    assert 'BIOPAY_PROVIDER_VERIFIED' in backend
+    assert 'def _require_verified_biopay_provider()' in backend
+    assert 'BioPay ist in Production ohne verifizierte biometrische Provider-/Hardware-Attestation deaktiviert.' in backend
+    assert backend.count('_require_verified_biopay_provider()') >= 7
+    assert 'matched = template_token_fingerprint((template_token or "").strip()) == profile.get("token_fingerprint")' in service
+    assert 'score = 0.99 if matched else 0.12' in service
+
+    assert 'REACT_APP_BIOPAY_PROVIDER_VERIFIED' in panel
+    assert 'const BIOPAY_PROVIDER_VERIFIED' in panel
+    assert 'data-testid="pos-biopay-preview-disabled"' in panel
+    assert 'Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.' in panel
