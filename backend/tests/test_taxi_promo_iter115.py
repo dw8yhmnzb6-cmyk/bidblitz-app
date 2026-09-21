@@ -41,8 +41,8 @@ def auth_headers(api_client):
 # /api/taxi/promo/validate
 # ─────────────────────────────────────────────────────────────
 class TestPromoValidate:
-    def test_valid_percent(self, api_client):
-        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "NEUKUNDE10"})
+    def test_valid_percent(self, api_client, auth_headers):
+        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "NEUKUNDE10"}, headers=auth_headers)
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["valid"] is True
@@ -52,15 +52,15 @@ class TestPromoValidate:
         assert data["discount"]["value"] == 10
         assert data["discount"]["max_off"] == 5 or data["discount"]["max_off"] == 5.0
 
-    def test_lowercase_normalization(self, api_client):
-        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "neukunde10"})
+    def test_lowercase_normalization(self, api_client, auth_headers):
+        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "neukunde10"}, headers=auth_headers)
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["valid"] is True
         assert data["code"] == "NEUKUNDE10"
 
-    def test_fixed_amount(self, api_client):
-        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "BIDBLITZ5"})
+    def test_fixed_amount(self, api_client, auth_headers):
+        r = api_client.get(f"{BASE_URL}/api/taxi/promo/validate", params={"code": "BIDBLITZ5"}, headers=auth_headers)
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["valid"] is True
