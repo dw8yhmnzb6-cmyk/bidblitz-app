@@ -166,22 +166,23 @@ export default function MiningPage({ onBack, onNavigate }) {
   const fetchMiningData = useCallback(async () => {
     // Dashboard is required. Optional Phase-2 panels may fail independently without blanking the whole page.
     const dash = await api("/api/mining/dashboard");
-    const [pkgs, costs, mkt, crd, lp] = await Promise.all([
+    const [pkgs, costs, mkt, crd, lp, hist] = await Promise.all([
       api("/api/mining/packages").catch(() => ({ packages: [] })),
       api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
       api("/api/mining/marketplace").catch(() => ({ listings: [] })),
       api("/api/mining/card").catch(() => null),
       api("/api/mining/launchpad").catch(() => ({ projects: [] })),
+      api("/api/mining/transactions").catch(() => ({ transactions: dash.recent_transactions || [] })),
     ]);
-    return { dash, pkgs, costs, mkt, crd, lp };
+    return { dash, pkgs, costs, mkt, crd, lp, hist };
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     try {
-      const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
-      setData(dash);
+      const { dash, pkgs, costs, mkt, crd, lp, hist } = await fetchMiningData();
+      setData({ ...dash, recent_transactions: hist.transactions || dash.recent_transactions || [] });
       setPackages(pkgs.packages || []);
       setUpgradeCosts(costs.costs || {});
       setMarketplace(mkt.listings || []);
@@ -200,10 +201,10 @@ export default function MiningPage({ onBack, onNavigate }) {
     let active = true;
     (async () => {
       try {
-        const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
+        const { dash, pkgs, costs, mkt, crd, lp, hist } = await fetchMiningData();
         if (!active) return;
         setLoadError("");
-        setData(dash);
+        setData({ ...dash, recent_transactions: hist.transactions || dash.recent_transactions || [] });
         setPackages(pkgs.packages || []);
         setUpgradeCosts(costs.costs || {});
         setMarketplace(mkt.listings || []);
