@@ -40,6 +40,13 @@ const AuctionAdminPage = ({ onBack }) => {
   const [updatingOrder, setUpdatingOrder] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState({
+    featured: false,
+    bidValue: 0.50,
+    increment: 0.01,
+    revenueTarget: 50.00,
+    duration: 48,
+  });
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
   const [botConfig, setBotConfig] = useState({ enabled: true, target: 0, minSeconds: 60 });
   const [showEngineModal, setShowEngineModal] = useState(null);
@@ -310,14 +317,17 @@ const AuctionAdminPage = ({ onBack }) => {
     }
   };
 
-  const handleSchedule = async (productIndex, options = {}) => {
+  const handleSchedule = async (productIndex, options = scheduleConfig) => {
     const res = await api("/api/auctions/admin/auction/schedule", {
       method: "POST",
       body: JSON.stringify({
         product_index: productIndex,
-        duration_hours: options.duration || 48,
-        bot_enabled: true,
-        featured: false,
+        duration_hours: Number(options.duration || 48),
+        bot_enabled: false,
+        featured: Boolean(options.featured),
+        bid_value_eur: Number(options.bidValue || 0.50),
+        price_increment: Number(options.increment || 0.01),
+        revenue_target_eur: Number(options.revenueTarget || 0),
       }),
     });
     if (res.ok) {
@@ -869,6 +879,61 @@ const AuctionAdminPage = ({ onBack }) => {
       <AnimatePresence>
         {showScheduleModal && (
           <Modal onClose={() => setShowScheduleModal(false)} title="Neue Auktion starten">
+            <div className="mb-4 space-y-3 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.05] p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Engine-Voreinstellungen</p>
+                  <p className="text-[10px] text-white/40">Diese Werte gelten für das ausgewählte Angebot.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScheduleConfig(v => ({ ...v, featured: !v.featured }))}
+                  className={`rounded-full px-3 py-1 text-[10px] font-black ${scheduleConfig.featured ? "bg-yellow-400 text-black" : "bg-white/10 text-white/50"}`}
+                >
+                  {scheduleConfig.featured ? "PREMIUM AN" : "Premium"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Gebotswert €</span>
+                  <input type="number" min="0.01" max="10" step="0.01" value={scheduleConfig.bidValue}
+                    onChange={e => setScheduleConfig(v => ({ ...v, bidValue: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-cyan-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Preis-Schritt €</span>
+                  <input type="number" min="0.01" max="1" step="0.01" value={scheduleConfig.increment}
+                    onChange={e => setScheduleConfig(v => ({ ...v, increment: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-cyan-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Gebotsumsatz-Ziel €</span>
+                  <input type="number" min="0" max="100000" step="1" value={scheduleConfig.revenueTarget}
+                    onChange={e => setScheduleConfig(v => ({ ...v, revenueTarget: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-yellow-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Dauer Stunden</span>
+                  <select value={scheduleConfig.duration}
+                    onChange={e => setScheduleConfig(v => ({ ...v, duration: Number(e.target.value) }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none">
+                    <option value={48} className="bg-[#0a0a0a]">48</option>
+                    <option value={72} className="bg-[#0a0a0a]">72</option>
+                  </select>
+                </label>
+              </div>
+              {(() => {
+                const bidValue = Math.max(0.01, Number(scheduleConfig.bidValue) || 0.50);
+                const increment = Math.max(0.01, Number(scheduleConfig.increment) || 0.01);
+                const target = Math.max(0, Number(scheduleConfig.revenueTarget) || 0);
+                const bids = target > 0 ? Math.ceil(target / bidValue) : 0;
+                return (
+                  <p className="text-[10px] text-cyan-100/60">
+                    Beispiel: €{target.toFixed(2)} Ziel ÷ €{bidValue.toFixed(2)} = ca. {bids} Gebote · sichtbarer Preis steigt dabei um ca. €{(bids * increment).toFixed(2)}.
+                  </p>
+                );
+              })()}
+            </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {catalog.map((product, idx) => (
                 <motion.button
