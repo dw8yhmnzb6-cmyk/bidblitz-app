@@ -1550,6 +1550,41 @@ async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: Fle
     return quote_doc
 
 
+async def _claim_taxi_price_quote(quote_doc: Optional[dict], user_id: str, ride_id: str) -> Optional[dict]:
+    """Atomically bind one displayed quote to exactly one booking identity."""
+    if not quote_doc:
+        return None
+
+    quote_id = str(quote_doc.get("quote_id") or "")
+    if not quote_id:
+        raise HTTPException(status_code=409, detail="Preisangebot ist ungültig. Bitte Preis neu berechnen.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    claim = await db.taxi_price_quotes.update_one(
+        {"quote_id": quote_id, "status": "active"},
+        {"$set": {
+            "status": "claimed",
+            "claimed_ride_id": ride_id,
+            "claimed_user_id": str(user_id),
+            "claimed_at": now,
+        }},
+    )
+    if claim.modified_count == 1:
+        claimed = await db.taxi_price_quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+        return claimed or {**quote_doc, "status": "claimed", "claimed_ride_id": ride_id}
+
+    current = await db.taxi_price_quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if (
+        current
+        and current.get("status") == "claimed"
+        and str(current.get("claimed_ride_id") or "") == ride_id
+        and str(current.get("claimed_user_id") or "") == str(user_id)
+    ):
+        return current
+
+    raise HTTPException(status_code=409, detail="Preisangebot wird bereits für eine andere Buchung verwendet.")
+
+
 def _taxi_quote_metadata(matched_zone: Optional[dict], time_info: dict) -> tuple[Optional[dict], dict]:
     tariff_zone = None
     if matched_zone:
