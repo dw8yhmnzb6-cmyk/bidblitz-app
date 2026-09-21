@@ -2347,6 +2347,43 @@ async def book_ride(req: FlexBookRequest, request: Request):
         if quote_claim.matched_count != 1:
             raise HTTPException(status_code=409, detail="Preisangebot wird bereits verwendet. Bitte Preis neu berechnen.")
 
+    promo_reserved = False
+    if promo_applied:
+        from utils.taxi_promo import reserve_redemption
+        promo_reservation = await reserve_redemption(
+            user_id,
+            promo_applied["code"],
+            ride_id,
+            promo_applied.get("discount", 0),
+        )
+        if not promo_reservation.get("ok"):
+            if locked_quote and promo_reservation.get("reason") != "reservation_in_progress":
+                await db.taxi_price_quotes.update_one(
+                    {
+                        "quote_id": req.quote_id,
+                        "status": "booking",
+                        "booking_idempotency_key": client_key,
+                        "booking_user_id": user_id,
+                    },
+                    {
+                        "$set": {"status": "active", "booking_released_at": datetime.now(timezone.utc).isoformat()},
+                        "$unset": {
+                            "booking_idempotency_key": "",
+                            "booking_user_id": "",
+                            "booking_ride_id": "",
+                            "booking_started_at": "",
+                        },
+                    },
+                )
+            status_code = 503 if promo_reservation.get("retryable") else 409
+            detail = (
+                "Promo-Code wird gerade verarbeitet. Bitte Buchung mit demselben Versuch erneut senden."
+                if promo_reservation.get("reason") == "reservation_in_progress"
+                else "Promo-Code wurde bereits verwendet oder kann nicht reserviert werden."
+            )
+            raise HTTPException(status_code=status_code, detail=detail)
+        promo_reserved = True
+
     reservation = await debit_wallet(
         user_id=user_id,
         amount=fare_total,
@@ -2357,6 +2394,9 @@ async def book_ride(req: FlexBookRequest, request: Request):
         idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
     )
     if not reservation.success:
+        if promo_reserved:
+            from utils.taxi_promo import release_redemption
+            await release_redemption(user_id, promo_applied["code"], ride_id)
         if locked_quote:
             await db.taxi_price_quotes.update_one(
                 {
@@ -2472,6 +2512,12 @@ async def book_ride(req: FlexBookRequest, request: Request):
             )
         except Exception as refund_exc:
             logger.exception("Taxi booking reservation rollback failed: %s", refund_exc)
+        if promo_reserved:
+            try:
+                from utils.taxi_promo import release_redemption
+                await release_redemption(user_id, promo_applied["code"], ride_id)
+            except Exception as promo_release_exc:
+                logger.exception("Taxi promo rollback failed: %s", promo_release_exc)
         await db.taxi_booking_attempts.update_one(
             {"_id": f"{user_id}:{ride_id}"},
             {"$set": {
@@ -2507,6 +2553,12 @@ async def book_ride(req: FlexBookRequest, request: Request):
                     "ride_id": ride_id,
                 }},
             )
+        if promo_applied:
+            try:
+                from utils.taxi_promo import record_redemption
+                await record_redemption(user_id, promo_applied["code"], ride_id, promo_applied["discount"])
+            except Exception as promo_finalize_exc:
+                logger.warning("Taxi promo replay finalization failed: %s", promo_finalize_exc)
         return {
             "ok": True,
             "ride": current,
