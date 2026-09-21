@@ -37,8 +37,10 @@ async def get_verified_driver(request: Request):
     
     driver = await db.drivers.find_one({
         "user_id": user_id,
-        "is_verified": True,
-        "status": "active"
+        "$or": [
+            {"verified": True, "status": "approved"},
+            {"is_verified": True, "status": "active"},
+        ],
     })
     
     if not driver:
@@ -68,6 +70,17 @@ def _driver_location(driver: dict) -> dict:
 def _driver_vehicle_type(driver: dict) -> str:
     vehicle = driver.get("vehicle") or driver.get("car") or {}
     return vehicle.get("type") or vehicle.get("vehicle_type") or "standard"
+
+
+def _driver_is_verified(driver: dict) -> bool:
+    return (
+        (driver.get("verified") is True and driver.get("status") == "approved")
+        or (driver.get("is_verified") is True and driver.get("status") == "active")
+    )
+
+
+def _driver_vehicle(driver: dict) -> dict:
+    return driver.get("vehicle") or driver.get("car") or {}
 
 
 async def _pending_customer_rides(driver: dict, limit: int = 20) -> List[dict]:
@@ -151,13 +164,13 @@ async def driver_eligibility(request: Request):
     user_id = str(user["_id"])
     driver = await db.drivers.find_one(
         {"user_id": user_id},
-        {"_id": 0, "driver_id": 1, "is_verified": 1, "status": 1, "name": 1}
+        {"_id": 0, "driver_id": 1, "verified": 1, "is_verified": 1, "status": 1, "name": 1, "user_name": 1}
     )
     if not driver:
         return {"is_driver": False, "is_verified": False, "status": "not_registered"}
     return {
         "is_driver": True,
-        "is_verified": bool(driver.get("is_verified")) and driver.get("status") == "active",
+        "is_verified": _driver_is_verified(driver),
         "status": driver.get("status", "pending"),
         "driver_id": driver.get("driver_id"),
     }
@@ -179,13 +192,13 @@ async def driver_profile(request: Request):
         total_earned = float(r.get("sum", 0))
     return {
         "driver_id": driver["driver_id"],
-        "name": driver.get("name") or user.get("name"),
+        "name": driver.get("name") or driver.get("user_name") or user.get("name"),
         "email": user.get("email"),
         "phone": driver.get("phone") or user.get("phone"),
         "avatar": user.get("avatar"),
-        "vehicle": driver.get("vehicle", {}),
+        "vehicle": _driver_vehicle(driver),
         "rating": round(float(driver.get("rating", 5.0)), 2),
-        "is_verified": bool(driver.get("is_verified")),
+        "is_verified": _driver_is_verified(driver),
         "status": driver.get("status"),
         "joined_at": driver.get("created_at") or driver.get("approved_at"),
         "stats": {
@@ -240,12 +253,12 @@ async def get_driver_status(request: Request):
     
     return {
         "driver_id": driver["driver_id"],
-        "name": driver.get("name") or user.get("name"),
-        "is_online": driver.get("is_online", False),
+        "name": driver.get("name") or driver.get("user_name") or user.get("name"),
+        "is_online": bool(driver.get("is_online") or driver.get("online")),
         "is_busy": active_ride is not None,
-        "vehicle": driver.get("vehicle", {}),
+        "vehicle": _driver_vehicle(driver),
         "rating": driver.get("rating", 5.0),
-        "current_location": driver.get("current_location"),
+        "current_location": _driver_location(driver),
         "earnings": {
             "today": round(today_earnings, 2),
             "today_rides": len(today_rides),
@@ -255,7 +268,7 @@ async def get_driver_status(request: Request):
         },
         "active_ride": active_ride,
         "pending_requests": pending_requests,
-        "balance": round(driver.get("balance", 0), 2),
+        "balance": round(float(user.get("balance", 0) or 0), 2),
     }
 
 
