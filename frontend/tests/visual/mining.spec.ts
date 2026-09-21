@@ -77,3 +77,43 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 });
+
+
+test('mining dashboard failure shows a retry state instead of a blank screen', async ({ page }) => {
+  await mockMiningUser(page);
+  await page.route('**/api/mining/**', async route => {
+    const pathname = new URL(route.request().url()).pathname.replace(/^\/undefined(?=\/api\/)/, '');
+    if (pathname === '/api/mining/dashboard') {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Mining dashboard temporarily unavailable' }),
+      });
+      return;
+    }
+    const payloads: Record<string, unknown> = {
+      '/api/mining/packages': { packages: [] },
+      '/api/mining/upgrade-costs': { costs: {} },
+      '/api/mining/marketplace': { listings: [] },
+      '/api/mining/card': {},
+      '/api/mining/launchpad': { projects: [] },
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payloads[pathname] ?? {}),
+    });
+  });
+
+  await prepareVisualPage(page, { name: '320x568-mining-error', width: 320, height: 568 });
+  await openRoute(page, '/mining', '[data-testid="mining-load-error"]');
+
+  await expect(page.getByText('Mining konnte nicht geladen werden')).toBeVisible();
+  await expect(page.getByTestId('mining-retry-load')).toBeVisible();
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
