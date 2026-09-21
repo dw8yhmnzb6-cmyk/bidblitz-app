@@ -347,11 +347,14 @@ def test_scooter_unlock_replay_never_treats_cancelled_attempt_as_success():
     assert '"error": "unlock_attempt_not_replayable"' in scooter
     assert '"error": "pricing_changed"' in scooter
 
-    assert "const unlockAttemptScooterRef = useRef(null);" in page
+    assert "readScooterUnlockAttempt" in page
+    assert "persistScooterUnlockAttempt" in page
+    assert "const unlockAttemptKeyRef = useRef(initialUnlockAttempt?.key || null);" in page
+    assert "const unlockAttemptScooterRef = useRef(initialUnlockAttempt?.scooter_id || null);" in page
     assert "unlockAttemptScooterRef.current !== scooter.scooter_id" in page
     assert "unlockAttemptScooterRef.current = scooter.scooter_id" in page
-    assert "unlockAttemptKeyRef.current = null;" in page
-    assert "unlockAttemptScooterRef.current = null;" in page
+    assert "persistScooterUnlockAttempt(unlockAttemptOwnerId, {" in page
+    assert "persistScooterUnlockAttempt(unlockAttemptOwnerId, null)" in page
     assert "errorCode === 'pricing_changed'" in page
     assert "const detailMessage = typeof err?.detail === 'string'" in page
 
