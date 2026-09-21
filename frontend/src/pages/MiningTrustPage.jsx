@@ -40,7 +40,7 @@ const copy = {
     advisorName: "Mining Advisory Desk",
     advisorRole: "Investor & Infrastruktur Beratung",
     advisorText: "Für Investoren, Partner und Hosting-Kunden: schneller Erstkontakt, klare Antworten und direkte Einordnung des passenden Angebots.",
-    advisorResponse: "Antwort meist in unter 30 Minuten",
+    advisorResponse: "Antwortzeit wird nicht zugesichert",
     advisorPrimary: "Mit Berater sprechen",
     audienceTitle: "Für wen ist unser Mining gedacht?",
     audiences: [
@@ -103,7 +103,7 @@ const copy = {
     metrics: [
       { icon: Server, title: "Enterprise Server", text: "Professionelle Mining-Racks statt unklarer Marketingversprechen." },
       { icon: Shield, title: "Vertrauen & Transparenz", text: "Klare Sicht auf Infrastruktur, Technik und operative Seriosität." },
-      { icon: Clock3, title: "24/7 Betrieb", text: "Ausgelegt auf laufenden Betrieb mit Kühlung, Monitoring und Wartungsroutine." },
+      { icon: Clock3, title: "24/7 Betriebskonzept", text: "Preview-Konzept für laufenden Betrieb mit Kühlung, Monitoring und Wartungsroutine; nicht als Live-Betrieb bestätigt." },
       { icon: Bitcoin, title: "Bitcoin Fokus", text: "Sichtbar auf Bitcoin-Mining und ASIC-Hardware spezialisiert." },
     ],
     placeholders: [
@@ -137,12 +137,12 @@ const copy = {
     advisorName: "Mining Advisory Desk",
     advisorRole: "Investor & Infrastructure Advisory",
     advisorText: "For investors, partners, and hosting clients: fast first contact, clear answers, and direct qualification into the right offer.",
-    advisorResponse: "Usually replies within 30 minutes",
+    advisorResponse: "Response time is not guaranteed",
     advisorPrimary: "Talk to Advisor",
     audienceTitle: "Who is our mining for?",
     audiences: [
       { title: "For Investors", text: "For clients seeking serious infrastructure, location proof, and a direct entry into mining models." },
-      { title: "For Partners", text: "For strategic partners, intermediaries, or business networks that want to build on real infrastructure." },
+      { title: "For Partners", text: "For strategic partners, intermediaries, or business networks that want to work with verified infrastructure once live proof is available." },
       { title: "For Hosting Clients", text: "For clients focused on ongoing operations, monitoring, location trust, and mining as a service." },
     ],
     offersTitle: "Clear Offer Cards",
@@ -200,7 +200,7 @@ const copy = {
     metrics: [
       { icon: Server, title: "Enterprise Servers", text: "Professional mining racks instead of vague marketing claims." },
       { icon: Shield, title: "Trust & Transparency", text: "Clear visibility into infrastructure, technology, and operating credibility." },
-      { icon: Clock3, title: "24/7 Operation", text: "Designed for continuous operation with cooling, monitoring, and maintenance routines." },
+      { icon: Clock3, title: "24/7 Operating Concept", text: "Preview concept for continuous operation with cooling, monitoring, and maintenance routines; not confirmed as live operation." },
       { icon: Bitcoin, title: "Bitcoin Focus", text: "Clearly specialized in bitcoin mining and ASIC hardware." },
     ],
     placeholders: [
