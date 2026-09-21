@@ -271,3 +271,20 @@ def test_zero_coordinates_remain_valid_in_mobility_and_taxi_helpers():
     assert 'slat = loc.get("lat") if loc.get("lat") is not None else scooter.get("lat")' in mobility
     assert 'slng = loc.get("lng") if loc.get("lng") is not None else scooter.get("lng")' in mobility
     assert "if not addr or lat is None or lng is None:" in taxi
+
+
+def test_scooter_tariff_resolution_and_selection_preview_fail_closed():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert 'logger.warning("Scooter tariff resolution failed closed: %s", exc)' in scooter
+    assert '"billing_supported": False' in scooter
+    assert '"source": "pricing_resolution_failed"' in scooter
+    assert '(context.get("mode_scopes") or {}).get("scooter"' in scooter
+
+    assert "const fetchPricingForLocation = async (lat, lng) => {" in page
+    assert "const selectScooter = async (scooter) => {" in page
+    assert "pricingSelectionRequestRef" in page
+    assert "setSelectedPricing(localPricing)" in page
+    assert "if (pricingSelectionLoading || !selectedPricing)" in page
+    assert "Number(selectedPricing.unlock_fee ?? 0).toFixed(2)" in page
