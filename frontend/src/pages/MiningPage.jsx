@@ -1737,6 +1737,11 @@ export default function MiningPage({ onBack, onNavigate }) {
           {/* ════ VIP ════ */}
           {tab === "vip" && (
             <motion.div key="vip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {!miningValueEnabled && (
+                <div data-testid="mining-vip-preview-note" className="rounded-xl border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2.5 text-center text-[10px] leading-relaxed text-amber-100/70">
+                  VIP Preview · Hashrate-Stufen und Bonusregeln sind Testwerte und bleiben bis zur verifizierten Mining-/Settlement-Anbindung deaktiviert.
+                </div>
+              )}
               {/* Current VIP */}
               <motion.div className="rounded-2xl p-5 text-center relative overflow-hidden"
                 style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}08`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}15` }}
@@ -1744,7 +1749,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 0%, ${VIP_COLORS[vip.name]}08 0%, transparent 60%)` }} />
                 <Star size={32} className="mx-auto mb-2" style={{ color: VIP_COLORS[vip.name] }} />
                 <p className="text-[20px] font-bold font-outfit" style={{ color: VIP_COLORS[vip.name] }}>{vip.name}</p>
-                <p className="text-[11px] text-white/30 mt-1">+{((vip.bonus || 0) * 100).toFixed(0)}% Mining Bonus</p>
+                <p className="text-[11px] text-white/30 mt-1">
+                  {miningValueEnabled ? `+${((vip.bonus || 0) * 100).toFixed(0)}% Mining Bonus` : "Mining Bonus deaktiviert"}
+                </p>
 
                 {vip.next_level && (
                   <div className="mt-4">
@@ -1785,8 +1792,10 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <p className="text-[9px] text-white/15">{lv.hash} TH/s required</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[12px] font-bold font-mono" style={{ color: lv.color }}>{lv.bonus}</p>
-                      <p className="text-[8px] text-white/15">bonus</p>
+                      <p className="text-[12px] font-bold font-mono" style={{ color: lv.color }}>
+                        {miningValueEnabled ? lv.bonus : "Preview"}
+                      </p>
+                      <p className="text-[8px] text-white/15">{miningValueEnabled ? "bonus" : "test rule"}</p>
                     </div>
                     {isActive && (
                       <div className="w-2 h-2 rounded-full" style={{ background: lv.color, boxShadow: `0 0 8px ${lv.color}` }} />
