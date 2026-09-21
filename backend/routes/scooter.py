@@ -136,6 +136,90 @@ async def _settle_outstanding_scooter_debts(user: dict) -> float:
     ).sort("created_at", 1).to_list(50)
 
     remaining = 0.0
+
+    reconciliation_rides = await db.scooter_rides.find(
+        {"user_id": user_id, "settlement_reconciliation_required": True},
+        {
+            "_id": 0,
+            "ride_id": 1,
+            "duration_minutes": 1,
+            "settlement_amount_pending": 1,
+            "settlement_currency": 1,
+        },
+    ).sort("end_time", 1).to_list(50)
+    for ride in reconciliation_rides:
+        ride_id = str(ride.get("ride_id") or "")
+        amount = round(float(ride.get("settlement_amount_pending") or 0), 2)
+        currency = str(ride.get("settlement_currency") or "EUR").upper()
+        if not ride_id or amount <= 0:
+            continue
+        if currency != "EUR":
+            remaining += amount
+            continue
+
+        result = await debit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.SCOOTER_PAYMENT,
+            description=f"Scooter Fahrt ({int(ride.get('duration_minutes') or 0)} Min)",
+            reference=f"SC-RIDE-{ride_id[:12].upper()}",
+            metadata={"ride_id": ride_id, "minutes": ride.get("duration_minutes"), "kind": "ride_end"},
+            idempotency_key=f"scooter-end:{ride_id}",
+        )
+        payment_state = str(getattr(result.status, "value", result.status))
+        if result.success:
+            paid_at = datetime.now(timezone.utc).isoformat()
+            await db.scooter_rides.update_one(
+                {"ride_id": ride_id, "user_id": user_id, "settlement_reconciliation_required": True},
+                {
+                    "$set": {
+                        "settlement_reconciliation_required": False,
+                        "payment_status": "paid_reconciled",
+                        "payment_transaction_id": result.transaction_id,
+                        "payment_paid_at": paid_at,
+                    },
+                    "$unset": {
+                        "settlement_payment_status": "",
+                        "settlement_error": "",
+                        "settlement_amount_pending": "",
+                        "settlement_reconciliation_required_at": "",
+                    },
+                },
+            )
+            continue
+
+        if payment_state in {"pending", "reconciliation_required"}:
+            remaining += amount
+            continue
+
+        await db.scooter_payment_due.update_one(
+            {"ride_id": ride_id, "user_id": user_id},
+            {"$setOnInsert": {
+                "ride_id": ride_id,
+                "user_id": user_id,
+                "amount": amount,
+                "status": "due",
+                "reason": result.error or "reconciled_payment_failed",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        await db.scooter_rides.update_one(
+            {"ride_id": ride_id, "user_id": user_id},
+            {
+                "$set": {
+                    "settlement_reconciliation_required": False,
+                    "payment_status": "due",
+                    "settlement_payment_status": payment_state or "failed",
+                },
+                "$unset": {
+                    "settlement_amount_pending": "",
+                    "settlement_reconciliation_required_at": "",
+                },
+            },
+        )
+        remaining += amount
+
     for debt in debts:
         amount = round(float(debt.get("amount") or 0), 2)
         if amount <= 0:
