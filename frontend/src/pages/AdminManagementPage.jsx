@@ -528,7 +528,7 @@ const CustomerDetailModal = ({ customer, permissions, onClose, onChanged }) => {
             <button
               data-testid="customer-action-kyc-approve"
               onClick={approveKyc}
-              disabled={loading || customer.kyc_status === "approved"}
+              disabled={loading || privilegedActionBlocked || customer.kyc_status === "approved"}
               className="py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <BadgeCheck size={14} /> KYC freischalten
@@ -536,7 +536,7 @@ const CustomerDetailModal = ({ customer, permissions, onClose, onChanged }) => {
             <button
               data-testid="customer-action-kyc-reject"
               onClick={rejectKyc}
-              disabled={loading || customer.kyc_status === "rejected"}
+              disabled={loading || privilegedActionBlocked || customer.kyc_status === "rejected"}
               className="py-2.5 rounded-xl bg-orange-50 text-orange-700 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <AlertTriangle size={14} /> KYC ablehnen
