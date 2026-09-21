@@ -8,7 +8,7 @@ import { POSBioPayPanel } from "./POSBioPayPanel";
 import { TEST_MODE } from "../../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const EXTERNAL_CARD_CERTIFIED = String(process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED || "").trim().toLowerCase() === "true";
+const EXTERNAL_CARD_CERTIFIED = TEST_MODE && String(process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED || "").trim().toLowerCase() === "true";
 const NFC_CERTIFIED = String(process.env.REACT_APP_POS_NFC_CERTIFIED || "").trim().toLowerCase() === "true";
 
 async function apiCall(path, { method = "GET", body } = {}) {
