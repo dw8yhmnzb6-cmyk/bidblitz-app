@@ -187,3 +187,17 @@ def test_busy_and_rejected_drivers_do_not_receive_new_dispatches():
     assert 'if driver.get("is_busy") or driver.get("active_ride_id"):' in taxi
     assert '"rejected_driver_ids": {"$ne": driver["driver_id"]}' in taxi
     assert 'if driver.get("is_busy") or driver.get("active_ride_id"):' in driver
+
+
+def test_taxi_fare_split_is_canonical_80_20_everywhere():
+    taxi = read("backend/routes/taxi.py")
+    zone = read("backend/utils/taxi_zone_pricing.py")
+    commission = read("backend/utils/commission.py")
+
+    assert "DRIVER_COMMISSION = 0.80" in commission
+    assert "PLATFORM_COMMISSION = 0.20" in commission
+    assert "from utils.commission import DRIVER_COMMISSION, PLATFORM_COMMISSION" in taxi
+    assert "DRIVER_COMMISSION = 0.85" not in taxi
+    assert "PLATFORM_COMMISSION = 0.15" not in taxi
+    assert "DRIVER_COMMISSION = 0.85" not in zone
+    assert "PLATFORM_COMMISSION = 0.15" not in zone
