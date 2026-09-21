@@ -1218,7 +1218,7 @@ export default function ScooterPage({ onNavigate }) {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-green-400">
-                          €{(rental.total_cost || 0).toFixed(2)}
+                          {Number(rental.total_cost || 0).toFixed(2)} {String(rental.currency || 'EUR').toUpperCase()}
                         </span>
                         <button
                           data-testid={`scooter-review-btn-${rental.rental_id}`}
