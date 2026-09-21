@@ -411,3 +411,21 @@ def test_scooter_pause_pricing_matches_actual_billing():
     assert '"pause_billing_mode": "ride_rate"' in scooter
     assert '"pause_rate": pricing.get("per_minute", PER_MINUTE_RATE)' in scooter
     assert '"free_paused_minutes": 5' not in scooter
+
+
+def test_scooter_share_redemption_is_atomic_and_tariff_safe():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert "duration_minutes: int = Field(default=60, ge=5, le=1440)" in scooter
+    assert 'code = f"BLZ-{secrets.token_hex(4).upper()}"' in scooter
+    assert "Bitte verifiziere zuerst deinen Ausweis, um eine Scooter-Freigabe zu nutzen." in scooter
+    assert "Du hast bereits eine aktive Scooter-Fahrt" in scooter
+    assert '"status": "active"' in scooter
+    assert '"guest_user_id": None' in scooter
+    assert "Code wurde bereits eingelöst oder ist nicht mehr verfügbar" in scooter
+    assert 'rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)' in scooter
+    assert 'share["currency"] = str(ride.get("currency") or "EUR").upper()' in scooter
+    assert "data.detail?.message" in page
+    assert "Die Abrechnung bleibt beim Gastgeber." in page
+    assert "String(s.currency || activeRental?.currency || pricing.currency || 'EUR').toUpperCase()" in page
