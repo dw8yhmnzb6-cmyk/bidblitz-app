@@ -15,14 +15,14 @@ router = APIRouter(prefix="/api/admin/merchants", tags=["admin-merchants"])
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
 
 async def require_merchant_or_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") not in {"merchant", "admin"}:
+    if user.get("role") not in {"merchant", "admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Merchant access required")
     return user
 
