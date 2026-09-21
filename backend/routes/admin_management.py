@@ -101,7 +101,7 @@ async def list_customers(
     skip: int = 0,
 ):
     """Alle Kunden mit Filter und Suche."""
-    await _require_admin(request)
+    admin = await _require_admin(request)
     query = {
         "$and": [
             {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
@@ -161,7 +161,15 @@ async def list_customers(
         # Also drop V1 legacy fields
         u.pop("id", None)
         customers.append(u)
-    return {"customers": customers, "total": total, "skip": skip, "limit": limit}
+    return {
+        "customers": customers,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "permissions": {
+            "can_manage_privileged_roles": _can_manage_privileged_roles(admin),
+        },
+    }
 
 
 @router.get("/customers/{user_id}")
@@ -390,7 +398,7 @@ async def auth_health_report(request: Request):
     await _require_admin(request)
 
     users = await db.users.find(
-        {},
+        {"role": {"$nin": ["admin", "super_admin"]}},
         {"_id": 1, "email": 1, "role": 1, "password_hash": 1, "password": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1, "force_password_change": 1, "login_disabled": 1, "is_disabled": 1},
     ).to_list(length=5000)
 
