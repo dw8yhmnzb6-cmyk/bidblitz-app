@@ -22,7 +22,8 @@ router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 PRICE_INCREMENT = 0.01
 TIMER_EXTENSION_SECONDS = 20   # Bid resets live countdown to 20s max
 FINAL_BATTLE_THRESHOLD = 60    # Final battle activates in last 60 seconds
-DEFAULT_DURATION_SECONDS = 300  # Fallback 5 minutes
+DEFAULT_DURATION_SECONDS = 172800  # Fallback 48 hours
+MAX_AUCTION_REMAINING_SECONDS = 72 * 3600
 
 CREDIT_PACKAGES = {
     "10": {"credits": 10, "price": 5.00},      # 0.50/bid (base)
@@ -3825,6 +3826,11 @@ async def extend_auction(auction_id: str, request: Request):
     if auction["status"] == "paused":
         current_remaining = max(0.0, float(auction.get("remaining_when_paused") or 0))
         new_remaining = current_remaining + (extend_minutes * 60)
+        if new_remaining > MAX_AUCTION_REMAINING_SECONDS:
+            raise HTTPException(
+                status_code=400,
+                detail="Auktion darf maximal 72 Stunden Restlaufzeit haben",
+            )
         changed = await db.auctions.update_one(
             {
                 "auction_id": auction_id,
@@ -3847,6 +3853,12 @@ async def extend_auction(auction_id: str, request: Request):
 
     current_ends = datetime.fromisoformat(auction["ends_at"])
     new_ends = current_ends + timedelta(minutes=extend_minutes)
+    max_ends = datetime.now(timezone.utc) + timedelta(seconds=MAX_AUCTION_REMAINING_SECONDS)
+    if new_ends > max_ends:
+        raise HTTPException(
+            status_code=400,
+            detail="Auktion darf maximal 72 Stunden Restlaufzeit haben",
+        )
     changed = await db.auctions.update_one(
         {
             "auction_id": auction_id,
