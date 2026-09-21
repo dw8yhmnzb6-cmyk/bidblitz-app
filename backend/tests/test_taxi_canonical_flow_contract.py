@@ -36,7 +36,9 @@ def test_taxi_fare_is_reserved_and_not_double_charged():
     assert '"payment_reserved_amount": round(fare_total, 2)' in taxi
     assert 'payment_source = "reserved_at_booking"' in taxi
     assert '"payment_status": "settled"' in taxi
-    assert 'idempotency_key=f"taxi-reserve:{ride_id}"' in taxi
+    assert 'idempotency_key=f"taxi-reserve:{user_id}:{ride_id}"' in taxi
+    assert 'client_key = _require_taxi_booking_idempotency_key(req, request)' in taxi
+    assert 'booking_request_fingerprint' in taxi
     assert 'idempotency_key=f"taxi-cancel-refund:{req.ride_id}"' in taxi
 
 
