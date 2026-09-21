@@ -500,6 +500,11 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert "'Idempotency-Key': idempotencyKey" in scooter_page
     assert "data.rentals || data.rides || []" in scooter_page
     assert "activeRental.free_minutes_remaining_at_start" in scooter_page
+    assert '{"reservation_id": res["reservation_id"], "user_id": user_id, "status": "active"}' in scooter_source
+    assert '"status": "reserved"' in scooter_source
+    assert '"reserved_by": user_id' in scooter_source
+    assert '{"current_ride_id": {"$exists": False}}' in scooter_source
+    assert '"released": released.modified_count == 1' in scooter_source
 
 
 def test_mobility_payments_refunds_and_payouts_are_exactly_once():
