@@ -29,7 +29,7 @@ class CreatePromotionRequest(BaseModel):
 @router.post("/admin/create")
 async def create_promotion(req: CreatePromotionRequest, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     promo = {
@@ -70,7 +70,7 @@ async def get_active_promotions(request: Request):
 @router.get("/admin/all")
 async def get_all_promotions(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     promos = await db.promotions.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
@@ -80,7 +80,7 @@ async def get_all_promotions(request: Request):
 @router.put("/admin/toggle/{promo_name}")
 async def toggle_promotion(promo_name: str, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     promo = await db.promotions.find_one({"name": promo_name})
