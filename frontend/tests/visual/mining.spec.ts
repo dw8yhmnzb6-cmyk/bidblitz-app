@@ -273,3 +273,59 @@ test('mining trust fails closed when live proof is unverified', async ({ page })
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 });
+
+
+test('blitzmine preview hides value actions when provider is unavailable', async ({ page }) => {
+  await mockMiningUser(page);
+  await page.route('**/api/blitz-mine/**', async route => {
+    const pathname = new URL(route.request().url()).pathname;
+    const payloads: Record<string, unknown> = {
+      '/api/blitz-mine/status': {
+        capabilities: {
+          value_actions_enabled: false,
+          production_message: 'BlitzMine Preview · Live-Provider noch nicht verbunden.',
+        },
+        balance_blz: 0,
+        profile: { role: 'pioneer', streak_days: 0, total_mined: 0, total_sessions: 0 },
+        rate: { total_multiplier: 1, estimated_session_earnings: 0 },
+        session: null,
+        quick_bonus: null,
+        competition: null,
+        constants: { durations: [], early_release_penalty: 0.25 },
+      },
+      '/api/blitz-mine/circle': { members: [], max: 5, bonus_per_member: 0.2 },
+      '/api/blitz-mine/lockup': { lockups: [] },
+      '/api/blitz-mine/referrals': { total: 0, active_last_7d: 0, current_bonus: 0, bonus_per_active: 0.05, referrals: [] },
+      '/api/blitz-mine/leaderboard': { leaderboard: [] },
+      '/api/blitz-mine/streak': { current_streak: 0, milestones: [] },
+      '/api/blitz-mine/reminders': null,
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payloads[pathname] ?? {}),
+    });
+  });
+  await page.route('**/api/referral/my-code', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 'VISUAL' }) }),
+  );
+  await page.route('**/api/quests/today', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ quests: [] }) }),
+  );
+
+  await prepareVisualPage(page, { name: '320x568-blitzmine-preview', width: 320, height: 568 });
+  await openRoute(page, '/blitz-mine', '[data-testid="blitz-mine-page"]');
+
+  await expect(page.getByTestId('blitzmine-provider-unavailable')).toBeVisible();
+  await expect(page.getByTestId('lockup-preview-disabled')).toBeVisible();
+  await expect(page.getByTestId('blitz-mine-tap-btn')).toHaveCount(0);
+  await expect(page.getByTestId('blitz-turbo-tap-btn')).toHaveCount(0);
+  await expect(page.getByTestId('blitz-quick-bonus-claim-btn')).toHaveCount(0);
+  await expect(page.getByTestId('lockup-new-btn')).toHaveCount(0);
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
