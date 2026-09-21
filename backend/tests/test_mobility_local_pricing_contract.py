@@ -32,6 +32,9 @@ def test_scooter_non_eur_wallet_settlement_is_fail_closed():
     assert 'if not local_pricing.get("available", True):' in scooter
     assert 'and not subscription' not in scooter
     assert 'if ride_currency != "EUR":' in scooter
+    assert 'payment_status = "reconciliation_required"' in scooter
+    assert '"settlement_currency": ride_currency' in scooter
+    assert 'elif amount_to_debit > 0:' in scooter
 
 
 def test_taxi_uses_canonical_mobility_profile_before_legacy_fallback():
