@@ -1066,6 +1066,7 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
 
     assert "transfer_between_wallets" in merchant_source
     assert 'idempotency_key=f"merchant-pay:{idempotency_key}"' in merchant_source
+    assert 'status_code = 503 if transfer_result.status.value in {"pending", "reconciliation_required"} else 400' in merchant_source
     assert 'user.get("kyc_status") != "approved"' in merchant_source
     assert 'recipient.get("kyc_status") != "approved"' in merchant_source
     assert "if not transfer_result.idempotent_replay:" in merchant_source
@@ -3441,6 +3442,7 @@ def test_duplicate_legacy_pos_voucher_money_routes_are_retired():
     assert "/api/pos/vouchers/create" in legacy
     assert '@router.post("/redeem")' in canonical
     assert "credit_wallet(" in canonical
+    assert 'raise HTTPException(status_code=503, detail="Gutschein-Gutschrift benötigt Abstimmung")' in canonical
 
 def test_saved_card_confirmation_requires_completed_matching_setup_session():
     backend = (BACKEND_DIR / "routes" / "stripe.py").read_text(encoding="utf-8")
