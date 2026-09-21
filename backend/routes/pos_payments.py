@@ -375,7 +375,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             }},
         )
         raise HTTPException(
-            status_code=409 if debit_state in {"pending", "reconciliation_required"} else 400,
+            status_code=503 if debit_state in {"pending", "reconciliation_required"} else 400,
             detail=customer_debit.error or "Payment failed — balance changed",
         )
 
@@ -417,7 +417,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
                 }},
             )
             raise HTTPException(
-                status_code=409,
+                status_code=503,
                 detail="Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst.",
             )
 
@@ -451,7 +451,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         if not refund.success:
             logger.error("POS barcode rollback requires reconciliation: %s", reference)
             raise HTTPException(
-                status_code=500 if refund_state != "pending" else 409,
+                status_code=503 if refund_state in {"pending", "reconciliation_required"} else 500,
                 detail="Händlergutschrift und Rückbuchung benötigen manuelle Abstimmung.",
             )
         raise HTTPException(
@@ -724,7 +724,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
                 upsert=True,
             )
             raise HTTPException(
-                status_code=409,
+                status_code=503,
                 detail="Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst.",
             )
 
@@ -743,6 +743,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             idempotency_key=f"refund:{customer_debit.transaction_id}",
         )
         if not refund.success:
+            refund_state = str(getattr(refund.status, "value", refund.status))
             await db.pos_payment_reconciliation.update_one(
                 {"reference": reference},
                 {"$set": {
@@ -760,7 +761,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             )
             logger.error("POS NFC rollback requires reconciliation: %s", reference)
             raise HTTPException(
-                status_code=500,
+                status_code=503 if refund_state in {"pending", "reconciliation_required"} else 500,
                 detail="Händlergutschrift und Rückbuchung benötigen manuelle Abstimmung.",
             )
         raise HTTPException(
