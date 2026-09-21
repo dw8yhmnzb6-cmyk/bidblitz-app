@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from services.pos_auto_order import run_auto_order_for_store
@@ -1081,10 +1082,15 @@ async def create_payment(req: PaymentCreate, request: Request):
     # ─── Card external ───
     # Fail closed until a certified terminal/provider integration verifies the charge.
     if req.method == "card_external":
+        if not TEST_MODE:
+            raise HTTPException(
+                status_code=503,
+                detail="Externe Kartenzahlung bleibt in Production deaktiviert, bis die Terminal-Provider-Referenz serverseitig verifiziert wird.",
+            )
         if os.environ.get("POS_EXTERNAL_CARD_CERTIFIED", "").lower() != "true":
             raise HTTPException(
                 status_code=503,
-                detail="Kartenzahlung ist noch nicht mit einem zertifizierten Terminal-Provider verbunden.",
+                detail="Testmodus-Terminal ist nicht als zertifizierter Simulator aktiviert.",
             )
         if not req.card_reference or req.card_reference.startswith("CARD-"):
             raise HTTPException(status_code=400, detail="Verifizierte Provider-Referenz erforderlich")
@@ -1155,11 +1161,33 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
         idempotency_key=f"pos-customer-debit:{payment['payment_id']}",
     )
     if not debit.success:
+        debit_state = str(getattr(debit.status, "value", debit.status))
+        if debit_state in {"pending", "reconciliation_required"}:
+            await db.pos_payments.update_one(
+                {"payment_id": payment["payment_id"]},
+                {"$set": {
+                    "status": PAYMENT_STATUS_RECONCILIATION,
+                    "payment_state": debit_state,
+                    "error": debit.error or "customer_debit_unconfirmed",
+                    "customer_debit_transaction_id": debit.transaction_id,
+                    "reconciliation_required": True,
+                    "updated_at": now_iso(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=debit.error or "Kundenabbuchung ist unklar; Zahlung muss vor einem neuen Versuch abgestimmt werden.",
+            )
         await db.pos_payments.update_one(
             {"payment_id": payment["payment_id"]},
-            {"$set": {"status": PAYMENT_STATUS_CANCELLED, "error": debit.error}},
+            {"$set": {
+                "status": PAYMENT_STATUS_CANCELLED,
+                "payment_state": debit_state,
+                "error": debit.error or "customer_debit_failed",
+                "updated_at": now_iso(),
+            }},
         )
-        raise HTTPException(status_code=400, detail=debit.error)
+        raise HTTPException(status_code=400, detail=debit.error or "Kundenabbuchung fehlgeschlagen")
 
     # Compute fee, credit merchant owner wallet (net).
     # The customer has already been debited at this point, so losing the
@@ -1182,13 +1210,15 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
             },
             idempotency_key=f"pos-rollback:{payment['payment_id']}",
         )
+        rollback_state = str(getattr(rollback.status, "value", rollback.status))
         rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
         await db.pos_payments.update_one(
             {"payment_id": payment["payment_id"]},
             {"$set": {
                 "status": rollback_status,
                 "error": "merchant_settlement_target_missing",
-                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "rollback_state": rollback_state,
+                "rollback_transaction_id": rollback.transaction_id,
                 "reconciliation_required": not rollback.success,
                 "updated_at": now_iso(),
             }},
@@ -1199,8 +1229,8 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
                 detail="Händlerkonto nicht verfügbar. Kundenbetrag wurde automatisch zurückgebucht.",
             )
         raise HTTPException(
-            status_code=500,
-            detail="Händlerkonto fehlt und automatische Rückbuchung ist fehlgeschlagen. Manuelle Prüfung erforderlich.",
+            status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500,
+            detail="Händlerkonto fehlt; Rückbuchung ist nicht bestätigt und benötigt Abstimmung.",
         )
 
     credit = await credit_wallet(
@@ -1214,6 +1244,24 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
         idempotency_key=f"pos-settlement:{payment['payment_id']}",
     )
     if not credit.success:
+        credit_state = str(getattr(credit.status, "value", credit.status))
+        if credit_state in {"pending", "reconciliation_required"}:
+            await db.pos_payments.update_one(
+                {"payment_id": payment["payment_id"]},
+                {"$set": {
+                    "status": PAYMENT_STATUS_RECONCILIATION,
+                    "payment_state": credit_state,
+                    "error": credit.error or "merchant_settlement_unconfirmed",
+                    "merchant_credit_transaction_id": credit.transaction_id,
+                    "reconciliation_required": True,
+                    "updated_at": now_iso(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=credit.error or "Händlergutschrift ist unklar; keine automatische Rückbuchung wird ausgeführt, bis der Zustand abgestimmt ist.",
+            )
+
         rollback = await credit_wallet(
             user_id=customer_id,
             amount=total,
@@ -1228,20 +1276,26 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
             },
             idempotency_key=f"pos-rollback:{payment['payment_id']}",
         )
+        rollback_state = str(getattr(rollback.status, "value", rollback.status))
         rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
         await db.pos_payments.update_one(
             {"payment_id": payment["payment_id"]},
             {"$set": {
                 "status": rollback_status,
+                "payment_state": credit_state,
                 "error": credit.error or "merchant_settlement_failed",
-                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "rollback_state": rollback_state,
+                "rollback_transaction_id": rollback.transaction_id,
                 "reconciliation_required": not rollback.success,
                 "updated_at": now_iso(),
             }},
         )
         if rollback.success:
             raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
-        raise HTTPException(status_code=500, detail="Händlergutschrift und automatische Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+        raise HTTPException(
+            status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500,
+            detail="Händlergutschrift fehlgeschlagen; Rückbuchung ist nicht bestätigt und benötigt Abstimmung.",
+        )
     settlement_marker = f"settlement_markers.{payment['payment_id'].replace('.', '_')}"
     await db.pos_merchants.update_one(
         {"merchant_id": cart["merchant_id"], settlement_marker: {"$exists": False}},
