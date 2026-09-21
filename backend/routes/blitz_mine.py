@@ -19,6 +19,7 @@ import hashlib
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from core.database import db
 from core.config import TEST_MODE
@@ -553,6 +554,30 @@ async def tap(request: Request):
     _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-session-start")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    session_id = f"BMS-{digest.upper()}"
+
+    prior = await db.blitz_mine_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    if prior:
+        if prior.get("claimed"):
+            raise HTTPException(status_code=409, detail="Dieser Session-Start-Key wurde bereits abgeschlossen.")
+        remaining = max(
+            0,
+            int((datetime.fromisoformat(prior["ends_at"].replace("Z", "+00:00")) - _now()).total_seconds()),
+        )
+        return {
+            "success": True,
+            "message": "Mining-Session läuft bereits.",
+            "session": {
+                "started_at": prior["started_at"],
+                "ends_at": prior["ends_at"],
+                "remaining_seconds": remaining,
+                "earnings": prior.get("estimated_earnings", 0),
+                "ready_to_claim": remaining == 0,
+            },
+            "replayed": True,
+        }
 
     existing = await _get_active_session(user_id)
     if existing:
@@ -565,6 +590,9 @@ async def tap(request: Request):
     now = _now()
     ends = now + timedelta(hours=SESSION_HOURS)
     session = {
+        "session_id": session_id,
+        "active_slot": user_id,
+        "start_idempotency_key": idem,
         "user_id": user_id,
         "started_at": now.isoformat(),
         "ends_at": ends.isoformat(),
@@ -579,8 +607,30 @@ async def tap(request: Request):
         "boost_rounds_claimed": 0,
         "boost_bonus_blz": 0.0,
     }
-    await db.blitz_mine_sessions.insert_one(dict(session))
-    session.pop("_id", None)
+    try:
+        await db.blitz_mine_sessions.insert_one(dict(session))
+    except Exception as exc:
+        current = await _get_active_session(user_id)
+        if current and current.get("session_id") == session_id:
+            remaining = max(
+                0,
+                int((datetime.fromisoformat(current["ends_at"].replace("Z", "+00:00")) - _now()).total_seconds()),
+            )
+            return {
+                "success": True,
+                "message": "Mining-Session läuft bereits.",
+                "session": {
+                    "started_at": current["started_at"],
+                    "ends_at": current["ends_at"],
+                    "remaining_seconds": remaining,
+                    "earnings": current.get("estimated_earnings", 0),
+                    "ready_to_claim": remaining == 0,
+                },
+                "replayed": True,
+            }
+        if current:
+            raise HTTPException(status_code=409, detail="Eine andere Mining-Session wurde bereits gestartet.") from exc
+        raise HTTPException(status_code=503, detail="Mining-Session konnte nicht atomar gestartet werden.") from exc
 
     if not profile.get("first_session_at"):
         await db.blitz_mine_profile.update_one(
@@ -604,6 +654,7 @@ async def tap(request: Request):
             "earnings": session["estimated_earnings"],
             "ready_to_claim": False,
         },
+        "replayed": False,
     }
 
 
@@ -779,7 +830,7 @@ async def claim(request: Request):
                 "final_earnings": earnings,
                 "claim_result": claim_result,
             },
-            "$unset": {"claim_lock_until": ""},
+            "$unset": {"claim_lock_until": "", "active_slot": ""},
         },
     )
     if finalized.modified_count != 1:
@@ -801,6 +852,9 @@ async def boost_tap(request: Request):
     _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-boost-tap")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    marker_field = f"boost_tap_markers.{digest}"
 
     session = await _get_active_session(user_id)
     if not session:
@@ -810,26 +864,86 @@ async def boost_tap(request: Request):
     if ends_at <= _now():
         raise HTTPException(400, "Session ist fertig. Bitte jetzt claimen.")
 
-    boost_tap_count = int(session.get("boost_tap_count", 0) or 0)
-    completed_rounds = int(session.get("boost_rounds_claimed", 0) or 0)
-    bonus_blz = float(session.get("boost_bonus_blz", 0.0) or 0.0)
-    if completed_rounds >= BOOST_TAP_MAX_ROUNDS:
-        raise HTTPException(400, "Turbo-Maximum für diese Session erreicht.")
+    existing_marker = (session.get("boost_tap_markers") or {}).get(digest)
+    if existing_marker:
+        count = int(session.get("boost_tap_count", 0) or 0)
+        completed_rounds = min(count // BOOST_TAP_TARGET, BOOST_TAP_MAX_ROUNDS)
+        bonus_blz = round(completed_rounds * BOOST_ROUND_REWARD_BLZ, 4)
+        await db.blitz_mine_sessions.update_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"$max": {
+                "boost_rounds_claimed": completed_rounds,
+                "boost_bonus_blz": bonus_blz,
+            }},
+        )
+        state = _build_boost_state({
+            **session,
+            "boost_rounds_claimed": max(int(session.get("boost_rounds_claimed", 0) or 0), completed_rounds),
+            "boost_bonus_blz": max(float(session.get("boost_bonus_blz", 0.0) or 0.0), bonus_blz),
+        })
+        return {
+            "success": True,
+            "unlocked_round": bool(existing_marker.get("unlocked_round", False)),
+            "boost": state,
+            "message": "Turbo-Tap bereits verarbeitet.",
+            "replayed": True,
+        }
 
-    boost_tap_count += 1
-    unlocked_round = False
-    if boost_tap_count >= (completed_rounds + 1) * BOOST_TAP_TARGET:
-        completed_rounds += 1
-        bonus_blz = round(bonus_blz + BOOST_ROUND_REWARD_BLZ, 4)
-        unlocked_round = True
+    updated = await db.blitz_mine_sessions.find_one_and_update(
+        {
+            "user_id": user_id,
+            "started_at": session["started_at"],
+            "claimed": False,
+            marker_field: {"$exists": False},
+            "boost_tap_count": {"$lt": BOOST_TAP_TARGET * BOOST_TAP_MAX_ROUNDS},
+        },
+        {
+            "$inc": {"boost_tap_count": 1},
+            "$set": {
+                marker_field: {
+                    "idempotency_key": idem,
+                    "created_at": _now().isoformat(),
+                }
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not updated:
+        current = await db.blitz_mine_sessions.find_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"_id": 0},
+        ) or {}
+        marker = (current.get("boost_tap_markers") or {}).get(digest)
+        if marker:
+            state = _build_boost_state(current)
+            return {
+                "success": True,
+                "unlocked_round": bool(marker.get("unlocked_round", False)),
+                "boost": state,
+                "message": "Turbo-Tap bereits verarbeitet.",
+                "replayed": True,
+            }
+        if int(current.get("boost_rounds_claimed", 0) or 0) >= BOOST_TAP_MAX_ROUNDS:
+            raise HTTPException(400, "Turbo-Maximum für diese Session erreicht.")
+        raise HTTPException(status_code=409, detail="Turbo-Tap konnte nicht atomar reserviert werden.")
+
+    boost_tap_count = int(updated.get("boost_tap_count", 0) or 0)
+    completed_rounds = min(boost_tap_count // BOOST_TAP_TARGET, BOOST_TAP_MAX_ROUNDS)
+    bonus_blz = round(completed_rounds * BOOST_ROUND_REWARD_BLZ, 4)
+    unlocked_round = boost_tap_count > 0 and boost_tap_count % BOOST_TAP_TARGET == 0
 
     await db.blitz_mine_sessions.update_one(
-        {"user_id": user_id, "started_at": session["started_at"]},
-        {"$set": {
-            "boost_tap_count": boost_tap_count,
-            "boost_rounds_claimed": completed_rounds,
-            "boost_bonus_blz": bonus_blz,
-        }},
+        {"user_id": user_id, "started_at": session["started_at"], marker_field: {"$exists": True}},
+        {
+            "$max": {
+                "boost_rounds_claimed": completed_rounds,
+                "boost_bonus_blz": bonus_blz,
+            },
+            "$set": {
+                f"{marker_field}.tap_count_after": boost_tap_count,
+                f"{marker_field}.unlocked_round": unlocked_round,
+            },
+        },
     )
 
     try:
@@ -839,16 +953,16 @@ async def boost_tap(request: Request):
         pass
 
     state = _build_boost_state({
-        **session,
-        "boost_tap_count": boost_tap_count,
-        "boost_rounds_claimed": completed_rounds,
-        "boost_bonus_blz": bonus_blz,
+        **updated,
+        "boost_rounds_claimed": max(int(updated.get("boost_rounds_claimed", 0) or 0), completed_rounds),
+        "boost_bonus_blz": max(float(updated.get("boost_bonus_blz", 0.0) or 0.0), bonus_blz),
     })
     return {
         "success": True,
         "unlocked_round": unlocked_round,
         "boost": state,
         "message": "Turbo gespeichert!" if unlocked_round else "Turbo-Tap gezählt.",
+        "replayed": False,
     }
 
 
