@@ -206,3 +206,18 @@ def test_taxi_cancellation_cannot_race_driver_lifecycle_or_double_money():
     assert 'idempotency_key=f"taxi-cancel-fee:{req.ride_id}"' in taxi
     assert 'idempotency_key=f"taxi-cancel-comp:{req.ride_id}"' in taxi
     assert '"replayed": True' in taxi
+
+
+def test_taxi_driver_assignment_is_serialized_and_releases_on_finish_or_cancel():
+    taxi = read("backend/routes/taxi.py")
+
+    assert "async def _claim_driver_active_ride" in taxi
+    assert "async def _release_driver_active_ride" in taxi
+    assert '"active_ride_id": ride_id' in taxi
+    assert 'active.get("ride_id") != req.ride_id' in taxi
+    schedule_pos = taxi.index('scheduled_at = ride.get("scheduled_at")')
+    lock_pos = taxi.index('if not await _claim_driver_active_ride(driver["driver_id"], req.ride_id):', schedule_pos)
+    claim_pos = taxi.index('# Atomic claim: exactly one driver can transition requested -> accepted.', schedule_pos)
+    assert schedule_pos < lock_pos < claim_pos
+    assert 'await _release_driver_active_ride(driver["driver_id"], req.ride_id)' in taxi
+    assert 'await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)' in taxi
