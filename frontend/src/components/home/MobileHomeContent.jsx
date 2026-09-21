@@ -22,6 +22,7 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
     { id: "rewards", label: copy.rewards, icon: Gift, route: "/loyalty" },
     { id: "all-services", label: t("home.all_services"), icon: Compass, route: "/all-services" },
   ]);
+  const miningVisible = services.some(service => service.id === "mining");
   const getTransactionRoute = transaction => {
     const haystack = [
       transaction?.type,
@@ -66,60 +67,62 @@ export default function MobileHomeContent({ isGuest, onNavigate, onRegister, onL
         </section>
       )}
 
-      <section
-        className="overflow-hidden rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.09] via-cyan-400/[0.05] to-amber-300/[0.05] p-4"
-        data-testid="mobile-home-mining-spotlight"
-        aria-labelledby="mobile-mining-title"
-      >
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/10">
-            <Cpu size={21} className="text-emerald-300" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 id="mobile-mining-title" className="text-base font-black text-white">Mining</h2>
-              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
-                Preview
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] leading-5 text-white/60">
-              Level, Mining-Power und beliebte Miner direkt ansehen.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-5 gap-1.5">
-          {[
-            ["Bronze", "#CD7F32"],
-            ["Silber", "#C0C0C0"],
-            ["Gold", "#FFD700"],
-            ["Platin", "#E5E4E2"],
-            ["Diamant", "#B9F2FF"],
-          ].map(([label, color], index) => (
-            <div key={label} className="min-w-0 rounded-xl border border-white/[0.06] bg-black/10 px-1 py-2 text-center">
-              <Star size={11} className="mx-auto mb-1" style={{ color }} aria-hidden="true" />
-              <p className="truncate text-[8px] font-bold" style={{ color }}>{label}</p>
-              {index === 0 && <p className="mt-0.5 text-[7px] font-semibold text-white/30">START</p>}
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onNavigate("/mining")}
-          data-testid="mobile-home-mining-open"
-          className="mt-3 flex min-h-[48px] w-full items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-left"
+      {miningVisible && (
+        <section
+          className="overflow-hidden rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.09] via-cyan-400/[0.05] to-amber-300/[0.05] p-4"
+          data-testid="mobile-home-mining-spotlight"
+          aria-labelledby="mobile-mining-title"
         >
-          <span className="flex items-center gap-2">
-            <Zap size={15} className="text-[#00E89D]" aria-hidden="true" />
-            <span>
-              <span className="block text-[11px] font-black text-white">Mining öffnen</span>
-              <span className="block text-[8px] text-white/40">Menü, Level und Quick-Buy</span>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/10">
+              <Cpu size={21} className="text-emerald-300" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 id="mobile-mining-title" className="text-base font-black text-white">Mining</h2>
+                <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
+                  Preview
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-white/60">
+                Level, Mining-Power und beliebte Miner direkt ansehen.
+              </p>
+            </div>
+          </div>
+  
+          <div className="mt-3 grid grid-cols-5 gap-1.5">
+            {[
+              ["Bronze", "#CD7F32"],
+              ["Silber", "#C0C0C0"],
+              ["Gold", "#FFD700"],
+              ["Platin", "#E5E4E2"],
+              ["Diamant", "#B9F2FF"],
+            ].map(([label, color], index) => (
+              <div key={label} className="min-w-0 rounded-xl border border-white/[0.06] bg-black/10 px-1 py-2 text-center">
+                <Star size={11} className="mx-auto mb-1" style={{ color }} aria-hidden="true" />
+                <p className="truncate text-[8px] font-bold" style={{ color }}>{label}</p>
+                {index === 0 && <p className="mt-0.5 text-[7px] font-semibold text-white/30">START</p>}
+              </div>
+            ))}
+          </div>
+  
+          <button
+            type="button"
+            onClick={() => onNavigate("/mining")}
+            data-testid="mobile-home-mining-open"
+            className="mt-3 flex min-h-[48px] w-full items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-left"
+          >
+            <span className="flex items-center gap-2">
+              <Zap size={15} className="text-[#00E89D]" aria-hidden="true" />
+              <span>
+                <span className="block text-[11px] font-black text-white">Mining öffnen</span>
+                <span className="block text-[8px] text-white/40">Menü, Level und Quick-Buy</span>
+              </span>
             </span>
-          </span>
-          <ChevronRight size={16} className="text-emerald-300" aria-hidden="true" />
-        </button>
-      </section>
+            <ChevronRight size={16} className="text-emerald-300" aria-hidden="true" />
+          </button>
+        </section>
+      )}
 
       <section aria-labelledby="mobile-services-title">
         <h2 id="mobile-services-title" className="mb-3 text-base font-semibold">{copy.services}</h2>
