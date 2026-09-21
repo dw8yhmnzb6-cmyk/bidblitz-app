@@ -154,7 +154,11 @@ tab, t, loading,
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-[12px] font-medium text-white/90 truncate">{u.name}</p>
-                          {u.role === "admin" && <span className="text-[7px] px-1.5 py-0.5 bg-[#FF4757]/10 text-[#FF4757] rounded-full font-bold uppercase">Admin</span>}
+                          {["admin", "super_admin"].includes(u.role) && (
+                            <span className="text-[7px] px-1.5 py-0.5 bg-[#FF4757]/10 text-[#FF4757] rounded-full font-bold uppercase">
+                              {u.role === "super_admin" ? "Super Admin" : "Admin"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-[#333] truncate">{u.email}</p>
                       </div>
