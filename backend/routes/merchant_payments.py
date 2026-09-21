@@ -216,7 +216,7 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
             },
             severity="error",
         )
-        status_code = 409 if transfer_result.status.value in {"pending", "reconciliation_required"} else 400
+        status_code = 503 if transfer_result.status.value in {"pending", "reconciliation_required"} else 400
         raise HTTPException(status_code=status_code, detail=transfer_result.error or "Zahlung fehlgeschlagen")
     
     # Audit Log
