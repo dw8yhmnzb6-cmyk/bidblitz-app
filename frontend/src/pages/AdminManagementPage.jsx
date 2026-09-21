@@ -712,6 +712,9 @@ const TransactionsTab = () => {
 // MODULES TAB (Generic CRUD)
 // ═══════════════════════════════════════════════════════════
 const MODULE_DEFS = [
+  { key: "immobilien", label: "Immobilien", fields: ["title", "type", "city", "price", "status"] },
+  { key: "freelancer", label: "Freelancer", fields: ["name", "category", "location", "hourly_rate", "rating"] },
+  { key: "elearning", label: "E-Learning", fields: ["title", "category", "level", "price", "rating"] },
   { key: "handwerker", label: "Handwerker", fields: ["name", "category", "city", "rating"] },
   { key: "gebrauchtwagen", label: "Gebrauchtwagen", fields: ["title", "brand", "price", "city"] },
   { key: "reinigung", label: "Reinigung", fields: ["name", "price_per_hour", "min_hours"] },
@@ -774,7 +777,7 @@ const ModuleCRUD = ({ mod, onBack }) => {
   const del = async (id) => {
     if (!window.confirm("Eintrag löschen?")) return;
     try {
-      const res = await fetch(`${API}/api/admin/module/${mod.key}/${id}`, {
+      const res = await fetch(`${API}/api/admin/module/${mod.key}/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -865,7 +868,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
     setSaving(true);
     try {
       const url = isEdit
-        ? `${API}/api/admin/module/${mod.key}/${item.id || item._id}`
+        ? `${API}/api/admin/module/${mod.key}/${encodeURIComponent(item.id || item._id)}`
         : `${API}/api/admin/module/${mod.key}/create`;
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
