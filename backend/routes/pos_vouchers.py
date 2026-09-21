@@ -281,7 +281,7 @@ async def redeem_voucher(voucher_code: str, request: Request):
                     "wallet_transaction_id": result.transaction_id,
                 }},
             )
-            raise HTTPException(status_code=409, detail="Gutschein-Gutschrift benötigt Abstimmung")
+            raise HTTPException(status_code=503, detail="Gutschein-Gutschrift benötigt Abstimmung")
         await db.pos_vouchers.update_one(
             {"voucher_code": code, "status": "redeeming", "redeeming_by": user_id},
             {"$set": {"status": "active"}, "$unset": {"redeeming_by": "", "redeeming_at": ""}},
