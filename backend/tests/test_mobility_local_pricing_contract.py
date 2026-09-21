@@ -554,3 +554,14 @@ def test_admin_critical_scooter_commands_require_safe_idle_state():
     assert 'scooter.get("status") in {"in_use", "unlocking", "reserved"}' in scooter
     assert "Kritischer Gerätebefehl ist während eines aktiven Scooter-Lifecycles gesperrt" in scooter
     assert 'operation_key=(f"admin:{scooter_id}:{operation_key}" if operation_key else None)' in scooter
+
+
+def test_scooter_quarantine_recovery_preserves_valid_reservation():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "reservation_still_valid = bool(" in scooter
+    assert 'update["status"] = "reserved" if reservation_still_valid else "available"' in scooter
+    assert 'if not reservation_still_valid:' in scooter
+    assert '"reserved_by": ""' in scooter
+    assert '"reserved_until": ""' in scooter
+    assert '"status": "expired", "expired_at": now.isoformat()' in scooter
