@@ -73,9 +73,12 @@ def compute_time_multiplier(zone: Optional[dict] = None, now: Optional[datetime]
     wd = local.weekday()  # 0=Mon..6=Sun
 
     mults = (zone or {}).get("multipliers") or {}
-    night_m = float(mults.get("night_22_06", 1.20))
-    weekend_m = float(mults.get("weekend", 1.15))
-    holiday_m = float(mults.get("holiday", 1.30))
+    # No implicit surcharge: time multipliers apply only when the matched zone
+    # explicitly defines them. This prevents unrelated city/country tariffs
+    # from receiving surprise night/weekend markups.
+    night_m = float(mults.get("night_22_06", 1.0))
+    weekend_m = float(mults.get("weekend", 1.0))
+    holiday_m = float(mults.get("holiday", 1.0))
 
     is_night = (h >= 22 or h < 6)
     is_weekend = wd >= 5
@@ -100,6 +103,7 @@ def compute_time_multiplier(zone: Optional[dict] = None, now: Optional[datetime]
         "weekend": is_weekend,
         "holiday": is_holiday,
         "label": " · ".join(label_parts) if label_parts else "",
+        "configured": bool(mults),
     }
 
 
