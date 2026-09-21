@@ -210,6 +210,24 @@ async def book_parcel(req: ParcelBook, request: Request):
     }
 
 
+@router.get("/admin/list")
+async def admin_parcels(request: Request, limit: int = 100):
+    """Admin read-only parcel overview. Live carrier actions remain fail-closed."""
+    user = await get_current_user(request)
+    if (user.get("role") or "") not in {"admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Admin-Rechte erforderlich")
+    safe_limit = max(1, min(int(limit or 100), 500))
+    parcels = await db.parcels.find({}, {"_id": 0}).sort("created_at", -1).limit(safe_limit).to_list(safe_limit)
+    return {
+        "parcels": parcels,
+        "count": len(parcels),
+        "total_value": round(sum(float(item.get("price") or 0) for item in parcels), 2),
+        "test_count": sum(1 for item in parcels if item.get("provider_mode") == "test"),
+        "booking_enabled": bool(TEST_MODE),
+        "provider_mode": "test" if TEST_MODE else "preview",
+    }
+
+
 @router.get("/my-parcels")
 async def my_parcels(request: Request):
     user = await get_current_user(request)
