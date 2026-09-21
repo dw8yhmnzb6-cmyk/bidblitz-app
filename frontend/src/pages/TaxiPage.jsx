@@ -489,14 +489,24 @@ export default function TaxiPage({ onNavigate }) {
     };
   }, [pickup?.lat, pickup?.lng, searchValue]);
 
-  const estimateRide = useCallback(async (nextDropoff) => {
+  const estimateRide = useCallback(async (nextDropoff, scheduleOverride = undefined, modeOverride = bookingMode) => {
     if (!Number.isFinite(pickup?.lat) || !Number.isFinite(pickup?.lng) || !Number.isFinite(nextDropoff?.lat) || !Number.isFinite(nextDropoff?.lng)) {
       setError('Bitte zuerst einen gültigen Abhol- und Zielpunkt wählen.');
       return;
     }
+    const scheduleValue = scheduleOverride === undefined ? scheduledAt : scheduleOverride;
+    let scheduledIso = null;
+    if (modeOverride === 'later' && scheduleValue) {
+      const parsed = new Date(scheduleValue);
+      if (Number.isNaN(parsed.getTime())) {
+        setError('Bitte eine gültige Abholzeit wählen.');
+        return;
+      }
+      scheduledIso = parsed.toISOString();
+    }
     setEstimating(true);
     setError('');
-    const result = await api.estimateRide({ pickup, dropoff: nextDropoff });
+    const result = await api.estimateRide({ pickup, dropoff: nextDropoff, scheduledAt: scheduledIso });
     if (!result.ok) {
       setEstimating(false);
       setEstimates([]);
@@ -507,7 +517,7 @@ export default function TaxiPage({ onNavigate }) {
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
     setEstimating(false);
-  }, [pickup, selectedVehicle]);
+  }, [bookingMode, pickup, scheduledAt, selectedVehicle]);
 
   const handlePickupMapChange = useCallback(async ({ lat, lng }) => {
     const address = await api.reverseGeocode(lat, lng);
@@ -962,7 +972,12 @@ export default function TaxiPage({ onNavigate }) {
                     <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--bb-text-muted)]">Bestellung</div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
-                        onClick={() => setBookingMode('now')}
+                        onClick={() => {
+                          setBookingMode('now');
+                          if (Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng)) {
+                            estimateRide(dropoff, null, 'now');
+                          }
+                        }}
                         className={`min-h-[48px] rounded-2xl px-4 py-3 text-sm font-black ${bookingMode === 'now' ? 'bg-[var(--bb-accent-cyan)] text-[#08111D]' : 'bg-white/8 text-white'}`}
                         data-testid="booking-mode-now"
                       >
@@ -984,7 +999,13 @@ export default function TaxiPage({ onNavigate }) {
                         <input
                           type="datetime-local"
                           value={scheduledAt}
-                          onChange={(e) => setScheduledAt(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setScheduledAt(value);
+                            if (value && Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng)) {
+                              estimateRide(dropoff, value, 'later');
+                            }
+                          }}
                           min={new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 16)}
                           className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-semibold text-white outline-none"
                           data-testid="booking-mode-later-input"
