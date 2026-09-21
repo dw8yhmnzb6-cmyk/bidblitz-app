@@ -2208,6 +2208,11 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
 
     assert "minerPurchaseKeysRef" in mining_page
     assert "minerUpgradeKeysRef" in mining_page
+    assert "loadMiningAttemptMap" in mining_page
+    assert "persistMiningAttemptMap" in mining_page
+    assert "window.sessionStorage.setItem" in mining_page
+    assert "getOrCreateMiningAttemptKey" in mining_page
+    assert "clearMiningAttemptKey" in mining_page
     assert "withdrawAttemptKeysRef" in mining_page
     assert "sendAttemptKeysRef" in mining_page
     assert "launchpadPurchaseKeysRef" in mining_page
@@ -2897,9 +2902,14 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert "BLZ wurden genau einmal gutgeschrieben; Lockup-Abschluss benötigt Abstimmung" in backend
 
     assert 'createAttemptKeyRef' not in page
-    assert "lockupAttemptKeyRef" in page
-    assert "quickBonusAttemptKeyRef" in page
-    assert "claimAttemptKeyRef" in page
+    assert "lockupAttemptKeysRef" in page
+    assert "quickBonusAttemptKeysRef" in page
+    assert "claimAttemptKeysRef" in page
+    assert "loadBlitzAttemptMap" in page
+    assert "persistBlitzAttemptMap" in page
+    assert "window.sessionStorage.setItem" in page
+    assert "getOrCreateBlitzAttemptKey" in page
+    assert "clearBlitzAttemptKey" in page
     assert 'data-testid="lockup-preview-disabled"' in page
     assert 'valueActionsEnabled={valueActionsEnabled}' in page
     assert page.count('"Idempotency-Key": idempotencyKey') >= 3
