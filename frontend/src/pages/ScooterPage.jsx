@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import { useUser } from '../store';
 import MiniLeafletMap from '../components/MiniLeafletMap';
 import ARScooterFinder from '../components/ARScooterFinder';
 import ReviewModal from '../components/ReviewModal';
@@ -24,6 +25,7 @@ const getBatteryBg = (percent) => {
 
 export default function ScooterPage({ onNavigate }) {
   const { t } = useI18n();
+  const user = useUser();
   
   // Navigation helper
   const navigate = (path) => {
@@ -72,7 +74,7 @@ export default function ScooterPage({ onNavigate }) {
   const unlockAttemptKeyRef = useRef(null);
   const unlockAttemptScooterRef = useRef(null);
   const endAttemptKeyRef = useRef(null);
-  const subscriptionAttemptKeyRef = useRef(null);
+  const subscriptionAttemptRef = useRef({ planId: null, key: null });
   const pricingSelectionRequestRef = useRef(0);
 
   useEffect(() => {
@@ -549,14 +551,25 @@ export default function ScooterPage({ onNavigate }) {
   };
 
   const subscribePlan = async (planId) => {
+    const attemptStorageKey = `bidblitz:scooter-sub:${user?.id || user?.email || 'unknown'}:${planId}`;
+    if (subscriptionAttemptRef.current.planId !== planId || !subscriptionAttemptRef.current.key) {
+      const storedKey = typeof window !== 'undefined' ? window.sessionStorage.getItem(attemptStorageKey) : null;
+      subscriptionAttemptRef.current = {
+        planId,
+        key: storedKey || (
+          typeof crypto?.randomUUID === 'function'
+            ? `scooter-sub-${crypto.randomUUID()}`
+            : `scooter-sub-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        ),
+      };
+      if (!storedKey && typeof window !== 'undefined') {
+        window.sessionStorage.setItem(attemptStorageKey, subscriptionAttemptRef.current.key);
+      }
+    }
+
+    const idempotencyKey = subscriptionAttemptRef.current.key;
     setSubLoading(true);
     try {
-      if (!subscriptionAttemptKeyRef.current) {
-        subscriptionAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
-          ? `scooter-sub-${crypto.randomUUID()}`
-          : `scooter-sub-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
-      const idempotencyKey = subscriptionAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/subscribe`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
@@ -564,17 +577,25 @@ export default function ScooterPage({ onNavigate }) {
       });
       if (res.ok) {
         const data = await res.json();
-        subscriptionAttemptKeyRef.current = null;
+        subscriptionAttemptRef.current = { planId: null, key: null };
+        if (typeof window !== 'undefined') window.sessionStorage.removeItem(attemptStorageKey);
         setMySub(data.subscription);
         if (data.new_balance !== undefined) setUserBalance(Number(data.new_balance));
         else fetchUserData();
         alert(`${data.subscription.plan_name} aktiviert!`);
       } else {
         const err = await res.json();
-        if (res.status < 500 && res.status !== 409) subscriptionAttemptKeyRef.current = null;
-        alert(err.detail || 'Fehler beim Abschließen');
+        if ([400, 403, 404].includes(res.status)) {
+          subscriptionAttemptRef.current = { planId: null, key: null };
+          if (typeof window !== 'undefined') window.sessionStorage.removeItem(attemptStorageKey);
+        }
+        alert(typeof err.detail === 'string' ? err.detail : 'Fehler beim Abschließen');
       }
-    } catch {} finally { setSubLoading(false); }
+    } catch {
+      // Keep the same key across network failures/reloads for safe reconciliation.
+    } finally {
+      setSubLoading(false);
+    }
   };
 
   const cancelSub = async () => {
