@@ -264,6 +264,7 @@ test('mining trust fails closed when live proof is unverified', async ({ page })
   await openRoute(page, '/mining-trust', '[data-testid="mining-trust-page"]');
 
   await expect(page.getByTestId('mining-trust-unverified-banner')).toBeVisible();
+  await expect(page.getByTestId('mining-trust-title')).toHaveText('Mining Infrastruktur Preview');
   await expect(page.getByText('Keine verifizierte Live-Hardware-', { exact: false })).toBeVisible();
   await expect(page.getByTestId('mining-trust-stat-0')).toContainText('nicht verifiziert');
 
