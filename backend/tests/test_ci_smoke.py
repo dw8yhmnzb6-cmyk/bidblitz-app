@@ -2077,8 +2077,10 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
-    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_page
-    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in blitz_page
+    assert 'import { request as api } from "../services/api";' in mining_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' not in mining_page
+    assert 'import { request as api } from "../services/api";' in blitz_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' not in blitz_page
     assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_page
     assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_admin_page
     assert 'const dash = await api("/api/mining/dashboard");' in mining_page
@@ -2098,6 +2100,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "BlitzMine Preview" in mining_page
     assert "blitzmine-provider-unavailable" in blitz_page
     assert "valueActionsEnabled" in blitz_page
+    assert 'disabled={!valueActionsEnabled}' in blitz_page
+    assert 'valueActionsEnabled ? "Bonus holen" : "Preview"' in blitz_page
 
 
 def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
