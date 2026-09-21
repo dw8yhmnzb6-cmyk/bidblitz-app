@@ -9,6 +9,7 @@ import { TEST_MODE } from "../../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const EXTERNAL_CARD_CERTIFIED = String(process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED || "").trim().toLowerCase() === "true";
+const NFC_CERTIFIED = String(process.env.REACT_APP_POS_NFC_CERTIFIED || "").trim().toLowerCase() === "true";
 
 async function apiCall(path, { method = "GET", body } = {}) {
   const res = await fetch(`${API}${path}`, {
@@ -715,10 +716,16 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
             <button onClick={pay} className="py-3 rounded-xl bg-[#00C2FF] text-black font-black text-[13px]" data-testid="pos-pay-btn">
               Bezahlen €{totals.total.toFixed(2)}
             </button>
-            <button onClick={startNFC} className="py-3 rounded-xl bg-white/10 text-white font-bold text-[12px] flex items-center justify-center gap-1.5"
-              data-testid="pos-nfc-btn">
-              <Smartphone size={13} /> NFC starten
-            </button>
+            {NFC_CERTIFIED ? (
+              <button onClick={startNFC} className="py-3 rounded-xl bg-white/10 text-white font-bold text-[12px] flex items-center justify-center gap-1.5"
+                data-testid="pos-nfc-btn">
+                <Smartphone size={13} /> NFC starten
+              </button>
+            ) : (
+              <div data-testid="pos-nfc-preview-disabled" className="py-3 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-[9px] leading-tight text-amber-100/70 flex items-center justify-center text-center px-2">
+                NFC Preview · Provider/Hardware nicht verifiziert
+              </div>
+            )}
           </div>
         </Card>
       )}
