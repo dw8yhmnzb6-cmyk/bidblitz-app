@@ -1325,19 +1325,26 @@ async def apply_mining_referral(req: MiningReferralRequest, request: Request):
 
     now = datetime.now(timezone.utc).isoformat()
     operation_id = f"MREF-{hashlib.sha256(user_id.encode('utf-8')).hexdigest()[:20].upper()}"
-    claim = await db.mining_referrals.update_one(
-        {"referred_id": user_id},
-        {"$setOnInsert": {
-            "operation_id": operation_id,
-            "referrer_id": referrer_id,
-            "referred_id": user_id,
-            "bonus_rate": REFERRAL_BONUS_RATE,
-            "status": "processing",
-            "created_at": now,
-        }},
-        upsert=True,
-    )
-    referral = await db.mining_referrals.find_one({"referred_id": user_id}, {"_id": 0}) or {}
+    existing_referral = await db.mining_referrals.find_one({"referred_id": user_id}, {"_id": 0})
+    claim_created = False
+    if existing_referral:
+        referral = existing_referral
+    else:
+        claim = await db.mining_referrals.update_one(
+            {"_id": operation_id},
+            {"$setOnInsert": {
+                "_id": operation_id,
+                "operation_id": operation_id,
+                "referrer_id": referrer_id,
+                "referred_id": user_id,
+                "bonus_rate": REFERRAL_BONUS_RATE,
+                "status": "processing",
+                "created_at": now,
+            }},
+            upsert=True,
+        )
+        claim_created = claim.upserted_id is not None
+        referral = await db.mining_referrals.find_one({"_id": operation_id}, {"_id": 0}) or {}
     if str(referral.get("referrer_id") or "") != referrer_id:
         raise HTTPException(status_code=409, detail="Already used a different referral code")
     if referral.get("status") == "completed":
@@ -1400,7 +1407,7 @@ async def apply_mining_referral(req: MiningReferralRequest, request: Request):
         "ok": True,
         "bonus_blz": bonus,
         "operation_id": referral.get("operation_id") or operation_id,
-        "replayed": claim.upserted_id is None,
+        "replayed": not claim_created,
     }
 
 
