@@ -2164,6 +2164,16 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
                 "final": disc.get("final"),
             }
 
+        if (
+            item.get("booking_supported") is False
+            or str(item.get("currency") or "EUR").upper() != "EUR"
+            or float(item.get("fare") or 0) <= 0
+        ):
+            item["quote_id"] = None
+            item["quote_expires_at"] = None
+            estimates.append(item)
+            continue
+
         quote_id = f"tq_{secrets.token_hex(16)}"
         quote_created_at = datetime.now(timezone.utc)
         quote_expires_at = quote_created_at + timedelta(seconds=TAXI_QUOTE_TTL_SECONDS)
