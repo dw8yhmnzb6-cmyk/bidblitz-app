@@ -241,6 +241,8 @@ test('mining tolerates legacy numeric strings without crashing', async ({ page }
 
   await expect(page.getByTestId('mining-page')).toBeVisible();
   await expect(page.getByText('12.5000')).toBeVisible();
+  await page.getByTestId('mining-details-toggle').click();
+  await expect(page.getByTestId('mining-dashboard-details')).toBeVisible();
   await expect(page.getByText('Legacy reward')).toBeVisible();
   await expect(page.getByText('+1.2500 BLZ')).toBeVisible();
   await expect(page.getByTestId('mining-load-error')).toHaveCount(0);
