@@ -392,6 +392,13 @@ def test_pos_payments_fail_closed_and_retry_safely():
     assert 'status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500' in pos_source
     assert 'idempotency_key=f"pos-rollback:{payment[\'payment_id\']}"' in pos_source
     assert 'PAYMENT_STATUS_RECONCILIATION = "reconciliation_required"' in pos_source
+    assert "async def _claim_pos_payment_intent" in pos_source
+    assert 'intent_id = f"cart:{cart_id}"' in pos_source
+    assert "db.pos_payment_intents.insert_one" in pos_source
+    assert '{"_id": intent_id, "version": version}' in pos_source
+    assert "POS-Zahlungsversuch wird bereits erstellt" in pos_source
+    assert "POS-Zahlung benötigt Abstimmung; keine neue Zahlung wird erzeugt." in pos_source
+    assert "await _set_pos_payment_intent_status" in pos_source
 
     assert "def deterministic_payment_reference" in legacy_source
     assert '"reference": reference' in legacy_source
