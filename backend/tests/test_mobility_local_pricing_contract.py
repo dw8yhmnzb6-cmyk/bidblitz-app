@@ -288,3 +288,29 @@ def test_scooter_tariff_resolution_and_selection_preview_fail_closed():
     assert "setSelectedPricing(localPricing)" in page
     assert "if (pricingSelectionLoading || !selectedPricing)" in page
     assert "Number(selectedPricing.unlock_fee ?? 0).toFixed(2)" in page
+
+
+def test_scooter_effective_subscription_tariff_matches_preview_and_unlock():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert "def _apply_scooter_subscription_pricing(" in scooter
+    assert '"minimum_charge": round(float(subscription.get("minimum_charge", unlock_fee) or 0), 2)' in scooter
+    assert '"min_balance": 0.0' in scooter
+    assert 'pricing = _apply_scooter_subscription_pricing(local_pricing, subscription)' in scooter
+    assert 'effective_pricing = _apply_scooter_subscription_pricing(local_pricing, subscription)' in scooter
+    assert 'pricing["pricing_hash"] = _scooter_pricing_hash(pricing)' in scooter
+    assert 'current_pricing_hash = _scooter_pricing_hash(effective_pricing)' in scooter
+    assert 'secrets.compare_digest(req.pricing_hash, current_pricing_hash)' in scooter
+    assert '"Scooter-Tarif hat sich geändert. Bitte Preis neu laden und erneut bestätigen."' in scooter
+    assert "pricing_hash: Optional[str] = Field(default=None, min_length=8, max_length=128)" in scooter
+    assert "pricing_hash: selectedPricing.pricing_hash || null" in page
+
+
+def test_scooter_debt_settlement_happens_after_tariff_confirmation():
+    scooter = read("backend/routes/scooter.py")
+
+    hash_pos = scooter.index("if req.pricing_hash and not secrets.compare_digest")
+    debt_pos = scooter.index("outstanding = await _settle_outstanding_scooter_debts(user)", hash_pos)
+    device_pos = scooter.index("device_id = scooter.get(\"device_id\")", debt_pos)
+    assert hash_pos < debt_pos < device_pos
