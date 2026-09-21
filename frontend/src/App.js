@@ -993,6 +993,7 @@ function AppContent() {
       case "/admin/merchant-coupons":
       case "/admin/bidder-coupons":
       case "/admin/partner-coupons":
+      case "/admin/coupons":
       case "/admin/discounts":
       case "/admin/transactions":
       case "/admin/topup":
