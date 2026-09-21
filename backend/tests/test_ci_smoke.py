@@ -296,6 +296,10 @@ def test_taxi_customer_driver_wallet_flow_stays_unified():
 
     assert 'if not NumberErrorSafe(p_lat, p_lng) or not NumberErrorSafe(d_lat, d_lng):' in taxi_source
     assert 'if not p_lat or not d_lat:' not in taxi_source
+    assert 'if NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):' in taxi_source
+    assert 'NumberErrorSafe(start_loc.get("lat"), start_loc.get("lng"))' in taxi_source
+    assert 'NumberErrorSafe(end_loc.get("lat"), end_loc.get("lng"))' in taxi_source
+    assert 'NumberErrorSafe(loc.get("lat"), loc.get("lng"))' in taxi_source
     assert '"payment_status": "reserved"' in taxi_source
     assert '"payment_reserved_amount": round(fare_total, 2)' in taxi_source
     assert 'payment_source = "reserved_at_booking"' in taxi_source
