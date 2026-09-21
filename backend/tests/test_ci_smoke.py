@@ -3640,3 +3640,17 @@ def test_auction_product_identity_freezes_after_real_bid():
     assert "Produktdaten sind nach dem ersten echten Gebot gesperrt." in admin_page
     assert "Produktdaten nach echtem Gebot gesperrt" in admin_page
     assert "disabled={" in admin_page
+
+
+def test_auction_delete_is_serialized_against_live_bids():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert '"status": "deleting"' in source
+    assert '"delete_claim_id": delete_claim_id' in source
+    assert '"current_price": auction.get("current_price")' in source
+    assert '"ends_at": auction.get("ends_at")' in source
+    assert '"last_bidder_id": auction.get("last_bidder_id")' in source
+    assert "Cannot delete: {bid_count} real user bids exist" in source
+    assert '"delete_claim_id": delete_claim_id' in source
+    assert "await db.auto_bids.delete_many" in source
+    assert "await db.watchlist.delete_many" in source
