@@ -12,9 +12,9 @@ const lookupModes = [
   { id: "customer_number", label: "Nummer", icon: UserRoundCheck },
 ];
 
-const BIOPAY_PROVIDER_VERIFIED =
-  TEST_MODE ||
+const BIOPAY_PROVIDER_DECLARED =
   String(process.env.REACT_APP_BIOPAY_PROVIDER_VERIFIED || "").trim().toLowerCase() === "true";
+const BIOPAY_PROVIDER_VERIFIED = TEST_MODE;
 
 export function POSBioPayPanel({ storeId, registerId }) {
   const [lookupMode, setLookupMode] = useState("scan");
@@ -109,7 +109,9 @@ export function POSBioPayPanel({ storeId, registerId }) {
           <div>
             <h3 className="text-sm font-bold text-white">PalmPay / BioPay Preview</h3>
             <p className="mt-1 text-[11px] leading-relaxed text-amber-100/70">
-              Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.
+              {BIOPAY_PROVIDER_DECLARED
+                ? "BioPay Provider ist deklariert, aber serverseitige Hardware-Attestation ist noch nicht verifiziert."
+                : "Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert."}
             </p>
           </div>
         </div>
