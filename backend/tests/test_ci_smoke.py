@@ -2273,7 +2273,7 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "const MINING_TAB_CONFIG = [" in mining_page
     assert "const MINING_LEVELS = [" in mining_page
     assert 'const buyMiner = async (pkgId, billingOverride = billingType)' in mining_page
-    assert 'const effectiveBilling = billingOverride || "onetime";' in mining_page
+    assert 'const effectiveBilling = orderingOnly ? "onetime" : (billingOverride || "onetime");' in mining_page
     assert 'buyMiner(pkg.id, "onetime")' in mining_page
     assert 'disabled={Boolean(buying)}' in mining_page
     assert 'import { request as api } from "../services/api";' in mining_page
