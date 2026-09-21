@@ -2956,7 +2956,14 @@ async def _release_driver_active_ride(driver_id: Optional[str], ride_id: str) ->
     if not driver_id or not ride_id:
         return
     await db.drivers.update_one(
-        {"driver_id": driver_id, "active_ride_id": ride_id},
+        {
+            "driver_id": driver_id,
+            "$or": [
+                {"active_ride_id": ride_id},
+                {"active_ride_id": {"$exists": False}},
+                {"active_ride_id": None},
+            ],
+        },
         {
             "$unset": {
                 "active_ride_id": "",
