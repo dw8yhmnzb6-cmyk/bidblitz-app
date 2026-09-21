@@ -48,8 +48,20 @@ async def _load_db_promo(code: str) -> Optional[dict]:
 async def _redemption_count(user_id: str, code: str) -> int:
     if not user_id:
         return 0
+    normalized = code.strip().upper()
     try:
-        return await db.taxi_promo_redemptions.count_documents({"user_id": user_id, "code": code})
+        usage_id = _promo_usage_id(user_id, normalized)
+        usage = await db.taxi_promo_usage.find_one({"_id": usage_id}, {"_id": 0, "uses": 1})
+        if usage is not None:
+            return max(0, int(usage.get("uses") or 0))
+        return await db.taxi_promo_redemptions.count_documents({
+            "user_id": user_id,
+            "code": normalized,
+            "$or": [
+                {"status": {"$in": ["reserved", "completed"]}},
+                {"status": {"$exists": False}},
+            ],
+        })
     except Exception:
         return 0
 
@@ -181,12 +193,32 @@ async def reserve_redemption(user_id: str, code: str, ride_id: str, discount: fl
             return {"ok": False, "reason": existing.get("reason") or "already_used", "retryable": False}
         return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
 
+    legacy_uses = await db.taxi_promo_redemptions.count_documents({
+        "user_id": user_id,
+        "code": normalized,
+        "_id": {"$ne": redemption_id},
+        "$or": [
+            {"status": {"$in": ["reserved", "completed"]}},
+            {"status": {"$exists": False}},
+        ],
+    })
+    await db.taxi_promo_usage.update_one(
+        {"_id": usage_id},
+        {"$setOnInsert": {
+            "user_id": user_id,
+            "code": normalized,
+            "max_uses": max_uses,
+            "uses": int(legacy_uses or 0),
+            "ride_ids": [],
+            "created_at": now,
+            "updated_at": now,
+        }},
+        upsert=True,
+    )
+
     selector = {
         "_id": usage_id,
-        "$or": [
-            {"uses": {"$lt": max_uses}},
-            {"uses": {"$exists": False}},
-        ],
+        "uses": {"$lt": max_uses},
     }
     try:
         usage = await db.taxi_promo_usage.update_one(
