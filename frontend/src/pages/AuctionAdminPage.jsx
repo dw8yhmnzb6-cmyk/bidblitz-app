@@ -341,7 +341,7 @@ const AuctionAdminPage = ({ onBack }) => {
           {[
             { id: "overview", label: "Übersicht", icon: <BarChart3 size={14} /> },
             { id: "bots", label: "Bot-System", icon: <Bot size={14} /> },
-            { id: "active", label: `Aktiv (${activeAuctions.length})`, icon: <Play size={14} /> },
+            { id: "active", label: `Aktiv/Pausiert (${activeAuctions.length})`, icon: <Play size={14} /> },
             { id: "orders", label: `Bestellungen (${orders.length})`, icon: <Truck size={14} /> },
             { id: "catalog", label: "Katalog", icon: <Package size={14} /> },
           ].map((tab) => (
