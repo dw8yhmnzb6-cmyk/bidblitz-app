@@ -194,7 +194,7 @@ async def mining_trust_lead(payload: MiningTrustLeadRequest):
 @router.get("/trust/leads")
 async def mining_trust_leads(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     leads = await db.mining_trust_leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
     return {"leads": leads}
@@ -203,7 +203,7 @@ async def mining_trust_leads(request: Request):
 @router.post("/trust/leads/{lead_id}/status")
 async def mining_trust_lead_status(lead_id: str, payload: MiningTrustLeadStatusRequest, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     await db.mining_trust_leads.update_one({"lead_id": lead_id}, {"$set": {"status": payload.status, "updated_at": datetime.now(timezone.utc).isoformat()}})
     lead = await db.mining_trust_leads.find_one({"lead_id": lead_id}, {"_id": 0})
@@ -215,7 +215,7 @@ async def mining_trust_lead_status(lead_id: str, payload: MiningTrustLeadStatusR
 @router.get("/trust/videos")
 async def mining_trust_videos_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     videos = await db.mining_trust_videos.find({}, {"_id": 0}).sort("city", 1).to_list(20)
     return {"videos": videos}
@@ -224,7 +224,7 @@ async def mining_trust_videos_admin(request: Request):
 @router.post("/trust/videos")
 async def mining_trust_video_upsert(payload: MiningTrustVideoUpdateRequest, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     now = datetime.now(timezone.utc).isoformat()
     doc = {
@@ -1513,7 +1513,7 @@ async def get_claim_history(request: Request):
 async def admin_reward_logs(request: Request):
     """Admin: view all reward logs."""
     user = await get_current_user(request)
-    if user.get("role") not in ("admin",):
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     recent_claims = await db.mining_claims.find(
