@@ -105,3 +105,15 @@ def test_customer_and_merchant_show_service_status_history():
     assert "chargeServiceStatusLabel" in portal
     assert "chargeServiceActorLabel" in portal
     assert "formatChargeServiceDateTime" in portal
+
+
+def test_merchant_service_schedule_validation_is_strict():
+    merchant = _py(MERCHANT)
+    assert "_validate_charge_service_schedule_date" in merchant
+    assert "Servicetermin muss YYYY-MM-DD sein" in merchant
+    assert "Servicetermin darf nicht in der Vergangenheit liegen" in merchant
+    assert "_validate_charge_service_schedule_time" in merchant
+    assert "Servicezeit muss HH:MM sein" in merchant
+    assert 'req.scheduled_date or service_request.get("scheduled_date")' in merchant
+    assert 'req.scheduled_time or service_request.get("scheduled_time")' in merchant
+    assert 'service_request.get("completed_at") or now' in merchant

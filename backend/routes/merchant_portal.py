@@ -164,6 +164,30 @@ _CHARGE_SERVICE_TRANSITIONS = {
 }
 
 
+def _validate_charge_service_schedule_date(value: Any, *, future_or_today: bool = False) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Servicetermin muss YYYY-MM-DD sein")
+    if future_or_today and parsed < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=400, detail="Servicetermin darf nicht in der Vergangenheit liegen")
+    return text
+
+
+def _validate_charge_service_schedule_time(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        datetime.strptime(text, "%H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Servicezeit muss HH:MM sein")
+    return text
+
+
 class DealerBrandProfileUpdateRequest(BaseModel):
     hero_claim: str = ""
     package_tier: str = "premium"
@@ -2442,12 +2466,18 @@ async def update_dealer_charge_service_request_status(
             detail=f"Statuswechsel von {current_status} zu {status} ist nicht zulässig",
         )
 
-    scheduled_date = str(req.scheduled_date or "").strip()
-    scheduled_time = str(req.scheduled_time or "").strip()
+    scheduled_date = str(req.scheduled_date or service_request.get("scheduled_date") or "").strip()
+    scheduled_time = str(req.scheduled_time or service_request.get("scheduled_time") or "").strip()
     if status in {"confirmed", "reschedule_requested"} and not scheduled_date:
         scheduled_date = str(service_request.get("preferred_date") or "")
     if status in {"confirmed", "reschedule_requested"} and not scheduled_time:
         scheduled_time = str(service_request.get("preferred_time") or "")
+
+    scheduled_date = _validate_charge_service_schedule_date(
+        scheduled_date,
+        future_or_today=status in {"confirmed", "reschedule_requested"},
+    )
+    scheduled_time = _validate_charge_service_schedule_time(scheduled_time)
 
     now = _now_iso()
     note = str(req.note or "").strip()[:1000]
@@ -2474,7 +2504,7 @@ async def update_dealer_charge_service_request_status(
         "updated_at": now,
     }
     if status == "completed":
-        update_doc["completed_at"] = now
+        update_doc["completed_at"] = str(service_request.get("completed_at") or now)
 
     mongo_update: Dict[str, Any] = {"$set": update_doc}
     if status_changed or schedule_changed or note_changed:
