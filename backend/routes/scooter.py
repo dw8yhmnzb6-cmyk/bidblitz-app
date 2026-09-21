@@ -878,6 +878,7 @@ async def end_ride(req: EndRideRequest, request: Request):
     scooter_id = ride["scooter_id"]
     ride_id = ride["ride_id"]
     device_id = ride.get("device_id")
+    ride_currency = str(ride.get("currency") or "EUR").upper()
     now = datetime.now(timezone.utc)
 
     settlement = ride.get("end_settlement")
@@ -989,7 +990,20 @@ async def end_ride(req: EndRideRequest, request: Request):
     payment_result = None
     payment_status = "paid"
     amount_due = 0.0
-    if amount_to_debit > 0:
+    if ride_currency != "EUR":
+        payment_status = "reconciliation_required"
+        amount_due = amount_to_debit
+        await db.scooter_rides.update_one(
+            {"ride_id": ride_id, "user_id": user_id},
+            {"$set": {
+                "settlement_reconciliation_required": True,
+                "settlement_currency": ride_currency,
+                "settlement_amount_pending": amount_due,
+                "settlement_blocked_reason": "unsupported_wallet_currency",
+                "settlement_blocked_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+    elif amount_to_debit > 0:
         payment_result = await debit_wallet(
             user_id=user_id,
             amount=amount_to_debit,
@@ -1043,6 +1057,7 @@ async def end_ride(req: EndRideRequest, request: Request):
             "payment_status": payment_status,
             "payment_transaction_id": payment_result.transaction_id if payment_result and payment_result.success else None,
             "amount_due": amount_due,
+            "amount_due_currency": ride_currency if amount_due > 0 else None,
         }},
     )
 
@@ -1077,12 +1092,17 @@ async def end_ride(req: EndRideRequest, request: Request):
             "total_cost": settlement.get("total_cost", 0),
             "payment_status": payment_status,
             "amount_due": amount_due,
+            "amount_due_currency": ride_currency if amount_due > 0 else None,
         },
         "new_balance": round(float(fresh_user.get("balance") or 0), 2),
         "message": (
             f"Fahrt beendet. Gesamt: €{float(settlement.get('total_cost') or 0):.2f}"
             if payment_status == "paid"
-            else f"Fahrt sicher beendet. Offener Betrag: €{amount_due:.2f}"
+            else (
+                f"Fahrt sicher beendet. Abrechnung {amount_due:.2f} {ride_currency} muss geprüft werden."
+                if payment_status == "reconciliation_required"
+                else f"Fahrt sicher beendet. Offener Betrag: €{amount_due:.2f}"
+            )
         ),
         "replayed": False,
     }
