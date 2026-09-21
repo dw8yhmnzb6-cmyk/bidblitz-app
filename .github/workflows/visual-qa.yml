@@ -84,6 +84,10 @@ jobs:
         run: npx playwright test tests/visual/taxi.spec.ts
         working-directory: frontend
 
+      - name: Run driver dashboard mobile visual test
+        run: npx playwright test tests/visual/driver-dashboard.spec.ts
+        working-directory: frontend
+
       - name: Run mining 320px visual test
         run: npx playwright test tests/visual/mining.spec.ts
         working-directory: frontend
