@@ -29,6 +29,8 @@ async function mockMiningApi(page: Page) {
       '/api/mining/dashboard': {
         capabilities: {
           live_mining_provider_connected: false,
+          ordering_enabled: true,
+          provider_activation_enabled: false,
           value_actions_enabled: false,
           production_message: 'Mining Preview · Live-Provider noch nicht verbunden.',
         },
@@ -168,6 +170,95 @@ test('mining dashboard failure shows a retry state instead of a blank screen', a
     viewport: document.documentElement.clientWidth,
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
+
+
+test('mining production ordering is simple while activation remains pending', async ({ page }) => {
+  await mockMiningUser(page);
+  let orderRequests = 0;
+  await page.route('**/api/mining/**', async route => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === '/api/mining/order-miner' && route.request().method() === 'POST') {
+      orderRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          order_id: 'MINORD-VISUAL',
+          status: 'paid_pending_activation',
+          new_balance: 51,
+          transaction_id: 'TXN-VISUAL',
+          activation_pending: true,
+          replayed: false,
+          message: 'Bestellung bezahlt. Miner-Aktivierung folgt nach verifizierter Provider-Anbindung.',
+        }),
+      });
+      return;
+    }
+    const payloads: Record<string, unknown> = {
+      '/api/mining/dashboard': {
+        capabilities: {
+          live_mining_provider_connected: false,
+          ordering_enabled: true,
+          provider_activation_enabled: false,
+          value_actions_enabled: false,
+          production_message: 'Bestellung und Bezahlung sind möglich. Miner-Aktivierung bleibt ausstehend.',
+        },
+        wallet: { blz_balance: 0, eur_value: 0, main_balance_eur: 100 },
+        mining: { total_hashrate: 0, daily_earnings_blz: 0, active_miners: 0 },
+        vip: { name: 'Bronze', bonus: 0, progress: 0 },
+        daily_reward: { claimed: false, amount: 0 },
+        referral: { code: 'ORDER' },
+        miners: [],
+        recent_transactions: [],
+        streak: 0,
+      },
+      '/api/mining/packages': {
+        packages: [{
+          id: 'starter',
+          name: 'Starter Rig',
+          hashrate: 10,
+          base_efficiency: 0.85,
+          price_eur: 49,
+          icon: 'cpu',
+          projection_available: false,
+          purchase_available: false,
+          order_available: true,
+          pricing: { onetime: { price: 49, original: 49, discount: 0 } },
+        }],
+      },
+      '/api/mining/upgrade-costs': { costs: {} },
+      '/api/mining/marketplace': { listings: [] },
+      '/api/mining/card': {},
+      '/api/mining/launchpad': { projects: [] },
+      '/api/mining/transactions': { transactions: [] },
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payloads[pathname] ?? {}),
+    });
+  });
+
+  await prepareVisualPage(page, { name: '320x568-mining-ordering', width: 320, height: 568 });
+  await openRoute(page, '/mining', '[data-testid="mining-page"]');
+
+  await page.getByTestId('mining-tab-shop').click();
+  await expect(page.getByText('Miner bestellen', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('billing-onetime')).toBeVisible();
+  await expect(page.getByTestId('billing-monthly')).toHaveCount(0);
+  await expect(page.getByTestId('billing-yearly')).toHaveCount(0);
+
+  await page.getByTestId('miner-pkg-starter').click();
+  await expect(page.getByTestId('mining-order-note')).toBeVisible();
+  await expect(page.getByTestId('confirm-buy-btn')).toBeEnabled();
+  await expect(page.getByTestId('confirm-buy-btn')).toContainText('Jetzt bestellen');
+
+  await page.getByTestId('confirm-buy-btn').click();
+  await expect(page.getByTestId('purchase-success-overlay')).toBeVisible();
+  await expect(page.getByText('Bestellung bezahlt', { exact: true })).toBeVisible();
+  await expect(page.getByText('Aktivierung folgt', { exact: false })).toBeVisible();
+  expect(orderRequests).toBe(1);
 });
 
 
