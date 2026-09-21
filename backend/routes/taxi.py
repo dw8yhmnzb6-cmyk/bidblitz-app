@@ -1931,21 +1931,24 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     matched_zone = await find_matching_zone(p_lat, p_lng)
     time_info = compute_time_multiplier(matched_zone)
 
+    quote_user = None
+    if request is not None:
+        try:
+            quote_user = await get_current_user(request)
+        except Exception:
+            quote_user = None
+    quote_user_id = str((quote_user or {}).get("_id") or (quote_user or {}).get("id") or "")
+
     # Optional promo validation
     promo_info = None
     if req.promo_code:
         try:
             from utils.taxi_promo import validate_promo
-            user = None
-            if request is not None:
-                try:
-                    user = await get_current_user(request)
-                except Exception:
-                    user = None
-            uid = str(user.get("_id") or user.get("id")) if user else None
-            promo_info = await validate_promo(req.promo_code, uid)
+            promo_info = await validate_promo(req.promo_code, quote_user_id or None)
         except Exception:
             promo_info = {"valid": False, "code": req.promo_code, "reason": "internal_error"}
+
+    tariff_zone_meta, time_tariff_meta = _taxi_quote_metadata(matched_zone, time_info)
 
     VEHICLE_INFO = {
         "standard": {"name": "Standard", "description": "Komfortabel & günstig", "capacity": 4},
@@ -2008,12 +2011,58 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "tariff_zone": fare.get("tariff_zone"),
         }
         # Apply promo on top of computed fare (per-vehicle so user sees the impact)
+        promo_applied_for_quote = None
         if promo_info and promo_info.get("valid"):
             from utils.taxi_promo import apply_discount
             disc = apply_discount(fare["total"], promo_info)
             item["fare_original"] = disc["original"]
             item["fare_discount"] = disc["discount"]
             item["fare"] = disc["final"]
+            promo_applied_for_quote = {
+                "code": disc.get("code"),
+                "label": disc.get("label"),
+                "original": disc.get("original"),
+                "discount": disc.get("discount"),
+                "final": disc.get("final"),
+            }
+
+        quote_id = f"tq_{secrets.token_hex(16)}"
+        quote_created_at = datetime.now(timezone.utc)
+        quote_expires_at = quote_created_at + timedelta(seconds=TAXI_QUOTE_TTL_SECONDS)
+        quote_doc = {
+            "quote_id": quote_id,
+            "status": "active",
+            "user_id": quote_user_id or None,
+            "vehicle_type": vtype,
+            "pickup_lat": round(float(p_lat), 6),
+            "pickup_lng": round(float(p_lng), 6),
+            "dropoff_lat": round(float(d_lat), 6),
+            "dropoff_lng": round(float(d_lng), 6),
+            "pickup_address": p_addr,
+            "dropoff_address": d_addr,
+            "promo_code": _taxi_normalized_promo(req.promo_code),
+            "fare_total": round(float(item["fare"]), 2),
+            "fare_original": round(float(fare.get("total") or item["fare"]), 2),
+            "fare_breakdown": fare,
+            "promo_applied": promo_applied_for_quote,
+            "currency": item.get("currency") or "EUR",
+            "booking_supported": item.get("booking_supported", True),
+            "settlement_reason": item.get("settlement_reason"),
+            "min_balance": float(item.get("min_balance") or 0),
+            "distance_km": round(float(distance_km), 4),
+            "duration_minutes": round(float(duration_minutes), 2),
+            "route_source": route_source,
+            "region": item.get("region") or region,
+            "region_label": item.get("region_label") or "",
+            "fixed_fare": fixed,
+            "tariff_zone": tariff_zone_meta or item.get("tariff_zone"),
+            "time_tariff": time_tariff_meta,
+            "created_at": quote_created_at.isoformat(),
+            "expires_at": quote_expires_at.isoformat(),
+        }
+        await db.taxi_price_quotes.insert_one(quote_doc)
+        item["quote_id"] = quote_id
+        item["quote_expires_at"] = quote_expires_at.isoformat()
         estimates.append(item)
     
     return {
