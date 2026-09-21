@@ -732,7 +732,7 @@ const MODULE_DEFS = [
   { key: "fitness", label: "Fitness", fields: ["name", "type", "city", "monthly_price"] },
   { key: "reisen", label: "Reiseangebote", fields: ["title", "destination", "duration_days", "price_per_person"] },
   { key: "ladesaeulen", label: "Ladesäulen", fields: ["name", "operator", "city", "power_kw", "price_per_kwh"] },
-  { key: "scooter-abos", label: "Scooter-Abos", fields: ["name", "price", "duration_days"] },
+  { key: "scooter-abos", label: "Scooter-Abos", fields: ["plan_id", "name", "duration", "price", "duration_days", "unlock_fee", "free_minutes_per_day", "per_minute_rate"] },
 ];
 
 const ModulesTab = ({ initialModule }) => {
@@ -927,7 +927,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
 
         <div className="space-y-2">
           {mod.fields.map((f) => {
-            const isNumber = f.includes("price") || f.includes("rating") || f.includes("count") || f.includes("kw") || f.includes("per_") || f.includes("duration");
+            const isNumber = f.includes("price") || f.includes("rating") || f.includes("count") || f.includes("kw") || f.includes("per_") || f.includes("duration_days") || f.includes("fee") || f.includes("minutes");
             return (
               <div key={f}>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -938,6 +938,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
                   type={isNumber ? "number" : "text"}
                   step={isNumber ? "0.01" : undefined}
                   value={form[f] ?? ""}
+                  disabled={isEdit && f === "plan_id"}
                   onChange={(e) => setForm({ ...form, [f]: isNumber ? parseFloat(e.target.value) || 0 : e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] mt-0.5"
                 />
