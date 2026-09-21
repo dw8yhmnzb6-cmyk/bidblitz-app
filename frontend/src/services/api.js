@@ -35,7 +35,7 @@ function formatApiError(detail) {
   return String(detail);
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const url = `${API_URL}${path}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
