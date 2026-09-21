@@ -111,6 +111,7 @@ class EstimateRequest(BaseModel):
     pickup_address: Optional[str] = Field(None, max_length=500)
     dropoff_address: Optional[str] = Field(None, max_length=500)
     promo_code: Optional[str] = Field(None, max_length=32)
+    scheduled_at: Optional[str] = Field(None, max_length=64)
     idempotency_key: Optional[str] = Field(None, max_length=200)
     
     def get_coords(self):
