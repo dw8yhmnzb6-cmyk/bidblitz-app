@@ -24,7 +24,7 @@ async function mockMiningUser(page: Page) {
 
 async function mockMiningApi(page: Page) {
   await page.route('**/api/mining/**', async route => {
-    const pathname = new URL(route.request().url()).pathname.replace(/^\/undefined(?=\/api\/)/, '');
+    const pathname = new URL(route.request().url()).pathname;
     const payloads: Record<string, unknown> = {
       '/api/mining/dashboard': {
         capabilities: {
@@ -82,7 +82,7 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
 test('mining dashboard failure shows a retry state instead of a blank screen', async ({ page }) => {
   await mockMiningUser(page);
   await page.route('**/api/mining/**', async route => {
-    const pathname = new URL(route.request().url()).pathname.replace(/^\/undefined(?=\/api\/)/, '');
+    const pathname = new URL(route.request().url()).pathname;
     if (pathname === '/api/mining/dashboard') {
       await route.fulfill({
         status: 503,
