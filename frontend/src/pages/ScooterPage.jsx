@@ -185,7 +185,8 @@ export default function ScooterPage({ onNavigate }) {
       const freeMinutes = Number(rental.free_minutes_remaining_at_start ?? 0);
       const billableMinutes = Math.max(0, minutes - freeMinutes);
       const cost = unlockFee + (billableMinutes * rate);
-      setRideCost(Math.min(cost, Number(rental.daily_cap ?? pricing.daily_cap ?? 20)));
+      const minimumCharge = Number(rental.minimum_charge ?? pricing.minimum_charge ?? unlockFee ?? 0);
+      setRideCost(Math.min(Math.max(cost, minimumCharge), Number(rental.daily_cap ?? pricing.daily_cap ?? 20)));
     }, 1000);
   };
 
@@ -844,6 +845,12 @@ export default function ScooterPage({ onNavigate }) {
                   <span className="text-gray-400">Minutenpreis</span>
                   <span>€{Number(activeRental.per_minute_rate ?? pricing.per_minute ?? 0.20).toFixed(2)}/Min</span>
                 </div>
+                {Number(activeRental.minimum_charge ?? pricing.minimum_charge ?? 0) > Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 0) && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Mindestpreis</span>
+                    <span>€{Number(activeRental.minimum_charge ?? pricing.minimum_charge ?? 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Fahrzeit ({Math.floor(rideTimer / 60)} Min)</span>
                   <span>€{Math.max(0, rideCost - Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 1)).toFixed(2)}</span>
