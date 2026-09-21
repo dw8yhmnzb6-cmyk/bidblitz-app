@@ -2433,6 +2433,19 @@ def test_admin_panel_navigation_contracts_are_consistent():
 
     assert 'nav: "/admin/audi-ticket-system"' in sections
     assert 'nav: "/admin/coupons"' in sections
+
+    assert 'partners: "merchants"' in route_map
+    assert 'auctions: "auctions"' in route_map
+    assert 'bot: "auctions"' in route_map
+    assert 'winners: "auctions"' in route_map
+    assert '"product-stats": "analytics"' in route_map
+    assert '"user-stats": "analytics"' in route_map
+    assert 'discounts: "promos"' in route_map
+    assert 'topup: "transactions"' in route_map
+    assert 'wise: "payouts"' in route_map
+    assert 'logs: "audit"' in route_map
+    assert 'maintenance: "settings"' in route_map
+    assert 'sustainability: "flags"' in route_map
     assert 'nav: "/real-estate"' not in sections
     assert 'nav: "/freelancer"' not in sections
     assert 'nav: "/elearning"' not in sections
