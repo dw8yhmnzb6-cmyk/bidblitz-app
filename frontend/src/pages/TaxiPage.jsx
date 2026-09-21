@@ -1055,7 +1055,7 @@ export default function TaxiPage({ onNavigate }) {
             <div className="sticky bottom-0 mt-5 bg-transparent" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }} data-testid="taxi-booking-cta-wrap">
               <PrimaryButton
                 onClick={dropoff.address ? handleBookRide : () => setSheetMode('search')}
-                disabled={booking || estimating || (Boolean(dropoff.address) && selectedEstimate?.booking_supported === false)}
+                disabled={booking || estimating || (Boolean(dropoff.address) && (!selectedEstimate || selectedEstimate.booking_supported === false))}
                 className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full text-lg font-black"
                 data-testid="book-ride-button"
               >
