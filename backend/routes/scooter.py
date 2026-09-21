@@ -857,8 +857,31 @@ async def pause_ride(req: PauseRideRequest, request: Request):
     if not device_id:
         raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden")
 
+    control_started_at = datetime.now(timezone.utc).isoformat()
+    control_claim = await db.scooter_rides.update_one(
+        {
+            "ride_id": ride["ride_id"],
+            "user_id": user_id,
+            "status": "active",
+            "$or": [
+                {"control_action": {"$exists": False}},
+                {"control_action": None},
+            ],
+        },
+        {"$set": {"control_action": "pause", "control_started_at": control_started_at}},
+    )
+    if control_claim.modified_count != 1:
+        current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
+        if current.get("status") == "paused":
+            return {"ok": True, "status": "paused", "ride_id": ride["ride_id"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+
     command = await send_device_command(device_id, DeviceCommand.LOCK)
     if not command.success:
+        await db.scooter_rides.update_one(
+            {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "pause"},
+            {"$unset": {"control_action": "", "control_started_at": ""}},
+        )
         raise HTTPException(status_code=503, detail="Scooter konnte für die Pause nicht sicher verriegelt werden")
 
     now = datetime.now(timezone.utc).isoformat()
@@ -867,12 +890,17 @@ async def pause_ride(req: PauseRideRequest, request: Request):
             "ride_id": ride["ride_id"],
             "user_id": user_id,
             "status": "active",
+            "control_action": "pause",
         },
         {
             "$set": {
                 "status": "paused",
                 "paused_at": now,
                 "pause_lock_status": "confirmed",
+            },
+            "$unset": {
+                "control_action": "",
+                "control_started_at": "",
             },
             "$push": {
                 "pause_history": {
@@ -911,8 +939,31 @@ async def resume_ride(req: PauseRideRequest, request: Request):
     if not device_id:
         raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden")
 
+    control_started_at = datetime.now(timezone.utc).isoformat()
+    control_claim = await db.scooter_rides.update_one(
+        {
+            "ride_id": ride["ride_id"],
+            "user_id": user_id,
+            "status": "paused",
+            "$or": [
+                {"control_action": {"$exists": False}},
+                {"control_action": None},
+            ],
+        },
+        {"$set": {"control_action": "resume", "control_started_at": control_started_at}},
+    )
+    if control_claim.modified_count != 1:
+        current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
+        if current.get("status") == "active":
+            return {"ok": True, "status": "active", "ride_id": ride["ride_id"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+
     command = await send_device_command(device_id, DeviceCommand.UNLOCK)
     if not command.success:
+        await db.scooter_rides.update_one(
+            {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "resume"},
+            {"$unset": {"control_action": "", "control_started_at": ""}},
+        )
         raise HTTPException(status_code=503, detail="Scooter konnte nicht sicher entsperrt werden")
 
     now = datetime.now(timezone.utc).isoformat()
@@ -921,6 +972,7 @@ async def resume_ride(req: PauseRideRequest, request: Request):
             "ride_id": ride["ride_id"],
             "user_id": user_id,
             "status": "paused",
+            "control_action": "resume",
         },
         {
             "$set": {
@@ -930,6 +982,8 @@ async def resume_ride(req: PauseRideRequest, request: Request):
             },
             "$unset": {
                 "paused_at": "",
+                "control_action": "",
+                "control_started_at": "",
             },
             "$push": {
                 "pause_history": {
@@ -1004,6 +1058,30 @@ async def end_ride(req: EndRideRequest, request: Request):
     if existing.get("status") not in {"active", "paused"}:
         raise HTTPException(status_code=400, detail=f"Fahrt kann im Status {existing.get('status')} nicht beendet werden")
 
+    if existing.get("control_action") not in {None, "end"}:
+        raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+    if existing.get("control_action") != "end":
+        control_started_at = datetime.now(timezone.utc).isoformat()
+        control_claim = await db.scooter_rides.update_one(
+            {
+                "ride_id": existing["ride_id"],
+                "user_id": user_id,
+                "status": {"$in": ["active", "paused"]},
+                "$or": [
+                    {"control_action": {"$exists": False}},
+                    {"control_action": None},
+                ],
+            },
+            {"$set": {"control_action": "end", "control_started_at": control_started_at}},
+        )
+        if control_claim.modified_count != 1:
+            existing = await db.scooter_rides.find_one(lookup) or existing
+            if existing.get("control_action") != "end":
+                raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+        else:
+            existing["control_action"] = "end"
+            existing["control_started_at"] = control_started_at
+
     ride = existing
     scooter_id = ride["scooter_id"]
     ride_id = ride["ride_id"]
@@ -1076,11 +1154,14 @@ async def end_ride(req: EndRideRequest, request: Request):
     if not device_id:
         await db.scooter_rides.update_one(
             {"ride_id": ride_id, "user_id": user_id},
-            {"$set": {
-                "end_lock_status": "failed",
-                "end_lock_error": "missing_device_id",
-                "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
-            }},
+            {
+                "$set": {
+                    "end_lock_status": "failed",
+                    "end_lock_error": "missing_device_id",
+                    "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                "$unset": {"control_action": "", "control_started_at": ""},
+            },
         )
         raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden. Fahrt bleibt aktiv; Support wurde erforderlich.")
 
@@ -1089,11 +1170,14 @@ async def end_ride(req: EndRideRequest, request: Request):
         logger.error("Lock command failed for %s: %s", scooter_id, cmd_result.message)
         await db.scooter_rides.update_one(
             {"ride_id": ride_id, "user_id": user_id},
-            {"$set": {
-                "end_lock_status": "failed",
-                "end_lock_error": cmd_result.message,
-                "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
-            }},
+            {
+                "$set": {
+                    "end_lock_status": "failed",
+                    "end_lock_error": cmd_result.message,
+                    "end_lock_failed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                "$unset": {"control_action": "", "control_started_at": ""},
+            },
         )
         await db.scooters.update_one(
             {"scooter_id": scooter_id, "current_ride_id": ride_id},
@@ -1172,7 +1256,8 @@ async def end_ride(req: EndRideRequest, request: Request):
     completed_at = datetime.now(timezone.utc).isoformat()
     await db.scooter_rides.update_one(
         {"ride_id": ride_id, "user_id": user_id, "status": {"$in": ["active", "paused"]}},
-        {"$set": {
+        {
+            "$set": {
             "status": "completed",
             "end_time": completed_at,
             "end_location": end_location,
@@ -1188,7 +1273,9 @@ async def end_ride(req: EndRideRequest, request: Request):
             "payment_transaction_id": payment_result.transaction_id if payment_result and payment_result.success else None,
             "amount_due": amount_due,
             "amount_due_currency": ride_currency if amount_due > 0 else None,
-        }},
+            },
+            "$unset": {"control_action": "", "control_started_at": ""},
+        },
     )
 
     scooter_inc = {
