@@ -94,3 +94,15 @@ def test_admin_service_crud_uses_same_collections_as_public_modules():
     assert '"umzug": ("umzug_companies", "name")' in backend
     assert '"telemedizin": ("doctors", "name")' in backend
     assert '"fitness": ("gyms", "name")' in backend
+
+
+def test_module_read_only_notice_stays_inside_module_crud_scope():
+    page = read("frontend/src/pages/AdminManagementPage.jsx")
+
+    customers = page[page.index("const CustomersTab = () => {"):page.index("const AuthHealthTab = () => {")]
+    module_crud = page[page.index("const ModuleCRUD = ({ mod, onBack }) => {"):page.index("const ModuleForm = ({ mod, item, onClose, onSaved }) => {")]
+
+    assert 'data-testid="module-read-only-note"' not in customers
+    assert 'data-testid="module-read-only-note"' in module_crud
+    assert '{readOnly && (' in module_crud
+    assert 'readOnly ? "Keine Live-Daten vorhanden."' in module_crud
