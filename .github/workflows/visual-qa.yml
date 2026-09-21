@@ -88,6 +88,10 @@ jobs:
         run: npx playwright test tests/visual/mining.spec.ts
         working-directory: frontend
 
+      - name: Run scooter 320px visual test
+        run: npx playwright test tests/visual/scooter.spec.ts
+        working-directory: frontend
+
       - name: Run mobility map visual tests
         run: npx playwright test tests/visual/mobility.spec.ts
         working-directory: frontend
