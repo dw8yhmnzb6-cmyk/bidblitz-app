@@ -489,13 +489,18 @@ async def get_mining_card(request: Request):
         {"user_id": user_id},
         {"_id": 0},
     ).sort("created_at", -1).limit(20).to_list(20)
-    today_spent = 0.0
+    daily_spend = card.get("daily_spend_eur") if isinstance(card.get("daily_spend_eur"), dict) else {}
+    has_persisted_daily_spend = today in daily_spend
+    today_spent = _safe_mining_float(daily_spend.get(today)) if has_persisted_daily_spend else 0.0
+    legacy_today_spent = 0.0
     for tx in recent_transactions:
         tx["amount_eur"] = _safe_mining_float(tx.get("amount_eur"))
         tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))
         tx["cashback_blz"] = _safe_mining_float(tx.get("cashback_blz"))
         if str(tx.get("date") or "") == today:
-            today_spent += tx["amount_eur"]
+            legacy_today_spent += tx["amount_eur"]
+    if not has_persisted_daily_spend:
+        today_spent = legacy_today_spent
 
     return {
         "has_card": True,
