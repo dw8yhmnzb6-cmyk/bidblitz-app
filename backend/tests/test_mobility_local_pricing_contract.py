@@ -191,3 +191,18 @@ def test_taxi_promo_usage_is_reserved_before_wallet_value_moves():
     assert 'existing_status == "reserving"' in promo
     assert 'existing_status in {"released", "rejected"}' in promo
     assert '"uses": {"$lt": max_uses}' in promo
+
+
+def test_taxi_cancellation_cannot_race_driver_lifecycle_or_double_money():
+    taxi = read("backend/routes/taxi.py")
+
+    assert '"cancellation_state": {"$nin": ["processing", "completed"]}' in taxi
+    assert '"cancellation_state": "processing"' in taxi
+    assert '"cancellation_state": "completed"' in taxi
+    assert '"cancellation_user_id": user_id' in taxi
+    assert 'status": {"$in": [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]}' in taxi
+    assert 'min(float(CANCELLATION_FEE), reserved_amount)' in taxi
+    assert 'idempotency_key=f"taxi-cancel-refund:{req.ride_id}"' in taxi
+    assert 'idempotency_key=f"taxi-cancel-fee:{req.ride_id}"' in taxi
+    assert 'idempotency_key=f"taxi-cancel-comp:{req.ride_id}"' in taxi
+    assert '"replayed": True' in taxi
