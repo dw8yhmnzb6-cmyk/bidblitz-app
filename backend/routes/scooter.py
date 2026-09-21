@@ -899,6 +899,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             idempotency_key=idempotency_key,
         )
         if not payment_result.success:
+            payment_status = getattr(payment_result.status, "value", str(payment_result.status))
             rollback_lock = (
                 await send_device_command(
                     device_id,
@@ -908,6 +909,31 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
                 if device_id
                 else None
             )
+
+            if payment_status in {"pending", "reconciliation_required"}:
+                reconciliation_message = (
+                    payment_result.error
+                    or "Scooter-Zahlung ist unklar und muss vor einem neuen Versuch abgestimmt werden."
+                )
+                await db.scooters.update_one(
+                    {"_id": scooter["_id"], "unlock_claim_key": claim_hash, "unlock_claim_user_id": user_id},
+                    {"$set": {
+                        "status": "offline",
+                        "unlock_payment_reconciliation_required": True,
+                        "unlock_payment_status": payment_status,
+                        "unlock_payment_transaction_id": payment_result.transaction_id,
+                        "unlock_payment_reconciliation_reason": reconciliation_message,
+                        "unlock_payment_reconciliation_at": datetime.now(timezone.utc).isoformat(),
+                        "device_state_uncertain": bool(rollback_lock and not rollback_lock.success),
+                        "device_state_uncertain_command": "lock_after_unclear_payment",
+                        "device_state_uncertain_reason": rollback_lock.message if rollback_lock and not rollback_lock.success else "",
+                    }},
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail=reconciliation_message,
+                )
+
             if rollback_lock and not rollback_lock.success:
                 await _quarantine_uncertain_scooter_state(
                     scooter_id,
@@ -917,7 +943,19 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             else:
                 await db.scooters.update_one(
                     {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
-                    {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
+                    {
+                        "$set": {"status": original_status},
+                        "$unset": {
+                            "unlock_claim_key": "",
+                            "unlock_claim_user_id": "",
+                            "unlock_claimed_at": "",
+                            "unlock_payment_reconciliation_required": "",
+                            "unlock_payment_status": "",
+                            "unlock_payment_transaction_id": "",
+                            "unlock_payment_reconciliation_reason": "",
+                            "unlock_payment_reconciliation_at": "",
+                        },
+                    },
                 )
             raise HTTPException(status_code=400, detail=payment_result.error or "Entsperrgebühr konnte nicht bezahlt werden")
 
