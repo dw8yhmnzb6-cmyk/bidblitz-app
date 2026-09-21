@@ -2845,6 +2845,10 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert 'idempotency_key=f"blitz-lockup-release:{stable_id}"' in backend
     assert 'item["id"] = item.get("lockup_id") or str(item.get("_id"))' in backend
     assert '"status": "releasing"' in backend
+    assert 'if lk.get("status") == "reconciliation_required":' in backend
+    assert 'if lk.get("status") != "releasing":' in backend
+    assert '"release_error": "payout_applied_finalize_not_confirmed"' in backend
+    assert "BLZ wurden genau einmal gutgeschrieben; Lockup-Abschluss benötigt Abstimmung" in backend
 
     assert 'createAttemptKeyRef' not in page
     assert "lockupAttemptKeyRef" in page
@@ -3806,7 +3810,9 @@ def test_mining_card_mutations_stay_test_only():
     freeze_end = source.index("# ══════════════════════════════════════\n# LAUNCHPAD", freeze_start)
     freeze = source[freeze_start:freeze_end]
     assert "_require_mining_value_mode()" in freeze
-    assert "toggle_freeze" in freeze
+    assert "class FreezeCardRequest(BaseModel):" in source
+    assert "set_card_freeze" in freeze
+    assert '"frozen": bool(req.frozen)' in freeze
 
 
 def test_mining_marketplace_listing_is_disabled_in_preview():
