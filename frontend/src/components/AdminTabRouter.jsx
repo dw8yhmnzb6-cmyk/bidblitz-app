@@ -9,6 +9,7 @@ import {
 import ExportSection from "./ExportSection";
 import { Skeleton, StatCard, statusColors, slide } from "./admin/adminHelpers";
 import { api as apiService, request as apiRequest } from "../services/api";
+import { toast } from "sonner";
 
 const PROMO_TYPES = ["bonus_topup", "reduced_fee", "cashback", "signup_bonus"];
 
@@ -23,7 +24,9 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
       const body = { ...form, value: Number(form.value), min_amount: Number(form.min_amount), max_uses: Number(form.max_uses), starts_at: `${form.starts_at}T00:00:00Z`, expires_at: `${form.expires_at}T23:59:59Z`, active: true };
       await apiRequest("/api/promotions/admin/create", { method: "POST", body: JSON.stringify(body) });
       onCreated({ ...body, current_uses: 0 });
-    } catch (_error) { void _error; } finally { setSaving(false); }
+    } catch (error) {
+      toast.error(error?.message || "Promotion konnte nicht erstellt werden.");
+    } finally { setSaving(false); }
   };
   const inputCls = "w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]";
   return (
@@ -314,7 +317,9 @@ tab, t, loading,
                             setSavingFees(true);
                             api("/api/admin/settings", { method: "PUT", body: JSON.stringify({ fees: feeValues }) })
                               .then(d => { setSettings({ ...settings, fees: d.fees || feeValues }); setEditingFees(false); })
-                              .catch(() => {})
+                              .catch((error) => {
+                                toast.error(error?.message || "Gebühren konnten nicht gespeichert werden.");
+                              })
                               .finally(() => setSavingFees(false));
                           } else {
                             setFeeValues({ ...settings.fees });
@@ -378,7 +383,9 @@ tab, t, loading,
                             setSavingMerchantFees(true);
                             api("/api/payments/admin/fees", { method: "POST", body: JSON.stringify({ fees: merchantFeeValues }) })
                               .then(d => { setMerchantFees(d.fees || merchantFeeValues); setEditingMerchantFees(false); })
-                              .catch(() => {})
+                              .catch((error) => {
+                                toast.error(error?.message || "Händlergebühren konnten nicht gespeichert werden.");
+                              })
                               .finally(() => setSavingMerchantFees(false));
                           } else {
                             setMerchantFeeValues({ ...merchantFees });
@@ -484,7 +491,9 @@ tab, t, loading,
                             try {
                               await api(`/api/promotions/admin/toggle/${p.name}`, { method: "PUT" });
                               setPromos(promos.map(x => x.name === p.name ? { ...x, active: !x.active } : x));
-                            } catch (_error) { void _error; }
+                            } catch (error) {
+                              toast.error(error?.message || "Promotion konnte nicht geändert werden.");
+                            }
                           }}>
                           {p.active ? <ToggleRight size={28} className="text-[#00D26A]" /> : <ToggleLeft size={28} className="text-[#333]" />}
                         </motion.button>
@@ -522,7 +531,9 @@ tab, t, loading,
                               method: "PUT", body: JSON.stringify({ enabled: !flag.enabled })
                             });
                             setFeatureFlags(featureFlags.map(f => f.name === flag.name ? { ...f, enabled: !f.enabled } : f));
-                          } catch (_error) { void _error; }
+                          } catch (error) {
+                            toast.error(error?.message || "Feature-Flag konnte nicht geändert werden.");
+                          }
                         }}
                         className="flex items-center"
                         whileTap={{ scale: 0.9 }}>
@@ -619,7 +630,9 @@ tab, t, loading,
                                 try {
                                   await api(`/api/admin/compliance-flags/${i}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
                                   setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
-                                } catch (_error) { void _error; }
+                                } catch (error) {
+                                  toast.error(error?.message || "Compliance-Flag konnte nicht aufgelöst werden.");
+                                }
                               }}
                               className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
                               whileTap={{ scale: 0.95 }}>
