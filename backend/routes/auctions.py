@@ -2619,9 +2619,13 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         "retail_price": d["retail_price"],
         "starting_price": 0.01,
         "current_price": 0.01,
-        "price_increment": PRICE_INCREMENT,
-        "bid_value_eur": 0.50,
-        "revenue_target_eur": 0.0,
+        "price_increment": round(float(req.price_increment), 2),
+        "bid_value_eur": round(float(req.bid_value_eur), 2),
+        "revenue_target_eur": round(float(req.revenue_target_eur), 2),
+        "product_cost_eur": round(float(req.product_cost_eur), 2),
+        "shipping_cost_eur": round(float(req.shipping_cost_eur), 2),
+        "other_costs_eur": round(float(req.other_costs_eur), 2),
+        "target_net_profit_eur": round(float(req.target_net_profit_eur), 2),
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": duration_seconds,
         "ends_at": scheduled_end_at.isoformat(),
@@ -3417,6 +3421,10 @@ class ScheduleAuctionRequest(BaseModel):
     bid_value_eur: float = Field(default=0.50, ge=0.01, le=10.0)
     price_increment: float = Field(default=0.01, ge=0.01, le=1.0)
     revenue_target_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
+    product_cost_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
+    shipping_cost_eur: float = Field(default=0.0, ge=0.0, le=10000.0)
+    other_costs_eur: float = Field(default=0.0, ge=0.0, le=10000.0)
+    target_net_profit_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
 
 
 class BulkScheduleRequest(BaseModel):
@@ -4035,6 +4043,10 @@ class UpdateAuctionRequest(BaseModel):
     bid_value_eur: Optional[float] = Field(default=None, ge=0.01, le=10.0)
     price_increment: Optional[float] = Field(default=None, ge=0.01, le=1.0)
     revenue_target_eur: Optional[float] = Field(default=None, ge=0.0, le=100000.0)
+    product_cost_eur: Optional[float] = Field(default=None, ge=0.0, le=100000.0)
+    shipping_cost_eur: Optional[float] = Field(default=None, ge=0.0, le=10000.0)
+    other_costs_eur: Optional[float] = Field(default=None, ge=0.0, le=10000.0)
+    target_net_profit_eur: Optional[float] = Field(default=None, ge=0.0, le=100000.0)
 
 
 @router.patch("/admin/auction/{auction_id}")
@@ -4066,6 +4078,14 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
         updates["price_increment"] = round(float(req.price_increment), 2)
     if req.revenue_target_eur is not None:
         updates["revenue_target_eur"] = round(float(req.revenue_target_eur), 2)
+    if req.product_cost_eur is not None:
+        updates["product_cost_eur"] = round(float(req.product_cost_eur), 2)
+    if req.shipping_cost_eur is not None:
+        updates["shipping_cost_eur"] = round(float(req.shipping_cost_eur), 2)
+    if req.other_costs_eur is not None:
+        updates["other_costs_eur"] = round(float(req.other_costs_eur), 2)
+    if req.target_net_profit_eur is not None:
+        updates["target_net_profit_eur"] = round(float(req.target_net_profit_eur), 2)
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
