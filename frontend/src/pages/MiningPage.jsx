@@ -1444,7 +1444,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <CreditCard size={16} style={{ color: cardColor }} />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: cardColor }}>{c.tier_name} Card</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: cardColor }}>{c.tier_name} {c.is_demo ? "Test Card" : "Card"}</span>
                           </div>
                           <motion.button data-testid="card-freeze-btn" onClick={toggleCardFreeze} whileTap={{ scale: 0.9 }}
                             className={`px-2.5 py-1 rounded-lg text-[9px] font-semibold flex items-center gap-1 ${c.frozen ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15" : "bg-white/[0.04] text-white/30 border border-white/[0.05]"}`}>
