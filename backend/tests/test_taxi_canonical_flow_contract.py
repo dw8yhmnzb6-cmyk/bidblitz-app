@@ -177,3 +177,13 @@ def test_driver_busy_flag_tracks_canonical_active_ride_lock():
     assert '"is_busy": True' in claim_block
     assert '"$set": {"is_busy": False}' in claim_block
     assert '"$set": {"is_busy": False}' in release_block
+
+
+def test_busy_and_rejected_drivers_do_not_receive_new_dispatches():
+    taxi = read("backend/routes/taxi.py")
+    driver = read("backend/routes/driver_dashboard.py")
+
+    assert 'if d.get("is_busy") or d.get("active_ride_id"):' in taxi
+    assert 'if driver.get("is_busy") or driver.get("active_ride_id"):' in taxi
+    assert '"rejected_driver_ids": {"$ne": driver["driver_id"]}' in taxi
+    assert 'if driver.get("is_busy") or driver.get("active_ride_id"):' in driver
