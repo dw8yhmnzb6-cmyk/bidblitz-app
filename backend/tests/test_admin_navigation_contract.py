@@ -337,3 +337,16 @@ def test_taxi_admin_routes_accept_super_admin():
 
     assert 'user.get("role") != "admin"' not in taxi
     assert taxi.count('user.get("role") not in ("admin", "super_admin")') >= 12
+
+
+def test_admin_actions_surface_api_failures():
+    router = read("frontend/src/components/AdminTabRouter.jsx")
+
+    assert 'import { toast } from "sonner";' in router
+    assert 'Promotion konnte nicht erstellt werden.' in router
+    assert 'Gebühren konnten nicht gespeichert werden.' in router
+    assert 'Händlergebühren konnten nicht gespeichert werden.' in router
+    assert 'Promotion konnte nicht geändert werden.' in router
+    assert 'Feature-Flag konnte nicht geändert werden.' in router
+    assert 'Compliance-Flag konnte nicht aufgelöst werden.' in router
+    assert '.catch(() => {})' not in router
