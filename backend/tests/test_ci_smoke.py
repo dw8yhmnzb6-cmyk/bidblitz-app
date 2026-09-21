@@ -4018,3 +4018,10 @@ def test_live_verify_checks_mining_backend_consistency():
     assert 'base_url + "/api/mining/packages"' in source
     assert 'base_url + "/api/mining/dashboard"' in source
     assert 'mining_dashboard["status"] in {401, 403}' in source
+
+
+def test_auction_credit_purchase_unknown_wallet_state_is_retryable():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert 'payment_state = str(getattr(result.status, "value", result.status))' in source
+    assert 'status_code = 503 if payment_state in {"pending", "reconciliation_required"} else 400' in source
