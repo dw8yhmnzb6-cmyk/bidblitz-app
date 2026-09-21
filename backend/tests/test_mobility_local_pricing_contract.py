@@ -402,3 +402,12 @@ def test_scooter_history_keeps_currency_totals_separate():
     assert '"mixed_currency_history": len(totals_by_currency) > 1' in scooter
     assert "rental.currency" in page
     assert "toUpperCase()" in page
+
+
+def test_scooter_pause_pricing_matches_actual_billing():
+    scooter = read("backend/routes/scooter.py")
+
+    assert '"free_paused_minutes": 0' in scooter
+    assert '"pause_billing_mode": "ride_rate"' in scooter
+    assert '"pause_rate": pricing.get("per_minute", PER_MINUTE_RATE)' in scooter
+    assert "free_paused_minutes": 5" not in scooter
