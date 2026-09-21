@@ -1661,6 +1661,27 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
     unset_fields = {}
     if req.locked is not None:
         update["device_locked"] = bool(req.locked)
+
+        # Reconcile provider-accepted critical commands with authenticated physical telemetry.
+        confirmed_command = DeviceCommand.LOCK.value if req.locked else DeviceCommand.UNLOCK.value
+        await db.scooter_device_commands.update_many(
+            {
+                "device_id": req.device_id,
+                "command": confirmed_command,
+                "status": "pending_confirmation",
+            },
+            {
+                "$set": {
+                    "status": "success",
+                    "confirmation_required": False,
+                    "confirmed_via": "device_telemetry",
+                    "physical_state": "locked" if req.locked else "unlocked",
+                    "confirmed_at": now.isoformat(),
+                    "completed_at": now.isoformat(),
+                }
+            },
+        )
+
         # If device reports locked but status is in_use, something is wrong
         if req.locked and scooter.get("status") == "in_use":
             logger.warning(f"Scooter {scooter['scooter_id']} locked while in use!")
