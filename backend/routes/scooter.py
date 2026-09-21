@@ -2532,9 +2532,10 @@ async def create_share_code(req: ShareScooterRequest, request: Request):
     }
 
     # Reactivate the canonical per-ride row only when it is not already active.
+    share_fields = {key: value for key, value in share.items() if key != "_id"}
     updated = await db.scooter_shares.update_one(
         {"_id": canonical_id, "status": {"$ne": "active"}},
-        {"$set": share},
+        {"$set": share_fields},
     )
     if updated.matched_count == 0:
         try:
