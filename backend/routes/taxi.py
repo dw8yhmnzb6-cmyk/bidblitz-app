@@ -1386,6 +1386,7 @@ async def calculate_fare_with_overrides(
             "pricing_source": "zone",
             "currency": "EUR",
             "booking_supported": True,
+            "min_balance": MIN_WALLET_BALANCE,
         }
 
     # 2) Canonical Mobility pricing: country -> city override -> transport mode.
@@ -1431,6 +1432,7 @@ async def calculate_fare_with_overrides(
                 "booking_supported": bool(option.get("booking_supported", True)),
                 "settlement_reason": option.get("settlement_reason"),
                 "vehicle_multiplier": vehicle_multiplier,
+                "min_balance": float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0),
             }
     except Exception as exc:
         logger.warning("Canonical taxi pricing lookup failed; using legacy fallback: %s", exc)
@@ -1457,6 +1459,7 @@ async def calculate_fare_with_overrides(
             "pricing_source": "city_legacy",
             "currency": "EUR",
             "booking_supported": True,
+            "min_balance": MIN_WALLET_BALANCE,
         }
 
     fallback = calculate_fare(distance_km, duration_minutes, car_type, region)
@@ -1465,6 +1468,7 @@ async def calculate_fare_with_overrides(
         "pricing_source": "region_legacy",
         "currency": "EUR",
         "booking_supported": True,
+        "min_balance": MIN_WALLET_BALANCE,
     }
 
 
@@ -1904,6 +1908,7 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "profile_scope": fare.get("profile_scope"),
             "pricing_source": fare.get("pricing_source"),
             "pricing_basis": fare.get("pricing_basis"),
+            "min_balance": fare.get("min_balance", MIN_WALLET_BALANCE),
             "base_fare": fare.get("base_fare", 0),
             "tariff_zone": fare.get("tariff_zone"),
         }
@@ -1994,12 +1999,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    balance = user.get("balance", 0)
-    if balance < MIN_WALLET_BALANCE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Mindestguthaben €{MIN_WALLET_BALANCE:.2f} erforderlich. Aktuell: €{balance:.2f}"
-        )
+    balance = float(user.get("balance", 0) or 0)
     
     active = await db.taxi_rides.find_one({
         "customer_id": user_id,
@@ -2061,6 +2061,13 @@ async def book_ride(req: FlexBookRequest, request: Request):
         raise HTTPException(
             status_code=503,
             detail=fare_estimate.get("settlement_reason") or "Lokaler Taxi-Tarif ist verfügbar, aber FX-/Wallet-Settlement ist noch nicht verbunden.",
+        )
+
+    required_balance = max(0.0, float(fare_estimate.get("min_balance", MIN_WALLET_BALANCE) or 0))
+    if balance < required_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mindestguthaben €{required_balance:.2f} erforderlich. Aktuell: €{balance:.2f}",
         )
 
     fare_total = fare_estimate["total"]
