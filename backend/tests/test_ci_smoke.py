@@ -2131,6 +2131,17 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert "LaunchpadBuyRequest" in phase2
     assert 'Idempotency-Key erforderlich' in phase2
     assert 'idempotency_key=idempotency_key' in phase2
+    assert "class CardSpendRequest(BaseModel):" in phase2
+    assert "class UpgradeCardRequest(BaseModel):" in phase2
+    assert phase2.count("idempotency_key: Optional[str] = None") >= 4
+    assert "db.mining_card_operations.update_one" in phase2
+    assert 'card_spend_debits' in phase2
+    assert 'card_spend_markers' in phase2
+    assert 'card_upgrade_debits' in phase2
+    assert 'card_upgrade_applied' in phase2
+    assert 'card_upgrade_refunds' in phase2
+    assert "class FreezeCardRequest(BaseModel):" in phase2
+    assert '"frozen": bool(req.frozen)' in phase2
 
     assert 'class WithdrawRequest(BaseModel):' in mining
     assert 'class SendBLZRequest(BaseModel):' in mining
@@ -2147,8 +2158,10 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert "withdrawAttemptKeysRef" in mining_page
     assert "sendAttemptKeysRef" in mining_page
     assert "launchpadPurchaseKeysRef" in mining_page
-    assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 6
-    assert mining_page.count("idempotency_key: idempotencyKey") >= 6
+    assert "cardUpgradeKeysRef" in mining_page
+    assert 'body: JSON.stringify({ frozen: desiredFrozen })' in mining_page
+    assert mining_page.count('"Idempotency-Key": idempotencyKey') >= 7
+    assert mining_page.count("idempotency_key: idempotencyKey") >= 7
     assert "shouldKeepAttemptKey" in mining_page
 
     assert 'db.mining_wallets, "user_id", unique=True, critical=True' in database
