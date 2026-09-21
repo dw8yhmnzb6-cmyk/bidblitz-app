@@ -289,3 +289,14 @@ def test_super_admin_uses_same_admin_route_gates():
     assert 'return isAdminRole ? <AdminMobilityPricingPage' in app
     assert 'user.role === "admin" ? <Admin' not in app
     assert 'if (!["admin", "super_admin"].includes(user.role)) {' in admin_page
+
+
+def test_admin_promotions_use_canonical_error_and_role_handling():
+    backend = read("backend/routes/promotions.py")
+    router = read("frontend/src/components/AdminTabRouter.jsx")
+
+    assert backend.count('user.get("role") not in ("admin", "super_admin")') >= 3
+    assert 'user.get("role") != "admin"' not in backend
+    assert 'request as apiRequest' in router
+    assert 'apiRequest("/api/promotions/admin/create"' in router
+    assert 'fetch(`${API}/api/promotions/admin/create`' not in router
