@@ -113,3 +113,15 @@ def test_admin_lists_real_country_codes_instead_of_pseudo_regions():
     assert 'def _regional_profile_key_for_country' in mobility
     assert 'admin_country_codes = {"XK", "DE", "AE", *BALKAN_COUNTRY_CODES, *CITY_PRICING_PROFILES.keys()}' in mobility
     assert 'profile_key = _regional_profile_key_for_country(country_code)' in mobility
+
+
+def test_scooter_local_minimum_fare_is_enforced_end_to_end():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert '"minimum_charge": ride_minimum_charge' in scooter
+    assert 'minimum_charge = max(0.0, float(ride.get("minimum_charge") or 0))' in scooter
+    assert 'min(max(round(unlock_fee + ride_cost, 2), minimum_charge), daily_cap)' in scooter
+    assert 'const minimumCharge = Number(rental.minimum_charge ?? pricing.minimum_charge' in page
+    assert 'Math.min(Math.max(cost, minimumCharge)' in page
+    assert '>Mindestpreis<' in page
