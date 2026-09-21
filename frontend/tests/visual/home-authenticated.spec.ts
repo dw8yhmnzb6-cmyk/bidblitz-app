@@ -80,6 +80,10 @@ for (const viewport of MOBILE_VIEWPORTS) {
     await expect(page.getByTestId('home-page')).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId('mobile-home-content')).toBeVisible();
     await expect(page.getByTestId('mobile-home-intro')).toHaveCount(0);
+    await expect(page.getByTestId('mobile-home-mining-spotlight')).toBeVisible();
+    await expect(page.getByTestId('mobile-home-mining-open')).toBeVisible();
+    await expect(page.getByTestId('mobile-home-mining-spotlight')).toContainText('Bronze');
+    await expect(page.getByTestId('mobile-home-mining-spotlight')).toContainText('Diamant');
     await expect(page.getByTestId('mobile-home-activity')).toBeVisible();
 
     const services = page.locator('[data-testid^="mobile-service-"]');
