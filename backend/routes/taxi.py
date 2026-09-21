@@ -1503,6 +1503,24 @@ def _taxi_normalized_promo(value: Optional[str]) -> str:
     return str(value or "").strip().upper()
 
 
+def _taxi_parse_pricing_time(value: Optional[str]) -> datetime:
+    if not value:
+        return datetime.now(timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Ungültige Abholzeit") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _taxi_schedule_key(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return _taxi_parse_pricing_time(value).replace(microsecond=0).isoformat()
+
+
 async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: FlexBookRequest) -> Optional[dict]:
     if not quote_id:
         return None
@@ -1546,6 +1564,9 @@ async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: Fle
 
     if _taxi_normalized_promo(quote_doc.get("promo_code")) != _taxi_normalized_promo(req.promo_code):
         raise HTTPException(status_code=409, detail="Promo-Code wurde geändert. Bitte Preis neu berechnen.")
+
+    if str(quote_doc.get("scheduled_at") or "") != _taxi_schedule_key(req.scheduled_at):
+        raise HTTPException(status_code=409, detail="Abholzeit wurde geändert. Bitte Preis neu berechnen.")
 
     return quote_doc
 
@@ -1929,7 +1950,8 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     # Multi-Tarif: Zone-Match + Time-Multiplier (P2)
     from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
     matched_zone = await find_matching_zone(p_lat, p_lng)
-    time_info = compute_time_multiplier(matched_zone)
+    pricing_time = _taxi_parse_pricing_time(req.scheduled_at)
+    time_info = compute_time_multiplier(matched_zone, now=pricing_time)
 
     quote_user = None
     if request is not None:
@@ -2041,6 +2063,7 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "pickup_address": p_addr,
             "dropoff_address": d_addr,
             "promo_code": _taxi_normalized_promo(req.promo_code),
+            "scheduled_at": _taxi_schedule_key(req.scheduled_at) or None,
             "fare_total": round(float(item["fare"]), 2),
             "fare_original": round(float(fare.get("total") or item["fare"]), 2),
             "fare_breakdown": fare,
@@ -2237,7 +2260,8 @@ async def book_ride(req: FlexBookRequest, request: Request):
         # Use the same zone/time pricing stack as /estimate.
         from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
         matched_zone = await find_matching_zone(p_lat, p_lng)
-        time_info = compute_time_multiplier(matched_zone)
+        pricing_time = _taxi_parse_pricing_time(req.scheduled_at)
+        time_info = compute_time_multiplier(matched_zone, now=pricing_time)
 
         fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
         if fixed:
