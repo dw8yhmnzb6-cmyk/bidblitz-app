@@ -986,11 +986,17 @@ def test_merchant_to_merchant_money_uses_canonical_idempotent_transfer():
 
 def test_auction_production_bots_cannot_manipulate_customer_auctions():
     source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionAdminPage.jsx").read_text(encoding="utf-8")
 
     assert 'if not TEST_MODE and not auction.get("bot_only"):' in source
     assert 'bot_query["bot_only"] = True' in source
     assert 'Bots dürfen in Production nur auf klar markierten bot_only' in source
     assert 'Bot-Strategien sind in Production nur für bot_only' in source
+    assert 'effective_bot_enabled = bool(req.bot_enabled and TEST_MODE)' in source
+    assert source.count('"bot_enabled": effective_bot_enabled') >= 2
+    assert '"bot_policy": (' in source
+    assert '"test_only"' in source
+    assert 'Production-Bots deaktiviert' in admin_page
     assert 'bot_last_bidder = str(raw_winner_id or "").startswith("bot_")' in source
     assert '"bot_last_bidder_requires_review"' in source
     assert '"requires_manual_review": needs_review' in source
