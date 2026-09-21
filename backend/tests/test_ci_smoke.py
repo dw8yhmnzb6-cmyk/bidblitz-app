@@ -2131,6 +2131,8 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
 
     assert mining.count("idempotency_key: Optional[str] = None") >= 2
     assert 'payment_idempotency_key = f"mining-buy:{raw_key}"' in mining
+    assert 'payment_status in {"pending", "reconciliation_required"}' in mining
+    assert "Mining-Kauf benötigt Wallet-Abstimmung" in mining
     assert '"miner_id": miner_id' in mining
     assert '{"$setOnInsert": miner}' in mining
     assert '{"txn_id": purchase_id}' in mining
@@ -2145,6 +2147,8 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'level_key: current_level' in mining
     assert 'idempotency_key=f"mining-upgrade-refund:{operation_id}"' in mining
     assert 'refund_status = "refunded" if refund.success else "reconciliation_required"' in mining
+    assert '"payment_status": payment_status' in mining
+    assert "Upgrade-Zahlung benötigt Abstimmung" in mining
     assert "Rückgutschrift benötigt finanzielle Abstimmung" in mining
 
     assert "LaunchpadBuyRequest" in phase2
@@ -2153,6 +2157,12 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'required_vip = str(project.get("min_vip") or "Bronze")' in phase2
     assert 'detail=f"VIP-Level {required_vip} erforderlich"' in phase2
     assert 'purchase.get("status") == "reconciliation_required"' in phase2
+    assert 'payment_status == "reconciliation_required"' in phase2
+    assert 'payment_status == "pending"' in phase2
+    assert '"status": "failed"' in phase2
+    assert "Frühere Launchpad-Zahlung fehlgeschlagen; bitte neuen Kaufversuch starten" in phase2
+    assert "completed_purchase_missing_miner" in phase2
+    assert "fulfillment_completed_purchase_finalize_not_confirmed" in phase2
     assert '"refund_error": refund.error' in phase2
     assert "Rückbuchung benötigt finanzielle Abstimmung" in phase2
     assert "class CardSpendRequest(BaseModel):" in phase2
