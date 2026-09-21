@@ -1380,7 +1380,7 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
         if ab.get("processing") and processing_slot is not None:
             try:
                 candidate_slot = int(processing_slot)
-                if candidate_slot >= 1 and candidate_slot <= max_bids:
+                if candidate_slot >= 1:
                     resume_slot = candidate_slot
             except (TypeError, ValueError):
                 resume_slot = None
