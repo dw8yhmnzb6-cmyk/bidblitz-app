@@ -2870,6 +2870,7 @@ def test_super_app_legacy_value_routes_are_retired():
 def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     backend = (BACKEND_DIR / "routes" / "blitz_mine.py").read_text(encoding="utf-8")
     page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzMinePage.jsx").read_text(encoding="utf-8")
+    database = (BACKEND_DIR / "core" / "database.py").read_text(encoding="utf-8")
 
     assert "def _require_blitz_idempotency_key" in backend
     assert "async def _mutate_blitz_wallet_once" in backend
@@ -2878,6 +2879,14 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert 'selector = {"_id": user_oid, marker_field: {"$exists": False}}' in backend
     assert 'wallet = await db.users.find_one({"_id": user_oid}, {"_id": 0, "balance_blz": 1}) or {}' in backend
 
+    assert '_require_blitz_idempotency_key(None, request, "blitz-session-start")' in backend
+    assert '"session_id": session_id' in backend
+    assert '"active_slot": user_id' in backend
+    assert '"$unset": {"claim_lock_until": "", "active_slot": ""}' in backend
+    assert '_require_blitz_idempotency_key(None, request, "blitz-boost-tap")' in backend
+    assert 'marker_field = f"boost_tap_markers.{digest}"' in backend
+    assert "find_one_and_update" in backend
+    assert "ReturnDocument.AFTER" in backend
     assert "claim_lock_until" in backend
     assert 'profile_marker = f"claim_markers.{claim_id}"' in backend
     assert 'idempotency_key=f"blitz-session-claim:{claim_id}:earnings"' in backend
@@ -2902,6 +2911,8 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert "BLZ wurden genau einmal gutgeschrieben; Lockup-Abschluss benötigt Abstimmung" in backend
 
     assert 'createAttemptKeyRef' not in page
+    assert "tapAttemptKeysRef" in page
+    assert "boostAttemptKeysRef" in page
     assert "lockupAttemptKeysRef" in page
     assert "quickBonusAttemptKeysRef" in page
     assert "claimAttemptKeysRef" in page
@@ -2912,7 +2923,10 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert "clearBlitzAttemptKey" in page
     assert 'data-testid="lockup-preview-disabled"' in page
     assert 'valueActionsEnabled={valueActionsEnabled}' in page
-    assert page.count('"Idempotency-Key": idempotencyKey') >= 3
+    assert "shouldKeepBlitzAttemptKey" in page
+    assert page.count('"Idempotency-Key": idempotencyKey') >= 5
+    assert 'db.blitz_mine_sessions, "session_id", unique=True, sparse=True, critical=True' in database
+    assert 'db.blitz_mine_sessions, "active_slot", unique=True, sparse=True, critical=True' in database
 
     assert '{"$inc": {"balance_blz": earnings}' not in backend
     assert '{"$inc": {"balance_blz": milestone_bonus}' not in backend
