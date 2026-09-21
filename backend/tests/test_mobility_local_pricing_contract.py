@@ -373,6 +373,11 @@ def test_scooter_pause_resume_use_real_iot_state_transitions():
     assert '@router.post("/resume")' in scooter
     assert "command = await send_device_command(device_id, DeviceCommand.LOCK)" in scooter
     assert "command = await send_device_command(device_id, DeviceCommand.UNLOCK)" in scooter
+    assert '{"$set": {"control_action": "pause", "control_started_at": control_started_at}}' in scooter
+    assert '{"$set": {"control_action": "resume", "control_started_at": control_started_at}}' in scooter
+    assert '{"$set": {"control_action": "end", "control_started_at": control_started_at}}' in scooter
+    assert '"$unset": {"control_action": "", "control_started_at": ""}' in scooter
+    assert "Eine andere Scooter-Aktion wird bereits verarbeitet" in scooter
     assert "if not TEST_MODE and not _iot_live_configured():" in scooter
     assert '"status": "paused"' in scooter
     assert '"status": "active"' in scooter
