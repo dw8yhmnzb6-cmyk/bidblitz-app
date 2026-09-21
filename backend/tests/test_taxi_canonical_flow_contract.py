@@ -156,3 +156,10 @@ def test_driver_dashboard_delegates_acceptance_to_canonical_taxi_handler():
     assert "_ensure_driver_accept_notification" in taxi
     assert 'driver["driver_id"] in (ride.get("rejected_driver_ids") or [])' in taxi
     assert "distance_to_pickup > 10" in taxi
+
+
+def test_taxi_trip_start_and_end_use_normalized_driver_location():
+    taxi = read("backend/routes/taxi.py")
+
+    assert '"start_location": driver.get("location") or driver.get("current_location") or ride.get("pickup", {})' in taxi
+    assert 'end_loc = driver.get("location") or driver.get("current_location") or ride.get("dropoff", {})' in taxi
