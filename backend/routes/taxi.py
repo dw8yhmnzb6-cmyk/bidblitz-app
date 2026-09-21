@@ -2960,8 +2960,13 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
     driver = await db.drivers.find_one({"user_id": user_id})
     if not driver:
         raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
-    
-    if not driver.get("online"):
+    driver_verified = (
+        (driver.get("verified") is True and driver.get("status") == "approved")
+        or (driver.get("is_verified") is True and driver.get("status") == "active")
+    )
+    if not driver_verified:
+        raise HTTPException(status_code=403, detail="Fahrer ist noch nicht freigeschaltet")
+    if not (driver.get("online") or driver.get("is_online")):
         raise HTTPException(status_code=400, detail="Du musst online sein")
     
     # Check driver doesn't have active ride
@@ -3018,11 +3023,11 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         },
         {"$set": {
             "driver_id": driver["driver_id"],
-            "driver_name": driver.get("user_name", ""),
+            "driver_name": driver.get("user_name") or driver.get("name") or "",
             "driver_phone": driver.get("phone", ""),
-            "driver_car": driver.get("car", {}),
+            "driver_car": driver.get("car") or driver.get("vehicle") or {},
             "driver_rating": driver.get("rating", 5.0),
-            "driver_location": driver.get("location", {}),
+            "driver_location": driver.get("location") or driver.get("current_location") or {},
             "status": RideStatus.ACCEPTED.value,
             "accepted_at": now.isoformat(),
         },
