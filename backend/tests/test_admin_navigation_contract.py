@@ -20,11 +20,14 @@ def test_every_admin_menu_nav_destination_exists_in_app_router():
     assert missing == [], f"Dead Admin navigation destinations: {missing}"
 
 
-def test_legacy_dead_coupon_route_is_not_reintroduced():
+def test_coupon_manager_uses_live_canonical_route():
     sections = read("frontend/src/components/admin/sections.js")
+    app = read("frontend/src/App.js")
+    route_map = read("frontend/src/app/adminRouteMap.js")
 
-    assert 'nav: "/admin/coupons"' not in sections
-    assert '{ key: "coupon-manager", icon: Gift, label: "Gutschein-Manager", nav: "/admin/discounts" }' in sections
+    assert '{ key: "coupon-manager", icon: Gift, label: "Gutschein-Manager", nav: "/admin/coupons" }' in sections
+    assert 'case "/admin/coupons":' in app
+    assert 'coupons: "promos"' in route_map
 
 
 def test_key_admin_sections_open_existing_manager_pages():
