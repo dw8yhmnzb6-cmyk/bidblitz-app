@@ -3596,3 +3596,8 @@ def test_auction_duration_contract_is_two_to_three_days():
     assert "duration_seconds: int = Field(default=172800, ge=172800, le=259200)" in source
     assert "default_duration_hours: int = Field(default=48, ge=48, le=72)" in source
     assert source.count("duration_hours: int = Field(default=48, ge=48, le=72)") >= 2
+    assert "duration_hours = 48 if int(slot_index or 0) % 2 == 0 else 72" in source
+    assert "duration_seconds = duration_hours * 3600" in source
+    assert '"bot_final_phase_seconds": 300' in source
+    assert '"bot_min_seconds": 300' in source
+    assert "604800" not in source
