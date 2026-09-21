@@ -43,7 +43,7 @@ export const AUCTIONS_OVERVIEW_CONFIG = {
   routeKey: 'auctions-overview',
   waitFor: '[data-testid="auctions-page"]',
   fullPageTestId: '[data-testid="auctions-page"]',
-  primaryActionSelector: '[data-testid^="auction-open-"]',
+  primaryActionSelector: '[data-testid^="auction-premium-quick-bid-"], [data-testid^="auction-quick-bid-"]',
   primaryActionMayScroll: true,
   priceSelectors: ['[data-testid^="auction-price-"]'],
   timerSelectors: ['[data-testid^="auction-card-timer-"]'],
