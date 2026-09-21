@@ -625,16 +625,21 @@ tab, t, loading,
                           <p className="text-[9px] text-[#333] mt-1">{t("admin.comp_user")}: {flag.user_id || "-"} · {flag.txn_type || "-"} · €{flag.amount?.toFixed(2) || "0.00"}</p>
                           <p className="text-[8px] text-[#222] mt-0.5">{new Date(flag.created_at).toLocaleString()}</p>
                           {flag.status === "open" && (
-                            <motion.button data-testid={`resolve-flag-${i}`}
+                            <motion.button data-testid={`resolve-flag-${flag.flag_id || i}`}
+                              disabled={!flag.flag_id}
                               onClick={async () => {
+                                if (!flag.flag_id) {
+                                  toast.error("Compliance-Flag hat keine stabile ID. Bitte neu laden.");
+                                  return;
+                                }
                                 try {
-                                  await api(`/api/admin/compliance-flags/${encodeURIComponent(flag.flag_id || String(i))}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
-                                  setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
+                                  await api(`/api/admin/compliance-flags/${encodeURIComponent(flag.flag_id)}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
+                                  setComplianceFlags(complianceFlags.map((item) => item.flag_id === flag.flag_id ? { ...item, status: "resolved" } : item));
                                 } catch (error) {
                                   toast.error(error?.message || "Compliance-Flag konnte nicht aufgelöst werden.");
                                 }
                               }}
-                              className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
+                              className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:cursor-not-allowed disabled:opacity-40"
                               whileTap={{ scale: 0.95 }}>
                               {t("admin.comp_resolve")}
                             </motion.button>
