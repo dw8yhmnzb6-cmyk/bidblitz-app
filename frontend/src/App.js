@@ -545,12 +545,10 @@ function AppContent() {
       }
     }
 
-    // Scan tab
-    if (path === "/scan") {
-      if (isGuest) {
-        requireAuth();
-        return;
-      }
+    // Auth-required feature entry points should never fail silently back to Home.
+    if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {
+      requireAuth(path === "/mining" || path === "/blitz-mine" ? "Bitte anmelden, um Mining zu öffnen." : "");
+      return;
     }
     // Admin page requires admin role
     if (path === "/admin" && (!user.isAuthenticated || user.role !== "admin")) {
@@ -741,7 +739,7 @@ function AppContent() {
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
         return (isGuest && !isDemoMode)
-          ? <HomePage {...homeProps} />
+          ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
           : <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />;
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
@@ -885,7 +883,9 @@ function AppContent() {
       case "/blitz-boost":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-mine":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode)
+          ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
+          : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/legal/agb":
       case "/legal/datenschutz":
       case "/legal/impressum":
