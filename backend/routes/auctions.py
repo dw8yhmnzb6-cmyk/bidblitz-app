@@ -3516,6 +3516,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
     else:
         bot_target = req.bot_target_price
     
+    effective_bot_enabled = bool(req.bot_enabled and TEST_MODE)
     auction_id = secrets.token_hex(8)
     auction = {
         "auction_id": auction_id,
@@ -3542,7 +3543,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
         "category": product.get("category", ""),
         "features": product.get("features", []),
         "condition": product.get("condition", "Brand New — Factory Sealed"),
-        "bot_enabled": req.bot_enabled,
+        "bot_enabled": effective_bot_enabled,
         "bot_target_price": bot_target,
         "bot_min_seconds": 60,
         "bot_probability": 0.4,
@@ -3556,6 +3557,11 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
     return {
         "ok": True,
         "auction": auction,
+        "bot_policy": (
+            "test_only"
+            if req.bot_enabled and not TEST_MODE
+            else ("enabled" if effective_bot_enabled else "disabled")
+        ),
         "message": f"Auction '{product['title']}' {'scheduled for ' + start_time.isoformat() if status == 'scheduled' else 'started immediately'}",
     }
 
@@ -3568,6 +3574,7 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
         raise HTTPException(status_code=403, detail="Admin only")
     
     now = datetime.now(timezone.utc)
+    effective_bot_enabled = bool(req.bot_enabled and TEST_MODE)
     created = []
     
     for i, idx in enumerate(req.product_indices):
@@ -3608,7 +3615,7 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
             "category": product.get("category", ""),
             "features": product.get("features", []),
             "condition": product.get("condition", "Brand New — Factory Sealed"),
-            "bot_enabled": req.bot_enabled,
+            "bot_enabled": effective_bot_enabled,
             "bot_target_price": bot_target,
             "bot_min_seconds": 60,
             "bot_probability": 0.4,
@@ -3622,6 +3629,11 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
         "ok": True,
         "created_count": len(created),
         "auctions": created,
+        "bot_policy": (
+            "test_only"
+            if req.bot_enabled and not TEST_MODE
+            else ("enabled" if effective_bot_enabled else "disabled")
+        ),
     }
 
 
