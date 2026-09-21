@@ -412,6 +412,32 @@ async def send_device_command(device_id: str, command: DeviceCommand, params: di
         )
         return DeviceCommandResult(False, "IoT command failed")
 
+
+async def _quarantine_uncertain_scooter_state(
+    scooter_id: str,
+    *,
+    command: str,
+    message: str,
+) -> None:
+    """Keep an unconfirmed physical state out of the rentable fleet."""
+    await db.scooters.update_one(
+        {"scooter_id": scooter_id},
+        {
+            "$set": {
+                "status": "offline",
+                "device_state_uncertain": True,
+                "device_state_uncertain_command": command,
+                "device_state_uncertain_reason": message,
+                "device_state_uncertain_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$unset": {
+                "unlock_claim_key": "",
+                "unlock_claim_user_id": "",
+                "unlock_claimed_at": "",
+            },
+        },
+    )
+
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance in km using Haversine formula."""
     R = 6371
@@ -732,10 +758,17 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     if device_id:
         cmd_result = await send_device_command(device_id, DeviceCommand.UNLOCK)
         if not cmd_result.success:
-            await db.scooters.update_one(
-                {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
-                {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
-            )
+            if cmd_result.data.get("confirmation_required"):
+                await _quarantine_uncertain_scooter_state(
+                    scooter_id,
+                    command="unlock",
+                    message=cmd_result.message,
+                )
+            else:
+                await db.scooters.update_one(
+                    {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
+                    {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
+                )
             raise HTTPException(status_code=503, detail=f"Scooter Entsperrung fehlgeschlagen: {cmd_result.message}")
 
     payment_result = None
@@ -750,12 +783,18 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             idempotency_key=idempotency_key,
         )
         if not payment_result.success:
-            if device_id:
-                await send_device_command(device_id, DeviceCommand.LOCK)
-            await db.scooters.update_one(
-                {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
-                {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
-            )
+            rollback_lock = await send_device_command(device_id, DeviceCommand.LOCK) if device_id else None
+            if rollback_lock and not rollback_lock.success:
+                await _quarantine_uncertain_scooter_state(
+                    scooter_id,
+                    command="lock_after_payment_failure",
+                    message=rollback_lock.message,
+                )
+            else:
+                await db.scooters.update_one(
+                    {"_id": scooter["_id"], "unlock_claim_key": claim_hash},
+                    {"$set": {"status": original_status}, "$unset": {"unlock_claim_key": "", "unlock_claim_user_id": "", "unlock_claimed_at": ""}},
+                )
             raise HTTPException(status_code=400, detail=payment_result.error or "Entsperrgebühr konnte nicht bezahlt werden")
 
     now = datetime.now(timezone.utc)
@@ -832,7 +871,13 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             {"$set": {"status": "cancelled", "cancel_reason": "scooter_assignment_failed", "refund_transaction_id": refund.transaction_id if refund and refund.success else None}},
         )
         if device_id:
-            await send_device_command(device_id, DeviceCommand.LOCK)
+            rollback_lock = await send_device_command(device_id, DeviceCommand.LOCK)
+            if not rollback_lock.success:
+                await _quarantine_uncertain_scooter_state(
+                    scooter_id,
+                    command="lock_after_assignment_failure",
+                    message=rollback_lock.message,
+                )
         raise HTTPException(status_code=409, detail="Scooter-Zuweisung fehlgeschlagen. Entsperrgebühr wurde zurückgebucht.")
 
     ride["rental_id"] = ride_id
