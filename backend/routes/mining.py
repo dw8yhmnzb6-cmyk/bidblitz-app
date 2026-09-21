@@ -260,13 +260,194 @@ import logging
 auto_reward_logger = logging.getLogger("bidblitz.auto_reward")
 
 
+async def _settle_daily_mining_reward(user_id: str, miners: list[dict], claim_type: str) -> dict:
+    """Settle one user's daily test reward exactly once and recover safely after retries."""
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="Mining rewards are not live")
+
+    if not miners:
+        raise HTTPException(status_code=400, detail="No active miners")
+
+    total_hashrate = sum(
+        _safe_mining_float(m.get("hashrate")) * (1 + _safe_mining_float(m.get("power_level")) * 0.1)
+        for m in miners
+    )
+    avg_eff = (
+        sum(
+            _safe_mining_float(m.get("efficiency"), 0.85)
+            + _safe_mining_float(m.get("efficiency_level")) * 0.01
+            for m in miners
+        ) / len(miners)
+    )
+    vip = get_vip_level(total_hashrate)
+    calculated_earnings = calc_daily_earnings(total_hashrate, avg_eff, vip["bonus"])
+    if calculated_earnings <= 0:
+        raise HTTPException(status_code=400, detail="No earnings to claim")
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    claim_hash = hashlib.sha256(f"{user_id}:{today}".encode("utf-8")).hexdigest()[:20]
+    claim_id = f"MREWARD-{claim_hash.upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    inserted = await db.mining_claims.update_one(
+        {"user_id": user_id, "date": today},
+        {"$setOnInsert": {
+            "claim_id": claim_id,
+            "user_id": user_id,
+            "date": today,
+            "status": "processing",
+            "amount": calculated_earnings,
+            "hashrate": round(total_hashrate, 4),
+            "type": claim_type,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    claim = await db.mining_claims.find_one({"user_id": user_id, "date": today}, {"_id": 0}) or {}
+    if claim.get("status") == "completed":
+        wallet = await get_or_create_wallet(user_id)
+        amount = _safe_mining_float(claim.get("amount"))
+        return {
+            "claimed": amount,
+            "claimed_eur": round(amount * BLZ_TO_EUR, 4),
+            "new_balance": wallet["blz_balance"],
+            "claim_id": claim.get("claim_id") or claim_id,
+            "replayed": True,
+        }
+    if claim.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Mining Reward benötigt Abstimmung; keine erneute Gutschrift wird ausgeführt")
+    if claim.get("status") not in (None, "processing"):
+        raise HTTPException(status_code=409, detail="Mining Reward befindet sich in einem nicht fortsetzbaren Zustand")
+
+    persisted_claim_id = str(claim.get("claim_id") or claim_id)
+    earnings = _safe_mining_float(claim.get("amount"), calculated_earnings)
+    await get_or_create_wallet(user_id)
+    credit_marker = f"daily_reward_credits.{persisted_claim_id}"
+    credited = await db.mining_wallets.update_one(
+        {
+            "user_id": user_id,
+            credit_marker: {"$exists": False},
+        },
+        {
+            "$inc": {"blz_balance": earnings, "total_mined": earnings},
+            "$set": {credit_marker: {
+                "amount": earnings,
+                "date": today,
+                "credited_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        },
+    )
+    if credited.modified_count != 1:
+        wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+        if not (wallet.get("daily_reward_credits") or {}).get(persisted_claim_id):
+            await db.mining_claims.update_one(
+                {"user_id": user_id, "date": today, "status": "processing"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "reward_credit_not_confirmed",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Mining Reward Gutschrift nicht bestätigt; Abstimmung erforderlich")
+
+    await db.mining_transactions.update_one(
+        {"txn_id": persisted_claim_id},
+        {"$setOnInsert": {
+            "txn_id": persisted_claim_id,
+            "user_id": user_id,
+            "type": "mining_reward",
+            "amount_blz": earnings,
+            "description": f"{claim_type.capitalize()} mining reward ({_safe_mining_float(claim.get('hashrate'), total_hashrate):.0f} TH/s)",
+            "claim_id": persisted_claim_id,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+
+    ref_entry = await db.mining_referrals.find_one({"referred_id": user_id})
+    if ref_entry:
+        referrer_id = str(ref_entry["referrer_id"])
+        ref_bonus = round(earnings * REFERRAL_BONUS_RATE, 8)
+        if ref_bonus > 0:
+            await get_or_create_wallet(referrer_id)
+            ref_marker = f"referral_reward_credits.{persisted_claim_id}"
+            ref_credit = await db.mining_wallets.update_one(
+                {"user_id": referrer_id, ref_marker: {"$exists": False}},
+                {
+                    "$inc": {"blz_balance": ref_bonus, "total_mined": ref_bonus},
+                    "$set": {ref_marker: {
+                        "amount": ref_bonus,
+                        "referred_id": user_id,
+                        "credited_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                },
+            )
+            if ref_credit.modified_count == 1:
+                await db.mining_transactions.update_one(
+                    {"txn_id": f"{persisted_claim_id}-REF"},
+                    {"$setOnInsert": {
+                        "txn_id": f"{persisted_claim_id}-REF",
+                        "user_id": referrer_id,
+                        "type": "referral_bonus",
+                        "amount_blz": ref_bonus,
+                        "description": "Referral mining bonus",
+                        "claim_id": persisted_claim_id,
+                        "created_at": now,
+                    }},
+                    upsert=True,
+                )
+            else:
+                ref_wallet = await db.mining_wallets.find_one({"user_id": referrer_id}) or {}
+                if not (ref_wallet.get("referral_reward_credits") or {}).get(persisted_claim_id):
+                    await db.mining_claims.update_one(
+                        {"user_id": user_id, "date": today, "status": "processing"},
+                        {"$set": {
+                            "status": "reconciliation_required",
+                            "error": "referral_credit_not_confirmed",
+                            "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    )
+                    raise HTTPException(status_code=503, detail="Referral-Gutschrift nicht bestätigt; Mining Reward benötigt Abstimmung")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    finalized = await db.mining_claims.update_one(
+        {"user_id": user_id, "date": today, "status": "processing"},
+        {"$set": {
+            "status": "completed",
+            "claim_id": persisted_claim_id,
+            "amount": earnings,
+            "claimed_at": completed_at,
+            "completed_at": completed_at,
+        }},
+    )
+    if finalized.modified_count != 1:
+        fresh_claim = await db.mining_claims.find_one({"user_id": user_id, "date": today}, {"_id": 0}) or {}
+        if fresh_claim.get("status") != "completed":
+            await db.mining_claims.update_one(
+                {"user_id": user_id, "date": today},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "claim_finalize_not_confirmed",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Mining Reward wurde gebucht; Abschluss benötigt Abstimmung")
+
+    wallet = await get_or_create_wallet(user_id)
+    return {
+        "claimed": earnings,
+        "claimed_eur": round(earnings * BLZ_TO_EUR, 4),
+        "new_balance": wallet["blz_balance"],
+        "claim_id": persisted_claim_id,
+        "replayed": inserted.upserted_id is None,
+    }
+
+
 async def process_auto_rewards():
-    """Process automatic daily rewards only in test mode until a live provider exists."""
+    """Process automatic daily rewards exactly once per user/day in test mode."""
     if not TEST_MODE:
         return 0
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Find distinct user_ids that have active miners
     pipeline = [
         {"$match": {"status": "active"}},
         {"$group": {"_id": "$user_id"}},
@@ -275,86 +456,24 @@ async def process_auto_rewards():
 
     rewarded = 0
     for ug in user_groups:
-        user_id = ug["_id"]
+        user_id = str(ug["_id"])
         try:
-            # Check if already rewarded today
-            existing = await db.mining_claims.find_one({"user_id": user_id, "date": today})
-            if existing:
-                continue
-
-            # Get active miners
             miners = await db.mining_miners.find(
                 {"user_id": user_id, "status": "active"}
             ).to_list(50)
             if not miners:
                 continue
-
-            total_hashrate = sum(
-                m.get("hashrate", 0) * (1 + m.get("power_level", 0) * 0.1) for m in miners
-            )
-            avg_eff = (
-                sum(m.get("efficiency", 0.85) + m.get("efficiency_level", 0) * 0.01 for m in miners)
-                / len(miners)
-            )
-            vip = get_vip_level(total_hashrate)
-            earnings = calc_daily_earnings(total_hashrate, avg_eff, vip["bonus"])
-
-            if earnings <= 0:
-                continue
-
-            now = datetime.now(timezone.utc).isoformat()
-
-            # Credit wallet
-            await db.mining_wallets.update_one(
-                {"user_id": user_id},
-                {"$inc": {"blz_balance": earnings, "total_mined": earnings}},
-                upsert=True,
-            )
-
-            # Record claim (auto)
-            await db.mining_claims.insert_one({
-                "user_id": user_id,
-                "date": today,
-                "amount": earnings,
-                "claimed_at": now,
-                "type": "auto",
-            })
-
-            # Transaction log
-            await db.mining_transactions.insert_one({
-                "txn_id": secrets.token_hex(6),
-                "user_id": user_id,
-                "type": "mining_reward",
-                "amount_blz": earnings,
-                "description": f"Auto reward ({total_hashrate:.0f} TH/s)",
-                "created_at": now,
-            })
-
-            # Referral bonus
-            ref_entry = await db.mining_referrals.find_one({"referred_id": user_id})
-            if ref_entry:
-                ref_bonus = round(earnings * REFERRAL_BONUS_RATE, 8)
-                if ref_bonus > 0:
-                    await db.mining_wallets.update_one(
-                        {"user_id": ref_entry["referrer_id"]},
-                        {"$inc": {"blz_balance": ref_bonus, "total_mined": ref_bonus}},
-                        upsert=True,
-                    )
-                    await db.mining_transactions.insert_one({
-                        "txn_id": secrets.token_hex(6),
-                        "user_id": ref_entry["referrer_id"],
-                        "type": "referral_bonus",
-                        "amount_blz": ref_bonus,
-                        "description": "Auto referral mining bonus",
-                        "created_at": now,
-                    })
-
-            rewarded += 1
-        except Exception as e:
-            auto_reward_logger.error(f"Auto-reward failed for {user_id}: {e}")
+            outcome = await _settle_daily_mining_reward(user_id, miners, "auto")
+            if not outcome.get("replayed"):
+                rewarded += 1
+        except HTTPException as exc:
+            if exc.status_code >= 500:
+                auto_reward_logger.error(f"Auto-reward reconciliation required for {user_id}: {exc.detail}")
+        except Exception as exc:
+            auto_reward_logger.error(f"Auto-reward failed for {user_id}: {exc}")
 
     if rewarded > 0:
-        auto_reward_logger.info(f"Auto-rewards: {rewarded} users rewarded for {today}")
+        auto_reward_logger.info(f"Auto-rewards: {rewarded} users rewarded")
     return rewarded
 
 
@@ -861,90 +980,14 @@ async def get_upgrade_costs(request: Request):
 # ── Claim Daily Reward ──
 @router.post("/claim-daily")
 async def claim_daily(request: Request):
-    """Claim daily mining earnings."""
+    """Claim or safely resume today's test mining reward."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    claim_marker = await db.mining_claims.update_one(
-        {"user_id": user_id, "date": today},
-        {"$setOnInsert": {
-            "user_id": user_id,
-            "date": today,
-            "status": "processing",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }},
-        upsert=True,
-    )
-    if claim_marker.upserted_id is None:
-        raise HTTPException(status_code=400, detail="Already claimed today")
-
     miners = await db.mining_miners.find(
         {"user_id": user_id, "status": "active"}
     ).to_list(50)
-
-    if not miners:
-        raise HTTPException(status_code=400, detail="No active miners")
-
-    total_hashrate = sum(m.get("hashrate", 0) * (1 + m.get("power_level", 0) * 0.1) for m in miners)
-    avg_eff = sum(m.get("efficiency", 0.85) + m.get("efficiency_level", 0) * 0.01 for m in miners) / len(miners)
-    vip = get_vip_level(total_hashrate)
-    earnings = calc_daily_earnings(total_hashrate, avg_eff, vip["bonus"])
-
-    if earnings <= 0:
-        raise HTTPException(status_code=400, detail="No earnings to claim")
-
-    now = datetime.now(timezone.utc).isoformat()
-
-    # Credit wallet
-    await db.mining_wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"blz_balance": earnings, "total_mined": earnings}},
-        upsert=True,
-    )
-
-    # Finalise the atomic daily claim marker.
-    await db.mining_claims.update_one(
-        {"user_id": user_id, "date": today, "status": "processing"},
-        {"$set": {"status": "completed", "amount": earnings, "claimed_at": now}},
-    )
-
-    # Transaction
-    await db.mining_transactions.insert_one({
-        "txn_id": secrets.token_hex(6),
-        "user_id": user_id,
-        "type": "mining_reward",
-        "amount_blz": earnings,
-        "description": f"Daily mining reward ({total_hashrate:.0f} TH/s)",
-        "created_at": now,
-    })
-
-    # Referral bonus
-    ref_entry = await db.mining_referrals.find_one({"referred_id": user_id})
-    if ref_entry:
-        ref_bonus = round(earnings * REFERRAL_BONUS_RATE, 8)
-        if ref_bonus > 0:
-            await db.mining_wallets.update_one(
-                {"user_id": ref_entry["referrer_id"]},
-                {"$inc": {"blz_balance": ref_bonus, "total_mined": ref_bonus}},
-                upsert=True,
-            )
-            await db.mining_transactions.insert_one({
-                "txn_id": secrets.token_hex(6),
-                "user_id": ref_entry["referrer_id"],
-                "type": "referral_bonus",
-                "amount_blz": ref_bonus,
-                "description": "Referral mining bonus",
-                "created_at": now,
-            })
-
-    wallet = await get_or_create_wallet(user_id)
-    return {
-        "claimed": earnings,
-        "claimed_eur": round(earnings * BLZ_TO_EUR, 4),
-        "new_balance": wallet["blz_balance"],
-    }
+    return await _settle_daily_mining_reward(user_id, miners, "manual")
 
 
 # ── Withdraw BLZ to EUR wallet ──
