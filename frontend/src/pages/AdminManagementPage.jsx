@@ -761,6 +761,7 @@ const ModulesTab = ({ initialModule }) => {
 };
 
 const ModuleCRUD = ({ mod, onBack }) => {
+  const moderationOnly = mod.key === "dating";
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
@@ -790,14 +791,15 @@ const ModuleCRUD = ({ mod, onBack }) => {
   useEffect(() => { load(); }, [load]);
 
   const del = async (id) => {
-    if (!window.confirm("Eintrag löschen?")) return;
+    const confirmText = moderationOnly ? "Dating-Profil moderativ deaktivieren?" : "Eintrag löschen?";
+    if (!window.confirm(confirmText)) return;
     try {
       const res = await fetch(`${API}/api/admin/module/${mod.key}/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "include",
       });
       if (!res.ok) throw new Error((await res.json()).detail || "Fehler");
-      toast.success("Gelöscht");
+      toast.success(moderationOnly ? "Profil deaktiviert" : "Gelöscht");
       load();
     } catch (err) {
       toast.error(err.message);
@@ -836,7 +838,7 @@ const ModuleCRUD = ({ mod, onBack }) => {
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : items.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">{readOnly ? "Keine Live-Daten vorhanden." : <>Noch keine Einträge. Klick &quot;Neu&quot;.</>}</p>
+        <p className="text-center text-gray-400 text-sm py-8">{readOnly ? "Keine Live-Daten vorhanden." : createDisabled ? "Keine Einträge vorhanden." : <>Noch keine Einträge. Klick &quot;Neu&quot;.</>}</p>
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {
@@ -857,19 +859,22 @@ const ModuleCRUD = ({ mod, onBack }) => {
                 </div>
                 {!readOnly && (
                   <>
+                    {!moderationOnly && (
+                      <button
+                        data-testid={`item-edit-${id}`}
+                        onClick={() => { setEditing(item); setShowForm(true); }}
+                        className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    )}
                     <button
-                      data-testid={`item-edit-${id}`}
-                      onClick={() => { setEditing(item); setShowForm(true); }}
-                      className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
-                    >
-                      <Edit3 size={12} />
-                    </button>
-                    <button
-                      data-testid={`item-delete-${id}`}
+                      data-testid={moderationOnly ? `item-disable-${id}` : `item-delete-${id}`}
                       onClick={() => del(id)}
+                      title={moderationOnly ? "Profil deaktivieren" : "Eintrag löschen"}
                       className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center"
                     >
-                      <Trash2 size={12} />
+                      {moderationOnly ? <Ban size={12} /> : <Trash2 size={12} />}
                     </button>
                   </>
                 )}
