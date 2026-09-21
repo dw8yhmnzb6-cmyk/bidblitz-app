@@ -172,6 +172,12 @@ const ParcelPage = ({ onBack }) => {
         <div className="p-4 space-y-3">
           <motion.button whileTap={{ scale: 0.95 }} onClick={() => setView("quote")} className="text-xs text-[#F97316] font-medium flex items-center gap-1"><ArrowLeft size={14} /> Maße ändern</motion.button>
           <p className="text-[10px] text-gray-500">{weight}kg Paket — {quotes.length} Anbieter</p>
+          {!bookingEnabled && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200" data-testid="parcel-quote-preview">
+              <p className="font-bold">Preisvergleich Preview</p>
+              <p className="mt-1 text-amber-100/70">{providerMessage || "Carrier-Preise sind Richtwerte; echte Buchung ist noch nicht verbunden."}</p>
+            </div>
+          )}
           {quotes.map((q, i) => (
             <motion.div key={q.carrier_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               onClick={() => { setSelectedCarrier(q); setView("book"); setBookResult(null); setError(""); }}
