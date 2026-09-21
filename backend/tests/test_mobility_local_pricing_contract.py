@@ -40,7 +40,7 @@ def test_taxi_uses_canonical_mobility_profile_before_legacy_fallback():
     legacy_city = taxi.index("# 3) Legacy city defaults remain as a compatibility fallback.")
     assert canonical < legacy_city
     assert '"pricing_source": "mobility_profile"' in taxi
-    assert '"profile_scope": pricing_context.get("profile_scope") or "country"' in taxi
+    assert '"profile_scope": option.get("pricing_scope") or pricing_context.get("profile_scope") or "country"' in taxi
 
 
 def test_taxi_non_eur_booking_is_fail_closed_and_ui_surfaces_local_source():
