@@ -40,7 +40,7 @@ function AuctionCardImage({ imageUrl, fallbackImage, title, isEnded }) {
   );
 }
 
-export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, onToggleWatch, lang = "de" }) {
+export default function AuctionGridCard({ auction, onClick, onBid, bidding = false, t, idx, isWatched, onToggleWatch, lang = "de" }) {
   const isEnded = auction.status === "ended";
   const loc = localized(auction, lang);
   const [rem, setRem] = useState(0);
@@ -65,7 +65,9 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
     : formatBidBlitzDuration(rem, { locale: lang, compact: d === 0 });
 
   return (
-    <motion.button
+    <motion.div
+      role="button"
+      tabIndex={0}
       data-testid={`auction-card-${auction.auction_id}`}
       data-product-id={auction.product_id || auction.auction_id}
       data-product-title={auction.product_title || auction.title}
@@ -76,7 +78,13 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
       data-image-confidence={auction.image_confidence ?? 0.9}
       data-image-manual-review={auction.image_manual_review_required ? 'true' : 'false'}
       onClick={onClick}
-      className="w-full rounded-[26px] overflow-hidden text-left relative group"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
+      className="w-full rounded-[26px] overflow-hidden text-left relative group cursor-pointer"
       style={{
         background: "linear-gradient(180deg, rgba(12,16,28,0.98) 0%, rgba(8,12,22,0.99) 100%)",
         border: isFinalBattle ? "1px solid rgba(255,64,96,0.25)" : isHot ? "1px solid rgba(255,138,66,0.15)" : "1px solid rgba(255,255,255,0.05)",
@@ -265,22 +273,34 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
         </div>
 
         {!isEnded && !auction.bot_only ? (
-          <motion.div
-            data-testid={`auction-open-${auction.auction_id}`}
-            className="flex items-center justify-center gap-2 py-3 rounded-2xl cursor-pointer min-h-[48px]"
+          <motion.button
+            type="button"
+            data-testid={`auction-quick-bid-${auction.auction_id}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onBid?.(auction);
+            }}
+            disabled={bidding}
+            className="flex w-full items-center justify-center gap-2 py-3 rounded-2xl cursor-pointer min-h-[48px] disabled:opacity-55"
             style={{
               background: isFinalBattle
-                ? "linear-gradient(135deg, rgba(255,64,96,0.15) 0%, rgba(255,64,96,0.08) 100%)"
-                : "linear-gradient(135deg, rgba(0,224,255,0.12) 0%, rgba(0,224,255,0.06) 100%)",
-              border: `1px solid ${isFinalBattle ? "rgba(255,64,96,0.25)" : "rgba(0,224,255,0.2)"}`,
+                ? "linear-gradient(135deg, rgba(255,64,96,0.18) 0%, rgba(255,64,96,0.10) 100%)"
+                : "linear-gradient(135deg, rgba(0,224,255,0.92) 0%, rgba(53,215,255,0.82) 100%)",
+              border: `1px solid ${isFinalBattle ? "rgba(255,64,96,0.30)" : "rgba(0,224,255,0.35)"}`,
+              color: isFinalBattle ? "#FF7A91" : "#03131A",
+              boxShadow: isFinalBattle ? "0 8px 24px rgba(255,64,96,0.12)" : "0 8px 24px rgba(0,224,255,0.16)",
             }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.97 }}
           >
-            <Zap size={15} className={isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"} />
-            <span className={`text-[14px] sm:text-[14px] font-bold ${isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}>
-              {t("auction.bid_now")} +0,01
-            </span>
-          </motion.div>
+            {bidding ? <span className="text-[12px] font-black">Bietet…</span> : (
+              <>
+                <Gavel size={15} />
+                <span className="text-[13px] sm:text-[14px] font-black">
+                  {Number(auction.bid_value_eur || 0.5).toFixed(2).replace(".", ",")} € bieten
+                </span>
+              </>
+            )}
+          </motion.button>
         ) : !isEnded ? (
           <div
             className="flex items-center justify-center gap-1.5 py-3 rounded-2xl min-h-[48px]"
@@ -291,6 +311,6 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           </div>
         ) : null}
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
