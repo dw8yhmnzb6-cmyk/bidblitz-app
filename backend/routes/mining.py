@@ -555,8 +555,22 @@ async def mining_dashboard(request: Request):
     ref_count = await db.mining_referrals.count_documents({"referrer_id": user_id})
     ref_code = user.get("mining_ref_code")
     if not ref_code:
-        ref_code = f"BLZ-{secrets.token_hex(3).upper()}"
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"mining_ref_code": ref_code}})
+        candidate_code = f"BLZ-{hashlib.sha256(user_id.encode('utf-8')).hexdigest()[:12].upper()}"
+        await db.users.update_one(
+            {
+                "_id": user["_id"],
+                "$or": [
+                    {"mining_ref_code": {"$exists": False}},
+                    {"mining_ref_code": None},
+                    {"mining_ref_code": ""},
+                ],
+            },
+            {"$set": {"mining_ref_code": candidate_code}},
+        )
+        refreshed_user = await db.users.find_one({"_id": user["_id"]}, {"mining_ref_code": 1, "_id": 0}) or {}
+        ref_code = refreshed_user.get("mining_ref_code")
+        if not ref_code:
+            raise HTTPException(status_code=503, detail="Mining Referral-Code konnte nicht sicher erzeugt werden")
 
     # Referral boost: does this user HAVE a referrer?
     my_referrer = await db.mining_referrals.find_one({"referred_id": user_id})
@@ -567,7 +581,7 @@ async def mining_dashboard(request: Request):
 
     # Claim streak
     claim_history = await db.mining_claims.find(
-        {"user_id": user_id}, {"_id": 0}
+        {"user_id": user_id, "status": "completed"}, {"_id": 0}
     ).sort("date", -1).to_list(30)
     streak = 0
     today_d = datetime.now(timezone.utc).date()
