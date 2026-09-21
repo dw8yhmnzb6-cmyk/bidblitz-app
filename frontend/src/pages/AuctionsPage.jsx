@@ -718,10 +718,17 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       setWinnerCheckoutError("Bitte fülle Name, Straße, PLZ, Stadt und Land vollständig aus.");
       return;
     }
+    const attemptStorageKey = `bidblitz:auction-winner:${user?.id || user?.email || "unknown"}:${winnerCheckout.auction_id}`;
+    if (!winnerCheckoutKeyRef.current && typeof window !== "undefined") {
+      winnerCheckoutKeyRef.current = window.sessionStorage.getItem(attemptStorageKey);
+    }
     if (!winnerCheckoutKeyRef.current) {
       winnerCheckoutKeyRef.current = typeof crypto?.randomUUID === "function"
         ? `auction-winner-${crypto.randomUUID()}`
         : `auction-winner-${Date.now()}-${winnerCheckout.auction_id}`;
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(attemptStorageKey, winnerCheckoutKeyRef.current);
+      }
     }
     setWinnerCheckoutPaying(true);
     setWinnerCheckoutError("");
@@ -731,11 +738,13 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
         idempotency_key: winnerCheckoutKeyRef.current,
       });
       winnerCheckoutKeyRef.current = null;
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
       setWinnerCheckout(data);
       await fetchAuctions();
     } catch (e) {
       if (e?.status === 400) {
         winnerCheckoutKeyRef.current = null;
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
       }
       setWinnerCheckoutError(e.message || "Zahlung fehlgeschlagen.");
     } finally {
