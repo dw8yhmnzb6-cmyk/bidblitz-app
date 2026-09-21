@@ -1141,6 +1141,10 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
             "new_balance": round(float(fresh_user.get("balance") or 0), 2),
             "replayed": True,
         }
+    if purchase.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Launchpad-Kauf benötigt finanzielle Abstimmung; keine erneute Belastung wird ausgeführt")
+    if purchase.get("status") in {"refunded", "failed"}:
+        raise HTTPException(status_code=409, detail="Launchpad-Kauf wurde beendet oder zurückgebucht")
 
     price = round(float(project.get("price_eur") or 0), 2)
     debit = await debit_wallet(
@@ -1190,9 +1194,27 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
                     metadata={"project_id": req.project_id, "purchase_id": purchase_id},
                     idempotency_key=f"mining-launchpad-refund:{purchase_id}",
                 )
+                if not refund.success:
+                    await db.mining_launchpad_buys.update_one(
+                        {"purchase_id": purchase_id},
+                        {"$set": {
+                            "status": "reconciliation_required",
+                            "refund_transaction_id": getattr(refund, "transaction_id", None),
+                            "refund_error": refund.error,
+                            "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    )
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Launchpad ist ausverkauft; Rückbuchung benötigt finanzielle Abstimmung.",
+                    )
                 await db.mining_launchpad_buys.update_one(
                     {"purchase_id": purchase_id},
-                    {"$set": {"status": "refunded", "refund_transaction_id": refund.transaction_id if refund.success else None}},
+                    {"$set": {
+                        "status": "refunded",
+                        "refund_transaction_id": refund.transaction_id,
+                        "refunded_at": datetime.now(timezone.utc).isoformat(),
+                    }},
                 )
                 raise HTTPException(status_code=409, detail="Launchpad ist ausverkauft. Zahlung wurde zurückgebucht.")
 
