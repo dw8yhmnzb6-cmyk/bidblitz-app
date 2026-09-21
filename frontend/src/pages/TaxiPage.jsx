@@ -725,14 +725,14 @@ export default function TaxiPage({ onNavigate }) {
 
   const handleShareRide = useCallback(async () => {
     if (!activeRide) return;
-    const shareText = `Meine Fahrt: ${activeRide.pickup?.address || pickup.address} → ${activeRide.dropoff?.address || dropoff.address}`;
+    const shareText = `Meine BidBlitz-Taxi-Fahrt: ${activeRide.pickup?.address || pickup.address} → ${activeRide.dropoff?.address || dropoff.address}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'BidBlitz Taxi', text: shareText, url: window.location.href });
+        await navigator.share({ title: 'BidBlitz Taxi', text: shareText });
         return;
       }
-      await navigator.clipboard.writeText(`${shareText} · ${window.location.href}`);
-      toast.success('Fahrt-Link kopiert');
+      await navigator.clipboard.writeText(shareText);
+      toast.success('Fahrtdetails kopiert');
     } catch {
       toast.error('Teilen war gerade nicht möglich');
     }
