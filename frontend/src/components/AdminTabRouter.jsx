@@ -489,7 +489,7 @@ tab, t, loading,
                         <motion.button data-testid={`promo-toggle-${p.name}`} whileTap={{ scale: 0.9 }}
                           onClick={async () => {
                             try {
-                              await api(`/api/promotions/admin/toggle/${p.name}`, { method: "PUT" });
+                              await api(`/api/promotions/admin/toggle/${encodeURIComponent(p.name)}`, { method: "PUT" });
                               setPromos(promos.map(x => x.name === p.name ? { ...x, active: !x.active } : x));
                             } catch (error) {
                               toast.error(error?.message || "Promotion konnte nicht geändert werden.");
