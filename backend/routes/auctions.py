@@ -1271,7 +1271,8 @@ async def place_bid(req: BidRequest, request: Request):
             break
 
         current_price = float(snapshot.get("current_price") or 0)
-        new_price = round(current_price + PRICE_INCREMENT, 2)
+        auction_increment = max(0.01, round(float(snapshot.get("price_increment") or PRICE_INCREMENT), 2))
+        new_price = round(current_price + auction_increment, 2)
         current_ends = datetime.fromisoformat(snapshot["ends_at"])
         remaining = (current_ends - now).total_seconds()
         new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
@@ -2150,6 +2151,8 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
         "starting_price": 0.00,
         "current_price": 0.00,
         "price_increment": PRICE_INCREMENT,
+        "bid_value_eur": 0.50,
+        "revenue_target_eur": 0.0,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": req.duration_seconds,
         "ends_at": ends_at if req.start_now else "",
@@ -2617,6 +2620,8 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         "starting_price": 0.01,
         "current_price": 0.01,
         "price_increment": PRICE_INCREMENT,
+        "bid_value_eur": 0.50,
+        "revenue_target_eur": 0.0,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": duration_seconds,
         "ends_at": scheduled_end_at.isoformat(),
@@ -3554,6 +3559,8 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
         "starting_price": 0.00,
         "current_price": 0.00,
         "price_increment": PRICE_INCREMENT,
+        "bid_value_eur": 0.50,
+        "revenue_target_eur": 0.0,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": duration_seconds,
         "starts_at": start_time.isoformat(),
@@ -4012,6 +4019,10 @@ class UpdateAuctionRequest(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     retail_price: Optional[float] = None
+    featured: Optional[bool] = None
+    bid_value_eur: Optional[float] = Field(default=None, ge=0.01, le=10.0)
+    price_increment: Optional[float] = Field(default=None, ge=0.01, le=1.0)
+    revenue_target_eur: Optional[float] = Field(default=None, ge=0.0, le=100000.0)
 
 
 @router.patch("/admin/auction/{auction_id}")
@@ -4035,6 +4046,14 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
         if req.retail_price > 2000:
             raise HTTPException(status_code=400, detail="Maximaler Verkaufspreis ist €2000")
         updates["retail_price"] = float(req.retail_price)
+    if req.featured is not None:
+        updates["featured"] = bool(req.featured)
+    if req.bid_value_eur is not None:
+        updates["bid_value_eur"] = round(float(req.bid_value_eur), 2)
+    if req.price_increment is not None:
+        updates["price_increment"] = round(float(req.price_increment), 2)
+    if req.revenue_target_eur is not None:
+        updates["revenue_target_eur"] = round(float(req.revenue_target_eur), 2)
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
