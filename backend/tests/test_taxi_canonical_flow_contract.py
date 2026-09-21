@@ -112,3 +112,16 @@ def test_taxi_promo_is_reserved_before_wallet_and_released_on_failure():
     assert 'existing_status in {"released", "rejected"}' in promo
     assert '"uses": {"$lt": max_uses}' in promo
     assert '"$pull": {"ride_ids": ride_id}' in promo
+
+
+def test_legacy_customer_request_endpoint_cannot_create_second_taxi_lifecycle():
+    driver = read("backend/routes/driver_dashboard.py")
+
+    legacy_start = driver.index('@router.post("/request-ride")')
+    legacy = driver[legacy_start:]
+    assert 'status_code=410' in legacy
+    assert 'base_fare = 3.50' not in legacy
+    assert 'per_km = 1.80' not in legacy
+    assert 'db.taxi_ride_requests.insert_one' not in legacy
+    assert 'create_notification(' not in legacy
+    assert "kanonischen Taxi" in legacy or "aktuelle Taxi-Buchung" in legacy
