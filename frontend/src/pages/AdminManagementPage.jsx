@@ -284,6 +284,12 @@ const CustomersTab = () => {
         </div>
       </div>
 
+      {readOnly && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="module-read-only-note">
+          {readOnlyReason || "Dieses Live-Modul ist hier nur lesbar."}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : customers.length === 0 ? (
@@ -764,13 +770,18 @@ const ModuleCRUD = ({ mod, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
+  const [readOnlyReason, setReadOnlyReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/admin/module/${mod.key}/list`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Modul konnte nicht geladen werden");
       setItems(data.items || []);
+      setReadOnly(Boolean(data.read_only));
+      setReadOnlyReason(data.read_only_reason || "");
     } catch (err) {
       toast.error(err.message);
     }
@@ -801,13 +812,15 @@ const ModuleCRUD = ({ mod, onBack }) => {
           <ArrowLeft size={14} />
         </button>
         <h2 className="flex-1 text-[14px] font-bold">{mod.label}</h2>
-        <button
-          data-testid="module-add-btn"
-          onClick={() => { setEditing({}); setShowForm(true); }}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-900 text-white text-[11px] font-semibold"
-        >
-          <Plus size={11} /> Neu
-        </button>
+        {!readOnly && (
+          <button
+            data-testid="module-add-btn"
+            onClick={() => { setEditing({}); setShowForm(true); }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-900 text-white text-[11px] font-semibold"
+          >
+            <Plus size={11} /> Neu
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -832,27 +845,31 @@ const ModuleCRUD = ({ mod, onBack }) => {
                     ))}
                   </div>
                 </div>
-                <button
-                  data-testid={`item-edit-${id}`}
-                  onClick={() => { setEditing(item); setShowForm(true); }}
-                  className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
-                >
-                  <Edit3 size={12} />
-                </button>
-                <button
-                  data-testid={`item-delete-${id}`}
-                  onClick={() => del(id)}
-                  className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {!readOnly && (
+                  <>
+                    <button
+                      data-testid={`item-edit-${id}`}
+                      onClick={() => { setEditing(item); setShowForm(true); }}
+                      className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
+                    >
+                      <Edit3 size={12} />
+                    </button>
+                    <button
+                      data-testid={`item-delete-${id}`}
+                      onClick={() => del(id)}
+                      className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {showForm && (
+      {!readOnly && showForm && (
         <ModuleForm
           mod={mod}
           item={editing}
