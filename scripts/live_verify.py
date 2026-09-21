@@ -239,6 +239,64 @@ def main() -> int:
         "clean" if not preview_leak else "preview.emergentagent.com found",
     )
 
+    # Backend/live Mining sanity checks. These are read-only and catch a stale
+    # backend behind an otherwise fresh frontend deployment.
+    api_version = fetch(base_url + "/api/system/version", bust_cache=True)
+    add_check(
+        checks,
+        "backend system version returns HTTP 200",
+        api_version["status"] == 200,
+        f"HTTP {api_version['status']}",
+    )
+    try:
+        api_version_json = json.loads(api_version.get("body") or "{}")
+    except json.JSONDecodeError:
+        api_version_json = {}
+
+    if args.expected_commit:
+        expected_prefix = args.expected_commit.strip()[:7]
+        backend_commit = str(api_version_json.get("git_commit") or "").strip()
+        add_check(
+            checks,
+            "backend belongs to expected commit",
+            bool(backend_commit) and backend_commit.startswith(expected_prefix),
+            f"backend={backend_commit or '-'} expected-prefix={expected_prefix}",
+        )
+
+    mining_capabilities = fetch(base_url + "/api/mining/capabilities", bust_cache=True)
+    add_check(
+        checks,
+        "mining capabilities returns HTTP 200",
+        mining_capabilities["status"] == 200,
+        f"HTTP {mining_capabilities['status']}",
+    )
+    try:
+        mining_cap_json = json.loads(mining_capabilities.get("body") or "{}")
+    except json.JSONDecodeError:
+        mining_cap_json = {}
+    add_check(
+        checks,
+        "mining capabilities expose provider safety",
+        "value_actions_enabled" in mining_cap_json and "live_mining_provider_connected" in mining_cap_json,
+        "capabilities present" if mining_cap_json else "missing/invalid capabilities",
+    )
+
+    mining_packages = fetch(base_url + "/api/mining/packages", bust_cache=True)
+    add_check(
+        checks,
+        "mining packages returns HTTP 200",
+        mining_packages["status"] == 200,
+        f"HTTP {mining_packages['status']}",
+    )
+
+    mining_dashboard = fetch(base_url + "/api/mining/dashboard", bust_cache=True)
+    add_check(
+        checks,
+        "mining dashboard route exists and requires auth",
+        mining_dashboard["status"] in {401, 403},
+        f"HTTP {mining_dashboard['status']}",
+    )
+
     failed = [check for check in checks if not check["passed"]]
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
