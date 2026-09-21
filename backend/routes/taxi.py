@@ -2997,23 +2997,33 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     # still use the atomic debit path.
     reserved_amount = float(ride.get("payment_reserved_amount") or 0)
     customer_payment_id = ride.get("payment_reserved_transaction_id")
+    settlement_additional_payment_id = None
     payment_source = "reserved_at_booking"
-    if reserved_amount + 0.001 < fare["total"]:
+    additional_charge = round(max(0.0, float(fare["total"]) - reserved_amount), 2)
+    if additional_charge > 0.001:
         customer_payment = await debit_wallet(
             user_id=ride["customer_id"],
-            amount=fare["total"],
+            amount=additional_charge,
             tx_type=TransactionType.TAXI_PAYMENT,
-            description=f"Taxi: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
-            reference=f"TAXI-{req.ride_id[:8].upper()}",
-            metadata={"ride_id": req.ride_id, "driver_id": driver["driver_id"]},
-            idempotency_key=f"taxi-settle:{req.ride_id}",
+            description=f"Taxi Nachbelastung: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
+            reference=f"TAXI-SETTLE-{req.ride_id[:8].upper()}",
+            metadata={
+                "ride_id": req.ride_id,
+                "driver_id": driver["driver_id"],
+                "reserved_amount": reserved_amount,
+                "final_fare": fare["total"],
+                "additional_charge": additional_charge,
+            },
+            idempotency_key=f"taxi-settle-delta:{req.ride_id}",
         )
         if not customer_payment.success:
             raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
-        customer_payment_id = customer_payment.transaction_id
-        payment_source = "legacy_end_of_ride_debit"
+        settlement_additional_payment_id = customer_payment.transaction_id
+        if not customer_payment_id:
+            customer_payment_id = customer_payment.transaction_id
+        payment_source = "reserved_plus_settlement_delta" if reserved_amount > 0 else "legacy_end_of_ride_debit"
     
-    # Credit driver wallet
+    # Credit driver wallet exactly once for this ride.
     driver_credit = await credit_wallet(
         user_id=driver["user_id"],
         amount=fare["driver_earnings"],
@@ -3021,12 +3031,19 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         description=f"Fahrt-Verdienst: {req.ride_id[:8].upper()}",
         reference=f"TAXI-EARN-{req.ride_id[:8].upper()}",
         source="taxi_ride",
-        metadata={"ride_id": req.ride_id, "total_fare": fare["total"]}
+        metadata={"ride_id": req.ride_id, "total_fare": fare["total"]},
+        idempotency_key=f"taxi-driver-earning:{req.ride_id}",
     )
+    if not driver_credit.success:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Fahrerverdienst konnte nicht sicher finalisiert werden: {driver_credit.error or 'Wallet-Reconciliation erforderlich'}",
+        )
     
-    # Update ride
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    # Complete the ride once. Money movements above are idempotent, so a
+    # concurrent retry cannot duplicate wallet value.
+    completed = await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id, "status": RideStatus.STARTED.value},
         {"$set": {
             "status": RideStatus.COMPLETED.value,
             "ended_at": now.isoformat(),
@@ -3039,27 +3056,63 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             "driver_earnings": fare["driver_earnings"],
             "platform_fee": fare["platform_fee"],
             "customer_payment_id": customer_payment_id,
+            "settlement_additional_payment_id": settlement_additional_payment_id,
             "payment_status": "settled",
             "payment_source": payment_source,
-            "driver_payment_id": driver_credit.transaction_id if driver_credit.success else None,
+            "driver_payment_id": driver_credit.transaction_id,
         },
         "$push": {"status_history": {"status": "completed", "at": now.isoformat()}}}
     )
-    
-    # Update driver stats
+
+    if completed.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") != RideStatus.COMPLETED.value:
+            raise HTTPException(status_code=409, detail="Fahrtabschluss wird bereits verarbeitet. Bitte erneut prüfen.")
+        fare = {
+            "total": float(current.get("final_fare") or fare["total"]),
+            "driver_earnings": float(current.get("driver_earnings") or fare["driver_earnings"]),
+            "platform_fee": float(current.get("platform_fee") or fare["platform_fee"]),
+        }
+
+    marker_hash = hashlib.sha256(str(req.ride_id).encode("utf-8")).hexdigest()[:24]
+    driver_marker = f"settled_ride_markers.{marker_hash}"
     await db.drivers.update_one(
-        {"driver_id": driver["driver_id"]},
-        {"$inc": {
-            "total_rides": 1,
-            "total_earnings": fare["driver_earnings"],
-        }}
+        {"driver_id": driver["driver_id"], driver_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "total_rides": 1,
+                "total_earnings": fare["driver_earnings"],
+            },
+            "$set": {
+                driver_marker: {
+                    "ride_id": req.ride_id,
+                    "amount": fare["driver_earnings"],
+                    "settled_at": now.isoformat(),
+                }
+            },
+        },
     )
     
-    # Record platform revenue
+    # Record platform revenue once per ride.
+    revenue_date = now.strftime("%Y-%m-%d")
     await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": fare["platform_fee"], "by_source.taxi_fees": fare["platform_fee"]}},
-        upsert=True
+        {"date": revenue_date},
+        {"$setOnInsert": {"date": revenue_date}},
+        upsert=True,
+    )
+    revenue_marker = f"taxi_ride_markers.{marker_hash}"
+    await db.platform_revenue.update_one(
+        {"date": revenue_date, revenue_marker: {"$exists": False}},
+        {
+            "$inc": {"total": fare["platform_fee"], "by_source.taxi_fees": fare["platform_fee"]},
+            "$set": {
+                revenue_marker: {
+                    "ride_id": req.ride_id,
+                    "amount": fare["platform_fee"],
+                    "settled_at": now.isoformat(),
+                }
+            },
+        },
     )
     
     return {
