@@ -5,7 +5,7 @@ import { useI18n } from "../store";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 const WHATSAPP_URL = "https://wa.me/?text=Hallo%20BidBlitz%2C%20ich%20interessiere%20mich%20f%C3%BCr%20eure%20Bitcoin-Mining-Infrastruktur.";
 const TELEGRAM_URL = "https://t.me/share/url?url=https://bidblitz.ae/mining-trust&text=Ich%20interessiere%20mich%20f%C3%BCr%20eure%20Mining-Infrastruktur";
 const PHONE_URL = "tel:+971000000000";
