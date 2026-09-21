@@ -2044,6 +2044,7 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     mining_trust_admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningTrustAdminPage.jsx").read_text(encoding="utf-8")
     app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
     auth_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuthPage.jsx").read_text(encoding="utf-8")
+    server_source = (BACKEND_DIR / "server.py").read_text(encoding="utf-8")
     registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
 
     assert '"routes.mining", "router"' in registry
@@ -2112,12 +2113,18 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "miningFixed(tx.amount_blz, 4)" in mining_page
     assert "miningFixed(tx.amount_eur, 2)" in mining_page
     assert "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert." in mining_page
+    assert 'data-testid="mining-claim-daily-btn"' in mining_page
+    assert 'api("/api/mining/claim-daily", { method: "POST" })' in mining_page
     assert "Entdecke die BidBlitz Mining Preview. Code:" in mining_page
     assert 'disabled={buyingListing === ls.listing_id || !miningValueEnabled}' in mining_page
     assert 'disabled={buyingLaunch === p.project_id || remaining <= 0 || !miningValueEnabled}' in mining_page
     assert 'onClick={() => upgradeCard(tier.tier)} disabled={!miningValueEnabled}' in mining_page
     assert "BlitzMine Preview" in mining_page
     assert "blitzmine-provider-unavailable" in blitz_page
+    assert "async def _mining_auto_reward_loop" in server_source
+    assert "if TEST_MODE:" in server_source
+    assert "process_auto_rewards" in server_source
+    assert "app.state.mining_auto_reward_task = asyncio.create_task(_mining_auto_reward_loop())" in server_source
     assert "valueActionsEnabled" in blitz_page
     assert 'disabled={!valueActionsEnabled}' in blitz_page
     assert 'valueActionsEnabled ? "Bonus holen" : "Preview"' in blitz_page
