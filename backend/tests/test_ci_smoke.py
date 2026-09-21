@@ -2245,7 +2245,7 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert 'disabled={buyingListing === ls.listing_id || !miningValueEnabled}' in mining_page
     assert 'disabled={buyingLaunch === p.project_id || remaining <= 0 || !miningValueEnabled}' in mining_page
     assert 'onClick={() => upgradeCard(tier.tier)} disabled={!miningValueEnabled}' in mining_page
-    assert "BlitzMine Preview" in mining_page
+    assert "Preview · keine BLZ-Erzeugung in Production" in mining_page
     assert "blitzmine-provider-unavailable" in blitz_page
     assert "async def _mining_auto_reward_loop" in server_source
     assert "if TEST_MODE:" in server_source
