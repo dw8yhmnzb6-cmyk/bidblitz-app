@@ -565,3 +565,14 @@ def test_scooter_quarantine_recovery_preserves_valid_reservation():
     assert '"reserved_by": ""' in scooter
     assert '"reserved_until": ""' in scooter
     assert '"status": "expired", "expired_at": now.isoformat()' in scooter
+
+
+def test_scooter_nearby_releases_expired_reservations():
+    scooter = read("backend/routes/scooter.py")
+
+    assert '"status": "reserved"' in scooter
+    assert '"reserved_until": {"$lte": now_iso}' in scooter
+    assert 'release = await db.scooters.update_one(' in scooter
+    assert '"$set": {"status": "available"}' in scooter
+    assert '"$unset": {"reserved_by": "", "reserved_until": ""}' in scooter
+    assert '"status": "expired", "expired_at": now_iso' in scooter
