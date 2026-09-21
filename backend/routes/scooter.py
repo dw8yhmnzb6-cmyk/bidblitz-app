@@ -1502,13 +1502,15 @@ async def _get_scooter_plans() -> list[dict]:
         plan["plan_id"]: dict(plan)
         for plan in SCOOTER_PLANS
     }
-    rows = await db.scooter_plans.find(
-        {"enabled": {"$ne": False}},
-        {"_id": 0},
-    ).limit(100).to_list(100)
+    rows = await db.scooter_plans.find({}, {"_id": 0}).limit(100).to_list(100)
     merged = dict(defaults)
     for row in rows:
         plan_id = str(row.get("plan_id") or row.get("id") or "").strip()
+        if not plan_id:
+            continue
+        if row.get("enabled") is False:
+            merged.pop(plan_id, None)
+            continue
         candidate = _coerce_scooter_plan(row, defaults.get(plan_id))
         if candidate:
             merged[candidate["plan_id"]] = candidate
