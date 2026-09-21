@@ -302,7 +302,7 @@ const AuctionAdminPage = ({ onBack }) => {
     return `${s}s`;
   };
 
-  const activeAuctions = auctions.filter(a => a.status === "active");
+  const activeAuctions = auctions.filter(a => ["active", "paused"].includes(a.status));
   const botEnabledAuctions = auctions.filter(a => a.bot_enabled && a.status === "active");
 
   return (
