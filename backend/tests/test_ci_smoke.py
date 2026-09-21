@@ -2066,6 +2066,9 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "def _normalize_mining_wallet" in mining
     assert 'return _normalize_mining_wallet(wallet, str(user_id))' in mining
     assert 'any(str(claim.get("date") or "") == d for claim in claim_history)' in mining
+    assert '{"user_id": user_id, "status": "completed"}' in mining
+    assert 'candidate_code = f"BLZ-{hashlib.sha256(user_id.encode(\'utf-8\')).hexdigest()[:12].upper()}"' in mining
+    assert "Mining Referral-Code konnte nicht sicher erzeugt werden" in mining
     assert '_safe_mining_float(wallet.get("total_mined"))' in mining
     assert '_safe_mining_float(user.get("balance"))' in mining
     assert 'tx["amount_blz"] = _safe_mining_float(tx.get("amount_blz"))' in mining
