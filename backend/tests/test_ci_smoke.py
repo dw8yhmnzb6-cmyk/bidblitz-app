@@ -290,7 +290,8 @@ def test_taxi_customer_driver_wallet_flow_stays_unified():
     assert "async def _pending_customer_rides" in driver_source
     assert "requests = await _pending_customer_rides(driver" in driver_source
     assert '"ride_id": request_id' in driver_source
-    assert '"driver_id": None' in driver_source
+    assert "return await driver_accept_ride(RideActionRequest(ride_id=request_id), request)" in driver_source
+    assert '"driver_id": None' in taxi_source
     assert "from routes.taxi import driver_arriving, driver_start_ride, driver_end_ride, cancel_ride" in driver_source
     assert "result = await driver_end_ride(action, request)" in driver_source
 
