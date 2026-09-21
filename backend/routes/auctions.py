@@ -3973,6 +3973,17 @@ async def _require_auction_product_editable(auction: dict) -> None:
         )
 
 
+def _auction_product_edit_snapshot_filter(auction: dict) -> dict:
+    return {
+        "auction_id": auction.get("auction_id"),
+        "status": auction.get("status"),
+        "current_price": auction.get("current_price"),
+        "ends_at": auction.get("ends_at"),
+        "last_bidder_id": auction.get("last_bidder_id"),
+        "total_bids": auction.get("total_bids"),
+    }
+
+
 class UpdateAuctionRequest(BaseModel):
     image_url: Optional[str] = None
     title: Optional[str] = None
@@ -4006,7 +4017,15 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
         raise HTTPException(status_code=400, detail="No fields to update")
 
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.auctions.update_one({"auction_id": auction_id}, {"$set": updates})
+    changed = await db.auctions.update_one(
+        _auction_product_edit_snapshot_filter(auction),
+        {"$set": updates},
+    )
+    if changed.modified_count != 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Auktion erhielt gleichzeitig ein Gebot oder änderte den Status. Produktänderung wurde nicht angewendet.",
+        )
 
     return {"ok": True, "auction_id": auction_id, "updated_fields": list(updates.keys())}
 
@@ -4048,10 +4067,19 @@ async def upload_auction_image(auction_id: str, request: Request):
 
     # Public URL (served by FastAPI static mount at /api/uploads)
     image_url = f"/api/uploads/auctions/{filename}"
-    await db.auctions.update_one(
-        {"auction_id": auction_id},
+    changed = await db.auctions.update_one(
+        _auction_product_edit_snapshot_filter(auction),
         {"$set": {"image_url": image_url, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if changed.modified_count != 1:
+        try:
+            filepath.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=409,
+            detail="Auktion erhielt gleichzeitig ein Gebot oder änderte den Status. Bildänderung wurde nicht angewendet.",
+        )
 
     return {"ok": True, "auction_id": auction_id, "image_url": image_url}
 
