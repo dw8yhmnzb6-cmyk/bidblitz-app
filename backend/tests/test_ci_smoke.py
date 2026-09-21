@@ -2077,6 +2077,11 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "def _require_mining_value_mode" in mining
     assert '"live_mining_provider_connected": False' in mining
     assert '"value_actions_enabled": bool(TEST_MODE)' in mining
+    assert '"reward_projection_enabled": bool(TEST_MODE)' in mining
+    assert '"projection_available": bool(TEST_MODE)' in mining
+    assert '"daily_blz": round(daily_blz, 4) if TEST_MODE else None' in mining
+    assert '"recent_transactions": recent_txns if TEST_MODE else []' in mining
+    assert 'return {"transactions": [], "capabilities": _mining_capabilities()}' in mining
     assert "if not TEST_MODE:" in mining
     assert "return 0" in mining
     assert "_require_mining_value_mode()" in mining
@@ -2116,6 +2121,9 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "miningFixed(tx.amount_blz, 4)" in mining_page
     assert "miningFixed(tx.amount_eur, 2)" in mining_page
     assert "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert." in mining_page
+    assert "Keine BLZ-/EUR-Ertragsprojektion ohne verifizierten Mining-/Settlement-Provider." in mining_page
+    assert 'data-testid="mining-shop-no-projection"' in mining_page
+    assert "KEINE ERTRAGSPROJEKTION" in mining_page
     assert 'data-testid="mining-claim-daily-btn"' in mining_page
     assert 'api("/api/mining/claim-daily", { method: "POST" })' in mining_page
     assert "Entdecke die BidBlitz Mining Preview. Code:" in mining_page
