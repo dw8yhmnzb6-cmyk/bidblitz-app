@@ -586,7 +586,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     return <AdminQrManagementPage onBack={() => { setShowQrManagement(false); setTab("overview"); }} />;
   }
 
-  if (user.role !== "admin") {
+  if (!["admin", "super_admin"].includes(user.role)) {
     return (
       <motion.div className="min-h-screen flex items-center justify-center" style={{ background: "#030303" }}>
         <div className="text-center">
