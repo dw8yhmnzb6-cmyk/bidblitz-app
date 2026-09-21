@@ -18,6 +18,10 @@ Per-user limits:
 """
 from datetime import datetime, timezone
 from typing import Optional
+import hashlib
+
+from pymongo.errors import DuplicateKeyError
+
 from core.database import db
 
 # Static built-in promos (MVP — replace/extend via DB later)
@@ -62,8 +66,13 @@ async def validate_promo(code: Optional[str], user_id: Optional[str] = None) -> 
     if not promo:
         return {"valid": False, "code": code, "reason": "not_found"}
 
+    # Taxi promos are usage-limited per user. Never validate a discounted
+    # quote anonymously because that would bypass per-user redemption limits.
+    if not user_id:
+        return {"valid": False, "code": code, "reason": "auth_required"}
+
     # User-specific promo check (e.g., referral-bound codes)
-    if promo.get("user_id") and user_id and promo["user_id"] != user_id:
+    if promo.get("user_id") and promo["user_id"] != user_id:
         return {"valid": False, "code": code, "reason": "not_for_you"}
 
     # Expiry check (DB only — built-ins are evergreen)
@@ -122,16 +131,144 @@ def apply_discount(fare: float, promo: dict) -> dict:
     }
 
 
-async def record_redemption(user_id: str, code: str, ride_id: Optional[str] = None, discount: float = 0.0):
-    if not user_id or not code:
-        return
-    try:
-        await db.taxi_promo_redemptions.insert_one({
+def _promo_usage_id(user_id: str, code: str) -> str:
+    raw = f"{user_id}:{code.strip().upper()}".encode("utf-8")
+    return f"taxi-promo-usage-{hashlib.sha256(raw).hexdigest()[:32]}"
+
+
+def _promo_redemption_id(user_id: str, code: str, ride_id: str) -> str:
+    raw = f"{user_id}:{code.strip().upper()}:{ride_id}".encode("utf-8")
+    return f"taxi-promo-redemption-{hashlib.sha256(raw).hexdigest()[:32]}"
+
+
+async def reserve_redemption(user_id: str, code: str, ride_id: str, discount: float = 0.0) -> dict:
+    """Atomically reserve one promo use for one ride.
+
+    Same-ride retries replay without incrementing usage. Different rides compete
+    against the per-user max in one Mongo conditional update.
+    """
+    if not user_id or not code or not ride_id:
+        return {"ok": False, "reason": "invalid_identity", "retryable": False}
+
+    normalized = code.strip().upper()
+    promo = BUILTIN.get(normalized) or await _load_db_promo(normalized)
+    if not promo:
+        return {"ok": False, "reason": "not_found", "retryable": False}
+
+    max_uses = max(1, int(promo.get("max_uses_per_user", 1) or 1))
+    redemption_id = _promo_redemption_id(user_id, normalized, ride_id)
+    usage_id = _promo_usage_id(user_id, normalized)
+    now = datetime.now(timezone.utc).isoformat()
+
+    claim = await db.taxi_promo_redemptions.update_one(
+        {"_id": redemption_id},
+        {"$setOnInsert": {
             "user_id": user_id,
-            "code": code.strip().upper(),
+            "code": normalized,
             "ride_id": ride_id,
-            "discount": float(discount),
-            "redeemed_at": datetime.now(timezone.utc).isoformat(),
-        })
+            "discount": float(discount or 0),
+            "status": "reserving",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    if claim.upserted_id is None:
+        existing = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
+        status = existing.get("status")
+        if status in {"reserved", "completed"}:
+            return {"ok": True, "replayed": True, "status": status}
+        if status == "rejected":
+            return {"ok": False, "reason": existing.get("reason") or "already_used", "retryable": False}
+        return {"ok": False, "reason": "reservation_in_progress", "retryable": True}
+
+    selector = {
+        "_id": usage_id,
+        "$or": [
+            {"uses": {"$lt": max_uses}},
+            {"uses": {"$exists": False}},
+        ],
+    }
+    try:
+        usage = await db.taxi_promo_usage.update_one(
+            selector,
+            {
+                "$setOnInsert": {
+                    "user_id": user_id,
+                    "code": normalized,
+                    "max_uses": max_uses,
+                    "created_at": now,
+                },
+                "$set": {"updated_at": now, "max_uses": max_uses},
+                "$inc": {"uses": 1},
+                "$addToSet": {"ride_ids": ride_id},
+            },
+            upsert=True,
+        )
+        if usage.matched_count != 1 and usage.upserted_id is None:
+            raise DuplicateKeyError("promo usage limit reached")
+    except DuplicateKeyError:
+        await db.taxi_promo_redemptions.update_one(
+            {"_id": redemption_id},
+            {"$set": {"status": "rejected", "reason": "already_used", "updated_at": now}},
+        )
+        return {"ok": False, "reason": "already_used", "retryable": False}
     except Exception:
-        pass
+        await db.taxi_promo_redemptions.update_one(
+            {"_id": redemption_id},
+            {"$set": {"status": "rejected", "reason": "storage_error", "updated_at": now}},
+        )
+        return {"ok": False, "reason": "storage_error", "retryable": True}
+
+    await db.taxi_promo_redemptions.update_one(
+        {"_id": redemption_id},
+        {"$set": {"status": "reserved", "reserved_at": now, "updated_at": now}},
+    )
+    return {"ok": True, "replayed": False, "status": "reserved"}
+
+
+async def release_redemption(user_id: str, code: str, ride_id: str) -> None:
+    """Release a reserved promo use when booking value was rolled back."""
+    if not user_id or not code or not ride_id:
+        return
+    normalized = code.strip().upper()
+    redemption_id = _promo_redemption_id(user_id, normalized, ride_id)
+    usage_id = _promo_usage_id(user_id, normalized)
+    current = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
+    if current.get("status") not in {"reserving", "reserved"}:
+        return
+
+    await db.taxi_promo_usage.update_one(
+        {"_id": usage_id, "ride_ids": ride_id},
+        {
+            "$inc": {"uses": -1},
+            "$pull": {"ride_ids": ride_id},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
+    )
+    await db.taxi_promo_redemptions.update_one(
+        {"_id": redemption_id},
+        {"$set": {
+            "status": "released",
+            "released_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
+
+async def record_redemption(user_id: str, code: str, ride_id: Optional[str] = None, discount: float = 0.0):
+    """Finalize an idempotently reserved redemption (or safely reserve it first)."""
+    if not user_id or not code or not ride_id:
+        return
+    reserved = await reserve_redemption(user_id, code, ride_id, discount)
+    if not reserved.get("ok"):
+        return
+    redemption_id = _promo_redemption_id(user_id, code, ride_id)
+    await db.taxi_promo_redemptions.update_one(
+        {"_id": redemption_id, "status": {"$in": ["reserved", "completed"]}},
+        {"$set": {
+            "status": "completed",
+            "discount": float(discount or 0),
+            "redeemed_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
