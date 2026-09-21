@@ -200,7 +200,6 @@ const MINING_LEVELS = [
   { name: "Diamond", label: "Diamant", bonus: 0.15, color: "#B9F2FF" },
 ];
 
-const tabs = MINING_TAB_CONFIG.map(item => item.key);
 
 export default function MiningPage({ onBack, onNavigate }) {
   const user = useUser();
