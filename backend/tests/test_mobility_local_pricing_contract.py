@@ -388,3 +388,16 @@ def test_scooter_pause_resume_use_real_iot_state_transitions():
     assert "pricing.pause_rate" not in page
     assert "Scooter bleibt reserviert" in page
     assert "Der normale Fahrtarif läuft weiter" in page
+
+
+def test_scooter_history_keeps_currency_totals_separate():
+    scooter = read("backend/routes/scooter.py")
+    page = read("frontend/src/pages/ScooterPage.jsx")
+
+    assert "totals_by_currency = {}" in scooter
+    assert 'currency = str(ride.get("currency") or "EUR").upper()' in scooter
+    assert 'total_spent_eur = round(float(totals_by_currency.get("EUR", 0) or 0), 2)' in scooter
+    assert '"totals_by_currency": totals_by_currency' in scooter
+    assert '"mixed_currency_history": len(totals_by_currency) > 1' in scooter
+    assert "rental.currency" in page
+    assert "toUpperCase()" in page
