@@ -466,3 +466,14 @@ def test_admin_scooter_hardware_identity_is_unique_and_errors_visible():
 
     assert "setError(e?.message || String(e))" in admin_page
     assert "catch { /* noop */ }" not in admin_page
+
+
+def test_scooter_critical_iot_commands_require_physical_confirmation():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "critical_state_command = command in {DeviceCommand.UNLOCK, DeviceCommand.LOCK}" in scooter
+    assert "response.status_code == 202 or not explicitly_confirmed" in scooter
+    assert '"status": "pending_confirmation"' in scooter
+    assert '"confirmation_required": True' in scooter
+    assert "Device command accepted but physical state is not confirmed" in scooter
+    assert "Command confirmed by IoT provider" in scooter
