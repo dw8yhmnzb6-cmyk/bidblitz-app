@@ -746,7 +746,9 @@ function AppContent() {
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
       case "/mining-trust-admin":
-        return <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />;
+        return ["admin", "super_admin"].includes(user?.role)
+          ? <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />
+          : <HomePage {...homeProps} />;
       case "/nft":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
