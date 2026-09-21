@@ -8,9 +8,7 @@ import {
 } from "lucide-react";
 import ExportSection from "./ExportSection";
 import { Skeleton, StatCard, statusColors, slide } from "./admin/adminHelpers";
-import { api as apiService } from "../services/api";
-
-const API = process.env.REACT_APP_BACKEND_URL;
+import { api as apiService, request as apiRequest } from "../services/api";
 
 const PROMO_TYPES = ["bonus_topup", "reduced_fee", "cashback", "signup_bonus"];
 
@@ -23,7 +21,7 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
     setSaving(true);
     try {
       const body = { ...form, value: Number(form.value), min_amount: Number(form.min_amount), max_uses: Number(form.max_uses), starts_at: `${form.starts_at}T00:00:00Z`, expires_at: `${form.expires_at}T23:59:59Z`, active: true };
-      await fetch(`${API}/api/promotions/admin/create`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      await apiRequest("/api/promotions/admin/create", { method: "POST", body: JSON.stringify(body) });
       onCreated({ ...body, current_uses: 0 });
     } catch (_error) { void _error; } finally { setSaving(false); }
   };
