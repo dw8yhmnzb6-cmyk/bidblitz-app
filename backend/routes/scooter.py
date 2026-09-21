@@ -1921,7 +1921,7 @@ async def cancel_subscription(request: Request):
 
 class ShareScooterRequest(BaseModel):
     ride_id: str
-    duration_minutes: int = 60  # 30, 60, 120, 1440 (24h)
+    duration_minutes: int = Field(default=60, ge=5, le=1440)
 
 class RedeemShareCodeRequest(BaseModel):
     code: str
@@ -1956,8 +1956,8 @@ async def create_share_code(req: ShareScooterRequest, request: Request):
             "already_existed": True,
         }
 
-    # Generate share code
-    code = f"BLZ-{secrets.token_hex(2).upper()}"
+    # Generate a sufficiently strong human-readable share code.
+    code = f"BLZ-{secrets.token_hex(4).upper()}"
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=req.duration_minutes)
 
@@ -1995,6 +1995,23 @@ async def redeem_share_code(req: RedeemShareCodeRequest, request: Request):
     guest_id = str(user["_id"])
     guest_email = user.get("email", "")
 
+    if not TEST_MODE and user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um eine Scooter-Freigabe zu nutzen.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
+
+    guest_active_ride = await db.scooter_rides.find_one(
+        {"user_id": guest_id, "status": {"$in": ["active", "paused"]}},
+        {"_id": 0, "ride_id": 1},
+    )
+    if guest_active_ride:
+        raise HTTPException(status_code=409, detail="Du hast bereits eine aktive Scooter-Fahrt")
+
     code = req.code.strip().upper()
     share = await db.scooter_shares.find_one({
         "code": code,
@@ -2013,24 +2030,44 @@ async def redeem_share_code(req: RedeemShareCodeRequest, request: Request):
     if share["host_user_id"] == guest_id:
         raise HTTPException(400, "Du kannst deinen eigenen Code nicht einlösen")
 
-    # Already redeemed by someone
-    if share.get("guest_user_id"):
-        raise HTTPException(400, "Code wurde bereits eingelöst")
+    # Host ride must still be active; a stale code must never reopen or transfer a finished/paused ride.
+    host_ride = await db.scooter_rides.find_one(
+        {
+            "ride_id": share["ride_id"],
+            "user_id": share["host_user_id"],
+            "scooter_id": share["scooter_id"],
+            "status": "active",
+        },
+        {"_id": 0, "ride_id": 1},
+    )
+    if not host_ride:
+        await db.scooter_shares.update_one(
+            {"code": code, "status": "active"},
+            {"$set": {"status": "ended", "ended_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        raise HTTPException(status_code=409, detail="Die ursprüngliche Scooter-Fahrt ist nicht mehr aktiv")
 
-    # Mark as redeemed
-    await db.scooter_shares.update_one(
-        {"code": code},
+    redeemed_at = datetime.now(timezone.utc).isoformat()
+    claim = await db.scooter_shares.update_one(
+        {
+            "code": code,
+            "status": "active",
+            "guest_user_id": None,
+            "expires_at": share["expires_at"],
+        },
         {"$set": {
             "guest_user_id": guest_id,
             "guest_email": guest_email,
             "guest_name": user.get("name", guest_email),
-            "redeemed_at": datetime.now(timezone.utc).isoformat(),
-        }}
+            "redeemed_at": redeemed_at,
+        }},
     )
+    if claim.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Code wurde bereits eingelöst oder ist nicht mehr verfügbar")
 
     return {
         "ok": True,
-        "message": f"Scooter von {share['host_name']} freigeschaltet!",
+        "message": f"Freigabe von {share['host_name']} aktiviert. Die Abrechnung bleibt beim Gastgeber.",
         "scooter_id": share["scooter_id"],
         "host_name": share["host_name"],
         "expires_at": share["expires_at"],
@@ -2058,31 +2095,44 @@ async def get_active_shares(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.scooter_shares.update_many(
+        {"status": "active", "expires_at": {"$lte": now_iso}},
+        {"$set": {"status": "expired", "expired_at": now_iso}},
+    )
     as_host = await db.scooter_shares.find(
-        {"host_user_id": user_id, "status": "active"}, {"_id": 0}
+        {"host_user_id": user_id, "status": "active", "expires_at": {"$gt": now_iso}}, {"_id": 0}
     ).to_list(20)
     as_guest = await db.scooter_shares.find(
-        {"guest_user_id": user_id, "status": "active"}, {"_id": 0}
+        {"guest_user_id": user_id, "status": "active", "expires_at": {"$gt": now_iso}}, {"_id": 0}
     ).to_list(20)
 
-    # Enrich host shares with live cost from the ride
+    # Enrich host shares with live cost from the ride's locked tariff snapshot.
     for share in as_host:
         ride = await db.scooter_rides.find_one(
             {"ride_id": share.get("ride_id")}, {"_id": 0}
         )
         if ride and ride.get("status") == "active":
-            start = ride.get("started_at") or ride.get("created_at", "")
+            start = ride.get("start_time") or ride.get("started_at") or ride.get("created_at", "")
             try:
                 started = datetime.fromisoformat(start.replace("Z", "+00:00"))
-                elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+                elapsed = max(0.0, (datetime.now(timezone.utc) - started).total_seconds())
                 minutes = elapsed / 60
-                cost = UNLOCK_FEE + (minutes * PER_MINUTE_RATE)
+                unlock_fee = float(ride.get("unlock_fee") if ride.get("unlock_fee") is not None else UNLOCK_FEE)
+                rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)
+                free_remaining = max(0.0, float(ride.get("free_minutes_remaining_at_start") or 0))
+                billable_minutes = max(0.0, minutes - free_remaining)
+                daily_cap = float(ride.get("daily_cap") or MAX_DAILY_CAP)
+                minimum_charge = max(0.0, float(ride.get("minimum_charge") or 0))
+                cost = min(max(round(unlock_fee + (billable_minutes * rate), 2), minimum_charge), daily_cap)
                 share["live_cost"] = round(cost, 2)
                 share["live_minutes"] = round(minutes, 1)
+                share["currency"] = str(ride.get("currency") or "EUR").upper()
                 share["ride_active"] = True
-            except:
+            except Exception:
                 share["live_cost"] = 0
                 share["live_minutes"] = 0
+                share["currency"] = str(ride.get("currency") or "EUR").upper()
                 share["ride_active"] = False
         else:
             share["live_cost"] = 0
