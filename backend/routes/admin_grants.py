@@ -204,7 +204,7 @@ class GrantRequest(BaseModel):
 async def admin_grant_balance(req: GrantRequest, request: Request):
     """Admin: Grant EUR, Coins, Bid Credits, or BLZ to a user."""
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Nur für Admins")
 
     user = await db.users.find_one({"email": req.user_email})
@@ -330,7 +330,7 @@ class CreateCouponRequest(BaseModel):
 async def admin_create_coupon(req: CreateCouponRequest, request: Request):
     """Admin: Create a coupon code."""
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Nur für Admins")
 
     if req.coupon_type not in ALLOWED_COUPON_TYPES:
@@ -370,7 +370,7 @@ async def admin_create_coupon(req: CreateCouponRequest, request: Request):
 async def admin_list_coupons(request: Request):
     """Admin: List all coupons."""
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Nur für Admins")
 
     coupons = await db.coupons.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
@@ -381,7 +381,7 @@ async def admin_list_coupons(request: Request):
 async def admin_delete_coupon(coupon_id: str, request: Request):
     """Admin: Deactivate a coupon."""
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Nur für Admins")
 
     await db.coupons.update_one({"coupon_id": coupon_id}, {"$set": {"active": False}})
@@ -555,7 +555,7 @@ async def redeem_coupon(req: RedeemRequest, request: Request):
 async def admin_grant_history(request: Request):
     """Admin: Get grant/coupon redemption history."""
     admin = await get_current_user(request)
-    if admin.get("role") != "admin":
+    if admin.get("role") not in ("admin", "super_admin"):
         raise HTTPException(403, "Nur für Admins")
 
     grants = await db.transactions.find(
