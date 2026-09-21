@@ -34,6 +34,7 @@ async function mockScooterApi(page: Page) {
     basis: 'Prishtina · ca. 0,15–0,20 €/min + mögliche Entsperrgebühr',
     available: true,
     billing_supported: true,
+    pricing_hash: 'preview-hash-1234567890',
   };
 
   await page.route('**/api/scooter/**', async route => {
@@ -76,6 +77,24 @@ async function mockScooterApi(page: Page) {
       body = { subscription: null };
     } else if (pathname === '/api/scooter/history') {
       body = { rides: [], rentals: [], total: 0, stats: { total_spent: 0, total_distance_km: 0, total_rides: 0 } };
+    } else if (pathname === '/api/scooter/unlock' && route.request().method() === 'POST') {
+      body = {
+        ok: true,
+        new_balance: 24.65,
+        ride: {
+          ride_id: 'SCR-VISUAL-001',
+          scooter_id: 'BB-SC-001',
+          scooter_model: 'BidBlitz S1',
+          status: 'active',
+          start_time: new Date().toISOString(),
+          started_at: new Date().toISOString(),
+          unlock_fee: 0.35,
+          per_minute_rate: 0.18,
+          minimum_charge: 0.35,
+          daily_cap: 15,
+          free_minutes_remaining_at_start: 0,
+        },
+      };
     }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -98,6 +117,14 @@ test('scooter local city pricing stays usable at 320px', async ({ page }) => {
   await page.getByText('BB-SC-001').first().click();
   await expect(page.getByTestId('scooter-unlock-sheet')).toBeVisible();
   await expect(page.getByTestId('scooter-unlock-button')).toContainText('0.35');
+
+  const unlockRequestPromise = page.waitForRequest(request =>
+    new URL(request.url()).pathname.replace(/^\/undefined(?=\/api\/)/, '') === '/api/scooter/unlock'
+  );
+  await page.getByTestId('scooter-unlock-button').click();
+  const unlockRequest = await unlockRequestPromise;
+  expect(unlockRequest.postDataJSON()?.pricing_hash).toBe('preview-hash-1234567890');
+  await expect(page.getByTestId('scooter-tab-riding')).toBeEnabled();
 
   const widths = await page.evaluate(() => ({
     content: document.documentElement.scrollWidth,
