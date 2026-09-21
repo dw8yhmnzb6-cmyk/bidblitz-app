@@ -322,6 +322,42 @@ def _winner_checkout_payload(auction: dict, order: Optional[dict]) -> dict:
     }
 
 
+async def _reconcile_winner_checkout_side_effects(auction: dict, order: dict) -> None:
+    """Repair derived winner/order state after a paid order is replayed."""
+    if not auction or not order or order.get("payment_status") != "paid":
+        return
+
+    order_id = str(order.get("order_id") or order.get("_id") or "")
+    auction_id = str(order.get("auction_id") or auction.get("auction_id") or "")
+    winner_id = str(order.get("winner_id") or auction.get("winner_id") or "")
+    if not order_id or not auction_id or not winner_id:
+        return
+
+    paid_at = str(order.get("paid_at") or order.get("updated_at") or datetime.now(timezone.utc).isoformat())
+    await db.auctions.update_one(
+        {"auction_id": auction_id, "status": "ended", "winner_id": winner_id},
+        {"$set": {
+            "winner_order_id": order_id,
+            "winner_payment_status": "paid",
+            "winner_checkout_completed_at": paid_at,
+        }},
+    )
+    await db.auction_notifications.update_one(
+        {"_id": f"auction-order-paid:{order_id}"},
+        {"$setOnInsert": {
+            "_id": f"auction-order-paid:{order_id}",
+            "user_id": winner_id,
+            "type": "winner_order_paid",
+            "auction_id": auction_id,
+            "order_id": order_id,
+            "message": f"Bestellung bestätigt: {auction.get('title', 'Auktionsgewinn')}. Versand ist kostenlos.",
+            "read": False,
+            "created_at": paid_at,
+        }},
+        upsert=True,
+    )
+
+
 @router.get("/{auction_id}/winner-checkout")
 async def get_winner_checkout(auction_id: str, request: Request):
     user = await get_current_user(request)
@@ -389,6 +425,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
             raise HTTPException(status_code=409, detail="Bestellung wurde bereits mit einer anderen Versandadresse bezahlt")
         raise HTTPException(status_code=409, detail="Gewinner-Checkout wurde bereits mit anderen Daten begonnen")
     if existing and existing.get("payment_status") == "paid":
+        await _reconcile_winner_checkout_side_effects(auction, existing)
         snapshot = _winner_checkout_payload(auction, existing)
         return {**snapshot, "success": True, "replayed": True}
 
@@ -418,22 +455,37 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
         upsert=True,
     )
 
-    payment_attempt_hash = hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20]
+    requested_attempt_hash = hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20]
+    current_order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+    recoverable_status = current_order.get("status") in {"processing_payment", "reconciliation_required"}
+    payment_attempt_hash = (
+        str(current_order.get("payment_attempt_key_hash") or requested_attempt_hash)
+        if recoverable_status
+        else requested_attempt_hash
+    )
     claimed = await db.auction_orders.update_one(
         {
             "_id": order_id,
             "payment_status": {"$ne": "paid"},
-            "status": {"$in": ["pending_payment", "payment_failed"]},
+            "$or": [
+                {"status": {"$in": ["pending_payment", "payment_failed"]}},
+                {
+                    "status": {"$in": ["processing_payment", "reconciliation_required"]},
+                    "payment_attempt_key_hash": payment_attempt_hash,
+                },
+            ],
         },
         {"$set": {
             "status": "processing_payment",
             "payment_attempt_key_hash": payment_attempt_hash,
             "payment_started_at": now,
+            "payment_recovered": bool(recoverable_status),
         }},
     )
     if claimed.modified_count != 1:
         current = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
         if current.get("payment_status") == "paid":
+            await _reconcile_winner_checkout_side_effects(auction, current)
             return {**_winner_checkout_payload(auction, current), "success": True, "replayed": True}
         raise HTTPException(status_code=409, detail="Gewinner-Zahlung wird bereits verarbeitet")
 
@@ -496,30 +548,8 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
             )
             raise HTTPException(status_code=500, detail="Zahlung erfolgt; Bestellabschluss benötigt Abstimmung")
 
-    await db.auctions.update_one(
-        {"auction_id": auction_id, "status": "ended", "winner_id": user_id},
-        {"$set": {
-            "winner_order_id": order_id,
-            "winner_payment_status": "paid",
-            "winner_checkout_completed_at": paid_at,
-        }},
-    )
-    await db.auction_notifications.update_one(
-        {"_id": f"auction-order-paid:{order_id}"},
-        {"$setOnInsert": {
-            "_id": f"auction-order-paid:{order_id}",
-            "user_id": user_id,
-            "type": "winner_order_paid",
-            "auction_id": auction_id,
-            "order_id": order_id,
-            "message": f"Bestellung bestätigt: {auction.get('title', 'Auktionsgewinn')}. Versand ist kostenlos.",
-            "read": False,
-            "created_at": paid_at,
-        }},
-        upsert=True,
-    )
-
     order = await db.auction_orders.find_one({"_id": order_id}, {"_id": 0}) or {}
+    await _reconcile_winner_checkout_side_effects(auction, order)
     return {**_winner_checkout_payload(auction, order), "success": True, "replayed": bool(payment.idempotent_replay)}
 
 
