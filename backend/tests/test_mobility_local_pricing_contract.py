@@ -132,3 +132,17 @@ def test_taxi_local_mode_is_initialized_before_vehicle_multiplier():
     mode_pos = taxi.index('mode = (pricing_context.get("modes") or {}).get("taxi") or {}')
     multiplier_pos = taxi.index('vehicle_multiplier = {', mode_pos)
     assert mode_pos < multiplier_pos
+
+
+def test_taxi_booking_reserves_exact_displayed_quote_once():
+    taxi = read("backend/routes/taxi.py")
+    page = read("frontend/src/pages/TaxiPage.jsx")
+    api = read("frontend/src/services/taxiApi.js")
+
+    assert 'locked_quote = await _load_taxi_price_quote(req.quote_id, user_id, req)' in taxi
+    assert 'fare_total = round(float(locked_quote.get("fare_total")' in taxi
+    assert '{"quote_id": req.quote_id, "status": "active"}' in taxi
+    assert 'status in {"failed", "used", "claimed", "booking"}' in taxi
+    assert 'pricing_source": "locked_server_quote" if locked_quote' in taxi
+    assert 'quoteId: selectedEstimate.quote_id || null' in page
+    assert 'quote_id: quoteId || null' in api
