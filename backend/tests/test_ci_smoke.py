@@ -2030,7 +2030,17 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert 'case "/mining":' in app_source
     mining_case = app_source[app_source.index('case "/mining":'):app_source.index('case "/mining-trust":')]
     assert "(isGuest && !isDemoMode)" in mining_case
+    assert '<AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />' in mining_case
     assert "<MiningPage" in mining_case
+    assert 'if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {' in app_source
+    assert "Bitte anmelden, um Mining zu öffnen." in app_source
+
+    assert "def _safe_mining_float" in mining
+    assert "def _normalize_mining_wallet" in mining
+    assert 'return _normalize_mining_wallet(wallet, str(user_id))' in mining
+    assert 'any(str(claim.get("date") or "") == d for claim in claim_history)' in mining
+    assert '_safe_mining_float(wallet.get("total_mined"))' in mining
+    assert '_safe_mining_float(user.get("balance"))' in mining
 
     assert "def _require_mining_value_mode" in mining
     assert '"live_mining_provider_connected": False' in mining
@@ -3758,3 +3768,25 @@ def test_mining_marketplace_listing_is_disabled_in_preview():
     assert 'data-testid="list-miner-btn"' in page
     assert 'disabled={listing || !listMiner || !listPrice || !miningValueEnabled}' in page
     assert "Mining Marketplace ist in Production nur als Preview verfügbar." in page
+
+
+def test_mining_legacy_wallet_normalization_is_safe():
+    from routes.mining import _normalize_mining_wallet, _safe_mining_float
+
+    normalized = _normalize_mining_wallet(
+        {
+            "user_id": "legacy-user",
+            "blz_balance": "12.5",
+            "total_mined": None,
+            "total_withdrawn": "bad-value",
+        },
+        "legacy-user",
+    )
+
+    assert normalized["user_id"] == "legacy-user"
+    assert normalized["blz_balance"] == 12.5
+    assert normalized["total_mined"] == 0.0
+    assert normalized["total_withdrawn"] == 0.0
+    assert normalized["total_deposited"] == 0.0
+    assert _safe_mining_float("7.25") == 7.25
+    assert _safe_mining_float("broken", 3.0) == 3.0
