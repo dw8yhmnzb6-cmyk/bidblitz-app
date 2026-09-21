@@ -850,10 +850,29 @@ MODULE_COLLECTIONS = {
 async def module_create(module_key: str, data: dict, request: Request):
     """Neuen Eintrag in Service-Modul anlegen."""
     await _require_admin(request)
+    if module_key == "scooter-abos":
+        from routes.scooter import _get_scooter_plans
+        plans = await _get_scooter_plans()
+        items = [{**plan, "id": plan["plan_id"]} for plan in plans]
+        return {"items": items, "count": len(items), "collection": "scooter_plans"}
     if module_key == "ladesaeulen" and not TEST_MODE:
         raise HTTPException(409, "Live-OCPP-Ladesäulen werden über die verifizierte EV-Geräteverwaltung provisioniert; generisches CRUD ist read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        from routes.scooter import _coerce_scooter_plan
+        now = datetime.now(timezone.utc).isoformat()
+        candidate = _coerce_scooter_plan({**data, "enabled": True})
+        if not candidate:
+            raise HTTPException(400, "Scooter-Abo benötigt gültige EUR-Preise, Laufzeit und Minutenwerte.")
+        plan_id = candidate["plan_id"]
+        candidate.update({"id": plan_id, "plan_id": plan_id, "enabled": True, "updated_at": now})
+        await db.scooter_plans.update_one(
+            {"plan_id": plan_id},
+            {"$set": candidate, "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "item": candidate}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["id"] = data.get("id") or f"{module_key[:3].upper()}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')[:14]}"
@@ -866,6 +885,11 @@ async def module_create(module_key: str, data: dict, request: Request):
     elif module_key == "elearning":
         data["course_id"] = data.get("course_id") or data["id"]
         data["status"] = data.get("status") or "published"
+    elif module_key == "ladesaeulen":
+        data["station_id"] = data.get("station_id") or data["id"]
+        data["slots_total"] = int(data.get("slots_total") or 1)
+        data["slots_available"] = int(data.get("slots_available") if data.get("slots_available") is not None else data["slots_total"])
+        data["type"] = data.get("type") or "AC"
     await db[coll_name].insert_one(data)
     data.pop("_id", None)
     return {"ok": True, "item": data}
@@ -923,6 +947,20 @@ async def module_update(module_key: str, item_id: str, data: dict, request: Requ
         raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        from routes.scooter import _coerce_scooter_plan
+        now = datetime.now(timezone.utc).isoformat()
+        payload = {**data, "id": item_id, "plan_id": item_id, "enabled": True}
+        candidate = _coerce_scooter_plan(payload)
+        if not candidate:
+            raise HTTPException(400, "Ungültige Scooter-Abo-Daten.")
+        candidate.update({"id": item_id, "plan_id": item_id, "enabled": True, "updated_at": now})
+        await db.scooter_plans.update_one(
+            {"plan_id": item_id},
+            {"$set": candidate, "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "item": candidate}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data.pop("_id", None)
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -948,6 +986,15 @@ async def module_delete(module_key: str, item_id: str, request: Request):
         raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        now = datetime.now(timezone.utc).isoformat()
+        await db.scooter_plans.update_one(
+            {"plan_id": item_id},
+            {"$set": {"id": item_id, "plan_id": item_id, "enabled": False, "updated_at": now},
+             "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "disabled": True}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     result = await db[coll_name].delete_one({"id": item_id})
     if result.deleted_count == 0:
