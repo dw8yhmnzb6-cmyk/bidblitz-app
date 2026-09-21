@@ -1774,6 +1774,7 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
         )
 
         current_ride_id = scooter.get("current_ride_id")
+        pause_confirmed_from_telemetry = False
         if current_ride_id:
             current_ride = await db.scooter_rides.find_one(
                 {"ride_id": current_ride_id, "status": {"$in": ["active", "paused"]}},
@@ -1811,6 +1812,7 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
                         },
                     )
                     if changed.modified_count == 1:
+                        pause_confirmed_from_telemetry = True
                         update["device_state_uncertain"] = False
                         update["device_state_confirmed_at"] = reconciled_at
                         unset_fields.update({
@@ -1859,7 +1861,7 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
                         })
 
         # If device reports locked but status is in_use, something is wrong unless this confirms a pause.
-        if req.locked and scooter.get("status") == "in_use":
+        if req.locked and scooter.get("status") == "in_use" and not pause_confirmed_from_telemetry:
             logger.warning(f"Scooter {scooter['scooter_id']} locked while in use!")
 
         if scooter.get("device_state_uncertain") and not scooter.get("current_ride_id"):
