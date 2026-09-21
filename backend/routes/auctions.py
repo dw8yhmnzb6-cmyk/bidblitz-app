@@ -524,7 +524,7 @@ async def pay_winner_checkout(auction_id: str, req: AuctionWinnerCheckoutRequest
             }},
         )
         raise HTTPException(
-            status_code=409 if order_status == "reconciliation_required" else 400,
+            status_code=503 if order_status == "reconciliation_required" else 400,
             detail=payment.error or "Gewinner-Zahlung fehlgeschlagen",
         )
 
