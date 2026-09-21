@@ -1007,7 +1007,9 @@ def test_auction_winners_and_referrals_are_race_safe():
     assert '@router.get("/{auction_id}/winner-checkout")' in source
     assert '@router.post("/{auction_id}/winner-checkout/pay")' in source
     assert 'str(auction.get("winner_id") or "") != user_id' in source
-    assert 'payment_attempt_hash = hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20]' in source
+    assert 'requested_attempt_hash = hashlib.sha256(client_key.encode("utf-8")).hexdigest()[:20]' in source
+    assert 'recoverable_status = current_order.get("status") in {"processing_payment", "reconciliation_required"}' in source
+    assert 'current_order.get("payment_attempt_key_hash") or requested_attempt_hash' in source
     assert 'idempotency_key=f"auction-winner-order:{order_id}:payment:{payment_attempt_hash}"' in source
     assert 'transfer_between_wallets(' in source
     assert 'tx_type=TransactionType.AUCTION_WIN' in source
@@ -2067,8 +2069,11 @@ def _load_mobility_pricing_contract():
         "REGIONAL_PRICING_PROFILES",
         "CITY_PRICING_PROFILES",
         "CITY_NAME_ALIASES",
+        "BALKAN_COUNTRY_CODES",
+        "EUROPE_COUNTRY_CODES",
         "build_option",
         "_normalize_city_key",
+        "_regional_profile_key_for_country",
         "_merge_pricing_profile",
         "_merge_pricing_override",
         "_resolve_pricing_context",
