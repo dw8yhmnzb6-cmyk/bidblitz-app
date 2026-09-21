@@ -1573,14 +1573,37 @@ async def admin_update_scooter(scooter_id: str, req: UpdateScooterAdminRequest, 
     if not scooter:
         raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
     
+    active_ride = await db.scooter_rides.find_one(
+        {"scooter_id": scooter_id, "status": {"$in": ["active", "paused"]}},
+        {"_id": 0, "ride_id": 1},
+    )
+    active_reservation = await db.scooter_reservations.find_one(
+        {
+            "scooter_id": scooter_id,
+            "status": "active",
+            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+        },
+        {"_id": 0, "reservation_id": 1},
+    )
+    lifecycle_locked = bool(
+        active_ride
+        or active_reservation
+        or scooter.get("current_ride_id")
+        or scooter.get("status") in {"in_use", "unlocking", "reserved"}
+    )
+
     update = {}
     if req.lat is not None and req.lng is not None:
         update["location"] = {"lat": req.lat, "lng": req.lng}
     if req.battery is not None:
         update["battery"] = req.battery
     if req.status is not None:
+        if lifecycle_locked and req.status != scooter.get("status"):
+            raise HTTPException(status_code=409, detail="Aktiver Scooter-Lifecycle: Status kann nicht manuell überschrieben werden")
         update["status"] = req.status
     if req.device_id is not None:
+        if lifecycle_locked and req.device_id != scooter.get("device_id"):
+            raise HTTPException(status_code=409, detail="Aktiver Scooter-Lifecycle: Geräte-ID kann nicht geändert werden")
         update["device_id"] = req.device_id
     
     if update:
@@ -1601,8 +1624,25 @@ async def admin_delete_scooter(scooter_id: str, request: Request):
     if not scooter:
         raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
     
-    if scooter.get("status") == "in_use":
-        raise HTTPException(status_code=400, detail="Scooter ist gerade in Benutzung")
+    active_ride = await db.scooter_rides.find_one(
+        {"scooter_id": scooter_id, "status": {"$in": ["active", "paused"]}},
+        {"_id": 0, "ride_id": 1},
+    )
+    active_reservation = await db.scooter_reservations.find_one(
+        {
+            "scooter_id": scooter_id,
+            "status": "active",
+            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+        },
+        {"_id": 0, "reservation_id": 1},
+    )
+    if (
+        active_ride
+        or active_reservation
+        or scooter.get("current_ride_id")
+        or scooter.get("status") in {"in_use", "unlocking", "reserved"}
+    ):
+        raise HTTPException(status_code=409, detail="Scooter ist aktiv gebunden und kann nicht gelöscht werden")
     
     await db.scooters.delete_one({"scooter_id": scooter_id})
     return {"ok": True, "deleted": scooter_id}
