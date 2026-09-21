@@ -1537,21 +1537,37 @@ async def end_ride(req: EndRideRequest, request: Request):
             idempotency_key=f"scooter-end:{ride_id}",
         )
         if not payment_result.success:
-            payment_status = "due"
+            payment_state = str(getattr(payment_result.status, "value", payment_result.status))
             amount_due = amount_to_debit
-            await db.scooter_payment_due.update_one(
-                {"ride_id": ride_id, "user_id": user_id},
-                {"$setOnInsert": {
-                    "ride_id": ride_id,
-                    "user_id": user_id,
-                    "scooter_id": scooter_id,
-                    "amount": amount_due,
-                    "status": "due",
-                    "reason": payment_result.error or "insufficient_balance",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }},
-                upsert=True,
-            )
+            if payment_state in {"pending", "reconciliation_required"}:
+                payment_status = "reconciliation_required"
+                await db.scooter_rides.update_one(
+                    {"ride_id": ride_id, "user_id": user_id},
+                    {"$set": {
+                        "settlement_reconciliation_required": True,
+                        "settlement_payment_status": payment_state,
+                        "settlement_transaction_id": payment_result.transaction_id,
+                        "settlement_error": payment_result.error,
+                        "settlement_amount_pending": amount_due,
+                        "settlement_currency": ride_currency,
+                        "settlement_reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+            else:
+                payment_status = "due"
+                await db.scooter_payment_due.update_one(
+                    {"ride_id": ride_id, "user_id": user_id},
+                    {"$setOnInsert": {
+                        "ride_id": ride_id,
+                        "user_id": user_id,
+                        "scooter_id": scooter_id,
+                        "amount": amount_due,
+                        "status": "due",
+                        "reason": payment_result.error or "insufficient_balance",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                    upsert=True,
+                )
 
     end_location = settlement.get("end_location") or ride.get("start_location", {})
     start_loc = ride.get("start_location", {})
