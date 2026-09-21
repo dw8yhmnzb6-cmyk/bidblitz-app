@@ -372,8 +372,10 @@ def test_scooter_pause_resume_use_real_iot_state_transitions():
 
     assert '@router.post("/pause")' in scooter
     assert '@router.post("/resume")' in scooter
-    assert "command = await send_device_command(device_id, DeviceCommand.LOCK)" in scooter
-    assert "command = await send_device_command(device_id, DeviceCommand.UNLOCK)" in scooter
+    assert 'operation_key=f"ride:{ride[\'ride_id\']}:pause-lock"' in scooter
+    assert 'operation_key=f"ride:{ride[\'ride_id\']}:resume-unlock"' in scooter
+    assert "DeviceCommand.LOCK" in scooter
+    assert "DeviceCommand.UNLOCK" in scooter
     assert '{"$set": {"control_action": "pause", "control_started_at": control_started_at}}' in scooter
     assert '{"$set": {"control_action": "resume", "control_started_at": control_started_at}}' in scooter
     assert '{"$set": {"control_action": "end", "control_started_at": control_started_at}}' in scooter
@@ -491,7 +493,8 @@ def test_scooter_uncertain_device_state_is_quarantined_until_locked_telemetry():
 
     assert 'if scooter.get("device_state_uncertain") and not scooter.get("current_ride_id"):' in scooter
     assert 'if req.locked:' in scooter
-    assert 'update["status"] = "available"' in scooter
+    assert 'reservation_still_valid = bool(' in scooter
+    assert 'update["status"] = "reserved" if reservation_still_valid else "available"' in scooter
     assert 'update["device_state_uncertain"] = False' in scooter
     assert 'update["device_state_uncertain_reason"] = "physical_unlocked_without_active_ride"' in scooter
 
