@@ -2901,6 +2901,7 @@ async def _claim_driver_active_ride(driver_id: str, ride_id: str) -> bool:
             {"$set": {
                 "active_ride_id": ride_id,
                 "active_ride_claimed_at": datetime.now(timezone.utc).isoformat(),
+                "is_busy": True,
             }},
         )
         if claim.matched_count == 1:
@@ -2929,10 +2930,13 @@ async def _claim_driver_active_ride(driver_id: str, ride_id: str) -> bool:
 
         released = await db.drivers.update_one(
             {"driver_id": driver_id, "active_ride_id": current_ride_id},
-            {"$unset": {
-                "active_ride_id": "",
-                "active_ride_claimed_at": "",
-            }},
+            {
+                "$unset": {
+                    "active_ride_id": "",
+                    "active_ride_claimed_at": "",
+                },
+                "$set": {"is_busy": False},
+            },
         )
         if released.modified_count != 1:
             return False
@@ -2944,10 +2948,13 @@ async def _release_driver_active_ride(driver_id: Optional[str], ride_id: str) ->
         return
     await db.drivers.update_one(
         {"driver_id": driver_id, "active_ride_id": ride_id},
-        {"$unset": {
-            "active_ride_id": "",
-            "active_ride_claimed_at": "",
-        }},
+        {
+            "$unset": {
+                "active_ride_id": "",
+                "active_ride_claimed_at": "",
+            },
+            "$set": {"is_busy": False},
+        },
     )
 
 
