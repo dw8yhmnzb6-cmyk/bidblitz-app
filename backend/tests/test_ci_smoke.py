@@ -3625,3 +3625,18 @@ def test_auction_admin_timer_transitions_are_atomic():
     assert "new_remaining > MAX_AUCTION_REMAINING_SECONDS" in source
     assert "new_ends > max_ends" in source
     assert "Auktion darf maximal 72 Stunden Restlaufzeit haben" in source
+
+
+def test_auction_product_identity_freezes_after_real_bid():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionAdminPage.jsx").read_text(encoding="utf-8")
+
+    assert "async def _require_auction_product_editable(auction: dict) -> None:" in source
+    assert '{"auction_id": auction_id, "is_bot": {"$ne": True}}' in source
+    assert "Produktdaten sind nach dem ersten echten Gebot gesperrt" in source
+    assert source.count("await _require_auction_product_editable(auction)") >= 2
+
+    assert "const realBidCount = Math.max(" in admin_page
+    assert "Produktdaten sind nach dem ersten echten Gebot gesperrt." in admin_page
+    assert "Produktdaten nach echtem Gebot gesperrt" in admin_page
+    assert "disabled={" in admin_page
