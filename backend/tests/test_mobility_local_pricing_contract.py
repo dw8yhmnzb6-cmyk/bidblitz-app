@@ -576,3 +576,14 @@ def test_scooter_nearby_releases_expired_reservations():
     assert '"$set": {"status": "available"}' in scooter
     assert '"$unset": {"reserved_by": "", "reserved_until": ""}' in scooter
     assert '"status": "expired", "expired_at": now_iso' in scooter
+
+
+def test_scooter_qr_unlock_cannot_bypass_pricing_confirmation():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "class QrUnlockRequest(BaseModel):" in scooter
+    assert "pricing_hash: str = Field(..., min_length=8, max_length=128)" in scooter
+    assert "idempotency_key: Optional[str] = None" in scooter
+    assert "pricing_hash=req.pricing_hash" in scooter
+    assert "idempotency_key=req.idempotency_key" in scooter
+    assert "UnlockRequest(scooter_id=scooter_id)" not in scooter
