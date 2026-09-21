@@ -3836,3 +3836,15 @@ def test_blitz_mine_requires_real_session_even_in_demo_mode():
     assert "return isGuest" in block
     assert "(isGuest && !isDemoMode)" not in block
     assert '<AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />' in block
+
+
+def test_live_verify_checks_mining_backend_consistency():
+    source = (BACKEND_DIR.parent / "scripts" / "live_verify.py").read_text(encoding="utf-8")
+
+    assert 'base_url + "/api/system/version"' in source
+    assert '"backend belongs to expected commit"' in source
+    assert 'base_url + "/api/mining/capabilities"' in source
+    assert '"mining capabilities expose provider safety"' in source
+    assert 'base_url + "/api/mining/packages"' in source
+    assert 'base_url + "/api/mining/dashboard"' in source
+    assert 'mining_dashboard["status"] in {401, 403}' in source
