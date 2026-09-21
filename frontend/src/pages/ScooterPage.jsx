@@ -412,8 +412,16 @@ export default function ScooterPage({ onNavigate }) {
           fetchNearbyScooters(userLocation.lat, userLocation.lng);
         }
         
-        // Show summary
-        alert(`Fahrt beendet!\nGesamt: €${data.summary.total_cost.toFixed(2)}\nDauer: ${data.summary.duration_minutes ?? data.summary.total_minutes} Min${data.summary.payment_status === "due" ? `\nOffener Betrag: €${Number(data.summary.amount_due || 0).toFixed(2)}` : ""}`);
+        // Show summary using the ride's locked settlement currency.
+        const summaryCurrency = String(data.summary.currency || data.summary.amount_due_currency || activeRental.currency || pricing.currency || 'EUR').toUpperCase();
+        const totalLabel = `${Number(data.summary.total_cost || 0).toFixed(2)} ${summaryCurrency}`;
+        const duration = data.summary.duration_minutes ?? data.summary.total_minutes;
+        const paymentLine = data.summary.payment_status === "due"
+          ? `\nOffener Betrag: ${Number(data.summary.amount_due || 0).toFixed(2)} ${data.summary.amount_due_currency || summaryCurrency}`
+          : data.summary.payment_status === "reconciliation_required"
+            ? `\nAbrechnung wird geprüft: ${Number(data.summary.amount_due || 0).toFixed(2)} ${data.summary.amount_due_currency || summaryCurrency}`
+            : "";
+        alert(`Fahrt beendet!\nGesamt: ${totalLabel}\nDauer: ${duration} Min${paymentLine}`);
       } else {
         const err = await res.json();
         setError(err.detail || 'Beenden fehlgeschlagen');
