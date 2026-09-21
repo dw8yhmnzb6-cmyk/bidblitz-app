@@ -776,9 +776,11 @@ export default function MiningPage({ onBack, onNavigate }) {
                     />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between gap-2">
-                    <span className="text-[8px] font-semibold text-white/30">
+                    <span className="text-[8px] font-semibold text-white/30" data-testid="mining-level-next-threshold">
                       {miningValueEnabled
-                        ? `${miningFixed(vip.progress, 0)}% bis ${vip.next_level?.name || "Max-Level"}`
+                        ? (vip.next_level
+                          ? `${miningFixed(vip.progress, 0)}% · ${vip.next_level.name} ab ${miningFixed(vip.next_level.min_hashrate, 0)} TH/s`
+                          : "Max-Level erreicht")
                         : "Preview · Bonus noch deaktiviert"}
                     </span>
                     <span className="text-[8px] font-bold" style={{ color: currentLevel.color }}>
@@ -835,6 +837,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                           </div>
                           <p className="truncate text-[9px] font-black text-white">{pkg.name}</p>
                           <p className="mt-0.5 text-[8px] font-mono text-white/35">{pkg.hashrate} TH/s</p>
+                          <p className="mt-1 text-[7px] font-bold text-white/25">+${pkg.hashrate} TH/s Level-Power</p>
                           <p className="mt-2 text-[13px] font-black" style={{ color }}>€{miningFixed(pkg.price_eur, 2)}</p>
                           <motion.button
                             type="button"
