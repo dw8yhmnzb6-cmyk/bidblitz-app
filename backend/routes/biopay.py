@@ -51,15 +51,26 @@ from services.pos_security import (
 router = APIRouter(prefix="/api", tags=["biopay"])
 
 
+def _biopay_provider_declared() -> bool:
+    return os.environ.get("BIOPAY_PROVIDER_VERIFIED", "").strip().lower() == "true"
+
+
 def _biopay_provider_verified() -> bool:
-    return TEST_MODE or os.environ.get("BIOPAY_PROVIDER_VERIFIED", "").strip().lower() == "true"
+    # A deployment flag is not hardware/provider attestation. Until a
+    # server-side attestation verifier exists, live BioPay stays fail-closed.
+    return TEST_MODE
 
 
 def _require_verified_biopay_provider() -> None:
     if not _biopay_provider_verified():
+        declared = _biopay_provider_declared()
         raise HTTPException(
             status_code=503,
-            detail="BioPay ist in Production ohne verifizierte biometrische Provider-/Hardware-Attestation deaktiviert.",
+            detail=(
+                "BioPay Provider ist deklariert, aber serverseitige Hardware-Attestation ist noch nicht verifiziert."
+                if declared
+                else "BioPay ist in Production ohne verifizierte biometrische Provider-/Hardware-Attestation deaktiviert."
+            ),
         )
 
 
