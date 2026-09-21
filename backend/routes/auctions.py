@@ -724,11 +724,19 @@ async def list_auctions(request: Request, response: Response):
 
 @router.get("/active")
 async def get_active_auctions():
-    """Get only active auctions."""
+    """Get only currently live auctions and finalize stale active rows first."""
     now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    expired = await db.auctions.find(
+        {"status": "active", "ends_at": {"$lte": now_iso}},
+        {"_id": 0, "auction_id": 1},
+    ).limit(100).to_list(100)
+    for auc in expired:
+        await _finalize_auction_once(auc["auction_id"])
     
     auctions = await db.auctions.find(
-        {"status": "active"},
+        {"status": "active", "ends_at": {"$gt": now_iso}},
         {"_id": 0},
     ).sort("ends_at", 1).to_list(100)
     
