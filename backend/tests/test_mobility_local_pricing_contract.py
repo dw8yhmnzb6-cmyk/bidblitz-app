@@ -238,3 +238,12 @@ def test_non_european_unconfigured_countries_do_not_receive_fake_eu_tariffs():
     assert '"strict_modes": True' in mobility
     assert 'if code in EUROPE_COUNTRY_CODES:' in mobility
     assert 'return "UNSUPPORTED"' in mobility
+
+
+def test_taxi_does_not_fall_back_to_legacy_default_for_strict_regions():
+    taxi = read("backend/routes/taxi.py")
+
+    assert 'if pricing_context.get("strict_modes"):' in taxi
+    assert '"pricing_source": "mobility_profile_unavailable"' in taxi
+    assert '"booking_supported": False' in taxi
+    assert '"Für diesen Standort ist noch kein verifizierter Taxi-Tarif freigeschaltet."' in taxi
