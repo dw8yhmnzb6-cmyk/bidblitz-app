@@ -2973,6 +2973,9 @@ def test_blitz_mine_preview_value_actions_are_exactly_once_and_retry_safe():
     assert 'data-testid="lockup-preview-disabled"' in page
     assert 'valueActionsEnabled={valueActionsEnabled}' in page
     assert "shouldKeepBlitzAttemptKey" in page
+    assert 'BlitzMine Test-Push ist außerhalb TEST_MODE deaktiviert.' in backend
+    assert "allowTestPush={valueActionsEnabled}" in page
+    assert "allowTestPush && (" in page
     assert page.count('"Idempotency-Key": idempotencyKey') >= 5
     assert 'db.blitz_mine_sessions, "session_id", unique=True, sparse=True, critical=True' in database
     assert 'db.blitz_mine_sessions, "active_slot", unique=True, sparse=True, critical=True' in database
