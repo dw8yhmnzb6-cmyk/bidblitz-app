@@ -146,3 +146,12 @@ def test_taxi_booking_reserves_exact_displayed_quote_once():
     assert 'pricing_source": "locked_server_quote" if locked_quote' in taxi
     assert 'quoteId: selectedEstimate.quote_id || null' in page
     assert 'quote_id: quoteId || null' in api
+
+
+def test_taxi_geocoding_is_not_hardcoded_to_germany_austria_switzerland():
+    api = read("frontend/src/services/taxiApi.js")
+
+    assert "country=de,at,ch" not in api
+    assert "/api/taxi/geocode?" in api
+    assert 'qs.set("lat", String(lat))' in api
+    assert 'qs.set("lng", String(lng))' in api
