@@ -469,7 +469,7 @@ async def get_nearby_scooters(request: Request, lat: Optional[float] = None, lng
 @router.get("/subscription-plans")
 async def get_scooter_plans_alt():
     """Get available scooter subscription plans (alias)."""
-    return {"plans": SCOOTER_PLANS}
+    return {"plans": await _get_scooter_plans()}
 
 
 @router.get("/pricing")
@@ -489,7 +489,7 @@ async def get_scooter_pricing(request: Request, lat: Optional[float] = None, lng
         **pricing,
         "free_paused_minutes": 5,
         "max_speed_kmh": 25,
-        "subscription_plans": SCOOTER_PLANS,
+        "subscription_plans": await _get_scooter_plans(),
     }
 
 
@@ -1461,10 +1461,65 @@ SCOOTER_PLANS = [
 ]
 
 
+def _coerce_scooter_plan(raw: dict, fallback: Optional[dict] = None) -> Optional[dict]:
+    source = {**(fallback or {}), **(raw or {})}
+    plan_id = str(source.get("plan_id") or source.get("id") or "").strip()
+    name = str(source.get("name") or "").strip()
+    try:
+        price = float(source.get("price"))
+        duration_days = int(source.get("duration_days"))
+        unlock_fee = float(source.get("unlock_fee", 0) or 0)
+        free_minutes = int(source.get("free_minutes_per_day", 0) or 0)
+        per_minute = float(source.get("per_minute_rate", 0) or 0)
+    except (TypeError, ValueError):
+        return None
+    currency = str(source.get("currency") or "EUR").upper()
+    if not plan_id or not name or price <= 0 or duration_days <= 0:
+        return None
+    if unlock_fee < 0 or free_minutes < 0 or per_minute < 0 or currency != "EUR":
+        return None
+    features = source.get("features")
+    if not isinstance(features, list):
+        features = (fallback or {}).get("features") or []
+    return {
+        **source,
+        "plan_id": plan_id,
+        "name": name,
+        "price": round(price, 2),
+        "duration_days": duration_days,
+        "unlock_fee": round(unlock_fee, 2),
+        "free_minutes_per_day": free_minutes,
+        "per_minute_rate": round(per_minute, 4),
+        "currency": "EUR",
+        "features": features,
+        "enabled": source.get("enabled", True) is not False,
+    }
+
+
+async def _get_scooter_plans() -> list[dict]:
+    """Return admin-managed plans overlaid on the safe built-in defaults."""
+    defaults = {
+        plan["plan_id"]: dict(plan)
+        for plan in SCOOTER_PLANS
+    }
+    rows = await db.scooter_plans.find(
+        {"enabled": {"$ne": False}},
+        {"_id": 0},
+    ).limit(100).to_list(100)
+    merged = dict(defaults)
+    for row in rows:
+        plan_id = str(row.get("plan_id") or row.get("id") or "").strip()
+        candidate = _coerce_scooter_plan(row, defaults.get(plan_id))
+        if candidate:
+            merged[candidate["plan_id"]] = candidate
+    return list(merged.values())
+
+
+
 @router.get("/plans")
 async def get_scooter_plans():
     """Get available scooter subscription plans."""
-    return {"plans": SCOOTER_PLANS}
+    return {"plans": await _get_scooter_plans()}
 
 
 class SubscribePlanReq(BaseModel):
@@ -1487,9 +1542,10 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
     if existing_same:
         return {"ok": True, "subscription": existing_same, "replayed": True}
 
-    plan = next((p for p in SCOOTER_PLANS if p["plan_id"] == req.plan_id), None)
+    plans = await _get_scooter_plans()
+    plan = next((p for p in plans if p["plan_id"] == req.plan_id), None)
     if not plan:
-        raise HTTPException(400, "Ungültiger Plan")
+        raise HTTPException(400, "Ungültiger oder deaktivierter Plan")
 
     now = datetime.now(timezone.utc)
     active = await _get_active_scooter_subscription(user)
