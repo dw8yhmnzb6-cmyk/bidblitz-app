@@ -4076,6 +4076,10 @@ def test_biopay_requires_verified_provider_in_production():
     assert backend.count('_require_verified_biopay_provider()') >= 7
     assert 'matched = template_token_fingerprint((template_token or "").strip()) == profile.get("token_fingerprint")' in service
     assert 'score = 0.99 if matched else 0.12' in service
+    assert '"health_status": "test_healthy" if TEST_MODE else "unverified"' in service
+    assert '"diagnostic_score": 100.0 if TEST_MODE else 0.0' in service
+    assert '"hardware_verified": False' in service
+    assert '"attestation_status": "test_mode" if TEST_MODE else "unverified"' in service
 
     assert 'REACT_APP_BIOPAY_PROVIDER_VERIFIED' in panel
     assert 'const BIOPAY_PROVIDER_VERIFIED' in panel
