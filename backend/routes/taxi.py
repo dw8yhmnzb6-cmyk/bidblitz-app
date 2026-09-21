@@ -2716,7 +2716,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     # Track recent addresses (pickup + dropoff + any stops) so the search-sheet
     # can show "Letzte Adressen" on the next booking.
     async def _track_recent(addr, lat, lng):
-        if not (addr and lat and lng):
+        if not addr or lat is None or lng is None:
             return
         try:
             await db.taxi_recent_addresses.update_one(
