@@ -354,7 +354,13 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
         </div>
 
-        {!proofVerified && (\n          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100/80" data-testid="mining-trust-unverified-banner">\n            Preview · Keine verifizierte Live-Hardware-, Standort-, Hashrate- oder Provider-Bestätigung. Wert- und Proof-Angaben bleiben bis zur Verifizierung deaktiviert.\n          </div>\n        )}\n\n        <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+        {!proofVerified && (
+          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100/80" data-testid="mining-trust-unverified-banner">
+            Preview · Keine verifizierte Live-Hardware-, Standort-, Hashrate- oder Provider-Bestätigung. Wert- und Proof-Angaben bleiben bis zur Verifizierung deaktiviert.
+          </div>
+        )}
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold text-white/70" data-testid="mining-trust-investor-badge">
               <Building2 size={13} /> {c.investorBadge}
