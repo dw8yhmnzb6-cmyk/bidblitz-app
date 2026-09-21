@@ -8,25 +8,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { usePushNotifications } from "../components/PushNotifications";
+import { request as api } from "../services/api";
 import {
   ChevronLeft, Zap, Users, Lock, Trophy, TrendingUp, Plus, X,
   Flame, Sparkles, Share2, Shield, Clock, Check, Loader2,
   ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy, Gift, Bell, Target, TimerReset,
 } from "lucide-react";
-
-const API = process.env.REACT_APP_BACKEND_URL || "";
-
-async function api(path, opts = {}) {
-  const r = await fetch(`${API}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  let d = {};
-  try { d = await r.clone().json(); } catch (error) { void error; }
-  if (!r.ok) throw new Error(d.detail || d.message || `Error ${r.status}`);
-  return d;
-}
 
 const ROLE_META = {
   pioneer:     { label: "Pioneer",     color: "#94A3B8", icon: Star,    desc: "Starter-Rolle. Tippe täglich, um PI zu verdienen." },
