@@ -34,7 +34,11 @@ def test_scooter_non_eur_wallet_settlement_is_fail_closed():
     assert 'if ride_currency != "EUR":' in scooter
     assert 'payment_status = "reconciliation_required"' in scooter
     assert '"settlement_currency": ride_currency' in scooter
+    assert '"amount_due_currency": ride_currency if amount_due > 0 else None' in scooter
     assert 'elif amount_to_debit > 0:' in scooter
+    assert 'if ride_currency == "EUR":' in scooter
+    assert 'scooter_inc["total_revenue"] = float(settlement.get("total_cost") or 0)' in scooter
+    assert '"$inc": scooter_inc' in scooter
 
 
 def test_taxi_uses_canonical_mobility_profile_before_legacy_fallback():
