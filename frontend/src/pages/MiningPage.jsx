@@ -133,7 +133,7 @@ function AutoRewardCard({ reward, data, t, valueActionsEnabled, onClaim, claimBu
               {valueActionsEnabled ? (t("mining.auto_reward") || "Auto Mining Reward") : "Mining Reward Preview"}
             </p>
             {!valueActionsEnabled ? (
-              <p className="text-[10px] text-amber-300/70">Schätzung: {miningFixed(reward?.amount, 4)} BLZ · keine BLZ-Erzeugung in Production</p>
+              <p className="text-[10px] text-amber-300/70">Keine BLZ-/Ertragsprojektion ohne verifizierten Mining-Provider.</p>
             ) : isClaimed ? (
               <>
                 <p className="text-[10px] text-[#00E89D] font-medium">
@@ -803,11 +803,15 @@ export default function MiningPage({ onBack, onNavigate }) {
 
               {/* Mining Stats — Glass Cards */}
               <div className="grid grid-cols-3 gap-3">
-                {[
+                {(miningValueEnabled ? [
                   { label: "Hashrate", value: `${miningFixed(m.total_hashrate, 0)}`, unit: "TH/s", color: "#00E89D", icon: Zap },
-                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: miningValueEnabled ? "BLZ" : "BLZ Preview", color: "#00C2FF", icon: TrendingUp },
+                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
                   { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, unit: "aktiv", color: "#A855F7", icon: Server },
-                ].map((s, i) => (
+                ] : [
+                  { label: "Hashrate", value: "—", unit: "nicht verifiziert", color: "#00E89D", icon: Zap },
+                  { label: t("mining.daily") || "Täglich", value: "—", unit: "keine Projektion", color: "#00C2FF", icon: TrendingUp },
+                  { label: t("mining.rigs") || "Rigs", value: "—", unit: "Provider ausstehend", color: "#A855F7", icon: Server },
+                ]).map((s, i) => (
                   <motion.div key={s.label} className="rounded-2xl p-4 text-center relative overflow-hidden"
                     style={{ 
                       background: `linear-gradient(180deg, ${s.color}08 0%, ${s.color}02 100%)`, 
@@ -833,28 +837,30 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="px-4 py-3.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <TrendingUp size={15} className="text-[#00C2FF]" />
                   <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">
-                    {miningValueEnabled ? (t("mining.earnings_overview") || "Ertragsübersicht") : "Ertragsvorschau"}
+                    {miningValueEnabled ? (t("mining.earnings_overview") || "Ertragsübersicht") : "Ertragsprojektion deaktiviert"}
                   </p>
                 </div>
                 {!miningValueEnabled && (
                   <div className="px-4 py-2 text-center text-[10px] text-amber-300/70" data-testid="mining-earnings-preview-note">
-                    Reine Vorschauwerte · keine BLZ oder EUR werden in Production erzeugt oder gutgeschrieben.
+                    Keine BLZ-/EUR-Ertragsprojektion ohne verifizierten Mining-/Settlement-Provider.
                   </div>
                 )}
-                <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
-                  {[
-                    { label: t("mining.earn_daily") || "Täglich", blz: miningFixed(m.daily_earnings_blz, 4), eur: miningFixed(m.daily_earnings_eur, 4), color: "#00E89D" },
-                    { label: t("mining.earn_monthly") || "Monatlich", blz: miningFixed(m.monthly_earnings_blz, 2), eur: miningFixed(m.monthly_earnings_eur, 2), color: "#00C2FF" },
-                    { label: t("mining.earn_yearly") || "Jährlich", blz: miningFixed(m.yearly_earnings_blz, 0), eur: miningFixed(m.yearly_earnings_eur, 0), color: "#FFD700" },
-                  ].map(s => (
-                    <div key={s.label} className="py-5 px-3 text-center">
-                      <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
-                      <p className="text-[10px] font-bold text-white/35 mt-1">BLZ</p>
-                      <p className="text-[13px] font-bold font-mono text-white/55 mt-1.5">{"\u20AC"}{s.eur}</p>
-                      <p className="text-[9px] text-white/25 uppercase mt-2 tracking-[0.15em] font-bold">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
+                {miningValueEnabled && (
+                  <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                    {[
+                      { label: t("mining.earn_daily") || "Täglich", blz: miningFixed(m.daily_earnings_blz, 4), eur: miningFixed(m.daily_earnings_eur, 4), color: "#00E89D" },
+                      { label: t("mining.earn_monthly") || "Monatlich", blz: miningFixed(m.monthly_earnings_blz, 2), eur: miningFixed(m.monthly_earnings_eur, 2), color: "#00C2FF" },
+                      { label: t("mining.earn_yearly") || "Jährlich", blz: miningFixed(m.yearly_earnings_blz, 0), eur: miningFixed(m.yearly_earnings_eur, 0), color: "#FFD700" },
+                    ].map(s => (
+                      <div key={s.label} className="py-5 px-3 text-center">
+                        <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
+                        <p className="text-[10px] font-bold text-white/35 mt-1">BLZ</p>
+                        <p className="text-[13px] font-bold font-mono text-white/55 mt-1.5">{"\u20AC"}{s.eur}</p>
+                        <p className="text-[9px] text-white/25 uppercase mt-2 tracking-[0.15em] font-bold">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
 
               {/* Meine Miner — per-miner earnings */}
@@ -1173,7 +1179,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <p className="text-[11px] text-white/30 mt-0.5">
                   {miningValueEnabled
                     ? (t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen")
-                    : "Preise und Erträge sind Vorschauwerte. In Production findet kein Kauf und keine BLZ-Erzeugung statt."}
+                    : "Preise und technische Paketdaten sind Preview. Ertrags-/ROI-Projektionen bleiben bis zur verifizierten Provider-Anbindung deaktiviert."}
                 </p>
               </div>
 
@@ -1269,11 +1275,20 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <TrendingUp size={11} className="text-[#00E89D]" />
                           <span className="text-[14px] font-bold font-outfit text-white">{pkg.hashrate} TH/s</span>
                         </div>
-                        <p className="text-[10px] font-mono text-white/30 mb-1.5">{pkg.daily_blz} BLZ / {t("mining.day") || "Tag"}</p>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#FFD700]/10 text-[#FFD700] font-bold border border-[#FFD700]/15">ROI {pkg.roi_pct}%</span>
-                          <span className="text-[8px] text-white/15">{pkg.name}</span>
-                        </div>
+                        {pkg.projection_available ? (
+                          <>
+                            <p className="text-[10px] font-mono text-white/30 mb-1.5">{pkg.daily_blz} BLZ / {t("mining.day") || "Tag"}</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#FFD700]/10 text-[#FFD700] font-bold border border-[#FFD700]/15">ROI {pkg.roi_pct}%</span>
+                              <span className="text-[8px] text-white/15">{pkg.name}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-300/10 text-amber-200 font-bold border border-amber-300/15">KEINE ERTRAGSPROJEKTION</span>
+                            <span className="text-[8px] text-white/15">{pkg.name}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Price */}
@@ -1307,19 +1322,25 @@ export default function MiningPage({ onBack, onNavigate }) {
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
 
                     {/* Earnings Summary */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: t("mining.earn_daily") || "Täglich", value: `${confirmPkg.daily_blz} BLZ`, sub: `€${confirmPkg.daily_eur}`, color: "#00E89D" },
-                        { label: t("mining.earn_monthly") || "Monatlich", value: `${(confirmPkg.daily_blz * 30).toFixed(1)} BLZ`, sub: `€${confirmPkg.monthly_eur}`, color: "#00C2FF" },
-                        { label: t("mining.earn_yearly") || "Jährlich", value: `${(confirmPkg.daily_blz * 365).toFixed(0)} BLZ`, sub: `€${confirmPkg.yearly_eur}`, color: "#FFD700" },
-                      ].map(s => (
-                        <div key={s.label} className="rounded-xl p-2 text-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}10` }}>
-                          <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
-                          <p className="text-[9px] font-mono text-white/25">{s.sub}</p>
-                          <p className="text-[7px] text-white/15 uppercase mt-0.5">{s.label}</p>
-                        </div>
-                      ))}
-                    </div>
+                    {confirmPkg.projection_available ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: t("mining.earn_daily") || "Täglich", value: `${confirmPkg.daily_blz} BLZ`, sub: `€${confirmPkg.daily_eur}`, color: "#00E89D" },
+                          { label: t("mining.earn_monthly") || "Monatlich", value: `${(confirmPkg.daily_blz * 30).toFixed(1)} BLZ`, sub: `€${confirmPkg.monthly_eur}`, color: "#00C2FF" },
+                          { label: t("mining.earn_yearly") || "Jährlich", value: `${(confirmPkg.daily_blz * 365).toFixed(0)} BLZ`, sub: `€${confirmPkg.yearly_eur}`, color: "#FFD700" },
+                        ].map(s => (
+                          <div key={s.label} className="rounded-xl p-2 text-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}10` }}>
+                            <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
+                            <p className="text-[9px] font-mono text-white/25">{s.sub}</p>
+                            <p className="text-[7px] text-white/15 uppercase mt-0.5">{s.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div data-testid="mining-shop-no-projection" className="rounded-xl border border-amber-300/15 bg-amber-300/[0.06] px-3 py-3 text-center text-[10px] leading-relaxed text-amber-100/75">
+                        Keine BLZ-, EUR- oder ROI-Ertragsprojektion ohne verifizierten Mining-/Settlement-Provider.
+                      </div>
+                    )}
 
                     {/* Price + Balance */}
                     <div className="flex items-center justify-between px-1">
