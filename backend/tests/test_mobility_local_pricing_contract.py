@@ -511,3 +511,15 @@ def test_scooter_physical_command_retries_use_stable_operation_keys():
     assert 'operation_key=f"ride:{ride[\'ride_id\']}:pause-lock"' in scooter
     assert 'operation_key=f"ride:{ride[\'ride_id\']}:resume-unlock"' in scooter
     assert 'operation_key=f"ride:{ride_id}:end-lock"' in scooter
+
+
+def test_scooter_device_telemetry_reconciles_recent_pending_commands():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "confirmed_command = DeviceCommand.LOCK.value if req.locked else DeviceCommand.UNLOCK.value" in scooter
+    assert "confirmation_cutoff = (now - timedelta(minutes=2)).isoformat()" in scooter
+    assert '"status": "pending_confirmation"' in scooter
+    assert '"last_attempt_at": {"$gte": confirmation_cutoff}' in scooter
+    assert '"confirmed_via": "device_telemetry"' in scooter
+    assert '"physical_state": "locked" if req.locked else "unlocked"' in scooter
+    assert '"status": "success"' in scooter
