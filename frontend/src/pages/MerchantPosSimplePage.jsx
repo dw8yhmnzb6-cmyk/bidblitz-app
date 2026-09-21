@@ -69,6 +69,18 @@ function roleSummaryMetrics(copy, role, sales = []) {
 
 export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const user = useUser();
+  const posCartRecoveryKey = `bidblitz:merchant-pos-cart:${user?.id || user?.email || "unknown"}`;
+  const initialCartRecovery = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(posCartRecoveryKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed?.cartSession?.cartId || !Array.isArray(parsed?.cart) || !parsed.cart.length) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, [posCartRecoveryKey]);
   const { isEnabled } = useFeatureFlags();
   const { lang } = useI18n();
   const { online } = useNetwork();
@@ -80,7 +92,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const [selectedCategory, setSelectedCategory] = useState("Alle");
   const [search, setSearch] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => initialCartRecovery?.cart || []);
   const [loading, setLoading] = useState(true);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -88,7 +100,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const [paymentState, setPaymentState] = useState({ stage: "ready", headline: copy.choosePayment, description: copy.holdCard });
   const [activePayment, setActivePayment] = useState(null);
   const [lastAttemptedMethodKey, setLastAttemptedMethodKey] = useState(null);
-  const [cartSession, setCartSession] = useState(null);
+  const [cartSession, setCartSession] = useState(() => initialCartRecovery?.cartSession || null);
   const [favourites, setFavourites] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bidblitz-pos-favourites") || "[]"); } catch { return []; }
   });
@@ -97,6 +109,22 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   });
   const [showTraining, setShowTraining] = useState(() => !localStorage.getItem(POS_TRAINING_STORAGE_KEY));
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (cartSession?.cartId && cart.length > 0) {
+        window.localStorage.setItem(
+          posCartRecoveryKey,
+          JSON.stringify({ cartSession, cart, savedAt: new Date().toISOString() }),
+        );
+      } else {
+        window.localStorage.removeItem(posCartRecoveryKey);
+      }
+    } catch {
+      // Browser storage can be unavailable in restricted/private contexts.
+    }
+  }, [cart, cartSession, posCartRecoveryKey]);
 
   const role = useMemo(() => {
     if (user?.role === "admin" || user?.role === "merchant") return "owner";
