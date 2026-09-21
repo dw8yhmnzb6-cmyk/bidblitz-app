@@ -533,7 +533,10 @@ async def get_compliance_flags(
     if user_id:
         query["user_id"] = user_id
 
-    flags = await db.compliance_flags.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    flags = await db.compliance_flags.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    for flag in flags:
+        mongo_id = flag.pop("_id", None)
+        flag["flag_id"] = str(mongo_id) if mongo_id is not None else str(flag.get("flag_id") or "")
     total = await db.compliance_flags.count_documents(query)
 
     await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin["_id"]), email=admin.get("email", ""),
@@ -547,32 +550,39 @@ class ResolveFlagRequest(BaseModel):
     resolution: str = ""  # notes about resolution
 
 
-@router.post("/compliance-flags/{flag_index}/resolve")
+@router.post("/compliance-flags/{flag_ref}/resolve")
 @limiter.limit(RATE_ADMIN_ACTION)
-async def resolve_compliance_flag(flag_index: int, req: ResolveFlagRequest, request: Request):
+async def resolve_compliance_flag(flag_ref: str, req: ResolveFlagRequest, request: Request):
     admin = await require_admin(request)
     admin_id = str(admin["_id"])
     ip, ua = get_client_info(request)
 
-    # Get the nth open flag
-    open_flags = await db.compliance_flags.find({"status": "open"}).sort("created_at", -1).to_list(1000)
-    if flag_index < 0 or flag_index >= len(open_flags):
+    flag = None
+    if ObjectId.is_valid(flag_ref):
+        flag = await db.compliance_flags.find_one({"_id": ObjectId(flag_ref), "status": "open"})
+    elif flag_ref.isdigit():
+        # Legacy fallback for older clients that still send the visible open-list index.
+        flag_index = int(flag_ref)
+        open_flags = await db.compliance_flags.find({"status": "open"}).sort("created_at", -1).to_list(1000)
+        if 0 <= flag_index < len(open_flags):
+            flag = open_flags[flag_index]
+    if not flag:
         raise HTTPException(status_code=404, detail="Flag not found")
 
-    flag = open_flags[flag_index]
     now = datetime.now(timezone.utc).isoformat()
-
-    await db.compliance_flags.update_one(
-        {"_id": flag["_id"]},
+    updated = await db.compliance_flags.update_one(
+        {"_id": flag["_id"], "status": "open"},
         {"$set": {"status": "resolved", "resolved_at": now, "resolved_by": admin_id, "resolution": req.resolution}},
     )
+    if updated.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Flag wurde bereits verarbeitet; bitte neu laden")
 
     await log_audit(AuditEvent.ADMIN_ACTION, user_id=admin_id, email=admin.get("email", ""),
                     ip=ip, user_agent=ua,
-                    details={"action": "resolve_compliance_flag", "flag_user": flag.get("user_id", ""),
-                             "flag_reason": flag.get("reason", "")})
+                    details={"action": "resolve_compliance_flag", "flag_id": str(flag["_id"]),
+                             "flag_user": flag.get("user_id", ""), "flag_reason": flag.get("reason", "")})
 
-    return {"success": True, "message": "Flag resolved"}
+    return {"success": True, "message": "Flag resolved", "flag_id": str(flag["_id"])}
 
 
 # ── Compliance Check History ──
