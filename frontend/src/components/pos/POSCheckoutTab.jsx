@@ -8,6 +8,7 @@ import { POSBioPayPanel } from "./POSBioPayPanel";
 import { TEST_MODE } from "../../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const EXTERNAL_CARD_CERTIFIED = String(process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED || "").trim().toLowerCase() === "true";
 
 async function apiCall(path, { method = "GET", body } = {}) {
   const res = await fetch(`${API}${path}`, {
@@ -293,6 +294,9 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
   const pay = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
+    if (paymentMethod === "card_external" && !EXTERNAL_CARD_CERTIFIED) {
+      return toast.error("Externe Kartenzahlung ist ohne zertifizierten Terminal-Provider deaktiviert.");
+    }
     if (!TEST_MODE && appliedVouchers.length > 0) {
       return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");
     }
@@ -685,7 +689,13 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
             <PayBtn icon={QrCode} label="QR Wallet" active={paymentMethod === "wallet_qr"} onClick={() => setPaymentMethod("wallet_qr")} testid="pos-pay-qr" />
             <PayBtn icon={Smartphone} label="Kunden-Barcode" active={paymentMethod === "barcode"} onClick={() => setPaymentMethod("barcode")} testid="pos-pay-barcode" />
             <PayBtn icon={Banknote} label="Bar" active={paymentMethod === "cash"} onClick={() => setPaymentMethod("cash")} testid="pos-pay-cash" />
-            <PayBtn icon={CreditCard} label="Karte ext." active={paymentMethod === "card_external"} onClick={() => setPaymentMethod("card_external")} testid="pos-pay-card" />
+            {EXTERNAL_CARD_CERTIFIED ? (
+              <PayBtn icon={CreditCard} label="Karte ext." active={paymentMethod === "card_external"} onClick={() => setPaymentMethod("card_external")} testid="pos-pay-card" />
+            ) : (
+              <div data-testid="pos-card-preview-disabled" className="py-2.5 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-[9px] leading-tight text-amber-100/70 flex items-center justify-center text-center px-2">
+                Karte Preview · Terminal nicht zertifiziert
+              </div>
+            )}
           </div>
 
           {paymentMethod === "barcode" && (
