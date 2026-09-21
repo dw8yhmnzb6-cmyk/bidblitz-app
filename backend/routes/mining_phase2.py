@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.config import TEST_MODE
 from core.security import get_current_user
-from routes.mining import _require_mining_value_mode, _mining_capabilities, _safe_mining_float
+from routes.mining import _require_mining_value_mode, _mining_capabilities, _safe_mining_float, get_vip_level
 
 router = APIRouter(prefix="/api/mining", tags=["mining-phase2"])
 
@@ -1090,6 +1090,26 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
         raise HTTPException(status_code=404, detail="Project not found")
     if project.get("launch_status") != "active":
         raise HTTPException(status_code=400, detail="Launch not active")
+
+    vip_order = ["Bronze", "Silver", "Gold", "Platinum", "Diamond"]
+    miners = await db.mining_miners.find(
+        {"user_id": user_id, "status": "active"},
+        {"hashrate": 1, "power_level": 1, "_id": 0},
+    ).to_list(100)
+    total_hashrate = sum(
+        _safe_mining_float(miner.get("hashrate"))
+        * (1 + _safe_mining_float(miner.get("power_level")) * 0.1)
+        for miner in miners
+    )
+    current_vip = get_vip_level(total_hashrate).get("name", "Bronze")
+    required_vip = str(project.get("min_vip") or "Bronze")
+    current_idx = vip_order.index(current_vip) if current_vip in vip_order else 0
+    required_idx = vip_order.index(required_vip) if required_vip in vip_order else 0
+    if current_idx < required_idx:
+        raise HTTPException(
+            status_code=403,
+            detail=f"VIP-Level {required_vip} erforderlich",
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     await db.mining_launchpad_buys.update_one(
