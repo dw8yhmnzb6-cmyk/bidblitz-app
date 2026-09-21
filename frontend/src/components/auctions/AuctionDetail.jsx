@@ -133,16 +133,24 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
       setTimeout(() => setShowLocalCredits(true), 800);
       return;
     }
+    const bidStorageKey = `bidblitz:auction-bid:${user?.id || user?.email || "unknown"}:${auctionId}`;
+    if (!bidAttemptKeyRef.current && typeof window !== "undefined") {
+      bidAttemptKeyRef.current = window.sessionStorage.getItem(bidStorageKey);
+    }
     if (!bidAttemptKeyRef.current) {
       bidAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
         ? `auction-bid-${crypto.randomUUID()}`
         : `auction-bid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(bidStorageKey, bidAttemptKeyRef.current);
+      }
     }
     const idempotencyKey = bidAttemptKeyRef.current;
     setBidding(true); setBidMsg(null);
     try {
       const r = await api.placeBid({ auction_id: auctionId, idempotency_key: idempotencyKey });
       bidAttemptKeyRef.current = null;
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(bidStorageKey);
       setAuction(p => ({ ...p, current_price: r.new_price, ends_at: r.ends_at, total_bids: r.total_bids, last_bidder_id: user.id, last_bidder_name: user.name }));
       setBids(p => {
         const bid = r.bid || { bid_id: `opt-${Date.now()}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() };
@@ -153,6 +161,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
     } catch (e) {
       if (!e?.retryable && !["timeout", "network", "server", "unknown"].includes(e?.code)) {
         bidAttemptKeyRef.current = null;
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(bidStorageKey);
       }
       setBidMsg({ ok: false, text: e.message });
     }
