@@ -9,6 +9,7 @@ import os
 import math
 import logging
 import hashlib
+import json
 import httpx
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -179,6 +180,48 @@ async def _get_active_scooter_subscription(user: dict) -> Optional[dict]:
         {"_id": 0},
     )
     return sub
+
+
+def _apply_scooter_subscription_pricing(local_pricing: dict, subscription: Optional[dict]) -> dict:
+    effective = dict(local_pricing or {})
+    effective["subscription_applied"] = False
+    if not subscription or not effective.get("available", True):
+        return effective
+
+    unlock_fee = float(subscription.get("unlock_fee", effective.get("unlock_fee", UNLOCK_FEE)) or 0)
+    effective.update({
+        "unlock_fee": round(unlock_fee, 2),
+        "per_minute": round(float(subscription.get("per_minute_rate", effective.get("per_minute", PER_MINUTE_RATE)) or 0), 4),
+        "daily_cap": round(float(subscription.get("daily_cap", effective.get("daily_cap", MAX_DAILY_CAP)) or MAX_DAILY_CAP), 2),
+        "minimum_charge": round(float(subscription.get("minimum_charge", unlock_fee) or 0), 2),
+        "min_balance": 0.0,
+        "currency": str(subscription.get("currency") or effective.get("currency") or "EUR").upper(),
+        "subscription_applied": True,
+        "subscription_id": subscription.get("sub_id"),
+        "subscription_plan_id": subscription.get("plan_id"),
+        "subscription_plan_name": subscription.get("plan_name"),
+        "free_minutes_per_day": int(subscription.get("free_minutes_per_day", 0) or 0),
+    })
+    effective["billing_supported"] = effective["currency"] == "EUR"
+    effective["available"] = bool(effective.get("available", True)) and effective["billing_supported"]
+    return effective
+
+
+def _scooter_pricing_hash(pricing: dict) -> str:
+    snapshot = {
+        "unlock_fee": round(float(pricing.get("unlock_fee") or 0), 4),
+        "per_minute": round(float(pricing.get("per_minute") or 0), 6),
+        "daily_cap": round(float(pricing.get("daily_cap") or 0), 4),
+        "minimum_charge": round(float(pricing.get("minimum_charge") or 0), 4),
+        "min_balance": round(float(pricing.get("min_balance") or 0), 4),
+        "currency": str(pricing.get("currency") or "EUR").upper(),
+        "profile_scope": pricing.get("profile_scope") or "",
+        "country_code": pricing.get("country_code") or "",
+        "city": pricing.get("city") or "",
+        "subscription_id": pricing.get("subscription_id") or "",
+    }
+    encoded = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:24]
 
 
 # IoT Provider Configuration. Production fails closed unless these are set.
@@ -422,9 +465,18 @@ async def get_scooter_plans_alt():
 
 
 @router.get("/pricing")
-async def get_scooter_pricing(lat: Optional[float] = None, lng: Optional[float] = None, address: str = ""):
-    """Public local scooter pricing resolved by country/city through the canonical Mobility tariff source."""
-    pricing = await _resolve_scooter_pricing(lat, lng, address)
+async def get_scooter_pricing(request: Request, lat: Optional[float] = None, lng: Optional[float] = None, address: str = ""):
+    """Local scooter price preview using the same effective tariff as unlock."""
+    local_pricing = await _resolve_scooter_pricing(lat, lng, address)
+    subscription = None
+    try:
+        user = await get_current_user(request)
+        subscription = await _get_active_scooter_subscription(user)
+    except HTTPException:
+        subscription = None
+
+    pricing = _apply_scooter_subscription_pricing(local_pricing, subscription)
+    pricing["pricing_hash"] = _scooter_pricing_hash(pricing)
     return {
         **pricing,
         "free_paused_minutes": 5,
@@ -475,6 +527,7 @@ async def get_scooter_details(scooter_id: str):
 class UnlockRequest(BaseModel):
     scooter_id: str  # Can be scooter_id or qr_code
     idempotency_key: Optional[str] = None
+    pricing_hash: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 
 @router.post("/unlock")
@@ -567,20 +620,30 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     if not local_pricing.get("available", True):
         raise HTTPException(status_code=503, detail="Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.")
 
-    ride_unlock_fee = float((subscription or {}).get("unlock_fee", local_pricing["unlock_fee"]))
-    ride_rate = float((subscription or {}).get("per_minute_rate", local_pricing["per_minute"]))
-    ride_daily_cap = float((subscription or {}).get("daily_cap", local_pricing["daily_cap"]))
-    ride_minimum_charge = float((subscription or {}).get("minimum_charge", local_pricing.get("minimum_charge", ride_unlock_fee)) or 0)
-    ride_currency = str((subscription or {}).get("currency") or local_pricing.get("currency") or "EUR").upper()
-    if ride_currency != "EUR":
+    effective_pricing = _apply_scooter_subscription_pricing(local_pricing, subscription)
+    if not effective_pricing.get("available", True):
+        currency = effective_pricing.get("currency") or "lokaler Währung"
         raise HTTPException(
             status_code=503,
-            detail=f"Scooter-Tarif in {ride_currency} kann noch nicht sicher über das EUR-Wallet abgerechnet werden.",
+            detail=f"Scooter-Tarif in {currency} kann noch nicht sicher über das EUR-Wallet abgerechnet werden.",
         )
+
+    current_pricing_hash = _scooter_pricing_hash(effective_pricing)
+    if req.pricing_hash and not secrets.compare_digest(req.pricing_hash, current_pricing_hash):
+        raise HTTPException(
+            status_code=409,
+            detail="Scooter-Tarif hat sich geändert. Bitte Preis neu laden und erneut bestätigen.",
+        )
+
+    ride_unlock_fee = float(effective_pricing["unlock_fee"])
+    ride_rate = float(effective_pricing["per_minute"])
+    ride_daily_cap = float(effective_pricing["daily_cap"])
+    ride_minimum_charge = float(effective_pricing.get("minimum_charge", ride_unlock_fee) or 0)
+    ride_currency = str(effective_pricing.get("currency") or "EUR").upper()
 
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     balance = float(fresh_user.get("balance") or 0)
-    required_balance = 0.0 if subscription else float(local_pricing.get("min_balance", MIN_WALLET_BALANCE))
+    required_balance = float(effective_pricing.get("min_balance", MIN_WALLET_BALANCE) or 0)
     if balance < required_balance:
         raise HTTPException(
             status_code=400,
@@ -658,13 +721,15 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         "daily_cap": ride_daily_cap,
         "minimum_charge": ride_minimum_charge,
         "currency": ride_currency,
+        "pricing_hash": current_pricing_hash,
         "pricing_context": {
-            "profile_scope": local_pricing.get("profile_scope"),
-            "source": local_pricing.get("source"),
-            "city": local_pricing.get("city"),
-            "country": local_pricing.get("country"),
-            "country_code": local_pricing.get("country_code"),
-            "basis": local_pricing.get("basis"),
+            "profile_scope": effective_pricing.get("profile_scope"),
+            "source": effective_pricing.get("source"),
+            "city": effective_pricing.get("city"),
+            "country": effective_pricing.get("country"),
+            "country_code": effective_pricing.get("country_code"),
+            "basis": effective_pricing.get("basis"),
+            "subscription_applied": effective_pricing.get("subscription_applied", False),
         },
         "free_minutes_per_day": free_minutes_per_day,
         "free_minutes_remaining_at_start": round(free_minutes_remaining_at_start, 2),
