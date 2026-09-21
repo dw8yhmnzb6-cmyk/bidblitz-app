@@ -1690,7 +1690,12 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
 
         if scooter.get("device_state_uncertain") and not scooter.get("current_ride_id"):
             if req.locked:
-                update["status"] = "available"
+                reserved_by = str(scooter.get("reserved_by") or "")
+                reserved_until = str(scooter.get("reserved_until") or "")
+                reservation_still_valid = bool(
+                    reserved_by and reserved_until and reserved_until > now.isoformat()
+                )
+                update["status"] = "reserved" if reservation_still_valid else "available"
                 update["device_state_uncertain"] = False
                 update["device_state_confirmed_at"] = now.isoformat()
                 unset_fields.update({
@@ -1698,6 +1703,19 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
                     "device_state_uncertain_reason": "",
                     "device_state_uncertain_at": "",
                 })
+                if not reservation_still_valid:
+                    unset_fields.update({
+                        "reserved_by": "",
+                        "reserved_until": "",
+                    })
+                    await db.scooter_reservations.update_many(
+                        {
+                            "scooter_id": scooter["scooter_id"],
+                            "status": "active",
+                            "expires_at": {"$lte": now.isoformat()},
+                        },
+                        {"$set": {"status": "expired", "expired_at": now.isoformat()}},
+                    )
             else:
                 update["status"] = "offline"
                 update["device_state_uncertain"] = True
