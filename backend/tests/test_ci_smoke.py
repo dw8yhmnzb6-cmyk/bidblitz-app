@@ -2020,6 +2020,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     blitz = (BACKEND_DIR / "routes" / "blitz_mine.py").read_text(encoding="utf-8")
     mining_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
     blitz_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzMinePage.jsx").read_text(encoding="utf-8")
+    mining_trust_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningTrustPage.jsx").read_text(encoding="utf-8")
+    mining_trust_admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningTrustAdminPage.jsx").read_text(encoding="utf-8")
     app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
     registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
 
@@ -2050,6 +2052,9 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
     assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in blitz_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_page
+    assert 'const API = process.env.REACT_APP_BACKEND_URL || "";' in mining_trust_admin_page
     assert 'const dash = await api("/api/mining/dashboard");' in mining_page
     assert 'api("/api/mining/dashboard").catch(() => ({}))' not in mining_page
     assert 'data-testid="mining-load-error"' in mining_page
