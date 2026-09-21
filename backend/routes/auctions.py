@@ -2572,8 +2572,10 @@ TARGET_ACTIVE_AUCTIONS = 30
 
 
 def _schedule_auction_end(now: datetime, slot_index: int = 0) -> tuple[datetime, int]:
-    end_at = now + timedelta(days=7)
-    duration_seconds = 604800
+    # Canonical customer auction duration: alternate 48h / 72h across catalog slots.
+    duration_hours = 48 if int(slot_index or 0) % 2 == 0 else 72
+    duration_seconds = duration_hours * 3600
+    end_at = now + timedelta(seconds=duration_seconds)
     return end_at, duration_seconds
 
 
@@ -2624,11 +2626,11 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         # Auto bot bidding is test-only unless an auction is explicitly bot_only.
         "bot_enabled": bool(TEST_MODE or d.get("bot_only")),
         "bot_target_price": _bot_target_for(d["retail_price"]),
-        "bot_final_phase_seconds": 604800,
+        "bot_final_phase_seconds": 300,
         "bot_probability": 0.72,
         "bot_strategy": "aggressive",
         "bot_aggression": "extreme",
-        "bot_min_seconds": 604800,
+        "bot_min_seconds": 300,
         "bot_initial_target": round(max(12.0, min(34.0, d["retail_price"] * 0.02)), 2),
     }
 
