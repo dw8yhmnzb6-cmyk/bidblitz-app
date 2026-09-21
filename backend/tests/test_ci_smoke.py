@@ -498,6 +498,15 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert 'snapshot.get("price_increment") or PRICE_INCREMENT' in auctions_source
     assert "bid_value_eur: Optional[float]" in auctions_source
     assert "revenue_target_eur: Optional[float]" in auctions_source
+    assert "product_cost_eur: Optional[float]" in auctions_source
+    assert "shipping_cost_eur: Optional[float]" in auctions_source
+    assert "other_costs_eur: Optional[float]" in auctions_source
+    assert "target_net_profit_eur: Optional[float]" in auctions_source
+    assert '"price_increment": round(float(req.price_increment), 2)' in auctions_source
+    assert '"bid_value_eur": round(float(req.bid_value_eur), 2)' in auctions_source
+    assert '"revenue_target_eur": round(float(req.revenue_target_eur), 2)' in auctions_source
+    assert '"product_cost_eur": round(float(req.product_cost_eur), 2)' in auctions_source
+    assert '"target_net_profit_eur": round(float(req.target_net_profit_eur), 2)' in auctions_source
     assert 'updates["featured"] = bool(req.featured)' in auctions_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
@@ -1152,7 +1161,11 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert 'data-testid="auction-admin-engine"' in admin_page
     assert 'data-testid="auction-engine-modal"' in admin_page
     assert 'Gebotsumsatz-Ziel' in admin_page
-    assert 'Das ist Umsatz aus Bid-Credits, nicht garantierter Nettogewinn.' in admin_page
+    assert 'data-testid="auction-engine-targetNetProfit"' in admin_page
+    assert 'data-testid="auction-schedule-net-profit"' in admin_page
+    assert 'Der Rechner steuert weder Timer noch Gewinner.' in admin_page
+    assert 'product_cost_eur: Number(engineConfig.productCost)' in admin_page
+    assert 'target_net_profit_eur: Number(engineConfig.targetNetProfit)' in admin_page
     assert 'config["bot_policy"] = "test_only"' in source
     assert 'config_dict["bot_default_enabled"] = False' in source
     assert 'Production: deaktiviert' in admin_page
