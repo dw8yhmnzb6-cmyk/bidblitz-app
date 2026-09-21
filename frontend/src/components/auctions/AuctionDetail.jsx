@@ -169,7 +169,13 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   };
 
   const cancelAuto = async () => {
-    try { await api.cancelAutoBid(auctionId); setAutoBid({ active: false }); } catch (error) { void error; }
+    try {
+      await api.cancelAutoBid(auctionId);
+      setAutoBid({ active: false });
+      setBidMsg(null);
+    } catch (error) {
+      setBidMsg({ ok: false, text: error?.message || "Auto-Bid konnte nicht beendet werden." });
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={20} className="animate-spin text-[#00E0FF]" /></div>;
