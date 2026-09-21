@@ -2554,6 +2554,8 @@ async def get_active_shares(request: Request):
 
 class QrUnlockRequest(BaseModel):
     qr_code: str  # Raw QR content (URL or scooter_id)
+    pricing_hash: str = Field(..., min_length=8, max_length=128)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/unlock-qr")
@@ -2596,8 +2598,15 @@ async def unlock_via_qr(req: QrUnlockRequest, request: Request):
     if not scooter_id:
         raise HTTPException(status_code=400, detail="QR-Code unbekannt")
 
-    # Reuse existing unlock logic
-    return await unlock_scooter(UnlockRequest(scooter_id=scooter_id), request)
+    # Reuse the exact canonical unlock contract; QR must not bypass tariff confirmation.
+    return await unlock_scooter(
+        UnlockRequest(
+            scooter_id=scooter_id,
+            pricing_hash=req.pricing_hash,
+            idempotency_key=req.idempotency_key,
+        ),
+        request,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
