@@ -1311,8 +1311,8 @@ class MiningReferralRequest(BaseModel):
 
 @router.post("/apply-referral")
 async def apply_mining_referral(req: MiningReferralRequest, request: Request):
+    """Apply one referral code and its test-only welcome bonuses exactly once."""
     _require_mining_value_mode()
-    """Apply one referral code exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     code = req.code.strip().upper()
@@ -1324,46 +1324,84 @@ async def apply_mining_referral(req: MiningReferralRequest, request: Request):
         raise HTTPException(status_code=400, detail="Cannot use your own code")
 
     now = datetime.now(timezone.utc).isoformat()
+    operation_id = f"MREF-{hashlib.sha256(user_id.encode('utf-8')).hexdigest()[:20].upper()}"
     claim = await db.mining_referrals.update_one(
         {"referred_id": user_id},
         {"$setOnInsert": {
+            "operation_id": operation_id,
             "referrer_id": referrer_id,
             "referred_id": user_id,
             "bonus_rate": REFERRAL_BONUS_RATE,
+            "status": "processing",
             "created_at": now,
         }},
         upsert=True,
     )
-    if claim.upserted_id is None:
-        raise HTTPException(status_code=400, detail="Already used a referral code")
+    referral = await db.mining_referrals.find_one({"referred_id": user_id}, {"_id": 0}) or {}
+    if str(referral.get("referrer_id") or "") != referrer_id:
+        raise HTTPException(status_code=409, detail="Already used a different referral code")
+    if referral.get("status") == "completed":
+        return {"ok": True, "bonus_blz": 0.5, "operation_id": referral.get("operation_id") or operation_id, "replayed": True}
+    if referral.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Referral-Bonus benötigt Abstimmung; keine erneute Gutschrift wird ausgeführt")
 
     bonus = 0.5
     for uid, role in [(user_id, "referred"), (referrer_id, "referrer")]:
+        await get_or_create_wallet(uid)
         marker = f"referral_bonus_markers.{user_id}"
         result = await db.mining_wallets.update_one(
             {"user_id": uid, marker: {"$exists": False}},
             {
                 "$inc": {"blz_balance": bonus},
-                "$set": {marker: {"amount": bonus, "role": role, "created_at": now}},
-                "$setOnInsert": {"user_id": uid, "total_mined": 0.0, "total_withdrawn": 0.0},
-            },
-            upsert=True,
-        )
-        if result.modified_count == 1 or result.upserted_id is not None:
-            await db.mining_transactions.update_one(
-                {"txn_id": f"MINE-REF-{user_id}-{role}"},
-                {"$setOnInsert": {
-                    "txn_id": f"MINE-REF-{user_id}-{role}",
-                    "user_id": uid,
-                    "type": "referral_bonus",
-                    "amount_blz": bonus,
-                    "description": "Mining referral welcome bonus",
+                "$set": {marker: {
+                    "operation_id": operation_id,
+                    "amount": bonus,
+                    "role": role,
                     "created_at": now,
                 }},
-                upsert=True,
-            )
+            },
+        )
+        if result.modified_count != 1:
+            wallet = await db.mining_wallets.find_one({"user_id": uid}) or {}
+            if not (wallet.get("referral_bonus_markers") or {}).get(user_id):
+                await db.mining_referrals.update_one(
+                    {"referred_id": user_id},
+                    {"$set": {
+                        "status": "reconciliation_required",
+                        "error": f"{role}_bonus_not_confirmed",
+                        "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(status_code=503, detail="Referral-Gutschrift nicht bestätigt; Abstimmung erforderlich")
+        await db.mining_transactions.update_one(
+            {"txn_id": f"MINE-REF-{user_id}-{role}"},
+            {"$setOnInsert": {
+                "txn_id": f"MINE-REF-{user_id}-{role}",
+                "user_id": uid,
+                "type": "referral_bonus",
+                "amount_blz": bonus,
+                "description": "Mining referral welcome bonus",
+                "reference": operation_id,
+                "created_at": now,
+            }},
+            upsert=True,
+        )
 
-    return {"ok": True, "bonus_blz": bonus}
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.mining_referrals.update_one(
+        {"referred_id": user_id, "referrer_id": referrer_id},
+        {"$set": {
+            "operation_id": referral.get("operation_id") or operation_id,
+            "status": "completed",
+            "completed_at": completed_at,
+        }},
+    )
+    return {
+        "ok": True,
+        "bonus_blz": bonus,
+        "operation_id": referral.get("operation_id") or operation_id,
+        "replayed": claim.upserted_id is None,
+    }
 
 
 # ── VIP Info ──
