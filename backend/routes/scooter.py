@@ -874,7 +874,8 @@ async def pause_ride(req: PauseRideRequest, request: Request):
         current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
         if current.get("status") == "paused":
             return {"ok": True, "status": "paused", "ride_id": ride["ride_id"], "replayed": True}
-        raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+        if current.get("control_action") != "pause":
+            raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
 
     command = await send_device_command(device_id, DeviceCommand.LOCK)
     if not command.success:
@@ -956,7 +957,8 @@ async def resume_ride(req: PauseRideRequest, request: Request):
         current = await db.scooter_rides.find_one({"ride_id": ride["ride_id"], "user_id": user_id}, {"_id": 0}) or {}
         if current.get("status") == "active":
             return {"ok": True, "status": "active", "ride_id": ride["ride_id"], "replayed": True}
-        raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
+        if current.get("control_action") != "resume":
+            raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
 
     command = await send_device_command(device_id, DeviceCommand.UNLOCK)
     if not command.success:
