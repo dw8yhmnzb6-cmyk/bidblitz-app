@@ -78,3 +78,20 @@ def test_driver_dashboard_status_uses_canonical_taxi_lifecycle():
     status_handler = driver[status_start:history_start]
     assert '"$inc": {"balance": -final_fare}' not in status_handler
     assert '"type": "TAXI_RIDE"' not in status_handler
+
+
+def test_taxi_booking_retry_repairs_quote_and_promo_without_second_charge():
+    taxi = read("backend/routes/taxi.py")
+    promo = read("backend/utils/taxi_promo.py")
+    api = read("frontend/src/services/taxiApi.js")
+    page = read("frontend/src/pages/TaxiPage.jsx")
+
+    assert "async def _finalize_taxi_booking_replay" in taxi
+    assert "await _finalize_taxi_booking_replay(existing_ride, user_id)" in taxi
+    assert "await _finalize_taxi_booking_replay(current, user_id)" in taxi
+    assert "async def reserve_redemption" in promo
+    assert "async def release_redemption" in promo
+    assert "taxi_promo_usage" in promo
+    assert '"auth_required"' in promo
+    assert '"Idempotency-Key": idempotencyKey' in api
+    assert "bookingAttemptRef" in page
