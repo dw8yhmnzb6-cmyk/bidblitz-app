@@ -2902,6 +2902,7 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
             "ride_id": req.ride_id,
             "status": RideStatus.REQUESTED.value,
             "driver_id": None,
+            "cancellation_state": {"$nin": ["processing", "completed"]},
         },
         {"$set": {
             "driver_id": driver["driver_id"],
@@ -2916,6 +2917,9 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}}}
     )
     if claim.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
         raise HTTPException(status_code=409, detail="Fahrt wurde gerade von einem anderen Fahrer angenommen")
     
     updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
@@ -2946,14 +2950,24 @@ async def driver_arriving(req: RideActionRequest, request: Request):
     
     now = datetime.now(timezone.utc)
     
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    transition = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "driver_id": driver["driver_id"],
+            "status": RideStatus.ACCEPTED.value,
+            "cancellation_state": {"$nin": ["processing", "completed"]},
+        },
         {"$set": {
             "status": RideStatus.ARRIVING.value,
             "arriving_at": now.isoformat(),
         },
         "$push": {"status_history": {"status": "arriving", "at": now.isoformat()}}}
     )
+    if transition.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
+        raise HTTPException(status_code=409, detail="Fahrtstatus wurde bereits geändert")
     
     return {"ok": True, "status": "arriving", "message": "Kunde wird benachrichtigt"}
 
@@ -2977,8 +2991,13 @@ async def driver_start_ride(req: RideActionRequest, request: Request):
     
     now = datetime.now(timezone.utc)
     
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    transition = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "driver_id": driver["driver_id"],
+            "status": {"$in": [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]},
+            "cancellation_state": {"$nin": ["processing", "completed"]},
+        },
         {"$set": {
             "status": RideStatus.STARTED.value,
             "started_at": now.isoformat(),
@@ -2986,6 +3005,13 @@ async def driver_start_ride(req: RideActionRequest, request: Request):
         },
         "$push": {"status_history": {"status": "started", "at": now.isoformat()}}}
     )
+    if transition.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
+        if current.get("status") == RideStatus.STARTED.value:
+            return {"ok": True, "status": "started", "message": "Fahrt bereits gestartet", "replayed": True}
+        raise HTTPException(status_code=409, detail="Fahrtstatus wurde bereits geändert")
     
     return {"ok": True, "status": "started", "message": "Fahrt gestartet"}
 
@@ -3182,59 +3208,125 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
 
 @router.post("/cancel")
 async def cancel_ride(req: RideActionRequest, request: Request):
-    """Customer or driver cancels a ride."""
+    """Cancel a ride with an atomic state claim and retry-safe money movements."""
     from core.payment_engine import debit_wallet, credit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    # Check if user is customer or driver
+
     is_customer = ride["customer_id"] == user_id
     driver = await db.drivers.find_one({"user_id": user_id})
-    is_driver = driver and ride.get("driver_id") == driver.get("driver_id")
-    
+    is_driver = bool(driver and ride.get("driver_id") == driver.get("driver_id"))
     if not is_customer and not is_driver:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
-    
-    if ride["status"] in [RideStatus.COMPLETED.value, RideStatus.CANCELLED.value]:
+
+    if ride.get("status") == RideStatus.CANCELLED.value:
+        return {
+            "ok": True,
+            "status": "cancelled",
+            "cancellation_fee": float(ride.get("cancellation_fee") or 0),
+            "refund_amount": float(ride.get("refund_amount") or 0),
+            "message": "Fahrt war bereits storniert.",
+            "replayed": True,
+        }
+    if ride.get("status") == RideStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
-    if ride["status"] == RideStatus.STARTED.value:
-        raise HTTPException(status_code=400, detail="Eine bereits gestartete Fahrt kann nicht normal storniert werden. Bitte nutze Support/SOS.")
-    
+    if ride.get("status") == RideStatus.STARTED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Eine bereits gestartete Fahrt kann nicht normal storniert werden. Bitte nutze Support/SOS.",
+        )
+
+    allowed_statuses = [
+        RideStatus.REQUESTED.value,
+        RideStatus.ACCEPTED.value,
+        RideStatus.ARRIVING.value,
+    ]
+    if ride.get("status") not in allowed_statuses:
+        raise HTTPException(status_code=409, detail="Fahrtstatus erlaubt keine Stornierung")
+
     now = datetime.now(timezone.utc)
     cancelled_by = "customer" if is_customer else "driver"
-    
-    # Cancellation fee if ride was already accepted.
-    cancel_fee = 0
-    if ride["status"] in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value] and is_customer:
-        cancel_fee = CANCELLATION_FEE
+    reserved_amount = round(float(ride.get("payment_reserved_amount") or 0), 2)
+    cancel_fee = 0.0
+    if is_customer and ride.get("status") in {RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value}:
+        cancel_fee = round(
+            min(float(CANCELLATION_FEE), reserved_amount) if reserved_amount > 0 else float(CANCELLATION_FEE),
+            2,
+        )
 
-    reserved_amount = float(ride.get("payment_reserved_amount") or 0)
-    refund_amount = 0.0
-    refund_transaction_id = None
+    claim = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": {"$in": allowed_statuses},
+            "$or": [
+                {"cancellation_state": {"$exists": False}},
+                {"cancellation_state": {"$in": ["failed", "released"]}},
+            ],
+        },
+        {"$set": {
+            "cancellation_state": "processing",
+            "cancellation_user_id": user_id,
+            "cancellation_claimed_at": now.isoformat(),
+            "cancelled_by": cancelled_by,
+            "cancellation_fee": cancel_fee,
+            "cancellation_reserved_amount": reserved_amount,
+            "cancellation_reason": req.reason or None,
+        }},
+    )
 
-    if reserved_amount > 0:
-        refund_amount = round(max(0.0, reserved_amount - cancel_fee), 2)
-        if refund_amount > 0:
-            refund = await credit_wallet(
-                user_id=ride["customer_id"],
-                amount=refund_amount,
-                tx_type=TransactionType.REFUND,
-                description="Taxi-Reservierung zurückgezahlt",
-                reference=f"TAXI-REFUND-{req.ride_id[:8].upper()}",
-                source="taxi_cancellation",
-                metadata={"ride_id": req.ride_id, "cancel_fee": cancel_fee},
-                idempotency_key=f"taxi-cancel-refund:{req.ride_id}",
+    if claim.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") == RideStatus.CANCELLED.value:
+            return {
+                "ok": True,
+                "status": "cancelled",
+                "cancellation_fee": float(current.get("cancellation_fee") or 0),
+                "refund_amount": float(current.get("refund_amount") or 0),
+                "message": "Fahrt war bereits storniert.",
+                "replayed": True,
+            }
+        if current.get("status") == RideStatus.STARTED.value:
+            raise HTTPException(
+                status_code=409,
+                detail="Fahrt wurde bereits gestartet und kann nicht normal storniert werden.",
             )
-            if not refund.success:
-                raise HTTPException(status_code=500, detail=f"Rückerstattung fehlgeschlagen: {refund.error}")
-            refund_transaction_id = refund.transaction_id
-    elif cancel_fee > 0:
-        # Legacy rides created before booking reservations existed.
+        if current.get("status") == RideStatus.COMPLETED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wurde bereits abgeschlossen.")
+        if (
+            current.get("cancellation_state") == "processing"
+            and str(current.get("cancellation_user_id") or "") == user_id
+        ):
+            ride = current
+            cancelled_by = current.get("cancelled_by") or cancelled_by
+            reserved_amount = round(float(current.get("cancellation_reserved_amount") or 0), 2)
+            cancel_fee = round(float(current.get("cancellation_fee") or 0), 2)
+        else:
+            raise HTTPException(status_code=409, detail="Stornierung wird bereits von einem anderen Vorgang verarbeitet.")
+    else:
+        ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or ride
+
+    refund_amount = round(max(0.0, reserved_amount - cancel_fee), 2)
+    refund_transaction_id = ride.get("refund_transaction_id")
+    if reserved_amount > 0 and refund_amount > 0:
+        refund = await credit_wallet(
+            user_id=ride["customer_id"],
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description="Taxi-Reservierung zurückgezahlt",
+            reference=f"TAXI-REFUND-{req.ride_id[:8].upper()}",
+            source="taxi_cancellation",
+            metadata={"ride_id": req.ride_id, "cancel_fee": cancel_fee},
+            idempotency_key=f"taxi-cancel-refund:{req.ride_id}",
+        )
+        if not refund.success:
+            raise HTTPException(status_code=503, detail=f"Rückerstattung noch nicht finalisiert: {refund.error}")
+        refund_transaction_id = refund.transaction_id
+    elif reserved_amount <= 0 and cancel_fee > 0:
         fee_payment = await debit_wallet(
             user_id=ride["customer_id"],
             amount=cancel_fee,
@@ -3245,42 +3337,84 @@ async def cancel_ride(req: RideActionRequest, request: Request):
             idempotency_key=f"taxi-cancel-fee:{req.ride_id}",
         )
         if not fee_payment.success:
-            raise HTTPException(status_code=400, detail=f"Stornierungsgebühr konnte nicht abgerechnet werden: {fee_payment.error}")
+            raise HTTPException(status_code=503, detail=f"Stornierungsgebühr noch nicht finalisiert: {fee_payment.error}")
 
-    # Pay driver compensation from the retained cancellation fee.
+    compensation_transaction_id = ride.get("cancellation_compensation_transaction_id")
+    compensation_status = ride.get("cancellation_compensation_status") or "not_required"
     if cancel_fee > 0 and ride.get("driver_id"):
         assigned_driver = await db.drivers.find_one({"driver_id": ride["driver_id"]})
         if assigned_driver and assigned_driver.get("user_id"):
-            await credit_wallet(
+            compensation = await credit_wallet(
                 user_id=assigned_driver["user_id"],
-                amount=cancel_fee * 0.5,
+                amount=round(cancel_fee * 0.5, 2),
                 tx_type=TransactionType.DRIVER_EARNINGS,
                 description="Stornierungsentschädigung",
                 reference=f"TAXI-COMP-{req.ride_id[:8].upper()}",
                 source="cancellation",
+                metadata={"ride_id": req.ride_id, "cancellation_fee": cancel_fee},
                 idempotency_key=f"taxi-cancel-comp:{req.ride_id}",
             )
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
-        {"$set": {
-            "status": RideStatus.CANCELLED.value,
-            "cancelled_at": now.isoformat(),
-            "cancelled_by": cancelled_by,
-            "cancellation_fee": cancel_fee,
-            "refund_amount": refund_amount,
-            "refund_transaction_id": refund_transaction_id,
-            "payment_status": "cancelled_refunded" if reserved_amount > 0 else "cancelled",
-            "cancellation_reason": req.reason or None,
+            if not compensation.success:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Fahrerentschädigung noch nicht finalisiert: {compensation.error}",
+                )
+            compensation_transaction_id = compensation.transaction_id
+            compensation_status = "paid"
+        else:
+            compensation_status = "driver_unavailable"
+
+    finalized = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": {"$in": allowed_statuses},
+            "cancellation_state": "processing",
+            "cancellation_user_id": user_id,
         },
-        "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by, "reason": req.reason or None}}}
+        {
+            "$set": {
+                "status": RideStatus.CANCELLED.value,
+                "cancellation_state": "completed",
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "cancelled_by": cancelled_by,
+                "cancellation_fee": cancel_fee,
+                "refund_amount": refund_amount,
+                "refund_transaction_id": refund_transaction_id,
+                "payment_status": "cancelled_refunded" if reserved_amount > 0 else "cancelled",
+                "cancellation_reason": ride.get("cancellation_reason") or req.reason or None,
+                "cancellation_compensation_status": compensation_status,
+                "cancellation_compensation_transaction_id": compensation_transaction_id,
+            },
+            "$push": {
+                "status_history": {
+                    "status": "cancelled",
+                    "at": datetime.now(timezone.utc).isoformat(),
+                    "by": cancelled_by,
+                    "reason": ride.get("cancellation_reason") or req.reason or None,
+                }
+            },
+        },
     )
-    
+    if finalized.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") != RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Stornierung konnte nicht atomar abgeschlossen werden.")
+        return {
+            "ok": True,
+            "status": "cancelled",
+            "cancellation_fee": float(current.get("cancellation_fee") or 0),
+            "refund_amount": float(current.get("refund_amount") or 0),
+            "message": "Fahrt war bereits storniert.",
+            "replayed": True,
+        }
+
     return {
         "ok": True,
         "status": "cancelled",
         "cancellation_fee": cancel_fee,
+        "refund_amount": refund_amount,
         "message": "Fahrt storniert" + (f" (Gebühr: €{cancel_fee:.2f})" if cancel_fee else ""),
+        "replayed": False,
     }
 
 
