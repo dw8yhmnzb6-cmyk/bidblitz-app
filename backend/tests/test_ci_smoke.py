@@ -941,6 +941,8 @@ def test_mining_and_gaming_rewards_cannot_be_double_claimed_or_overspent():
     assert '{"user_id": user_id, "date": today, "status": "completed"}' in mining_source
     assert '{"user_id": user_id, "status": "completed"}' in mining_source
     assert 'marker = f"referral_bonus_markers.{user_id}"' in mining_source
+    assert '{"_id": operation_id}' in mining_source
+    assert '"replayed": not claim_created' in mining_source
     assert '"operation_id": operation_id' in mining_source
     assert '"blz_balance": {"$gte": req.amount}' in mining_source
     assert "await credit_wallet(" in mining_source
@@ -2157,6 +2159,12 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
     assert 'card_upgrade_debits' in phase2
     assert 'card_upgrade_applied' in phase2
     assert 'card_upgrade_refunds' in phase2
+    assert 'daily_spend = card.get("daily_spend_eur")' in phase2
+    assert 'has_persisted_daily_spend = today in daily_spend' in phase2
+    assert 'marketplace_listing_id' in phase2
+    assert 'marketplace_listing_price_blz' in phase2
+    assert '"status": "cancelling"' in phase2
+    assert "Listing-Cancel benötigt Abstimmung" in phase2
     assert "class FreezeCardRequest(BaseModel):" in phase2
     assert '"frozen": bool(req.frozen)' in phase2
 
@@ -2183,6 +2191,8 @@ def test_mining_purchase_upgrade_and_launchpad_are_retry_safe():
 
     assert 'db.mining_wallets, "user_id", unique=True, critical=True' in database
     assert 'db.mining_claims, [("user_id", 1), ("date", 1)], unique=True, critical=True' in database
+    assert 'db.mining_referrals, "referred_id"' in database
+    assert 'db.mining_referrals, "referee_id"' not in database
     assert 'db.mining_transactions, "txn_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, "operation_id", unique=True, critical=True' in database
     assert 'db.mining_upgrade_operations, [("user_id", 1), ("idempotency_key", 1)], unique=True, critical=True' in database
