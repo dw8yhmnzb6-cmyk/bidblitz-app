@@ -300,3 +300,19 @@ def test_admin_promotions_use_canonical_error_and_role_handling():
     assert 'request as apiRequest' in router
     assert 'apiRequest("/api/promotions/admin/create"' in router
     assert 'fetch(`${API}/api/promotions/admin/create`' not in router
+
+
+def test_super_admin_is_accepted_by_changed_admin_backends():
+    approvals = read("backend/routes/admin_approvals.py")
+    grants = read("backend/routes/admin_grants.py")
+    merchant_admin = read("backend/routes/merchant_admin.py")
+
+    assert 'user.get("role") not in ("admin", "super_admin")' in approvals
+    assert 'user.get("role") != "admin"' not in approvals
+
+    assert grants.count('admin.get("role") not in ("admin", "super_admin")') >= 5
+    assert 'admin.get("role") != "admin"' not in grants
+
+    assert 'user.get("role") not in {"admin", "super_admin"}' in merchant_admin
+    assert 'user.get("role") not in {"merchant", "admin", "super_admin"}' in merchant_admin
+    assert 'user.get("role") != "admin"' not in merchant_admin
