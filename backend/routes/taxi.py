@@ -2300,7 +2300,18 @@ async def book_ride(req: FlexBookRequest, request: Request):
 
     if locked_quote:
         quote_claim = await db.taxi_price_quotes.update_one(
-            {"quote_id": req.quote_id, "status": "active"},
+            {
+                "quote_id": req.quote_id,
+                "$or": [
+                    {"status": "active"},
+                    {
+                        "status": "booking",
+                        "booking_idempotency_key": client_key,
+                        "booking_user_id": user_id,
+                        "booking_ride_id": ride_id,
+                    },
+                ],
+            },
             {"$set": {
                 "status": "booking",
                 "booking_idempotency_key": client_key,
