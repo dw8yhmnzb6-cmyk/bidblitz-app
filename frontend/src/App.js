@@ -378,7 +378,7 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
-  const isAdminRole = isAdminRole;
+  const isAdminRole = ["admin", "super_admin"].includes(user?.role);
   const isGuest = !user.isAuthenticated;
   const serverKycApproved = useEffectiveKycAccess({ isGuest, isDemoMode, user });
   const isKycVerified = KYC_DISABLED || serverKycApproved || isKycApprovedOrAdmin(user);
