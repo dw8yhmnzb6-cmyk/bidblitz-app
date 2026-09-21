@@ -242,6 +242,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
   const [claimingReward, setClaimingReward] = useState(false);
+  const [showDashboardDetails, setShowDashboardDetails] = useState(false);
 
   const fetchMiningData = useCallback(async () => {
     // Dashboard is required. Optional Phase-2 panels may fail independently without blanking the whole page.
@@ -1059,6 +1060,32 @@ export default function MiningPage({ onBack, onNavigate }) {
                 )}
               </AnimatePresence>
 
+              <motion.button
+                type="button"
+                data-testid="mining-details-toggle"
+                onClick={() => setShowDashboardDetails(value => !value)}
+                whileTap={{ scale: 0.97 }}
+                className="w-full rounded-2xl border border-white/[0.06] bg-white/[0.025] px-3.5 py-3 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <BarChart3 size={15} className="text-[#00C2FF]" />
+                  <div>
+                    <p className="text-[10px] font-black text-white">Mehr Mining-Details</p>
+                    <p className="text-[8px] text-white/30">Hashrate, Ertrag, Miner, Rewards und Referral</p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className={`text-white/30 transition-transform ${showDashboardDetails ? "rotate-90" : ""}`} />
+              </motion.button>
+
+              <AnimatePresence initial={false}>
+                {showDashboardDetails && (
+                  <motion.div
+                    data-testid="mining-dashboard-details"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 overflow-hidden"
+                  >
               {/* Mining Stats — Glass Cards */}
               <div className="grid grid-cols-3 gap-3">
                 {(miningValueEnabled ? [
@@ -1247,6 +1274,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                   </div>
                 </motion.div>
               )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
