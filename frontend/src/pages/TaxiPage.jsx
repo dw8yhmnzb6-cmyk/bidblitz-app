@@ -97,7 +97,7 @@ function useTaxiSimpleData(user) {
     return () => {
       cancelled = true;
     };
-  }, [user?.isAuthenticated, bookingAttemptOwnerId]);
+  }, [user?.isAuthenticated]);
 
   return { savedPlaces, recentAddresses, setSavedPlaces };
 }
