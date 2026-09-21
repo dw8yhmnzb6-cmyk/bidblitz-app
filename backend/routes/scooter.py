@@ -867,6 +867,7 @@ async def end_ride(req: EndRideRequest, request: Request):
                 "total_cost": existing.get("total_cost", 0),
                 "payment_status": existing.get("payment_status"),
                 "amount_due": existing.get("amount_due", 0),
+                "amount_due_currency": existing.get("amount_due_currency"),
             },
             "new_balance": round(float(fresh_user.get("balance") or 0), 2),
             "replayed": True,
@@ -1061,6 +1062,13 @@ async def end_ride(req: EndRideRequest, request: Request):
         }},
     )
 
+    scooter_inc = {
+        "total_rides": 1,
+        "total_distance": distance_km,
+    }
+    if ride_currency == "EUR":
+        scooter_inc["total_revenue"] = float(settlement.get("total_cost") or 0)
+
     await db.scooters.update_one(
         {"scooter_id": scooter_id, "current_ride_id": ride_id},
         {
@@ -1071,11 +1079,7 @@ async def end_ride(req: EndRideRequest, request: Request):
                 "current_user_id": None,
                 "last_ride_end": completed_at,
             },
-            "$inc": {
-                "total_rides": 1,
-                "total_revenue": float(settlement.get("total_cost") or 0),
-                "total_distance": distance_km,
-            },
+            "$inc": scooter_inc,
         },
     )
 
