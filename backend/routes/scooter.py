@@ -2355,10 +2355,35 @@ async def subscribe_plan(req: SubscribePlanReq, request: Request):
     ) or {}
     claimed_sub_id = current_claim.get("active_scooter_subscription_id")
     if claimed_sub_id not in (None, "", sub_id):
-        raise HTTPException(
-            status_code=503,
-            detail="Eine andere Scooter-Abo-Anfrage wird bereits verarbeitet oder benötigt Abstimmung",
+        claimed_subscription = await db.scooter_subscriptions.find_one(
+            {"sub_id": claimed_sub_id, "user_id": user_id},
+            {"_id": 0, "status": 1, "expires_at": 1},
         )
+        stale_claim = False
+        if claimed_subscription:
+            stale_claim = (
+                claimed_subscription.get("status") != "active"
+                or str(claimed_subscription.get("expires_at") or "") <= now.isoformat()
+            )
+        if stale_claim:
+            await db.users.update_one(
+                {"_id": user["_id"], "active_scooter_subscription_id": claimed_sub_id},
+                {
+                    "$set": {"active_scooter_subscription_id": None},
+                    "$unset": {
+                        "scooter_subscription_claim_idempotency_key": "",
+                        "scooter_subscription_payment_status": "",
+                        "scooter_subscription_payment_error": "",
+                        "scooter_subscription_reconciliation_required_at": "",
+                    },
+                },
+            )
+            claimed_sub_id = None
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Eine andere Scooter-Abo-Anfrage wird bereits verarbeitet oder benötigt Abstimmung",
+            )
 
     claim = await db.users.update_one(
         {
