@@ -14,7 +14,7 @@ import {
   ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy, Gift, Bell, Target, TimerReset,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, {
