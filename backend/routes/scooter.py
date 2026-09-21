@@ -558,7 +558,7 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
         scooter_location.get("lng", scooter.get("lng")),
         scooter_address,
     )
-    if not local_pricing.get("available", True) and not subscription:
+    if not local_pricing.get("available", True):
         raise HTTPException(status_code=503, detail="Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.")
 
     ride_unlock_fee = float((subscription or {}).get("unlock_fee", local_pricing["unlock_fee"]))
