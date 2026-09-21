@@ -163,12 +163,24 @@ async def reserve_redemption(user_id: str, code: str, ride_id: str, discount: fl
         return {"ok": False, "reason": "invalid_identity", "retryable": False}
 
     normalized = code.strip().upper()
+    redemption_id = _promo_redemption_id(user_id, normalized, ride_id)
+    existing = await db.taxi_promo_redemptions.find_one({"_id": redemption_id}, {"_id": 0}) or {}
+    if existing.get("status") in {"reserved", "completed"}:
+        return {"ok": True, "replayed": True, "status": existing.get("status")}
+
+    validation = await validate_promo(normalized, user_id)
+    if not validation.get("valid"):
+        return {
+            "ok": False,
+            "reason": validation.get("reason") or "not_valid",
+            "retryable": False,
+        }
+
     promo = BUILTIN.get(normalized) or await _load_db_promo(normalized)
     if not promo:
         return {"ok": False, "reason": "not_found", "retryable": False}
 
     max_uses = max(1, int(promo.get("max_uses_per_user", 1) or 1))
-    redemption_id = _promo_redemption_id(user_id, normalized, ride_id)
     usage_id = _promo_usage_id(user_id, normalized)
     now = datetime.now(timezone.utc).isoformat()
 
