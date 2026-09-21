@@ -2219,9 +2219,17 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "def _require_mining_value_mode" in mining
     assert '"live_mining_provider_connected": False' in mining
+    assert '"ordering_enabled": True' in mining
+    assert '"provider_activation_enabled": bool(TEST_MODE)' in mining
     assert '"value_actions_enabled": bool(TEST_MODE)' in mining
     assert '"reward_projection_enabled": bool(TEST_MODE)' in mining
     assert '"projection_available": bool(TEST_MODE)' in mining
+    assert '"order_available": True' in mining
+    assert '@router.post("/order-miner")' in mining
+    assert '"status": "paid_pending_activation"' in mining
+    assert '"provider_activation_status": "awaiting_verified_provider"' in mining
+    assert 'idempotency_key=payment_idempotency_key' in mining
+    assert "Bestellung bezahlt. Miner-Aktivierung folgt nach verifizierter Provider-Anbindung." in mining
     assert '"daily_blz": round(daily_blz, 4) if TEST_MODE else None' in mining
     assert '"recent_transactions": recent_txns if TEST_MODE else []' in mining
     assert 'return {"transactions": [], "capabilities": _mining_capabilities()}' in mining
@@ -2251,6 +2259,12 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
+    assert "miningOrderEnabled" in mining_page
+    assert '"/api/mining/order-miner"' in mining_page
+    assert "Jetzt bestellen" in mining_page
+    assert "Wallet aufladen" in mining_page
+    assert "Bestellung bezahlt" in mining_page
+    assert "Aktivierung folgt nach verifizierter Provider-Anbindung" in mining_page
     assert 'data-testid="mining-menu-grid"' in mining_page
     assert 'data-testid="mining-level-card"' in mining_page
     assert 'data-testid="mining-level-next-threshold"' in mining_page
