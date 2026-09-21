@@ -114,6 +114,14 @@ def test_auth_register_and_login_contract(client):
     me_data = me.json()
     assert me_data["email"] == email
 
+    mining_dashboard = client.get("/api/mining/dashboard")
+    assert mining_dashboard.status_code == 200
+    mining_data = mining_dashboard.json()
+    assert "capabilities" in mining_data
+    assert "wallet" in mining_data
+    assert "mining" in mining_data
+    assert "miners" in mining_data
+
 
 def test_invalid_login_rejected(client):
     response = client.post(
