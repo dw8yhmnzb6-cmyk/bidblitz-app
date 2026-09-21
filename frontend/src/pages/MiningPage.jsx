@@ -48,7 +48,7 @@ function getNowSnapshot() {
 }
 
 // ── Auto-Reward Countdown Component ──
-function AutoRewardCard({ reward, data, t }) {
+function AutoRewardCard({ reward, data, t, valueActionsEnabled }) {
   const nowMs = useSyncExternalStore(subscribeToSecondTick, getNowSnapshot, getNowSnapshot);
   let countdown = "";
   if (reward?.claimed && reward?.next_reward_at) {
@@ -80,8 +80,12 @@ function AutoRewardCard({ reward, data, t }) {
             <RefreshCw size={15} className={`text-[#00E89D] ${!isClaimed ? "animate-spin" : ""}`} style={!isClaimed ? { animationDuration: "3s" } : {}} />
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-white/80">{t("mining.auto_reward") || "Auto Mining Reward"}</p>
-            {isClaimed ? (
+            <p className="text-[12px] font-semibold text-white/80">
+              {valueActionsEnabled ? (t("mining.auto_reward") || "Auto Mining Reward") : "Mining Reward Preview"}
+            </p>
+            {!valueActionsEnabled ? (
+              <p className="text-[10px] text-amber-300/70">Schätzung: {miningFixed(reward?.amount, 4)} BLZ · keine BLZ-Erzeugung in Production</p>
+            ) : isClaimed ? (
               <>
                 <p className="text-[10px] text-[#00E89D] font-medium">
                   +{miningFixed(reward?.amount, 4)} BLZ {t("mining.auto_collected") || "collected"}
@@ -96,7 +100,9 @@ function AutoRewardCard({ reward, data, t }) {
           </div>
         </div>
         <div className="text-right">
-          {isClaimed && countdown ? (
+          {!valueActionsEnabled ? (
+            <span className="rounded-lg bg-amber-400/10 px-2 py-1 text-[9px] font-semibold text-amber-300">PREVIEW</span>
+          ) : isClaimed && countdown ? (
             <div>
               <p className="text-[8px] text-white/20 uppercase tracking-wider">{t("mining.next_reward") || "Next reward"}</p>
               <p data-testid="reward-countdown" className="text-[14px] font-bold font-mono text-[#00C2FF] tabular-nums">{countdown}</p>
@@ -722,7 +728,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: "Hashrate", value: `${miningFixed(m.total_hashrate, 0)}`, unit: "TH/s", color: "#00E89D", icon: Zap },
-                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
+                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: miningValueEnabled ? "BLZ" : "BLZ Preview", color: "#00C2FF", icon: TrendingUp },
                   { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, unit: "aktiv", color: "#A855F7", icon: Server },
                 ].map((s, i) => (
                   <motion.div key={s.label} className="rounded-2xl p-4 text-center relative overflow-hidden"
@@ -749,8 +755,15 @@ export default function MiningPage({ onBack, onNavigate }) {
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
                 <div className="px-4 py-3.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <TrendingUp size={15} className="text-[#00C2FF]" />
-                  <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">{t("mining.earnings_overview") || "Ertragsübersicht"}</p>
+                  <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">
+                    {miningValueEnabled ? (t("mining.earnings_overview") || "Ertragsübersicht") : "Ertragsvorschau"}
+                  </p>
                 </div>
+                {!miningValueEnabled && (
+                  <div className="px-4 py-2 text-center text-[10px] text-amber-300/70" data-testid="mining-earnings-preview-note">
+                    Reine Vorschauwerte · keine BLZ oder EUR werden in Production erzeugt oder gutgeschrieben.
+                  </div>
+                )}
                 <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                   {[
                     { label: t("mining.earn_daily") || "Täglich", blz: miningFixed(m.daily_earnings_blz, 4), eur: miningFixed(m.daily_earnings_eur, 4), color: "#00E89D" },
@@ -814,7 +827,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               )}
 
               {/* Auto Daily Reward Status */}
-              <AutoRewardCard reward={reward} data={data} t={t} />
+              <AutoRewardCard reward={reward} data={data} t={t} valueActionsEnabled={miningValueEnabled} />
 
               {/* Referral Boost Indicator */}
               {ref.boost_active && (
