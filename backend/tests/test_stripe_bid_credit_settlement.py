@@ -10,6 +10,7 @@ from core import stripe_bid_credit_settlement as settlement
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 STRIPE_ROUTE_PATH = BACKEND_DIR / "routes" / "stripe.py"
+AUCTION_ROUTE_PATH = BACKEND_DIR / "routes" / "auctions.py"
 
 
 def _matches(doc, query):
@@ -203,3 +204,15 @@ def test_stripe_webhook_uses_shared_bid_credit_settlement_path():
     assert '"$inc": {"bid_credits": credits_to_add}' not in webhook_block
     assert '"payment_status": "credited"' not in webhook_block
     assert "BidCreditSettlementNeedsReview" in webhook_block
+
+
+def test_auto_bid_reuses_expired_processing_slot_after_crash():
+    source = AUCTION_ROUTE_PATH.read_text(encoding="utf-8")
+    block = source.split("async def process_auto_bids", 1)[1].split("# ── Set Auto-Bid ──", 1)[0]
+
+    assert "processing_slot = ab.get(\"processing_slot\")" in block
+    assert "resume_slot = candidate_slot" in block
+    assert "if placed >= max_bids and resume_slot is None:" in block
+    assert '"processing_slot": next_slot' in block
+    assert '"processing_recovered_at": now_iso' in block
+    assert 'next_slot = placed + 1' in block
