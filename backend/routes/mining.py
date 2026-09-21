@@ -54,6 +54,8 @@ def _require_mining_value_mode() -> None:
 def _mining_capabilities() -> dict:
     return {
         "live_mining_provider_connected": False,
+        "ordering_enabled": True,
+        "provider_activation_enabled": bool(TEST_MODE),
         "value_actions_enabled": bool(TEST_MODE),
         "conversion_enabled": bool(TEST_MODE),
         "reward_projection_enabled": bool(TEST_MODE),
@@ -61,7 +63,7 @@ def _mining_capabilities() -> dict:
         "launchpad_enabled": bool(TEST_MODE),
         "production_message": (
             None if TEST_MODE else
-            "Mining läuft als Preview. Kauf, Ertrag, Transfer und BLZ→EUR bleiben bis zur Live-Provider-Anbindung deaktiviert."
+            "Bestellung und Bezahlung sind möglich. Miner-Aktivierung, Ertrag, Transfer und BLZ→EUR bleiben bis zur Live-Provider-Anbindung deaktiviert."
         ),
     }
 
@@ -697,10 +699,169 @@ async def get_packages(request: Request):
             },
         })
     return {
-        "packages": [{**pkg, "purchase_available": bool(TEST_MODE)} for pkg in enriched],
+        "packages": [{**pkg, "purchase_available": bool(TEST_MODE), "order_available": True} for pkg in enriched],
         "blz_rate": BLZ_TO_EUR if TEST_MODE else None,
         "discounts": DISCOUNT_RATES,
         "capabilities": _mining_capabilities(),
+    }
+
+
+# ── Production order / pre-activation checkout ──
+class OrderMinerRequest(BaseModel):
+    package_id: str
+    billing: str = "onetime"
+    idempotency_key: Optional[str] = None
+
+
+@router.post("/order-miner")
+async def order_miner(req: OrderMinerRequest, request: Request):
+    """Charge an order exactly once, but keep mining activation pending until provider verification."""
+    from core.payment_engine import debit_wallet, TransactionType
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+
+    if req.billing != "onetime":
+        raise HTTPException(
+            status_code=400,
+            detail="Bis zur Provider-Aktivierung sind nur einmalige Bestellungen möglich.",
+        )
+
+    pkg = next((p for p in MINER_PACKAGES if p["id"] == req.package_id), None)
+    if not pkg:
+        raise HTTPException(status_code=400, detail="Invalid package")
+
+    price = round(float(pkg["price_eur"]), 2)
+    order_hash = hashlib.sha256(
+        f"{user_id}:{req.package_id}:onetime:{raw_key}".encode("utf-8")
+    ).hexdigest()[:20]
+    order_id = f"MINORD-{order_hash.upper()}"
+    payment_idempotency_key = f"mining-order:{raw_key}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    existing = await db.mining_orders.find_one({"_id": order_id}, {"_id": 0})
+    if existing:
+        if existing.get("user_id") != user_id or existing.get("package_id") != req.package_id:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Bestelldaten verwendet")
+        if existing.get("status") == "paid_pending_activation":
+            return {
+                "order_id": order_id,
+                "status": "paid_pending_activation",
+                "new_balance": existing.get("balance_after"),
+                "transaction_id": existing.get("wallet_transaction_id"),
+                "replayed": True,
+                "activation_pending": True,
+                "message": "Bestellung bereits bezahlt. Aktivierung wartet auf den Mining-Provider.",
+            }
+        if existing.get("status") == "reconciliation_required":
+            raise HTTPException(
+                status_code=503,
+                detail="Bestellung benötigt Wallet-Abstimmung; keine erneute Belastung wird ausgeführt.",
+            )
+        if existing.get("status") == "failed":
+            raise HTTPException(status_code=409, detail=existing.get("error") or "Frühere Bestellung ist fehlgeschlagen")
+
+    await db.mining_orders.update_one(
+        {"_id": order_id},
+        {"$setOnInsert": {
+            "_id": order_id,
+            "order_id": order_id,
+            "user_id": user_id,
+            "package_id": pkg["id"],
+            "package_name": pkg["name"],
+            "hashrate": pkg["hashrate"],
+            "price_eur": price,
+            "billing": "onetime",
+            "status": "processing",
+            "provider_activation_status": "awaiting_verified_provider",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=price,
+        tx_type=TransactionType.MINING_PURCHASE,
+        description=f"Mining Bestellung: {pkg['name']} (Aktivierung ausstehend)",
+        reference=f"MIN-ORD-{order_hash[:12].upper()}",
+        metadata={
+            "order_id": order_id,
+            "package_id": pkg["id"],
+            "billing": "onetime",
+            "activation_pending": True,
+        },
+        idempotency_key=payment_idempotency_key,
+    )
+
+    if not result.success:
+        payment_status = getattr(result.status, "value", str(result.status))
+        if payment_status in {"pending", "reconciliation_required"}:
+            await db.mining_orders.update_one(
+                {"_id": order_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "payment_status": payment_status,
+                    "error": result.error,
+                    "wallet_transaction_id": result.transaction_id,
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=result.error or "Bestellung benötigt Wallet-Abstimmung; keine erneute Belastung wird ausgeführt.",
+            )
+
+        await db.mining_orders.update_one(
+            {"_id": order_id},
+            {"$set": {
+                "status": "failed",
+                "payment_status": payment_status,
+                "error": result.error or "Wallet-Zahlung fehlgeschlagen",
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=400, detail=result.error or "Wallet-Zahlung fehlgeschlagen")
+
+    paid_at = datetime.now(timezone.utc).isoformat()
+    await db.mining_orders.update_one(
+        {"_id": order_id},
+        {"$set": {
+            "status": "paid_pending_activation",
+            "payment_status": "completed",
+            "wallet_transaction_id": result.transaction_id,
+            "balance_after": result.new_balance,
+            "paid_at": paid_at,
+            "provider_activation_status": "awaiting_verified_provider",
+        }},
+    )
+
+    await db.mining_transactions.update_one(
+        {"txn_id": order_id},
+        {"$setOnInsert": {
+            "txn_id": order_id,
+            "user_id": user_id,
+            "type": "preorder",
+            "amount_eur": -price,
+            "description": f"Mining Bestellung: {pkg['name']} – Aktivierung ausstehend",
+            "wallet_transaction_id": result.transaction_id,
+            "idempotency_key": payment_idempotency_key,
+            "created_at": paid_at,
+        }},
+        upsert=True,
+    )
+
+    return {
+        "order_id": order_id,
+        "status": "paid_pending_activation",
+        "new_balance": result.new_balance,
+        "transaction_id": result.transaction_id,
+        "replayed": result.idempotent_replay,
+        "activation_pending": True,
+        "message": "Bestellung bezahlt. Miner-Aktivierung folgt nach verifizierter Provider-Anbindung.",
     }
 
 
