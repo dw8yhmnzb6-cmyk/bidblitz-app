@@ -767,6 +767,8 @@ const ModuleCRUD = ({ mod, onBack }) => {
   const [showForm, setShowForm] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [readOnlyReason, setReadOnlyReason] = useState("");
+  const [createDisabled, setCreateDisabled] = useState(false);
+  const [createDisabledReason, setCreateDisabledReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -777,6 +779,8 @@ const ModuleCRUD = ({ mod, onBack }) => {
       setItems(data.items || []);
       setReadOnly(Boolean(data.read_only));
       setReadOnlyReason(data.read_only_reason || "");
+      setCreateDisabled(Boolean(data.create_disabled));
+      setCreateDisabledReason(data.create_disabled_reason || "");
     } catch (err) {
       toast.error(err.message);
     }
@@ -807,7 +811,7 @@ const ModuleCRUD = ({ mod, onBack }) => {
           <ArrowLeft size={14} />
         </button>
         <h2 className="flex-1 text-[14px] font-bold">{mod.label}</h2>
-        {!readOnly && (
+        {!readOnly && !createDisabled && (
           <button
             data-testid="module-add-btn"
             onClick={() => { setEditing({}); setShowForm(true); }}
@@ -821,6 +825,11 @@ const ModuleCRUD = ({ mod, onBack }) => {
       {readOnly && (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="module-read-only-note">
           {readOnlyReason || "Dieses Live-Modul ist hier nur lesbar."}
+        </div>
+      )}
+      {!readOnly && createDisabled && (
+        <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-medium text-blue-800" data-testid="module-create-disabled-note">
+          {createDisabledReason || "Neue Einträge können für dieses Modul nicht manuell angelegt werden."}
         </div>
       )}
 
