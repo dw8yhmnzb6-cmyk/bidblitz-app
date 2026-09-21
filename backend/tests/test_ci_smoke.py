@@ -505,6 +505,12 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert '"reserved_by": user_id' in scooter_source
     assert '{"current_ride_id": {"$exists": False}}' in scooter_source
     assert '"released": released.modified_count == 1' in scooter_source
+    assert 'canonical_id = f"ride:{req.ride_id}"' in scooter_source
+    assert 'share_id = f"SHR-{hashlib.sha256(req.ride_id.encode(\'utf-8\')).hexdigest()[:16].upper()}"' in scooter_source
+    assert '"status": "superseded"' in scooter_source
+    assert 'share_fields = {key: value for key, value in share.items() if key != "_id"}' in scooter_source
+    assert '{"_id": canonical_id, "status": {"$ne": "active"}}' in scooter_source
+    assert "Share-Code konnte nicht atomar erstellt werden" in scooter_source
 
 
 def test_mobility_payments_refunds_and_payouts_are_exactly_once():
