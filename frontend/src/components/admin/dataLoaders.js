@@ -27,7 +27,7 @@ const MODULE_LIST_CONFIG = {
     url: "/api/freelancer/freelancers",
     pickItems: (d) => d.freelancers || [],
     module: "Freelancer", countLabel: "Freelancer",
-    fields: ["name", "category", "city", "hourly_rate", "rating"],
+    fields: ["name", "category", "location", "hourly_rate", "rating"],
   },
   "admin-elearning": {
     url: "/api/elearning/courses",
