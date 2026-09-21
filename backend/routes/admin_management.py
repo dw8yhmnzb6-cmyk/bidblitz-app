@@ -10,6 +10,7 @@ from bson import ObjectId
 import bcrypt
 
 from core.database import db
+from core.config import TEST_MODE
 from core.payment_engine import credit_wallet, TransactionType
 from core.security import get_current_user
 from core.audit import log_audit, AuditEvent, get_client_info
@@ -840,7 +841,7 @@ MODULE_COLLECTIONS = {
     "dating": ("dating_profiles", "name"),
     "fitness": ("fitness_gyms", "name"),
     "reisen": ("travel_trips", "title"),
-    "ladesaeulen": ("ev_charging_stations", "name"),
+    "ladesaeulen": ("ev_stations", "name"),
     "scooter-abos": ("scooter_plans", "name"),
 }
 
@@ -849,6 +850,8 @@ MODULE_COLLECTIONS = {
 async def module_create(module_key: str, data: dict, request: Request):
     """Neuen Eintrag in Service-Modul anlegen."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen werden über die verifizierte EV-Geräteverwaltung provisioniert; generisches CRUD ist read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
@@ -872,6 +875,31 @@ async def module_create(module_key: str, data: dict, request: Request):
 async def module_list(module_key: str, request: Request, limit: int = 100):
     """Liste alle Einträge eines Service-Moduls."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        charge_points = await db.ev_charge_points.find(
+            {"active": {"$ne": False}},
+            {"_id": 0, "ocpp_auth_hash": 0},
+        ).limit(limit).to_list(limit)
+        items = []
+        for cp in charge_points:
+            location = cp.get("location") or {}
+            items.append({
+                "id": cp.get("charge_point_id"),
+                "charge_point_id": cp.get("charge_point_id"),
+                "name": cp.get("name") or cp.get("charge_point_id"),
+                "operator": cp.get("operator_name") or cp.get("operator") or "BidBlitz EV",
+                "city": location.get("city") or cp.get("city") or "",
+                "power_kw": cp.get("max_power_kw") or cp.get("power_kw") or 0,
+                "tariff_id": cp.get("tariff_id"),
+                "active": cp.get("active", True),
+            })
+        return {
+            "items": items,
+            "count": len(items),
+            "collection": "ev_charge_points",
+            "read_only": True,
+            "read_only_reason": "Live-OCPP-Geräte werden nicht über generisches CRUD verändert.",
+        }
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
@@ -891,6 +919,8 @@ async def module_list(module_key: str, request: Request, limit: int = 100):
 async def module_update(module_key: str, item_id: str, data: dict, request: Request):
     """Eintrag im Service-Modul aktualisieren."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
@@ -914,6 +944,8 @@ async def module_update(module_key: str, item_id: str, data: dict, request: Requ
 async def module_delete(module_key: str, item_id: str, request: Request):
     """Eintrag aus Service-Modul löschen."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
