@@ -635,3 +635,14 @@ def test_mobility_never_infers_pickup_from_default_map_center():
     assert "pickupInitializedRef" not in page
     assert "Location permission denied/unavailable: keep pickup unset." in page
     assert "The map's visual center is never treated as the user's real pickup." in page
+
+
+def test_scooter_unclear_end_payment_is_reconciliation_not_new_debt():
+    scooter = read("backend/routes/scooter.py")
+
+    assert 'payment_state in {"pending", "reconciliation_required"}' in scooter
+    assert 'payment_status = "reconciliation_required"' in scooter
+    assert '"settlement_reconciliation_required": True' in scooter
+    assert '"settlement_payment_status": payment_state' in scooter
+    assert '"settlement_transaction_id": payment_result.transaction_id' in scooter
+    assert 'else:\n                payment_status = "due"' in scooter
