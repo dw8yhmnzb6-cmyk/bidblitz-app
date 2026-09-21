@@ -87,6 +87,8 @@ async def _pending_customer_rides(driver: dict, limit: int = 20) -> List[dict]:
     """Return live customer bookings from the canonical taxi_rides collection."""
     if not (driver.get("is_online") or driver.get("online")):
         return []
+    if driver.get("is_busy") or driver.get("active_ride_id"):
+        return []
 
     loc = _driver_location(driver)
     try:
