@@ -1147,6 +1147,8 @@ async def save_reminders(req: ReminderSettingsReq, request: Request):
 
 @router.post("/reminders/test")
 async def test_reminder(req: ReminderTestReq, request: Request):
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BlitzMine Test-Push ist außerhalb TEST_MODE deaktiviert.")
     user = await get_current_user(request)
     user_id = str(user["_id"])
     has_push = await db.push_subscriptions.count_documents({"user_id": user_id, "active": True})
