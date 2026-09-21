@@ -2035,6 +2035,18 @@ async def book_ride(req: FlexBookRequest, request: Request):
             "replayed": True,
         }
 
+    refunded_attempt = await db.taxi_booking_attempts.find_one(
+        {"_id": f"{user_id}:{ride_id}", "status": "refunded"},
+        {"_id": 0, "request_fingerprint": 1},
+    )
+    if refunded_attempt:
+        if refunded_attempt.get("request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        raise HTTPException(
+            status_code=409,
+            detail="Der vorherige Taxi-Buchungsversuch wurde zurückerstattet. Bitte Buchung erneut starten.",
+        )
+
     balance = float(user.get("balance", 0) or 0)
     
     active = await db.taxi_rides.find_one({
@@ -2217,7 +2229,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
     
-    ride_doc = {"_id": ride_id, **ride}
+    ride_doc = dict(ride)
     try:
         write_result = await db.taxi_rides.update_one(
             {"_id": ride_id, "customer_id": user_id},
@@ -2248,7 +2260,18 @@ async def book_ride(req: FlexBookRequest, request: Request):
             )
         except Exception as refund_exc:
             logger.exception("Taxi booking reservation rollback failed: %s", refund_exc)
-        raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wird zurückgebucht.")
+        await db.taxi_booking_attempts.update_one(
+            {"_id": f"{user_id}:{ride_id}"},
+            {"$set": {
+                "status": "refunded",
+                "request_fingerprint": request_fingerprint,
+                "ride_id": ride_id,
+                "user_id": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wurde zurückgebucht.")
 
     if write_result.upserted_id is None:
         current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0}) or {}
