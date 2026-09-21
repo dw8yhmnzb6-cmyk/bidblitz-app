@@ -3676,7 +3676,9 @@ def test_pos_barcode_and_nfc_wallet_payments_are_retry_and_race_safe():
     assert '{"_id": bc["_id"], "active": True}' in source
     assert '"payment_state": "processing"' in source
     assert '"payment_reference": reference' in source
-    assert "Barcode wird bereits verarbeitet oder wurde verwendet" in source
+    assert "Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung" in source
+    assert 'status_code=503, detail="Barcode-Zahlung wird verarbeitet oder benötigt Abstimmung"' in source
+    assert "Barcode wurde bereits verwendet" in source
     assert "Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst." in source
     assert 'status_code=503 if debit_state in {"pending", "reconciliation_required"} else 400' in source
     assert source.count('status_code=503,\n                detail="Händlergutschrift benötigt Abstimmung; keine automatische Rückbuchung ausgelöst."') >= 2
