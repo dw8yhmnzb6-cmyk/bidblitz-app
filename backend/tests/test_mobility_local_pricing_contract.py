@@ -221,3 +221,11 @@ def test_taxi_driver_assignment_is_serialized_and_releases_on_finish_or_cancel()
     assert schedule_pos < lock_pos < claim_pos
     assert 'await _release_driver_active_ride(driver["driver_id"], req.ride_id)' in taxi
     assert 'await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)' in taxi
+
+
+def test_taxi_driver_arriving_and_start_are_retry_safe():
+    taxi = read("backend/routes/taxi.py")
+
+    assert '"message": "Kunde wurde bereits benachrichtigt", "replayed": True' in taxi
+    assert '"message": "Fahrt bereits gestartet", "replayed": True' in taxi
+    assert '"cancellation_state": {"$nin": ["processing", "completed"]}' in taxi
