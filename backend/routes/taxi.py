@@ -2190,47 +2190,92 @@ async def book_ride(req: FlexBookRequest, request: Request):
         {"lat": s.lat, "lng": s.lng, "address": s.address, "notes": s.notes or ""}
         for s in (req.stops or [])
     ]
-    route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
-    distance_km, duration_minutes, route_source = await get_driving_route_metrics(route_pts)
-    # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
-    MAX_RIDE_KM = 250
-    if distance_km > MAX_RIDE_KM:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
-        )
-    region = detect_region(p_lat, p_lng)
-    fare_estimate = await calculate_fare_with_overrides(
-        pickup_address=p_addr,
-        pickup_lat=p_lat,
-        pickup_lng=p_lng,
-        distance_km=distance_km,
-        duration_minutes=duration_minutes,
-        car_type=car_type,
-        region=region,
-    )
+    locked_quote = await _load_taxi_price_quote(req.quote_id, user_id, req)
 
-    # Use the same zone/time pricing stack as /estimate so the price shown to
-    # the customer is the price that is reserved at booking.
-    from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
-    matched_zone = await find_matching_zone(p_lat, p_lng)
-    time_info = compute_time_multiplier(matched_zone)
-
-    fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
-    if fixed:
-        fare_estimate = {
-            **fare_estimate,
-            "distance_cost": 0.0,
-            "time_cost": 0.0,
-            "total": fixed["fixed_fare"],
-            "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
-            "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
-            "fixed_fare": True,
-            "fixed_fare_label": fixed["label"],
-            "fixed_fare_zone": fixed["zone"],
+    if locked_quote:
+        distance_km = float(locked_quote.get("distance_km") or 0)
+        duration_minutes = float(locked_quote.get("duration_minutes") or 0)
+        route_source = f"locked_quote:{locked_quote.get('route_source') or 'server'}"
+        region = str(locked_quote.get("region") or detect_region(p_lat, p_lng))
+        fare_estimate = dict(locked_quote.get("fare_breakdown") or {})
+        fare_estimate["currency"] = locked_quote.get("currency") or fare_estimate.get("currency") or "EUR"
+        fare_estimate["booking_supported"] = bool(locked_quote.get("booking_supported", fare_estimate.get("booking_supported", True)))
+        fare_estimate["settlement_reason"] = locked_quote.get("settlement_reason") or fare_estimate.get("settlement_reason")
+        fare_estimate["min_balance"] = float(locked_quote.get("min_balance") or fare_estimate.get("min_balance") or 0)
+        fixed = locked_quote.get("fixed_fare")
+        tariff_zone_info = locked_quote.get("tariff_zone")
+        time_tariff_info = locked_quote.get("time_tariff") or {
+            "multiplier": 1.0,
+            "label": "",
+            "night": False,
+            "weekend": False,
+            "holiday": False,
         }
+        promo_applied = locked_quote.get("promo_applied")
+        fare_total = round(float(locked_quote.get("fare_total") or fare_estimate.get("total") or 0), 2)
     else:
-        fare_estimate = apply_multi_tariff(fare_estimate, matched_zone, time_info)
+        route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
+        distance_km, duration_minutes, route_source = await get_driving_route_metrics(route_pts)
+        # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
+        MAX_RIDE_KM = 250
+        if distance_km > MAX_RIDE_KM:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
+            )
+        region = detect_region(p_lat, p_lng)
+        fare_estimate = await calculate_fare_with_overrides(
+            pickup_address=p_addr,
+            pickup_lat=p_lat,
+            pickup_lng=p_lng,
+            distance_km=distance_km,
+            duration_minutes=duration_minutes,
+            car_type=car_type,
+            region=region,
+        )
+
+        # Use the same zone/time pricing stack as /estimate.
+        from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
+        matched_zone = await find_matching_zone(p_lat, p_lng)
+        time_info = compute_time_multiplier(matched_zone)
+
+        fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
+        if fixed:
+            fare_estimate = {
+                **fare_estimate,
+                "distance_cost": 0.0,
+                "time_cost": 0.0,
+                "total": fixed["fixed_fare"],
+                "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
+                "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
+                "fixed_fare": True,
+                "fixed_fare_label": fixed["label"],
+                "fixed_fare_zone": fixed["zone"],
+            }
+        else:
+            fare_estimate = apply_multi_tariff(fare_estimate, matched_zone, time_info)
+
+        tariff_zone_info, time_tariff_info = _taxi_quote_metadata(matched_zone, time_info)
+        fare_total = round(float(fare_estimate["total"]), 2)
+
+        # Apply promo if provided & valid.
+        promo_applied = None
+        if req.promo_code:
+            try:
+                from utils.taxi_promo import validate_promo, apply_discount
+                promo_info = await validate_promo(req.promo_code, user_id)
+                if promo_info.get("valid"):
+                    disc = apply_discount(fare_total, promo_info)
+                    fare_total = round(float(disc["final"]), 2)
+                    promo_applied = {
+                        "code": disc["code"],
+                        "label": disc["label"],
+                        "original": disc["original"],
+                        "discount": disc["discount"],
+                        "final": disc["final"],
+                    }
+            except Exception:
+                promo_applied = None
 
     if fare_estimate.get("booking_supported") is False or str(fare_estimate.get("currency") or "EUR").upper() != "EUR":
         raise HTTPException(
@@ -2244,27 +2289,6 @@ async def book_ride(req: FlexBookRequest, request: Request):
             status_code=400,
             detail=f"Mindestguthaben €{required_balance:.2f} erforderlich. Aktuell: €{balance:.2f}",
         )
-
-    fare_total = fare_estimate["total"]
-
-    # Apply promo if provided & valid
-    promo_applied = None
-    if req.promo_code:
-        try:
-            from utils.taxi_promo import validate_promo, apply_discount
-            promo_info = await validate_promo(req.promo_code, user_id)
-            if promo_info.get("valid"):
-                disc = apply_discount(fare_total, promo_info)
-                fare_total = disc["final"]
-                promo_applied = {
-                    "code": disc["code"],
-                    "label": disc["label"],
-                    "original": disc["original"],
-                    "discount": disc["discount"],
-                    "final": disc["final"],
-                }
-        except Exception:
-            promo_applied = None
 
     if balance < fare_total:
         raise HTTPException(
@@ -2280,7 +2304,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         tx_type=TransactionType.TAXI_PAYMENT,
         description=f"Taxi-Reservierung: {p_addr or 'Abholung'} → {d_addr or 'Ziel'}",
         reference=f"TAXI-HOLD-{ride_id[:8].upper()}",
-        metadata={"ride_id": ride_id, "kind": "taxi_reservation"},
+        metadata={"ride_id": ride_id, "kind": "taxi_reservation", "pricing_quote_id": req.quote_id},
         idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
     )
     if not reservation.success:
@@ -2323,20 +2347,14 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "payment_reserved_transaction_id": reservation.transaction_id,
         "payment_reserved_reference": reservation.reference,
         "region": region,
-        "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
+        "region_label": fare_estimate.get("region_label") or REGIONAL_PRICING.get(region, {}).get("label", ""),
         "fixed_fare": fixed if fixed else None,
-        "tariff_zone": {
-            "id": matched_zone.get("id"),
-            "name": matched_zone.get("name"),
-        } if matched_zone else None,
-        "time_tariff": {
-            "multiplier": time_info["multiplier"],
-            "label": time_info["label"],
-            "night": time_info["night"],
-            "weekend": time_info["weekend"],
-            "holiday": time_info["holiday"],
-        },
+        "tariff_zone": tariff_zone_info,
+        "time_tariff": time_tariff_info,
         "promo": promo_applied,
+        "pricing_quote_id": req.quote_id,
+        "pricing_quote_expires_at": (locked_quote or {}).get("expires_at") if locked_quote else None,
+        "pricing_source": "locked_server_quote" if locked_quote else fare_estimate.get("pricing_source"),
         "scheduled_at": req.scheduled_at,
         "status": RideStatus.REQUESTED.value,
         "recipient": {
