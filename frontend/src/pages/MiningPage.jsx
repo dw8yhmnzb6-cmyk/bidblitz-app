@@ -909,92 +909,151 @@ export default function MiningPage({ onBack, onNavigate }) {
                 </motion.button>
               </div>
 
-              {/* Balance Card — Premium Glassmorphism */}
-              <motion.div className="rounded-3xl p-5 relative overflow-hidden"
-                style={{ 
-                  background: "linear-gradient(160deg, rgba(0,232,157,0.10) 0%, rgba(0,194,255,0.05) 50%, rgba(168,85,247,0.03) 100%)", 
-                  border: "1px solid rgba(0,232,157,0.18)",
-                  boxShadow: "0 8px 32px rgba(0,232,157,0.06), inset 0 1px 0 rgba(255,255,255,0.04)"
+              {/* Compact balance summary — designed to keep the first screen short */}
+              <motion.div
+                data-testid="mining-balance-summary"
+                className="rounded-3xl p-3.5 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(150deg, rgba(0,232,157,0.08), rgba(0,194,255,0.04) 55%, rgba(168,85,247,0.03))",
+                  border: "1px solid rgba(0,232,157,0.16)",
+                  boxShadow: "0 6px 24px rgba(0,232,157,0.05)",
                 }}
-                initial={{ y: 10 }} animate={{ y: 0 }}>
-                {/* Decorative elements */}
-                <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,232,157,0.12) 0%, transparent 70%)" }} />
-                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.08) 0%, transparent 70%)" }} />
-                
-                <div className="flex items-start justify-between mb-5 relative z-10">
-                  <div>
-                    <p className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-bold mb-2">BLZ Balance</p>
-                    <p className="text-[32px] font-black text-white tracking-tight leading-none">{miningFixed(w.blz_balance, 4)}</p>
-                    <p className="text-[15px] font-bold text-[#00E89D] mt-1.5">{"\u20AC"}{miningFixed(w.eur_value, 2)}</p>
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="min-w-0">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Wallet size={11} className="text-[#00E89D]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">BLZ Balance</span>
+                    </div>
+                    <p className="truncate text-[20px] font-black leading-none text-white">{miningFixed(w.blz_balance, 4)}</p>
+                    <p className="mt-1 text-[10px] font-bold text-[#00E89D]">€{miningFixed(w.eur_value, 2)}</p>
                   </div>
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" 
-                    style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.2)", boxShadow: "0 4px 16px rgba(0,232,157,0.1)" }}>
-                    <Wallet size={24} className="text-[#00E89D]" />
+
+                  <div className="min-w-0 border-l border-white/[0.06] pl-2.5">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Zap size={11} className="text-[#00C2FF]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">Heute</span>
+                    </div>
+                    <p className="truncate text-[14px] font-black text-white">
+                      {miningValueEnabled ? miningFixed(m.daily_earnings_blz, 4) : "—"}
+                    </p>
+                    <p className="mt-1 text-[8px] font-bold text-[#00C2FF]">
+                      {miningValueEnabled ? "BLZ Ertrag" : "Preview"}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0 border-l border-white/[0.06] pl-2.5">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Gift size={11} className="text-[#FFD700]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">Bonus</span>
+                    </div>
+                    <p className="truncate text-[14px] font-black" style={{ color: currentLevel.color }}>
+                      {miningValueEnabled ? `+${Math.round(miningNumber(vip.bonus) * 100)}%` : "—"}
+                    </p>
+                    <p className="mt-1 truncate text-[8px] font-bold text-white/30">{vip.name || "Bronze"} Level</p>
                   </div>
                 </div>
-                <div className="flex gap-2.5 relative z-10">
-                  <motion.button data-testid="mining-withdraw-btn" onClick={() => miningValueEnabled && setShowWithdraw(!showWithdraw)} disabled={!miningValueEnabled}
-                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
-                    style={{ background: "rgba(0,232,157,0.12)", border: "1px solid rgba(0,232,157,0.25)", color: "#00E89D" }}
-                    whileTap={{ scale: 0.96 }}>
-                    <ArrowUpRight size={15} /> {t("mining.withdraw") || "Auszahlen"}
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <motion.button
+                    data-testid="mining-withdraw-btn"
+                    onClick={() => miningValueEnabled && setShowWithdraw(!showWithdraw)}
+                    disabled={!miningValueEnabled}
+                    className="rounded-xl py-2.5 text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-35"
+                    style={{ background: "rgba(0,232,157,0.10)", border: "1px solid rgba(0,232,157,0.20)", color: "#00E89D" }}
+                    whileTap={miningValueEnabled ? { scale: 0.96 } : {}}
+                  >
+                    <ArrowUpRight size={12} /> {t("mining.withdraw") || "Auszahlen"}
                   </motion.button>
-                  <motion.button data-testid="mining-send-btn" onClick={() => miningValueEnabled && setShowSend(!showSend)} disabled={!miningValueEnabled}
-                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
-                    style={{ background: "rgba(0,194,255,0.10)", border: "1px solid rgba(0,194,255,0.22)", color: "#00C2FF" }}
-                    whileTap={{ scale: 0.96 }}>
-                    <Send size={15} /> {t("mining.send") || "Senden"}
+                  <motion.button
+                    data-testid="mining-send-btn"
+                    onClick={() => miningValueEnabled && setShowSend(!showSend)}
+                    disabled={!miningValueEnabled}
+                    className="rounded-xl py-2.5 text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-35"
+                    style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.18)", color: "#00C2FF" }}
+                    whileTap={miningValueEnabled ? { scale: 0.96 } : {}}
+                  >
+                    <Send size={12} /> {t("mining.send") || "Senden"}
                   </motion.button>
                 </div>
               </motion.div>
 
-              {/* Withdraw Panel */}
               <AnimatePresence>
                 {showWithdraw && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)", boxShadow: "0 4px 20px rgba(0,232,157,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)" }}
+                  >
+                    <div className="flex items-center gap-2">
                       <ArrowUpRight size={14} className="text-[#00E89D]" />
                       <p className="text-[12px] font-bold text-white">BLZ in EUR umwandeln</p>
                     </div>
                     <p className="text-[10px] text-white/40">1 BLZ = €0,10 · Direkt auf dein Wallet</p>
-                    <input data-testid="withdraw-amount" type="text" inputMode="decimal" value={withdrawAmt} onChange={e => setWithdrawAmt(sanitizeAmountInput(e.target.value))}
-                      placeholder="Betrag in BLZ" className={inputCls} />
+                    <input
+                      data-testid="withdraw-amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={withdrawAmt}
+                      onChange={e => setWithdrawAmt(sanitizeAmountInput(e.target.value))}
+                      placeholder="Betrag in BLZ"
+                      className={inputCls}
+                    />
                     {parsedWithdrawAmt > 0 && (
-                      <div className="text-center p-2 rounded-xl bg-[#00E89D]/5 border border-[#00E89D]/10">
+                      <div className="rounded-xl border border-[#00E89D]/10 bg-[#00E89D]/5 p-2 text-center">
                         <p className="text-[13px] font-bold text-[#00E89D]">{parsedWithdrawAmt.toFixed(2)} BLZ → €{(parsedWithdrawAmt * 0.10).toFixed(2)}</p>
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <motion.button data-testid="withdraw-confirm" onClick={withdraw} disabled={withdrawing || parsedWithdrawAmt <= 0}
-                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/25 flex items-center justify-center"
-                        whileTap={{ scale: 0.96 }}>{withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}</motion.button>
-                      <motion.button onClick={() => setShowWithdraw(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
-                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
+                      <motion.button
+                        data-testid="withdraw-confirm"
+                        onClick={withdraw}
+                        disabled={withdrawing || parsedWithdrawAmt <= 0}
+                        className="flex-1 rounded-xl border border-[#00E89D]/25 bg-[#00E89D]/15 py-3 text-[12px] font-bold text-[#00E89D] flex items-center justify-center"
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        {withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}
+                      </motion.button>
+                      <motion.button onClick={() => setShowWithdraw(false)} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[12px] font-bold text-white/40" whileTap={{ scale: 0.96 }}>
+                        Abbrechen
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Send Panel */}
               <AnimatePresence>
                 {showSend && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.12)", boxShadow: "0 4px 20px rgba(0,194,255,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.12)" }}
+                  >
+                    <div className="flex items-center gap-2">
                       <Send size={14} className="text-[#00C2FF]" />
                       <p className="text-[12px] font-bold text-white">BLZ an Nutzer senden</p>
                     </div>
-                    <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
-                      placeholder="E-Mail des Empfängers" className={inputCls} />
-                    <input data-testid="send-amount" type="text" inputMode="decimal" value={sendAmt} onChange={e => setSendAmt(sanitizeAmountInput(e.target.value))}
-                      placeholder="Betrag in BLZ" className={inputCls} />
+                    <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)} placeholder="E-Mail des Empfängers" className={inputCls} />
+                    <input data-testid="send-amount" type="text" inputMode="decimal" value={sendAmt} onChange={e => setSendAmt(sanitizeAmountInput(e.target.value))} placeholder="Betrag in BLZ" className={inputCls} />
                     <div className="flex gap-2">
-                      <motion.button data-testid="send-confirm" onClick={sendBLZ} disabled={sending}
-                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/25 flex items-center justify-center gap-1.5"
-                        whileTap={{ scale: 0.96 }}>{sending ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Senden</>}</motion.button>
-                      <motion.button onClick={() => setShowSend(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
-                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
+                      <motion.button
+                        data-testid="send-confirm"
+                        onClick={sendBLZ}
+                        disabled={sending}
+                        className="flex-1 rounded-xl border border-[#00C2FF]/25 bg-[#00C2FF]/15 py-3 text-[12px] font-bold text-[#00C2FF] flex items-center justify-center gap-1.5"
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        {sending ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Senden</>}
+                      </motion.button>
+                      <motion.button onClick={() => setShowSend(false)} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[12px] font-bold text-white/40" whileTap={{ scale: 0.96 }}>
+                        Abbrechen
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
