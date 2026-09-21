@@ -1996,6 +1996,15 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     blitz = (BACKEND_DIR / "routes" / "blitz_mine.py").read_text(encoding="utf-8")
     mining_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
     blitz_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BlitzMinePage.jsx").read_text(encoding="utf-8")
+    app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+
+    assert '"routes.mining", "router"' in registry
+    assert '"routes.mining_phase2", "router"' in registry
+    assert 'case "/mining":' in app_source
+    mining_case = app_source[app_source.index('case "/mining":'):app_source.index('case "/mining-trust":')]
+    assert "(isGuest && !isDemoMode)" in mining_case
+    assert "<MiningPage" in mining_case
 
     assert "def _require_mining_value_mode" in mining
     assert '"live_mining_provider_connected": False' in mining
@@ -2016,6 +2025,11 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
 
     assert "mining-provider-unavailable" in mining_page
     assert "miningValueEnabled" in mining_page
+    assert 'const dash = await api("/api/mining/dashboard");' in mining_page
+    assert 'api("/api/mining/dashboard").catch(() => ({}))' not in mining_page
+    assert 'data-testid="mining-load-error"' in mining_page
+    assert 'data-testid="mining-retry-load"' in mining_page
+    assert "Mining konnte nicht geladen werden" in mining_page
     assert "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert." in mining_page
     assert "Entdecke die BidBlitz Mining Preview. Code:" in mining_page
     assert 'disabled={buyingListing === ls.listing_id || !miningValueEnabled}' in mining_page
