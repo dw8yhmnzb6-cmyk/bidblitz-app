@@ -399,77 +399,241 @@ async def get_mining_card(request: Request):
 class CardSpendRequest(BaseModel):
     amount_eur: float = Field(..., gt=0, le=10000)
     merchant: str = Field("", max_length=100)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/card/spend")
 async def card_spend(req: CardSpendRequest, request: Request):
-    """Simulate a card payment (deducts BLZ)."""
+    """Simulate a test-card payment exactly once; production remains disabled."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+
+    amount_eur = round(float(req.amount_eur), 2)
+    merchant = (req.merchant or "Purchase").strip() or "Purchase"
+    operation_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:20]
+    operation_id = f"MCSP-{operation_hash.upper()}"
+    operation_key = f"mining-card-spend:{user_id}:{raw_key}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.mining_card_operations.update_one(
+        {"_id": operation_id},
+        {"$setOnInsert": {
+            "_id": operation_id,
+            "kind": "spend",
+            "user_id": user_id,
+            "amount_eur": amount_eur,
+            "merchant": merchant,
+            "idempotency_key": operation_key,
+            "status": "processing",
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    operation = await db.mining_card_operations.find_one({"_id": operation_id}, {"_id": 0}) or {}
+    if (
+        operation.get("kind") != "spend"
+        or round(_safe_mining_float(operation.get("amount_eur")), 2) != amount_eur
+        or str(operation.get("merchant") or "") != merchant
+    ):
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Kartendaten verwendet")
+    if operation.get("status") == "completed":
+        return {
+            "ok": True,
+            "spent_eur": amount_eur,
+            "spent_blz": _safe_mining_float(operation.get("spent_blz")),
+            "cashback_blz": _safe_mining_float(operation.get("cashback_blz")),
+            "operation_id": operation_id,
+            "replayed": True,
+        }
+    if operation.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Kartenzahlung benötigt Abstimmung; keine erneute Belastung wird ausgeführt")
+    if operation.get("status") == "failed":
+        raise HTTPException(status_code=400, detail=operation.get("error") or "Kartenzahlung fehlgeschlagen")
 
     card = await db.mining_cards.find_one({"user_id": user_id})
     if not card:
+        await db.mining_card_operations.update_one({"_id": operation_id}, {"$set": {"status": "failed", "error": "No card found"}})
         raise HTTPException(status_code=404, detail="No card found")
     if card.get("frozen"):
+        await db.mining_card_operations.update_one({"_id": operation_id}, {"$set": {"status": "failed", "error": "Card is frozen"}})
         raise HTTPException(status_code=400, detail="Card is frozen")
 
-    # Check daily limit
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    today_txns = await db.mining_card_txns.find({"user_id": user_id, "date": today}).to_list(100)
-    today_spent = sum(t.get("amount_eur", 0) for t in today_txns)
-    if today_spent + req.amount_eur > card.get("daily_limit", 100):
-        raise HTTPException(status_code=400, detail="Daily limit exceeded")
+    daily_limit = _safe_mining_float(card.get("daily_limit"), 100.0)
+    cashback_rate = _safe_mining_float(card.get("cashback_rate"), 0.01)
+    blz_needed = round(amount_eur / BLZ_TO_EUR, 8)
+    cashback_blz = round(blz_needed * cashback_rate, 8)
+    net_blz_debit = round(blz_needed - cashback_blz, 8)
+    card_marker = f"card_spend_markers.{operation_hash}"
+    daily_field = f"daily_spend_eur.{today}"
 
-    # Deduct BLZ
-    blz_needed = req.amount_eur / BLZ_TO_EUR
-    wallet = await db.mining_wallets.find_one({"user_id": user_id})
-    if not wallet or wallet.get("blz_balance", 0) < blz_needed:
-        raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
+    existing_card_marker = (card.get("card_spend_markers") or {}).get(operation_hash)
+    if not existing_card_marker:
+        remaining_before = round(max(0.0, daily_limit - amount_eur), 2)
+        reserved = await db.mining_cards.update_one(
+            {
+                "user_id": user_id,
+                "frozen": {"$ne": True},
+                card_marker: {"$exists": False},
+                "$or": [
+                    {daily_field: {"$exists": False}},
+                    {daily_field: {"$lte": remaining_before}},
+                ],
+            },
+            {
+                "$inc": {daily_field: amount_eur, "total_spent": amount_eur},
+                "$set": {card_marker: {
+                    "operation_id": operation_id,
+                    "status": "reserved",
+                    "amount_eur": amount_eur,
+                    "reserved_at": now,
+                }},
+            },
+        )
+        if reserved.modified_count != 1:
+            fresh_card = await db.mining_cards.find_one({"user_id": user_id}) or {}
+            fresh_marker = (fresh_card.get("card_spend_markers") or {}).get(operation_hash)
+            if not fresh_marker:
+                error = "Card is frozen" if fresh_card.get("frozen") else "Daily limit exceeded"
+                await db.mining_card_operations.update_one(
+                    {"_id": operation_id},
+                    {"$set": {"status": "failed", "error": error, "failed_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(status_code=400, detail=error)
 
-    cashback_rate = card.get("cashback_rate", 0.01)
-    cashback_blz = round(blz_needed * cashback_rate, 4)
-
-    await db.mining_wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"blz_balance": -(blz_needed - cashback_blz)}},
+    wallet_marker = f"card_spend_debits.{operation_hash}"
+    debit = await db.mining_wallets.update_one(
+        {
+            "user_id": user_id,
+            "blz_balance": {"$gte": net_blz_debit},
+            wallet_marker: {"$exists": False},
+        },
+        {
+            "$inc": {"blz_balance": -net_blz_debit},
+            "$set": {wallet_marker: {
+                "operation_id": operation_id,
+                "amount_blz": net_blz_debit,
+                "debited_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        },
     )
+    if debit.modified_count != 1:
+        wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+        existing_debit = (wallet.get("card_spend_debits") or {}).get(operation_hash)
+        if not existing_debit:
+            rolled_back = await db.mining_cards.update_one(
+                {"user_id": user_id, f"{card_marker}.status": "reserved"},
+                {
+                    "$inc": {daily_field: -amount_eur, "total_spent": -amount_eur},
+                    "$set": {
+                        f"{card_marker}.status": "failed",
+                        f"{card_marker}.error": "insufficient_blz",
+                        f"{card_marker}.rolled_back_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+            )
+            if rolled_back.modified_count != 1:
+                await db.mining_card_operations.update_one(
+                    {"_id": operation_id},
+                    {"$set": {
+                        "status": "reconciliation_required",
+                        "error": "wallet_debit_failed_card_reservation_unclear",
+                        "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(status_code=503, detail="Kartenzahlungszustand unklar; Abstimmung erforderlich")
+            await db.mining_card_operations.update_one(
+                {"_id": operation_id},
+                {"$set": {"status": "failed", "error": "Insufficient BLZ balance", "failed_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            raise HTTPException(status_code=400, detail="Insufficient BLZ balance")
 
-    now = datetime.now(timezone.utc).isoformat()
-    await db.mining_card_txns.insert_one({
-        "txn_id": secrets.token_hex(6),
-        "user_id": user_id,
-        "amount_eur": req.amount_eur,
-        "amount_blz": blz_needed,
-        "cashback_blz": cashback_blz,
-        "merchant": req.merchant or "Purchase",
-        "date": today,
-        "created_at": now,
-    })
+    summary = await db.mining_cards.update_one(
+        {
+            "user_id": user_id,
+            f"{card_marker}.status": "reserved",
+            f"{card_marker}.summary_applied": {"$ne": True},
+        },
+        {
+            "$inc": {"total_cashback": cashback_blz},
+            "$set": {
+                f"{card_marker}.summary_applied": True,
+                f"{card_marker}.summary_applied_at": datetime.now(timezone.utc).isoformat(),
+            },
+        },
+    )
+    if summary.modified_count != 1:
+        fresh_card = await db.mining_cards.find_one({"user_id": user_id}) or {}
+        fresh_marker = (fresh_card.get("card_spend_markers") or {}).get(operation_hash) or {}
+        if not fresh_marker.get("summary_applied"):
+            await db.mining_card_operations.update_one(
+                {"_id": operation_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "error": "card_summary_not_confirmed",
+                    "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=503, detail="Kartenzahlung belastet; Kartenstatus benötigt Abstimmung")
 
+    await db.mining_card_txns.update_one(
+        {"txn_id": operation_id},
+        {"$setOnInsert": {
+            "txn_id": operation_id,
+            "user_id": user_id,
+            "amount_eur": amount_eur,
+            "amount_blz": blz_needed,
+            "cashback_blz": cashback_blz,
+            "merchant": merchant,
+            "date": today,
+            "idempotency_key": operation_key,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    completed_at = datetime.now(timezone.utc).isoformat()
     await db.mining_cards.update_one(
-        {"user_id": user_id},
-        {"$inc": {"total_spent": req.amount_eur, "total_cashback": cashback_blz}},
+        {"user_id": user_id, card_marker: {"$exists": True}},
+        {"$set": {f"{card_marker}.status": "completed", f"{card_marker}.completed_at": completed_at}},
+    )
+    await db.mining_card_operations.update_one(
+        {"_id": operation_id},
+        {"$set": {
+            "status": "completed",
+            "spent_blz": blz_needed,
+            "cashback_blz": cashback_blz,
+            "completed_at": completed_at,
+        }},
     )
 
     return {
         "ok": True,
-        "spent_eur": req.amount_eur,
-        "spent_blz": round(blz_needed, 4),
+        "spent_eur": amount_eur,
+        "spent_blz": blz_needed,
         "cashback_blz": cashback_blz,
+        "operation_id": operation_id,
+        "replayed": False,
     }
 
 
 class UpgradeCardRequest(BaseModel):
     tier: str
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/card/upgrade")
 async def upgrade_card(req: UpgradeCardRequest, request: Request):
-    """Upgrade card tier."""
+    """Upgrade the test card tier exactly once; production remains disabled."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
     target = next((t for t in CARD_TIERS if t["tier"] == req.tier), None)
     if not target:
@@ -479,41 +643,174 @@ async def upgrade_card(req: UpgradeCardRequest, request: Request):
     if not card:
         raise HTTPException(status_code=404, detail="No card found")
 
-    current_idx = next((i for i, t in enumerate(CARD_TIERS) if t["tier"] == card.get("tier")), 0)
-    target_idx = next((i for i, t in enumerate(CARD_TIERS) if t["tier"] == req.tier), 0)
-    if target_idx <= current_idx:
-        raise HTTPException(status_code=400, detail="Already at this tier or higher")
+    operation_hash = hashlib.sha256(f"{user_id}:{raw_key}".encode("utf-8")).hexdigest()[:20]
+    operation_id = f"MCUP-{operation_hash.upper()}"
+    operation_key = f"mining-card-upgrade:{user_id}:{raw_key}"
+    operation = await db.mining_card_operations.find_one({"_id": operation_id}, {"_id": 0})
+    if operation:
+        if operation.get("kind") != "upgrade" or operation.get("target_tier") != req.tier:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Upgrade-Daten verwendet")
+        if operation.get("status") == "completed":
+            return {"ok": True, "new_tier": operation.get("new_tier"), "operation_id": operation_id, "replayed": True}
+        if operation.get("status") == "reconciliation_required":
+            raise HTTPException(status_code=503, detail="Karten-Upgrade benötigt Abstimmung; keine erneute Belastung wird ausgeführt")
+        if operation.get("status") in ("failed", "refunded"):
+            raise HTTPException(status_code=409, detail=operation.get("error") or "Karten-Upgrade wurde nicht ausgeführt")
+    else:
+        current_idx = next((i for i, t in enumerate(CARD_TIERS) if t["tier"] == card.get("tier")), 0)
+        target_idx = next((i for i, t in enumerate(CARD_TIERS) if t["tier"] == req.tier), 0)
+        if target_idx <= current_idx:
+            raise HTTPException(status_code=400, detail="Already at this tier or higher")
+        now = datetime.now(timezone.utc).isoformat()
+        await db.mining_card_operations.update_one(
+            {"_id": operation_id},
+            {"$setOnInsert": {
+                "_id": operation_id,
+                "kind": "upgrade",
+                "user_id": user_id,
+                "from_tier": card.get("tier"),
+                "target_tier": req.tier,
+                "target_name": target["name"],
+                "cost_blz": target["cost_blz"],
+                "idempotency_key": operation_key,
+                "status": "processing",
+                "created_at": now,
+            }},
+            upsert=True,
+        )
+        operation = await db.mining_card_operations.find_one({"_id": operation_id}, {"_id": 0}) or {}
 
-    if target["cost_blz"] > 0:
-        wallet = await db.mining_wallets.find_one({"user_id": user_id})
-        if not wallet or wallet.get("blz_balance", 0) < target["cost_blz"]:
-            raise HTTPException(status_code=400, detail="Insufficient BLZ")
-        await db.mining_wallets.update_one({"user_id": user_id}, {"$inc": {"blz_balance": -target["cost_blz"]}})
+    from_tier = operation.get("from_tier")
+    cost_blz = _safe_mining_float(operation.get("cost_blz"))
+    debit_marker = f"card_upgrade_debits.{operation_hash}"
+    if cost_blz > 0:
+        debit = await db.mining_wallets.update_one(
+            {
+                "user_id": user_id,
+                "blz_balance": {"$gte": cost_blz},
+                debit_marker: {"$exists": False},
+            },
+            {
+                "$inc": {"blz_balance": -cost_blz},
+                "$set": {debit_marker: {
+                    "operation_id": operation_id,
+                    "amount_blz": cost_blz,
+                    "debited_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            },
+        )
+        if debit.modified_count != 1:
+            wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+            existing_debit = (wallet.get("card_upgrade_debits") or {}).get(operation_hash)
+            if not existing_debit:
+                await db.mining_card_operations.update_one(
+                    {"_id": operation_id},
+                    {"$set": {"status": "failed", "error": "Insufficient BLZ", "failed_at": datetime.now(timezone.utc).isoformat()}},
+                )
+                raise HTTPException(status_code=400, detail="Insufficient BLZ")
 
-    await db.mining_cards.update_one(
-        {"user_id": user_id},
+    applied_marker = f"card_upgrade_applied.{operation_hash}"
+    applied = await db.mining_cards.update_one(
+        {
+            "user_id": user_id,
+            "tier": from_tier,
+            applied_marker: {"$exists": False},
+        },
         {"$set": {
-            "tier": target["tier"], "tier_name": target["name"],
-            "color": target["color"], "daily_limit": target["daily_limit"],
+            "tier": target["tier"],
+            "tier_name": target["name"],
+            "color": target["color"],
+            "daily_limit": target["daily_limit"],
             "cashback_rate": target["cashback"],
+            applied_marker: {
+                "operation_id": operation_id,
+                "from_tier": from_tier,
+                "target_tier": target["tier"],
+                "applied_at": datetime.now(timezone.utc).isoformat(),
+            },
         }},
     )
+    if applied.modified_count != 1:
+        fresh_card = await db.mining_cards.find_one({"user_id": user_id}) or {}
+        existing_apply = (fresh_card.get("card_upgrade_applied") or {}).get(operation_hash)
+        if not existing_apply:
+            if cost_blz > 0:
+                refund_marker = f"card_upgrade_refunds.{operation_hash}"
+                refunded = await db.mining_wallets.update_one(
+                    {
+                        "user_id": user_id,
+                        debit_marker: {"$exists": True},
+                        refund_marker: {"$exists": False},
+                    },
+                    {
+                        "$inc": {"blz_balance": cost_blz},
+                        "$set": {refund_marker: {
+                            "operation_id": operation_id,
+                            "amount_blz": cost_blz,
+                            "refunded_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    },
+                )
+                if refunded.modified_count != 1:
+                    wallet = await db.mining_wallets.find_one({"user_id": user_id}) or {}
+                    if not (wallet.get("card_upgrade_refunds") or {}).get(operation_hash):
+                        await db.mining_card_operations.update_one(
+                            {"_id": operation_id},
+                            {"$set": {
+                                "status": "reconciliation_required",
+                                "error": "upgrade_apply_failed_refund_unclear",
+                                "reconciliation_required_at": datetime.now(timezone.utc).isoformat(),
+                            }},
+                        )
+                        raise HTTPException(status_code=503, detail="Karten-Upgradezustand unklar; Abstimmung erforderlich")
+            await db.mining_card_operations.update_one(
+                {"_id": operation_id},
+                {"$set": {
+                    "status": "refunded",
+                    "error": "Kartenstufe wurde parallel verändert; BLZ wurden zurückgebucht",
+                    "refunded_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            raise HTTPException(status_code=409, detail="Kartenstufe wurde parallel verändert; BLZ wurden zurückgebucht")
 
-    return {"ok": True, "new_tier": target["name"]}
+    now = datetime.now(timezone.utc).isoformat()
+    await db.mining_transactions.update_one(
+        {"txn_id": operation_id},
+        {"$setOnInsert": {
+            "txn_id": operation_id,
+            "user_id": user_id,
+            "type": "card_upgrade",
+            "amount_blz": -cost_blz,
+            "description": f"Mining Card upgrade: {target['name']}",
+            "idempotency_key": operation_key,
+            "created_at": now,
+        }},
+        upsert=True,
+    )
+    await db.mining_card_operations.update_one(
+        {"_id": operation_id},
+        {"$set": {"status": "completed", "new_tier": target["name"], "completed_at": now}},
+    )
+    return {"ok": True, "new_tier": target["name"], "operation_id": operation_id, "replayed": False}
+
+
+class FreezeCardRequest(BaseModel):
+    frozen: bool
 
 
 @router.post("/card/freeze")
-async def toggle_freeze(request: Request):
-    """Toggle card freeze only while the test card simulator is enabled."""
+async def set_card_freeze(req: FreezeCardRequest, request: Request):
+    """Set test-card freeze state idempotently; production remains disabled."""
     _require_mining_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    card = await db.mining_cards.find_one({"user_id": user_id})
-    if not card:
+    result = await db.mining_cards.update_one(
+        {"user_id": user_id},
+        {"$set": {"frozen": bool(req.frozen), "freeze_updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if result.matched_count != 1:
         raise HTTPException(status_code=404, detail="No card")
-    new_state = not card.get("frozen", False)
-    await db.mining_cards.update_one({"user_id": user_id}, {"$set": {"frozen": new_state}})
-    return {"frozen": new_state}
+    return {"frozen": bool(req.frozen)}
 
 
 # ══════════════════════════════════════
