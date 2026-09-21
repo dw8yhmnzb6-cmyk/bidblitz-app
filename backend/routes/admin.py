@@ -843,7 +843,7 @@ async def system_health(request: Request):
 
     # 2. User counts
     health["counts"]["users"] = await db.users.count_documents({})
-    health["counts"]["admins"] = await db.users.count_documents({"role": "admin"})
+    health["counts"]["admins"] = await db.users.count_documents({"role": {"$in": ["admin", "super_admin"]}})
     health["counts"]["drivers"] = await db.drivers.count_documents({})
     health["counts"]["verified_drivers"] = await db.drivers.count_documents({"verified": True})
     health["counts"]["restaurants"] = await db.food_restaurants.count_documents({})
