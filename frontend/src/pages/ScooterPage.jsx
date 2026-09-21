@@ -342,15 +342,20 @@ export default function ScooterPage({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: activeRental.scooter_id }),
+        body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
+          scooter_id: activeRental.scooter_id,
+        }),
       });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setActiveRental(prev => ({ ...prev, status: 'paused' }));
-      }
-    } catch (err) {}
-    finally { setLoading(false); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Pause fehlgeschlagen');
+      setActiveRental(prev => ({ ...prev, status: 'paused' }));
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Pause fehlgeschlagen');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Resume ride
@@ -363,14 +368,20 @@ export default function ScooterPage({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: activeRental.scooter_id }),
+        body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
+          scooter_id: activeRental.scooter_id,
+        }),
       });
-      
-      if (res.ok) {
-        setActiveRental(prev => ({ ...prev, status: 'active' }));
-      }
-    } catch (err) {}
-    finally { setLoading(false); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Weiterfahren fehlgeschlagen');
+      setActiveRental(prev => ({ ...prev, status: 'active' }));
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Weiterfahren fehlgeschlagen');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // End ride
@@ -917,7 +928,10 @@ export default function ScooterPage({ onNavigate }) {
                 
                 {activeRental.status === 'paused' && (
                   <div className="mt-4 p-3 bg-yellow-500/20 rounded-xl">
-                    <p className="text-yellow-400 font-medium">⏸️ Pausiert (€{pricing.pause_rate}/Min)</p>
+                    <p className="text-yellow-400 font-medium">⏸️ Pausiert · Scooter bleibt reserviert</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Der normale Fahrtarif läuft weiter: {Number(activeRental.per_minute_rate ?? pricing.per_minute ?? 0).toFixed(2)} {activeRental.currency || pricing.currency || 'EUR'}/Min
+                    </p>
                   </div>
                 )}
               </div>
