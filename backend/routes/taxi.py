@@ -2951,6 +2951,30 @@ async def _release_driver_active_ride(driver_id: Optional[str], ride_id: str) ->
     )
 
 
+async def _ensure_driver_accept_notification(ride: dict, driver: dict) -> None:
+    ride_id = str(ride.get("ride_id") or "")
+    customer_id = str(ride.get("customer_id") or "")
+    driver_id = str(driver.get("driver_id") or "")
+    if not ride_id or not customer_id or not driver_id:
+        return
+    notification_id = f"taxi-accepted:{ride_id}:{driver_id}"
+    await db.notifications.update_one(
+        {"_id": notification_id},
+        {"$setOnInsert": {
+            "_id": notification_id,
+            "notification_id": notification_id,
+            "user_id": customer_id,
+            "title": "Fahrer gefunden!",
+            "message": "Dein Fahrer hat die Fahrt angenommen und ist unterwegs.",
+            "type": "ride_accepted",
+            "data": {"ride_id": ride_id, "driver_id": driver_id},
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+
 @router.post("/driver/accept")
 async def driver_accept_ride(req: RideActionRequest, request: Request):
     """Driver accepts a ride request."""
@@ -2987,6 +3011,7 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         and ride.get("status") in {RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value, RideStatus.STARTED.value}
     ):
         await _claim_driver_active_ride(driver["driver_id"], req.ride_id)
+        await _ensure_driver_accept_notification(ride, driver)
         return {
             "ok": True,
             "ride": {k: v for k, v in ride.items() if k != "_id"},
@@ -2995,6 +3020,24 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         }
     if ride["status"] != RideStatus.REQUESTED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
+    if driver["driver_id"] in (ride.get("rejected_driver_ids") or []):
+        raise HTTPException(status_code=409, detail="Diese Anfrage wurde von dir bereits abgelehnt")
+
+    driver_car = driver.get("car") or driver.get("vehicle") or {}
+    driver_car_type = driver_car.get("type") or driver_car.get("vehicle_type") or "standard"
+    if ride.get("car_type", "standard") != driver_car_type:
+        raise HTTPException(status_code=400, detail="Fahrzeugklasse passt nicht zur Anfrage")
+
+    driver_loc = driver.get("location") or driver.get("current_location") or {}
+    pickup = ride.get("pickup") or {}
+    if not NumberErrorSafe(driver_loc.get("lat"), driver_loc.get("lng")) or not NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
+        raise HTTPException(status_code=400, detail="Fahrer- oder Abholstandort fehlt")
+    distance_to_pickup = haversine_distance(
+        float(driver_loc["lat"]), float(driver_loc["lng"]),
+        float(pickup["lat"]), float(pickup["lng"]),
+    )
+    if distance_to_pickup > 10:
+        raise HTTPException(status_code=400, detail="Anfrage liegt nicht mehr in deinem Suchradius")
 
     now = datetime.now(timezone.utc)
     scheduled_at = ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at")
@@ -3025,9 +3068,12 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
             "driver_id": driver["driver_id"],
             "driver_name": driver.get("user_name") or driver.get("name") or "",
             "driver_phone": driver.get("phone", ""),
-            "driver_car": driver.get("car") or driver.get("vehicle") or {},
+            "driver_car": driver_car,
             "driver_rating": driver.get("rating", 5.0),
-            "driver_location": driver.get("location") or driver.get("current_location") or {},
+            "driver_location": {
+                "lat": float(driver_loc["lat"]),
+                "lng": float(driver_loc["lng"]),
+            },
             "status": RideStatus.ACCEPTED.value,
             "accepted_at": now.isoformat(),
         },
@@ -3041,6 +3087,7 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         raise HTTPException(status_code=409, detail="Fahrt wurde gerade von einem anderen Fahrer angenommen")
     
     updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
+    await _ensure_driver_accept_notification(updated_ride or ride, driver)
     
     return {
         "ok": True,
