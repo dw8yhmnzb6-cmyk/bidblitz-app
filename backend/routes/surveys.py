@@ -20,6 +20,49 @@ SURVEYS = [
 class CompleteSurvey(BaseModel):
     survey_id: str
 
+
+async def _require_survey_admin(request: Request):
+    user = await get_current_user(request)
+    if (user.get("role") or "") not in {"admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Admin-Rechte erforderlich")
+    return user
+
+
+@router.get("/admin/stats")
+async def admin_survey_stats(request: Request):
+    """Read-only survey catalog and completion/reward totals for the admin panel."""
+    await _require_survey_admin(request)
+    grouped = {}
+    async for row in db.survey_completions.aggregate([
+        {"$group": {
+            "_id": "$survey_id",
+            "completed_count": {"$sum": 1},
+            "reward_total": {"$sum": {"$ifNull": ["$reward", 0]}},
+        }},
+    ]):
+        grouped[str(row.get("_id") or "")] = {
+            "completed_count": int(row.get("completed_count") or 0),
+            "reward_total": round(float(row.get("reward_total") or 0), 2),
+        }
+
+    catalog = []
+    for survey in SURVEYS:
+        stats = grouped.get(survey["id"], {})
+        catalog.append({
+            **survey,
+            "completed_count": stats.get("completed_count", 0),
+            "reward_total": stats.get("reward_total", 0.0),
+        })
+
+    return {
+        "surveys": catalog,
+        "active_count": len(catalog),
+        "completion_count": sum(item["completed_count"] for item in catalog),
+        "reward_total": round(sum(item["reward_total"] for item in catalog), 2),
+        "reward_actions_enabled": bool(TEST_MODE),
+        "provider_mode": "test" if TEST_MODE else "preview",
+    }
+
 @router.get("/available")
 async def available_surveys(request: Request):
     user = await get_current_user(request)
