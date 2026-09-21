@@ -1494,6 +1494,24 @@ async def calculate_fare_with_overrides(
                 "vehicle_multiplier": vehicle_multiplier,
                 "min_balance": float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0),
             }
+        if pricing_context.get("strict_modes"):
+            return {
+                "base_fare": 0.0,
+                "booking_fee": 0.0,
+                "distance_cost": 0.0,
+                "time_cost": 0.0,
+                "total": 0.0,
+                "driver_earnings": 0.0,
+                "platform_fee": 0.0,
+                "region": pricing_context.get("country_code") or region,
+                "region_label": pricing_context.get("city") or pricing_context.get("country") or pricing_context.get("region") or "Nicht verfügbar",
+                "pricing_source": "mobility_profile_unavailable",
+                "profile_scope": pricing_context.get("profile_scope") or "country",
+                "currency": pricing_context.get("currency") or "EUR",
+                "booking_supported": False,
+                "settlement_reason": "Für diesen Standort ist noch kein verifizierter Taxi-Tarif freigeschaltet.",
+                "min_balance": 0.0,
+            }
     except Exception as exc:
         logger.warning("Canonical taxi pricing lookup failed; using legacy fallback: %s", exc)
 
