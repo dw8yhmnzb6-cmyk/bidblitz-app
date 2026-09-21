@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import ApiService from '../../services/ApiService';
 import { COLORS, SIZES } from '../../config/colors';
@@ -32,6 +33,54 @@ const MerchantPaymentsScreen = ({ navigation }) => {
   useEffect(() => {
     paymentAttemptKeyRef.current = null;
   }, [selectedMerchant?.id, amount, description, invoiceNumber]);
+
+  const paymentAttemptStorageKey = `bidblitz:m2m-payment-attempt:${user?.id || user?.email || 'unknown'}`;
+
+  const getPaymentScope = () => [
+    selectedMerchant?.id || '',
+    Number.parseFloat(amount || '0').toFixed(2),
+    description.trim(),
+    invoiceNumber.trim(),
+  ].join('|');
+
+  const loadOrCreatePaymentAttemptKey = async () => {
+    const scope = getPaymentScope();
+    if (paymentAttemptKeyRef.current?.scope === scope && paymentAttemptKeyRef.current?.key) {
+      return paymentAttemptKeyRef.current.key;
+    }
+
+    try {
+      const raw = await AsyncStorage.getItem(paymentAttemptStorageKey);
+      const stored = raw ? JSON.parse(raw) : null;
+      if (stored?.scope === scope && typeof stored?.key === 'string' && stored.key.length >= 8) {
+        paymentAttemptKeyRef.current = stored;
+        return stored.key;
+      }
+    } catch (error) {
+      console.warn('Merchant payment attempt restore failed:', error);
+    }
+
+    const attempt = {
+      scope,
+      key: `m2m-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    };
+    paymentAttemptKeyRef.current = attempt;
+    try {
+      await AsyncStorage.setItem(paymentAttemptStorageKey, JSON.stringify(attempt));
+    } catch (error) {
+      console.warn('Merchant payment attempt persist failed:', error);
+    }
+    return attempt.key;
+  };
+
+  const clearPaymentAttempt = async () => {
+    paymentAttemptKeyRef.current = null;
+    try {
+      await AsyncStorage.removeItem(paymentAttemptStorageKey);
+    } catch (error) {
+      console.warn('Merchant payment attempt cleanup failed:', error);
+    }
+  };
 
   useEffect(() => {
     // Check if user is merchant
@@ -105,18 +154,16 @@ const MerchantPaymentsScreen = ({ navigation }) => {
           onPress: async () => {
             setProcessing(true);
             try {
-              if (!paymentAttemptKeyRef.current) {
-                paymentAttemptKeyRef.current = `m2m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-              }
+              const idempotencyKey = await loadOrCreatePaymentAttemptKey();
               const response = await ApiService.post('/merchant-payments/pay', {
                 recipient_merchant_id: selectedMerchant.id,
                 amount: parseFloat(amount),
                 description: description.trim(),
                 invoice_number: invoiceNumber.trim() || null,
-                idempotency_key: paymentAttemptKeyRef.current,
+                idempotency_key: idempotencyKey,
               });
 
-              paymentAttemptKeyRef.current = null;
+              await clearPaymentAttempt();
               setShowPaymentModal(false);
               setAmount('');
               setDescription('');
@@ -132,9 +179,15 @@ const MerchantPaymentsScreen = ({ navigation }) => {
               // Refresh recent merchants
               loadRecentMerchants();
             } catch (error) {
+              const status = Number(error?.response?.status || 0);
+              if (status > 0 && status < 500 && status !== 429) {
+                await clearPaymentAttempt();
+              }
               Alert.alert(
-                'Zahlung fehlgeschlagen',
-                error.response?.data?.detail || 'Bitte erneut versuchen'
+                status >= 500 || status === 0 ? 'Zahlung wird geprüft' : 'Zahlung fehlgeschlagen',
+                error.response?.data?.detail || (status >= 500 || status === 0
+                  ? 'Der Zahlungsstatus ist unklar. Bitte denselben Versuch erneut ausführen.'
+                  : 'Bitte erneut versuchen')
               );
             } finally {
               setProcessing(false);
