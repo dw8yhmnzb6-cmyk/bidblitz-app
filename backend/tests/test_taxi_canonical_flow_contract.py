@@ -21,7 +21,7 @@ def test_customer_and_driver_use_same_canonical_rides_collection():
     assert "requests = await _pending_customer_rides(driver" in driver
     assert '"ride_id": request_id' in driver
     assert '"status": "requested"' in driver
-    assert '"driver_id": None' in driver
+    assert "return await driver_accept_ride(RideActionRequest(ride_id=request_id), request)" in driver
 
     # Taxi-side atomic claim must remain protected as well.
     assert '"status": RideStatus.REQUESTED.value' in taxi
