@@ -3678,3 +3678,15 @@ def test_auction_admin_keeps_paused_auctions_resumable():
     assert 'const activeAuctions = auctions.filter(a => ["active", "paused"].includes(a.status));' in page
     assert 'auction.status === "paused"' in page
     assert 'onResume(auction.auction_id)' in page
+
+
+def test_active_auction_list_finalizes_expired_rows():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert '@router.get("/active")' in source
+    active_start = source.index('@router.get("/active")')
+    active_end = source.index('@router.get("/list")', active_start)
+    active = source[active_start:active_end]
+    assert '{"status": "active", "ends_at": {"$lte": now_iso}}' in active
+    assert 'await _finalize_auction_once(auc["auction_id"])' in active
+    assert '{"status": "active", "ends_at": {"$gt": now_iso}}' in active
