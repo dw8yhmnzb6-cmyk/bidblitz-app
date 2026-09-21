@@ -372,24 +372,6 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   useEffect(() => { loadNearbyRef.current = loadNearby; }, [loadNearby]);
   useEffect(() => { calculateRouteRef.current = calculateRoute; }, [calculateRoute]);
 
-  const hydratePickupFallback = useCallback(async (lat, lng, fallbackLabel = "Kartenzentrum") => {
-    if (pickupInitializedRef.current) return;
-    pickupInitializedRef.current = true;
-    const info = await mobilityReverse(lat, lng, lang || "de");
-    const payload = {
-      address: info?.address || fallbackLabel,
-      lat,
-      lng,
-      city: info?.city || "",
-      country: info?.country || "",
-      country_code: info?.country_code || "",
-      postcode: info?.postcode || "",
-    };
-    setPickup(payload);
-    mapRef.current?.setView([lat, lng], 14);
-    loadNearby(lat, lng);
-  }, [lang, loadNearby]);
-
   useEffect(() => {
     const map = L.map("bidblitz-mobility-map", { zoomControl: false, attributionControl: true, preferCanvas: true }).setView([42.6489, 21.1743], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(map);
@@ -422,14 +404,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       }
     });
     mapRef.current = map;
-    setTimeout(() => {
-      if (!pickupInitializedRef.current) {
-        const center = map.getCenter();
-        hydratePickupFallback(center.lat, center.lng);
-      }
-    }, 900);
     return () => map.remove();
-  }, [hydratePickupFallback]);
+  }, []);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(async (pos) => {
@@ -442,13 +418,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       loadNearby(lat, lng);
       if (dropoff.lat && dropoff.lng) calculateRoute(payload, dropoff);
       pickupInitializedRef.current = true;
-    }, async () => {
-      if (!pickupInitializedRef.current && mapRef.current) {
-        const center = mapRef.current.getCenter();
-        await hydratePickupFallback(center.lat, center.lng);
-      }
+    }, () => {
+      // Location permission denied/unavailable: keep pickup unset.
+      // The map's visual center is never treated as the user's real pickup.
     });
-  }, [calculateRoute, dropoff, hydratePickupFallback, lang, loadNearby]);
+  }, [calculateRoute, dropoff, lang, loadNearby]);
 
   useEffect(() => {
     const map = mapRef.current;
