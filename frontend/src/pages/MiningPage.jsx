@@ -10,7 +10,7 @@ import {
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 const sl = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
 async function api(path, opts = {}) {
