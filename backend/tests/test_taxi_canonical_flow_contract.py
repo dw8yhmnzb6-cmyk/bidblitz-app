@@ -95,6 +95,11 @@ def test_taxi_booking_retry_repairs_quote_and_promo_without_second_charge():
     assert '"auth_required"' in promo
     assert '"Idempotency-Key": idempotencyKey' in api
     assert "bookingAttemptRef" in page
+    assert "readTaxiBookingAttempt" in page
+    assert "persistTaxiBookingAttempt" in page
+    assert "bidblitz:taxi-booking-attempt:" in page
+    assert "persistTaxiBookingAttempt(bookingAttemptOwnerId, bookingAttemptRef.current)" in page
+    assert "persistTaxiBookingAttempt(bookingAttemptOwnerId, null)" in page
 
 
 def test_taxi_promo_is_reserved_before_wallet_and_released_on_failure():
