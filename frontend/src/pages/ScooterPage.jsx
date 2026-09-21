@@ -489,7 +489,10 @@ export default function ScooterPage({ onNavigate }) {
       if (res.ok) {
         setRedeemResult({ ok: true, message: data.message, host: data.host_name });
       } else {
-        setRedeemResult({ ok: false, message: data.detail || 'Code ungültig' });
+        const message = typeof data.detail === 'string'
+          ? data.detail
+          : data.detail?.message || 'Code ungültig oder nicht verfügbar';
+        setRedeemResult({ ok: false, message });
       }
     } catch { setRedeemResult({ ok: false, message: 'Netzwerkfehler' }); }
     setShareLoading(false);
@@ -1112,7 +1115,8 @@ export default function ScooterPage({ onNavigate }) {
 
                 {/* Redeem Code Section */}
                 <div className="pt-4 border-t border-white/10">
-                  <p className="text-xs text-gray-500 mb-2">Freigabe-Code einlösen:</p>
+                  <p className="text-xs text-gray-500 mb-1">Freigabe-Code einlösen:</p>
+                  <p className="text-[10px] text-gray-600 mb-2">In Production benötigt der Gast ein verifiziertes Konto. Die Abrechnung bleibt beim Gastgeber.</p>
                   <div className="flex gap-2">
                     <input
                       value={redeemCode}
@@ -1155,7 +1159,7 @@ export default function ScooterPage({ onNavigate }) {
                             <div className="mt-2 flex items-center justify-between p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/10">
                               <div>
                                 <p className="text-[10px] text-gray-500">Live-Kosten</p>
-                                <p className="text-lg font-bold text-cyan-400">€{s.live_cost?.toFixed(2)}</p>
+                                <p className="text-lg font-bold text-cyan-400">{Number(s.live_cost || 0).toFixed(2)} {String(s.currency || activeRental?.currency || pricing.currency || 'EUR').toUpperCase()}</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-[10px] text-gray-500">Fahrzeit</p>
