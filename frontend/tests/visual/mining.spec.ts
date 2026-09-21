@@ -235,3 +235,41 @@ test('mining tolerates legacy numeric strings without crashing', async ({ page }
   await expect(page.getByText('+1.2500 BLZ')).toBeVisible();
   await expect(page.getByTestId('mining-load-error')).toHaveCount(0);
 });
+
+
+test('mining trust fails closed when live proof is unverified', async ({ page }) => {
+  await page.route('**/api/mining/trust/public', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        proof_metrics: {},
+        proof_verified_live: false,
+        capabilities: {
+          live_mining_provider_connected: false,
+          value_actions_enabled: false,
+        },
+        network: {
+          active_miners: 0,
+          wallets: 0,
+          registered_hashrate_ths: 0,
+          registered_hashrate_phs: 0,
+        },
+        videos: [],
+      }),
+    }),
+  );
+
+  await prepareVisualPage(page, { name: '320x568-mining-trust-unverified', width: 320, height: 568 });
+  await openRoute(page, '/mining-trust', '[data-testid="mining-trust-page"]');
+
+  await expect(page.getByTestId('mining-trust-unverified-banner')).toBeVisible();
+  await expect(page.getByText('Keine verifizierte Live-Hardware-', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('mining-trust-stat-0')).toContainText('nicht verifiziert');
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
+});
