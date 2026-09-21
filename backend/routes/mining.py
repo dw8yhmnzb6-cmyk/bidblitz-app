@@ -382,21 +382,7 @@ async def _settle_daily_mining_reward(user_id: str, miners: list[dict], claim_ty
                     }},
                 },
             )
-            if ref_credit.modified_count == 1:
-                await db.mining_transactions.update_one(
-                    {"txn_id": f"{persisted_claim_id}-REF"},
-                    {"$setOnInsert": {
-                        "txn_id": f"{persisted_claim_id}-REF",
-                        "user_id": referrer_id,
-                        "type": "referral_bonus",
-                        "amount_blz": ref_bonus,
-                        "description": "Referral mining bonus",
-                        "claim_id": persisted_claim_id,
-                        "created_at": now,
-                    }},
-                    upsert=True,
-                )
-            else:
+            if ref_credit.modified_count != 1:
                 ref_wallet = await db.mining_wallets.find_one({"user_id": referrer_id}) or {}
                 if not (ref_wallet.get("referral_reward_credits") or {}).get(persisted_claim_id):
                     await db.mining_claims.update_one(
@@ -408,6 +394,19 @@ async def _settle_daily_mining_reward(user_id: str, miners: list[dict], claim_ty
                         }},
                     )
                     raise HTTPException(status_code=503, detail="Referral-Gutschrift nicht bestätigt; Mining Reward benötigt Abstimmung")
+            await db.mining_transactions.update_one(
+                {"txn_id": f"{persisted_claim_id}-REF"},
+                {"$setOnInsert": {
+                    "txn_id": f"{persisted_claim_id}-REF",
+                    "user_id": referrer_id,
+                    "type": "referral_bonus",
+                    "amount_blz": ref_bonus,
+                    "description": "Referral mining bonus",
+                    "claim_id": persisted_claim_id,
+                    "created_at": now,
+                }},
+                upsert=True,
+            )
 
     completed_at = datetime.now(timezone.utc).isoformat()
     finalized = await db.mining_claims.update_one(
@@ -544,7 +543,7 @@ async def mining_dashboard(request: Request):
 
     # Check if daily reward claimed (auto or manual)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    claimed_today = await db.mining_claims.find_one({"user_id": user_id, "date": today})
+    claimed_today = await db.mining_claims.find_one({"user_id": user_id, "date": today, "status": "completed"})
 
     # Calculate next reward time (midnight UTC)
     now_utc = datetime.now(timezone.utc)
@@ -1381,7 +1380,7 @@ async def get_claim_history(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     claims = await db.mining_claims.find(
-        {"user_id": user_id}, {"_id": 0}
+        {"user_id": user_id, "status": "completed"}, {"_id": 0}
     ).sort("claimed_at", -1).to_list(100)
 
     streak = 0
