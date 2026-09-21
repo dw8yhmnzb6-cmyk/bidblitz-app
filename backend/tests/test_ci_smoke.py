@@ -1000,6 +1000,11 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert 'config["bot_policy"] = "test_only"' in source
     assert 'config_dict["bot_default_enabled"] = False' in source
     assert 'Production: deaktiviert' in admin_page
+    assert 'const botControlsEffective = config?.bot_controls_effective === true;' in admin_page
+    assert 'data-testid="auction-bot-production-policy"' in admin_page
+    assert 'disabled={!botControlsEffective}' in admin_page
+    assert 'Production-Kundenauktionen werden nicht über eine Win-Rate-Steuerung beeinflusst.' in admin_page
+    assert 'Production-Kundenauktionen nutzen keine Bot-Aggressivitätssteuerung.' in admin_page
     assert 'bot_last_bidder = str(raw_winner_id or "").startswith("bot_")' in source
     assert '"bot_last_bidder_requires_review"' in source
     assert '"requires_manual_review": needs_review' in source
