@@ -143,6 +143,7 @@ def test_taxi_booking_reserves_exact_displayed_quote_once():
     assert 'fare_total = round(float(locked_quote.get("fare_total")' in taxi
     assert '"status": "booking"' in taxi
     assert '"booking_idempotency_key": client_key' in taxi
+    assert '"booking_ride_id": ride_id' in taxi
     assert 'status in {"failed", "used", "claimed"}' in taxi
     assert 'status not in {"active", "booking"}' in taxi
     assert '"status": "used"' in taxi
