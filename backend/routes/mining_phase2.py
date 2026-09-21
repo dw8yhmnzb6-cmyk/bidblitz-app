@@ -540,8 +540,12 @@ async def get_mining_card(request: Request):
         }
         await db.mining_cards.insert_one(dict(card))
         card.pop("_id", None)
+    demo_card_id = f"demo_{hashlib.sha256(user_id.encode('utf-8')).hexdigest()[:12]}"
     card = {
         **card,
+        "card_number": str(card.get("card_number") or "TEST •••• 0000"),
+        "card_id": str(card.get("card_id") or demo_card_id),
+        "is_demo": True,
         "daily_limit": _safe_mining_float(card.get("daily_limit"), 100.0),
         "cashback_rate": _safe_mining_float(card.get("cashback_rate"), 0.01),
         "total_spent": _safe_mining_float(card.get("total_spent")),
