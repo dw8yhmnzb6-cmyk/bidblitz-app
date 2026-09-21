@@ -281,7 +281,11 @@ export default function ScooterPage({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: scooter.scooter_id, idempotency_key: idempotencyKey }),
+        body: JSON.stringify({
+          scooter_id: scooter.scooter_id,
+          idempotency_key: idempotencyKey,
+          pricing_hash: selectedPricing.pricing_hash || null,
+        }),
       });
       
       if (res.ok) {
@@ -295,6 +299,18 @@ export default function ScooterPage({ onNavigate }) {
         startRideTimer(ride);
       } else {
         const err = await res.json();
+        if (res.status === 409) {
+          const lat = Number(scooter?.lat ?? scooter?.location?.lat);
+          const lng = Number(scooter?.lng ?? scooter?.location?.lng);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            try {
+              const refreshedPricing = await fetchPricingForLocation(lat, lng);
+              setSelectedPricing(refreshedPricing);
+            } catch {
+              setSelectedPricing(null);
+            }
+          }
+        }
         setError(err.detail || 'Entsperren fehlgeschlagen');
       }
     } catch (err) {
