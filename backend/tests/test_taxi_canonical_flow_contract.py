@@ -125,3 +125,16 @@ def test_legacy_customer_request_endpoint_cannot_create_second_taxi_lifecycle():
     assert 'db.taxi_ride_requests.insert_one' not in legacy
     assert 'create_notification(' not in legacy
     assert "kanonischen Taxi" in legacy or "aktuelle Taxi-Buchung" in legacy
+
+
+def test_driver_dashboard_accepts_canonical_taxi_driver_schema():
+    driver = read("backend/routes/driver_dashboard.py")
+
+    assert '{"verified": True, "status": "approved"}' in driver
+    assert '{"is_verified": True, "status": "active"}' in driver
+    assert "def _driver_is_verified(driver: dict) -> bool:" in driver
+    assert "def _driver_vehicle(driver: dict) -> dict:" in driver
+    assert '"vehicle": _driver_vehicle(driver)' in driver
+    assert '"is_online": bool(driver.get("is_online") or driver.get("online"))' in driver
+    assert '"current_location": _driver_location(driver)' in driver
+    assert '"balance": round(float(user.get("balance", 0) or 0), 2)' in driver
