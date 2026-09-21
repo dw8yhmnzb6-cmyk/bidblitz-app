@@ -29,7 +29,8 @@ def test_scooter_non_eur_wallet_settlement_is_fail_closed():
 
     assert '"available": local_currency == "EUR"' in scooter
     assert '"billing_supported": local_currency == "EUR"' in scooter
-    assert 'if not local_pricing.get("available", True) and not subscription:' in scooter
+    assert 'if not local_pricing.get("available", True):' in scooter
+    assert 'and not subscription' not in scooter
     assert 'if ride_currency != "EUR":' in scooter
 
 
