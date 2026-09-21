@@ -281,21 +281,67 @@ class DeviceCommandResult:
         self.data = data or {}
 
 
-async def send_device_command(device_id: str, command: DeviceCommand, params: dict = None) -> DeviceCommandResult:
-    """Send an audited command to a physical scooter; simulate only in TEST_MODE."""
+async def send_device_command(
+    device_id: str,
+    command: DeviceCommand,
+    params: dict = None,
+    *,
+    operation_key: Optional[str] = None,
+) -> DeviceCommandResult:
+    """Send an audited command; stable operation keys make physical retries idempotent."""
     if not device_id:
         return DeviceCommandResult(False, "No device_id configured")
 
-    command_id = secrets.token_hex(8)
-    logger.info("IoT Command: device=%s, cmd=%s", device_id, command.value)
-    await db.scooter_device_commands.insert_one({
-        "command_id": command_id,
-        "device_id": device_id,
-        "command": command.value,
-        "params": params or {},
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": "pending",
-    })
+    if operation_key:
+        command_hash = hashlib.sha256(
+            f"{device_id}:{command.value}:{operation_key}".encode("utf-8")
+        ).hexdigest()[:20]
+        command_id = f"SCMD-{command_hash.upper()}"
+    else:
+        command_id = f"SCMD-{secrets.token_hex(10).upper()}"
+
+    existing_command = await db.scooter_device_commands.find_one(
+        {"command_id": command_id},
+        {"_id": 0},
+    )
+    if existing_command and existing_command.get("status") == "success":
+        replay_data = dict(existing_command.get("response") or {})
+        replay_data.update({"command_id": command_id, "replayed": True})
+        return DeviceCommandResult(True, "Command already confirmed", replay_data)
+    if existing_command and existing_command.get("status") == "pending_confirmation":
+        replay_data = dict(existing_command.get("response") or {})
+        replay_data.update({
+            "command_id": command_id,
+            "replayed": True,
+            "confirmation_required": True,
+        })
+        return DeviceCommandResult(
+            False,
+            "Device command accepted but physical state is not confirmed",
+            replay_data,
+        )
+
+    logger.info("IoT Command: device=%s, cmd=%s, command_id=%s", device_id, command.value, command_id)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.scooter_device_commands.update_one(
+        {"command_id": command_id},
+        {
+            "$setOnInsert": {
+                "command_id": command_id,
+                "device_id": device_id,
+                "command": command.value,
+                "params": params or {},
+                "created_at": now_iso,
+            },
+            "$set": {
+                "status": "pending",
+                "last_attempt_at": now_iso,
+                "operation_key": operation_key,
+            },
+            "$inc": {"attempt_count": 1},
+        },
+        upsert=True,
+    )
 
     if TEST_MODE:
         await db.scooter_device_commands.update_one(
@@ -756,7 +802,11 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             raise HTTPException(status_code=409, detail="Scooter wurde gerade von einem anderen Nutzer reserviert")
 
     if device_id:
-        cmd_result = await send_device_command(device_id, DeviceCommand.UNLOCK)
+        cmd_result = await send_device_command(
+            device_id,
+            DeviceCommand.UNLOCK,
+            operation_key=f"ride:{ride_id}:unlock",
+        )
         if not cmd_result.success:
             if cmd_result.data.get("confirmation_required"):
                 await _quarantine_uncertain_scooter_state(
@@ -783,7 +833,15 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             idempotency_key=idempotency_key,
         )
         if not payment_result.success:
-            rollback_lock = await send_device_command(device_id, DeviceCommand.LOCK) if device_id else None
+            rollback_lock = (
+                await send_device_command(
+                    device_id,
+                    DeviceCommand.LOCK,
+                    operation_key=f"ride:{ride_id}:rollback-lock-payment",
+                )
+                if device_id
+                else None
+            )
             if rollback_lock and not rollback_lock.success:
                 await _quarantine_uncertain_scooter_state(
                     scooter_id,
@@ -871,7 +929,11 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             {"$set": {"status": "cancelled", "cancel_reason": "scooter_assignment_failed", "refund_transaction_id": refund.transaction_id if refund and refund.success else None}},
         )
         if device_id:
-            rollback_lock = await send_device_command(device_id, DeviceCommand.LOCK)
+            rollback_lock = await send_device_command(
+                device_id,
+                DeviceCommand.LOCK,
+                operation_key=f"ride:{ride_id}:rollback-lock-assignment",
+            )
             if not rollback_lock.success:
                 await _quarantine_uncertain_scooter_state(
                     scooter_id,
@@ -957,7 +1019,11 @@ async def pause_ride(req: PauseRideRequest, request: Request):
         if current.get("control_action") != "pause":
             raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
 
-    command = await send_device_command(device_id, DeviceCommand.LOCK)
+    command = await send_device_command(
+        device_id,
+        DeviceCommand.LOCK,
+        operation_key=f"ride:{ride['ride_id']}:pause-lock",
+    )
     if not command.success:
         await db.scooter_rides.update_one(
             {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "pause"},
@@ -1040,7 +1106,11 @@ async def resume_ride(req: PauseRideRequest, request: Request):
         if current.get("control_action") != "resume":
             raise HTTPException(status_code=409, detail="Eine andere Scooter-Aktion wird bereits verarbeitet")
 
-    command = await send_device_command(device_id, DeviceCommand.UNLOCK)
+    command = await send_device_command(
+        device_id,
+        DeviceCommand.UNLOCK,
+        operation_key=f"ride:{ride['ride_id']}:resume-unlock",
+    )
     if not command.success:
         await db.scooter_rides.update_one(
             {"ride_id": ride["ride_id"], "user_id": user_id, "control_action": "resume"},
@@ -1247,7 +1317,11 @@ async def end_ride(req: EndRideRequest, request: Request):
         )
         raise HTTPException(status_code=503, detail="Scooter-Gerät ist nicht verbunden. Fahrt bleibt aktiv; Support wurde erforderlich.")
 
-    cmd_result = await send_device_command(device_id, DeviceCommand.LOCK)
+    cmd_result = await send_device_command(
+        device_id,
+        DeviceCommand.LOCK,
+        operation_key=f"ride:{ride_id}:end-lock",
+    )
     if not cmd_result.success:
         logger.error("Lock command failed for %s: %s", scooter_id, cmd_result.message)
         await db.scooter_rides.update_one(
