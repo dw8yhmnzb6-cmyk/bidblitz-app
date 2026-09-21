@@ -331,3 +331,13 @@ def test_scooter_unlock_replay_never_treats_cancelled_attempt_as_success():
     assert "unlockAttemptScooterRef.current = null;" in page
     assert "errorCode === 'pricing_changed'" in page
     assert "const detailMessage = typeof err?.detail === 'string'" in page
+
+
+def test_scooter_my_subscription_uses_same_identity_lookup_as_pricing():
+    scooter = read("backend/routes/scooter.py")
+
+    start = scooter.index('@router.get("/my-subscription")')
+    end = scooter.index('@router.post("/cancel-subscription")', start)
+    handler = scooter[start:end]
+    assert "sub = await _get_active_scooter_subscription(user)" in handler
+    assert '"user_email": user.get("email", "")' not in handler
