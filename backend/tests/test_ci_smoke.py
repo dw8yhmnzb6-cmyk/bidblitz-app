@@ -3572,3 +3572,13 @@ def test_investor_value_flows_fail_closed_without_settlement_provider():
     assert "TransactionType.INVESTOR_PROFIT" not in source
     assert "TransactionType.PAYOUT" in source
 
+
+
+def test_auction_admin_permissions_include_super_admin():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert source.count('if user.get("role") not in {"admin", "super_admin"}:') >= 20
+    assert 'if admin.get("role") not in {"admin", "super_admin"}:' in source
+    assert source.count('if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":') >= 3
+    assert 'if user.get("role") != "admin":' not in source
+    assert 'if user.get("role") not in ("admin",):' not in source
