@@ -730,7 +730,12 @@ const MODULE_DEFS = [
 ];
 
 const ModulesTab = ({ initialModule }) => {
-  const [selectedMod, setSelectedMod] = useState(initialModule ? MODULE_DEFS.find(m => m.key === initialModule) : null);
+  const [selectedMod, setSelectedMod] = useState(initialModule ? MODULE_DEFS.find(m => m.key === initialModule) || null : null);
+
+  useEffect(() => {
+    const requested = initialModule ? MODULE_DEFS.find((m) => m.key === initialModule) || null : null;
+    setSelectedMod(requested);
+  }, [initialModule]);
 
   if (!selectedMod) {
     return (
