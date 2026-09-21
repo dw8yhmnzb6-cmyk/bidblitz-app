@@ -2037,7 +2037,8 @@ def test_mining_value_loops_are_preview_only_until_live_provider_exists():
     assert '"routes.mining_phase2", "router"' in registry
     assert 'case "/mining":' in app_source
     mining_case = app_source[app_source.index('case "/mining":'):app_source.index('case "/mining-trust":')]
-    assert "(isGuest && !isDemoMode)" in mining_case
+    assert "return isGuest" in mining_case
+    assert "(isGuest && !isDemoMode)" not in mining_case
     assert '<AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />' in mining_case
     assert "<MiningPage" in mining_case
     assert 'if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {' in app_source
@@ -3820,3 +3821,14 @@ def test_mining_uses_central_session_aware_api_client():
     assert "export async function request(path, options = {})" in api
     assert 'if (res.status === 401' in api
     assert '/api/auth/refresh' in api
+
+
+def test_blitz_mine_requires_real_session_even_in_demo_mode():
+    app = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+
+    start = app.index('case "/blitz-mine":')
+    end = app.index('case "/legal/agb":', start)
+    block = app[start:end]
+    assert "return isGuest" in block
+    assert "(isGuest && !isDemoMode)" not in block
+    assert '<AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />' in block
