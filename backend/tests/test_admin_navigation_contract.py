@@ -356,3 +356,16 @@ def test_admin_actions_surface_api_failures():
     assert 'Feature-Flag konnte nicht geändert werden.' in router
     assert 'Compliance-Flag konnte nicht aufgelöst werden.' in router
     assert '.catch(() => {})' not in router
+
+
+def test_compliance_resolve_uses_stable_flag_ids():
+    backend = read("backend/routes/admin.py")
+    router = read("frontend/src/components/AdminTabRouter.jsx")
+
+    assert 'flag["flag_id"] = str(mongo_id)' in backend
+    assert '@router.post("/compliance-flags/{flag_ref}/resolve")' in backend
+    assert 'if ObjectId.is_valid(flag_ref):' in backend
+    assert '{"_id": flag["_id"], "status": "open"}' in backend
+    assert "Flag wurde bereits verarbeitet; bitte neu laden" in backend
+    assert 'flag_id": str(flag["_id"])' in backend
+    assert 'encodeURIComponent(flag.flag_id || String(i))' in router
