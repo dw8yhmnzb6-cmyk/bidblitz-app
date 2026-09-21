@@ -424,6 +424,10 @@ def test_scooter_share_redemption_is_atomic_and_tariff_safe():
     assert '"status": "active"' in scooter
     assert '"guest_user_id": None' in scooter
     assert "Code wurde bereits eingelöst oder ist nicht mehr verfügbar" in scooter
+    assert 'existing_expires = datetime.fromisoformat' in scooter
+    assert '{"$set": {"status": "expired", "expired_at": now.isoformat()}}' in scooter
+    assert '{"ride_id": ride_id, "status": "active"}' in scooter
+    assert '{"$set": {"status": "ended", "ended_at": completed_at}}' in scooter
     assert 'rate = float(ride.get("per_minute_rate") or PER_MINUTE_RATE)' in scooter
     assert 'share["currency"] = str(ride.get("currency") or "EUR").upper()' in scooter
     assert "data.detail?.message" in page
