@@ -229,3 +229,12 @@ def test_taxi_driver_arriving_and_start_are_retry_safe():
     assert '"message": "Kunde wurde bereits benachrichtigt", "replayed": True' in taxi
     assert '"message": "Fahrt bereits gestartet", "replayed": True' in taxi
     assert '"cancellation_state": {"$nin": ["processing", "completed"]}' in taxi
+
+
+def test_non_european_unconfigured_countries_do_not_receive_fake_eu_tariffs():
+    mobility = read("backend/routes/mobility_platform.py")
+
+    assert '"UNSUPPORTED": {' in mobility
+    assert '"strict_modes": True' in mobility
+    assert 'if code in EUROPE_COUNTRY_CODES:' in mobility
+    assert 'return "UNSUPPORTED"' in mobility
