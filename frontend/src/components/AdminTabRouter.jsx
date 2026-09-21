@@ -628,7 +628,7 @@ tab, t, loading,
                             <motion.button data-testid={`resolve-flag-${i}`}
                               onClick={async () => {
                                 try {
-                                  await api(`/api/admin/compliance-flags/${i}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
+                                  await api(`/api/admin/compliance-flags/${encodeURIComponent(flag.flag_id || String(i))}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
                                   setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
                                 } catch (error) {
                                   toast.error(error?.message || "Compliance-Flag konnte nicht aufgelöst werden.");
