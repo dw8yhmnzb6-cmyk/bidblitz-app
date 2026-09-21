@@ -1516,10 +1516,8 @@ async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: Fle
         raise HTTPException(status_code=403, detail="Preisangebot gehört zu einem anderen Konto.")
 
     status = str(quote_doc.get("status") or "active")
-    if status == "failed":
-        raise HTTPException(status_code=409, detail="Preisangebot ist nicht mehr verwendbar. Bitte Preis neu berechnen.")
-    if status == "used":
-        raise HTTPException(status_code=409, detail="Preisangebot wurde bereits verwendet.")
+    if status in {"failed", "used", "claimed", "booking"}:
+        raise HTTPException(status_code=409, detail="Preisangebot ist nicht mehr frei verfügbar. Bitte Preis neu berechnen.")
 
     try:
         expires_at = datetime.fromisoformat(str(quote_doc.get("expires_at") or ""))
@@ -2335,13 +2333,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
 
     if locked_quote:
         quote_claim = await db.taxi_price_quotes.update_one(
-            {
-                "quote_id": req.quote_id,
-                "$or": [
-                    {"status": "active"},
-                    {"status": "booking", "booking_idempotency_key": client_key, "booking_user_id": user_id},
-                ],
-            },
+            {"quote_id": req.quote_id, "status": "active"},
             {"$set": {
                 "status": "booking",
                 "booking_idempotency_key": client_key,
