@@ -20,6 +20,36 @@ const VEHICLES = [
 
 const SPRING = { type: 'spring', stiffness: 300, damping: 30 };
 
+const taxiBookingStorageKey = (ownerId) => `bidblitz:taxi-booking-attempt:${ownerId || 'unknown'}`;
+
+const readTaxiBookingAttempt = (ownerId) => {
+  if (typeof window === 'undefined') return { scope: null, key: null };
+  try {
+    const raw = window.sessionStorage.getItem(taxiBookingStorageKey(ownerId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return { scope: null, key: null };
+    if (typeof parsed.scope !== 'string' || !parsed.scope) return { scope: null, key: null };
+    if (typeof parsed.key !== 'string' || parsed.key.length < 8) return { scope: null, key: null };
+    return { scope: parsed.scope, key: parsed.key };
+  } catch {
+    return { scope: null, key: null };
+  }
+};
+
+const persistTaxiBookingAttempt = (ownerId, attempt) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const storageKey = taxiBookingStorageKey(ownerId);
+    if (attempt?.scope && attempt?.key) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Session storage may be unavailable in restricted browser contexts.
+  }
+};
+
 function detectRegion(address = '') {
   const hay = String(address || '').toLowerCase();
   if (hay.includes('prisht') || hay.includes('kosovo') || hay.includes(', xk')) return 'Kosovo';
@@ -67,7 +97,7 @@ function useTaxiSimpleData(user) {
     return () => {
       cancelled = true;
     };
-  }, [user?.isAuthenticated]);
+  }, [user?.isAuthenticated, bookingAttemptOwnerId]);
 
   return { savedPlaces, recentAddresses, setSavedPlaces };
 }
@@ -375,12 +405,17 @@ export default function TaxiPage({ onNavigate }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatDraft, setChatDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
-  const bookingAttemptRef = useRef({ scope: null, key: null });
+  const bookingAttemptOwnerId = user?.id || user?.email || 'unknown';
+  const bookingAttemptRef = useRef(readTaxiBookingAttempt(bookingAttemptOwnerId));
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
     return () => document.body.classList.remove('taxi-fullscreen-mode');
   }, []);
+
+  useEffect(() => {
+    bookingAttemptRef.current = readTaxiBookingAttempt(bookingAttemptOwnerId);
+  }, [bookingAttemptOwnerId]);
 
   useEffect(() => {
     const requireManualPickup = () => {
@@ -416,7 +451,12 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
     const data = await api.fetchActiveRide();
-    setActiveRide(data?.rides?.[0] || null);
+    const nextActiveRide = data?.rides?.[0] || null;
+    if (nextActiveRide) {
+      bookingAttemptRef.current = { scope: null, key: null };
+      persistTaxiBookingAttempt(bookingAttemptOwnerId, null);
+    }
+    setActiveRide(nextActiveRide);
   }, [user?.isAuthenticated]);
 
   useEffect(() => {
@@ -639,6 +679,7 @@ export default function TaxiPage({ onNavigate }) {
           ? `taxi-book-${crypto.randomUUID()}`
           : `taxi-book-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       };
+      persistTaxiBookingAttempt(bookingAttemptOwnerId, bookingAttemptRef.current);
     }
 
     setBooking(true);
@@ -653,14 +694,18 @@ export default function TaxiPage({ onNavigate }) {
     });
     setBooking(false);
     if (!result.ok) {
-      if (!result.retryable) bookingAttemptRef.current = { scope: null, key: null };
+      if (!result.retryable) {
+        bookingAttemptRef.current = { scope: null, key: null };
+        persistTaxiBookingAttempt(bookingAttemptOwnerId, null);
+      }
       setError(result.error || 'Buchung fehlgeschlagen');
       return;
     }
     bookingAttemptRef.current = { scope: null, key: null };
+    persistTaxiBookingAttempt(bookingAttemptOwnerId, null);
     setActiveRide(result.ride);
     setSheetMode('status');
-  }, [bookingMode, dropoff, pickup, scheduledAt, selectedEstimate]);
+  }, [bookingAttemptOwnerId, bookingMode, dropoff, pickup, scheduledAt, selectedEstimate]);
 
   const handleCancelRide = useCallback(async () => {
     if (!activeRide?.ride_id) return;
