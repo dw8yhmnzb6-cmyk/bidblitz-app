@@ -1308,23 +1308,43 @@ export default function ScooterPage({ onNavigate }) {
               ))}
 
               {/* Price Comparison */}
-              <div className="p-4 rounded-2xl bg-[#111] border border-white/10">
-                <h4 className="text-sm font-semibold text-gray-300 mb-3">Preisvergleich</h4>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div></div>
-                  <div className="text-blue-400 font-medium">Woche</div>
-                  <div className="text-green-400 font-medium">Monat</div>
-                  <div className="text-yellow-400 font-medium">Jahr</div>
-                  <div className="text-left text-gray-500">Entsperren</div>
-                  <div className="text-white">0€</div><div className="text-white">0€</div><div className="text-white">0€</div>
-                  <div className="text-left text-gray-500">Frei/Tag</div>
-                  <div className="text-white">30 Min</div><div className="text-white">45 Min</div><div className="text-white">60 Min</div>
-                  <div className="text-left text-gray-500">Danach</div>
-                  <div className="text-white">0.15€</div><div className="text-white">0.12€</div><div className="text-white">0.10€</div>
-                  <div className="text-left text-gray-500">Preis</div>
-                  <div className="text-white">9.99€</div><div className="text-white">29.99€</div><div className="text-white">249.99€</div>
+              {plans.length > 0 && (
+                <div className="p-4 rounded-2xl bg-[#111] border border-white/10">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Preisvergleich</h4>
+                  <div className="overflow-x-auto" data-testid="scooter-plan-comparison">
+                    <table className="w-full min-w-[420px] text-xs">
+                      <thead>
+                        <tr>
+                          <th className="pb-2 text-left font-medium text-gray-500">Leistung</th>
+                          {plans.map((plan) => (
+                            <th key={plan.plan_id} className="pb-2 px-2 text-center font-medium text-white">
+                              {plan.name}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        <tr>
+                          <td className="py-2 text-gray-500">Entsperren</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.unlock_fee || 0).toFixed(2)}€</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Frei/Tag</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.free_minutes_per_day || 0)} Min</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Danach</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.per_minute_rate || 0).toFixed(2)}€/Min</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Preis</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center font-semibold text-white">{Number(plan.price || 0).toFixed(2)}€</td>)}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1334,7 +1354,7 @@ export default function ScooterPage({ onNavigate }) {
       {/* AR Scooter Finder (camera-based) */}
       <ARScooterFinder
         scooters={scooters}
-        onSelectScooter={(s) => setSelectedScooter(s)}
+        onSelectScooter={(s) => selectScooter(s)}
       />
 
       {/* Review Modal (after rental) */}
