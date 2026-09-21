@@ -77,12 +77,18 @@ def test_scooter_subscription_admin_and_customer_share_same_plan_source():
     scooter = read("backend/routes/scooter.py")
     page = read("frontend/src/pages/AdminManagementPage.jsx")
 
+    create_segment = backend[backend.index('async def module_create'):backend.index('@router.get("/module/{module_key}/list")')]
+    list_segment = backend[backend.index('async def module_list'):backend.index('@router.put("/module/{module_key}/{item_id}")')]
+
     assert "async def _get_scooter_plans()" in scooter
     assert "plans = await _get_scooter_plans()" in scooter
     assert 'await db.scooter_plans.find({}, {"_id": 0})' in scooter
     assert 'if row.get("enabled") is False:' in scooter
     assert 'if module_key == "scooter-abos":' in backend
-    assert 'from routes.scooter import _get_scooter_plans' in backend
+    assert 'from routes.scooter import _get_scooter_plans' not in create_segment
+    assert 'from routes.scooter import _coerce_scooter_plan' in create_segment
+    assert 'from routes.scooter import _get_scooter_plans' in list_segment
+    assert 'return {"items": items, "count": len(items), "collection": "scooter_plans"}' in list_segment
     assert '"enabled": False' in backend
     assert 'fields: ["plan_id", "name", "duration", "price", "duration_days", "unlock_fee", "free_minutes_per_day", "per_minute_rate"]' in page
 
