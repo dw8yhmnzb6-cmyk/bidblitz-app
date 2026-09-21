@@ -262,7 +262,12 @@ const AuctionAdminPage = ({ onBack }) => {
       }),
     });
     if (res.ok) {
-      toast.success(`"${res.auction.title}" gestartet mit Bot-Ziel €${res.auction.bot_target_price}`);
+      const botNote = res.auction?.bot_enabled
+        ? ` · Bot-Ziel €${res.auction.bot_target_price}`
+        : res.bot_policy === "test_only"
+          ? " · Production-Bots deaktiviert"
+          : "";
+      toast.success(`"${res.auction.title}" gestartet${botNote}`);
       setShowScheduleModal(false);
       loadData();
     } else {
