@@ -147,3 +147,80 @@ test('mining dashboard failure shows a retry state instead of a blank screen', a
   }));
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1);
 });
+
+
+test('mining tolerates legacy numeric strings without crashing', async ({ page }) => {
+  await mockMiningUser(page);
+  await page.route('**/api/mining/**', async route => {
+    const pathname = new URL(route.request().url()).pathname;
+    const payloads: Record<string, unknown> = {
+      '/api/mining/dashboard': {
+        capabilities: {
+          live_mining_provider_connected: false,
+          value_actions_enabled: false,
+          production_message: 'Mining Preview · Live-Provider noch nicht verbunden.',
+        },
+        wallet: {
+          blz_balance: '12.5',
+          eur_value: '1.25',
+          total_mined: '18.75',
+          total_withdrawn: '2.5',
+          main_balance_eur: '100.00',
+        },
+        mining: {
+          total_hashrate: '250',
+          daily_earnings_blz: '1.25',
+          daily_earnings_eur: '0.125',
+          monthly_earnings_blz: '37.5',
+          monthly_earnings_eur: '3.75',
+          yearly_earnings_blz: '456.25',
+          yearly_earnings_eur: '45.625',
+          active_miners: 1,
+        },
+        vip: { name: 'Bronze', bonus: '0.05', progress: '25' },
+        daily_reward: { claimed: true, amount: '1.25', next_reward_at: '2099-01-01T00:00:00+00:00' },
+        referral: { code: 'LEGACY', bonus_rate: '0.05', boost_bonus_blz: '0.0625' },
+        miners: [{
+          miner_id: 'legacy-miner',
+          name: 'Legacy Miner',
+          package_id: 'starter',
+          icon: 'cpu',
+          hashrate: '250',
+          efficiency: '0.9',
+          power_level: '0',
+          efficiency_level: '0',
+          daily_blz: '1.25',
+          daily_eur: '0.125',
+          status: 'active',
+        }],
+        recent_transactions: [{
+          txn_id: 'legacy-tx',
+          amount_blz: '1.25',
+          amount_eur: '0',
+          description: 'Legacy reward',
+          created_at: '2026-09-21T10:00:00+00:00',
+        }],
+        streak: 2,
+      },
+      '/api/mining/packages': { packages: [] },
+      '/api/mining/upgrade-costs': { costs: {} },
+      '/api/mining/marketplace': { listings: [] },
+      '/api/mining/card': {},
+      '/api/mining/launchpad': { projects: [] },
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payloads[pathname] ?? {}),
+    });
+  });
+
+  await prepareVisualPage(page, { name: '320x568-mining-legacy-numbers', width: 320, height: 568 });
+  await openRoute(page, '/mining', '[data-testid="mining-page"]');
+
+  await expect(page.getByTestId('mining-page')).toBeVisible();
+  await expect(page.getByText('12.5000')).toBeVisible();
+  await expect(page.getByText('Legacy reward')).toBeVisible();
+  await expect(page.getByText('+1.2500 BLZ')).toBeVisible();
+  await expect(page.getByTestId('mining-load-error')).toHaveCount(0);
+});
