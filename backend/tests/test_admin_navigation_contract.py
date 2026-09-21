@@ -316,3 +316,8 @@ def test_super_admin_is_accepted_by_changed_admin_backends():
     assert 'user.get("role") not in {"admin", "super_admin"}' in merchant_admin
     assert 'user.get("role") not in {"merchant", "admin", "super_admin"}' in merchant_admin
     assert 'user.get("role") != "admin"' not in merchant_admin
+
+
+def test_admin_health_counts_super_admins():
+    backend = read("backend/routes/admin.py")
+    assert 'health["counts"]["admins"] = await db.users.count_documents({"role": {"$in": ["admin", "super_admin"]}})' in backend
