@@ -4,7 +4,7 @@ import {
   ArrowLeft, X, Zap, Loader2, Coins, Check, CreditCard, Wallet,
   Gift, AlertTriangle, Shield, Lock,
 } from "lucide-react";
-import { useI18n } from "../../store";
+import { useI18n, useUser } from "../../store";
 import { api } from "../../services/api";
 import { glass, panelBorder, PKGS, accentCyan, accentGreen } from "./atoms";
 
@@ -15,6 +15,7 @@ import { glass, panelBorder, PKGS, accentCyan, accentGreen } from "./atoms";
  */
 export default function BuyCreditsModal({ open, onClose, onPurchased, balance: propBalance }) {
   const { t } = useI18n();
+  const user = useUser();
   const [step, setStep] = useState("select");
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [payMethod, setPayMethod] = useState("wallet");
@@ -23,7 +24,7 @@ export default function BuyCreditsModal({ open, onClose, onPurchased, balance: p
   const [msg, setMsg] = useState(null);
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
   const [liveBalance, setLiveBalance] = useState(propBalance);
-  const purchaseAttemptKeyRef = useRef(null);
+  const purchaseAttemptRef = useRef({ scope: null, key: null });
 
   useEffect(() => {
     if (!open) { setStep("select"); setSelectedPkg(null); setMsg(null); return; }
@@ -44,20 +45,38 @@ export default function BuyCreditsModal({ open, onClose, onPurchased, balance: p
   const selectPkg = (p) => { setSelectedPkg(p); setMsg(null); setStep("confirm"); };
 
   useEffect(() => {
-    purchaseAttemptKeyRef.current = null;
+    purchaseAttemptRef.current = { scope: null, key: null };
   }, [selectedPkg?.id, payMethod]);
 
   const confirmPay = async () => {
     if (!selectedPkg) return;
+    if (payMethod === "wallet" && balance < selectedPkg.price) {
+      setMsg({ ok: false, text: t("checkout.insufficient_wallet") });
+      setStep("confirm");
+      return;
+    }
+
+    const attemptScope = `${selectedPkg.id}:${payMethod}`;
+    const attemptStorageKey = `bidblitz:auction-credit:${user?.id || user?.email || "unknown"}:${attemptScope}`;
+    if (purchaseAttemptRef.current.scope !== attemptScope || !purchaseAttemptRef.current.key) {
+      const storedKey = typeof window !== "undefined" ? window.sessionStorage.getItem(attemptStorageKey) : null;
+      purchaseAttemptRef.current = {
+        scope: attemptScope,
+        key: storedKey || (
+          typeof crypto?.randomUUID === "function"
+            ? `auction-credit-${crypto.randomUUID()}`
+            : `auction-credit-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        ),
+      };
+      if (!storedKey && typeof window !== "undefined") {
+        window.sessionStorage.setItem(attemptStorageKey, purchaseAttemptRef.current.key);
+      }
+    }
+
+    const idempotencyKey = purchaseAttemptRef.current.key;
     setStep("processing");
     setMsg(null);
     try {
-      if (!purchaseAttemptKeyRef.current) {
-        purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
-          ? `auction-credit-${crypto.randomUUID()}`
-          : `auction-credit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
-      const idempotencyKey = purchaseAttemptKeyRef.current;
       let r;
       if (payMethod === "card" && savedCard) {
         r = await api.buyBidCreditsDirect({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
@@ -65,17 +84,24 @@ export default function BuyCreditsModal({ open, onClose, onPurchased, balance: p
         r = await api.buyBidCreditsStripe({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
         if (r.checkout_url) { window.location.href = r.checkout_url; return; }
       } else {
-        if (balance < selectedPkg.price) { setMsg({ ok: false, text: t("checkout.insufficient_wallet") }); setStep("confirm"); return; }
         r = await api.buyBidCredits({ package_id: selectedPkg.id, idempotency_key: idempotencyKey });
       }
-      purchaseAttemptKeyRef.current = null;
+
+      purchaseAttemptRef.current = { scope: null, key: null };
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
       setStep("success");
       setTimeout(() => { onPurchased(r); onClose(); setStep("select"); setSelectedPkg(null); setMsg(null); }, 1200);
     } catch (e) {
       setMsg({ ok: false, text: e.message });
       setStep("confirm");
+      const terminal = [400, 403, 404].includes(Number(e?.status || 0));
+      if (terminal) {
+        purchaseAttemptRef.current = { scope: null, key: null };
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
+      }
       if (e.message?.includes("declined") || e.message?.includes("No saved")) {
-        setSavedCard(null); setPayMethod("wallet");
+        setSavedCard(null);
+        setPayMethod("wallet");
       }
     }
   };
