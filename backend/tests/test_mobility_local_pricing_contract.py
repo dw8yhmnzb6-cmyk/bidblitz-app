@@ -72,6 +72,7 @@ def test_taxi_non_eur_booking_is_fail_closed_and_ui_surfaces_local_source():
     assert 'data-testid="taxi-local-pricing-source"' in taxi_page
     assert "selectedEstimate.booking_supported === false" in taxi_page
     assert "selectedEstimate?.booking_supported === false" in taxi_page
+    assert "(!selectedEstimate || selectedEstimate.booking_supported === false)" in taxi_page
     assert "Tarif noch nicht buchbar" in taxi_page
     assert "currency={selectedEstimate.currency || 'EUR'}" in taxi_page
     assert "currency={selectedEstimate?.currency || 'EUR'}" in taxi_page
