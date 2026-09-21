@@ -2,7 +2,7 @@
  * BidBlitz V2 - Paketversand
  * Preisvergleich + Buchung + Tracking
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Package, Truck, MapPin, Scale, Loader2, Check,
@@ -34,6 +34,7 @@ const ParcelPage = ({ onBack }) => {
   const [booking, setBooking] = useState(false);
   const [bookResult, setBookResult] = useState(null);
   const [error, setError] = useState("");
+  const bookingAttemptKeyRef = useRef(null);
 
   // Tracking
   const [trackNum, setTrackNum] = useState("");
@@ -58,16 +59,44 @@ const ParcelPage = ({ onBack }) => {
 
   const bookParcel = async () => {
     if (!selectedCarrier || !rName || !rCity) return;
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `parcel-book-${crypto.randomUUID()}`
+        : `parcel-book-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBooking(true); setError("");
     try {
       const res = await fetch(`${API}/api/parcels/book`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ carrier_id: selectedCarrier.carrier_id, weight: parseFloat(weight), sender_name: sName, sender_address: sAddr, sender_zip: sZip, sender_city: sCity, recipient_name: rName, recipient_address: rAddr, recipient_zip: rZip, recipient_city: rCity }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          carrier_id: selectedCarrier.carrier_id,
+          weight: parseFloat(weight),
+          sender_name: sName,
+          sender_address: sAddr,
+          sender_zip: sZip,
+          sender_city: sCity,
+          recipient_name: rName,
+          recipient_address: rAddr,
+          recipient_zip: rZip,
+          recipient_city: rCity,
+          idempotency_key: idempotencyKey,
+        }),
       });
-      const d = await res.json();
-      if (res.ok && d.ok) { setBookResult(d.parcel); setMyParcels(prev => [d.parcel, ...prev]); }
-      else setError(d.detail || "Fehler");
-    } catch { setError("Netzwerkfehler"); }
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.ok) {
+        bookingAttemptKeyRef.current = null;
+        setBookResult(d.parcel);
+        setMyParcels(prev => prev.some(item => item.parcel_id === d.parcel?.parcel_id) ? prev : [d.parcel, ...prev]);
+      } else {
+        if (res.status < 500) bookingAttemptKeyRef.current = null;
+        setError(typeof d.detail === "string" ? d.detail : d.detail?.message || "Fehler");
+      }
+    } catch {
+      setError("Netzwerkfehler");
+    }
     setBooking(false);
   };
 
