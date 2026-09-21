@@ -3690,3 +3690,13 @@ def test_active_auction_list_finalizes_expired_rows():
     assert '{"status": "active", "ends_at": {"$lte": now_iso}}' in active
     assert 'await _finalize_auction_once(auc["auction_id"])' in active
     assert '{"status": "active", "ends_at": {"$gt": now_iso}}' in active
+
+
+def test_mining_card_mutations_stay_test_only():
+    source = (BACKEND_DIR / "routes" / "mining_phase2.py").read_text(encoding="utf-8")
+
+    freeze_start = source.index('@router.post("/card/freeze")')
+    freeze_end = source.index("# ══════════════════════════════════════\n# LAUNCHPAD", freeze_start)
+    freeze = source[freeze_start:freeze_end]
+    assert "_require_mining_value_mode()" in freeze
+    assert "toggle_freeze" in freeze
