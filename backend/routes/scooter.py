@@ -393,7 +393,7 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/nearby")
-async def get_nearby_scooters(lat: Optional[float] = None, lng: Optional[float] = None, radius: float = 5.0):
+async def get_nearby_scooters(request: Request, lat: Optional[float] = None, lng: Optional[float] = None, radius: float = 5.0):
     """Get available scooters and the canonical local tariff for the explicit user location."""
     effective_enabled = SCOOTER_MODULE_ENABLED and (TEST_MODE or _iot_live_configured())
     fallback_pricing = _default_scooter_pricing()
@@ -417,7 +417,15 @@ async def get_nearby_scooters(lat: Optional[float] = None, lng: Optional[float] 
     if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
         raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
     radius = max(0.1, min(float(radius), 20.0))
-    pricing = await _resolve_scooter_pricing(lat, lng)
+    local_pricing = await _resolve_scooter_pricing(lat, lng)
+    subscription = None
+    try:
+        user = await get_current_user(request)
+        subscription = await _get_active_scooter_subscription(user)
+    except HTTPException:
+        subscription = None
+    pricing = _apply_scooter_subscription_pricing(local_pricing, subscription)
+    pricing["pricing_hash"] = _scooter_pricing_hash(pricing)
 
     scooters = await db.scooters.find(
         {
@@ -570,13 +578,6 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
             "replayed": True,
         }
 
-    outstanding = await _settle_outstanding_scooter_debts(user)
-    if outstanding > 0:
-        raise HTTPException(
-            status_code=402,
-            detail=f"Offener Scooter-Betrag €{outstanding:.2f}. Bitte Wallet aufladen, bevor du eine neue Fahrt startest.",
-        )
-
     active_ride = await db.scooter_rides.find_one({
         "user_id": user_id,
         "status": {"$in": ["active", "paused"]},
@@ -640,6 +641,13 @@ async def unlock_scooter(req: UnlockRequest, request: Request):
     ride_daily_cap = float(effective_pricing["daily_cap"])
     ride_minimum_charge = float(effective_pricing.get("minimum_charge", ride_unlock_fee) or 0)
     ride_currency = str(effective_pricing.get("currency") or "EUR").upper()
+
+    outstanding = await _settle_outstanding_scooter_debts(user)
+    if outstanding > 0:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Offener Scooter-Betrag €{outstanding:.2f}. Bitte Wallet aufladen, bevor du eine neue Fahrt startest.",
+        )
 
     fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
     balance = float(fresh_user.get("balance") or 0)
