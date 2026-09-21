@@ -23,6 +23,23 @@ DAILY_BASE_RATE = 0.5  # BLZ per TH/s per day
 REFERRAL_BONUS_RATE = 0.05  # 5% of referral's mining earnings
 
 
+def _safe_mining_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value if value is not None else default)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _normalize_mining_wallet(wallet: dict | None, user_id: str) -> dict:
+    row = dict(wallet or {})
+    row["user_id"] = str(row.get("user_id") or user_id)
+    row["blz_balance"] = _safe_mining_float(row.get("blz_balance"))
+    row["total_mined"] = _safe_mining_float(row.get("total_mined"))
+    row["total_withdrawn"] = _safe_mining_float(row.get("total_withdrawn"))
+    row["total_deposited"] = _safe_mining_float(row.get("total_deposited"))
+    return row
+
+
 def _require_mining_value_mode() -> None:
     if not TEST_MODE:
         raise HTTPException(
@@ -223,7 +240,7 @@ async def mining_trust_video_upsert(payload: MiningTrustVideoUpdateRequest, requ
 
 
 async def get_or_create_wallet(user_id):
-    """Get or create mining wallet."""
+    """Get or create a mining wallet and normalize legacy/incomplete rows in memory."""
     wallet = await db.mining_wallets.find_one({"user_id": user_id}, {"_id": 0})
     if not wallet:
         wallet = {
@@ -234,9 +251,8 @@ async def get_or_create_wallet(user_id):
             "total_deposited": 0.0,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        await db.mining_wallets.insert_one(wallet)
-        wallet.pop("_id", None)
-    return wallet
+        await db.mining_wallets.insert_one(dict(wallet))
+    return _normalize_mining_wallet(wallet, str(user_id))
 
 
 # ── Auto-Reward Processing ──
@@ -367,9 +383,16 @@ async def mining_dashboard(request: Request):
         {"user_id": user_id, "status": "active"}, {"_id": 0}
     ).to_list(50)
 
-    total_hashrate = sum(m.get("hashrate", 0) * (1 + m.get("power_level", 0) * 0.1) for m in miners)
+    total_hashrate = sum(
+        _safe_mining_float(m.get("hashrate")) * (1 + _safe_mining_float(m.get("power_level")) * 0.1)
+        for m in miners
+    )
     avg_efficiency = (
-        sum(m.get("efficiency", 0.85) + m.get("efficiency_level", 0) * 0.01 for m in miners) / len(miners)
+        sum(
+            _safe_mining_float(m.get("efficiency"), 0.85)
+            + _safe_mining_float(m.get("efficiency_level")) * 0.01
+            for m in miners
+        ) / len(miners)
         if miners else 0
     )
     vip = get_vip_level(total_hashrate)
@@ -378,8 +401,13 @@ async def mining_dashboard(request: Request):
     # Calculate per-miner earnings for dashboard detail
     miners_enriched = []
     for mn in miners:
-        eff_hash = mn.get("hashrate", 0) * (1 + mn.get("power_level", 0) * 0.1)
-        eff_eff = mn.get("efficiency", 0.85) + mn.get("efficiency_level", 0) * 0.01
+        eff_hash = _safe_mining_float(mn.get("hashrate")) * (
+            1 + _safe_mining_float(mn.get("power_level")) * 0.1
+        )
+        eff_eff = (
+            _safe_mining_float(mn.get("efficiency"), 0.85)
+            + _safe_mining_float(mn.get("efficiency_level")) * 0.01
+        )
         mn_daily = calc_daily_earnings(eff_hash, eff_eff, vip["bonus"])
         mn_monthly = round(mn_daily * 30, 4)
         mn_yearly = round(mn_daily * 365, 4)
@@ -427,7 +455,7 @@ async def mining_dashboard(request: Request):
     today_d = datetime.now(timezone.utc).date()
     for i in range(365):
         d = (today_d - timedelta(days=i)).strftime("%Y-%m-%d")
-        if any(c["date"] == d for c in claim_history):
+        if any(str(claim.get("date") or "") == d for claim in claim_history):
             streak += 1
         else:
             break
@@ -447,11 +475,11 @@ async def mining_dashboard(request: Request):
     return {
         "capabilities": _mining_capabilities(),
         "wallet": {
-            "blz_balance": wallet["blz_balance"] if TEST_MODE else 0.0,
-            "eur_value": round(wallet["blz_balance"] * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
-            "total_mined": wallet["total_mined"],
-            "total_withdrawn": wallet["total_withdrawn"],
-            "main_balance_eur": user.get("balance", 0),
+            "blz_balance": _safe_mining_float(wallet.get("blz_balance")) if TEST_MODE else 0.0,
+            "eur_value": round(_safe_mining_float(wallet.get("blz_balance")) * BLZ_TO_EUR, 2) if TEST_MODE else 0.0,
+            "total_mined": _safe_mining_float(wallet.get("total_mined")),
+            "total_withdrawn": _safe_mining_float(wallet.get("total_withdrawn")),
+            "main_balance_eur": _safe_mining_float(user.get("balance")),
         },
         "mining": {
             "total_hashrate": round(total_hashrate, 1),
