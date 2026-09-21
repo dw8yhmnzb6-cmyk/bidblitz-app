@@ -3809,3 +3809,14 @@ def test_mining_legacy_wallet_normalization_is_safe():
     assert normalized["total_deposited"] == 0.0
     assert _safe_mining_float("7.25") == 7.25
     assert _safe_mining_float("broken", 3.0) == 3.0
+
+
+def test_mining_uses_central_session_aware_api_client():
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MiningPage.jsx").read_text(encoding="utf-8")
+    api = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+
+    assert 'import { request as api } from "../services/api";' in page
+    assert "async function api(path, opts = {})" not in page
+    assert "export async function request(path, options = {})" in api
+    assert 'if (res.status === 401' in api
+    assert '/api/auth/refresh' in api
