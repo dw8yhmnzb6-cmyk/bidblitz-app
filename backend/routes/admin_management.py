@@ -845,6 +845,24 @@ MODULE_COLLECTIONS = {
     "scooter-abos": ("scooter_plans", "name"),
 }
 
+MODULE_ID_FIELDS = {
+    "immobilien": "listing_id",
+    "freelancer": "freelancer_id",
+    "elearning": "course_id",
+    "handwerker": "hw_id",
+    "gebrauchtwagen": "car_id",
+    "reinigung": "service_id",
+    "umzug": "company_id",
+    "tierbetreuung": "sitter_id",
+    "streaming": "content_id",
+    "telemedizin": "doctor_id",
+    "dating": "profile_id",
+    "fitness": "gym_id",
+    "reisen": "trip_id",
+    "ladesaeulen": "station_id",
+    "scooter-abos": "plan_id",
+}
+
 
 @router.post("/module/{module_key}/create")
 async def module_create(module_key: str, data: dict, request: Request):
@@ -876,6 +894,9 @@ async def module_create(module_key: str, data: dict, request: Request):
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["id"] = data.get("id") or f"{module_key[:3].upper()}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')[:14]}"
+    canonical_id_field = MODULE_ID_FIELDS.get(module_key)
+    if canonical_id_field:
+        data[canonical_id_field] = data.get(canonical_id_field) or data["id"]
     if module_key == "immobilien":
         data["listing_id"] = data.get("listing_id") or data["id"]
         data["status"] = data.get("status") or "active"
