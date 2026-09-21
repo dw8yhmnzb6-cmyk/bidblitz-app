@@ -3434,6 +3434,13 @@ async def get_automation_config(request: Request):
         }
     
     config.pop("_id", None)
+    if not TEST_MODE:
+        config["bot_default_enabled"] = False
+        config["bot_policy"] = "test_only"
+        config["bot_controls_effective"] = False
+    else:
+        config["bot_policy"] = "enabled"
+        config["bot_controls_effective"] = True
     
     # Add stats
     active_count = await db.auctions.count_documents({"status": "active"})
@@ -3475,6 +3482,13 @@ async def set_automation_config(req: AutomationConfigRequest, request: Request):
         raise HTTPException(status_code=403, detail="Admin only")
     
     config_dict = req.dict()
+    if not TEST_MODE:
+        config_dict["bot_default_enabled"] = False
+        config_dict["bot_policy"] = "test_only"
+        config_dict["bot_controls_effective"] = False
+    else:
+        config_dict["bot_policy"] = "enabled"
+        config_dict["bot_controls_effective"] = True
     config_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
     config_dict["updated_by"] = str(user["_id"])
     
