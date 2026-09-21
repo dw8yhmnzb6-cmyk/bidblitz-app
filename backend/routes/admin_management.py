@@ -901,6 +901,10 @@ async def module_create(module_key: str, data: dict, request: Request):
     elif module_key == "elearning":
         data["course_id"] = data.get("course_id") or data["id"]
         data["status"] = data.get("status") or "published"
+    elif module_key in {"handwerker", "tierbetreuung", "telemedizin"}:
+        data["available"] = True if data.get("available") is None else bool(data.get("available"))
+    elif module_key == "gebrauchtwagen":
+        data["status"] = data.get("status") or "active"
     elif module_key == "ladesaeulen":
         data["station_id"] = data.get("station_id") or data["id"]
         data["slots_total"] = int(data.get("slots_total") or 1)
