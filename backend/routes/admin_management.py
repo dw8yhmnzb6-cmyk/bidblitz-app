@@ -105,6 +105,13 @@ async def list_customers(
     query = {
         "$and": [
             {"account_closure_status": {"$ne": "admin_closed"}},
+            {
+                "$or": [
+                    {"is_disabled": {"$ne": True}},
+                    {"is_disabled": {"$exists": False}},
+                    {"banned": True},
+                ]
+            },
         ]
     }
     if q:
