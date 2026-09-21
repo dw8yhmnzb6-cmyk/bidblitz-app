@@ -117,6 +117,12 @@ async def preview_reengage(request: Request, inactive_days: int = INACTIVITY_DAY
         "total_cost": round(len(eligible) * REWARD_EUR, 2),
         "inactive_days": inactive_days,
         "cooldown_days": COOLDOWN_DAYS,
+        "actions_enabled": bool(TEST_MODE),
+        "provider_mode": "test" if TEST_MODE else "preview",
+        "production_message": (
+            None if TEST_MODE
+            else "Re-Engagement läuft als Preview. Wallet-Gutschriften und E-Mails sind in Production deaktiviert."
+        ),
         "users": [
             {
                 "user_id": str(u["_id"]),
