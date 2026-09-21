@@ -1908,7 +1908,7 @@ async def device_location_update(req: DeviceUpdateRequest, request: Request):
     # Also update ride location if active
     if scooter.get("current_ride_id"):
         await db.scooter_rides.update_one(
-            {"ride_id": scooter["current_ride_id"], "status": "active"},
+            {"ride_id": scooter["current_ride_id"], "status": {"$in": ["active", "paused"]}},
             {"$set": {
                 "current_location": update.get("location", {}),
                 "current_speed": req.speed,
