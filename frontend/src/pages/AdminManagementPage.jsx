@@ -1199,6 +1199,10 @@ const ReengageWidget = () => {
 
   const run = async () => {
     if (!preview || preview.count === 0) return;
+    if (preview.actions_enabled === false) {
+      toast.info(preview.production_message || "Re-Engagement ist aktuell nur als Preview verfügbar.");
+      return;
+    }
     if (!window.confirm(`${preview.count} inaktive User anschreiben und jeweils €${preview.reward_per_user} gutschreiben?\n\nGesamtkosten: €${preview.total_cost.toFixed(2)}\nJeder User bekommt max. 1× alle 30 Tage.`)) return;
     setRunning(true);
     try {
@@ -1226,8 +1230,15 @@ const ReengageWidget = () => {
         <h3 className="text-[13px] font-bold text-purple-900">Re-Engagement: Inaktive User zurückholen</h3>
       </div>
       <p className="text-[11px] text-purple-700/80 mb-3">
-        Sendet personalisierte E-Mail + €5 Gutschein an inaktive User. <strong>Max. 1× alle 30 Tage pro User.</strong>
+        {preview?.actions_enabled === false
+          ? "Preview: zeigt berechtigte Nutzer und mögliche Kosten, ohne E-Mails oder Wallet-Gutschriften auszulösen."
+          : <>Sendet personalisierte E-Mail + €5 Gutschein an inaktive User. <strong>Max. 1× alle 30 Tage pro User.</strong></>}
       </p>
+      {preview?.actions_enabled === false && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-medium text-amber-800" data-testid="reengage-preview-only-note">
+          {preview.production_message || "Production-Aktionen sind deaktiviert."}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-3">
         <label className="text-[11px] font-semibold text-gray-700">Inaktiv seit:</label>
@@ -1265,12 +1276,16 @@ const ReengageWidget = () => {
       <button
         data-testid="reengage-run-btn"
         onClick={run}
-        disabled={running || !preview || preview.count === 0}
+        disabled={running || !preview || preview.count === 0 || preview.actions_enabled === false}
         className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40"
-        style={{ background: preview && preview.count > 0 ? "linear-gradient(135deg,#A855F7,#EC4899)" : "#9CA3AF" }}
+        style={{ background: preview && preview.count > 0 && preview.actions_enabled !== false ? "linear-gradient(135deg,#A855F7,#EC4899)" : "#9CA3AF" }}
       >
         {running ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-        {preview && preview.count > 0 ? `🎁 ${preview.count} User anschreiben` : "Keine inaktiven User"}
+        {preview?.actions_enabled === false
+          ? "Nur Preview – Aktionen deaktiviert"
+          : preview && preview.count > 0
+            ? `🎁 ${preview.count} User anschreiben`
+            : "Keine inaktiven User"}
       </button>
 
       {result && (
