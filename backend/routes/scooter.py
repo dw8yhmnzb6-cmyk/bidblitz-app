@@ -487,7 +487,9 @@ async def get_scooter_pricing(request: Request, lat: Optional[float] = None, lng
     pricing["pricing_hash"] = _scooter_pricing_hash(pricing)
     return {
         **pricing,
-        "free_paused_minutes": 5,
+        "free_paused_minutes": 0,
+        "pause_billing_mode": "ride_rate",
+        "pause_rate": pricing.get("per_minute", PER_MINUTE_RATE),
         "max_speed_kmh": 25,
         "subscription_plans": await _get_scooter_plans(),
     }
