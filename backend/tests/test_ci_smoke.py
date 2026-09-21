@@ -437,6 +437,7 @@ def test_merchant_payout_balance_and_state_machine_contracts():
 
 def test_auction_financial_flows_are_idempotent_and_race_safe():
     auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
     detail_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
     credits_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "BuyCreditsModal.jsx").read_text(encoding="utf-8")
 
@@ -465,6 +466,8 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "window.sessionStorage.getItem(bidStorageKey)" in detail_source
     assert "window.sessionStorage.setItem(bidStorageKey, bidAttemptKeyRef.current)" in detail_source
     assert "window.sessionStorage.removeItem(bidStorageKey)" in detail_source
+    assert "Auto-Bid konnte nicht beendet werden." in detail_source
+    assert "Watchlist konnte nicht geändert werden." in page_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
 
@@ -528,6 +531,9 @@ def test_scooter_rides_subscriptions_and_location_are_financially_safe():
     assert "window.sessionStorage.getItem(attemptStorageKey)" in scooter_page
     assert "window.sessionStorage.setItem(attemptStorageKey, subscriptionAttemptRef.current.key)" in scooter_page
     assert "window.sessionStorage.removeItem(attemptStorageKey)" in scooter_page
+    assert "Netzwerkfehler beim Abo-Abschluss. Der sichere Wiederholungsversuch bleibt erhalten." in scooter_page
+    assert "Abo konnte nicht gekündigt werden." in scooter_page
+    assert "Netzwerkfehler beim Kündigen des Abos." in scooter_page
     assert "[400, 403, 404].includes(res.status)" in scooter_page
     assert "Math.random() - 0.5" not in scooter_page
     assert "52.52, lng: 13.405" not in scooter_page
