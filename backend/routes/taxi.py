@@ -2853,6 +2853,76 @@ async def get_driver_active_ride(request: Request):
 # DRIVER: ACCEPT / REJECT RIDE
 # ══════════════════════════════════════════════════════════════════════════════
 
+async def _claim_driver_active_ride(driver_id: str, ride_id: str) -> bool:
+    """Serialize ride assignment per driver and repair stale locks safely."""
+    active_statuses = [
+        RideStatus.ACCEPTED.value,
+        RideStatus.ARRIVING.value,
+        RideStatus.STARTED.value,
+    ]
+    for _ in range(2):
+        claim = await db.drivers.update_one(
+            {
+                "driver_id": driver_id,
+                "$or": [
+                    {"active_ride_id": {"$exists": False}},
+                    {"active_ride_id": None},
+                    {"active_ride_id": ride_id},
+                ],
+            },
+            {"$set": {
+                "active_ride_id": ride_id,
+                "active_ride_claimed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if claim.matched_count == 1:
+            return True
+
+        current_driver = await db.drivers.find_one(
+            {"driver_id": driver_id},
+            {"_id": 0, "active_ride_id": 1},
+        ) or {}
+        current_ride_id = str(current_driver.get("active_ride_id") or "")
+        if not current_ride_id:
+            continue
+        if current_ride_id == ride_id:
+            return True
+
+        current_ride = await db.taxi_rides.find_one(
+            {
+                "ride_id": current_ride_id,
+                "driver_id": driver_id,
+                "status": {"$in": active_statuses},
+            },
+            {"_id": 0, "ride_id": 1},
+        )
+        if current_ride:
+            return False
+
+        released = await db.drivers.update_one(
+            {"driver_id": driver_id, "active_ride_id": current_ride_id},
+            {"$unset": {
+                "active_ride_id": "",
+                "active_ride_claimed_at": "",
+            }},
+        )
+        if released.modified_count != 1:
+            return False
+    return False
+
+
+async def _release_driver_active_ride(driver_id: Optional[str], ride_id: str) -> None:
+    if not driver_id or not ride_id:
+        return
+    await db.drivers.update_one(
+        {"driver_id": driver_id, "active_ride_id": ride_id},
+        {"$unset": {
+            "active_ride_id": "",
+            "active_ride_claimed_at": "",
+        }},
+    )
+
+
 @router.post("/driver/accept")
 async def driver_accept_ride(req: RideActionRequest, request: Request):
     """Driver accepts a ride request."""
@@ -2879,8 +2949,22 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if (
+        ride.get("driver_id") == driver["driver_id"]
+        and ride.get("status") in {RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value, RideStatus.STARTED.value}
+    ):
+        await _claim_driver_active_ride(driver["driver_id"], req.ride_id)
+        return {
+            "ok": True,
+            "ride": {k: v for k, v in ride.items() if k != "_id"},
+            "message": "Fahrt war bereits angenommen.",
+            "replayed": True,
+        }
     if ride["status"] != RideStatus.REQUESTED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
+
+    if not await _claim_driver_active_ride(driver["driver_id"], req.ride_id):
+        raise HTTPException(status_code=409, detail="Du hast bereits eine andere aktive Fahrt")
 
     now = datetime.now(timezone.utc)
     scheduled_at = ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at")
@@ -2917,6 +3001,7 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}}}
     )
     if claim.modified_count != 1:
+        await _release_driver_active_ride(driver["driver_id"], req.ride_id)
         current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
         if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
             raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
@@ -3049,6 +3134,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
             platform_fee=replay_fare["platform_fee"],
             settled_at=ride.get("completed_at") or ride.get("ended_at"),
         )
+        await _release_driver_active_ride(driver["driver_id"], req.ride_id)
         return {
             "ok": True,
             "ride_summary": {
@@ -3188,6 +3274,7 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         platform_fee=fare["platform_fee"],
         settled_at=now.isoformat(),
     )
+    await _release_driver_active_ride(driver["driver_id"], req.ride_id)
     
     return {
         "ok": True,
@@ -3225,6 +3312,7 @@ async def cancel_ride(req: RideActionRequest, request: Request):
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
 
     if ride.get("status") == RideStatus.CANCELLED.value:
+        await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)
         return {
             "ok": True,
             "status": "cancelled",
@@ -3309,6 +3397,8 @@ async def cancel_ride(req: RideActionRequest, request: Request):
             raise HTTPException(status_code=409, detail="Stornierung wird bereits von einem anderen Vorgang verarbeitet.")
     else:
         ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or ride
+
+    await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)
 
     refund_amount = round(max(0.0, reserved_amount - cancel_fee), 2)
     refund_transaction_id = ride.get("refund_transaction_id")
