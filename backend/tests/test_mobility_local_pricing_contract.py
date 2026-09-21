@@ -542,3 +542,15 @@ def test_scooter_reservation_lifecycle_is_atomic_and_unlockable_by_owner():
     assert "claim.modified_count != 1" in scooter
     assert "Scooter wurde gerade von einem anderen Nutzer reserviert" in scooter
     assert '"fee_charged": False' in scooter
+
+
+def test_admin_critical_scooter_commands_require_safe_idle_state():
+    scooter = read("backend/routes/scooter.py")
+
+    assert "critical_command = cmd in {DeviceCommand.UNLOCK, DeviceCommand.LOCK}" in scooter
+    assert "Idempotency-Key für kritischen Gerätebefehl erforderlich" in scooter
+    assert '"status": {"$in": ["active", "paused"]}' in scooter
+    assert '"status": "active"' in scooter
+    assert 'scooter.get("status") in {"in_use", "unlocking", "reserved"}' in scooter
+    assert "Kritischer Gerätebefehl ist während eines aktiven Scooter-Lifecycles gesperrt" in scooter
+    assert 'operation_key=(f"admin:{scooter_id}:{operation_key}" if operation_key else None)' in scooter
