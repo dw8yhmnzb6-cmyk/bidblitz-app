@@ -843,7 +843,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     if (!idempotencyKey) {
       idempotencyKey = typeof crypto?.randomUUID === "function"
         ? `auction-bid-${crypto.randomUUID()}`
-        : `auction-bid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        : `auction-bid-${Date.now()}-${auctionId}-${owner}`;
       if (typeof window !== "undefined") window.sessionStorage.setItem(storageKey, idempotencyKey);
     }
     quickBidKeysRef.current[auctionId] = idempotencyKey;
