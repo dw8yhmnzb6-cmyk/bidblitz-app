@@ -2955,6 +2955,25 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.COMPLETED.value and ride.get("payment_status") == "settled":
+        replay_fare = {
+            "total": float(ride.get("final_fare") or ride.get("fare_estimate") or 0),
+            "driver_earnings": float(ride.get("driver_earnings") or 0),
+            "platform_fee": float(ride.get("platform_fee") or 0),
+        }
+        return {
+            "ok": True,
+            "ride_summary": {
+                "ride_id": req.ride_id,
+                "distance_km": float(ride.get("actual_distance_km") or ride.get("distance_km_estimate") or 0),
+                "duration_minutes": float(ride.get("actual_duration_minutes") or ride.get("duration_estimate_minutes") or 0),
+                "fare": replay_fare,
+            },
+            "driver_earnings": replay_fare["driver_earnings"],
+            "message": "Fahrt war bereits abgeschlossen.",
+            "replayed": True,
+        }
+
     if ride["status"] != RideStatus.STARTED.value:
         raise HTTPException(status_code=400, detail="Fahrt noch nicht gestartet")
     
