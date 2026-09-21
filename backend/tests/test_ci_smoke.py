@@ -3588,3 +3588,11 @@ def test_auction_admin_permissions_include_super_admin():
     assert source.count('if not TEST_MODE and user.get("role") not in {"admin", "super_admin"} and user.get("kyc_status") != "approved":') >= 3
     assert 'if user.get("role") != "admin":' not in source
     assert 'if user.get("role") not in ("admin",):' not in source
+
+
+def test_auction_duration_contract_is_two_to_three_days():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert "duration_seconds: int = Field(default=172800, ge=172800, le=259200)" in source
+    assert "default_duration_hours: int = Field(default=48, ge=48, le=72)" in source
+    assert source.count("duration_hours: int = Field(default=48, ge=48, le=72)") >= 2
