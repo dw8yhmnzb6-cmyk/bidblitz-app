@@ -1232,6 +1232,49 @@ def _taxi_booking_request_fingerprint(req: FlexBookRequest) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+async def _finalize_taxi_booking_replay(ride: dict, user_id: str) -> None:
+    """Repair quote/promo side effects after a persisted ride is replayed."""
+    quote_id = ride.get("pricing_quote_id")
+    client_key = ride.get("booking_idempotency_key")
+    ride_id = ride.get("ride_id")
+    if quote_id and client_key and ride_id:
+        try:
+            await db.taxi_price_quotes.update_one(
+                {
+                    "quote_id": quote_id,
+                    "$or": [
+                        {
+                            "status": "booking",
+                            "booking_idempotency_key": client_key,
+                            "booking_user_id": str(user_id),
+                            "booking_ride_id": ride_id,
+                        },
+                        {"status": "used", "ride_id": ride_id},
+                    ],
+                },
+                {"$set": {
+                    "status": "used",
+                    "used_at": datetime.now(timezone.utc).isoformat(),
+                    "ride_id": ride_id,
+                }},
+            )
+        except Exception as exc:
+            logger.warning("Taxi quote replay finalization failed: %s", exc)
+
+    promo = ride.get("promo") or {}
+    if promo.get("code") and ride_id:
+        try:
+            from utils.taxi_promo import record_redemption
+            await record_redemption(
+                str(user_id),
+                promo["code"],
+                ride_id,
+                promo.get("discount") or 0,
+            )
+        except Exception as exc:
+            logger.warning("Taxi promo replay finalization failed: %s", exc)
+
+
 def NumberErrorSafe(lat, lng) -> bool:
     try:
         return lat is not None and lng is not None and math.isfinite(float(lat)) and math.isfinite(float(lng))
@@ -2177,6 +2220,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     if existing_ride:
         if existing_ride.get("booking_request_fingerprint") != request_fingerprint:
             raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        await _finalize_taxi_booking_replay(existing_ride, user_id)
         return {
             "ok": True,
             "ride": existing_ride,
@@ -2491,6 +2535,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     except Exception as exc:
         current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0})
         if current and current.get("booking_request_fingerprint") == request_fingerprint:
+            await _finalize_taxi_booking_replay(current, user_id)
             return {
                 "ok": True,
                 "ride": current,
