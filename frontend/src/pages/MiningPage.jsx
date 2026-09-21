@@ -305,6 +305,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   }, [fetchMiningData]);
 
   const miningValueEnabled = !!data?.capabilities?.value_actions_enabled;
+  const miningOrderEnabled = data?.capabilities?.ordering_enabled === true;
   const requireMiningValue = () => {
     if (miningValueEnabled) return true;
     toast.error(data?.capabilities?.production_message || "Mining-Wertfunktionen sind noch nicht live verbunden.");
@@ -328,16 +329,21 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const buyMiner = async (pkgId, billingOverride = billingType) => {
-    if (!requireMiningValue()) return;
-    const effectiveBilling = billingOverride || "onetime";
-    const attemptScope = `${pkgId}:${effectiveBilling}`;
+    const orderingOnly = !miningValueEnabled && miningOrderEnabled;
+    if (!miningValueEnabled && !miningOrderEnabled) {
+      requireMiningValue();
+      return;
+    }
+    const effectiveBilling = orderingOnly ? "onetime" : (billingOverride || "onetime");
+    const attemptScope = `${pkgId}:${effectiveBilling}:${orderingOnly ? "order" : "activate"}`;
     const idempotencyKey = getOrCreateMiningAttemptKey(
-      minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope, "mining-buy"
+      minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope, orderingOnly ? "mining-order" : "mining-buy"
     );
     setPurchaseError(null);
     setBuying(pkgId);
     try {
-      const r = await api("/api/mining/buy-miner", {
+      const endpoint = orderingOnly ? "/api/mining/order-miner" : "/api/mining/buy-miner";
+      const r = await api(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ package_id: pkgId, billing: effectiveBilling, idempotency_key: idempotencyKey }),
@@ -345,15 +351,20 @@ export default function MiningPage({ onBack, onNavigate }) {
       clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
-      setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
-      setTimeout(() => setPurchaseSuccess(null), 3500);
-      toast.success(t("mining.purchased") || "Miner purchased!");
+      setPurchaseSuccess({
+        ...pkg,
+        new_balance: r.new_balance,
+        activation_pending: Boolean(r.activation_pending),
+        order_id: r.order_id,
+      });
+      setTimeout(() => setPurchaseSuccess(null), 5000);
+      toast.success(r.activation_pending ? "Bestellung bezahlt · Aktivierung folgt" : (t("mining.purchased") || "Miner gekauft!"));
       load();
     } catch (e) {
       if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
-      const msg = e.message || "Purchase failed";
+      const msg = e.message || "Bestellung fehlgeschlagen";
       if (msg.toLowerCase().includes("insufficient")) {
-        const balanceMessage = t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.";
+        const balanceMessage = t("mining.err_balance") || "Guthaben reicht nicht. Lade dein Wallet auf.";
         setPurchaseError(balanceMessage);
         toast.error(balanceMessage);
       } else {
@@ -1469,12 +1480,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               {/* Title */}
               <div className="text-center mb-2">
                 <h2 className="text-[18px] font-bold font-outfit text-white">
-                  {miningValueEnabled ? (t("mining.shop_create") || "Miner erstellen") : "Miner-Pakete Preview"}
+                  {miningValueEnabled ? (t("mining.shop_create") || "Miner erstellen") : (miningOrderEnabled ? "Miner bestellen" : "Miner-Pakete Preview")}
                 </h2>
                 <p className="text-[11px] text-white/30 mt-0.5">
                   {miningValueEnabled
                     ? (t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen")
-                    : "Preise und technische Paketdaten sind Preview. Ertrags-/ROI-Projektionen bleiben bis zur verifizierten Provider-Anbindung deaktiviert."}
+                    : miningOrderEnabled
+                      ? "Jetzt bestellen und bezahlen. Die Miner-Aktivierung startet erst nach verifizierter Provider-Anbindung."
+                      : "Preise und technische Paketdaten sind Preview. Ertrags-/ROI-Projektionen bleiben bis zur verifizierten Provider-Anbindung deaktiviert."}
                 </p>
               </div>
 
@@ -1484,7 +1497,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                   { key: "onetime", label: t("mining.bill_once") || "Einmalig" },
                   { key: "monthly", label: t("mining.bill_month") || "Monatlich" },
                   { key: "yearly", label: t("mining.bill_year") || "Jährlich" },
-                ].map(b => (
+                ].filter(b => miningValueEnabled || b.key === "onetime").map(b => (
                   <motion.button key={b.key} data-testid={`billing-${b.key}`}
                     onClick={() => setBillingType(b.key)}
                     className={`flex-1 py-2.5 text-[11px] font-semibold transition-all relative ${
@@ -1645,7 +1658,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <span className="text-[16px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{price.toFixed(2)}</span>
                     </div>
 
-                    {miningValueEnabled ? (
+                    {(miningValueEnabled || miningOrderEnabled) ? (
                       <>
                         <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
                           <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
@@ -1656,10 +1669,15 @@ export default function MiningPage({ onBack, onNavigate }) {
                             {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
                           </p>
                         )}
+                        {!miningValueEnabled && miningOrderEnabled && (
+                          <p className="rounded-xl border border-[#00E89D]/10 bg-[#00E89D]/5 px-3 py-2 text-center text-[9px] text-[#00E89D]/75" data-testid="mining-order-note">
+                            Bestellung und Zahlung sind aktiv. Mining/BLZ starten erst nach verifizierter Provider-Anbindung.
+                          </p>
+                        )}
                       </>
                     ) : (
                       <p className="rounded-xl border border-amber-300/10 bg-amber-300/5 px-3 py-2 text-center text-[9px] text-amber-200/70" data-testid="mining-shop-preview-note">
-                        Preview-only · kein Wallet-Debit, kein Abo und keine Miner-Aktivierung in Production.
+                        Preview-only · Bestellung derzeit nicht verfügbar.
                       </p>
                     )}
 
@@ -1681,15 +1699,29 @@ export default function MiningPage({ onBack, onNavigate }) {
                     {/* Buy Button */}
                     <motion.button
                       data-testid="confirm-buy-btn"
-                      onClick={() => buyMiner(confirmPkg.id)}
-                      disabled={buying || !canAfford || !miningValueEnabled}
-                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${(!canAfford || !miningValueEnabled) ? "opacity-40 cursor-not-allowed" : ""}`}
-                      style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}
-                      whileTap={canAfford ? { scale: 0.96 } : {}}>
+                      onClick={() => {
+                        if (!canAfford && (miningValueEnabled || miningOrderEnabled)) {
+                          onNavigate?.("/wallet");
+                          return;
+                        }
+                        buyMiner(confirmPkg.id);
+                      }}
+                      disabled={buying || (!miningValueEnabled && !miningOrderEnabled)}
+                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${(!miningValueEnabled && !miningOrderEnabled) ? "opacity-40 cursor-not-allowed" : ""}`}
+                      style={{
+                        background: (canAfford || miningOrderEnabled) ? `${color}15` : "rgba(255,255,255,0.02)",
+                        color: (canAfford || miningOrderEnabled) ? color : "rgba(255,255,255,0.2)",
+                        border: `1px solid ${(canAfford || miningOrderEnabled) ? `${color}25` : "rgba(255,255,255,0.04)"}`,
+                      }}
+                      whileTap={(miningValueEnabled || miningOrderEnabled) ? { scale: 0.96 } : {}}>
                       {buying ? <Loader2 size={14} className="animate-spin" /> : (
-                        miningValueEnabled
-                          ? <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
-                          : <>Preview · Kauf deaktiviert <ChevronRight size={14} /></>
+                        !canAfford && (miningValueEnabled || miningOrderEnabled)
+                          ? <>Wallet aufladen <ChevronRight size={14} /></>
+                          : miningValueEnabled
+                            ? <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                            : miningOrderEnabled
+                              ? <>Jetzt bestellen <ChevronRight size={14} /></>
+                              : <>Nicht verfügbar <ChevronRight size={14} /></>
                       )}
                     </motion.button>
                   </motion.div>
@@ -2116,7 +2148,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               </motion.div>
               <motion.h3 className="text-[22px] font-bold font-outfit text-white mb-1"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                {t("mining.success_title") || "Miner Activated!"}
+                {purchaseSuccess.activation_pending ? "Bestellung bezahlt" : (t("mining.success_title") || "Miner aktiviert!")}
               </motion.h3>
               <motion.p className="text-[13px] text-white/40 mb-2"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
@@ -2124,7 +2156,9 @@ export default function MiningPage({ onBack, onNavigate }) {
               </motion.p>
               <motion.p className="text-[11px] text-[#00E89D]/60 mb-1"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
-                {t("mining.success_desc") || "Your miner is now earning BLZ tokens!"}
+                {purchaseSuccess.activation_pending
+                  ? "Zahlung erfolgreich. Miner-Aktivierung folgt nach verifizierter Provider-Anbindung."
+                  : (t("mining.success_desc") || "Dein Miner ist jetzt aktiv.")}
               </motion.p>
               {purchaseSuccess.new_balance != null && (
                 <motion.p className="text-[10px] text-white/20 font-mono"
