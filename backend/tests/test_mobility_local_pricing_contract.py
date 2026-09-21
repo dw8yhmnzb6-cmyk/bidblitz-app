@@ -258,3 +258,16 @@ def test_taxi_does_not_issue_quotes_for_unsupported_or_non_eur_fares():
     assert 'float(item.get("fare") or 0) <= 0' in taxi
     assert 'item["quote_id"] = None' in taxi
     assert 'item["quote_expires_at"] = None' in taxi
+
+
+def test_zero_coordinates_remain_valid_in_mobility_and_taxi_helpers():
+    mobility = read("backend/routes/mobility_platform.py")
+    taxi = read("backend/routes/taxi.py")
+
+    assert "if dlat is None or dlng is None:" in mobility
+    assert "if slat is None or slng is None:" in mobility
+    assert mobility.count("if clat is None or clng is None:") >= 2
+    assert "if elat is None or elng is None:" in mobility
+    assert 'slat = loc.get("lat") if loc.get("lat") is not None else scooter.get("lat")' in mobility
+    assert 'slng = loc.get("lng") if loc.get("lng") is not None else scooter.get("lng")' in mobility
+    assert "if not addr or lat is None or lng is None:" in taxi
