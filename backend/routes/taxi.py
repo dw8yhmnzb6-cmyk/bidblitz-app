@@ -3030,6 +3030,8 @@ async def driver_arriving(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.ARRIVING.value:
+        return {"ok": True, "status": "arriving", "message": "Kunde wurde bereits benachrichtigt", "replayed": True}
     if ride["status"] != RideStatus.ACCEPTED.value:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     
@@ -3071,6 +3073,8 @@ async def driver_start_ride(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.STARTED.value:
+        return {"ok": True, "status": "started", "message": "Fahrt bereits gestartet", "replayed": True}
     if ride["status"] not in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     
