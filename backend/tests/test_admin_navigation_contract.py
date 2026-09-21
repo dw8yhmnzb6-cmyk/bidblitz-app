@@ -106,3 +106,23 @@ def test_module_read_only_notice_stays_inside_module_crud_scope():
     assert 'data-testid="module-read-only-note"' in module_crud
     assert '{readOnly && (' in module_crud
     assert 'readOnly ? "Keine Live-Daten vorhanden."' in module_crud
+
+
+def test_admin_created_service_rows_receive_public_canonical_ids():
+    backend = read("backend/routes/admin_management.py")
+
+    expected = {
+        "handwerker": "hw_id",
+        "gebrauchtwagen": "car_id",
+        "reinigung": "service_id",
+        "umzug": "company_id",
+        "tierbetreuung": "sitter_id",
+        "streaming": "content_id",
+        "telemedizin": "doctor_id",
+        "fitness": "gym_id",
+        "reisen": "trip_id",
+    }
+    for module_key, id_field in expected.items():
+        assert f'"{module_key}": "{id_field}"' in backend
+    assert "canonical_id_field = MODULE_ID_FIELDS.get(module_key)" in backend
+    assert "data[canonical_id_field] = data.get(canonical_id_field) or data["id"]" in backend
