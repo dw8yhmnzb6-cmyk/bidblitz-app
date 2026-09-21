@@ -1248,8 +1248,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                     </select>
                     <input data-testid="list-price-input" type="number" step="1" min="1" placeholder="BLZ" value={listPrice} onChange={e => setListPrice(e.target.value)}
                       className="w-24 px-3 py-2 rounded-xl text-[11px] bg-white/[0.03] border border-white/[0.06] text-white/70 outline-none font-mono" />
-                    <motion.button data-testid="list-miner-btn" onClick={listMinerForSale} disabled={listing || !listMiner || !listPrice}
-                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/15 disabled:opacity-30"
+                    <motion.button data-testid="list-miner-btn" onClick={listMinerForSale} disabled={listing || !listMiner || !listPrice || !miningValueEnabled}
+                      title={!miningValueEnabled ? "Mining Marketplace ist in Production nur als Preview verfügbar." : undefined}
+                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/15 disabled:opacity-30 disabled:cursor-not-allowed"
                       whileTap={{ scale: 0.95 }}>
                       {listing ? <Loader2 size={10} className="animate-spin" /> : <><Tag size={10} className="inline mr-1" />{t("mining.mkt_list") || "List"}</>}
                     </motion.button>
