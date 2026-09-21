@@ -123,6 +123,7 @@ def test_legacy_customer_request_endpoint_cannot_create_second_taxi_lifecycle():
     assert 'base_fare = 3.50' not in legacy
     assert 'per_km = 1.80' not in legacy
     assert 'db.taxi_ride_requests.insert_one' not in legacy
+    assert 'db.taxi_ride_requests' not in driver
     assert 'create_notification(' not in legacy
     assert "kanonischen Taxi" in legacy or "aktuelle Taxi-Buchung" in legacy
 
