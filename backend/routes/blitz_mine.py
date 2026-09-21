@@ -1232,42 +1232,67 @@ async def release_lockup(lockup_id: str, request: Request):
             "status": lk.get("status"),
             "replayed": True,
         }
-    if lk.get("status") != "active":
-        raise HTTPException(status_code=409, detail="Lockup wird bereits verarbeitet.")
-
-    ends_at = datetime.fromisoformat(lk["ends_at"].replace("Z", "+00:00"))
-    amount = float(lk["amount"])
-    if ends_at <= _now():
-        refund = amount
-        final_status = "completed"
-        penalty = 0.0
-    else:
-        penalty = round(amount * LOCKUP_EARLY_RELEASE_PENALTY, 4)
-        refund = round(amount - penalty, 4)
-        final_status = "released"
+    if lk.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Lockup-Freigabe benötigt Abstimmung; keine erneute BLZ-Gutschrift wird ausgeführt")
 
     stable_id = str(lk.get("lockup_id") or lk.get("_id"))
-    claimed = await db.blitz_mine_lockup.update_one(
-        {"_id": lk["_id"], "user_id": user_id, "status": "active"},
-        {"$set": {
-            "status": "releasing",
-            "release_target_status": final_status,
-            "refunded": refund,
-            "penalty": penalty,
-            "release_started_at": _now().isoformat(),
-        }},
-    )
-    if claimed.modified_count != 1:
-        current = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
-        if current.get("status") in {"completed", "released"}:
-            return {
-                "success": True,
-                "refund_blz": round(float(current.get("refunded") or 0), 4),
-                "penalty_blz": round(float(current.get("penalty") or 0), 4),
-                "status": current.get("status"),
-                "replayed": True,
+    if lk.get("status") == "active":
+        ends_at = datetime.fromisoformat(lk["ends_at"].replace("Z", "+00:00"))
+        amount = float(lk["amount"])
+        if ends_at <= _now():
+            refund = amount
+            final_status = "completed"
+            penalty = 0.0
+        else:
+            penalty = round(amount * LOCKUP_EARLY_RELEASE_PENALTY, 4)
+            refund = round(amount - penalty, 4)
+            final_status = "released"
+
+        claimed = await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id, "status": "active"},
+            {"$set": {
+                "status": "releasing",
+                "release_target_status": final_status,
+                "refunded": refund,
+                "penalty": penalty,
+                "release_started_at": _now().isoformat(),
+            }},
+        )
+        if claimed.modified_count != 1:
+            lk = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
+        else:
+            lk = {
+                **lk,
+                "status": "releasing",
+                "release_target_status": final_status,
+                "refunded": refund,
+                "penalty": penalty,
             }
-        raise HTTPException(status_code=409, detail="Lockup wird bereits verarbeitet.")
+
+    if lk.get("status") in {"completed", "released"}:
+        return {
+            "success": True,
+            "refund_blz": round(float(lk.get("refunded") or 0), 4),
+            "penalty_blz": round(float(lk.get("penalty") or 0), 4),
+            "status": lk.get("status"),
+            "replayed": True,
+        }
+    if lk.get("status") != "releasing":
+        raise HTTPException(status_code=409, detail="Lockup kann in diesem Zustand nicht freigegeben werden.")
+
+    refund = round(float(lk.get("refunded") or 0), 4)
+    penalty = round(float(lk.get("penalty") or 0), 4)
+    final_status = lk.get("release_target_status")
+    if final_status not in {"completed", "released"} or refund <= 0:
+        await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id, "status": "releasing"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "release_error": "invalid_persisted_release_state",
+                "reconciliation_required_at": _now().isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=503, detail="Lockup-Freigabezustand unklar; Abstimmung erforderlich")
 
     payout = await _mutate_blitz_wallet_once(
         user_id=user_id,
@@ -1286,7 +1311,25 @@ async def release_lockup(lockup_id: str, request: Request):
         }, "$unset": {"release_target_status": ""}},
     )
     if finalized.modified_count != 1:
-        raise HTTPException(status_code=500, detail="BLZ wurden gutgeschrieben, Lockup-Abschluss benötigt Abstimmung")
+        current = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
+        if current.get("status") in {"completed", "released"}:
+            return {
+                "success": True,
+                "refund_blz": round(float(current.get("refunded") or refund), 4),
+                "penalty_blz": round(float(current.get("penalty") or penalty), 4),
+                "status": current.get("status"),
+                "replayed": True,
+            }
+        await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "release_error": "payout_applied_finalize_not_confirmed",
+                "refund_transaction_id": payout["transaction_id"],
+                "reconciliation_required_at": _now().isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=503, detail="BLZ wurden genau einmal gutgeschrieben; Lockup-Abschluss benötigt Abstimmung")
     return {
         "success": True,
         "refund_blz": refund,
@@ -1296,7 +1339,6 @@ async def release_lockup(lockup_id: str, request: Request):
     }
 
 
-# ── Leaderboard ──
 @router.get("/leaderboard")
 async def leaderboard(request: Request):
     await get_current_user(request)
