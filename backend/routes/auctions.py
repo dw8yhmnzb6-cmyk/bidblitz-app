@@ -3905,6 +3905,22 @@ async def delete_auction(auction_id: str, request: Request):
     return {"ok": True, "deleted": auction_id}
 
 
+async def _require_auction_product_editable(auction: dict) -> None:
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    auction_id = str(auction.get("auction_id") or "")
+    if auction.get("status") == "ended" or auction.get("winner_id"):
+        raise HTTPException(status_code=409, detail="Beendete Auktionen können nicht mehr inhaltlich verändert werden")
+    real_bid_count = await db.auction_bids.count_documents(
+        {"auction_id": auction_id, "is_bot": {"$ne": True}}
+    )
+    if real_bid_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Produktdaten sind nach dem ersten echten Gebot gesperrt",
+        )
+
+
 class UpdateAuctionRequest(BaseModel):
     image_url: Optional[str] = None
     title: Optional[str] = None
@@ -3920,8 +3936,7 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
         raise HTTPException(status_code=403, detail="Admin only")
 
     auction = await db.auctions.find_one({"auction_id": auction_id})
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auction not found")
+    await _require_auction_product_editable(auction)
 
     updates = {}
     if req.image_url is not None:
@@ -3953,8 +3968,7 @@ async def upload_auction_image(auction_id: str, request: Request):
         raise HTTPException(status_code=403, detail="Admin only")
 
     auction = await db.auctions.find_one({"auction_id": auction_id})
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auction not found")
+    await _require_auction_product_editable(auction)
 
     form = await request.form()
     file = form.get("file")
