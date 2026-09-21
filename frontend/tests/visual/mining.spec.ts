@@ -110,7 +110,7 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
 
   await page.getByTestId('mining-tab-shop').click();
   await expect(page.getByText('Miner-Pakete Preview', { exact: true })).toBeVisible();
-  await expect(page.getByText('kein Kauf und keine BLZ-Erzeugung', { exact: false })).toBeVisible();
+  await expect(page.getByText('Ertrags-/ROI-Projektionen bleiben', { exact: false })).toBeVisible();
   await expect(page.getByTestId('mining-provider-unavailable')).toBeVisible();
 
   const widths = await page.evaluate(() => ({
