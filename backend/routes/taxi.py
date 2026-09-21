@@ -2045,8 +2045,8 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     
     p_lat, p_lng, d_lat, d_lng, p_addr, d_addr = req.get_coords()
     
-    if not p_lat or not d_lat:
-        raise HTTPException(400, "Koordinaten fehlen")
+    if not NumberErrorSafe(p_lat, p_lng) or not NumberErrorSafe(d_lat, d_lng):
+        raise HTTPException(400, "Koordinaten fehlen oder sind ungültig")
     
     distance_km, duration_minutes, route_source = await get_driving_route_metrics(
         [(p_lat, p_lng), (d_lat, d_lng)]
