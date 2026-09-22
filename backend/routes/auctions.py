@@ -68,6 +68,28 @@ CREDIT_PACKAGES = {
     "250": {"credits": 250, "price": 62.50},    # 0.25/bid (50% off)
 }
 
+def _credit_bucket_cents(cash_value_eur: float, credits: int) -> int:
+    if credits <= 0:
+        return 0
+    return max(0, int(round((max(0.0, float(cash_value_eur)) / credits) * 100)))
+
+
+def _credit_bucket_field(cents: int) -> str:
+    return f"bid_credit_value_buckets.c{max(0, int(cents))}"
+
+
+def _known_credit_bucket_cents() -> list[int]:
+    paid = {
+        _credit_bucket_cents(float(pkg["price"]), int(pkg["credits"]))
+        for pkg in CREDIT_PACKAGES.values()
+    }
+    return [0] + sorted(x for x in paid if x > 0)
+
+
+def _minimum_paid_credit_value_eur() -> float:
+    paid = [c for c in _known_credit_bucket_cents() if c > 0]
+    return (min(paid) / 100.0) if paid else 0.0
+
 def _require_auction_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
     key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
     if not 8 <= len(key) <= 200:
@@ -80,18 +102,37 @@ def _auction_grant_field(kind: str, key: str) -> str:
     return f"auction_credit_grants.{digest}"
 
 
-async def _grant_bid_credits_once(user_object_id, *, credits: int, grant_key: str, source: str, metadata: Optional[dict] = None) -> tuple[bool, bool]:
+async def _grant_bid_credits_once(
+    user_object_id,
+    *,
+    credits: int,
+    grant_key: str,
+    source: str,
+    metadata: Optional[dict] = None,
+    cash_value_eur: float = 0.0,
+) -> tuple[bool, bool]:
     field = _auction_grant_field(source, grant_key)
+    bucket_cents = _credit_bucket_cents(cash_value_eur, int(credits))
+    bucket_field = _credit_bucket_field(bucket_cents)
     marker = {
         "credits": int(credits),
         "source": source,
+        "cash_value_eur": round(max(0.0, float(cash_value_eur)), 2),
+        "per_credit_cash_value_eur": round(bucket_cents / 100.0, 2),
+        "credit_value_bucket_cents": bucket_cents,
         "grant_key_hash": hashlib.sha256(grant_key.encode("utf-8")).hexdigest()[:16],
         "metadata": metadata or {},
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     result = await db.users.update_one(
         {"_id": user_object_id, field: {"$exists": False}},
-        {"$inc": {"bid_credits": int(credits)}, "$set": {field: marker}},
+        {
+            "$inc": {
+                "bid_credits": int(credits),
+                bucket_field: int(credits),
+            },
+            "$set": {field: marker},
+        },
     )
     if result.modified_count == 1:
         return True, True
@@ -105,7 +146,7 @@ async def _grant_first_purchase_bonus_once(user_object_id, *, eligible: bool) ->
     result = await db.users.update_one(
         {"_id": user_object_id, "auction_first_purchase_bonus_awarded": {"$ne": True}},
         {
-            "$inc": {"bid_credits": 5},
+            "$inc": {"bid_credits": 5, "bid_credit_value_buckets.c0": 5},
             "$set": {
                 "auction_first_purchase_bonus_awarded": True,
                 "auction_first_purchase_bonus_awarded_at": datetime.now(timezone.utc).isoformat(),
@@ -138,6 +179,37 @@ async def _reserve_bid_credit_once(user_object_id, op_hash: str, auction_id: str
     if await db.users.find_one({"_id": user_object_id, reservation_field: {"$exists": True}}, {"_id": 1}):
         return "reserved"
 
+    # Consume free credits first, then the lowest-paid credit bucket. This is
+    # intentionally conservative for minimum-profit accounting.
+    for bucket_cents in _known_credit_bucket_cents():
+        bucket_field = _credit_bucket_field(bucket_cents)
+        result = await db.users.update_one(
+            {
+                "_id": user_object_id,
+                "bid_credits": {"$gte": 1},
+                bucket_field: {"$gte": 1},
+                reservation_field: {"$exists": False},
+                spent_field: {"$exists": False},
+            },
+            {
+                "$inc": {
+                    "bid_credits": -1,
+                    bucket_field: -1,
+                },
+                "$set": {
+                    reservation_field: {
+                        "auction_id": auction_id,
+                        "cash_value_eur": round(bucket_cents / 100.0, 2),
+                        "credit_value_bucket_cents": bucket_cents,
+                        "reserved_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
+            },
+        )
+        if result.modified_count == 1:
+            return "reserved"
+
+    # Legacy/untracked credits are still usable, but count as €0 revenue.
     result = await db.users.update_one(
         {
             "_id": user_object_id,
@@ -150,6 +222,9 @@ async def _reserve_bid_credit_once(user_object_id, op_hash: str, auction_id: str
             "$set": {
                 reservation_field: {
                     "auction_id": auction_id,
+                    "cash_value_eur": 0.0,
+                    "credit_value_bucket_cents": None,
+                    "legacy_untracked": True,
                     "reserved_at": datetime.now(timezone.utc).isoformat(),
                 }
             },
@@ -165,9 +240,29 @@ async def _reserve_bid_credit_once(user_object_id, op_hash: str, auction_id: str
     return "insufficient"
 
 
+async def _credit_cash_value_for_operation(user_object_id, op_hash: str) -> float:
+    user = await db.users.find_one(
+        {"_id": user_object_id},
+        {
+            f"auction_bid_reservations.{op_hash}": 1,
+            f"auction_bid_spent.{op_hash}": 1,
+            "_id": 0,
+        },
+    ) or {}
+    reservation = (user.get("auction_bid_reservations") or {}).get(op_hash) or {}
+    spent = (user.get("auction_bid_spent") or {}).get(op_hash) or {}
+    marker = reservation or spent
+    return round(max(0.0, float(marker.get("cash_value_eur") or 0.0)), 2)
+
+
 async def _mark_bid_credit_spent(user_object_id, op_hash: str, auction_id: str, bid_price: float) -> bool:
     reservation_field = f"auction_bid_reservations.{op_hash}"
     spent_field = f"auction_bid_spent.{op_hash}"
+    user = await db.users.find_one(
+        {"_id": user_object_id, reservation_field: {"$exists": True}},
+        {reservation_field: 1, "_id": 0},
+    ) or {}
+    reservation = (user.get("auction_bid_reservations") or {}).get(op_hash) or {}
     result = await db.users.update_one(
         {"_id": user_object_id, reservation_field: {"$exists": True}},
         {
@@ -176,6 +271,8 @@ async def _mark_bid_credit_spent(user_object_id, op_hash: str, auction_id: str, 
                 spent_field: {
                     "auction_id": auction_id,
                     "bid_price": bid_price,
+                    "cash_value_eur": round(max(0.0, float(reservation.get("cash_value_eur") or 0.0)), 2),
+                    "credit_value_bucket_cents": reservation.get("credit_value_bucket_cents"),
                     "spent_at": datetime.now(timezone.utc).isoformat(),
                 }
             },
@@ -189,6 +286,15 @@ async def _mark_bid_credit_spent(user_object_id, op_hash: str, auction_id: str, 
 async def _refund_reserved_bid_credit(user_object_id, op_hash: str, auction_id: str, reason: str) -> bool:
     reservation_field = f"auction_bid_reservations.{op_hash}"
     refund_field = f"auction_bid_refunds.{op_hash}"
+    user = await db.users.find_one(
+        {"_id": user_object_id, reservation_field: {"$exists": True}},
+        {reservation_field: 1, "_id": 0},
+    ) or {}
+    reservation = (user.get("auction_bid_reservations") or {}).get(op_hash) or {}
+    inc = {"bid_credits": 1}
+    bucket_cents = reservation.get("credit_value_bucket_cents")
+    if bucket_cents is not None:
+        inc[_credit_bucket_field(int(bucket_cents))] = 1
     result = await db.users.update_one(
         {
             "_id": user_object_id,
@@ -196,18 +302,22 @@ async def _refund_reserved_bid_credit(user_object_id, op_hash: str, auction_id: 
             refund_field: {"$exists": False},
         },
         {
-            "$inc": {"bid_credits": 1},
+            "$inc": inc,
             "$unset": {reservation_field: ""},
             "$set": {
                 refund_field: {
                     "auction_id": auction_id,
                     "reason": reason,
+                    "cash_value_eur": round(max(0.0, float(reservation.get("cash_value_eur") or 0.0)), 2),
+                    "credit_value_bucket_cents": bucket_cents,
                     "refunded_at": datetime.now(timezone.utc).isoformat(),
                 }
             },
         },
     )
-    return result.modified_count == 1
+    if result.modified_count == 1:
+        return True
+    return bool(await db.users.find_one({"_id": user_object_id, refund_field: {"$exists": True}}, {"_id": 1}))
 
 
 def _read_bid_operation_result(auction: dict, op_hash: str) -> Optional[dict]:
@@ -215,8 +325,7 @@ def _read_bid_operation_result(auction: dict, op_hash: str) -> Optional[dict]:
 
 
 def _profit_guard_snapshot(auction: dict, real_paid_bids: int) -> dict:
-    """Calculate the transparent minimum-profit guard using only real paid customer bids."""
-    bid_value = max(0.01, float(auction.get("bid_value_eur") or 0.50))
+    """Calculate minimum-profit status from actually paid credit value, never nominal list value."""
     increment = max(0.01, float(auction.get("price_increment") or PRICE_INCREMENT))
     current_price = max(0.0, float(auction.get("current_price") or 0.0))
     product_cost = max(0.0, float(auction.get("product_cost_eur") or 0.0))
@@ -224,13 +333,14 @@ def _profit_guard_snapshot(auction: dict, real_paid_bids: int) -> dict:
     other_costs = max(0.0, float(auction.get("other_costs_eur") or 0.0))
     target_net_profit = max(0.0, float(auction.get("target_net_profit_eur") or 0.0))
     costs = product_cost + shipping_cost + other_costs
-    real_bid_revenue = max(0, int(real_paid_bids)) * bid_value
+    real_bid_revenue = max(0.0, float(auction.get("real_bid_revenue_eur") or 0.0))
     gross_revenue = real_bid_revenue + current_price
     net_profit = gross_revenue - costs
     enabled = bool(target_net_profit > 0 and not auction.get("bot_only"))
     reached = (not enabled) or net_profit >= target_net_profit
     missing_net = max(0.0, target_net_profit - net_profit) if enabled else 0.0
-    contribution_per_next_bid = bid_value + increment
+    minimum_paid_credit_value = _minimum_paid_credit_value_eur()
+    contribution_per_next_bid = minimum_paid_credit_value + increment
     bids_remaining = (
         int(math.ceil(missing_net / contribution_per_next_bid))
         if enabled and missing_net > 0
@@ -241,6 +351,7 @@ def _profit_guard_snapshot(auction: dict, real_paid_bids: int) -> dict:
         "reached": reached,
         "real_paid_bids": max(0, int(real_paid_bids)),
         "real_bid_revenue_eur": round(real_bid_revenue, 2),
+        "minimum_paid_credit_value_eur": round(minimum_paid_credit_value, 2),
         "current_sale_price_eur": round(current_price, 2),
         "gross_revenue_eur": round(gross_revenue, 2),
         "costs_eur": round(costs, 2),
@@ -977,7 +1088,10 @@ async def claim_daily_reward(request: Request):
             ],
         },
         {
-            "$inc": {"bid_credits": DAILY_REWARD_CREDITS},
+            "$inc": {
+                "bid_credits": DAILY_REWARD_CREDITS,
+                "bid_credit_value_buckets.c0": DAILY_REWARD_CREDITS,
+            },
             "$set": {"last_daily_claim": now.isoformat()},
         },
     )
@@ -1870,6 +1984,7 @@ async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
         grant_key=idempotency_key,
         source="wallet_purchase",
         metadata={"package_id": req.package_id, "payment_transaction_id": result.transaction_id},
+        cash_value_eur=price,
     )
     if not grant_ok:
         raise HTTPException(status_code=500, detail="Credit-Gutschrift konnte nicht bestätigt werden. Manuelle Prüfung erforderlich.")
@@ -1963,6 +2078,7 @@ async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Req
         grant_key=idempotency_key,
         source="saved_card_purchase",
         metadata={"package_id": req.package_id, "stripe_pi_id": intent.id},
+        cash_value_eur=price,
     )
     if not grant_ok:
         raise HTTPException(status_code=500, detail="Kartenzahlung erfolgreich, Credit-Gutschrift muss manuell geprüft werden.")
@@ -2194,6 +2310,7 @@ async def get_credits_purchase_status(session_id: str, request: Request):
                 grant_key=grant_key,
                 source="stripe_checkout_purchase",
                 metadata={"session_id": session_id, "package_id": m.get("package_id")},
+                cash_value_eur=float(CREDIT_PACKAGES.get(str(m.get("package_id")), {}).get("price") or 0.0),
             )
             if not grant_ok:
                 await db.payment_transactions.update_one(
