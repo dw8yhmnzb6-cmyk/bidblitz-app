@@ -1192,7 +1192,8 @@ def test_auction_production_bots_cannot_manipulate_customer_auctions():
     assert '["Produktkosten", "productCost", 100000]' in admin_page
     assert '["Nettoziel", "targetNetProfit", 100000]' in admin_page
     assert 'data-testid="auction-schedule-net-profit"' in admin_page
-    assert 'Der Rechner steuert weder Timer noch Gewinner.' in admin_page
+    assert 'Nur echte bezahlte Kundengebote zählen.' in admin_page
+    assert 'Bot-Gebote zählen nicht als Umsatz' in admin_page
     assert 'product_cost_eur: Number(engineConfig.productCost)' in admin_page
     assert 'target_net_profit_eur: Number(engineConfig.targetNetProfit)' in admin_page
     assert 'config["bot_policy"] = "test_only"' in source
