@@ -34,6 +34,7 @@ PUBLIC_AUCTION_PRIVATE_FIELDS = {
     "other_costs_eur",
     "target_net_profit_eur",
     "real_paid_bids",
+    "real_bid_revenue_eur",
     "estimated_real_bids_remaining",
     "profit_guard_extensions",
     "profit_guard_last_extended_at",
@@ -1439,6 +1440,7 @@ async def place_bid(req: BidRequest, request: Request):
     credit_state = await _reserve_bid_credit_once(user["_id"], op_hash, req.auction_id)
     if credit_state == "insufficient":
         raise HTTPException(status_code=400, detail="Not enough bid credits")
+    credit_cash_value = await _credit_cash_value_for_operation(user["_id"], op_hash)
 
     # If a retry arrives after the price update but before the response was delivered,
     # recover from the result stored atomically on the auction document.
@@ -1455,6 +1457,7 @@ async def place_bid(req: BidRequest, request: Request):
             "created_at": recovered["t"],
             "ends_at_after": recovered["e"],
             "total_bids_after": int(recovered["n"]),
+            "paid_credit_value_eur": round(max(0.0, float(recovered.get("v") or 0.0)), 2),
             "operation_key": op_hash,
         }
         await db.auction_bids.update_one(
@@ -1511,10 +1514,15 @@ async def place_bid(req: BidRequest, request: Request):
                 "is_bot": {"$ne": True},
             })
         real_paid_after = int(base_real_paid or 0) + 1
+        real_revenue_after = round(
+            max(0.0, float(snapshot.get("real_bid_revenue_eur") or 0.0)) + credit_cash_value,
+            2,
+        )
         guard_after = _profit_guard_snapshot(
             {
                 **snapshot,
                 "current_price": new_price,
+                "real_bid_revenue_eur": real_revenue_after,
             },
             real_paid_after,
         )
@@ -1524,6 +1532,7 @@ async def place_bid(req: BidRequest, request: Request):
             "e": new_ends_iso,
             "n": total_after,
             "t": now_iso,
+            "v": credit_cash_value,
         }
 
         update = await db.auctions.update_one(
@@ -1550,7 +1559,10 @@ async def place_bid(req: BidRequest, request: Request):
                     "estimated_real_bids_remaining": guard_after["estimated_real_bids_remaining"],
                     result_field: op_result,
                 },
-                "$inc": {"total_bids": 1},
+                "$inc": {
+                    "total_bids": 1,
+                    "real_bid_revenue_eur": credit_cash_value,
+                },
             },
         )
         if update.modified_count == 1:
@@ -1583,6 +1595,7 @@ async def place_bid(req: BidRequest, request: Request):
         "created_at": applied_result["t"],
         "ends_at_after": applied_result["e"],
         "total_bids_after": int(applied_result["n"]),
+        "paid_credit_value_eur": round(max(0.0, float(applied_result.get("v") or 0.0)), 2),
         "operation_key": op_hash,
     }
     await db.auction_bids.update_one(
@@ -1757,6 +1770,7 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
             )
             continue
 
+        credit_cash_value = await _credit_cash_value_for_operation(user["_id"], op_hash)
         applied_result = None
         for _ in range(8):
             snapshot = await db.auctions.find_one({"auction_id": auction_id})
@@ -1785,8 +1799,33 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
             new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
             new_ends_iso = new_ends.isoformat()
             total_after = int(snapshot.get("total_bids") or 0) + 1
+            base_real_paid = snapshot.get("real_paid_bids")
+            if base_real_paid is None:
+                base_real_paid = await db.auction_bids.count_documents({
+                    "auction_id": auction_id,
+                    "is_bot": {"$ne": True},
+                })
+            real_paid_after = int(base_real_paid or 0) + 1
+            real_revenue_after = round(
+                max(0.0, float(snapshot.get("real_bid_revenue_eur") or 0.0)) + credit_cash_value,
+                2,
+            )
+            guard_after = _profit_guard_snapshot(
+                {
+                    **snapshot,
+                    "current_price": new_price,
+                    "real_bid_revenue_eur": real_revenue_after,
+                },
+                real_paid_after,
+            )
             result_field = f"bid_operation_results.{op_hash}"
-            op_result = {"p": new_price, "e": new_ends_iso, "n": total_after, "t": now_iso}
+            op_result = {
+                "p": new_price,
+                "e": new_ends_iso,
+                "n": total_after,
+                "t": now_iso,
+                "v": credit_cash_value,
+            }
 
             updated = await db.auctions.update_one(
                 {
@@ -1802,9 +1841,20 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
                         "ends_at": new_ends_iso,
                         "last_bidder_id": ab["user_id"],
                         "last_bidder_name": user.get("name", "Anonymous"),
+                        "real_paid_bids": real_paid_after,
+                        "minimum_target_reached": guard_after["reached"],
+                        "profit_guard_status": (
+                            "target_reached"
+                            if guard_after["enabled"] and guard_after["reached"]
+                            else ("target_not_met" if guard_after["enabled"] else "not_enabled")
+                        ),
+                        "estimated_real_bids_remaining": guard_after["estimated_real_bids_remaining"],
                         result_field: op_result,
                     },
-                    "$inc": {"total_bids": 1},
+                    "$inc": {
+                        "total_bids": 1,
+                        "real_bid_revenue_eur": credit_cash_value,
+                    },
                 },
             )
             if updated.modified_count == 1:
@@ -1848,6 +1898,7 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
             "created_at": applied_result["t"],
             "ends_at_after": applied_result["e"],
             "total_bids_after": int(applied_result["n"]),
+            "paid_credit_value_eur": round(max(0.0, float(applied_result.get("v") or 0.0)), 2),
             "operation_key": op_hash,
             "is_auto": True,
         }
@@ -2416,6 +2467,7 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
         "other_costs_eur": round(float(req.other_costs_eur), 2),
         "target_net_profit_eur": round(float(req.target_net_profit_eur), 2),
         "real_paid_bids": 0,
+        "real_bid_revenue_eur": 0.0,
         "minimum_target_reached": req.target_net_profit_eur <= 0,
         "profit_guard_status": "target_not_met" if req.target_net_profit_eur > 0 else "not_enabled",
         "profit_guard_extensions": 0,
