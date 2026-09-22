@@ -881,10 +881,19 @@ def _claim_card(doc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+_CHARGE_CLAIM_TRANSITIONS = {
+    "open": {"in_review", "approved", "rejected", "cancelled"},
+    "in_review": {"approved", "rejected", "resolved", "cancelled"},
+    "approved": {"resolved", "rejected", "cancelled"},
+    "rejected": set(),
+    "resolved": set(),
+    "cancelled": set(),
+}
+
+
 def _validate_claim_status(value: str) -> str:
     normalized = str(value or "").strip().lower()
-    allowed = {"open", "in_review", "approved", "rejected", "resolved", "cancelled"}
-    if normalized not in allowed:
+    if normalized not in _CHARGE_CLAIM_TRANSITIONS:
         raise HTTPException(status_code=400, detail="Ungültiger Reklamationsstatus")
     return normalized
 
@@ -3052,8 +3061,11 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
     )
     if not claim:
         raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
-    if claim.get("status") in {"resolved", "rejected", "cancelled"}:
+    current_status = str(claim.get("status") or "open")
+    if current_status == "cancelled":
         return {"ok": True, "claim": _claim_card(claim)}
+    if "cancelled" not in _CHARGE_CLAIM_TRANSITIONS.get(current_status, set()):
+        raise HTTPException(status_code=409, detail="Dieser Garantiefall kann nicht mehr storniert werden")
 
     now = _now_iso()
     history_entry = {
@@ -3063,13 +3075,15 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
         "note": "Garantiefall vom Kunden storniert",
         "created_at": now,
     }
-    await db.merchant_warranty_claims.update_one(
-        {"claim_id": claim_id, "customer_user_id": user_id},
+    result = await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "customer_user_id": user_id, "status": current_status},
         {
             "$set": {"status": "cancelled", "updated_at": now, "resolved_at": now},
             "$push": {"status_history": history_entry},
         },
     )
+    if result is not None and getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(status_code=409, detail="Garantiefall wurde zwischenzeitlich aktualisiert")
     updated = {
         **claim,
         "status": "cancelled",
@@ -3168,18 +3182,30 @@ async def admin_update_charge_claim_status(
         raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
 
     status = _validate_claim_status(req.status)
+    current_status = str(claim.get("status") or "open")
+    if status != current_status and status not in _CHARGE_CLAIM_TRANSITIONS.get(current_status, set()):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Statuswechsel von {current_status} zu {status} ist nicht zulässig",
+        )
+
     now = _now_iso()
+    note = req.note.strip()
+    note_changed = note != str(claim.get("admin_note") or "").strip()
+    status_changed = status != current_status
+    if not (status_changed or note_changed):
+        return {"ok": True, "claim": _claim_card(claim), "reused": True}
+
     update: Dict[str, Any] = {
         "status": status,
-        "admin_note": req.note.strip(),
+        "admin_note": note,
         "updated_at": now,
         "updated_by": admin.get("email") or str(admin.get("_id") or "admin"),
     }
     if status in {"resolved", "rejected", "cancelled"}:
-        update["resolved_at"] = now
+        update["resolved_at"] = str(claim.get("resolved_at") or now)
 
     messages = []
-    note = req.note.strip()
     if note and note != str(claim.get("admin_note") or "").strip():
         messages.append({
             "message_id": f"MSG-{uuid.uuid4().hex[:10].upper()}",
@@ -3203,10 +3229,12 @@ async def admin_update_charge_claim_status(
         }
     if push_ops:
         mongo_update["$push"] = push_ops
-    await db.merchant_warranty_claims.update_one(
-        {"claim_id": claim_id},
+    result = await db.merchant_warranty_claims.update_one(
+        {"claim_id": claim_id, "status": current_status},
         mongo_update,
     )
+    if result is not None and getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(status_code=409, detail="Garantiefall wurde zwischenzeitlich aktualisiert")
     saved = await db.merchant_warranty_claims.find_one(
         {"claim_id": claim_id},
         {"_id": 0},
