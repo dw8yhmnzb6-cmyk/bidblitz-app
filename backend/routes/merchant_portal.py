@@ -153,6 +153,16 @@ class DealerChargeServiceStatusUpdateRequest(BaseModel):
     note: str = ""
 
 
+_CHARGE_CLAIM_TRANSITIONS = {
+    "open": {"in_review", "approved", "rejected", "cancelled"},
+    "in_review": {"approved", "rejected", "resolved", "cancelled"},
+    "approved": {"resolved", "rejected", "cancelled"},
+    "rejected": set(),
+    "resolved": set(),
+    "cancelled": set(),
+}
+
+
 _CHARGE_SERVICE_TRANSITIONS = {
     "requested": {"confirmed", "reschedule_requested", "rejected"},
     "reschedule_requested": {"confirmed", "reschedule_requested", "rejected"},
@@ -2361,6 +2371,27 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
         if not customer_status:
             raise HTTPException(status_code=400, detail="Ungültiger Garantiestatus")
 
+        current_status = str(claim.get("status") or "open")
+        if (
+            customer_status != current_status
+            and customer_status not in _CHARGE_CLAIM_TRANSITIONS.get(current_status, set())
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Statuswechsel von {current_status} zu {customer_status} ist nicht zulässig",
+            )
+
+        note_changed = note != str(claim.get("admin_note") or claim.get("internal_note") or "").strip()
+        dealer_status_changed = requested_status != str(claim.get("dealer_status") or "").strip().lower()
+        status_changed = customer_status != current_status
+        if not (status_changed or dealer_status_changed or note_changed):
+            return {
+                "ok": True,
+                "status": current_status,
+                "dealer_status": requested_status,
+                "reused": True,
+            }
+
         update_doc: Dict[str, Any] = {
             "status": customer_status,
             "dealer_status": requested_status,
@@ -2370,7 +2401,7 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
             update_doc["internal_note"] = note
             update_doc["admin_note"] = note
         if customer_status in {"resolved", "rejected", "cancelled"}:
-            update_doc["resolved_at"] = now
+            update_doc["resolved_at"] = str(claim.get("resolved_at") or now)
 
         mongo_update: Dict[str, Any] = {"$set": update_doc}
         push_ops: Dict[str, Any] = {}
@@ -2392,7 +2423,12 @@ async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatus
             }
         if push_ops:
             mongo_update["$push"] = push_ops
-        await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, mongo_update)
+        result = await db.merchant_warranty_claims.update_one(
+            {"claim_id": claim_id, "status": current_status},
+            mongo_update,
+        )
+        if result is not None and getattr(result, "matched_count", 1) == 0:
+            raise HTTPException(status_code=409, detail="Garantiefall wurde zwischenzeitlich aktualisiert")
         notification_hash = hashlib.sha256(
             f"{customer_status}|{requested_status}|{note}".encode("utf-8")
         ).hexdigest()[:12]
