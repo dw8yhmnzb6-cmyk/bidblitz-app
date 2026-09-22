@@ -1,0 +1,113 @@
+name: One-time Production VPS Reboot
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - .github/workflows/reboot-vps-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-maintenance
+  cancel-in-progress: false
+
+jobs:
+  reboot:
+    if: github.event.head_commit.message == 'ops: one-time reboot production VPS'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass netcat-openbsd
+
+      - name: Capture current boot id
+        id: before
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BOOT_ID="$(sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@212.227.20.190 'cat /proc/sys/kernel/random/boot_id')"
+          test -n "$BOOT_ID"
+          echo "boot_id=$BOOT_ID" >> "$GITHUB_OUTPUT"
+          echo "Current boot id captured."
+
+      - name: Reboot VPS
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@212.227.20.190             "nohup sh -c 'sleep 2; /sbin/reboot' >/dev/null 2>&1 &"
+          echo "Reboot command accepted."
+
+      - name: Wait for server to go down
+        run: |
+          set -euo pipefail
+          down=0
+          for i in $(seq 1 45); do
+            if ! nc -z -w 2 212.227.20.190 22; then
+              down=1
+              echo "Server went offline."
+              break
+            fi
+            sleep 2
+          done
+          test "$down" = 1
+
+      - name: Wait for SSH after reboot
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          up=0
+          for i in $(seq 1 90); do
+            if sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@212.227.20.190 'echo READY' >/dev/null 2>&1; then
+              up=1
+              echo "SSH is back."
+              break
+            fi
+            sleep 3
+          done
+          test "$up" = 1
+
+      - name: Verify new boot and services
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          OLD_BOOT_ID: ${{ steps.before.outputs.boot_id }}
+        run: |
+          set -euo pipefail
+          NEW_BOOT_ID="$(sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'cat /proc/sys/kernel/random/boot_id')"
+          echo "Old boot: $OLD_BOOT_ID"
+          echo "New boot: $NEW_BOOT_ID"
+          test "$NEW_BOOT_ID" != "$OLD_BOOT_ID"
+
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          systemctl is-active nginx
+          nginx -t
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 5 http://127.0.0.1:8001/api/system/version >/dev/null 2>&1; then
+              echo "Local API ready."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Local API did not recover in time."
+          pm2 list || true
+          exit 1
+          REMOTE
+
+      - name: Verify public BidBlitz
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 8 https://bidblitz.ae/ >/dev/null               && curl -fsS --max-time 8 https://bidblitz.ae/api/system/version >/dev/null               && curl -fsS --max-time 8 https://bidblitz.ae/api/mining/capabilities >/dev/null; then
+              echo "Public BidBlitz checks passed."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Public BidBlitz did not recover in time."
+          exit 1
