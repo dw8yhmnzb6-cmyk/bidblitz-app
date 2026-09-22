@@ -17,7 +17,7 @@ const copy = {
   de: {
     badge: "Mining Infrastruktur",
     title: "Unsere Bitcoin-Mining-Server",
-    subtitle: "Preview der geplanten Mining-Trust-Seite. Hardware, Standorte, Hashrate, Uptime und Videos gelten erst nach verifizierter Provider- und Standortbestätigung als live.",
+    subtitle: "Echte Originalaufnahmen unserer Mining-Infrastruktur. Live-Hashrate, Uptime und Betriebsdaten werden erst nach verifizierter Provider-Anbindung als Live-Daten angezeigt.",
     ctaPrimary: "Zum Mining",
     ctaSecondary: "Kontakt anfragen",
     leadTitle: "Investor / Kunde anfragen",
@@ -57,18 +57,18 @@ const copy = {
     ],
     faqTitle: "Häufige Fragen",
     faqs: [
-      { q: "Wo stehen die Server?", a: "Dubai und Abu Dhabi sind derzeit Preview-Standorte. Ein Live-Standort gilt erst nach verifiziertem Standort-Proof als bestätigt." },
+      { q: "Wo stehen die Server?", a: "Die gezeigten Originalaufnahmen stammen aus Dubai und Abu Dhabi. Live-Kennzahlen und laufender Betriebsstatus werden separat über den Provider verifiziert." },
       { q: "Kann ich die Infrastruktur sehen?", a: "Ja. Fotos, Videos und Proof-Elemente werden direkt auf der Seite gezeigt, damit Kunden Vertrauen aufbauen können." },
       { q: "Wie schnell erhalte ich eine Antwort?", a: "Anfragen aus dem Formular oder über die Schnellkontakte können direkt im Lead-CRM bearbeitet werden." },
       { q: "Kann ich einen Standortbesuch anfragen?", a: "Ja. Nutze einfach die Schnell-Auswahl „Standortbesuch“ oder sende eine kurze Anfrage." },
     ],
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
-    mapText: "Dubai und Abu Dhabi werden als Preview-Standorte dargestellt. Sie sind ohne verifizierten Standort-Proof keine Live-Bestätigung.",
+    mapText: "Dubai und Abu Dhabi werden mit echten Originalaufnahmen unserer Mining-Infrastruktur gezeigt. Live-Kennzahlen und Betriebsstatus werden separat über den Provider verifiziert.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Standort-Proof vorgesehen", text: "Dubai und Abu Dhabi sind als Preview vorgesehen; Live-Status wird erst nach verifiziertem Standort-Proof angezeigt." },
-      { title: "ASIC-Betrieb nicht verifiziert", text: "Hardware- und Betriebsstatus bleiben Preview, bis ein verifizierter Provider- oder Hardware-Nachweis vorliegt." },
+      { title: "Originalaufnahmen vorhanden", text: "Dubai und Abu Dhabi werden mit echten Aufnahmen unserer Mining-Infrastruktur dargestellt." },
+      { title: "ASIC-Hardware dokumentiert", text: "Echte ASIC-Hardware ist auf den Originalaufnahmen dokumentiert. Live-Betriebsdaten folgen aus der verifizierten Provider-Anbindung." },
       { title: "Video Proof bereit", text: "Die Seite ist vorbereitet, eure echten Standort-Videos direkt einzubinden." },
     ],
     metricsLiveTitle: "Live Mining Kennzahlen",
@@ -80,22 +80,22 @@ const copy = {
     ],
     footerEyebrow: "Bitcoin Mining Transparenz",
     footerTitle: "Zeig Infrastruktur. Gewinne Vertrauen.",
-    footerText: "Diese Preview-Seite ist dafür gebaut, verifizierte Server-, ASIC- und Standort-Nachweise sichtbar zu machen, sobald sie tatsächlich bestätigt sind.",
+    footerText: "Diese Seite zeigt echte Originalaufnahmen der Mining-Infrastruktur. Live-Kennzahlen und laufende Betriebsdaten werden nach verifizierter Provider-Anbindung ergänzt.",
     footerServices: "Alle Services",
     stats: [
-      { label: "Server-Standorte", value: "Preview · nicht verifiziert" },
-      { label: "Betriebsmodell", value: "Noch nicht live bestätigt" },
-      { label: "Systemtyp", value: "ASIC Preview" },
-      { label: "Status", value: "Live-Proof ausstehend" },
+      { label: "Server-Standorte", value: "Dubai · Abu Dhabi" },
+      { label: "Betriebsmodell", value: "Mining-Infrastruktur" },
+      { label: "Systemtyp", value: "ASIC Mining" },
+      { label: "Status", value: "Originalaufnahmen · Live-Daten ausstehend" },
     ],
     sections: {
-      proof: "Visueller Nachweis unserer Hardware",
-      dubai: "Dubai Preview-Visual",
-      dubaiText: "Illustratives Preview-Visual. Keine Live-Hardware- oder Standortbestätigung ohne verifizierten Proof.",
-      abuDhabi: "Abu Dhabi Preview-Visual",
-      abuDhabiText: "Illustratives Preview-Visual. Der reale Betrieb wird erst nach verifizierter Bestätigung als live dargestellt.",
+      proof: "Echte Aufnahmen unserer Mining-Hardware",
+      dubai: "Dubai – Originalaufnahme",
+      dubaiText: "Echte Originalaufnahme unserer Mining-Infrastruktur in Dubai. Live-Betriebsdaten werden separat über den Provider verifiziert.",
+      abuDhabi: "Abu Dhabi – Originalaufnahme",
+      abuDhabiText: "Echte Originalaufnahme unserer Mining-Infrastruktur in Abu Dhabi. Live-Betriebsdaten werden separat über den Provider verifiziert.",
       asic: "ASIC Detailaufnahme",
-      asicText: "Illustratives ASIC-Visual. Kein Nachweis konkreter Live-Hardware, solange kein verifizierter Provider-Proof vorliegt.",
+      asicText: "Echte Detailaufnahme der eingesetzten ASIC-Mining-Hardware. Live-Leistungsdaten werden separat über den Provider verifiziert.",
       video: "Videos aus Dubai & Abu Dhabi",
       videoText: "Hier werden erst nach Prüfung echte Standort-Videos eingebunden. Platzhalter sind keine Bestätigung eines laufenden Servers.",
       metric: "Vertrauensmetriken",
@@ -103,7 +103,7 @@ const copy = {
     metrics: [
       { icon: Server, title: "Enterprise Server", text: "Professionelle Mining-Racks statt unklarer Marketingversprechen." },
       { icon: Shield, title: "Vertrauen & Transparenz", text: "Klare Sicht auf Infrastruktur, Technik und operative Seriosität." },
-      { icon: Clock3, title: "24/7 Betriebskonzept", text: "Preview-Konzept für laufenden Betrieb mit Kühlung, Monitoring und Wartungsroutine; nicht als Live-Betrieb bestätigt." },
+      { icon: Clock3, title: "24/7 Betriebskonzept", text: "Mining-Infrastruktur mit Kühlung, Monitoring und Wartungsroutine; Live-Kennzahlen werden über die Provider-Anbindung bestätigt." },
       { icon: Bitcoin, title: "Bitcoin Fokus", text: "Sichtbar auf Bitcoin-Mining und ASIC-Hardware spezialisiert." },
     ],
     placeholders: [
@@ -114,7 +114,7 @@ const copy = {
   en: {
     badge: "Mining Infrastructure",
     title: "Our Bitcoin Mining Servers",
-    subtitle: "Preview of the planned Mining Trust page. Hardware, locations, hashrate, uptime, and videos are only treated as live after verified provider and site proof.",
+    subtitle: "Authentic original images of our mining infrastructure. Live hashrate, uptime, and operating data are shown after verified provider integration.",
     ctaPrimary: "Open Mining",
     ctaSecondary: "Request Contact",
     leadTitle: "Investor / Client Inquiry",
@@ -154,18 +154,18 @@ const copy = {
     ],
     faqTitle: "Frequently Asked Questions",
     faqs: [
-      { q: "Where are the servers located?", a: "Dubai and Abu Dhabi are currently preview locations. A site is only confirmed as live after verified site proof." },
+      { q: "Where are the servers located?", a: "The original images shown are from Dubai and Abu Dhabi. Live metrics and operating status are verified separately through the provider." },
       { q: "Can I see the infrastructure?", a: "Yes. Photos, videos, and proof elements are shown directly on the page to build trust." },
       { q: "How fast will I get a response?", a: "Inquiries from the form or quick contact options can be processed directly in the lead CRM." },
       { q: "Can I request a site visit?", a: "Yes. Simply use the quick option 'Site Visit' or send a short inquiry." },
     ],
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
-    mapText: "Dubai and Abu Dhabi are shown as preview locations. Without verified site proof, they are not a live-location confirmation.",
+    mapText: "Dubai and Abu Dhabi are shown with authentic original images of our mining infrastructure. Live metrics and operating status are verified separately through the provider.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Site proof planned", text: "Dubai and Abu Dhabi are preview locations; live status is shown only after verified site proof." },
-      { title: "ASIC operations unverified", text: "Hardware and operating status remain preview-only until verified provider or hardware proof is available." },
+      { title: "Original images available", text: "Dubai and Abu Dhabi are presented with authentic images of our mining infrastructure." },
+      { title: "ASIC hardware documented", text: "Authentic ASIC hardware is documented in the original images. Live operating data follows from the verified provider integration." },
       { title: "Video proof ready", text: "The page is prepared to embed your real location videos directly." },
     ],
     metricsLiveTitle: "Live Mining Metrics",
@@ -177,20 +177,20 @@ const copy = {
     ],
     footerEyebrow: "Bitcoin Mining Transparency",
     footerTitle: "Show infrastructure. Build trust.",
-    footerText: "This preview page is designed to show verified server, ASIC, and site evidence once it has actually been confirmed.",
+    footerText: "This page shows authentic original images of the mining infrastructure. Live metrics and operating data are added after verified provider integration.",
     footerServices: "All Services",
     stats: [
-      { label: "Server Locations", value: "Preview · not verified" },
-      { label: "Operating Model", value: "Not live-confirmed yet" },
-      { label: "System Type", value: "ASIC Preview" },
-      { label: "Status", value: "Live proof pending" },
+      { label: "Server Locations", value: "Dubai · Abu Dhabi" },
+      { label: "Operating Model", value: "Mining Infrastructure" },
+      { label: "System Type", value: "ASIC Mining" },
+      { label: "Status", value: "Original images · live data pending" },
     ],
     sections: {
-      proof: "Visual proof of our hardware",
-      dubai: "Dubai Preview Visual",
-      dubaiText: "Illustrative preview visual. No live hardware or site confirmation without verified proof.",
-      abuDhabi: "Abu Dhabi Preview Visual",
-      abuDhabiText: "Illustrative preview visual. Real operations are only shown as live after verified confirmation.",
+      proof: "Authentic images of our mining hardware",
+      dubai: "Dubai – Original Image",
+      dubaiText: "Authentic original image of our mining infrastructure in Dubai. Live operating data is verified separately through the provider.",
+      abuDhabi: "Abu Dhabi – Original Image",
+      abuDhabiText: "Authentic original image of our mining infrastructure in Abu Dhabi. Live operating data is verified separately through the provider.",
       asic: "ASIC Close-up",
       asicText: "Close-up mining hardware detail to show technology, cooling, and operational quality.",
       video: "Videos from Dubai & Abu Dhabi",
@@ -200,7 +200,7 @@ const copy = {
     metrics: [
       { icon: Server, title: "Enterprise Servers", text: "Professional mining racks instead of vague marketing claims." },
       { icon: Shield, title: "Trust & Transparency", text: "Clear visibility into infrastructure, technology, and operating credibility." },
-      { icon: Clock3, title: "24/7 Operating Concept", text: "Preview concept for continuous operation with cooling, monitoring, and maintenance routines; not confirmed as live operation." },
+      { icon: Clock3, title: "24/7 Operating Concept", text: "Mining infrastructure with cooling, monitoring, and maintenance routines; live metrics are confirmed through the provider integration." },
       { icon: Bitcoin, title: "Bitcoin Focus", text: "Clearly specialized in bitcoin mining and ASIC hardware." },
     ],
     placeholders: [
@@ -285,7 +285,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
   const proofMetrics = proofVerified && proofData?.proof_metrics && Array.isArray(proofData.proof_metrics.locations) ? proofData.proof_metrics : null;
   const proofTitle = proofVerified
     ? c.title
-    : ((lang || "").startsWith("de") ? "Mining Infrastruktur Preview" : "Mining Infrastructure Preview");
+    : ((lang || "").startsWith("de") ? "Mining Infrastruktur" : "Mining Infrastructure");
 
   useEffect(() => {
     const load = async () => {
