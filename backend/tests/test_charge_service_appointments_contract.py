@@ -117,3 +117,14 @@ def test_merchant_service_schedule_validation_is_strict():
     assert 'req.scheduled_date or service_request.get("scheduled_date")' in merchant
     assert 'req.scheduled_time or service_request.get("scheduled_time")' in merchant
     assert 'service_request.get("completed_at") or now' in merchant
+
+
+def test_admin_can_oversee_charge_service_appointments():
+    charge = _py(CHARGE)
+    api = _text(API)
+    assert '@router.get("/admin/service-requests")' in charge
+    assert '"service_requests": [_service_request_card(item) for item in rows]' in charge
+    assert '"requested": sum(1 for item in rows if item.get("status") == "requested")' in charge
+    assert '"in_service": sum(1 for item in rows if item.get("status") == "in_service")' in charge
+    assert '"completed": sum(1 for item in rows if item.get("status") == "completed")' in charge
+    assert 'getChargeServiceRequestsAdmin' in api
