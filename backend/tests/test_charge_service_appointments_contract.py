@@ -10,6 +10,7 @@ MERCHANT = ROOT / "backend" / "routes" / "merchant_portal.py"
 API = ROOT / "frontend" / "src" / "services" / "api.js"
 CUSTOMER = ROOT / "frontend" / "src" / "pages" / "ChargeServiceRequestsPage.jsx"
 PORTAL = ROOT / "frontend" / "src" / "pages" / "MerchantPortalPage.jsx"
+ADMIN_CARE = ROOT / "frontend" / "src" / "pages" / "AdminChargeClaimsPage.jsx"
 
 
 def _py(path: Path) -> str:
@@ -128,3 +129,15 @@ def test_admin_can_oversee_charge_service_appointments():
     assert '"in_service": sum(1 for item in rows if item.get("status") == "in_service")' in charge
     assert '"completed": sum(1 for item in rows if item.get("status") == "completed")' in charge
     assert 'getChargeServiceRequestsAdmin' in api
+
+
+def test_admin_care_page_shows_service_appointments():
+    admin_page = _text(ADMIN_CARE)
+    assert "getChargeServiceRequestsAdmin" in _text(API)
+    assert 'data-testid="admin-charge-service-section"' in admin_page
+    assert "Servicetermine überwachen" in admin_page
+    assert "admin-charge-service-search" in admin_page
+    assert "admin-charge-service-filter" in admin_page
+    assert "admin-charge-service-item-" in admin_page
+    assert "ServiceStatusBadge" in admin_page
+    assert "Letzte Statusänderungen" in admin_page
