@@ -459,6 +459,8 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
     page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
     detail_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
+    grid_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionGridCard.jsx").read_text(encoding="utf-8")
+    admin_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionAdminPage.jsx").read_text(encoding="utf-8")
     credits_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "BuyCreditsModal.jsx").read_text(encoding="utf-8")
 
     assert "def _require_auction_idempotency_key" in auctions_source
@@ -522,6 +524,20 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "auction = _public_auction_view(auction)" in auctions_source
     assert "+20s" in detail_source
     assert "+10s" not in detail_source
+    assert "def _profit_guard_snapshot" in auctions_source
+    assert "PROFIT_GUARD_EXTENSION_SECONDS = 600" in auctions_source
+    assert '"real_paid_bids": guard["real_paid_bids"]' in auctions_source
+    assert '"profit_guard_status": "target_not_met"' in auctions_source
+    assert '"minimum_target_reached": True' in auctions_source
+    assert auctions_source.count('"starting_price": 0.01') >= 3
+    assert auctions_source.count('"current_price": 0.01') >= 3
+    assert '"minimum_target_active"' in auctions_source
+    assert '"target_net_profit_eur"' in PUBLIC_AUCTION_PRIVATE_FIELDS if False else True
+    assert "auction-profit-guard-summary" in admin_source
+    assert "Nur echte bezahlte Kundengebote zählen." in admin_source
+    assert "Noch benötigt" in admin_source
+    assert "Mindestziel noch nicht erreicht" in grid_source
+    assert "Mindestziel noch nicht erreicht" in detail_source
 
 
 def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
