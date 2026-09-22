@@ -546,7 +546,6 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert '"paid_credit_value_eur"' in auctions_source
     assert '"real_bid_revenue_eur": credit_cash_value' in auctions_source
     assert '"real_bid_revenue_eur": 0.0' in auctions_source
-    assert '"real_bid_revenue_eur"' in PUBLIC_AUCTION_PRIVATE_FIELDS if False else True
     assert "Gratis-/Bonus-Credits zählen als 0,00 €" in admin_source
     assert "günstigstem bezahlten Credit €0,25" in admin_source
 
