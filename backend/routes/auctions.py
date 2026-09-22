@@ -33,12 +33,31 @@ PUBLIC_AUCTION_PRIVATE_FIELDS = {
     "shipping_cost_eur",
     "other_costs_eur",
     "target_net_profit_eur",
+    "real_paid_bids",
+    "estimated_real_bids_remaining",
+    "profit_guard_extensions",
+    "profit_guard_last_extended_at",
+    "profit_guard",
 }
 
 def _public_auction_view(auction: dict) -> dict:
     public = dict(auction or {})
+    minimum_active = bool(
+        float(public.get("target_net_profit_eur") or 0) > 0
+        and not public.get("bot_only")
+    )
+    public["minimum_target_active"] = minimum_active
+    public["minimum_target_reached"] = (
+        bool(public.get("minimum_target_reached")) if minimum_active else True
+    )
+    public["minimum_target_status"] = (
+        "reached"
+        if public["minimum_target_reached"]
+        else "not_reached"
+    ) if minimum_active else "not_enabled"
     for field in PUBLIC_AUCTION_PRIVATE_FIELDS:
         public.pop(field, None)
+    public.pop("profit_guard_status", None)
     return public
 
 CREDIT_PACKAGES = {
@@ -2241,6 +2260,13 @@ class CreateAuctionRequest(BaseModel):
     retail_price: float = Field(..., gt=0, le=2000, description="Max €2000 retail price")
     duration_seconds: int = Field(default=172800, ge=172800, le=259200)
     start_now: bool = True
+    bid_value_eur: float = Field(default=0.50, ge=0.01, le=10.0)
+    price_increment: float = Field(default=0.01, ge=0.01, le=1.0)
+    revenue_target_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
+    product_cost_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
+    shipping_cost_eur: float = Field(default=0.0, ge=0.0, le=10000.0)
+    other_costs_eur: float = Field(default=0.0, ge=0.0, le=10000.0)
+    target_net_profit_eur: float = Field(default=0.0, ge=0.0, le=100000.0)
 
 
 @router.post("/admin/create")
@@ -2260,11 +2286,19 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
         "description": (req.description or "").strip(),
         "image_url": req.image_url or "",
         "retail_price": req.retail_price,
-        "starting_price": 0.00,
-        "current_price": 0.00,
+        "starting_price": 0.01,
+        "current_price": 0.01,
         "price_increment": round(float(req.price_increment), 2),
         "bid_value_eur": round(float(req.bid_value_eur), 2),
         "revenue_target_eur": round(float(req.revenue_target_eur), 2),
+        "product_cost_eur": round(float(req.product_cost_eur), 2),
+        "shipping_cost_eur": round(float(req.shipping_cost_eur), 2),
+        "other_costs_eur": round(float(req.other_costs_eur), 2),
+        "target_net_profit_eur": round(float(req.target_net_profit_eur), 2),
+        "real_paid_bids": 0,
+        "minimum_target_reached": req.target_net_profit_eur <= 0,
+        "profit_guard_status": "target_not_met" if req.target_net_profit_eur > 0 else "not_enabled",
+        "profit_guard_extensions": 0,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": req.duration_seconds,
         "ends_at": ends_at if req.start_now else "",
@@ -3775,8 +3809,8 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
             "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
             "image_urls": resolve_product_gallery(product["title"], product.get("image_urls") or [], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
             "retail_price": product["retail_price"],
-            "starting_price": 0.00,
-            "current_price": 0.00,
+            "starting_price": 0.01,
+            "current_price": 0.01,
             "price_increment": PRICE_INCREMENT,
             "timer_extension": TIMER_EXTENSION_SECONDS,
             "duration_seconds": duration_seconds,
