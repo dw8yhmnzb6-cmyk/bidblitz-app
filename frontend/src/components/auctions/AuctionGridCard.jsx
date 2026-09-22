@@ -272,6 +272,15 @@ export default function AuctionGridCard({ auction, onClick, onBid, bidding = fal
           )}
         </div>
 
+        {!isEnded && auction.minimum_target_active && !auction.minimum_target_reached && (
+          <div
+            data-testid={`auction-minimum-target-open-${auction.auction_id}`}
+            className="rounded-xl border border-amber-400/20 bg-amber-400/[0.07] px-3 py-2 text-[10px] font-semibold text-amber-200"
+          >
+            Mindestziel noch nicht erreicht · Auktion kann transparent verlängert werden
+          </div>
+        )}
+
         {!isEnded && !auction.bot_only ? (
           <motion.button
             type="button"
