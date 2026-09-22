@@ -31,14 +31,16 @@ def test_claim_creation_and_customer_cancel_write_status_history():
 
 def test_admin_status_change_writes_history_only_when_status_changes():
     src = _py(CHARGE)
-    assert 'if status != str(claim.get("status") or ""):' in src
+    assert "status_changed = status != current_status" in src
+    assert 'if status != str(claim.get("status") or ""):' in src or "if status_changed:" in src
     assert 'push_ops["status_history"]' in src
     assert '"actor_role": "admin"' in src
 
 
 def test_merchant_status_change_writes_customer_visible_history():
     src = _py(MERCHANT)
-    assert 'if customer_status != str(claim.get("status") or ""):' in src
+    assert "status_changed = customer_status != current_status" in src
+    assert 'if customer_status != str(claim.get("status") or ""):' in src or "if status_changed:" in src
     assert 'push_ops["status_history"]' in src
     assert '"actor_role": "merchant"' in src
 
@@ -58,3 +60,17 @@ def test_customer_ui_renders_status_timeline():
     assert "charge-care-status-history-item-" in page
     assert "actorLabel" in page
     assert "formatClaimDate" in page
+
+
+def test_claim_transitions_are_fail_closed_and_retry_safe():
+    charge = _py(CHARGE)
+    merchant = _py(MERCHANT)
+    assert "_CHARGE_CLAIM_TRANSITIONS" in charge
+    assert '"open": {"in_review", "approved", "rejected", "cancelled"}' in charge
+    assert '"approved": {"resolved", "rejected", "cancelled"}' in charge
+    assert "Statuswechsel von {current_status} zu {status} ist nicht zulässig" in charge
+    assert '"status": current_status' in charge
+    assert 'getattr(result, "matched_count", 1) == 0' in charge
+    assert "_CHARGE_CLAIM_TRANSITIONS" in merchant
+    assert "Statuswechsel von {current_status} zu {customer_status} ist nicht zulässig" in merchant
+    assert '"reused": True' in merchant
