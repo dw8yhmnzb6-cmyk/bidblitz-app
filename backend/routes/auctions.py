@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 PRICE_INCREMENT = 0.01
 TIMER_EXTENSION_SECONDS = 20   # Bid resets live countdown to 20s max
 FINAL_BATTLE_THRESHOLD = 60    # Final battle activates in last 60 seconds
+PROFIT_GUARD_EXTENSION_SECONDS = 600  # transparent reserve extension while real paid target is not met
 DEFAULT_DURATION_SECONDS = 172800  # Fallback 48 hours
 MAX_AUCTION_REMAINING_SECONDS = 72 * 3600
 
@@ -193,6 +194,43 @@ def _read_bid_operation_result(auction: dict, op_hash: str) -> Optional[dict]:
     return (auction.get("bid_operation_results") or {}).get(op_hash)
 
 
+def _profit_guard_snapshot(auction: dict, real_paid_bids: int) -> dict:
+    """Calculate the transparent minimum-profit guard using only real paid customer bids."""
+    bid_value = max(0.01, float(auction.get("bid_value_eur") or 0.50))
+    increment = max(0.01, float(auction.get("price_increment") or PRICE_INCREMENT))
+    current_price = max(0.0, float(auction.get("current_price") or 0.0))
+    product_cost = max(0.0, float(auction.get("product_cost_eur") or 0.0))
+    shipping_cost = max(0.0, float(auction.get("shipping_cost_eur") or 0.0))
+    other_costs = max(0.0, float(auction.get("other_costs_eur") or 0.0))
+    target_net_profit = max(0.0, float(auction.get("target_net_profit_eur") or 0.0))
+    costs = product_cost + shipping_cost + other_costs
+    real_bid_revenue = max(0, int(real_paid_bids)) * bid_value
+    gross_revenue = real_bid_revenue + current_price
+    net_profit = gross_revenue - costs
+    enabled = bool(target_net_profit > 0 and not auction.get("bot_only"))
+    reached = (not enabled) or net_profit >= target_net_profit
+    missing_net = max(0.0, target_net_profit - net_profit) if enabled else 0.0
+    contribution_per_next_bid = bid_value + increment
+    bids_remaining = (
+        int(math.ceil(missing_net / contribution_per_next_bid))
+        if enabled and missing_net > 0
+        else 0
+    )
+    return {
+        "enabled": enabled,
+        "reached": reached,
+        "real_paid_bids": max(0, int(real_paid_bids)),
+        "real_bid_revenue_eur": round(real_bid_revenue, 2),
+        "current_sale_price_eur": round(current_price, 2),
+        "gross_revenue_eur": round(gross_revenue, 2),
+        "costs_eur": round(costs, 2),
+        "net_profit_eur": round(net_profit, 2),
+        "target_net_profit_eur": round(target_net_profit, 2),
+        "missing_net_profit_eur": round(missing_net, 2),
+        "estimated_real_bids_remaining": bids_remaining,
+    }
+
+
 async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = None) -> tuple[Optional[dict], bool]:
     """Atomically end an expired auction and publish the winner event once."""
     now_dt = now or datetime.now(timezone.utc)
@@ -205,6 +243,38 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
         ends_at = str(auction.get("ends_at") or "")
         if not ends_at or ends_at > now_iso:
             return auction, False
+
+        stored_real_bids = auction.get("real_paid_bids")
+        if stored_real_bids is None:
+            stored_real_bids = await db.auction_bids.count_documents({
+                "auction_id": auction_id,
+                "is_bot": {"$ne": True},
+            })
+        guard = _profit_guard_snapshot(auction, int(stored_real_bids or 0))
+        if guard["enabled"] and not guard["reached"]:
+            extended_until = now_dt + timedelta(seconds=PROFIT_GUARD_EXTENSION_SECONDS)
+            hold = await db.auctions.update_one(
+                {
+                    "auction_id": auction_id,
+                    "status": "active",
+                    "ends_at": auction.get("ends_at"),
+                },
+                {
+                    "$set": {
+                        "ends_at": extended_until.isoformat(),
+                        "minimum_target_reached": False,
+                        "profit_guard_status": "target_not_met",
+                        "profit_guard_last_extended_at": now_iso,
+                        "real_paid_bids": guard["real_paid_bids"],
+                        "estimated_real_bids_remaining": guard["estimated_real_bids_remaining"],
+                    },
+                    "$inc": {"profit_guard_extensions": 1},
+                },
+            )
+            fresh = await db.auctions.find_one({"auction_id": auction_id}) or auction
+            if hold.modified_count == 1:
+                return fresh, False
+            return fresh, False
 
         raw_winner_id = auction.get("last_bidder_id")
         raw_winner_name = auction.get("last_bidder_name")
@@ -230,6 +300,10 @@ async def _finalize_auction_once(auction_id: str, *, now: Optional[datetime] = N
                     if needs_review
                     else ("bot_only_demo_complete" if bot_last_bidder else "timer_expired")
                 ),
+                "minimum_target_reached": True,
+                "profit_guard_status": "target_reached" if guard["enabled"] else "not_enabled",
+                "real_paid_bids": guard["real_paid_bids"],
+                "estimated_real_bids_remaining": 0,
             }},
         )
         auction = await db.auctions.find_one({"auction_id": auction_id}) or auction
@@ -1296,6 +1370,17 @@ async def place_bid(req: BidRequest, request: Request):
         new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS) if remaining <= FINAL_BATTLE_THRESHOLD else current_ends
         new_ends_iso = new_ends.isoformat()
         total_after = int(snapshot.get("total_bids") or 0) + 1
+        base_real_paid = snapshot.get("real_paid_bids")
+        if base_real_paid is None:
+            base_real_paid = int(snapshot.get("total_bids") or 0) if not snapshot.get("bot_enabled") else 0
+        real_paid_after = int(base_real_paid or 0) + 1
+        guard_after = _profit_guard_snapshot(
+            {
+                **snapshot,
+                "current_price": new_price,
+            },
+            real_paid_after,
+        )
         result_field = f"bid_operation_results.{op_hash}"
         op_result = {
             "p": new_price,
@@ -1318,6 +1403,14 @@ async def place_bid(req: BidRequest, request: Request):
                     "ends_at": new_ends_iso,
                     "last_bidder_id": user_id,
                     "last_bidder_name": user.get("name", "Anonymous"),
+                    "real_paid_bids": real_paid_after,
+                    "minimum_target_reached": guard_after["reached"],
+                    "profit_guard_status": (
+                        "target_reached"
+                        if guard_after["enabled"] and guard_after["reached"]
+                        else ("target_not_met" if guard_after["enabled"] else "not_enabled")
+                    ),
+                    "estimated_real_bids_remaining": guard_after["estimated_real_bids_remaining"],
                     result_field: op_result,
                 },
                 "$inc": {"total_bids": 1},
@@ -3054,11 +3147,16 @@ async def admin_list_auctions(request: Request):
         else:
             a["bot_estimated_revenue"] = 0
 
-        # Bot bid count
+        # Bot/real bid counts + transparent minimum-profit guard
         bot_bids = await db.auction_bids.count_documents({
             "auction_id": a["auction_id"], "is_bot": True
         })
+        real_paid_bids = await db.auction_bids.count_documents({
+            "auction_id": a["auction_id"], "is_bot": {"$ne": True}
+        })
         a["bot_bids_placed"] = bot_bids
+        a["real_paid_bids"] = real_paid_bids
+        a["profit_guard"] = _profit_guard_snapshot(a, real_paid_bids)
         
         # Add strategy info
         strategy = a.get("bot_strategy", "standard")
@@ -3585,11 +3683,19 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
         "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
         "image_urls": resolve_product_gallery(product["title"], product.get("image_urls") or [], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
         "retail_price": product["retail_price"],
-        "starting_price": 0.00,
-        "current_price": 0.00,
-        "price_increment": PRICE_INCREMENT,
-        "bid_value_eur": 0.50,
-        "revenue_target_eur": 0.0,
+        "starting_price": 0.01,
+        "current_price": 0.01,
+        "price_increment": round(float(req.price_increment), 2),
+        "bid_value_eur": round(float(req.bid_value_eur), 2),
+        "revenue_target_eur": round(float(req.revenue_target_eur), 2),
+        "product_cost_eur": round(float(req.product_cost_eur), 2),
+        "shipping_cost_eur": round(float(req.shipping_cost_eur), 2),
+        "other_costs_eur": round(float(req.other_costs_eur), 2),
+        "target_net_profit_eur": round(float(req.target_net_profit_eur), 2),
+        "real_paid_bids": 0,
+        "minimum_target_reached": req.target_net_profit_eur <= 0,
+        "profit_guard_status": "target_not_met" if req.target_net_profit_eur > 0 else "not_enabled",
+        "profit_guard_extensions": 0,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": duration_seconds,
         "starts_at": start_time.isoformat(),
