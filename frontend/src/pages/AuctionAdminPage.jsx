@@ -498,7 +498,7 @@ const AuctionAdminPage = ({ onBack }) => {
           <div className="space-y-3" data-testid="auction-admin-engine">
             <Card title="Auktions-Engine" icon={<Target size={16} className="text-cyan-400" />}>
               <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.06] p-3 text-xs leading-relaxed text-cyan-100/70">
-                Pro Angebot steuerst du Premium, nominalen Gebotswert und sichtbaren Preis-Schritt. Zusätzlich kalkuliert die Engine Produktkosten, Versand, sonstige Kosten und dein Nettoziel. Die Kalkulation verändert nicht automatisch Timer oder Gewinner.
+                Pro Angebot steuerst du Produktkosten, Versand, sonstige Kosten und dein Nettoziel. Der Gewinnziel-Schutz zählt nur tatsächlich bezahlten Credit-Wert; Gratis-/Bonus-Credits zählen als 0,00 €. Ist das Mindestziel beim Timer-Ende offen, kann die Auktion transparent verlängert werden.
               </div>
             </Card>
             {activeAuctions.length === 0 ? (
@@ -510,13 +510,16 @@ const AuctionAdminPage = ({ onBack }) => {
               const costs = Number(auction.product_cost_eur ?? 0) + Number(auction.shipping_cost_eur ?? 0) + Number(auction.other_costs_eur ?? 0);
               const netTarget = Number(auction.target_net_profit_eur ?? 0);
               const currentPrice = Number(auction.current_price || 0);
-              const bidsForRevenue = target > 0 && bidValue > 0 ? Math.ceil(target / bidValue) : 0;
-              const bidsForNet = netTarget > 0 && (bidValue + increment) > 0
-                ? Math.max(0, Math.ceil((costs + netTarget - currentPrice) / (bidValue + increment)))
+              const guard = auction.profit_guard || {};
+              const actualBidRevenue = Math.max(0, Number(guard.real_bid_revenue_eur ?? 0));
+              const minPaidCredit = Math.max(0.01, Number(guard.minimum_paid_credit_value_eur ?? 0.25));
+              const guardRemaining = Math.max(0, Number(guard.estimated_real_bids_remaining ?? 0));
+              const bidsForRevenue = target > actualBidRevenue
+                ? Math.ceil((target - actualBidRevenue) / minPaidCredit)
                 : 0;
-              const bidsNeeded = Math.max(bidsForRevenue, bidsForNet);
+              const bidsNeeded = Math.max(guardRemaining, bidsForRevenue);
               const visibleEnd = currentPrice + bidsNeeded * increment;
-              const estimatedBidRevenue = bidsNeeded * bidValue;
+              const estimatedBidRevenue = actualBidRevenue + (bidsNeeded * minPaidCredit);
               const estimatedContribution = estimatedBidRevenue + visibleEnd - costs;
               return (
                 <div key={auction.auction_id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
@@ -530,14 +533,14 @@ const AuctionAdminPage = ({ onBack }) => {
                         {auction.featured && <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black text-yellow-300">PREMIUM</span>}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/40">
-                        <span>Gebot: €{bidValue.toFixed(2)}</span>
+                        <span>Listenwert: €{bidValue.toFixed(2)}</span>
                         <span>Preis +€{increment.toFixed(2)}</span>
-                        <span>Gebotsumsatz: €{target.toFixed(2)}</span>
+                        <span>Echter Gebotsumsatz: €{actualBidRevenue.toFixed(2)}</span>
                         <span>Nettoziel: €{netTarget.toFixed(2)}</span>
                       </div>
                       {bidsNeeded > 0 && (
                         <p className="mt-1 text-[10px] text-cyan-300/70">
-                          ≈ {bidsNeeded} Gebote · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)} · Deckungsbeitrag ≈ €{estimatedContribution.toFixed(2)}
+                          ≈ {bidsNeeded} weitere bezahlte Gebote bei mindestens €{minPaidCredit.toFixed(2)} · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)} · Deckungsbeitrag ≈ €{estimatedContribution.toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -986,17 +989,21 @@ const AuctionAdminPage = ({ onBack }) => {
                   + Math.max(0, Number(scheduleConfig.shippingCost) || 0)
                   + Math.max(0, Number(scheduleConfig.otherCosts) || 0);
                 const netTarget = Math.max(0, Number(scheduleConfig.targetNetProfit) || 0);
-                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / bidValue) : 0;
-                const bidsForNet = netTarget > 0 ? Math.max(0, Math.ceil((costs + netTarget) / (bidValue + increment))) : 0;
+                const minPaidCredit = 0.25;
+                const startPrice = 0.01;
+                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / minPaidCredit) : 0;
+                const bidsForNet = netTarget > 0
+                  ? Math.max(0, Math.ceil((costs + netTarget - startPrice) / (minPaidCredit + increment)))
+                  : 0;
                 const bids = Math.max(bidsForRevenue, bidsForNet);
-                const visiblePrice = bids * increment;
-                const bidRevenue = bids * bidValue;
+                const visiblePrice = startPrice + (bids * increment);
+                const bidRevenue = bids * minPaidCredit;
                 const contribution = bidRevenue + visiblePrice - costs;
                 return (
                   <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3 text-[10px] text-white/55">
-                    <p><span className="font-black text-emerald-300">{bids} Gebote</span> · Gebotsumsatz ≈ €{bidRevenue.toFixed(2)} · sichtbarer Preis ≈ €{visiblePrice.toFixed(2)}</p>
+                    <p><span className="font-black text-emerald-300">{bids} bezahlte Gebote</span> · konservativer Gebotsumsatz ≈ €{bidRevenue.toFixed(2)} · sichtbarer Preis ≈ €{visiblePrice.toFixed(2)}</p>
                     <p className="mt-1">Geschätzter Deckungsbeitrag ≈ <span className="font-black text-emerald-300">€{contribution.toFixed(2)}</span> bei Kosten von €{costs.toFixed(2)}.</p>
-                    <p className="mt-1 text-white/35">Nur Kalkulation. Rabatte auf Credit-Pakete, Steuern und weitere Gebühren bitte unter „Sonstige Kosten“ berücksichtigen.</p>
+                    <p className="mt-1 text-white/35">Rechnung mit günstigstem bezahlten Credit €0,25. Gratis-/Bonus-Credits zählen als €0,00 Gebotsumsatz. Listenwert aktuell €{bidValue.toFixed(2)}.</p>
                   </div>
                 );
               })()}
@@ -1136,19 +1143,25 @@ const AuctionAdminPage = ({ onBack }) => {
                   0,
                   Number(showEngineModal.profit_guard?.real_paid_bids ?? showEngineModal.real_paid_bids ?? 0),
                 );
-                const currentBidRevenue = realPaidBids * bidValue;
+                const currentBidRevenue = Math.max(
+                  0,
+                  Number(showEngineModal.profit_guard?.real_bid_revenue_eur ?? 0),
+                );
+                const minPaidCredit = Math.max(
+                  0.01,
+                  Number(showEngineModal.profit_guard?.minimum_paid_credit_value_eur ?? 0.25),
+                );
                 const currentNetProfit = currentBidRevenue + currentPrice - costs;
                 const additionalForRevenue = revenueTarget > currentBidRevenue
-                  ? Math.ceil((revenueTarget - currentBidRevenue) / bidValue)
+                  ? Math.ceil((revenueTarget - currentBidRevenue) / minPaidCredit)
                   : 0;
                 const missingNet = Math.max(0, netTarget - currentNetProfit);
                 const additionalForNet = netTarget > 0
-                  ? Math.ceil(missingNet / (bidValue + increment))
+                  ? Math.ceil(missingNet / (minPaidCredit + increment))
                   : 0;
                 const additionalBids = Math.max(additionalForRevenue, additionalForNet);
-                const totalTargetBids = realPaidBids + additionalBids;
                 const estimatedEnd = currentPrice + (additionalBids * increment);
-                const estimatedBidRevenue = totalTargetBids * bidValue;
+                const estimatedBidRevenue = currentBidRevenue + (additionalBids * minPaidCredit);
                 const estimatedNetProfit = estimatedBidRevenue + estimatedEnd - costs;
                 const targetReached = additionalBids === 0;
                 return (
@@ -1186,7 +1199,7 @@ const AuctionAdminPage = ({ onBack }) => {
                     </div>
                     <p className="mt-3 text-[10px] leading-relaxed text-white/40">
                       Ziel: €{netTarget.toFixed(2)} Netto-Gewinn · Kosten: €{costs.toFixed(2)} · erwarteter Auktionspreis am Ziel: €{estimatedEnd.toFixed(2)}.
-                      Solange das Mindestziel nicht erreicht ist, wird die Auktion transparent verlängert. Bot-Gebote zählen nicht als Umsatz und verändern dieses Gewinnziel nicht.
+                      Schätzung mit günstigstem bezahlten Credit €{minPaidCredit.toFixed(2)}. Gratis-/Bonus-Credits zählen €0,00 Gebotsumsatz. Solange das Mindestziel nicht erreicht ist, wird die Auktion transparent verlängert. Bot-Gebote zählen nicht als Umsatz.
                     </p>
                   </div>
                 );
