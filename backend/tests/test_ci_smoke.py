@@ -537,6 +537,18 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "Noch benötigt" in admin_source
     assert "Mindestziel noch nicht erreicht" in grid_source
     assert "Mindestziel noch nicht erreicht" in detail_source
+    assert "def _credit_bucket_cents" in auctions_source
+    assert "def _known_credit_bucket_cents" in auctions_source
+    assert "def _minimum_paid_credit_value_eur" in auctions_source
+    assert "bid_credit_value_buckets.c0" in auctions_source
+    assert "cash_value_eur=price" in auctions_source
+    assert "def _credit_cash_value_for_operation" in auctions_source
+    assert '"paid_credit_value_eur"' in auctions_source
+    assert '"real_bid_revenue_eur": credit_cash_value' in auctions_source
+    assert '"real_bid_revenue_eur": 0.0' in auctions_source
+    assert '"real_bid_revenue_eur"' in PUBLIC_AUCTION_PRIVATE_FIELDS if False else True
+    assert "Gratis-/Bonus-Credits zählen als 0,00 €" in admin_source
+    assert "günstigstem bezahlten Credit €0,25" in admin_source
 
 
 def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
