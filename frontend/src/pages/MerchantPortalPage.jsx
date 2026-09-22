@@ -1192,7 +1192,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                           </a>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {['under_review', 'replacement_sent', 'resolved'].map((status) => (
+                          {warrantyActionOptions(item).map(({ status, label }) => (
                             <button
                               key={status}
                               onClick={() => updateWarrantyStatus(item.claim_id, status)}
@@ -1200,7 +1200,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                               className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
                               data-testid={`merchant-dealer-warranty-status-${_safeSlug(status)}-${index}`}
                             >
-                              {status}
+                              {label}
                             </button>
                           ))}
                         </div>
@@ -2226,6 +2226,33 @@ function OpsFormCard({ title, icon: Icon, children, testid }) {
       <div className="space-y-2">{children}</div>
     </div>
   );
+}
+
+function warrantyActionOptions(item) {
+  if (!item?.customer_user_id) {
+    return [
+      { status: "under_review", label: "Prüfen" },
+      { status: "replacement_sent", label: "Austausch" },
+      { status: "resolved", label: "Abschließen" },
+    ];
+  }
+  const actions = {
+    open: [
+      { status: "under_review", label: "Prüfung starten" },
+      { status: "replacement_sent", label: "Austausch freigeben" },
+      { status: "rejected", label: "Ablehnen" },
+    ],
+    in_review: [
+      { status: "replacement_sent", label: "Austausch freigeben" },
+      { status: "resolved", label: "Abschließen" },
+      { status: "rejected", label: "Ablehnen" },
+    ],
+    approved: [
+      { status: "resolved", label: "Abschließen" },
+      { status: "rejected", label: "Ablehnen" },
+    ],
+  };
+  return actions[item.status] || [];
 }
 
 function chargeServiceStatusLabel(status) {
