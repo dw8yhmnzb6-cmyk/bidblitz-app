@@ -1493,7 +1493,6 @@ async def place_bid(req: BidRequest, request: Request):
             "created_at": recovered["t"],
             "ends_at_after": recovered["e"],
             "total_bids_after": int(recovered["n"]),
-            "paid_credit_value_eur": round(max(0.0, float(recovered.get("v") or 0.0)), 2),
             "operation_key": op_hash,
         }
         await db.auction_bids.update_one(
@@ -1631,7 +1630,6 @@ async def place_bid(req: BidRequest, request: Request):
         "created_at": applied_result["t"],
         "ends_at_after": applied_result["e"],
         "total_bids_after": int(applied_result["n"]),
-        "paid_credit_value_eur": round(max(0.0, float(applied_result.get("v") or 0.0)), 2),
         "operation_key": op_hash,
     }
     await db.auction_bids.update_one(
@@ -1934,7 +1932,6 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
             "created_at": applied_result["t"],
             "ends_at_after": applied_result["e"],
             "total_bids_after": int(applied_result["n"]),
-            "paid_credit_value_eur": round(max(0.0, float(applied_result.get("v") or 0.0)), 2),
             "operation_key": op_hash,
             "is_auto": True,
         }
