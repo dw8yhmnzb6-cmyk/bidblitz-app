@@ -495,6 +495,7 @@ export const api = {
   deleteChargeClaimAttachment: (claimId, attachmentId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: "DELETE" }),
   cancelChargeClaim: (claimId) => request(`/api/charge-app/claims/${encodeURIComponent(claimId)}/cancel`, { method: "PUT" }),
   getChargeClaimsAdmin: (status = "") => request(`/api/charge-app/admin/claims${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  getChargeServiceRequestsAdmin: (status = "") => request(`/api/charge-app/admin/service-requests${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   updateChargeClaimStatusAdmin: (claimId, body) => request(`/api/charge-app/admin/claims/${encodeURIComponent(claimId)}/status`, { method: "PUT", body: JSON.stringify(body) }),
   getChargeMerchantDetail: (slug) => request(`/api/charge-app/merchants/${encodeURIComponent(slug)}`),
   getChargeProtectedBlob: (path) => requestBlob(path),
