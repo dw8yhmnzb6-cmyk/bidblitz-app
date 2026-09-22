@@ -1544,6 +1544,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 const isBest = pkg.id === "elite";
                 const isSelected = confirmPkg?.id === pkg.id;
                 const billingLabel = billingType === "monthly" ? "/Mo" : billingType === "yearly" ? "/Jahr" : "";
+                const mainBalance = Number(w.main_balance_eur ?? 0);
+                const canAffordCard = mainBalance >= currentPrice;
+                const directOrderCard = !miningValueEnabled && miningOrderEnabled;
 
                 return (
                   <motion.div key={pkg.id} data-testid={`miner-pkg-${pkg.id}`}
@@ -1612,6 +1615,48 @@ export default function MiningPage({ onBack, onNavigate }) {
                         )}
                       </div>
                     </div>
+
+                    {directOrderCard && (
+                      <motion.button
+                        type="button"
+                        data-testid={`mining-order-card-${pkg.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setPurchaseError(null);
+                          setConfirmPkg(pkg);
+                          if (!canAffordCard) {
+                            onNavigate?.("/wallet");
+                            return;
+                          }
+                          buyMiner(pkg.id, "onetime");
+                        }}
+                        disabled={Boolean(buying)}
+                        className="mt-3 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[12px] font-black disabled:cursor-wait disabled:opacity-60"
+                        style={{
+                          background: canAffordCard ? `${color}18` : "rgba(255,255,255,0.04)",
+                          color: canAffordCard ? color : "rgba(255,255,255,0.55)",
+                          border: `1px solid ${canAffordCard ? `${color}35` : "rgba(255,255,255,0.08)"}`,
+                        }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        {buying === pkg.id ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            Wird bestellt…
+                          </>
+                        ) : canAffordCard ? (
+                          <>
+                            Jetzt bestellen · {"\u20AC"}{currentPrice.toFixed(2)}
+                            <ChevronRight size={14} />
+                          </>
+                        ) : (
+                          <>
+                            Wallet aufladen
+                            <ChevronRight size={14} />
+                          </>
+                        )}
+                      </motion.button>
+                    )}
                   </motion.div>
                 );
               })}
