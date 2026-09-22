@@ -518,6 +518,8 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
         "shipping_cost_eur",
         "other_costs_eur",
         "target_net_profit_eur",
+        "real_bid_revenue_eur",
+        "bid_operation_results",
     ]:
         assert f'"{private_field}"' in auctions_source
     assert auctions_source.count("auctions = [_public_auction_view(a) for a in auctions]") >= 3
@@ -543,7 +545,7 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "bid_credit_value_buckets.c0" in auctions_source
     assert "cash_value_eur=price" in auctions_source
     assert "def _credit_cash_value_for_operation" in auctions_source
-    assert '"paid_credit_value_eur"' in auctions_source
+    assert '"v": credit_cash_value' in auctions_source
     assert '"real_bid_revenue_eur": credit_cash_value' in auctions_source
     assert '"real_bid_revenue_eur": 0.0' in auctions_source
     assert "Gratis-/Bonus-Credits zählen als 0,00 €" in admin_source
