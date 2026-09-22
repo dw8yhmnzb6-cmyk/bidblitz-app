@@ -532,7 +532,6 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert auctions_source.count('"starting_price": 0.01') >= 3
     assert auctions_source.count('"current_price": 0.01') >= 3
     assert '"minimum_target_active"' in auctions_source
-    assert '"target_net_profit_eur"' in PUBLIC_AUCTION_PRIVATE_FIELDS if False else True
     assert "auction-profit-guard-summary" in admin_source
     assert "Nur echte bezahlte Kundengebote zählen." in admin_source
     assert "Noch benötigt" in admin_source
