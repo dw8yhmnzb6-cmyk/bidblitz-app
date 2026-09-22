@@ -1131,38 +1131,62 @@ const AuctionAdminPage = ({ onBack }) => {
                   + Math.max(0, Number(engineConfig.shippingCost) || 0)
                   + Math.max(0, Number(engineConfig.otherCosts) || 0);
                 const netTarget = Math.max(0, Number(engineConfig.targetNetProfit) || 0);
-                const currentPrice = Number(showEngineModal.current_price || 0);
-                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / bidValue) : 0;
-                const bidsForNet = netTarget > 0
-                  ? Math.max(0, Math.ceil((costs + netTarget - currentPrice) / (bidValue + increment)))
+                const currentPrice = Math.max(0.01, Number(showEngineModal.current_price || 0.01));
+                const realPaidBids = Math.max(
+                  0,
+                  Number(showEngineModal.profit_guard?.real_paid_bids ?? showEngineModal.real_paid_bids ?? 0),
+                );
+                const currentBidRevenue = realPaidBids * bidValue;
+                const currentNetProfit = currentBidRevenue + currentPrice - costs;
+                const additionalForRevenue = revenueTarget > currentBidRevenue
+                  ? Math.ceil((revenueTarget - currentBidRevenue) / bidValue)
                   : 0;
-                const bidsNeeded = Math.max(bidsForRevenue, bidsForNet);
-                const visibleIncrease = bidsNeeded * increment;
-                const estimatedEnd = currentPrice + visibleIncrease;
-                const bidRevenue = bidsNeeded * bidValue;
-                const estimatedContribution = bidRevenue + estimatedEnd - costs;
+                const missingNet = Math.max(0, netTarget - currentNetProfit);
+                const additionalForNet = netTarget > 0
+                  ? Math.ceil(missingNet / (bidValue + increment))
+                  : 0;
+                const additionalBids = Math.max(additionalForRevenue, additionalForNet);
+                const totalTargetBids = realPaidBids + additionalBids;
+                const estimatedEnd = currentPrice + (additionalBids * increment);
+                const estimatedBidRevenue = totalTargetBids * bidValue;
+                const estimatedNetProfit = estimatedBidRevenue + estimatedEnd - costs;
+                const targetReached = additionalBids === 0;
                 return (
-                  <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-4">
-                    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+                  <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-4" data-testid="auction-profit-guard-summary">
+                    <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[9px] uppercase tracking-wider text-white/35">Benötigte Gebote</p>
-                        <p className="mt-1 text-lg font-black text-white">{bidsNeeded}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Gewinnziel-Schutz</p>
+                        <p className="mt-1 text-xs text-white/55">Nur echte bezahlte Kundengebote zählen.</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-black ${targetReached ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-300"}`}>
+                        {targetReached ? "ZIEL ERREICHT" : "ZIEL OFFEN"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-5">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Echte Gebote</p>
+                        <p className="mt-1 text-lg font-black text-white">{realPaidBids}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase tracking-wider text-white/35">Gebotsumsatz</p>
-                        <p className="mt-1 text-lg font-black text-cyan-300">€{bidRevenue.toFixed(2)}</p>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Noch benötigt</p>
+                        <p className="mt-1 text-lg font-black text-amber-300">{additionalBids}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase tracking-wider text-white/35">Sichtbarer Preis</p>
-                        <p className="mt-1 text-lg font-black text-yellow-300">€{estimatedEnd.toFixed(2)}</p>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Echter Gebotsumsatz</p>
+                        <p className="mt-1 text-lg font-black text-cyan-300">€{currentBidRevenue.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase tracking-wider text-white/35">Deckungsbeitrag</p>
-                        <p className="mt-1 text-lg font-black text-emerald-300">€{estimatedContribution.toFixed(2)}</p>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Netto aktuell</p>
+                        <p className={`mt-1 text-lg font-black ${currentNetProfit >= 0 ? "text-emerald-300" : "text-red-300"}`}>€{currentNetProfit.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Netto am Ziel</p>
+                        <p className="mt-1 text-lg font-black text-emerald-300">€{estimatedNetProfit.toFixed(2)}</p>
                       </div>
                     </div>
-                    <p className="mt-3 text-[10px] leading-relaxed text-white/35">
-                      Nettoziel €{netTarget.toFixed(2)} · Kosten €{costs.toFixed(2)}. Kalkulation mit nominalem Gebotswert; Credit-Rabatte, Steuern und Payment-Gebühren müssen in den Kosten berücksichtigt werden. Der Rechner steuert weder Timer noch Gewinner.
+                    <p className="mt-3 text-[10px] leading-relaxed text-white/40">
+                      Ziel: €{netTarget.toFixed(2)} Netto-Gewinn · Kosten: €{costs.toFixed(2)} · erwarteter Auktionspreis am Ziel: €{estimatedEnd.toFixed(2)}.
+                      Solange das Mindestziel nicht erreicht ist, wird die Auktion transparent verlängert. Bot-Gebote zählen nicht als Umsatz und verändern dieses Gewinnziel nicht.
                     </p>
                   </div>
                 );
