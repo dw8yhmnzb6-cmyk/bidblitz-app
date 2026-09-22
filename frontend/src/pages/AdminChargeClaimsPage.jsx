@@ -294,7 +294,7 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
                         className="h-11 w-full rounded-2xl border border-[#D9CFC0] bg-white px-4 text-sm font-bold text-slate-700"
                         data-testid={`admin-charge-claim-status-${index}`}
                       >
-                        {STATUS_OPTIONS.filter((item) => item.value).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                        {claimStatusOptions(claim.status).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                       </select>
                       <textarea
                         value={draft.note}
@@ -485,6 +485,19 @@ function Info({ label, value }) {
       <p className="mt-2 truncate text-sm font-black text-slate-900">{value || "—"}</p>
     </div>
   );
+}
+
+function claimStatusOptions(currentStatus) {
+  const allowed = {
+    open: ["open", "in_review", "approved", "rejected", "cancelled"],
+    in_review: ["in_review", "approved", "rejected", "resolved", "cancelled"],
+    approved: ["approved", "resolved", "rejected", "cancelled"],
+    rejected: ["rejected"],
+    resolved: ["resolved"],
+    cancelled: ["cancelled"],
+  }[currentStatus] || [currentStatus || "open"];
+  const labels = Object.fromEntries(STATUS_OPTIONS.filter((item) => item.value).map((item) => [item.value, item.label]));
+  return allowed.map((value) => ({ value, label: labels[value] || value }));
 }
 
 function StatusBadge({ status }) {
