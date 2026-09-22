@@ -39,6 +39,7 @@ PUBLIC_AUCTION_PRIVATE_FIELDS = {
     "profit_guard_extensions",
     "profit_guard_last_extended_at",
     "profit_guard",
+    "bid_operation_results",
 }
 
 def _public_auction_view(auction: dict) -> dict:
