@@ -22,7 +22,7 @@ jobs:
       - name: Checkout exact tested source
         uses: actions/checkout@v4
         with:
-          ref: 00a2c853aa7a76244d396d6351ee9f64a1ca374e
+          ref: bd1fcf0a221b8ae0461f4291de4b85d2636c2728
           fetch-depth: 0
 
       - name: Keep unreleased auction frontend out of this deploy
@@ -73,7 +73,7 @@ jobs:
           import json
           from pathlib import Path
           version = json.loads(Path("build/version.json").read_text())
-          assert version["git_commit"] == "00a2c853aa7a76244d396d6351ee9f64a1ca374e", version
+          assert version["git_commit"] == "bd1fcf0a221b8ae0461f4291de4b85d2636c2728", version
           print("Built targeted frontend:", version["build_id"])
           PY
 
@@ -204,7 +204,7 @@ jobs:
           expected = json.loads(Path("frontend/build/version.json").read_text())
           actual = json.loads(Path("/tmp/live-version.json").read_text())
           assert actual["build_id"] == expected["build_id"], (actual, expected)
-          assert actual["git_commit"] == "00a2c853aa7a76244d396d6351ee9f64a1ca374e", actual
+          assert actual["git_commit"] == "bd1fcf0a221b8ae0461f4291de4b85d2636c2728", actual
           print("Verified live frontend:", actual["build_id"])
           PY
           curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/mining/capabilities
