@@ -276,6 +276,18 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           </div>
         </motion.div>
 
+        {isActive && auction.minimum_target_active && !auction.minimum_target_reached && (
+          <div
+            data-testid="auction-minimum-target-open"
+            className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"
+          >
+            <p className="text-[11px] font-bold text-amber-200">Mindestziel noch nicht erreicht</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-white/50">
+              Diese Auktion hat ein transparentes Mindestziel. Wenn es beim Timer-Ende noch offen ist, kann die Laufzeit verlängert werden.
+            </p>
+          </div>
+        )}
+
         {/* Bot-Only: Hide bid buttons — humans are spectators */}
         {isActive && auction.bot_only && (
           <motion.div data-testid="auction-bot-only-notice"
