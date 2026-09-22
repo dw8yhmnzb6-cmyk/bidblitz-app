@@ -180,8 +180,44 @@ async def _reserve_bid_credit_once(user_object_id, op_hash: str, auction_id: str
     if await db.users.find_one({"_id": user_object_id, reservation_field: {"$exists": True}}, {"_id": 1}):
         return "reserved"
 
-    # Consume free credits first, then the lowest-paid credit bucket. This is
-    # intentionally conservative for minimum-profit accounting.
+    # Consume legacy/untracked credits as €0 first. They predate the value
+    # buckets, so counting them as paid would overstate revenue.
+    bucket_terms = [
+        {"$ifNull": [f"$bid_credit_value_buckets.c{bucket_cents}", 0]}
+        for bucket_cents in _known_credit_bucket_cents()
+    ]
+    tracked_total_expr = {"$add": bucket_terms} if len(bucket_terms) > 1 else bucket_terms[0]
+    legacy_result = await db.users.update_one(
+        {
+            "_id": user_object_id,
+            "bid_credits": {"$gte": 1},
+            reservation_field: {"$exists": False},
+            spent_field: {"$exists": False},
+            "$expr": {
+                "$gt": [
+                    {"$ifNull": ["$bid_credits", 0]},
+                    tracked_total_expr,
+                ]
+            },
+        },
+        {
+            "$inc": {"bid_credits": -1},
+            "$set": {
+                reservation_field: {
+                    "auction_id": auction_id,
+                    "cash_value_eur": 0.0,
+                    "credit_value_bucket_cents": None,
+                    "legacy_untracked": True,
+                    "reserved_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if legacy_result.modified_count == 1:
+        return "reserved"
+
+    # Then consume free credits, followed by the lowest-paid credit bucket.
+    # This remains conservative for minimum-profit accounting.
     for bucket_cents in _known_credit_bucket_cents():
         bucket_field = _credit_bucket_field(bucket_cents)
         result = await db.users.update_one(
