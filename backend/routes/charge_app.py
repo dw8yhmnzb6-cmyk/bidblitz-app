@@ -752,6 +752,8 @@ def _service_request_card(doc: Dict[str, Any]) -> Dict[str, Any]:
         "serial_number": doc.get("serial_number") or "",
         "merchant_id": doc.get("merchant_id") or "",
         "merchant_name": doc.get("merchant_name") or "",
+        "customer_email": doc.get("customer_email") or "",
+        "warranty_status": doc.get("warranty_status") or "",
         "service_type": doc.get("service_type") or "repair",
         "preferred_date": doc.get("preferred_date") or "",
         "preferred_time": doc.get("preferred_time") or "",
@@ -3085,6 +3087,44 @@ async def cancel_my_charge_claim(claim_id: str, request: Request):
             metadata={"claim_id": claim_id, "status": "cancelled"},
         )
     return {"ok": True, "claim": _claim_card(updated)}
+
+
+@router.get("/admin/service-requests")
+async def admin_list_charge_service_requests(
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 300,
+):
+    await _require_admin(request)
+    allowed_statuses = {
+        "requested", "confirmed", "reschedule_requested", "in_service",
+        "completed", "rejected", "cancelled",
+    }
+    query: Dict[str, Any] = {}
+    if status:
+        normalized_status = str(status or "").strip().lower()
+        if normalized_status not in allowed_statuses:
+            raise HTTPException(status_code=400, detail="Ungültiger Servicestatus")
+        query["status"] = normalized_status
+
+    safe_limit = min(max(int(limit or 300), 1), 500)
+    rows = await db.charge_service_requests.find(
+        query,
+        {"_id": 0},
+    ).sort("updated_at", -1).limit(safe_limit).to_list(safe_limit)
+    return {
+        "service_requests": [_service_request_card(item) for item in rows],
+        "summary": {
+            "total": len(rows),
+            "requested": sum(1 for item in rows if item.get("status") == "requested"),
+            "confirmed": sum(1 for item in rows if item.get("status") == "confirmed"),
+            "reschedule_requested": sum(1 for item in rows if item.get("status") == "reschedule_requested"),
+            "in_service": sum(1 for item in rows if item.get("status") == "in_service"),
+            "completed": sum(1 for item in rows if item.get("status") == "completed"),
+            "rejected": sum(1 for item in rows if item.get("status") == "rejected"),
+            "cancelled": sum(1 for item in rows if item.get("status") == "cancelled"),
+        },
+    }
 
 
 @router.get("/admin/claims")
