@@ -40,6 +40,7 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
   const [serviceStatusFilter, setServiceStatusFilter] = useState("");
   const [serviceQuery, setServiceQuery] = useState("");
   const [serviceData, setServiceData] = useState({ service_requests: [], summary: {} });
+  const [serviceDrafts, setServiceDrafts] = useState({});
 
   const load = useCallback(async (status = "") => {
     setLoading(true);
@@ -70,6 +71,15 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
     try {
       const response = await api.getChargeServiceRequestsAdmin(status);
       setServiceData(response || { service_requests: [], summary: {} });
+      const next = {};
+      for (const item of response?.service_requests || []) {
+        next[item.request_id] = {
+          scheduled_date: item.scheduled_date || item.preferred_date || "",
+          scheduled_time: item.scheduled_time || item.preferred_time || "",
+          note: item.merchant_note || "",
+        };
+      }
+      setServiceDrafts(next);
     } catch (error) {
       toast.error(error.message || "Charge Servicetermine konnten nicht geladen werden");
     } finally {
@@ -111,6 +121,38 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
       ].join(" ").toLowerCase().includes(q)
     );
   }, [serviceData.service_requests, serviceQuery]);
+
+  const setServiceDraft = useCallback((requestId, patch) => {
+    setServiceDrafts((current) => ({
+      ...current,
+      [requestId]: { ...(current[requestId] || {}), ...patch },
+    }));
+  }, []);
+
+  const updateService = useCallback(async (item, status) => {
+    const draft = serviceDrafts[item.request_id] || {};
+    const scheduledDate = draft.scheduled_date ?? item.scheduled_date ?? item.preferred_date ?? "";
+    const scheduledTime = draft.scheduled_time ?? item.scheduled_time ?? item.preferred_time ?? "";
+    if (["confirmed", "reschedule_requested"].includes(status) && !scheduledDate) {
+      toast.error("Bitte zuerst ein Servicedatum auswählen");
+      return;
+    }
+    setBusy(`service:${item.request_id}`);
+    try {
+      await api.updateMerchantDealerServiceRequestStatus(item.request_id, {
+        status,
+        scheduled_date: scheduledDate,
+        scheduled_time: scheduledTime,
+        note: (draft.note ?? item.merchant_note ?? "").trim(),
+      });
+      toast.success(status === "completed" ? "Service abgeschlossen" : "Servicetermin aktualisiert");
+      await loadServices(serviceStatusFilter);
+    } catch (error) {
+      toast.error(error.message || "Servicetermin konnte nicht aktualisiert werden");
+    } finally {
+      setBusy("");
+    }
+  }, [serviceDrafts, loadServices, serviceStatusFilter]);
 
   const setDraft = useCallback((claimId, patch) => {
     setDrafts((current) => ({
@@ -323,7 +365,16 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
               <div className="rounded-2xl border border-dashed border-[#D9CFC0] bg-white/60 px-4 py-10 text-center text-sm text-slate-500">
                 Keine Servicetermine gefunden
               </div>
-            ) : serviceFiltered.map((item, index) => (
+            ) : serviceFiltered.map((item, index) => {
+              const serviceDraft = serviceDrafts[item.request_id] || {};
+              const serviceActions = {
+                requested: [["confirmed", "Bestätigen"], ["reschedule_requested", "Neuer Termin"], ["rejected", "Ablehnen"]],
+                reschedule_requested: [["confirmed", "Bestätigen"], ["reschedule_requested", "Termin ändern"], ["rejected", "Ablehnen"]],
+                confirmed: [["reschedule_requested", "Neuer Termin"], ["in_service", "Im Service"], ["rejected", "Ablehnen"]],
+                in_service: [["completed", "Abschließen"], ["rejected", "Ablehnen"]],
+              }[item.status] || [];
+              const serviceBusy = busy === `service:${item.request_id}`;
+              return (
               <article key={item.request_id} className="rounded-[24px] border border-[#E1D7C7] bg-white p-4" data-testid={`admin-charge-service-item-${index}`}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 flex-1">
@@ -342,6 +393,49 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
                     </div>
                     {item.note ? <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">{item.note}</p> : null}
                     {item.merchant_note ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{item.merchant_note}</p> : null}
+
+                    {serviceActions.length ? (
+                      <div className="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/40 p-3" data-testid={`admin-charge-service-controls-${index}`}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Admin-Steuerung</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <input
+                            type="date"
+                            value={serviceDraft.scheduled_date ?? item.scheduled_date ?? item.preferred_date ?? ""}
+                            onChange={(e) => setServiceDraft(item.request_id, { scheduled_date: e.target.value })}
+                            className="h-10 rounded-2xl border border-cyan-100 bg-white px-3 text-xs text-slate-800 outline-none"
+                            data-testid={`admin-charge-service-date-${index}`}
+                          />
+                          <input
+                            type="time"
+                            value={serviceDraft.scheduled_time ?? item.scheduled_time ?? item.preferred_time ?? ""}
+                            onChange={(e) => setServiceDraft(item.request_id, { scheduled_time: e.target.value })}
+                            className="h-10 rounded-2xl border border-cyan-100 bg-white px-3 text-xs text-slate-800 outline-none"
+                            data-testid={`admin-charge-service-time-${index}`}
+                          />
+                        </div>
+                        <textarea
+                          value={serviceDraft.note ?? item.merchant_note ?? ""}
+                          onChange={(e) => setServiceDraft(item.request_id, { note: e.target.value })}
+                          rows={2}
+                          placeholder="Hinweis an Kunde / Händler"
+                          className="mt-2 w-full rounded-2xl border border-cyan-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                          data-testid={`admin-charge-service-note-${index}`}
+                        />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {serviceActions.map(([status, label]) => (
+                            <button
+                              key={status}
+                              onClick={() => updateService(item, status)}
+                              disabled={serviceBusy}
+                              className="rounded-full border border-[#0A1626]/10 bg-[#0A1626] px-3 py-1.5 text-[11px] font-black text-[#D8FCFF] disabled:opacity-40"
+                              data-testid={`admin-charge-service-action-${status}-${index}`}
+                            >
+                              {serviceBusy ? "..." : label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   {(item.status_history || []).length ? (
@@ -363,7 +457,8 @@ export default function AdminChargeClaimsPage({ onBack, onNavigate }) {
                   ) : null}
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
       </main>
