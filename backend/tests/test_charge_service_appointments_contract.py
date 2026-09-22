@@ -141,3 +141,16 @@ def test_admin_care_page_shows_service_appointments():
     assert "admin-charge-service-item-" in admin_page
     assert "ServiceStatusBadge" in admin_page
     assert "Letzte Statusänderungen" in admin_page
+
+
+def test_admin_can_control_service_appointments():
+    admin_page = _text(ADMIN_CARE)
+    api = _text(API)
+    assert "updateMerchantDealerServiceRequestStatus" in api
+    assert "updateService" in admin_page
+    assert "Admin-Steuerung" in admin_page
+    assert "admin-charge-service-date-" in admin_page
+    assert "admin-charge-service-time-" in admin_page
+    assert "admin-charge-service-note-" in admin_page
+    assert "admin-charge-service-action-" in admin_page
+    assert 'in_service: [["completed", "Abschließen"], ["rejected", "Ablehnen"]]' in admin_page
