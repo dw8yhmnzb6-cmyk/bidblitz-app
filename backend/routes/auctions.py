@@ -1392,7 +1392,10 @@ async def place_bid(req: BidRequest, request: Request):
         total_after = int(snapshot.get("total_bids") or 0) + 1
         base_real_paid = snapshot.get("real_paid_bids")
         if base_real_paid is None:
-            base_real_paid = int(snapshot.get("total_bids") or 0) if not snapshot.get("bot_enabled") else 0
+            base_real_paid = await db.auction_bids.count_documents({
+                "auction_id": req.auction_id,
+                "is_bot": {"$ne": True},
+            })
         real_paid_after = int(base_real_paid or 0) + 1
         guard_after = _profit_guard_snapshot(
             {
