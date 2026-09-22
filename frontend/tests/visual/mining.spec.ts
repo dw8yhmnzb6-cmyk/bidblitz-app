@@ -121,8 +121,8 @@ test('mining preview stays usable at 320px and keeps value actions disabled', as
   await expect(page.getByTestId('mining-blitzmine-banner')).toContainText('keine BLZ-Erzeugung in Production');
 
   await page.getByTestId('mining-tab-shop').click();
-  await expect(page.getByText('Miner-Pakete Preview', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ertrags-/ROI-Projektionen bleiben', { exact: false })).toBeVisible();
+  await expect(page.getByText('Miner bestellen', { exact: true })).toBeVisible();
+  await expect(page.getByText('Jetzt bestellen und bezahlen.', { exact: false })).toBeVisible();
   await expect(page.getByTestId('mining-provider-unavailable')).toBeVisible();
 
   const widths = await page.evaluate(() => ({
@@ -257,7 +257,7 @@ test('mining production ordering is simple while activation remains pending', as
   await page.getByTestId('confirm-buy-btn').click();
   await expect(page.getByTestId('purchase-success-overlay')).toBeVisible();
   await expect(page.getByText('Bestellung bezahlt', { exact: true })).toBeVisible();
-  await expect(page.getByText('Aktivierung folgt', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('purchase-success-overlay')).toContainText('Aktivierung folgt');
   expect(orderRequests).toBe(1);
 });
 
