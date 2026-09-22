@@ -107,8 +107,8 @@ const copy = {
       { icon: Bitcoin, title: "Bitcoin Fokus", text: "Sichtbar auf Bitcoin-Mining und ASIC-Hardware spezialisiert." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Preview-Platzhalter · nicht verifiziert" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Preview-Platzhalter · nicht verifiziert" },
+      { city: "Dubai", label: "Video Slot 01", note: "Video folgt nach Prüfung · nicht verifiziert" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Video folgt nach Prüfung · nicht verifiziert" },
     ],
   },
   en: {
@@ -204,8 +204,8 @@ const copy = {
       { icon: Bitcoin, title: "Bitcoin Focus", text: "Clearly specialized in bitcoin mining and ASIC hardware." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Preview placeholder · not verified" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Preview placeholder · not verified" },
+      { city: "Dubai", label: "Video Slot 01", note: "Video pending review · not verified" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Video pending review · not verified" },
     ],
   },
 };
@@ -356,7 +356,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
 
         {!proofVerified && (
           <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100/80" data-testid="mining-trust-unverified-banner">
-            Preview · Keine verifizierte Live-Hardware-, Standort-, Hashrate- oder Provider-Bestätigung. Wert- und Proof-Angaben bleiben bis zur Verifizierung deaktiviert.
+            Keine verifizierte Live-Hashrate oder Provider-Bestätigung. Live-Werte bleiben bis zur Verifizierung deaktiviert.
           </div>
         )}
 
