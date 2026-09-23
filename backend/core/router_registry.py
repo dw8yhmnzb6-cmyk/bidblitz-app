@@ -44,6 +44,7 @@ def register_all_routers(app):
         ("routes.feature_flags", "router"),
         ("routes.admin_customer_intelligence", "router"),
         ("routes.admin_biopay", "router"),
+        ("routes.the_eye_devices", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
         ("routes.diag", "router"),
