@@ -111,6 +111,33 @@ class DeviceStatusRequest(BaseModel):
     status: Literal["active", "maintenance", "disabled"]
 
 
+class DeviceCommandCreate(BaseModel):
+    command: str = Field(..., min_length=1, max_length=128)
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    expires_in_seconds: int = Field(default=300, ge=5, le=86400)
+
+
+class DeviceCommandAck(BaseModel):
+    command_id: str = Field(..., min_length=8, max_length=128)
+    status: Literal["accepted", "completed", "failed"]
+    result: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DeviceGroupCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    device_ids: List[str] = Field(default_factory=list, max_length=5000)
+
+
+class FirmwareReleaseCreate(BaseModel):
+    device_type: DeviceType
+    version: str = Field(..., min_length=1, max_length=64)
+    download_url: str = Field(..., min_length=8, max_length=2048)
+    sha256: str = Field(..., min_length=64, max_length=64)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    rollout_percent: int = Field(default=0, ge=0, le=100)
+
+
 @router.get("/health")
 async def the_eye_health():
     return {
@@ -314,3 +341,211 @@ async def map_devices(request: Request, limit: int = 2000):
     ).to_list(limit)
 
     return {"ok": True, "count": len(rows), "devices": rows}
+
+
+@router.post("/admin/devices/{device_id}/commands")
+async def create_device_command(
+    device_id: str,
+    req: DeviceCommandCreate,
+    request: Request,
+):
+    admin = await _require_admin(request)
+    device = await db.the_eye_devices.find_one(
+        {"device_id": device_id, "status": {"$ne": "disabled"}},
+        {"_id": 0, "device_id": 1},
+    )
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or disabled")
+
+    now = datetime.now(timezone.utc)
+    expires_at = datetime.fromtimestamp(
+        now.timestamp() + req.expires_in_seconds,
+        tz=timezone.utc,
+    ).isoformat()
+    command_id = "CMD-" + secrets.token_hex(8).upper()
+    doc = {
+        "command_id": command_id,
+        "device_id": device_id,
+        "command": req.command,
+        "payload": req.payload,
+        "status": "queued",
+        "created_at": now.isoformat(),
+        "expires_at": expires_at,
+        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "acknowledged_at": None,
+        "completed_at": None,
+        "result": None,
+    }
+    await db.the_eye_device_commands.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "command": doc}
+
+
+@router.get("/devices/{device_id}/commands")
+async def poll_device_commands(
+    device_id: str,
+    x_device_token: Optional[str] = Header(default=None),
+    limit: int = 25,
+):
+    await _require_device(device_id, x_device_token)
+    limit = max(1, min(limit, 100))
+    now = _now()
+
+    rows = await db.the_eye_device_commands.find(
+        {
+            "device_id": device_id,
+            "status": "queued",
+            "expires_at": {"$gt": now},
+        },
+        {"_id": 0},
+    ).sort("created_at", 1).to_list(limit)
+
+    if rows:
+        ids = [r["command_id"] for r in rows]
+        await db.the_eye_device_commands.update_many(
+            {"command_id": {"$in": ids}, "status": "queued"},
+            {"$set": {"status": "delivered", "delivered_at": now}},
+        )
+        for row in rows:
+            row["status"] = "delivered"
+            row["delivered_at"] = now
+
+    return {"ok": True, "count": len(rows), "commands": rows, "server_time": now}
+
+
+@router.post("/devices/{device_id}/commands/ack")
+async def acknowledge_device_command(
+    device_id: str,
+    req: DeviceCommandAck,
+    x_device_token: Optional[str] = Header(default=None),
+):
+    await _require_device(device_id, x_device_token)
+    now = _now()
+    update = {
+        "status": req.status,
+        "acknowledged_at": now,
+        "result": req.result,
+    }
+    if req.status in {"completed", "failed"}:
+        update["completed_at"] = now
+
+    result = await db.the_eye_device_commands.update_one(
+        {
+            "command_id": req.command_id,
+            "device_id": device_id,
+            "status": {"$in": ["queued", "delivered", "accepted"]},
+        },
+        {"$set": update},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Command not found or already final")
+    return {"ok": True, "command_id": req.command_id, "status": req.status}
+
+
+@router.post("/admin/groups")
+async def create_device_group(req: DeviceGroupCreate, request: Request):
+    admin = await _require_admin(request)
+    now = _now()
+    group_id = "GRP-" + secrets.token_hex(6).upper()
+    unique_device_ids = list(dict.fromkeys(req.device_ids))
+
+    if unique_device_ids:
+        found = await db.the_eye_devices.count_documents(
+            {"device_id": {"$in": unique_device_ids}}
+        )
+        if found != len(unique_device_ids):
+            raise HTTPException(status_code=400, detail="One or more devices do not exist")
+
+    doc = {
+        "group_id": group_id,
+        "name": req.name,
+        "description": req.description,
+        "device_ids": unique_device_ids,
+        "created_at": now,
+        "updated_at": now,
+        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+    }
+    await db.the_eye_device_groups.insert_one(doc)
+
+    if unique_device_ids:
+        await db.the_eye_devices.update_many(
+            {"device_id": {"$in": unique_device_ids}},
+            {"$addToSet": {"group_ids": group_id}, "$set": {"updated_at": now}},
+        )
+
+    doc.pop("_id", None)
+    return {"ok": True, "group": doc}
+
+
+@router.get("/admin/groups")
+async def list_device_groups(request: Request, limit: int = 250):
+    await _require_admin(request)
+    limit = max(1, min(limit, 1000))
+    rows = await db.the_eye_device_groups.find({}, {"_id": 0}).sort(
+        "created_at", -1
+    ).to_list(limit)
+    return {"ok": True, "count": len(rows), "groups": rows}
+
+
+@router.post("/admin/firmware")
+async def create_firmware_release(req: FirmwareReleaseCreate, request: Request):
+    admin = await _require_admin(request)
+    normalized_hash = req.sha256.lower()
+    if any(ch not in "0123456789abcdef" for ch in normalized_hash):
+        raise HTTPException(status_code=400, detail="sha256 must be hexadecimal")
+
+    existing = await db.the_eye_firmware_releases.find_one(
+        {"device_type": req.device_type, "version": req.version},
+        {"_id": 0, "release_id": 1},
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Firmware version already exists")
+
+    now = _now()
+    release_id = "FW-" + secrets.token_hex(6).upper()
+    doc = {
+        "release_id": release_id,
+        "device_type": req.device_type,
+        "version": req.version,
+        "download_url": req.download_url,
+        "sha256": normalized_hash,
+        "notes": req.notes,
+        "rollout_percent": req.rollout_percent,
+        "status": "draft" if req.rollout_percent == 0 else "active",
+        "created_at": now,
+        "updated_at": now,
+        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+    }
+    await db.the_eye_firmware_releases.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "release": doc}
+
+
+@router.get("/devices/{device_id}/firmware")
+async def get_device_firmware(
+    device_id: str,
+    x_device_token: Optional[str] = Header(default=None),
+):
+    device = await _require_device(device_id, x_device_token)
+    release = await db.the_eye_firmware_releases.find_one(
+        {
+            "device_type": device.get("device_type"),
+            "status": "active",
+            "rollout_percent": {"$gt": 0},
+        },
+        {"_id": 0, "created_by": 0},
+        sort=[("created_at", -1)],
+    )
+    if not release:
+        return {"ok": True, "update_available": False}
+
+    bucket = int(hashlib.sha256(device_id.encode("utf-8")).hexdigest()[:8], 16) % 100
+    eligible = bucket < int(release.get("rollout_percent", 0))
+    current_version = device.get("firmware_version")
+    update_available = eligible and current_version != release.get("version")
+
+    return {
+        "ok": True,
+        "update_available": update_available,
+        "release": release if update_available else None,
+    }
