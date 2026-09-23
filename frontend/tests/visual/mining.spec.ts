@@ -249,12 +249,13 @@ test('mining production ordering is simple while activation remains pending', as
   await expect(page.getByTestId('billing-monthly')).toHaveCount(0);
   await expect(page.getByTestId('billing-yearly')).toHaveCount(0);
 
-  await page.getByTestId('miner-pkg-starter').click();
-  await expect(page.getByTestId('mining-order-note')).toBeVisible();
-  await expect(page.getByTestId('confirm-buy-btn')).toBeEnabled();
-  await expect(page.getByTestId('confirm-buy-btn')).toContainText('Jetzt bestellen');
+  const directOrderButton = page.getByTestId('mining-order-card-starter');
+  await expect(directOrderButton).toBeVisible();
+  await expect(directOrderButton).toBeEnabled();
+  await expect(directOrderButton).toContainText('Jetzt bestellen');
+  await expect(directOrderButton).toContainText('49.00');
 
-  await page.getByTestId('confirm-buy-btn').click();
+  await directOrderButton.click();
   await expect(page.getByTestId('purchase-success-overlay')).toBeVisible();
   await expect(page.getByText('Bestellung bezahlt', { exact: true })).toBeVisible();
   await expect(page.getByTestId('purchase-success-overlay')).toContainText('Aktivierung folgt');
