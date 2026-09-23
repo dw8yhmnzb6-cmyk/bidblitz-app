@@ -1,0 +1,148 @@
+name: One-time Mining Card Order Live Deploy
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - .github/workflows/deploy-mining-card-order-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-mining-card-order:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact tested source
+        uses: actions/checkout@v4
+        with:
+          ref: aa1b12cb48ef73f39c95b5da24e8a58f77209f59
+          fetch-depth: 0
+
+      - name: Verify targeted frontend delta
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "aa1b12cb48ef73f39c95b5da24e8a58f77209f59"
+          changed="$(git diff --name-only 96845c7c8f7ceb754920a0f1a3461e9fbf07001c aa1b12cb48ef73f39c95b5da24e8a58f77209f59 -- frontend/src | sort)"
+          printf '%s\n' "$changed"
+          test "$changed" = "frontend/src/pages/MiningPage.jsx"
+          grep -F 'mining-order-card-' frontend/src/pages/MiningPage.jsx
+          grep -F 'Jetzt bestellen' frontend/src/pages/MiningPage.jsx
+          grep -F 'Wallet aufladen' frontend/src/pages/MiningPage.jsx
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build production frontend
+        working-directory: frontend
+        env:
+          CI: 'false'
+          GENERATE_SOURCEMAP: 'false'
+          REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_STRIPE_PUBLISHABLE_KEY || secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: 'false'
+        run: |
+          set -euo pipefail
+          export BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=false
+          REACT_APP_BUILD_ID=${BUILD_ID}
+          EOF
+          npm run build
+          test -s build/index.html
+          test -s build/version.json
+          test -s build/service-worker.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          version = json.loads(Path("build/version.json").read_text())
+          assert version["git_commit"] == "aa1b12cb48ef73f39c95b5da24e8a58f77209f59", version
+          print("Built mining-card frontend:", version["build_id"])
+          PY
+
+      - name: Package frontend
+        run: tar -C frontend/build -czf /tmp/bidblitz-mining-card-order.tgz .
+
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Upload frontend package
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sshpass -e scp -o StrictHostKeyChecking=no             /tmp/bidblitz-mining-card-order.tgz             root@212.227.20.190:/tmp/
+
+      - name: Atomically activate frontend
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          FRONTEND=/var/www/bidblitz/frontend
+          STAMP=$(date -u +%Y%m%d%H%M%S)
+          OLD_FRONTEND="$FRONTEND/build.previous.$STAMP"
+          NEW_FRONTEND="$FRONTEND/build.new"
+          rm -rf "$NEW_FRONTEND"
+          mkdir -p "$NEW_FRONTEND"
+          tar -xzf /tmp/bidblitz-mining-card-order.tgz -C "$NEW_FRONTEND"
+          test -s "$NEW_FRONTEND/index.html"
+          test -s "$NEW_FRONTEND/version.json"
+          test -s "$NEW_FRONTEND/service-worker.js"
+          nginx -t
+
+          swapped=0
+          rollback() {
+            result=$?
+            trap - ERR
+            if [ "$swapped" = "1" ]; then
+              rm -rf "$FRONTEND/build.failed.$STAMP"
+              if [ -d "$FRONTEND/build" ]; then mv "$FRONTEND/build" "$FRONTEND/build.failed.$STAMP"; fi
+              if [ -d "$OLD_FRONTEND" ]; then mv "$OLD_FRONTEND" "$FRONTEND/build"; fi
+              systemctl reload nginx || true
+            fi
+            exit "$result"
+          }
+          trap rollback ERR
+
+          if [ -d "$FRONTEND/build" ]; then mv "$FRONTEND/build" "$OLD_FRONTEND"; fi
+          mv "$NEW_FRONTEND" "$FRONTEND/build"
+          swapped=1
+          chown -R www-data:www-data "$FRONTEND/build"
+          nginx -t
+          systemctl reload nginx
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/ -o /dev/null
+          trap - ERR
+          rm -f /tmp/bidblitz-mining-card-order.tgz
+          echo "Mining card order frontend activated."
+          REMOTE
+
+      - name: Verify live version
+        run: |
+          set -euo pipefail
+          stamp=$(date +%s)
+          curl -fsS --retry 8 --retry-delay 2 "https://bidblitz.ae/version.json?deploy=$stamp" -o /tmp/live-version.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          actual = json.loads(Path("/tmp/live-version.json").read_text())
+          assert actual["git_commit"] == "aa1b12cb48ef73f39c95b5da24e8a58f77209f59", actual
+          print("Verified live frontend:", actual["build_id"])
+          PY
