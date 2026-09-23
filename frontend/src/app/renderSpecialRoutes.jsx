@@ -43,6 +43,7 @@ const MerchantSettlementDetailPage = lazy(() => import("../pages/MerchantSettlem
 const MerchantPayoutsPage = lazy(() => import("../pages/MerchantPayoutsPage"));
 const MerchantDailyClosingPage = lazy(() => import("../pages/MerchantDailyClosingPage"));
 const AdminMerchantSettlementsPage = lazy(() => import("../pages/AdminMerchantSettlementsPage"));
+const TheEyePage = lazy(() => import("../pages/TheEyePage"));
 
 export function renderSpecialRoutes({
   currentPath,
@@ -54,6 +55,9 @@ export function renderSpecialRoutes({
 }) {
   const basePath = currentPath.split("?")[0];
 
+  if (basePath === "/the-eye" || basePath === "/theeye") {
+    return <TheEyePage onNavigate={handleNavigate} />;
+  }
   if (basePath === "/staff/system-check") {
     return <StaffSystemCheckPage onBack={() => handleNavigate("/")} />;
   }
