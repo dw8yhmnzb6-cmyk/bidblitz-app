@@ -43,6 +43,7 @@ def register_all_routers(app):
         ("routes.admin", "router"),
         ("routes.feature_flags", "router"),
         ("routes.admin_customer_intelligence", "router"),
+        ("routes.aion_project_intelligence", "router"),
         ("routes.admin_biopay", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
