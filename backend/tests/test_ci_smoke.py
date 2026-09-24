@@ -58,6 +58,19 @@ def test_public_commerce_and_payment_endpoints(client):
     assert invalid_pay.status_code == 404
 
 
+def test_apple_google_pay_routes_are_registered_in_fastapi_app(client):
+    paths = {getattr(route, "path", "") for route in server.app.routes}
+    for path in [
+        "/api/payments/create-payment-intent",
+        "/api/payments/payment-intent/{payment_intent_id}",
+        "/api/payments/webhook/stripe-payment",
+    ]:
+        assert path in paths
+
+    create = client.post("/api/payments/create-payment-intent", json={"amount": 10, "currency": "eur"})
+    assert create.status_code in {401, 403, 503}
+
+
 def test_mining_routes_are_registered_in_fastapi_app(client):
     paths = {getattr(route, "path", "") for route in server.app.routes}
     for path in [
