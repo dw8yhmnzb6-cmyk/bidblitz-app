@@ -273,6 +273,15 @@ def _stripe_source():
     return STRIPE_ROUTE_PATH.read_text(encoding="utf-8")
 
 
+def test_stripe_topup_plans_match_checkout_packages():
+    source = _stripe_source()
+    assert 'for package_id, amount in sorted(TOPUP_PACKAGES.items()' in source
+    assert '"package_id": package_id' in source
+    for package_id in ["10", "25", "50", "100", "250", "500"]:
+        assert f'"{package_id}":' in source
+    assert '"200":' not in source.split("TOPUP_PACKAGES = {", 1)[1].split("}", 1)[0]
+
+
 def test_stripe_registers_only_one_wallet_webhook_route():
     source = _stripe_source()
     assert source.count('@router.post("/webhook")') == 1
