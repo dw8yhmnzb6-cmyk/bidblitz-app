@@ -77,11 +77,14 @@ class SaveCardConfirmRequest(BaseModel):
 
 # ── Top-Up Plans ──
 TOPUP_PLANS = [
-    {"id": "topup_10", "amount": 10.00, "label": "€10", "popular": False},
-    {"id": "topup_25", "amount": 25.00, "label": "€25", "popular": False},
-    {"id": "topup_50", "amount": 50.00, "label": "€50", "popular": True},
-    {"id": "topup_100", "amount": 100.00, "label": "€100", "popular": False},
-    {"id": "topup_200", "amount": 200.00, "label": "€200", "popular": False},
+    {
+        "id": f"topup_{package_id}",
+        "package_id": package_id,
+        "amount": amount,
+        "label": f"€{int(amount) if float(amount).is_integer() else amount}",
+        "popular": package_id == "50",
+    }
+    for package_id, amount in sorted(TOPUP_PACKAGES.items(), key=lambda item: item[1])
 ]
 
 
