@@ -15,21 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout exact source
-        uses: actions/checkout@v4
-        with:
-          ref: bc4c98b51fc54dd5441046786fa7602d2f696921
-
       - name: Install SSH helper
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-      - name: Upload new route module for isolated import check
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
-        run: |
-          sshpass -e scp -o StrictHostKeyChecking=no             backend/routes/apple_google_pay.py             root@212.227.20.190:/tmp/apple_google_pay.candidate.py
-
-      - name: Diagnose server and candidate module
+      - name: Diagnose live router registration
         env:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
@@ -37,24 +26,25 @@ jobs:
           set -euo pipefail
           BACKEND=/var/www/bidblitz/backend
           PY="$BACKEND/venv/bin/python"
-          echo "=== PM2 STATUS ==="
-          pm2 status api
-          echo "=== LOCAL HEALTH ==="
-          curl -sS -o /tmp/health.json -w 'health_http=%{http_code}\n' http://127.0.0.1:8001/health || true
-          echo "=== CURRENT ROUTE PRESENT? ==="
-          grep -F 'payment-request-capabilities' "$BACKEND/routes/apple_google_pay.py" || true
-          echo "=== ISOLATED CANDIDATE IMPORT ==="
+          echo "=== LIVE REGISTRY ENTRY ==="
+          grep -n 'routes.apple_google_pay' "$BACKEND/core/router_registry.py" || true
+          echo "=== LIVE ROUTE FILE ENTRY ==="
+          grep -n 'payment-request-capabilities' "$BACKEND/routes/apple_google_pay.py" || true
+          echo "=== IMPORTED APP ROUTES ==="
           cd "$BACKEND"
           PYTHONPATH="$BACKEND" "$PY" - <<'PY'
-          import importlib.util
-          p="/tmp/apple_google_pay.candidate.py"
-          spec=importlib.util.spec_from_file_location("apple_google_pay_candidate", p)
-          mod=importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(mod)
-          print("candidate_import=ok")
-          print("candidate_routes=" + ",".join(sorted(getattr(r, "path", "") for r in mod.router.routes)))
+          import server
+          paths=[]
+          for route in server.app.routes:
+              p=getattr(route,"path","")
+              if p.startswith("/api/payments/"):
+                  paths.append(p)
+          for p in sorted(set(paths)):
+              print(p)
           PY
-          echo "=== RECENT API ERRORS ==="
-          pm2 logs api --lines 250 --nostream 2>&1             | grep -E 'Traceback|ERROR|Exception|ImportError|TypeError|apple_google_pay|payment-request-capabilities'             | tail -n 120 || true
-          rm -f /tmp/apple_google_pay.candidate.py /tmp/health.json
+          echo "=== LOCAL ENDPOINT CODES ==="
+          for url in             /api/payments/payment-request-capabilities             /api/payments/create-payment-intent; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8001$url" || true)"
+            echo "$url -> $code"
+          done
           REMOTE
