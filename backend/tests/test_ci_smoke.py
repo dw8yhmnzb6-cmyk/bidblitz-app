@@ -300,6 +300,16 @@ def test_apple_google_pay_wallet_topup_is_eur_only_and_metadata_safe():
     assert 'Unsupported settlement currency for EUR wallet' in source
 
 
+def test_apple_google_pay_frontend_reports_final_eur_status():
+    source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "AppleGooglePayButton.jsx").read_text(encoding="utf-8")
+
+    assert "const currency = 'eur';" in source
+    assert "paymentIntent: finalPaymentIntent" in source
+    assert "finalPaymentIntent?.status === 'succeeded'" in source
+    assert "onSuccess?.(finalPaymentIntent)" in source
+    assert "Unerwarteter Zahlungsstatus" in source
+
+
 def test_stripe_topup_plans_match_checkout_packages():
     source = _stripe_source()
     assert 'for package_id, amount in sorted(TOPUP_PACKAGES.items()' in source
