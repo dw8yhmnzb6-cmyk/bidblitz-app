@@ -14,12 +14,13 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const PaymentPage = ({ onBack, onNavigate }) => {
   const { t, lang } = useI18n();
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
-  const L = {
+  const paymentCopy = {
     de: { checkoutOnly: "Nur für Händler & Kasse", showOnlyAtCheckout: "Diesen Code nur an der Kasse zeigen", merchantScans: "Der Händler scannt deinen Code, gibt den Betrag ein und belastet deine Wallet direkt.", sendMoney: "Geld senden", notForCheckout: "Nicht für Kasse", topupWallet: "Wallet aufladen", onlineOrCheckout: "Online oder an Kasse", checkoutFlow: "Kassen-Flow", openPay: "1. Bezahlen öffnen", showCode: "2. Code zeigen", done: "3. Fertig", openPayDesc: "Du öffnest diesen Screen direkt aus dem Wallet.", showCodeDesc: "Der Händler scannt deinen Code an der Kasse.", doneDesc: "Die Bestätigung erscheint sofort. Für private Transfers bitte 'Geld senden' nutzen." },
     en: { checkoutOnly: "For merchant checkout only", showOnlyAtCheckout: "Show this code only at checkout", merchantScans: "The merchant scans your code, enters the amount and charges your wallet directly.", sendMoney: "Send money", notForCheckout: "Not for checkout", topupWallet: "Top up wallet", onlineOrCheckout: "Online or at checkout", checkoutFlow: "Checkout flow", openPay: "1. Open Pay", showCode: "2. Show code", done: "3. Done", openPayDesc: "Open this screen directly from the wallet.", showCodeDesc: "The merchant scans your code at checkout.", doneDesc: "Confirmation appears instantly. For private transfers, please use 'Send money'." },
     sq: { checkoutOnly: "Vetëm për tregtarin dhe arkën", showOnlyAtCheckout: "Shfaq këtë kod vetëm në arkë", merchantScans: "Tregtari skanon kodin tënd, vendos shumën dhe e ngarkon direkt nga wallet-i yt.", sendMoney: "Dërgo para", notForCheckout: "Jo për arkë", topupWallet: "Mbush wallet-in", onlineOrCheckout: "Online ose në arkë", checkoutFlow: "Rrjedha e arkës", openPay: "1. Hap Paguaj", showCode: "2. Shfaq kodin", done: "3. U krye", openPayDesc: "E hap këtë ekran direkt nga wallet-i.", showCodeDesc: "Tregtari skanon kodin tënd në arkë.", doneDesc: "Konfirmimi shfaqet menjëherë. Për transfere private, përdor 'Dërgo para'." },
     ar: { checkoutOnly: "للتاجر ونقطة الدفع فقط", showOnlyAtCheckout: "اعرض هذا الرمز عند نقطة الدفع فقط", merchantScans: "يقوم التاجر بمسح رمزك وإدخال المبلغ وخصمه مباشرة من محفظتك.", sendMoney: "إرسال المال", notForCheckout: "ليس لنقطة الدفع", topupWallet: "شحن المحفظة", onlineOrCheckout: "عبر الإنترنت أو عند نقطة الدفع", checkoutFlow: "مسار نقطة الدفع", openPay: "1. افتح الدفع", showCode: "2. اعرض الرمز", done: "3. تم", openPayDesc: "تفتح هذه الشاشة مباشرة من المحفظة.", showCodeDesc: "يقوم التاجر بمسح رمزك عند نقطة الدفع.", doneDesc: "يظهر التأكيد فورًا. للتحويلات الخاصة استخدم 'إرسال المال'." },
-  }[locale];
+  };
+  const L = paymentCopy[locale] || paymentCopy.de;
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
