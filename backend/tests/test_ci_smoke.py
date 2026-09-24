@@ -417,6 +417,35 @@ def test_pos_payments_fail_closed_and_retry_safely():
     assert 'window.localStorage.removeItem(posCartRecoveryKey)' in pos_page
 
 
+def test_customer_and_merchant_barcode_payment_flow_is_canonical():
+    pos_source = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
+    api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
+    payment_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "PaymentPage.jsx").read_text(encoding="utf-8")
+    barcode_modal = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "BarcodeModal.jsx").read_text(encoding="utf-8")
+    terminal_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MerchantTerminalPage.jsx").read_text(encoding="utf-8")
+
+    assert 'getMyBarcode: () => request("/api/payments/my-barcode")' in api_source
+    assert 'refreshBarcode: () => request("/api/payments/refresh-barcode"' in api_source
+    assert 'barcodeLookup: (barcode) => request("/api/payments/barcode-lookup"' in api_source
+    assert 'barcodePayment: (body) => request("/api/payments/barcode-pay"' in api_source
+
+    assert '"seconds_remaining": seconds_remaining' in pos_source
+    assert '"expires_in": seconds_remaining' in pos_source
+    assert '"rotation_seconds": BARCODE_VALIDITY_SECONDS' in pos_source
+    assert '"name": user.get("name", "")' in pos_source
+    assert 'round(float(user.get("balance", 0) or 0), 2)' in pos_source
+
+    assert 'setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0)' in payment_page
+    assert 'data-testid="payment-error"' in payment_page
+    assert 'Stripe Checkout hat keine Zahlungs-URL zurückgegeben.' in payment_page
+    assert 'api.getMyBarcode()' in barcode_modal
+
+    assert 'data-testid="nfc-card-btn"' in terminal_page
+    assert 'Provider-Anbindung ausstehend' in terminal_page
+    assert 'onClick={() => processNfcPayment("nfc_card")}' not in terminal_page
+    assert 'Gebühr laut Händler-Tarif' in terminal_page
+
+
 def test_merchant_payout_balance_and_state_machine_contracts():
     settlement_source = (BACKEND_DIR / "services" / "merchant_settlement.py").read_text(encoding="utf-8")
     admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminMerchantSettlementsPage.jsx").read_text(encoding="utf-8")
