@@ -698,7 +698,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     const status = params.get("status");
     const sessionId = params.get("session_id");
     const purchaseId = params.get("credit_purchase");
-    if (!sessionId || !purchaseId) return;
+    if (!purchaseId) return;
 
     const cleanupUrl = () => {
       const url = new URL(window.location.href);
@@ -712,7 +712,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       return;
     }
 
-    if (status !== "success") return;
+    if (status !== "success" || !sessionId) return;
 
     let attempts = 0;
     let cancelled = false;
@@ -723,8 +723,8 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       attempts++;
       try {
         const r = await fetch(`${API_URL}/api/auctions/credits-purchase-status/${sessionId}`, { credentials: "include" });
+        const d = await r.json().catch(() => ({}));
         if (r.ok) {
-          const d = await r.json();
           if (d.status === "completed" && d.credits_added > 0) {
             const { toast } = await import("sonner");
             toast.success(`✓ ${d.credits_added} Credits gutgeschrieben!`);
@@ -732,6 +732,12 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
             cleanupUrl();
             return;
           }
+        } else if ([400, 401, 403, 404, 409, 500, 503].includes(r.status)) {
+          const { toast } = await import("sonner");
+          const detail = typeof d?.detail === "string" ? d.detail : "Zahlungsstatus konnte nicht bestätigt werden.";
+          toast.error(detail);
+          cleanupUrl();
+          return;
         }
       } catch (error) { void error; }
       if (attempts < 12) setTimeout(poll, 1500);
