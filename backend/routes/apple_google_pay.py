@@ -48,6 +48,8 @@ async def create_payment_intent(req: CreatePaymentIntentRequest, request: Reques
     """
     if not stripe.api_key:
         raise HTTPException(503, "Stripe not configured")
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(503, "Apple/Google Pay settlement webhook not configured")
     if req.amount < MIN_AMOUNT_EUR:
         raise HTTPException(400, f"Minimum amount is €{MIN_AMOUNT_EUR:.2f}")
 
