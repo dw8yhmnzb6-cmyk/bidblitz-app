@@ -61,14 +61,23 @@ def test_public_commerce_and_payment_endpoints(client):
 def test_apple_google_pay_routes_are_registered_in_fastapi_app(client):
     paths = {getattr(route, "path", "") for route in server.app.routes}
     for path in [
+        "/api/payments/payment-request-capabilities",
         "/api/payments/create-payment-intent",
         "/api/payments/payment-intent/{payment_intent_id}",
         "/api/payments/webhook/stripe-payment",
     ]:
         assert path in paths
 
+    readiness = client.get("/api/payments/payment-request-capabilities")
+    assert readiness.status_code == 200
+    readiness_data = readiness.json()
+    assert readiness_data["currency"] == "eur"
+    assert isinstance(readiness_data["apple_google_pay_enabled"], bool)
+    assert isinstance(readiness_data["provider_configured"], bool)
+    assert isinstance(readiness_data["settlement_webhook_configured"], bool)
+
     create = client.post("/api/payments/create-payment-intent", json={"amount": 10, "currency": "eur"})
-    assert create.status_code in {401, 403, 503}
+    assert create.status_code in {401, 403}
 
 
 def test_mining_routes_are_registered_in_fastapi_app(client):
@@ -291,6 +300,10 @@ def test_apple_google_pay_wallet_topup_is_eur_only_and_metadata_safe():
 
     assert 'from core.config import STRIPE_API_KEY' in source
     assert 'stripe.api_key = STRIPE_API_KEY' in source
+    assert '@router.get("/payment-request-capabilities")' in source
+    assert '"apple_google_pay_enabled": provider_configured and settlement_webhook_configured' in source
+    assert 'user = await get_current_user(request)' in source
+    assert source.index('user = await get_current_user(request)') < source.index('if not stripe.api_key:')
     assert 'if not STRIPE_WEBHOOK_SECRET:' in source
     assert 'Apple/Google Pay settlement webhook not configured' in source
     assert 'currency: str = Field(default="eur", pattern="^eur$")' in source
@@ -308,6 +321,10 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "AppleGooglePayButton.jsx").read_text(encoding="utf-8")
 
     assert "const currency = 'eur';" in source
+    assert "/api/payments/payment-request-capabilities" in source
+    assert "readiness?.apple_google_pay_enabled" in source
+    assert "setCanMakePayment(false)" in source
+    assert "Payment provider returned no client secret" in source
     assert "paymentIntent: finalPaymentIntent" in source
     assert "finalPaymentIntent?.status === 'succeeded'" in source
     assert "onSuccess?.(finalPaymentIntent)" in source
