@@ -15,11 +15,12 @@ from core.security import get_current_user
 from core.rate_limit import limiter
 from core.payment_engine import credit_wallet, TransactionType
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.config import STRIPE_API_KEY
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 logger = logging.getLogger("bidblitz.payments")
 
-stripe.api_key = os.environ.get("STRIPE_API_KEY", "")
+stripe.api_key = STRIPE_API_KEY
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_PI_WEBHOOK_SECRET", "")
 
 # Abuse limits for Apple/Google Pay — server-defined, never trust frontend amounts blindly
