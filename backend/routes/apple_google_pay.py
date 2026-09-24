@@ -40,22 +40,37 @@ class PaymentIntentResponse(BaseModel):
     payment_intent_id: str
 
 
+@router.get("/payment-request-capabilities")
+async def payment_request_capabilities():
+    """Public, secret-free readiness for Apple Pay / Google Pay wallet top-ups."""
+    provider_configured = bool(stripe.api_key)
+    settlement_webhook_configured = bool(STRIPE_WEBHOOK_SECRET)
+    return {
+        "apple_google_pay_enabled": provider_configured and settlement_webhook_configured,
+        "provider_configured": provider_configured,
+        "settlement_webhook_configured": settlement_webhook_configured,
+        "currency": "eur",
+        "min_amount_eur": MIN_AMOUNT_EUR,
+        "max_amount_eur": MAX_AMOUNT_EUR,
+    }
+
+
 @router.post("/create-payment-intent", response_model=PaymentIntentResponse)
 @limiter.limit("10/minute")
 async def create_payment_intent(req: CreatePaymentIntentRequest, request: Request):
     """Create Stripe Payment Intent for Apple Pay / Google Pay / Card.
     Requires authenticated user. Metadata carries user_id for webhook credit.
     """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    user_email = user.get("email", "")
+
     if not stripe.api_key:
         raise HTTPException(503, "Stripe not configured")
     if not STRIPE_WEBHOOK_SECRET:
         raise HTTPException(503, "Apple/Google Pay settlement webhook not configured")
     if req.amount < MIN_AMOUNT_EUR:
         raise HTTPException(400, f"Minimum amount is €{MIN_AMOUNT_EUR:.2f}")
-
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    user_email = user.get("email", "")
 
     amount_cents = int(round(req.amount * 100))
     protected_metadata_keys = {"user_id", "user_email", "kind"}
