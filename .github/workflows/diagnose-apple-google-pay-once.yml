@@ -18,33 +18,17 @@ jobs:
       - name: Install SSH helper
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-      - name: Diagnose live router registration
+      - name: Inspect live router registry block
         env:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
           sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
           set -euo pipefail
           BACKEND=/var/www/bidblitz/backend
-          PY="$BACKEND/venv/bin/python"
-          echo "=== LIVE REGISTRY ENTRY ==="
-          grep -n 'routes.apple_google_pay' "$BACKEND/core/router_registry.py" || true
-          echo "=== LIVE ROUTE FILE ENTRY ==="
-          grep -n 'payment-request-capabilities' "$BACKEND/routes/apple_google_pay.py" || true
-          echo "=== IMPORTED APP ROUTES ==="
-          cd "$BACKEND"
-          PYTHONPATH="$BACKEND" "$PY" - <<'PY'
-          import server
-          paths=[]
-          for route in server.app.routes:
-              p=getattr(route,"path","")
-              if p.startswith("/api/payments/"):
-                  paths.append(p)
-          for p in sorted(set(paths)):
-              print(p)
-          PY
-          echo "=== LOCAL ENDPOINT CODES ==="
-          for url in             /api/payments/payment-request-capabilities             /api/payments/create-payment-intent; do
-            code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8001$url" || true)"
-            echo "$url -> $code"
-          done
+          echo "=== REGISTRY CORE BLOCK ==="
+          sed -n '28,55p' "$BACKEND/core/router_registry.py"
+          echo "=== STRIPE ANCHOR COUNT ==="
+          grep -F -c '("routes.stripe", "router"),' "$BACKEND/core/router_registry.py" || true
+          echo "=== APPLE GOOGLE COUNT ==="
+          grep -F -c '("routes.apple_google_pay", "router"),' "$BACKEND/core/router_registry.py" || true
           REMOTE
