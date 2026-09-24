@@ -236,6 +236,18 @@ def test_bidblitz_pay_sensitive_routes_require_auth_and_ownership():
         assert "_require_payment_access(payment, user)" in source
 
 
+def test_bidblitz_pay_hosted_checkout_separates_mock_and_live_actions():
+    page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "BidBlitzPayHostedCheckoutPage.jsx").read_text(encoding="utf-8")
+
+    assert "payment.test_mode ? (" in page
+    assert 'data-testid="bidblitz-pay-wallet-approve-button"' in page
+    assert 'data-testid="bidblitz-pay-provider-button"' in page
+    assert 'data-testid="bidblitz-pay-provider-unavailable"' in page
+    assert 'data-testid="bidblitz-pay-cancel-button"' in page
+    assert 'Live-Zahlung sicher beim verbundenen Provider fortsetzen.' in page
+    assert 'Freigabe, Abbruch und Erstattung werden nur über verifizierte Provider-Aktionen ausgeführt.' in page
+
+
 def test_bidblitz_pay_live_cancel_and_refund_fail_closed_before_local_mutation():
     cancel_source = inspect.getsource(bidblitz_pay_routes.cancel_bidblitz_pay)
     refund_source = inspect.getsource(bidblitz_pay_routes.create_bidblitz_pay_refund)
