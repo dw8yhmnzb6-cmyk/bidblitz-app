@@ -291,6 +291,8 @@ def test_apple_google_pay_wallet_topup_is_eur_only_and_metadata_safe():
 
     assert 'from core.config import STRIPE_API_KEY' in source
     assert 'stripe.api_key = STRIPE_API_KEY' in source
+    assert 'if not STRIPE_WEBHOOK_SECRET:' in source
+    assert 'Apple/Google Pay settlement webhook not configured' in source
     assert 'currency: str = Field(default="eur", pattern="^eur$")' in source
     assert 'protected_metadata_keys = {"user_id", "user_email", "kind"}' in source
     assert 'if key not in protected_metadata_keys' in source
