@@ -1,0 +1,126 @@
+name: One-time Stripe Topup Plan Parity Deploy
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+    paths:
+      - .github/workflows/deploy-stripe-topup-parity-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-stripe-topup-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact tested source
+        uses: actions/checkout@v4
+        with:
+          ref: 0c8bf32fb341775635415653660cb9fc61e6d428
+          fetch-depth: 0
+
+      - name: Verify Stripe-only backend delta
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "0c8bf32fb341775635415653660cb9fc61e6d428"
+          changed="$(git diff --name-only c9fdfbda836cef28fea7eebb28c02ceefdcceeac 0c8bf32fb341775635415653660cb9fc61e6d428 -- backend/routes | sort)"
+          printf '%s\n' "$changed"
+          test "$changed" = "backend/routes/stripe.py"
+          grep -F 'for package_id, amount in sorted(TOPUP_PACKAGES.items()' backend/routes/stripe.py
+          grep -F '"250": 250.0' backend/routes/stripe.py
+          grep -F '"500": 500.0' backend/routes/stripe.py
+          if grep -A10 'TOPUP_PACKAGES = {' backend/routes/stripe.py | grep -F '"200":'; then
+            echo "Unexpected 200 EUR checkout package remains"
+            exit 1
+          fi
+
+      - name: Validate backend source
+        run: python3 -m py_compile backend/routes/stripe.py
+
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Upload Stripe route
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sshpass -e scp -o StrictHostKeyChecking=no             backend/routes/stripe.py             root@212.227.20.190:/tmp/bidblitz-stripe.py
+
+      - name: Atomically activate Stripe route
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          BACKEND=/var/www/bidblitz/backend
+          PY="$BACKEND/venv/bin/python"
+          STAMP=$(date -u +%Y%m%d%H%M%S)
+          BACKUP="/var/www/bidblitz/stripe-topup-backup-$STAMP"
+          mkdir -p "$BACKUP"
+          cp -p "$BACKEND/routes/stripe.py" "$BACKUP/stripe.py"
+          "$PY" -m py_compile /tmp/bidblitz-stripe.py
+
+          swapped=0
+          rollback() {
+            result=$?
+            trap - ERR
+            if [ "$swapped" = "1" ]; then
+              cp -p "$BACKUP/stripe.py" "$BACKEND/routes/stripe.py"
+              pm2 restart api >/dev/null || true
+            fi
+            exit "$result"
+          }
+          trap rollback ERR
+
+          install -m 644 /tmp/bidblitz-stripe.py "$BACKEND/routes/stripe.py"
+          swapped=1
+          pm2 restart api
+
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 10 http://127.0.0.1:8001/api/stripe/plans >/tmp/stripe-plans.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+
+          "$PY" - /tmp/stripe-plans.json <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          plans = data.get("plans") or []
+          ids = [str(p.get("package_id")) for p in plans]
+          amounts = [float(p.get("amount")) for p in plans]
+          assert ids == ["10","25","50","100","250","500"], ids
+          assert amounts == [10.0,25.0,50.0,100.0,250.0,500.0], amounts
+          assert all(float(p.get("amount")) != 200.0 for p in plans)
+          print("Stripe topup plan parity verified:", ids)
+          PY
+
+          trap - ERR
+          rm -f /tmp/bidblitz-stripe.py /tmp/stripe-plans.json
+          echo "Stripe top-up route activated; backup: $BACKUP"
+          REMOTE
+
+      - name: Verify public Stripe plans
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/stripe/plans -o /tmp/public-plans.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open("/tmp/public-plans.json"))
+          plans=data.get("plans") or []
+          ids=[str(p.get("package_id")) for p in plans]
+          amounts=[float(p.get("amount")) for p in plans]
+          assert ids == ["10","25","50","100","250","500"], ids
+          assert amounts == [10.0,25.0,50.0,100.0,250.0,500.0], amounts
+          print("Public Stripe plans verified:", ids)
+          PY
