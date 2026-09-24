@@ -139,12 +139,16 @@ async def get_my_barcode(request: Request):
     if existing:
         expires = datetime.fromisoformat(existing["expires_at"])
         if expires > now:
+            seconds_remaining = int((expires - now).total_seconds())
             return {
                 "barcode": existing["barcode"],
                 "expires_at": existing["expires_at"],
-                "seconds_remaining": int((expires - now).total_seconds()),
+                "seconds_remaining": seconds_remaining,
+                "expires_in": seconds_remaining,
+                "rotation_seconds": BARCODE_VALIDITY_SECONDS,
                 "user_name": user.get("name", ""),
-                "balance": user.get("balance", 0),
+                "name": user.get("name", ""),
+                "balance": round(float(user.get("balance", 0) or 0), 2),
             }
         await db.payment_barcodes.update_one({"_id": existing["_id"]}, {"$set": {"active": False}})
 
@@ -155,9 +159,14 @@ async def get_my_barcode(request: Request):
         "expires_at": expires_at, "created_at": now.isoformat(),
     })
     return {
-        "barcode": barcode, "expires_at": expires_at,
+        "barcode": barcode,
+        "expires_at": expires_at,
         "seconds_remaining": BARCODE_VALIDITY_SECONDS,
-        "user_name": user.get("name", ""), "balance": user.get("balance", 0),
+        "expires_in": BARCODE_VALIDITY_SECONDS,
+        "rotation_seconds": BARCODE_VALIDITY_SECONDS,
+        "user_name": user.get("name", ""),
+        "name": user.get("name", ""),
+        "balance": round(float(user.get("balance", 0) or 0), 2),
     }
 
 
@@ -174,7 +183,16 @@ async def refresh_barcode(request: Request):
         "user_id": uid, "barcode": barcode, "active": True,
         "expires_at": expires_at, "created_at": now.isoformat(),
     })
-    return {"barcode": barcode, "expires_at": expires_at, "seconds_remaining": BARCODE_VALIDITY_SECONDS}
+    return {
+        "barcode": barcode,
+        "expires_at": expires_at,
+        "seconds_remaining": BARCODE_VALIDITY_SECONDS,
+        "expires_in": BARCODE_VALIDITY_SECONDS,
+        "rotation_seconds": BARCODE_VALIDITY_SECONDS,
+        "user_name": user.get("name", ""),
+        "name": user.get("name", ""),
+        "balance": round(float(user.get("balance", 0) or 0), 2),
+    }
 
 
 # ══════════════════════════════════════
