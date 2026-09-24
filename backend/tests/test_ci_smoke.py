@@ -651,6 +651,20 @@ def test_auction_financial_flows_are_idempotent_and_race_safe():
     assert "günstigstem bezahlten Credit €0,25" in admin_source
 
 
+def test_auction_credit_checkout_cancel_and_error_states_are_visible():
+    auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+    page_source = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AuctionsPage.jsx").read_text(encoding="utf-8")
+
+    assert "except HTTPException:" in auctions_source
+    assert "raise" in auctions_source.split("except HTTPException:", 1)[1].split("except Exception as e:", 1)[0]
+
+    assert "if (!purchaseId) return;" in page_source
+    assert 'if (status === "cancel") {' in page_source
+    assert 'if (status !== "success" || !sessionId) return;' in page_source
+    assert "[400, 401, 403, 404, 409, 500, 503].includes(r.status)" in page_source
+    assert "Zahlungsstatus konnte nicht bestätigt werden." in page_source
+
+
 def test_auction_auto_bid_requires_kyc_and_atomic_credit_reservation():
     auctions_source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
     detail_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "auctions" / "AuctionDetail.jsx").read_text(encoding="utf-8")
