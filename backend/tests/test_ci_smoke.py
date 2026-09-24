@@ -289,6 +289,8 @@ def _stripe_source():
 def test_apple_google_pay_wallet_topup_is_eur_only_and_metadata_safe():
     source = (BACKEND_DIR / "routes" / "apple_google_pay.py").read_text(encoding="utf-8")
 
+    assert 'from core.config import STRIPE_API_KEY' in source
+    assert 'stripe.api_key = STRIPE_API_KEY' in source
     assert 'currency: str = Field(default="eur", pattern="^eur$")' in source
     assert 'protected_metadata_keys = {"user_id", "user_email", "kind"}' in source
     assert 'if key not in protected_metadata_keys' in source
