@@ -286,6 +286,20 @@ def _stripe_source():
     return STRIPE_ROUTE_PATH.read_text(encoding="utf-8")
 
 
+def test_apple_google_pay_wallet_topup_is_eur_only_and_metadata_safe():
+    source = (BACKEND_DIR / "routes" / "apple_google_pay.py").read_text(encoding="utf-8")
+
+    assert 'currency: str = Field(default="eur", pattern="^eur$")' in source
+    assert 'protected_metadata_keys = {"user_id", "user_email", "kind"}' in source
+    assert 'if key not in protected_metadata_keys' in source
+    assert '"user_id": user_id' in source
+    assert '"user_email": user_email' in source
+    assert '"kind": "wallet_topup_pay"' in source
+    assert 'currency="eur"' in source
+    assert 'if currency != "eur":' in source
+    assert 'Unsupported settlement currency for EUR wallet' in source
+
+
 def test_stripe_topup_plans_match_checkout_packages():
     source = _stripe_source()
     assert 'for package_id, amount in sorted(TOPUP_PACKAGES.items()' in source
