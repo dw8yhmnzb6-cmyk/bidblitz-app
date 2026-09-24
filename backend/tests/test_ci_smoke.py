@@ -345,6 +345,17 @@ def test_quick_topup_compliance_uses_authenticated_user_id():
     assert 'run_compliance_check(user, "topup", amount)' not in quick_topup
 
 
+def test_mobile_stripe_never_initializes_with_placeholder_key():
+    stripe_config = (BACKEND_DIR.parent / "mobile" / "src" / "config" / "stripe.js").read_text(encoding="utf-8")
+    mobile_app = (BACKEND_DIR.parent / "mobile" / "src" / "App.js").read_text(encoding="utf-8")
+
+    assert "pk_live_51QUYF218nRp2RQgs..." not in stripe_config
+    assert "STRIPE_NATIVE_ENABLED" in stripe_config
+    assert "STRIPE_NATIVE_ENABLED" in mobile_app
+    assert "{STRIPE_NATIVE_ENABLED ? (" in mobile_app
+    assert "<StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>" in mobile_app
+
+
 def test_taxi_customer_driver_wallet_flow_stays_unified():
     taxi_source = (BACKEND_DIR / "routes" / "taxi.py").read_text(encoding="utf-8")
     taxi_model_source = (BACKEND_DIR / "models" / "taxi.py").read_text(encoding="utf-8")
