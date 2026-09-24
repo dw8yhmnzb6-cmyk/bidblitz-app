@@ -448,6 +448,7 @@ def test_customer_and_merchant_barcode_payment_flow_is_canonical():
     assert 'round(float(user.get("balance", 0) or 0), 2)' in pos_source
 
     assert 'setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0)' in payment_page
+    assert 'const L = paymentCopy[locale] || paymentCopy.de;' in payment_page
     assert 'data-testid="payment-error"' in payment_page
     assert 'Stripe Checkout hat keine Zahlungs-URL zurückgegeben.' in payment_page
     assert 'api.getMyBarcode()' in barcode_modal
