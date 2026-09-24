@@ -26,17 +26,20 @@ const PaymentPage = ({ onBack, onNavigate }) => {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [feeInfo, setFeeInfo] = useState(null);
+  const [paymentError, setPaymentError] = useState("");
   const timerRef = useRef(null);
 
   const loadBarcode = useCallback(async () => {
     try {
       const res = await api.getMyBarcode();
       setBarcode(res);
-      setSecondsLeft(res.seconds_remaining || 0);
+      setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0);
+      setPaymentError("");
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Zahlungscode konnte nicht geladen werden.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { loadBarcode(); api.getFeeInfo().then(setFeeInfo).catch(() => {}); }, [loadBarcode]);
@@ -59,15 +62,18 @@ const PaymentPage = ({ onBack, onNavigate }) => {
     try {
       const res = await api.refreshBarcode();
       setBarcode(p => ({ ...p, ...res }));
-      setSecondsLeft(res.seconds_remaining || 0);
+      setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0);
+      setPaymentError("");
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Zahlungscode konnte nicht erneuert werden.");
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   };
 
   const openBuyCredits = async (pkgId) => {
     try {
+      setPaymentError("");
       const origin = window.location.origin;
       const res = await fetch(`${API}/api/stripe/checkout`, {
         method: "POST",
@@ -75,12 +81,17 @@ const PaymentPage = ({ onBack, onNavigate }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ package_id: pkgId, origin_url: origin }),
       });
-      const data = await res.json();
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : "Wallet-Aufladung konnte nicht gestartet werden.";
+        throw new Error(detail);
       }
+      if (!data.checkout_url) {
+        throw new Error("Stripe Checkout hat keine Zahlungs-URL zurückgegeben.");
+      }
+      window.location.href = data.checkout_url;
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Wallet-Aufladung konnte nicht gestartet werden.");
     }
   };
 
@@ -105,6 +116,24 @@ const PaymentPage = ({ onBack, onNavigate }) => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+        {paymentError && (
+          <div
+            className="rounded-2xl border border-[#FF4757]/20 bg-[#FF4757]/[0.07] px-4 py-3"
+            data-testid="payment-error"
+            role="alert"
+          >
+            <p className="text-[11px] font-bold text-[#FF6B7A]">Zahlung konnte nicht ausgeführt werden</p>
+            <p className="mt-1 break-words text-[10px] text-white/55">{paymentError}</p>
+            <button
+              type="button"
+              onClick={loadBarcode}
+              className="mt-2 rounded-lg bg-white/[0.06] px-3 py-1.5 text-[9px] font-bold text-white/65"
+              data-testid="payment-error-retry"
+            >
+              Erneut prüfen
+            </button>
+          </div>
+        )}
 
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-start gap-3">
