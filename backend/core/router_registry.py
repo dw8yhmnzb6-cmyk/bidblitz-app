@@ -39,6 +39,7 @@ def register_all_routers(app):
         ("routes.merchant", "router"),
         ("routes.transactions", "router"),
         ("routes.stripe", "router"),
+        ("routes.apple_google_pay", "router"),
         ("routes.payout", "router"),
         ("routes.admin", "router"),
         ("routes.feature_flags", "router"),
