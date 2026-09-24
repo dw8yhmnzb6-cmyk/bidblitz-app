@@ -2451,6 +2451,8 @@ async def get_credits_purchase_status(session_id: str, request: Request):
             ) if status.payment_status == "paid" else 0,
             "amount": txn.get("amount", 0),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         import logging as _logging
         _logging.getLogger("bidblitz.auctions").error(f"Status check failed: {e}")
