@@ -19,7 +19,19 @@ export default function AppleGooglePayButton({ amount, description, metadata = {
 
   const initializePaymentRequest = async () => {
     try {
-      // Load Stripe (use your publishable key)
+      setCanMakePayment(false);
+      setPaymentRequest(null);
+
+      const readinessResponse = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/payments/payment-request-capabilities`,
+        { credentials: 'include' }
+      );
+      const readiness = readinessResponse.ok ? await readinessResponse.json() : null;
+      if (!readiness?.apple_google_pay_enabled) {
+        return;
+      }
+
+      // Load Stripe only after the backend confirms provider + webhook readiness.
       const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
       if (!stripe) {
@@ -64,10 +76,14 @@ export default function AppleGooglePayButton({ amount, description, metadata = {
             });
 
             if (!res.ok) {
-              throw new Error('Failed to create payment intent');
+              const failure = await res.json().catch(() => ({}));
+              throw new Error(failure?.detail || 'Failed to create payment intent');
             }
 
             const { client_secret } = await res.json();
+            if (!client_secret) {
+              throw new Error('Payment provider returned no client secret');
+            }
 
             // Confirm payment
             const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
