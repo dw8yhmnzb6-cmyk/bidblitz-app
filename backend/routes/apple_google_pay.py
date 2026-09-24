@@ -29,7 +29,7 @@ MAX_AMOUNT_EUR = 500.00  # matches wallet-topup cap in PRD
 
 class CreatePaymentIntentRequest(BaseModel):
     amount: float = Field(..., gt=0, le=MAX_AMOUNT_EUR)
-    currency: str = Field(default="eur", pattern="^(eur|usd|gbp|chf)$")
+    currency: str = Field(default="eur", pattern="^eur$")
     description: Optional[str] = "BidBlitz Wallet Top-Up"
     metadata: Optional[dict] = None
 
@@ -55,17 +55,23 @@ async def create_payment_intent(req: CreatePaymentIntentRequest, request: Reques
     user_email = user.get("email", "")
 
     amount_cents = int(round(req.amount * 100))
+    protected_metadata_keys = {"user_id", "user_email", "kind"}
+    safe_metadata = {
+        str(key): str(value)[:500]
+        for key, value in (req.metadata or {}).items()
+        if key not in protected_metadata_keys and value is not None
+    }
 
     try:
         intent = stripe.PaymentIntent.create(
             amount=amount_cents,
-            currency=req.currency.lower(),
+            currency="eur",
             description=req.description,
             metadata={
+                **safe_metadata,
                 "user_id": user_id,
                 "user_email": user_email,
                 "kind": "wallet_topup_pay",
-                **(req.metadata or {}),
             },
             automatic_payment_methods={"enabled": True},
         )
@@ -134,10 +140,13 @@ async def stripe_payment_intent_webhook(request: Request):
     if etype == "payment_intent.succeeded":
         pi_id = data.get("id")
         amount = (data.get("amount") or 0) / 100.0
-        currency = data.get("currency", "eur")
+        currency = str(data.get("currency", "eur") or "eur").lower()
         meta = data.get("metadata") or {}
         user_id = meta.get("user_id")
 
+        if currency != "eur":
+            logger.error("Rejecting non-EUR wallet top-up PI %s with currency %s", pi_id, currency)
+            raise HTTPException(400, "Unsupported settlement currency for EUR wallet")
         if not user_id:
             return {"ok": True, "skipped": "no user_id"}
 
