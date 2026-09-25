@@ -530,6 +530,15 @@ def test_customer_and_merchant_barcode_payment_flow_is_canonical():
     assert 'data-testid="payment-error"' in payment_page
     assert 'Stripe Checkout hat keine Zahlungs-URL zurückgegeben.' in payment_page
     assert 'api.getMyBarcode()' in barcode_modal
+    assert 'rotate ? await api.refreshBarcode() : await api.getMyBarcode()' in barcode_modal
+    assert 'seconds_remaining ?? data?.expires_in' in barcode_modal
+    assert 'ttl <= 0' in barcode_modal
+    assert 'value={barcode.barcode}' in barcode_modal
+    assert 'QRCodeSVG' in barcode_modal
+    assert 'fetchBarcode(true)' in barcode_modal
+    assert 'pendingRef.current' in barcode_modal
+    assert 'Date.now() >= expiresAtRef.current' in barcode_modal
+    assert 'setBarcode(null)' in barcode_modal
 
     assert 'data-testid="nfc-card-btn"' in terminal_page
     assert 'Provider-Anbindung ausstehend' in terminal_page
