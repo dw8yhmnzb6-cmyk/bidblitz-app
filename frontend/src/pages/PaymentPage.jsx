@@ -5,6 +5,7 @@ import {
   CreditCard, Smartphone, ArrowUpRight, QrCode
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import { QRCodeSVG } from "qrcode.react";
 import { api } from "../services/api";
 
 const panelBg = "rgba(8,12,20,0.7)";
@@ -29,12 +30,19 @@ const PaymentPage = ({ onBack, onNavigate }) => {
   const [feeInfo, setFeeInfo] = useState(null);
   const [paymentError, setPaymentError] = useState("");
   const timerRef = useRef(null);
+  const expiresAtRef = useRef(0);
+  const refreshPendingRef = useRef(false);
 
   const loadBarcode = useCallback(async () => {
     try {
       const res = await api.getMyBarcode();
+      const seconds = Number(res.seconds_remaining ?? res.expires_in ?? 0);
+      if (!res?.barcode || !Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error("Zahlungscode ist abgelaufen oder nicht verfügbar.");
+      }
+      expiresAtRef.current = Date.now() + seconds * 1000;
       setBarcode(res);
-      setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0);
+      setSecondsLeft(Math.ceil(seconds));
       setPaymentError("");
     } catch (error) {
       setPaymentError(error?.message || "Zahlungscode konnte nicht geladen werden.");
@@ -45,29 +53,49 @@ const PaymentPage = ({ onBack, onNavigate }) => {
 
   useEffect(() => { loadBarcode(); api.getFeeInfo().then(setFeeInfo).catch(() => {}); }, [loadBarcode]);
 
-  // Countdown timer
+  // Wall-clock countdown: background tabs cannot extend a payment code.
   useEffect(() => {
-    if (secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(p => {
-          if (p <= 1) { clearInterval(timerRef.current); loadBarcode(); return 0; }
-          return p - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [secondsLeft, loadBarcode]);
+    if (!barcode) return undefined;
+    let expired = false;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (!expired && remaining === 0) {
+        expired = true;
+        setBarcode(null);
+        refresh();
+      }
+    };
+    timerRef.current = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  // refresh is intentionally read at expiry time; barcode change owns the timer lifecycle.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barcode]);
 
   const refresh = async () => {
+    if (refreshPendingRef.current) return;
+    refreshPendingRef.current = true;
     setRefreshing(true);
+    setBarcode(null);
+    setSecondsLeft(0);
     try {
       const res = await api.refreshBarcode();
-      setBarcode(p => ({ ...p, ...res }));
-      setSecondsLeft(res.seconds_remaining ?? res.expires_in ?? 0);
+      const seconds = Number(res.seconds_remaining ?? res.expires_in ?? 0);
+      if (!res?.barcode || !Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error("Zahlungscode ist abgelaufen oder nicht verfügbar.");
+      }
+      expiresAtRef.current = Date.now() + seconds * 1000;
+      setBarcode(res);
+      setSecondsLeft(Math.ceil(seconds));
       setPaymentError("");
     } catch (error) {
       setPaymentError(error?.message || "Zahlungscode konnte nicht erneuert werden.");
     } finally {
+      refreshPendingRef.current = false;
       setRefreshing(false);
     }
   };
@@ -172,14 +200,18 @@ const PaymentPage = ({ onBack, onNavigate }) => {
             {/* Barcode display */}
             <div className="text-center mb-3">
               <p className="text-[9px] text-white/25 mb-2">{t("pay.your_code") || "Your Payment Code"}</p>
-              <div data-testid="barcode-display" className="bg-white rounded-xl p-4 mx-auto max-w-[200px]">
-                {/* Barcode visual representation */}
-                <div className="flex items-center justify-center gap-[2px] mb-2">
-                  {barcode.barcode.split("").map((c, i) => (
-                    <div key={i} className="bg-black" style={{ width: (c.charCodeAt(0) % 3) + 1, height: 48 }} />
-                  ))}
+              <div data-testid="barcode-display" className="bg-white rounded-xl p-4 mx-auto max-w-[220px]">
+                <div className="flex justify-center">
+                  <QRCodeSVG
+                    value={barcode.barcode}
+                    size={176}
+                    level="H"
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    includeMargin={false}
+                  />
                 </div>
-                <p className="text-[14px] font-mono font-black text-black tracking-widest">{barcode.barcode}</p>
+                <p className="mt-3 break-all text-[10px] font-mono font-black text-black tracking-wide">{barcode.barcode}</p>
               </div>
             </div>
 
