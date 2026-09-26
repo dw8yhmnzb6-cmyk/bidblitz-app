@@ -1063,6 +1063,7 @@ async def request_merchant_trial(req: OnboardingRequest, request: Request):
 @router.get("/pricing")
 async def get_pricing():
     rates = await get_fee_rates()
+    availability = payment_method_availability()
     return {
         "plans": [
             {
