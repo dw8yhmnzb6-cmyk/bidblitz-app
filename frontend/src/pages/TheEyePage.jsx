@@ -85,6 +85,8 @@ export default function TheEyePage({ onNavigate }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [locationSummary, setLocationSummary] = useState(null);
   const [locationDetail, setLocationDetail] = useState(null);
+  const [scopedDevices, setScopedDevices] = useState(null);
+  const [mapFocus, setMapFocus] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,9 +146,20 @@ export default function TheEyePage({ onNavigate }) {
     setSearchOpen(false);
     setQuery(result?.title || "");
     setLocationDetail(null);
+    setScopedDevices(null);
 
     if (result?.entity_type === "device" && result?.entity_id) {
       setSelectedId(result.entity_id);
+      if (result?.location?.lat != null && result?.location?.lng != null) {
+        setMapFocus({
+          label: result.title || result.entity_id,
+          city: result.city,
+          country: result.country,
+          lat: Number(result.location.lat),
+          lng: Number(result.location.lng),
+          zoom: "device",
+        });
+      }
     }
 
     if (result?.entity_id?.startsWith?.("LOC-")) {
@@ -157,6 +170,17 @@ export default function TheEyePage({ onNavigate }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const detail = await res.json();
         setLocationDetail(detail);
+        const point = detail?.location?.location;
+        if (point?.lat != null && point?.lng != null) {
+          setMapFocus({
+            label: detail?.location?.name || result?.title,
+            city: detail?.location?.city,
+            country: detail?.location?.country,
+            lat: Number(point.lat),
+            lng: Number(point.lng),
+            zoom: detail?.location?.location_type || "location",
+          });
+        }
       } catch {
         setLocationDetail(null);
       }
@@ -177,8 +201,54 @@ export default function TheEyePage({ onNavigate }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setLocationSummary(data);
+
+      const point = data?.location?.location;
+      if (point?.lat != null && point?.lng != null) {
+        setMapFocus({
+          label: data?.location?.city || city,
+          city: data?.location?.city || city,
+          country: data?.location?.country || result?.country,
+          lat: Number(point.lat),
+          lng: Number(point.lng),
+          zoom: "city",
+        });
+      } else if (result?.location?.lat != null && result?.location?.lng != null) {
+        setMapFocus({
+          label: result?.title || city,
+          city,
+          country: result?.country,
+          lat: Number(result.location.lat),
+          lng: Number(result.location.lng),
+          zoom: result?.entity_type || "location",
+        });
+      } else {
+        setMapFocus((current) => current || {
+          label: data?.location?.city || city,
+          city: data?.location?.city || city,
+          country: data?.location?.country || result?.country,
+          lat: null,
+          lng: null,
+          zoom: "city",
+        });
+      }
+
+      const mapParams = new URLSearchParams();
+      if (result?.entity_id?.startsWith?.("LOC-")) {
+        mapParams.set("location_id", result.entity_id);
+      } else {
+        mapParams.set("city", city);
+        if (result?.country) mapParams.set("country", result.country);
+      }
+      const mapRes = await fetch(`/api/the-eye/admin/map/devices?${mapParams.toString()}`, {
+        credentials: "include",
+      });
+      if (mapRes.ok) {
+        const mapData = await mapRes.json();
+        setScopedDevices(Array.isArray(mapData.devices) ? mapData.devices : []);
+      }
     } catch {
       setLocationSummary(null);
+      setScopedDevices(null);
     }
   };
 
@@ -241,16 +311,48 @@ export default function TheEyePage({ onNavigate }) {
     };
   }, []);
 
+  const visibleDevices = scopedDevices ?? devices;
+
   const selected = useMemo(
-    () => devices.find((d) => d.device_id === selectedId) || devices[0],
-    [devices, selectedId]
+    () => devices.find((d) => d.device_id === selectedId)
+      || visibleDevices.find((d) => d.device_id === selectedId)
+      || visibleDevices[0]
+      || devices[0],
+    [devices, visibleDevices, selectedId]
   );
 
   const filteredDevices = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return devices;
-    return devices.filter((d) => [d.device_id, d.device_type, d.city, d.country].some((v) => String(v || "").toLowerCase().includes(q)));
-  }, [devices, query]);
+    if (!q || mapFocus) return visibleDevices;
+    return visibleDevices.filter((d) => [d.device_id, d.device_type, d.city, d.country].some((v) => String(v || "").toLowerCase().includes(q)));
+  }, [visibleDevices, query, mapFocus]);
+
+  const resetMap = () => {
+    setMapFocus(null);
+    setLocationSummary(null);
+    setLocationDetail(null);
+    setScopedDevices(null);
+    setQuery("");
+    setSearchResults([]);
+    setSearchOpen(false);
+  };
+
+  const focusedPins = useMemo(() => {
+    if (!mapFocus) return [];
+    const rows = visibleDevices.filter((d) => d?.location?.lat != null && d?.location?.lng != null);
+    if (!rows.length) return [];
+
+    const centerLat = mapFocus.lat ?? rows.reduce((sum, d) => sum + Number(d.location.lat), 0) / rows.length;
+    const centerLng = mapFocus.lng ?? rows.reduce((sum, d) => sum + Number(d.location.lng), 0) / rows.length;
+    const spanLat = Math.max(...rows.map((d) => Math.abs(Number(d.location.lat) - centerLat)), 0.01);
+    const spanLng = Math.max(...rows.map((d) => Math.abs(Number(d.location.lng) - centerLng)), 0.01);
+
+    return rows.slice(0, 200).map((device) => ({
+      ...device,
+      pinX: Math.max(8, Math.min(92, 50 + ((Number(device.location.lng) - centerLng) / (spanLng * 2.4)) * 100)),
+      pinY: Math.max(10, Math.min(90, 50 - ((Number(device.location.lat) - centerLat) / (spanLat * 2.4)) * 100)),
+    }));
+  }, [visibleDevices, mapFocus]);
 
   const toggleLayer = (name) => setActiveLayers((prev) => ({ ...prev, [name]: !prev[name] }));
 
@@ -308,7 +410,7 @@ export default function TheEyePage({ onNavigate }) {
         <aside className="eye-sidebar">
           <section>
             <div className="eye-section-title"><span>Ansicht</span><Layers3 size={16} /></div>
-            <div className="eye-segment"><button className="active">Welt</button><button>Meine Geräte</button></div>
+            <div className="eye-segment"><button className={!mapFocus ? "active" : ""} onClick={resetMap}>Welt</button><button className={mapFocus ? "active" : ""}>{mapFocus ? "Standort" : "Meine Geräte"}</button></div>
           </section>
 
           <section className="eye-layer-list">
@@ -377,8 +479,41 @@ export default function TheEyePage({ onNavigate }) {
             </section>
           ) : null}
 
-          <section className="eye-world">
+          <section className={`eye-world${mapFocus ? " eye-world--focused" : ""}`}>
             <div className="eye-world-grid" />
+            {mapFocus ? (
+              <div className="eye-focused-map">
+                <div className="eye-focused-radar" />
+                <div className="eye-focused-road road-a" />
+                <div className="eye-focused-road road-b" />
+                <div className="eye-focused-road road-c" />
+                <div className="eye-focused-center">
+                  <MapPin size={17} />
+                  <span>
+                    <strong>{mapFocus.label || mapFocus.city || "Standort"}</strong>
+                    <small>{[mapFocus.city, mapFocus.country].filter(Boolean).join(" · ")}</small>
+                  </span>
+                </div>
+                {focusedPins.map((device) => {
+                  const Icon = ICONS[device.device_type] || Cpu;
+                  return (
+                    <button
+                      key={device.device_id}
+                      className={`eye-live-pin ${device.connection_status === "online" ? "online" : device.connection_status === "warning" ? "warning" : "offline"}`}
+                      style={{ left: `${device.pinX}%`, top: `${device.pinY}%` }}
+                      title={device.device_id}
+                      onClick={() => setSelectedId(device.device_id)}
+                    >
+                      <Icon size={13} />
+                    </button>
+                  );
+                })}
+                <div className="eye-focus-label">
+                  <span>DIGITAL MAP</span>
+                  <strong>{mapFocus.lat != null && mapFocus.lng != null ? `${mapFocus.lat.toFixed(5)}, ${mapFocus.lng.toFixed(5)}` : "Standortdaten"}</strong>
+                </div>
+              </div>
+            ) : (
             <div className="eye-globe">
               <div className="eye-globe-shine" />
               <div className="eye-orbit orbit-a" />
@@ -397,9 +532,10 @@ export default function TheEyePage({ onNavigate }) {
               <div className="eye-pin pin-7 blue"><Plane size={16} /></div>
               <div className="eye-pin pin-8 green"><Cpu size={16} /></div>
             </div>
+            )}
 
             <div className="eye-map-toolbar">
-              <button>+</button><button>−</button><button><Layers3 size={17} /></button><button>3D</button>
+              <button>+</button><button>−</button><button><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : undefined}>{mapFocus ? "Welt" : "3D"}</button>
             </div>
 
             <div className="eye-live-clock"><span><Camera size={15} /> Live</span><strong>UTC+2</strong></div>
@@ -409,7 +545,7 @@ export default function TheEyePage({ onNavigate }) {
             <MetricCard icon={Camera} value="177.721" label="Kameras" tone="cyan" />
             <MetricCard icon={Plane} value="12.438" label="Flugzeuge" tone="blue" />
             <MetricCard icon={Ship} value="39.217" label="Schiffe" tone="amber" />
-            <MetricCard icon={Cpu} value={devices.length.toLocaleString("de-DE")} label="Eigene Geräte" tone="green" />
+            <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
             <MetricCard icon={Flame} value="342" label="Aktive Feuer" tone="red" />
             <MetricCard icon={Activity} value="12" label="Erdbeben" tone="orange" />
           </section>
