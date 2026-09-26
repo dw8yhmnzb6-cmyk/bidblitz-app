@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   Activity,
   AlertTriangle,
@@ -483,10 +485,61 @@ export default function TheEyePage({ onNavigate }) {
             <div className="eye-world-grid" />
             {mapFocus ? (
               <div className="eye-focused-map">
-                <div className="eye-focused-radar" />
-                <div className="eye-focused-road road-a" />
-                <div className="eye-focused-road road-b" />
-                <div className="eye-focused-road road-c" />
+                {mapFocus.lat != null && mapFocus.lng != null ? (
+                  <MapContainer
+                    key={`${mapFocus.lat}:${mapFocus.lng}:${mapFocus.zoom}`}
+                    center={[mapFocus.lat, mapFocus.lng]}
+                    zoom={mapFocus.zoom === "device" || mapFocus.zoom === "site" || mapFocus.zoom === "street" ? 16 : 13}
+                    scrollWheelZoom
+                    className="eye-leaflet-map"
+                    zoomControl={false}
+                  >
+                    <TileLayer
+                      attribution="&copy; OpenStreetMap contributors"
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {focusedPins.map((device) => (
+                      <CircleMarker
+                        key={device.device_id}
+                        center={[Number(device.location.lat), Number(device.location.lng)]}
+                        radius={selectedId === device.device_id ? 9 : 6}
+                        pathOptions={{
+                          color: device.connection_status === "online" ? "#2fe18a" : device.connection_status === "warning" ? "#ffb63e" : "#ff6767",
+                          fillColor: device.connection_status === "online" ? "#2fe18a" : device.connection_status === "warning" ? "#ffb63e" : "#ff6767",
+                          fillOpacity: 0.8,
+                          weight: 2,
+                        }}
+                        eventHandlers={{ click: () => setSelectedId(device.device_id) }}
+                      >
+                        <Popup>
+                          <strong>{device.device_id}</strong><br />
+                          {device.device_type} · {device.connection_status}
+                        </Popup>
+                      </CircleMarker>
+                    ))}
+                  </MapContainer>
+                ) : (
+                  <>
+                    <div className="eye-focused-radar" />
+                    <div className="eye-focused-road road-a" />
+                    <div className="eye-focused-road road-b" />
+                    <div className="eye-focused-road road-c" />
+                    {focusedPins.map((device) => {
+                      const Icon = ICONS[device.device_type] || Cpu;
+                      return (
+                        <button
+                          key={device.device_id}
+                          className={`eye-live-pin ${device.connection_status === "online" ? "online" : device.connection_status === "warning" ? "warning" : "offline"}`}
+                          style={{ left: `${device.pinX}%`, top: `${device.pinY}%` }}
+                          title={device.device_id}
+                          onClick={() => setSelectedId(device.device_id)}
+                        >
+                          <Icon size={13} />
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
                 <div className="eye-focused-center">
                   <MapPin size={17} />
                   <span>
@@ -494,20 +547,6 @@ export default function TheEyePage({ onNavigate }) {
                     <small>{[mapFocus.city, mapFocus.country].filter(Boolean).join(" · ")}</small>
                   </span>
                 </div>
-                {focusedPins.map((device) => {
-                  const Icon = ICONS[device.device_type] || Cpu;
-                  return (
-                    <button
-                      key={device.device_id}
-                      className={`eye-live-pin ${device.connection_status === "online" ? "online" : device.connection_status === "warning" ? "warning" : "offline"}`}
-                      style={{ left: `${device.pinX}%`, top: `${device.pinY}%` }}
-                      title={device.device_id}
-                      onClick={() => setSelectedId(device.device_id)}
-                    >
-                      <Icon size={13} />
-                    </button>
-                  );
-                })}
                 <div className="eye-focus-label">
                   <span>DIGITAL MAP</span>
                   <strong>{mapFocus.lat != null && mapFocus.lng != null ? `${mapFocus.lat.toFixed(5)}, ${mapFocus.lng.toFixed(5)}` : "Standortdaten"}</strong>
