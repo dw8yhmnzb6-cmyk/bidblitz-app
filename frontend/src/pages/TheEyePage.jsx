@@ -136,6 +136,34 @@ export default function TheEyePage({ onNavigate }) {
     monthly_cost: 0,
     providers: [],
   });
+  const [projectOverview, setProjectOverview] = useState({
+    projects_total: 0,
+    healthy: 0,
+    warning_or_worse: 0,
+    revenue: 0,
+    cost: 0,
+    profit: 0,
+    active_users: 0,
+    critical_alerts: 0,
+    open_incidents: 0,
+    projects: [],
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProjects = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/project-intelligence/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setProjectOverview(data);
+      } catch {
+        // Project Intelligence remains empty until project connectors start sending snapshots.
+      }
+    };
+    loadProjects();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -615,6 +643,34 @@ export default function TheEyePage({ onNavigate }) {
                 ...(current.providers || []).filter((provider) => provider.provider_id !== payload.provider_id),
               ].slice(0, 20),
             }));
+          } else if ((message.type === "project.created" || message.type === "project.snapshot") && (payload.project_id || payload.project_key)) {
+            setProjectOverview((current) => {
+              const row = {
+                project_id: payload.project_id,
+                project_key: payload.project_key,
+                name: payload.name || payload.project_key,
+                status: payload.status,
+                health_score: payload.health_score,
+                risk_score: payload.risk_score,
+                data_trust_score: payload.data_trust_score,
+                revenue: payload.revenue || 0,
+                cost: payload.cost || 0,
+                profit: payload.profit || 0,
+                active_users: payload.active_users || 0,
+                critical_alerts: payload.critical_alerts || 0,
+                open_incidents: payload.open_incidents || 0,
+                uptime_percent: payload.uptime_percent,
+                latency_p95_ms: payload.latency_p95_ms,
+              };
+              const key = payload.project_key;
+              const exists = (current.projects || []).some((project) => project.project_key === key);
+              return {
+                ...current,
+                projects: exists
+                  ? current.projects.map((project) => project.project_key === key ? { ...project, ...row } : project)
+                  : [row, ...(current.projects || [])],
+              };
+            });
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -1162,6 +1218,37 @@ export default function TheEyePage({ onNavigate }) {
                 </div>
               ))}
               {!providerOverview.providers?.length ? <div className="eye-provider-empty">Noch keine Provider registriert</div> : null}
+            </div>
+          </section>
+
+          <section className="eye-project-center">
+            <div className="eye-project-head">
+              <div>
+                <span>PROJECT INTELLIGENCE</span>
+                <strong>{projectOverview.projects_total || 0} Projekte · {projectOverview.healthy || 0} healthy</strong>
+              </div>
+              <div className="eye-project-kpis">
+                <span>Umsatz {Number(projectOverview.revenue || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
+                <span>Kosten {Number(projectOverview.cost || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
+                <span>Profit {Number(projectOverview.profit || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
+                <span>Users {Number(projectOverview.active_users || 0).toLocaleString("de-DE")}</span>
+              </div>
+            </div>
+            <div className="eye-project-list">
+              {(projectOverview.projects || []).slice(0, 6).map((project) => (
+                <div className="eye-project-row" key={project.project_key}>
+                  <span className={`project-state ${project.status || "unknown"}`}>{project.status || "unknown"}</span>
+                  <div>
+                    <strong>{project.name || project.project_key}</strong>
+                    <small>Health {project.health_score ?? "—"} · Risk {project.risk_score ?? "—"} · Trust {project.data_trust_score ?? "—"}</small>
+                  </div>
+                  <div className="eye-project-money">
+                    <strong>{Number(project.profit || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</strong>
+                    <small>{project.open_incidents || 0} Incidents</small>
+                  </div>
+                </div>
+              ))}
+              {!projectOverview.projects?.length ? <div className="eye-project-empty">Noch keine Projekte mit KPI-Snapshots verbunden</div> : null}
             </div>
           </section>
 
