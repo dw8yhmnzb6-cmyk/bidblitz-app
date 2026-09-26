@@ -52,6 +52,7 @@ def register_all_routers(app):
         ("routes.the_eye_network", "router"),
         ("routes.the_eye_incidents", "router"),
         ("routes.the_eye_actions", "router"),
+        ("routes.the_eye_maintenance", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
         ("routes.diag", "router"),
