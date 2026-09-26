@@ -15,6 +15,7 @@ import hashlib
 import logging
 import math
 import io
+import os
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -25,6 +26,7 @@ from fpdf import FPDF
 from core.database import db
 from core.merchant_commission import MIN_MERCHANT_COMMISSION_RATE, effective_merchant_rate
 from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+from core.config import STRIPE_API_KEY
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 logger = logging.getLogger("bidblitz.payments")
@@ -53,6 +55,26 @@ FEE_LABELS = {
     "google_pay": "Google Pay",
     "card": "Card Payment",
 }
+
+
+def payment_method_availability() -> dict:
+    """Public capability view. Never advertise an unverified money path as usable."""
+    stripe_wallet_ready = bool(STRIPE_API_KEY and os.environ.get("STRIPE_PI_WEBHOOK_SECRET"))
+    return {
+        "wallet": {"available": True, "reason": None},
+        "barcode": {"available": True, "reason": None},
+        "nfc_wallet": {"available": True, "reason": None},
+        "nfc_card": {"available": False, "reason": "terminal_provider_required"},
+        "card": {"available": False, "reason": "terminal_provider_required"},
+        "apple_pay": {
+            "available": stripe_wallet_ready,
+            "reason": None if stripe_wallet_ready else "settlement_webhook_required",
+        },
+        "google_pay": {
+            "available": stripe_wallet_ready,
+            "reason": None if stripe_wallet_ready else "settlement_webhook_required",
+        },
+    }
 
 
 async def get_current_user(request: Request):
@@ -888,12 +910,16 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
 @router.get("/fee-info")
 async def get_fee_info(request: Request):
     rates = await get_fee_rates()
+    availability = payment_method_availability()
     methods = []
     for method, rate in rates.items():
+        state = availability.get(method, {"available": False, "reason": "not_verified"})
         methods.append({
             "method": method,
             "fee_rate": round(rate * 100, 2),
             "label": FEE_LABELS.get(method, method),
+            "available": bool(state["available"]),
+            "unavailable_reason": state["reason"],
         })
     return {
         "methods": sorted(methods, key=lambda x: x["fee_rate"]),
@@ -912,6 +938,7 @@ async def get_admin_fees(request: Request):
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     rates = await get_fee_rates()
+    availability = payment_method_availability()
     return {"fees": {k: round(v * 100, 4) for k, v in rates.items()}}
 
 
@@ -1063,7 +1090,7 @@ async def get_pricing():
                 "features": [
                     "All Starter features",
                     f"NFC Wallet payments ({rates['nfc_wallet'] * 100:g}% fee)",
-                    f"Card/contactless ({rates['card'] * 100:g}% fee)",
+                    "External card/contactless — provider connection required",
                     "5 branches, 20 registers",
                     "Shift & monthly reports",
                     "Staff management",
@@ -1102,9 +1129,21 @@ async def get_pricing():
             "wallet": {"rate": round(rates["wallet"] * 100, 4), "label": "BidBlitz Wallet"},
             "nfc_wallet": {"rate": round(rates["nfc_wallet"] * 100, 4), "label": "NFC Wallet"},
             "barcode": {"rate": round(rates["barcode"] * 100, 4), "label": "Barcode/QR"},
-            "card": {"rate": round(rates["card"] * 100, 4), "label": "Card/Contactless"},
-            "apple_pay": {"rate": round(rates["apple_pay"] * 100, 4), "label": "Apple Pay"},
-            "google_pay": {"rate": round(rates["google_pay"] * 100, 4), "label": "Google Pay"},
+            "card": {
+                "rate": round(rates["card"] * 100, 4),
+                "label": "Card/Contactless",
+                **availability["card"],
+            },
+            "apple_pay": {
+                "rate": round(rates["apple_pay"] * 100, 4),
+                "label": "Apple Pay",
+                **availability["apple_pay"],
+            },
+            "google_pay": {
+                "rate": round(rates["google_pay"] * 100, 4),
+                "label": "Google Pay",
+                **availability["google_pay"],
+            },
         },
     }
 
