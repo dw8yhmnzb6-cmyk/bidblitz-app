@@ -514,6 +514,7 @@ def test_payment_method_availability_is_fail_closed():
     assert '"nfc_card": {"available": False, "reason": "terminal_provider_required"}' in pos_source
     assert '"card": {"available": False, "reason": "terminal_provider_required"}' in pos_source
     assert '"settlement_webhook_required"' in pos_source
+    assert 'async def get_pricing():\n    rates = await get_fee_rates()\n    availability = payment_method_availability()' in pos_source
     assert '"available": bool(state["available"])' in pos_source
     assert '"unavailable_reason": state["reason"]' in pos_source
     assert 'External card/contactless — provider connection required' in pos_source
