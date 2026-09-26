@@ -46,6 +46,7 @@ def register_all_routers(app):
         ("routes.admin_biopay", "router"),
         ("routes.the_eye_devices", "router"),
         ("routes.the_eye_ws", "router"),
+        ("routes.the_eye_search", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
         ("routes.diag", "router"),
