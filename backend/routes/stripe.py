@@ -18,6 +18,7 @@ Supports saved payment methods for 1-click top-up.
 
 import hashlib
 import secrets
+from urllib.parse import urlparse
 import stripe
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request
@@ -28,7 +29,7 @@ from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout,
     CheckoutSessionRequest,
 )
-from core.config import STRIPE_API_KEY
+from core.config import STRIPE_API_KEY, FRONTEND_URL, CORS_ORIGINS, IS_PRODUCTION
 from core.database import db
 from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
@@ -65,6 +66,38 @@ TOPUP_PACKAGES = {
 class CheckoutRequest(BaseModel):
     package_id: str = Field(..., description="Top-up package ID (10, 25, 50, 100, 250, 500)")
     origin_url: str = Field(..., description="Frontend origin URL for redirect")
+
+
+def _normalize_checkout_origin(raw_origin: str) -> str:
+    """Allow Stripe redirects only to configured first-party frontend origins."""
+    parsed = urlparse((raw_origin or "").strip())
+    if (
+        parsed.scheme not in ("http", "https")
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.path not in ("", "/")
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise HTTPException(status_code=400, detail="Invalid checkout origin")
+
+    origin = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+    allowed_origins = set()
+    for candidate in [FRONTEND_URL, *CORS_ORIGINS]:
+        candidate_parsed = urlparse((candidate or "").strip())
+        if candidate_parsed.scheme in ("http", "https") and candidate_parsed.netloc:
+            allowed_origins.add(
+                f"{candidate_parsed.scheme.lower()}://{candidate_parsed.netloc.lower()}"
+            )
+
+    if IS_PRODUCTION and parsed.scheme.lower() != "https":
+        raise HTTPException(status_code=400, detail="Checkout origin must use HTTPS")
+    if origin not in allowed_origins:
+        raise HTTPException(status_code=400, detail="Checkout origin is not allowed")
+    return origin
 
 
 class CheckoutStatusRequest(BaseModel):
@@ -122,8 +155,8 @@ async def create_checkout(req: CheckoutRequest, request: Request):
                         details={"txn_type": "topup", "rules": compliance["rules"], "amount": amount},
                         severity="warn")
 
-    # Build redirect URLs from frontend origin
-    origin = req.origin_url.rstrip("/")
+    # Build redirect URLs only from a configured first-party frontend origin.
+    origin = _normalize_checkout_origin(req.origin_url)
     success_url = f"{origin}/wallet?stripe_session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/wallet?stripe_cancelled=true"
 
