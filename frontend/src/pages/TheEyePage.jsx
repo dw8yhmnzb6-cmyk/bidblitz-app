@@ -81,6 +81,9 @@ export default function TheEyePage({ onNavigate }) {
   const [activeLayers, setActiveLayers] = useState(() => Object.fromEntries(LAYERS.map(([name]) => [name, true])));
   const [tab, setTab] = useState("Übersicht");
   const [liveConnected, setLiveConnected] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [locationSummary, setLocationSummary] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +105,64 @@ export default function TheEyePage({ onNavigate }) {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const value = query.trim();
+    if (value.length < 2) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/the-eye/admin/search?q=${encodeURIComponent(value)}&limit=10`, {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setSearchResults(Array.isArray(data.results) ? data.results : []);
+        setSearchOpen(true);
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          setSearchResults([]);
+          setSearchOpen(false);
+        }
+      }
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  const selectSearchResult = async (result) => {
+    setSearchOpen(false);
+    setQuery(result?.title || "");
+
+    if (result?.entity_type === "device" && result?.entity_id) {
+      setSelectedId(result.entity_id);
+    }
+
+    const city = result?.city || (result?.entity_type === "city" ? result?.title : null);
+    if (!city) return;
+
+    try {
+      const params = new URLSearchParams({ city });
+      if (result?.country) params.set("country", result.country);
+      const res = await fetch(`/api/the-eye/admin/location-summary?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setLocationSummary(data);
+    } catch {
+      setLocationSummary(null);
+    }
+  };
 
   useEffect(() => {
     let stopped = false;
@@ -194,7 +255,32 @@ export default function TheEyePage({ onNavigate }) {
 
         <div className="eye-search">
           <Search size={18} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Suche nach Gerät, Ort, Flug, Schiff, Kamera ..." />
+          <input
+            value={query}
+            onFocus={() => searchResults.length && setSearchOpen(true)}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Land, Stadt, Straße, Gerät, Kamera ..."
+          />
+          {searchOpen && searchResults.length > 0 ? (
+            <div className="eye-search-results">
+              {searchResults.map((result, index) => (
+                <button
+                  key={`${result.entity_type}:${result.entity_id || result.title}:${index}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectSearchResult(result)}
+                >
+                  <span className="eye-search-result-icon">
+                    {result.entity_type === "device" ? <Cpu size={16} /> : <MapPin size={16} />}
+                  </span>
+                  <span>
+                    <strong>{result.title || "Unbekannt"}</strong>
+                    <small>{result.subtitle || result.entity_type}</small>
+                  </span>
+                  <em>{result.entity_type}</em>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="eye-user"><span className={`eye-live-dot${liveConnected ? "" : " offline"}`} /> Admin · {liveConnected ? "Live" : "Verbinden"} <ChevronDown size={15} /></div>
@@ -237,6 +323,32 @@ export default function TheEyePage({ onNavigate }) {
         </aside>
 
         <main className="eye-main">
+          {locationSummary ? (
+            <section className="eye-location-twin">
+              <div className="eye-location-title">
+                <div>
+                  <span>LOCATION DIGITAL TWIN</span>
+                  <h2>{locationSummary.location?.city || "Standort"}{locationSummary.location?.country ? ` · ${locationSummary.location.country}` : ""}</h2>
+                </div>
+                <div className="eye-location-health">
+                  <span className="eye-live-dot" />
+                  <strong>{locationSummary.location?.health_score ?? "Live"}</strong>
+                  <small>{locationSummary.location?.health_score != null ? "Health Score" : "Daten verbunden"}</small>
+                </div>
+              </div>
+              <div className="eye-location-stats">
+                <div><span>Geräte</span><strong>{locationSummary.devices?.total ?? 0}</strong></div>
+                <div><span>Online</span><strong>{locationSummary.devices?.online ?? 0}</strong></div>
+                <div><span>Kameras</span><strong>{locationSummary.devices?.by_type?.camera ?? 0}</strong></div>
+                <div><span>Taxi</span><strong>{locationSummary.devices?.by_type?.taxi ?? 0}</strong></div>
+                <div><span>Scooter</span><strong>{locationSummary.devices?.by_type?.scooter ?? 0}</strong></div>
+                <div><span>Power</span><strong>{locationSummary.devices?.by_type?.power_station ?? 0}</strong></div>
+                <div><span>Warnung</span><strong>{locationSummary.devices?.warning ?? 0}</strong></div>
+                <div><span>Offline</span><strong>{locationSummary.devices?.offline ?? 0}</strong></div>
+              </div>
+            </section>
+          ) : null}
+
           <section className="eye-world">
             <div className="eye-world-grid" />
             <div className="eye-globe">
