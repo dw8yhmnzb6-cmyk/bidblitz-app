@@ -47,6 +47,7 @@ def register_all_routers(app):
         ("routes.the_eye_devices", "router"),
         ("routes.the_eye_ws", "router"),
         ("routes.the_eye_search", "router"),
+        ("routes.the_eye_locations", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
         ("routes.diag", "router"),
