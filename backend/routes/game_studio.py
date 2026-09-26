@@ -21,9 +21,11 @@ class GameDraftInput(BaseModel):
     languages: list[str] = Field(min_length=1, max_length=40)
     rights_confirmed: bool
 
-    @field_validator("title", "description")
+    @field_validator("title", "description", mode="before")
     @classmethod
     def trim_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("Text erforderlich")
         value = value.strip()
         if not value:
             raise ValueError("Text darf nicht leer sein")

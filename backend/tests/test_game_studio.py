@@ -5,7 +5,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from pydantic import ValidationError
 
@@ -32,13 +32,12 @@ database = types.ModuleType("core.database")
 database.db = types.SimpleNamespace()
 security = types.ModuleType("core.security")
 security.get_current_user = AsyncMock(return_value={"_id": "alice"})
-sys.modules.update({"fastapi": fastapi, "core": types.ModuleType("core"),
-                    "core.database": database, "core.security": security})
-
 source = Path(__file__).resolve().parents[1] / "routes" / "game_studio.py"
 spec = importlib.util.spec_from_file_location("game_studio_under_test", source)
 studio = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(studio)
+with patch.dict(sys.modules, {"fastapi": fastapi, "core": types.ModuleType("core"),
+                              "core.database": database, "core.security": security}):
+    spec.loader.exec_module(studio)
 
 
 class Collection:
@@ -88,7 +87,8 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(len(self.collection.docs), 1)
 
     def test_unconfirmed_rights_and_duplicate_language_rejected(self):
-        for changes in ({"rights_confirmed": False}, {"languages": ["de", "de"]}):
+        for changes in ({"rights_confirmed": False}, {"languages": ["de", "de"]},
+                        {"title": " a "}):
             with self.assertRaises(ValidationError):
                 studio.GameDraftInput(**{**self.draft.model_dump(), **changes})
 
