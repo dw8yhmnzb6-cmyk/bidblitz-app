@@ -191,6 +191,24 @@ export default function TheEyePage({ onNavigate }) {
       }
     }
 
+    if (result?.entity_type === "camera" && result?.camera_id) {
+      setSelectedCameraId(result.camera_id);
+      const linkedDevice = devices.find((device) => device.device_id === result.device_id);
+      if (linkedDevice) {
+        setSelectedId(linkedDevice.device_id);
+        if (linkedDevice?.location?.lat != null && linkedDevice?.location?.lng != null) {
+          setMapFocus({
+            label: result.title || result.camera_id,
+            city: linkedDevice.city,
+            country: linkedDevice.country,
+            lat: Number(linkedDevice.location.lat),
+            lng: Number(linkedDevice.location.lng),
+            zoom: "device",
+          });
+        }
+      }
+    }
+
     if (result?.entity_id?.startsWith?.("LOC-")) {
       try {
         const res = await fetch(`/api/the-eye/admin/locations/${encodeURIComponent(result.entity_id)}`, {
@@ -457,7 +475,7 @@ export default function TheEyePage({ onNavigate }) {
                   onClick={() => selectSearchResult(result)}
                 >
                   <span className="eye-search-result-icon">
-                    {result.entity_type === "device" ? <Cpu size={16} /> : <MapPin size={16} />}
+                    {result.entity_type === "camera" ? <Camera size={16} /> : result.entity_type === "device" ? <Cpu size={16} /> : <MapPin size={16} />}
                   </span>
                   <span>
                     <strong>{result.title || "Unbekannt"}</strong>
