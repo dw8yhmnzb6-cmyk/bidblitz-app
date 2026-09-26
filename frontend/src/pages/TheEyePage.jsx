@@ -105,6 +105,47 @@ export default function TheEyePage({ onNavigate }) {
     actions_by_priority: {},
     tickets_by_priority: {},
   });
+  const [maintenanceSummary, setMaintenanceSummary] = useState({
+    open_work_orders: 0,
+    waiting_parts: 0,
+    active_rma: 0,
+    low_stock_items: 0,
+    inventory_items: 0,
+  });
+  const [workOrders, setWorkOrders] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadMaintenance = async () => {
+      try {
+        const [summaryRes, workOrdersRes, inventoryRes] = await Promise.all([
+          fetch("/api/the-eye/admin/maintenance/summary", { credentials: "include" }),
+          fetch("/api/the-eye/admin/work-orders?limit=50", { credentials: "include" }),
+          fetch("/api/the-eye/admin/inventory/items?limit=100", { credentials: "include" }),
+        ]);
+        if (summaryRes.ok) {
+          const data = await summaryRes.json();
+          if (!cancelled) setMaintenanceSummary(data);
+        }
+        if (workOrdersRes.ok) {
+          const data = await workOrdersRes.json();
+          if (!cancelled) setWorkOrders(Array.isArray(data.work_orders) ? data.work_orders : []);
+        }
+        if (inventoryRes.ok) {
+          const data = await inventoryRes.json();
+          if (!cancelled) setInventoryItems(Array.isArray(data.items) ? data.items : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkOrders([]);
+          setInventoryItems([]);
+        }
+      }
+    };
+    loadMaintenance();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -469,6 +510,25 @@ export default function TheEyePage({ onNavigate }) {
                 ? current.map((item) => item.ticket_id === payload.ticket_id ? payload : item)
                 : [payload, ...current];
             });
+          } else if ((message.type === "work_order.created" || message.type === "work_order.updated") && payload.work_order_id) {
+            setWorkOrders((current) => {
+              const exists = current.some((item) => item.work_order_id === payload.work_order_id);
+              return exists
+                ? current.map((item) => item.work_order_id === payload.work_order_id ? payload : item)
+                : [payload, ...current];
+            });
+          } else if ((message.type === "inventory.created" || message.type === "inventory.updated") && payload.inventory_item_id) {
+            setInventoryItems((current) => {
+              const exists = current.some((item) => item.inventory_item_id === payload.inventory_item_id);
+              return exists
+                ? current.map((item) => item.inventory_item_id === payload.inventory_item_id ? payload : item)
+                : [payload, ...current];
+            });
+          } else if ((message.type === "rma.created" || message.type === "rma.updated") && payload.rma_id) {
+            setMaintenanceSummary((current) => ({
+              ...current,
+              active_rma: Math.max(0, current.active_rma + (message.type === "rma.created" ? 1 : 0)),
+            }));
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -904,6 +964,45 @@ export default function TheEyePage({ onNavigate }) {
                   </div>
                 ))}
                 {!tickets.some((item) => !["resolved", "closed", "cancelled"].includes(item.status)) ? <div className="eye-action-empty">Keine offenen Tickets</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="eye-maintenance-center">
+            <div className="eye-maintenance-head">
+              <div>
+                <span>MAINTENANCE & INVENTORY</span>
+                <strong>{maintenanceSummary.open_work_orders || 0} Work Orders · {maintenanceSummary.inventory_items || 0} Lagerpositionen</strong>
+              </div>
+              <div className="eye-maintenance-kpis">
+                <span>Warten auf Teile {maintenanceSummary.waiting_parts || 0}</span>
+                <span>Low Stock {maintenanceSummary.low_stock_items || 0}</span>
+                <span>RMA {maintenanceSummary.active_rma || 0}</span>
+              </div>
+            </div>
+            <div className="eye-maintenance-columns">
+              <div>
+                <h4>Wartungsaufträge</h4>
+                {workOrders.filter((item) => !["completed", "cancelled"].includes(item.status)).slice(0, 4).map((item) => (
+                  <div className="eye-maintenance-row" key={item.work_order_id}>
+                    <span className={`state ${item.status}`}>{item.status}</span>
+                    <div><strong>{item.title}</strong><small>{item.priority?.toUpperCase()} · {item.site_id || "ohne Site"} · {item.assigned_to || "nicht zugewiesen"}</small></div>
+                  </div>
+                ))}
+                {!workOrders.some((item) => !["completed", "cancelled"].includes(item.status)) ? <div className="eye-maintenance-empty">Keine offenen Wartungsaufträge</div> : null}
+              </div>
+              <div>
+                <h4>Ersatzteile / Lager</h4>
+                {inventoryItems
+                  .filter((item) => (Number(item.quantity || 0) - Number(item.reserved_quantity || 0)) <= Number(item.reorder_point || 0))
+                  .slice(0, 4)
+                  .map((item) => (
+                    <div className="eye-maintenance-row" key={item.inventory_item_id}>
+                      <span className="stock-low">LOW</span>
+                      <div><strong>{item.name}</strong><small>{item.quantity || 0} verfügbar · Reorder {item.reorder_point || 0} · {item.warehouse || "Lager"}</small></div>
+                    </div>
+                  ))}
+                {!inventoryItems.some((item) => (Number(item.quantity || 0) - Number(item.reserved_quantity || 0)) <= Number(item.reorder_point || 0)) ? <div className="eye-maintenance-empty">Lagerbestand im grünen Bereich</div> : null}
               </div>
             </div>
           </section>
