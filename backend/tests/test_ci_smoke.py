@@ -331,6 +331,19 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_stripe_checkout_redirect_origin_is_first_party_only():
+    source = _stripe_source()
+
+    assert "from urllib.parse import urlparse" in source
+    assert "FRONTEND_URL, CORS_ORIGINS, IS_PRODUCTION" in source
+    assert "def _normalize_checkout_origin(raw_origin: str) -> str:" in source
+    assert 'detail="Invalid checkout origin"' in source
+    assert 'detail="Checkout origin must use HTTPS"' in source
+    assert 'detail="Checkout origin is not allowed"' in source
+    assert "origin = _normalize_checkout_origin(req.origin_url)" in source
+    assert "origin = req.origin_url.rstrip" not in source
+
+
 def test_stripe_topup_plans_match_checkout_packages():
     source = _stripe_source()
     assert 'for package_id, amount in sorted(TOPUP_PACKAGES.items()' in source
