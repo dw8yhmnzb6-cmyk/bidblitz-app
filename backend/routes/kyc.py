@@ -139,6 +139,24 @@ def _validate_image(uf: UploadFile, label: str):
     raise HTTPException(status_code=400, detail=f"Ungültiger Dateityp für {label} (JPG/PNG/WebP/HEIC/HEIF)")
 
 
+def _validate_saved_image_signature(path: str, label: str) -> None:
+    """Reject disguised non-image uploads even when filename/MIME look valid."""
+    try:
+        with open(path, "rb") as handle:
+            head = handle.read(32)
+    except OSError:
+        raise HTTPException(status_code=400, detail=f"{label} konnte nicht gelesen werden")
+
+    is_jpeg = len(head) >= 3 and head[:3] == b"\xff\xd8\xff"
+    is_png = head.startswith(b"\x89PNG\r\n\x1a\n")
+    is_webp = len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    is_heif = len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in {
+        b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1",
+    }
+    if not (is_jpeg or is_png or is_webp or is_heif):
+        raise HTTPException(status_code=400, detail=f"{label} ist keine gültige unterstützte Bilddatei")
+
+
 def _normalize_kyc_status(user: dict) -> tuple[str, bool]:
     raw_status = str(user.get("kyc_status") or "not_started").strip().lower()
     if raw_status == "verified":
@@ -227,6 +245,14 @@ def _can_request_manual_review(failed_attempts: int, manual_review_requested: bo
 
 def _capability_status_for_response(actual_status: str) -> str:
     return "approved" if TEST_MODE else actual_status
+
+
+def _final_kyc_decision(ai_decision: str) -> str:
+    """AI may triage KYC, but production approval/rejection requires a certified provider or human review."""
+    certified_automation = os.environ.get("KYC_AUTOMATED_PROVIDER_CERTIFIED", "").lower() == "true"
+    if TEST_MODE or certified_automation:
+        return ai_decision
+    return "pending"
 
 
 def _snapshot_kyc_state(user: dict) -> dict:
@@ -385,7 +411,7 @@ async def submit_kyc(
             ext = "jpg"
             if fn and "." in fn:
                 ext = fn.rsplit(".", 1)[-1].lower()
-                if ext not in ("jpg", "jpeg", "png", "webp"):
+                if ext not in ("jpg", "jpeg", "png", "webp", "heic", "heif"):
                     ext = "jpg"
             return os.path.join(upload_dir, f"{prefix}_{secrets.token_hex(4)}.{ext}")
 
@@ -396,6 +422,14 @@ async def submit_kyc(
         await _save_upload(id_front, front_path)
         await _save_upload(id_back, back_path)
         await _save_upload(selfie, selfie_path)
+
+        try:
+            _validate_saved_image_signature(front_path, "Vorderseite")
+            _validate_saved_image_signature(back_path, "Rückseite")
+            _validate_saved_image_signature(selfie_path, "Selfie")
+        except HTTPException:
+            _cleanup_kyc_temp_files(front_path, back_path, selfie_path)
+            raise
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -449,17 +483,25 @@ async def submit_kyc(
                 },
             )
 
-        decision = auto_decision(verdict)
+        ai_decision = auto_decision(verdict)
+        decision = _final_kyc_decision(ai_decision)
         feedback = _build_feedback_from_verdict(verdict)
         previous_failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
-        failed_attempts = _next_failed_attempts(previous_failed_attempts, decision)
+        failed_attempts = _next_failed_attempts(previous_failed_attempts, ai_decision)
         manual_review_requested = bool(user.get("kyc_manual_review_requested"))
         can_request_manual_review = _can_request_manual_review(failed_attempts, manual_review_requested)
 
         update = {
             "kyc_ai_verdict": verdict,
             "kyc_ai_confidence": verdict.get("overall_confidence", 0),
-            "kyc_ai_decision": decision,
+            "kyc_ai_decision": ai_decision,
+            "kyc_final_decision_source": (
+                "certified_automation"
+                if decision == ai_decision and not TEST_MODE
+                else "test_mode"
+                if TEST_MODE
+                else "manual_review_required"
+            ),
             "kyc_extracted_name": verdict.get("full_name"),
             "kyc_extracted_dob": verdict.get("date_of_birth"),
             "kyc_extracted_doc_number": verdict.get("document_number"),
@@ -489,6 +531,9 @@ async def submit_kyc(
             update["kyc_verified"] = False
             update["kyc_rejection_reason"] = None
             update["kyc_reupload_requested"] = False
+            update["kyc_reviewed_at"] = None
+            update["kyc_reviewed_by"] = None
+            update["kyc_requires_manual_review"] = not TEST_MODE and os.environ.get("KYC_AUTOMATED_PROVIDER_CERTIFIED", "").lower() != "true"
 
         await db.users.update_one({"_id": user["_id"]}, {"$set": update})
 
@@ -505,6 +550,7 @@ async def submit_kyc(
                     "back_path": back_path,
                     "selfie_path": selfie_path,
                     "status": decision,
+                    "ai_recommendation": ai_decision,
                     "ai_verdict": verdict,
                     "failure_reasons": feedback["failure_reasons"],
                     "user_feedback": feedback["user_feedback"],

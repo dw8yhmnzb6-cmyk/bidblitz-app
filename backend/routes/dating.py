@@ -28,13 +28,21 @@ import requests
 
 from core.database import db, sanitize_doc
 from core.security import get_current_user
-from core.config import STRIPE_API_KEY
+from core.config import STRIPE_API_KEY, TEST_MODE
 
 load_dotenv()
 
 logger = logging.getLogger("bidblitz.dating")
 
 router = APIRouter(prefix="/api/dating", tags=["dating"])
+
+
+def _require_dating_demo_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Dating-Demoaktionen sind in Production deaktiviert.",
+        )
 
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_STORAGE_PREFIX = "bidblitz/dating"
@@ -587,6 +595,8 @@ async def get_or_create_my_profile(user: dict) -> dict:
 
 
 async def maybe_seed_demo_like(my_profile: dict):
+    if not TEST_MODE:
+        return
     if await db.dating_swipes.find_one({"to_user_id": my_profile["user_id"], "from_user_id": "seed-lina"}):
         return
     await db.dating_swipes.update_one(
@@ -691,6 +701,7 @@ class DatingSafetyScanReq(BaseModel):
 class DatingPremiumCheckoutReq(BaseModel):
     plan_id: str = Field(default="premium_30d")
     origin_url: str = Field(min_length=8, max_length=500)
+    idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=200)
 
 
 class DatingPremiumStatusReq(BaseModel):
@@ -705,6 +716,7 @@ class DatingChatSafetyReq(BaseModel):
 class DatingConsumableCheckoutReq(BaseModel):
     item_id: str = Field(min_length=4, max_length=80)
     origin_url: str = Field(min_length=8, max_length=500)
+    idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=200)
 
 
 class DatingOfferClaimReq(BaseModel):
@@ -1172,6 +1184,26 @@ def _premium_until(days: int) -> str:
     return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
 
+def _dating_checkout_key(body_key: Optional[str], request: Request, user_id: str, kind: str) -> tuple[str, str]:
+    raw = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    digest = hashlib.sha256(f"{user_id}:{kind}:{raw}".encode("utf-8")).hexdigest()[:24]
+    return raw, digest
+
+
+async def _claim_dating_checkout_intent(intent_id: str, payload: dict, doc: dict) -> tuple[dict, bool]:
+    claim = await db.payment_transactions.update_one(
+        {"_id": intent_id},
+        {"$setOnInsert": {"_id": intent_id, **doc}},
+        upsert=True,
+    )
+    saved = await db.payment_transactions.find_one({"_id": intent_id}, {"_id": 0}) or {}
+    if saved.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Checkout-Daten verwendet")
+    return saved, claim.upserted_id is not None
+
+
 async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
     metadata = txn.get("metadata") or {}
     if metadata.get("type") not in {"dating_premium", "dating_consumable"}:
@@ -1186,7 +1218,8 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
         item_id = metadata.get("item_id")
         if not item_id:
             return False
-        applied = await _apply_dating_consumable(user_id, item_id)
+        session_id = str(txn.get("session_id") or "")
+        applied = await _apply_dating_consumable(user_id, item_id, session_id)
         if not applied:
             return False
         await db.payment_transactions.update_one(
@@ -1200,50 +1233,108 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
     if not plan:
         return False
 
-    valid_until = _premium_until(plan["duration_days"])
-    await db.users.update_one(
-        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+    session_id = str(txn.get("session_id") or "")
+    if not session_id:
+        return False
+    marker_hash = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:24]
+    user_marker = f"dating_payment_markers.{marker_hash}"
+    profile_marker = f"payment_settlement_markers.{marker_hash}"
+
+    try:
+        base_dt = datetime.fromisoformat(str(txn.get("created_at") or "").replace("Z", "+00:00"))
+        if base_dt.tzinfo is None:
+            base_dt = base_dt.replace(tzinfo=timezone.utc)
+        valid_until = (base_dt + timedelta(days=plan["duration_days"])).isoformat()
+    except Exception:
+        valid_until = _premium_until(plan["duration_days"])
+
+    user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+    user_applied = await db.users.update_one(
+        {"_id": user_oid, user_marker: {"$exists": False}},
         {"$set": {
             "dating_premium": True,
             "dating_premium_plan": plan_id,
             "dating_premium_valid_until": valid_until,
             "dating_starter_offer_claimed": True,
+            user_marker: {
+                "session_id": session_id,
+                "plan_id": plan_id,
+                "created_at": now_iso(),
+            },
         }},
     )
-    await db.dating_profiles.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "premium": True,
-            "premium_plan": plan_id,
-            "premium_valid_until": valid_until,
-            "premium_activated_at": now_iso(),
-            "starter_offer_claimed": True,
-        }},
-    )
+    if user_applied.modified_count != 1:
+        user_done = await db.users.find_one(
+            {"_id": user_oid, user_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not user_done:
+            return False
+
+    profile_set = {
+        "premium": True,
+        "premium_plan": plan_id,
+        "premium_valid_until": valid_until,
+        "premium_activated_at": now_iso(),
+        "starter_offer_claimed": True,
+        profile_marker: {
+            "session_id": session_id,
+            "plan_id": plan_id,
+            "created_at": now_iso(),
+        },
+    }
+    profile_inc = {}
     if plan.get("tier") == "gold":
-        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 1, "credits.superlikes": 3}})
-    if plan.get("tier") == "platinum":
-        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 2, "credits.superlikes": 5}})
-    await db.payment_transactions.update_one(
-        {"session_id": txn.get("session_id")},
-        {"$set": {"credited": True, "credited_at": now_iso(), "status": "completed", "payment_status": "paid"}},
+        profile_inc = {"credits.boosts": 1, "credits.superlikes": 3}
+    elif plan.get("tier") == "platinum":
+        profile_inc = {"credits.boosts": 2, "credits.superlikes": 5}
+
+    profile_update_doc = {"$set": profile_set}
+    if profile_inc:
+        profile_update_doc["$inc"] = profile_inc
+    profile_applied = await db.dating_profiles.update_one(
+        {"user_id": user_id, profile_marker: {"$exists": False}},
+        profile_update_doc,
     )
-    existing = await db.transactions.find_one({"stripe_session_id": txn.get("session_id"), "category": "dating_premium"}, {"_id": 0})
-    if not existing:
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
+    if profile_applied.modified_count != 1:
+        profile_done = await db.dating_profiles.find_one(
+            {"user_id": user_id, profile_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not profile_done:
+            return False
+
+    credited_at = now_iso()
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "credited": True,
+            "credited_at": credited_at,
+            "settlement_marker": marker_hash,
+            "status": "completed",
+            "payment_status": "paid",
+        }},
+    )
+    tx_id = f"dating-premium:{marker_hash}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
             "user_id": user_id,
             "type": "subscription",
             "amount": txn.get("amount", 0),
             "description": f"Dating Premium aktiviert ({plan['label']})",
             "merchant_name": "BidBlitz Dating",
             "status": "completed",
-            "reference": f"DATE-{str(txn.get('session_id', ''))[:12].upper()}",
+            "reference": f"DATE-{session_id[:12].upper()}",
             "payment_method": "stripe",
             "category": "dating_premium",
-            "stripe_session_id": txn.get("session_id"),
-            "created_at": now_iso(),
-        })
+            "stripe_session_id": session_id,
+            "created_at": credited_at,
+        }},
+        upsert=True,
+    )
     return True
 
 
@@ -1252,7 +1343,7 @@ async def _refresh_dating_premium_status(session_id: str, user_id: str, request:
     if not txn:
         raise HTTPException(status_code=404, detail="Payment-Session nicht gefunden")
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_status = await stripe_checkout.get_checkout_status(session_id)
     new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
     await db.payment_transactions.update_one(
@@ -1578,9 +1669,9 @@ def _pricing_payload_for_profile(profile: dict) -> dict:
     }
 
 
-async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
+async def _apply_dating_consumable(user_id: str, item_id: str, session_id: str) -> bool:
     item = DATING_CONSUMABLES.get(item_id)
-    if not item:
+    if not item or not session_id:
         return False
     if item["type"] == "boost_pack":
         field = "credits.boosts"
@@ -1592,8 +1683,33 @@ async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
         field = "credits.roses"
     else:
         return False
-    await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {field: int(item["quantity"]), "lifetime_value_cents": int(round(item["price_eur"] * 100))}})
-    return True
+
+    marker_hash = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"payment_settlement_markers.{marker_hash}"
+    applied = await db.dating_profiles.update_one(
+        {"user_id": user_id, marker_field: {"$exists": False}},
+        {
+            "$inc": {
+                field: int(item["quantity"]),
+                "lifetime_value_cents": int(round(item["price_eur"] * 100)),
+            },
+            "$set": {
+                marker_field: {
+                    "session_id": session_id,
+                    "item_id": item_id,
+                    "quantity": int(item["quantity"]),
+                    "created_at": now_iso(),
+                }
+            },
+        },
+    )
+    if applied.modified_count == 1:
+        return True
+    already = await db.dating_profiles.find_one(
+        {"user_id": user_id, marker_field: {"$exists": True}},
+        {"_id": 1},
+    )
+    return bool(already)
 
 
 @router.get("/profile/me")
@@ -1655,6 +1771,7 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
 
 @router.post("/premium/demo-upgrade")
 async def premium_demo_upgrade(request: Request):
+    _require_dating_demo_mode()
     user = await get_me(request)
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"dating_premium": True}})
     await db.dating_profiles.update_one(
@@ -1688,18 +1805,76 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         effective_price = float(starter["offer_price_eur"])
         offer_id = starter["offer_id"]
 
+    user_id = str(user["_id"])
+    _, checkout_hash = _dating_checkout_key(
+        payload.idempotency_key,
+        request,
+        user_id,
+        "premium",
+    )
+    intent_id = f"dating-checkout:{checkout_hash}"
     origin = payload.origin_url.rstrip("/")
     success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/dating?premium_cancelled=true"
     metadata = {
         "type": "dating_premium",
         "plan_id": plan["plan_id"],
-        "user_id": str(user["_id"]),
+        "user_id": user_id,
         "user_email": user.get("email", ""),
         "offer_id": offer_id or "",
+        "checkout_intent_id": intent_id,
     }
+    request_payload = {
+        "type": "dating_premium",
+        "user_id": user_id,
+        "plan_id": plan["plan_id"],
+        "amount": round(effective_price, 2),
+        "currency": plan["currency"].upper(),
+        "origin_url": origin,
+        "offer_id": offer_id or "",
+    }
+    intent, claimed_now = await _claim_dating_checkout_intent(
+        intent_id,
+        request_payload,
+        {
+            "checkout_intent_id": intent_id,
+            "user_id": user_id,
+            "user_email": user.get("email", ""),
+            "amount": effective_price,
+            "currency": plan["currency"].upper(),
+            "type": "dating_premium",
+            "status": "creating",
+            "payment_status": "pending",
+            "credited": False,
+            "plan_id": plan["plan_id"],
+            "metadata": metadata,
+            "request_payload": request_payload,
+            "client_idempotency_hash": checkout_hash,
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        },
+    )
+    if intent.get("session_id") and intent.get("checkout_url"):
+        return {
+            "ok": True,
+            "checkout_url": intent["checkout_url"],
+            "session_id": intent["session_id"],
+            "plan": plan,
+            "effective_price_eur": effective_price,
+            "offer_id": offer_id,
+            "replayed": True,
+        }
+    if not claimed_now:
+        state = str(intent.get("status") or "")
+        if state in {"checkout_creation_uncertain", "reconciliation_required"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Checkout-Erstellung benötigt Abstimmung. Bitte keinen neuen Zahlungsversuch starten.",
+            )
+        raise HTTPException(status_code=409, detail="Checkout wird bereits erstellt")
+
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_req = CheckoutSessionRequest(
         amount=effective_price,
         currency=plan["currency"],
@@ -1708,30 +1883,51 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         metadata=metadata,
         payment_methods=["card"],
     )
-    session = await stripe_checkout.create_checkout_session(checkout_req)
-    tx_doc = {
-        "session_id": session.session_id,
-        "user_id": str(user["_id"]),
-        "user_email": user.get("email", ""),
-        "amount": effective_price,
-        "currency": plan["currency"].upper(),
-        "type": "dating_premium",
-        "status": "initiated",
-        "payment_status": "pending",
-        "credited": False,
-        "plan_id": plan["plan_id"],
-        "metadata": metadata,
-        "created_at": now_iso(),
-        "updated_at": now_iso(),
-    }
     try:
-        await db.payment_transactions.insert_one(tx_doc)
-    except DuplicateKeyError:
+        session = await stripe_checkout.create_checkout_session(checkout_req)
+    except Exception as exc:
         await db.payment_transactions.update_one(
-            {"session_id": session.session_id},
-            {"$set": tx_doc},
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "checkout_creation_uncertain",
+                "provider_error": str(exc)[:300],
+                "updated_at": now_iso(),
+            }},
         )
-    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "plan": plan, "effective_price_eur": effective_price, "offer_id": offer_id}
+        raise HTTPException(
+            status_code=502,
+            detail="Stripe-Checkout konnte nicht eindeutig erstellt werden. Zahlungsstatus muss geprüft werden.",
+        )
+
+    if not getattr(session, "session_id", None) or not getattr(session, "url", None):
+        await db.payment_transactions.update_one(
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "provider_error": "checkout_session_missing_id_or_url",
+                "updated_at": now_iso(),
+            }},
+        )
+        raise HTTPException(status_code=502, detail="Stripe-Checkout benötigt Abstimmung")
+
+    await db.payment_transactions.update_one(
+        {"_id": intent_id, "status": "creating"},
+        {"$set": {
+            "session_id": session.session_id,
+            "checkout_url": session.url,
+            "status": "initiated",
+            "updated_at": now_iso(),
+        }},
+    )
+    return {
+        "ok": True,
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "plan": plan,
+        "effective_price_eur": effective_price,
+        "offer_id": offer_id,
+        "replayed": False,
+    }
 
 
 @router.get("/premium/status/{session_id}")
@@ -1749,17 +1945,72 @@ async def dating_consumable_checkout(payload: DatingConsumableCheckoutReq, reque
     if not item:
         raise HTTPException(status_code=400, detail="Ungültiges Produkt")
 
+    user_id = str(user["_id"])
+    _, checkout_hash = _dating_checkout_key(
+        payload.idempotency_key,
+        request,
+        user_id,
+        "consumable",
+    )
+    intent_id = f"dating-checkout:{checkout_hash}"
     origin = payload.origin_url.rstrip("/")
     success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/dating?premium_cancelled=true"
     metadata = {
         "type": "dating_consumable",
         "item_id": item["item_id"],
-        "user_id": str(user["_id"]),
+        "user_id": user_id,
         "user_email": user.get("email", ""),
+        "checkout_intent_id": intent_id,
     }
+    request_payload = {
+        "type": "dating_consumable",
+        "user_id": user_id,
+        "item_id": item["item_id"],
+        "amount": round(float(item["price_eur"]), 2),
+        "currency": item["currency"].upper(),
+        "origin_url": origin,
+    }
+    intent, claimed_now = await _claim_dating_checkout_intent(
+        intent_id,
+        request_payload,
+        {
+            "checkout_intent_id": intent_id,
+            "user_id": user_id,
+            "user_email": user.get("email", ""),
+            "amount": float(item["price_eur"]),
+            "currency": item["currency"].upper(),
+            "type": "dating_consumable",
+            "status": "creating",
+            "payment_status": "pending",
+            "credited": False,
+            "item_id": item["item_id"],
+            "metadata": metadata,
+            "request_payload": request_payload,
+            "client_idempotency_hash": checkout_hash,
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        },
+    )
+    if intent.get("session_id") and intent.get("checkout_url"):
+        return {
+            "ok": True,
+            "checkout_url": intent["checkout_url"],
+            "session_id": intent["session_id"],
+            "item": item,
+            "replayed": True,
+        }
+    if not claimed_now:
+        state = str(intent.get("status") or "")
+        if state in {"checkout_creation_uncertain", "reconciliation_required"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Checkout-Erstellung benötigt Abstimmung. Bitte keinen neuen Zahlungsversuch starten.",
+            )
+        raise HTTPException(status_code=409, detail="Checkout wird bereits erstellt")
+
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_req = CheckoutSessionRequest(
         amount=float(item["price_eur"]),
         currency=item["currency"],
@@ -1768,27 +2019,49 @@ async def dating_consumable_checkout(payload: DatingConsumableCheckoutReq, reque
         metadata=metadata,
         payment_methods=["card"],
     )
-    session = await stripe_checkout.create_checkout_session(checkout_req)
-    tx_doc = {
-        "session_id": session.session_id,
-        "user_id": str(user["_id"]),
-        "user_email": user.get("email", ""),
-        "amount": float(item["price_eur"]),
-        "currency": item["currency"].upper(),
-        "type": "dating_consumable",
-        "status": "initiated",
-        "payment_status": "pending",
-        "credited": False,
-        "item_id": item["item_id"],
-        "metadata": metadata,
-        "created_at": now_iso(),
-        "updated_at": now_iso(),
-    }
     try:
-        await db.payment_transactions.insert_one(tx_doc)
-    except DuplicateKeyError:
-        await db.payment_transactions.update_one({"session_id": session.session_id}, {"$set": tx_doc})
-    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "item": item}
+        session = await stripe_checkout.create_checkout_session(checkout_req)
+    except Exception as exc:
+        await db.payment_transactions.update_one(
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "checkout_creation_uncertain",
+                "provider_error": str(exc)[:300],
+                "updated_at": now_iso(),
+            }},
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Stripe-Checkout konnte nicht eindeutig erstellt werden. Zahlungsstatus muss geprüft werden.",
+        )
+
+    if not getattr(session, "session_id", None) or not getattr(session, "url", None):
+        await db.payment_transactions.update_one(
+            {"_id": intent_id, "status": "creating"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "provider_error": "checkout_session_missing_id_or_url",
+                "updated_at": now_iso(),
+            }},
+        )
+        raise HTTPException(status_code=502, detail="Stripe-Checkout benötigt Abstimmung")
+
+    await db.payment_transactions.update_one(
+        {"_id": intent_id, "status": "creating"},
+        {"$set": {
+            "session_id": session.session_id,
+            "checkout_url": session.url,
+            "status": "initiated",
+            "updated_at": now_iso(),
+        }},
+    )
+    return {
+        "ok": True,
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "item": item,
+        "replayed": False,
+    }
 
 
 @router.get("/monetization")
@@ -1863,6 +2136,7 @@ async def dating_safety_scan(payload: DatingSafetyScanReq, request: Request):
 
 @router.post("/verify/demo")
 async def verify_demo(payload: VerifyReq, request: Request):
+    _require_dating_demo_mode()
     user = await get_me(request)
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"kyc_verified": True, "verified": True}})
     await db.dating_profiles.update_one(

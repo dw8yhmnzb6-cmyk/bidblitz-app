@@ -26,6 +26,8 @@ import { HomeInvestorOpportunitySection } from "../components/home/HomeInvestorO
 import { HomeWhyBidBlitzSection } from "../components/home/HomeWhyBidBlitzSection";
 import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
 import ModeSwitcher from "../components/ModeSwitcher";
+import MobileHomeContent from "../components/home/MobileHomeContent";
+import { getMobileHomeCopy } from "../models/mobileHomeCopy";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
 import BirthdayBonusBanner from "../components/BirthdayBonusBanner";
@@ -282,6 +284,15 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { balance, currency, cryptoBalanceEur, totalBalanceEur, cryptoBreakdown } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
+  const mobileCopy = getMobileHomeCopy(lang);
+  const [isCompactHome, setIsCompactHome] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsCompactHome(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
   const miningTrustCopy = {
     de: {
@@ -368,10 +379,29 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     if (routeMap[featureId]) { onNavigate(routeMap[featureId]); }
   };
 
+  const priorityFeatures = filterStoreSafeItems([
+    {
+      id: "auctions",
+      icon: Gavel,
+      title: t("home.f_auctions") || "Auktionen",
+      desc: t("home.f_auctions_d") || "Live bieten, Produkte gewinnen und Gewinner-Checkout direkt abschließen.",
+      color: "#A855F7",
+      route: "/auctions",
+      badge: t("home.live_now") || "LIVE",
+    },
+    {
+      id: "mining",
+      icon: Cpu,
+      title: t("home.f_mining") || "Mining",
+      desc: t("home.f_mining_d") || "Mining-Status, Fortschritt und Provider-Preview an einem Ort.",
+      color: "#00E89D",
+      route: "/mining",
+      badge: t("home.preview") || "PREVIEW",
+    },
+  ]);
+
   const availableFeatures = filterStoreSafeItems([
     { id: "wallet", icon: Wallet, title: t("home.f_wallet") || "Wallet", desc: t("home.f_wallet_d") || "Manage your money", color: "#00C2FF", route: "/wallet", large: true },
-    { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
-    { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
     { id: "miningTrust", icon: Shield, title: t("mining.trust_title") || "Mining Server", desc: t("mining.trust_menu_desc") || "Dubai & Abu Dhabi Infrastruktur", color: "#F59E0B", route: "/mining-trust" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
   ]);
@@ -428,12 +458,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <LanguageSwitcher />
             {isGuest ? (
               <div className="flex shrink-0 items-center gap-1.5">
-                <motion.button data-testid="header-login-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
+                <motion.button data-testid="header-login-btn" className="min-h-[44px] px-2.5 py-[6px] rounded-full text-[12px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
                   {t("auth.signin") || "Login"}
                 </motion.button>
+                {!isCompactHome && (
                 <motion.button data-testid="header-register-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
                   {t("auth.create") || "Register"}
                 </motion.button>
+                )}
               </div>
             ) : (
               <motion.button data-testid="notification-btn" className="w-10 h-10 shrink-0 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
@@ -481,11 +513,11 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </motion.button>
         )}
 
-        {isGuest && <P2PHeroSection gt={gt} onRegister={onRegister} />}
+        {isGuest && !isCompactHome && <P2PHeroSection gt={gt} onRegister={onRegister} />}
 
         {/* ── Onboarding Hint (guest, dismissible, show once) ── */}
         <AnimatePresence>
-          {isGuest && !hintDismissed && !isDemoMode && (
+          {isGuest && !isCompactHome && !hintDismissed && !isDemoMode && (
             <motion.div
               data-testid="onboarding-hint"
             className="rounded-[16px] px-3.5 py-2.5 mb-3.5 flex items-start gap-2.5 relative overflow-hidden"
@@ -580,7 +612,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 { id: "topup", icon: Plus, label: t("wallet.add") || "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
                 { id: "send", icon: Send, label: t("wallet.send") || "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
                 { id: "scan", icon: QrCode, label: t("nav.scan") || "Scannen", color: "#A855F7", onClick: () => onNavigate("/scan") },
-                { id: "cards", icon: CreditCard, label: t("cards.title") || "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
+                isCompactHome
+                  ? { id: "receive", icon: QrCode, label: mobileCopy.myQr, color: "#FFB800", onClick: () => onNavigate("/receive-money") }
+                  : { id: "cards", icon: CreditCard, label: t("cards.title") || "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
               ].map((a, i) => (
                 <motion.button
                   key={a.id}
@@ -596,7 +630,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   <div className="w-8 h-8 rounded-[14px] flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
                     <a.icon size={14} strokeWidth={1.8} style={{ color: a.color }} />
                   </div>
-                  <span className="text-[9px] font-semibold text-white/92 font-outfit">{a.label}</span>
+                  <span className="text-[12px] md:text-[9px] font-semibold text-white/92 font-outfit">{a.label}</span>
                 </motion.button>
               ))}
             </motion.div>
@@ -607,7 +641,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {!isGuest && !KYC_DISABLED && <KYCBanner onNavigate={onNavigate} />}
 
         {/* ── Marketing-Widgets (gäste oben; auth-User kompakt nach Wallet-Block) ── */}
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <>
             <BirthdayBonusBanner isGuest={isGuest} />
             <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
@@ -618,7 +652,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ═══════════ GUEST SECTIONS ═══════════ */}
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,400px)] xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] lg:gap-6 xl:gap-8 items-start">
             <div>
             {/* ── Key Products ── */}
@@ -632,11 +666,12 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <div className="flex items-center justify-between mb-3.5">
                 <h3 className="text-[13px] font-semibold font-outfit text-white">{gt("gp.products_title")}</h3>
               </div>
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 lg:gap-3">
+              <div className={`grid grid-cols-2 ${STORE_SAFE_MODE ? "xl:grid-cols-3" : "xl:grid-cols-5"} gap-2.5 lg:gap-3`}>
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
-                <ProductCard icon={TrendingUp} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />
+                {!STORE_SAFE_MODE && <ProductCard icon={Gavel} title={t("home.f_auctions") || "Auktionen"} desc={t("home.f_auctions_d") || "Live bieten & gewinnen"} color="#A855F7" delay={0.42} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("auctions"); onRegister(); }} />}
+                {!STORE_SAFE_MODE && <ProductCard icon={Cpu} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#00E89D" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />}
               </div>
             </motion.section>
             </div>
@@ -705,9 +740,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </div>
         )}
 
-        {isGuest && <HomeWhyBidBlitzSection gt={gt} />}
+        {isGuest && !isCompactHome && <HomeWhyBidBlitzSection gt={gt} />}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeVisionSection
             gt={gt}
             onRegister={onRegister}
@@ -715,7 +750,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeWhyNowSection
             gt={gt}
             onInterest={() => onNavigate("/investieren")}
@@ -723,7 +758,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && (
+        {isGuest && !isCompactHome && (
           <HomeInvestorOpportunitySection
             gt={gt}
             onInterest={() => onNavigate("/investieren")}
@@ -731,12 +766,72 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           />
         )}
 
-        {isGuest && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}
+        {isGuest && !isCompactHome && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}
+
+        {isCompactHome && !showKycRestrictedExperience && (
+          <MobileHomeContent isGuest={isGuest} gt={gt} onNavigate={onNavigate} onRegister={onRegister} onLogin={onLogin} balanceHidden={balanceHidden} />
+        )}
 
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}
-        {!isGuest && !showKycRestrictedExperience && (
+        {!isGuest && !isCompactHome && !showKycRestrictedExperience && (
           <>
             {/* (Hero Balance Card now rendered at the very top — banking-app feel) */}
+
+            {/* ═══ Priority Modules: Auctions + Mining ═══ */}
+            {priorityFeatures.length > 0 && (
+              <motion.section
+                data-testid="home-priority-modules"
+                className="mb-6"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, ...slide }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 rounded-full bg-[#00C2FF]" />
+                    <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.start_now") || "Direkt starten"}</h3>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {priorityFeatures.map((feature, index) => (
+                    <motion.button
+                      key={feature.id}
+                      type="button"
+                      data-testid={"home-priority-" + feature.id}
+                      onClick={() => onNavigate(feature.route)}
+                      className="relative overflow-hidden rounded-[22px] p-4 text-left min-h-[138px]"
+                      style={{
+                        background: "linear-gradient(145deg, " + feature.color + "18, rgba(8,10,16,0.96) 58%)",
+                        border: "1px solid " + feature.color + "2E",
+                        boxShadow: "0 14px 34px " + feature.color + "0C",
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ y: -2, borderColor: feature.color + "55" }}
+                      transition={{ delay: 0.14 + index * 0.05, ...slide }}
+                    >
+                      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full" style={{ background: feature.color, filter: "blur(38px)", opacity: 0.12 }} />
+                      <div className="relative z-10 flex h-full flex-col">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: feature.color + "16", border: "1px solid " + feature.color + "28" }}>
+                            <feature.icon size={20} style={{ color: feature.color }} />
+                          </div>
+                          <span className="rounded-full px-2 py-1 text-[8px] font-black tracking-[0.12em]" style={{ color: feature.color, background: feature.color + "12", border: "1px solid " + feature.color + "22" }}>
+                            {feature.badge}
+                          </span>
+                        </div>
+                        <div className="mt-4">
+                          <h3 className="text-[15px] font-bold font-outfit text-white">{feature.title}</h3>
+                          <p className="mt-1 text-[10px] leading-4 text-white/60">{feature.desc}</p>
+                        </div>
+                        <div className="mt-auto pt-3 flex items-center gap-1 text-[10px] font-semibold" style={{ color: feature.color }}>
+                          {t("common.open") || "Öffnen"} <ChevronRight size={12} />
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.section>
+            )}
 
             {/* ═══ Loyalty & Coins Card ═══ */}
             <LoyaltyCard onNavigate={onNavigate} t={t} />
@@ -899,33 +994,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
             </motion.div>
 
-            {/* Auctions Banner */}
-            {!STORE_SAFE_MODE && (
-              <motion.div
-                data-testid="auctions-banner"
-                className="mt-3 rounded-2xl p-4 relative overflow-hidden cursor-pointer group"
-                style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.08)" }}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.85, ...slide }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate("/auctions")}
-              >
-                <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: "rgba(168,85,247,0.12)", filter: "blur(30px)" }} />
-                <div className="flex items-center gap-3.5 relative z-10">
-                  <div className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)", boxShadow: "0 0 16px rgba(168,85,247,0.08)" }}>
-                    <Gavel size={18} strokeWidth={1.5} className="text-[#A855F7]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-[13px] font-semibold text-white font-outfit mb-0.5">{t("auction.title")}</h4>
-                    <p className="text-[11px] text-[#444] font-medium">{t("auction.subtitle")}</p>
-                  </div>
-                  <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
-                    <ChevronRight size={16} className="text-[#A855F7]/60" />
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
           </>
         )}
 

@@ -112,7 +112,7 @@ const ADMIN_SECTIONS = [
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
       { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },
-      { id: "audi-ticket-system", icon: Ticket, label: "Audi Tickets", nav: "/audi-tickets", highlight: true },
+      { id: "audi-ticket-system", icon: Ticket, label: "Audi Tickets", nav: "/admin/audi-ticket-system", highlight: true },
     ]
   },
   {
@@ -192,6 +192,7 @@ const ADMIN_SECTIONS = [
       { id: "scooter-fleet", icon: Zap, label: "Scooter-Flotte", tab: "scooters", highlight: true },
       { id: "scooter-add", icon: Plus, label: "Scooter hinzufügen", tab: "scooters" },
       { id: "taxi-drivers", icon: Car, label: "Taxi-Fahrer", tab: "drivers" },
+      { id: "mobility-pricing", icon: Euro, label: "Mobility Tarife", nav: "/admin/mobility-pricing", highlight: true },
       { id: "restaurants", icon: Store, label: "Restaurants", tab: "restaurants" },
     ]
   },
@@ -289,7 +290,7 @@ const AdminGridSection = ({ section, onItemClick, startIndex }) => {
         </span>
         <span className="text-[10px] text-gray-400 ml-2">({section.items.length})</span>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {section.items.map((item, idx) => (
           <AdminGridMenuItem 
             key={item.id} 
@@ -585,7 +586,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     return <AdminQrManagementPage onBack={() => { setShowQrManagement(false); setTab("overview"); }} />;
   }
 
-  if (user.role !== "admin") {
+  if (!["admin", "super_admin"].includes(user.role)) {
     return (
       <motion.div className="min-h-screen flex items-center justify-center" style={{ background: "#030303" }}>
         <div className="text-center">

@@ -2,12 +2,13 @@
 BidBlitz V2 - Push Notifications System
 In-App Notifications mit Bell-Badge, Kategorien, Read/Unread, Auto-Trigger
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 import secrets
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
@@ -28,6 +29,9 @@ CATEGORIES = {
 
 @router.on_event("startup")
 async def seed_notifications():
+    # Never inject demo notifications into a real environment.
+    if not TEST_MODE:
+        return
     count = await db.notifications.count_documents({})
     if count > 0:
         return
@@ -62,42 +66,104 @@ async def seed_notifications():
         })
 
 
+def _notification_identity_query(user: dict) -> dict:
+    user_id = str(user["_id"])
+    emails = {
+        str(user.get("email") or "").strip().lower(),
+        str(user.get("login_email") or "").strip().lower(),
+        str(user.get("canonical_email") or "").strip().lower(),
+    }
+    emails.discard("")
+    identity = [{"user_id": user_id}]
+    if emails:
+        identity.append({"user_email": {"$in": list(emails)}})
+    return {"$or": identity}
+
+
+def _notification_id_query(notification_id: str) -> dict:
+    return {
+        "$or": [
+            {"notif_id": notification_id},
+            {"id": notification_id},
+            {"notification_id": notification_id},
+        ]
+    }
+
+
+def _normalize_notification(doc: dict) -> dict:
+    normalized = dict(doc)
+    notification_id = (
+        normalized.get("notif_id")
+        or normalized.get("id")
+        or normalized.get("notification_id")
+        or ""
+    )
+    category = normalized.get("category") or normalized.get("type") or "system"
+    body = normalized.get("body") or normalized.get("message") or ""
+    normalized["notif_id"] = notification_id
+    normalized["id"] = notification_id
+    normalized["notification_id"] = notification_id
+    normalized["category"] = category
+    normalized["type"] = normalized.get("type") or category
+    normalized["body"] = body
+    normalized["message"] = normalized.get("message") or body
+    normalized["read"] = bool(normalized.get("read", False))
+    return normalized
+
+
+@router.get("")
+@router.get("/")
 @router.get("/list")
-async def get_notifications(request: Request, category: Optional[str] = None, unread_only: bool = False):
+async def get_notifications(
+    request: Request,
+    category: Optional[str] = None,
+    unread_only: bool = False,
+    limit: int = Query(50, ge=1, le=200),
+):
     user = await get_current_user(request)
-    q = {"user_email": user.get("email", "")}
+    identity = _notification_identity_query(user)
+    filters = [identity]
     if category:
-        q["category"] = category
+        filters.append({"$or": [{"category": category}, {"type": category}]})
     if unread_only:
-        q["read"] = False
-    notifs = await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).to_list(50)
-    unread_count = await db.notifications.count_documents({"user_email": user.get("email", ""), "read": False})
+        filters.append({"read": False})
+    query = {"$and": filters} if len(filters) > 1 else identity
+
+    raw = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    notifs = [_normalize_notification(doc) for doc in raw]
+    unread_query = {"$and": [identity, {"read": False}]}
+    unread_count = await db.notifications.count_documents(unread_query)
     return {"notifications": notifs, "unread_count": unread_count, "total": len(notifs)}
 
 
 @router.get("/unread-count")
 async def get_unread_count(request: Request):
     user = await get_current_user(request)
-    count = await db.notifications.count_documents({"user_email": user.get("email", ""), "read": False})
+    identity = _notification_identity_query(user)
+    count = await db.notifications.count_documents({"$and": [identity, {"read": False}]})
     return {"unread_count": count}
 
 
 @router.post("/read/{notif_id}")
 async def mark_read(notif_id: str, request: Request):
     user = await get_current_user(request)
-    await db.notifications.update_one(
-        {"notif_id": notif_id, "user_email": user.get("email", "")},
-        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    identity = _notification_identity_query(user)
+    result = await db.notifications.update_one(
+        {"$and": [identity, _notification_id_query(notif_id)]},
+        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
     return {"ok": True}
 
 
 @router.post("/read-all")
 async def mark_all_read(request: Request):
     user = await get_current_user(request)
+    identity = _notification_identity_query(user)
     r = await db.notifications.update_many(
-        {"user_email": user.get("email", ""), "read": False},
-        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+        {"$and": [identity, {"read": False}]},
+        {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}},
     )
     return {"ok": True, "marked": r.modified_count}
 
@@ -105,7 +171,12 @@ async def mark_all_read(request: Request):
 @router.delete("/{notif_id}")
 async def delete_notification(notif_id: str, request: Request):
     user = await get_current_user(request)
-    await db.notifications.delete_one({"notif_id": notif_id, "user_email": user.get("email", "")})
+    identity = _notification_identity_query(user)
+    result = await db.notifications.delete_one(
+        {"$and": [identity, _notification_id_query(notif_id)]},
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
     return {"ok": True}
 
 
@@ -115,14 +186,26 @@ async def get_categories():
 
 
 async def create_notification(user_email: str, category: str, title: str, body: str, action_url: str = ""):
-    """Helper: Create a notification from any module."""
-    await db.notifications.insert_one({
-        "notif_id": secrets.token_hex(8),
-        "user_email": user_email,
+    """Create a canonical in-app notification while preserving email compatibility."""
+    email = str(user_email or "").strip().lower()
+    target_user = await db.users.find_one({"email": email}, {"_id": 1}) if email else None
+    notification_id = secrets.token_hex(8)
+    doc = {
+        "notif_id": notification_id,
+        "id": notification_id,
+        "notification_id": notification_id,
+        "user_email": email,
         "category": category,
+        "type": category,
         "title": title,
         "body": body,
+        "message": body,
         "action_url": action_url,
         "read": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if target_user:
+        doc["user_id"] = str(target_user["_id"])
+    await db.notifications.insert_one(doc)
+    return _normalize_notification(doc)
+

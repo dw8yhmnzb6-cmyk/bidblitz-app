@@ -23,17 +23,35 @@ def build_date_query(date_from: str = None, date_to: str = None):
     return {"created_at": q} if q else {}
 
 
+def _safe_csv_cell(value):
+    """Neutralize spreadsheet formulas in user-controlled CSV cells."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return value
+
+    cleaned = value.replace("\x00", "")
+    trimmed = cleaned.lstrip()
+    if trimmed.startswith(("=", "+", "-", "@")):
+        return "'" + cleaned
+    return cleaned
+
+
 def csv_response(rows: list, headers: list, filename: str):
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(headers)
+    writer.writerow([_safe_csv_cell(value) for value in headers])
     for row in rows:
-        writer.writerow(row)
+        writer.writerow([_safe_csv_cell(value) for value in row])
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 

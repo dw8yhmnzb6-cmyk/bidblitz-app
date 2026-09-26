@@ -1,6 +1,6 @@
 /**
  * BirthdayBonusBanner — Erscheint NUR am Geburtstag des Users
- * und zeigt Claim-Button für €10 + 20 BLZ
+ * und zeigt Claim-Button für den aktuell verfügbaren Geburtstagsbonus
  */
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,13 +28,14 @@ export default function BirthdayBonusBanner({ isGuest }) {
       const r = await fetch(`${API}/api/birthday/claim`, { method: "POST", credentials: "include" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || "Fehler");
-      toast.success(`🎂 Happy Birthday! €${j.eur} + ${j.blz} BLZ gutgeschrieben!`, { duration: 6000 });
-      setData({ ...data, already_claimed: true });
+      const blzText = Number(j.blz || 0) > 0 ? ` + ${j.blz} BLZ` : "";
+      toast.success(`🎂 Happy Birthday! €${j.eur}${blzText} gutgeschrieben!`, { duration: 6000 });
+      setData({ ...data, already_claimed: true, claim_available: false });
     } catch (e) { toast.error(e.message); }
     setClaiming(false);
   };
 
-  if (isGuest || !data || !data.is_birthday || data.already_claimed || dismissed) return null;
+  if (isGuest || !data || !data.is_birthday || !data.claim_available || data.already_claimed || dismissed) return null;
 
   return (
     <AnimatePresence>
@@ -63,7 +64,7 @@ export default function BirthdayBonusBanner({ isGuest }) {
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-black text-white">🎉 Happy Birthday!</p>
             <p className="text-[11px] text-white/90 mt-0.5">
-              Dein Geschenk: €{data.eur} + {data.blz} BLZ
+              Dein Geschenk: €{data.eur}{Number(data.blz || 0) > 0 ? ` + ${data.blz} BLZ` : ""}
             </p>
           </div>
           <motion.button

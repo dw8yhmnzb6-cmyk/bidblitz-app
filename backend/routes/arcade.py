@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/arcade", tags=["arcade"])
@@ -52,8 +53,13 @@ async def _build_leaderboard(game_id: Optional[str], season_only: bool, limit: i
 
 @router.post("/start-session")
 async def start_session(req: StartSessionRequest, request: Request):
-    """Nutzer zahlt 1 BLZ um ein Game zu starten."""
+    """BLZ-paid Arcade sessions are test-only until production value-game approval."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="BLZ-Einsatzspiele sind in Production deaktiviert.",
+        )
     uid = str(user.get("_id") or user.get("id"))
     bal = float(user.get("balance_blz", 0) or 0)
     if bal < ENTRY_FEE_BLZ:
@@ -89,8 +95,13 @@ class EndSessionRequest(BaseModel):
 
 @router.post("/end-session")
 async def end_session(req: EndSessionRequest, request: Request):
-    """Spiel beendet - Highscore checken, ggf. Reward."""
+    """Finish test Arcade session; production never pays BLZ gameplay rewards."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="BLZ-Spielbelohnungen sind in Production deaktiviert.",
+        )
     uid = str(user.get("_id") or user.get("id"))
     session = await db.arcade_sessions.find_one({"session_id": req.session_id, "user_id": uid})
     if not session:
@@ -181,6 +192,7 @@ async def get_arcade_hub_overview(request: Request):
 @router.get("/config")
 async def config():
     return {
-        "entry_fee_blz": ENTRY_FEE_BLZ,
-        "highscore_reward_blz": HIGHSCORE_REWARD_BLZ,
+        "entry_fee_blz": ENTRY_FEE_BLZ if TEST_MODE else 0,
+        "highscore_reward_blz": HIGHSCORE_REWARD_BLZ if TEST_MODE else 0,
+        "value_game_enabled": bool(TEST_MODE),
     }

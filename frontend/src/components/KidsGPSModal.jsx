@@ -20,6 +20,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
   const [activeTab, setActiveTab] = useState("live"); // live | history | zones
+  const canSimulateLocation = process.env.NODE_ENV !== "production" || process.env.REACT_APP_ENABLE_KIDS_GPS_SIMULATION === "true";
   const [location, setLocation] = useState(null);
   const [history, setHistory] = useState([]);
   const [zones, setZones] = useState([]);
@@ -357,26 +358,29 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                 </div>
               )}
 
-              {/* GPS Quick Locations */}
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">Schnellstandorte</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {GPS_PRESETS.map((p) => (
-                    <motion.button
-                      key={p.name}
-                      onClick={() => simulateLocation(p.lat, p.lng)}
-                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all hover:bg-white/5 active:scale-95"
-                      style={{ border: `1px solid ${p.color}20` }}
-                      whileTap={{ scale: 0.92 }}
-                      data-testid={`gps-preset-${p.name}`}
-                    >
-                      <span className="text-lg">{p.icon}</span>
-                      <span className="text-[8px] text-gray-400 text-center leading-tight line-clamp-1">{p.name}</span>
-                    </motion.button>
-                  ))}
+              {canSimulateLocation ? (
+                <>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">Schnellstandorte</p>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {GPS_PRESETS.map((p) => (
+                      <motion.button
+                        key={p.name}
+                        onClick={() => simulateLocation(p.lat, p.lng)}
+                        className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all hover:bg-white/5 active:scale-95"
+                        style={{ border: `1px solid ${p.color}20` }}
+                        whileTap={{ scale: 0.92 }}
+                        data-testid={`gps-preset-${p.name}`}
+                      >
+                        <span className="text-lg">{p.icon}</span>
+                        <span className="text-[8px] text-gray-400 text-center leading-tight line-clamp-1">{p.name}</span>
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
+  
+                </>
+              ) : null}
               {/* Actions */}
               <div className="flex gap-2">
                 <motion.button

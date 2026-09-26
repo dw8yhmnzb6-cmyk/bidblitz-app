@@ -93,7 +93,7 @@ const MerchantPricingPage = ({ onBack, onStartTrial }) => {
                   {plan.features.map((f, fi) => (
                     <div key={fi} className="flex items-center gap-2">
                       <Check size={10} style={{ color }} />
-                      <span className="text-[9px] text-white/40">{f}</span>
+                      <span className="text-[9px] text-white/40">{f.replace(/0[.,][35]% fee/g, t("merchant.commission_from"))}</span>
                     </div>
                   ))}
                 </div>
@@ -117,14 +117,15 @@ const MerchantPricingPage = ({ onBack, onStartTrial }) => {
         {/* Fee Structure */}
         <div className="rounded-2xl p-4" style={{ background: "rgba(8,12,20,0.7)", border: "1px solid rgba(255,255,255,0.04)" }}>
           <p className="text-[8px] text-white/15 uppercase tracking-widest font-bold mb-3">{t("pricing.fee_structure") || "TRANSACTION FEE STRUCTURE"}</p>
+          <p className="text-xs text-white/60 mb-3" data-testid="merchant-commission-terms">{t("merchant.commission_terms")}</p>
           <div className="space-y-2">
             {Object.entries(fees).map(([key, f]) => {
-              const feeColor = f.rate <= 0.5 ? "#00E89D" : f.rate <= 1 ? "#00E0FF" : "#FFB800";
+              const feeColor = f.rate <= 1.5 ? "#00E89D" : f.rate <= 2 ? "#00E0FF" : "#FFB800";
               return (
                 <div key={key} className="flex items-center gap-3 py-1.5">
                   <div className="w-2 h-2 rounded-full" style={{ background: feeColor }} />
                   <span className="text-[10px] text-white/50 flex-1">{f.label}</span>
-                  <span className="text-[12px] font-bold font-mono" style={{ color: feeColor }}>{f.rate}%</span>
+                  <span className="text-[12px] font-bold font-mono" style={{ color: feeColor }}>{f.rate < 1.5 ? t("merchant.commission_from") : `${f.rate}%`}</span>
                 </div>
               );
             })}

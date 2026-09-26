@@ -9,7 +9,9 @@ from bson import ObjectId
 import logging
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 from routes.email_service import send_email
 
 logger = logging.getLogger("bidblitz.reengage")
@@ -115,6 +117,12 @@ async def preview_reengage(request: Request, inactive_days: int = INACTIVITY_DAY
         "total_cost": round(len(eligible) * REWARD_EUR, 2),
         "inactive_days": inactive_days,
         "cooldown_days": COOLDOWN_DAYS,
+        "actions_enabled": bool(TEST_MODE),
+        "provider_mode": "test" if TEST_MODE else "preview",
+        "production_message": (
+            None if TEST_MODE
+            else "Re-Engagement läuft als Preview. Wallet-Gutschriften und E-Mails sind in Production deaktiviert."
+        ),
         "users": [
             {
                 "user_id": str(u["_id"]),
@@ -143,6 +151,11 @@ async def run_reengage(req: RunReengageRequest, request: Request):
 
     if req.dry_run:
         return {"dry_run": True, "would_process": len(eligible), "total_cost": len(eligible) * REWARD_EUR}
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Re-Engagement-Wallet-Gutschriften und E-Mails sind in Production deaktiviert.",
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     credited = 0
@@ -152,50 +165,60 @@ async def run_reengage(req: RunReengageRequest, request: Request):
         uid = u["_id"]
         uid_str = str(uid)
         try:
-            # 1. Credit Wallet (+5€)
+            previous_marker = str(u.get("last_reengage_at") or "first")
+            reward_scope = previous_marker[:10] if previous_marker != "first" else "first"
+            idempotency_key = f"reengage:{uid_str}:{reward_scope}"
+            reference = f"REENG-{uid_str[-8:]}-{reward_scope.replace('-', '')}"
+
+            wallet_result = await credit_wallet(
+                user_id=uid_str,
+                amount=REWARD_EUR,
+                tx_type=TransactionType.REWARD,
+                description="Willkommen-zurück-Bonus",
+                reference=reference,
+                source="reengagement",
+                metadata={"admin_id": admin_id, "inactive_days": req.inactive_days},
+                idempotency_key=idempotency_key,
+            )
+            if not wallet_result.success:
+                raise RuntimeError(wallet_result.error or "Re-Engagement-Gutschrift fehlgeschlagen")
+
             await db.users.update_one(
                 {"_id": uid},
-                {"$inc": {"balance": REWARD_EUR}, "$set": {"last_reengage_at": now}},
+                {"$max": {"last_reengage_at": now}},
             )
-            await db.transactions.insert_one({
-                "user_id": uid_str,
-                "type": "bonus",
-                "amount": REWARD_EUR,
-                "currency": "EUR",
-                "status": "completed",
-                "description": "Willkommen-zurück-Bonus",
-                "merchant_name": "BidBlitz",
-                "category": "reengagement",
-                "reference": f"REENG-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uid_str[-6:]}",
-                "date": now,
-                "created_at": now,
-                "admin_id": admin_id,
-            })
-            credited += 1
+            credited += 0 if wallet_result.idempotent_replay else 1
 
-            # 2. E-Mail senden
-            try:
-                name = u.get("name", "") or u.get("email", "").split("@")[0]
-                html = _email_html(name, REWARD_EUR)
-                result = await send_email(
-                    u["email"],
-                    "🎁 Willkommen zurück — dein Bonus wartet!",
-                    html,
-                    "reengagement",
-                )
-                if result:
-                    emailed += 1
-            except Exception as e:
-                logger.warning(f"Email failed for {u.get('email')}: {e}")
+            if not wallet_result.idempotent_replay:
+                try:
+                    name = u.get("name", "") or u.get("email", "").split("@")[0]
+                    html = _email_html(name, REWARD_EUR)
+                    result = await send_email(
+                        u["email"],
+                        "🎁 Willkommen zurück — dein Bonus wartet!",
+                        html,
+                        "reengagement",
+                    )
+                    if result:
+                        emailed += 1
+                except Exception as e:
+                    logger.warning(f"Email failed for {u.get('email')}: {e}")
 
-            # 3. Log-Event
-            await db.reengage_log.insert_one({
-                "user_id": uid_str,
-                "email": u.get("email"),
-                "amount": REWARD_EUR,
-                "sent_at": now,
-                "admin_id": admin_id,
-            })
+            log_id = f"reengage:{uid_str}:{reward_scope}"
+            await db.reengage_log.update_one(
+                {"_id": log_id},
+                {"$setOnInsert": {
+                    "_id": log_id,
+                    "user_id": uid_str,
+                    "email": u.get("email"),
+                    "amount": REWARD_EUR,
+                    "sent_at": now,
+                    "admin_id": admin_id,
+                    "wallet_transaction_id": wallet_result.transaction_id,
+                    "idempotency_key": idempotency_key,
+                }},
+                upsert=True,
+            )
         except Exception as e:
             logger.error(f"Reengage failed for {u.get('email')}: {e}")
             failed += 1

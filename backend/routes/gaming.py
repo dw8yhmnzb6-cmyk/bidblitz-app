@@ -10,8 +10,10 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 import secrets
 import random
+import hashlib
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import credit_wallet, TransactionType
 
@@ -30,6 +32,7 @@ class GamePlayRequest(BaseModel):
 
 class RedeemRequest(BaseModel):
     coins: int
+    idempotency_key: Optional[str] = None
 
 
 class SeasonClaimRequest(BaseModel):
@@ -72,6 +75,14 @@ def coins_to_eur(coins: int) -> float:
     return round(coins * COINS_TO_EUR_RATE, 2)
 
 
+def _require_gaming_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -98,15 +109,13 @@ async def add_coins(user_id: str, amount: int, reason: str, game: str = None):
 
 
 async def deduct_coins(user_id: str, amount: int, reason: str, game: str = None):
-    """Deduct coins from user balance. Returns False if insufficient."""
-    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"gaming_coins": 1})
-    current = user.get("gaming_coins", 0) if user else 0
-    if current < amount:
-        return False
-    await db.users.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$inc": {"gaming_coins": -amount}}
+    """Atomically deduct coins without allowing concurrent negative balances."""
+    result = await db.users.update_one(
+        {"_id": ObjectId(user_id), "gaming_coins": {"$gte": amount}},
+        {"$inc": {"gaming_coins": -amount}},
     )
+    if result.modified_count != 1:
+        return False
     await db.gaming_coin_log.insert_one({
         "user_id": user_id,
         "amount": -amount,
@@ -203,7 +212,7 @@ async def get_gaming_profile(request: Request):
 
     return {
         "coins": coins,
-        "coins_eur_value": coins_to_eur(coins),
+        "coins_eur_value": coins_to_eur(coins) if TEST_MODE else None,
         "total_coins_won": lt["total_won"],
         "total_coins_bet": lt["total_bet"],
         "net_profit": lt["total_won"] - lt["total_bet"],
@@ -213,7 +222,8 @@ async def get_gaming_profile(request: Request):
         "daily_limit": MAX_DAILY_WINS_COINS,
         "min_bet": MIN_BET,
         "max_bet": MAX_BET,
-        "coins_to_eur_rate": COINS_TO_EUR_RATE,
+        "coins_to_eur_rate": COINS_TO_EUR_RATE if TEST_MODE else None,
+        "value_actions_enabled": bool(TEST_MODE),
     }
 
 
@@ -333,20 +343,46 @@ async def claim_season_xp(req: SeasonClaimRequest, request: Request):
         raise HTTPException(status_code=404, detail="Milestone nicht gefunden")
     if season["user_points"] < req.points:
         raise HTTPException(status_code=400, detail="Noch nicht genug XP für diesen Claim")
-    claims = await _get_or_create_season_claims(user_id, season["season_id"])
-    if req.points in claims.get("claimed_points", []):
+
+    claim = await db.gaming_season_claims.update_one(
+        {
+            "user_id": user_id,
+            "season_id": season["season_id"],
+            "claimed_points": {"$ne": req.points},
+        },
+        {
+            "$addToSet": {"claimed_points": req.points},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
+        upsert=True,
+    )
+    if claim.modified_count != 1 and claim.upserted_id is None:
         raise HTTPException(status_code=400, detail="Milestone bereits geclaimt")
 
     reward_coins = req.points // 2
-    reward_blz = max(10, req.points // 25)
-    await add_coins(user_id, reward_coins, f"Season Claim {req.points} XP", "season_claim")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward_blz}})
-    await db.gaming_season_claims.update_one(
-        {"user_id": user_id, "season_id": season["season_id"]},
-        {"$addToSet": {"claimed_points": req.points}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
+    reward_blz = max(10, req.points // 25) if TEST_MODE else 0
+    reward_inc = {"gaming_coins": reward_coins}
+    if reward_blz > 0:
+        reward_inc["balance_blz"] = reward_blz
+    marker = f"gaming_reward_markers.season_{season['season_id']}_{req.points}"
+    reward = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$exists": False}},
+        {
+            "$inc": reward_inc,
+            "$set": {marker: {"coins": reward_coins, "blz": reward_blz, "created_at": datetime.now(timezone.utc).isoformat()}},
+        },
     )
-    return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": reward_coins, "blz_added": reward_blz, "new_balance": await get_user_coins(user_id)}
+    if reward.modified_count != 1:
+        return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": 0, "blz_added": 0, "new_balance": await get_user_coins(user_id), "replayed": True}
+
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": reward_coins,
+        "reason": f"Season Claim {req.points} XP",
+        "game": "season_claim",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": reward_coins, "blz_added": reward_blz, "new_balance": await get_user_coins(user_id), "replayed": False}
 
 
 @router.post("/vip-claim")
@@ -359,10 +395,6 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
         raise HTTPException(status_code=400, detail="VIP Club nicht aktiv")
 
     season_id = overview["season"]["season_id"]
-    claims = await _get_or_create_season_claims(user_id, season_id)
-    if req.perk_type in claims.get("vip_claims", []):
-        raise HTTPException(status_code=400, detail="VIP Perk in dieser Season bereits aktiviert")
-
     perk_rewards = {
         "vip_spin": {"coins": 250, "blz": 20, "label": "VIP Spin"},
         "xp_boost": {"coins": 400, "blz": 25, "label": "XP Boost"},
@@ -371,15 +403,41 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
     reward = perk_rewards.get(req.perk_type)
     if not reward:
         raise HTTPException(status_code=404, detail="VIP Perk unbekannt")
+    reward_blz = reward["blz"] if TEST_MODE else 0
 
-    await add_coins(user_id, reward["coins"], f"VIP Perk: {reward['label']}", "vip_perk")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward["blz"]}})
-    await db.gaming_season_claims.update_one(
-        {"user_id": user_id, "season_id": season_id},
-        {"$addToSet": {"vip_claims": req.perk_type}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    claim = await db.gaming_season_claims.update_one(
+        {"user_id": user_id, "season_id": season_id, "vip_claims": {"$ne": req.perk_type}},
+        {
+            "$addToSet": {"vip_claims": req.perk_type},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
         upsert=True,
     )
-    return {"ok": True, "perk": reward["label"], "coins_added": reward["coins"], "blz_added": reward["blz"], "new_balance": await get_user_coins(user_id)}
+    if claim.modified_count != 1 and claim.upserted_id is None:
+        raise HTTPException(status_code=400, detail="VIP Perk in dieser Season bereits aktiviert")
+
+    marker = f"gaming_reward_markers.vip_{season_id}_{req.perk_type}"
+    reward_inc = {"gaming_coins": reward["coins"]}
+    if reward_blz > 0:
+        reward_inc["balance_blz"] = reward_blz
+    applied = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$exists": False}},
+        {
+            "$inc": reward_inc,
+            "$set": {marker: {"coins": reward["coins"], "blz": reward_blz, "created_at": datetime.now(timezone.utc).isoformat()}},
+        },
+    )
+    if applied.modified_count != 1:
+        return {"ok": True, "perk": reward["label"], "coins_added": 0, "blz_added": 0, "new_balance": await get_user_coins(user_id), "replayed": True}
+
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": reward["coins"],
+        "reason": f"VIP Perk: {reward['label']}",
+        "game": "vip_perk",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True, "perk": reward["label"], "coins_added": reward["coins"], "blz_added": reward_blz, "new_balance": await get_user_coins(user_id), "replayed": False}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -388,56 +446,109 @@ async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
 
 @router.post("/earn-cashback")
 async def earn_cashback_coins(request: Request):
-    """Award coins from cashback (called after transactions)."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    body = await request.json()
-    amount_eur = body.get("amount", 0)
-
-    if amount_eur <= 0:
-        raise HTTPException(status_code=400, detail="Invalid amount")
-
-    coins = int(amount_eur * CASHBACK_COIN_RATE)
-    if coins < 1:
-        coins = 1
-
-    await add_coins(user_id, coins, f"Cashback: €{amount_eur:.2f} → {coins} Coins")
-
-    new_balance = await get_user_coins(user_id)
-    return {"ok": True, "coins_earned": coins, "new_balance": new_balance}
+    """Cashback is awarded by verified transaction processors, never by client-declared amounts."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Cashback wird automatisch aus verifizierten Transaktionen gutgeschrieben.",
+    )
 
 
 @router.post("/buy-coins")
 async def buy_coins_with_wallet(request: Request):
-    """Buy coins using wallet balance. 1 EUR = 1000 Coins."""
+    """Buy gaming coins only in test mode until value-convertible gaming is approved."""
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Gaming-Coins mit EUR kaufen ist in Production deaktiviert. Das Wallet wurde nicht belastet.",
+        )
+    from core.payment_engine import debit_wallet
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
     body = await request.json()
-    eur_amount = body.get("amount", 0)
+    try:
+        eur_amount = round(float(body.get("amount", 0)), 2)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag")
 
     if eur_amount < 1 or eur_amount > 100:
         raise HTTPException(status_code=400, detail="Betrag: €1-€100")
 
-    eur_amount = round(eur_amount, 2)
+    idempotency_key = _require_gaming_idempotency_key(
+        body.get("idempotency_key"),
+        request,
+        prefix="gaming-buy",
+    )
     coins = int(eur_amount / COINS_TO_EUR_RATE)
+    marker_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"gaming_coin_purchase_markers.{marker_hash}"
 
-    # Deduct from wallet
-    from core.payment_engine import debit_wallet
+    existing_user = await db.users.find_one(
+        {"_id": user["_id"], marker_field: {"$exists": True}},
+        {"gaming_coins": 1, "_id": 0},
+    )
+    if existing_user:
+        return {
+            "ok": True,
+            "coins_added": coins,
+            "eur_spent": eur_amount,
+            "new_balance": int(existing_user.get("gaming_coins") or 0),
+            "replayed": True,
+        }
+
     result = await debit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
         description=f"Gaming Coins gekauft: {coins} Coins",
+        reference=f"GAMEBUY-{marker_hash[:12].upper()}",
         metadata={"type": "buy_coins", "coins": coins},
+        idempotency_key=idempotency_key,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Nicht genug Guthaben")
+
+    grant = await db.users.update_one(
+        {"_id": user["_id"], marker_field: {"$exists": False}},
+        {
+            "$inc": {"gaming_coins": coins},
+            "$set": {
+                marker_field: {
+                    "coins": coins,
+                    "eur_amount": eur_amount,
+                    "wallet_transaction_id": result.transaction_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if grant.modified_count != 1:
+        already = await db.users.find_one({"_id": user["_id"], marker_field: {"$exists": True}}, {"_id": 1})
+        if not already:
+            raise HTTPException(status_code=500, detail="Wallet belastet, Coin-Gutschrift muss geprüft werden")
+
+    await db.gaming_coin_log.update_one(
+        {"user_id": user_id, "idempotency_key": idempotency_key, "reason": "buy_coins"},
+        {"$setOnInsert": {
+            "user_id": user_id,
+            "amount": coins,
+            "reason": "buy_coins",
+            "description": f"Coins gekauft: €{eur_amount:.2f} → {coins} Coins",
+            "idempotency_key": idempotency_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
     )
 
-    if not result.success:
-        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
-
-    await add_coins(user_id, coins, f"Coins gekauft: €{eur_amount:.2f} → {coins} Coins")
-
-    new_balance = await get_user_coins(user_id)
-    return {"ok": True, "coins_added": coins, "eur_spent": eur_amount, "new_balance": new_balance}
+    updated = await db.users.find_one({"_id": user["_id"]}, {"gaming_coins": 1, "_id": 0}) or {}
+    return {
+        "ok": True,
+        "coins_added": coins,
+        "eur_spent": eur_amount,
+        "new_balance": int(updated.get("gaming_coins") or 0),
+        "replayed": result.idempotent_replay,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -531,39 +642,18 @@ async def play_game(user_id: str, game_type: str, bet: int, coins_won: int, meta
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/wheel/spin")
-async def wheel_spin(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "wheel", req.bet, req.points_won)
-
-
 @router.post("/scratch/win")
-async def scratch_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "scratch", req.bet, req.points_won)
-
-
 @router.post("/slots/win")
-async def slots_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "slots", req.bet, req.points_won)
-
-
 @router.post("/quiz/complete")
-async def quiz_complete(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "quiz", req.bet, req.points_won)
-
-
 @router.post("/memory/complete")
-async def memory_complete(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "memory", req.bet, req.points_won, {"moves": req.moves})
-
-
 @router.post("/dice/win")
-async def dice_win(req: GamePlayRequest, request: Request):
-    user = await get_current_user(request)
-    return await play_game(str(user["_id"]), "dice", req.bet, req.points_won)
+async def legacy_client_scored_game_disabled(req: GamePlayRequest, request: Request):
+    """Legacy client-declared winnings are unsafe because the client controls points_won."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser alte Spiel-Endpunkt ist deaktiviert. Gewinne müssen serverseitig berechnet werden.",
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -572,43 +662,120 @@ async def dice_win(req: GamePlayRequest, request: Request):
 
 @router.post("/redeem")
 async def redeem_coins(req: RedeemRequest, request: Request):
-    """Convert coins to EUR wallet balance."""
+    """EUR conversion is test-only until value-convertible gaming is explicitly approved."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Gaming-Coins können in Production nicht in EUR umgewandelt werden.",
+        )
     user_id = str(user["_id"])
-
     if req.coins < MIN_REDEEM:
         raise HTTPException(status_code=400, detail=f"Mindestens {MIN_REDEEM} Coins zum Einlösen")
 
-    current = await get_user_coins(user_id)
-    if req.coins > current:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Coins. Verfügbar: {current}")
-
+    idempotency_key = _require_gaming_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix="gaming-redeem",
+    )
+    marker_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    reserve_field = f"gaming_coin_redemption_reservations.{marker_hash}"
+    completed_field = f"gaming_coin_redemption_markers.{marker_hash}"
     eur_amount = coins_to_eur(req.coins)
 
-    # Deduct coins
-    await deduct_coins(user_id, req.coins, f"Eingelöst: {req.coins} Coins → €{eur_amount:.2f}")
+    completed = await db.users.find_one(
+        {"_id": user["_id"], completed_field: {"$exists": True}},
+        {"gaming_coins": 1, "_id": 0},
+    )
+    if completed:
+        return {
+            "success": True,
+            "coins_redeemed": req.coins,
+            "eur_credited": eur_amount,
+            "remaining_coins": int(completed.get("gaming_coins") or 0),
+            "message": f"{req.coins} Coins → €{eur_amount:.2f} auf dein Wallet!",
+            "replayed": True,
+        }
 
-    # Credit wallet
+    reserve = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "gaming_coins": {"$gte": req.coins},
+            reserve_field: {"$exists": False},
+            completed_field: {"$exists": False},
+        },
+        {
+            "$inc": {"gaming_coins": -req.coins},
+            "$set": {
+                reserve_field: {
+                    "coins": req.coins,
+                    "eur_amount": eur_amount,
+                    "reserved_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if reserve.modified_count != 1:
+        existing_reservation = await db.users.find_one(
+            {"_id": user["_id"], reserve_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not existing_reservation:
+            current = await get_user_coins(user_id)
+            raise HTTPException(status_code=400, detail=f"Nicht genug Coins. Verfügbar: {current}")
+
     result = await credit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
         description=f"Gaming Coins eingelöst: {req.coins} Coins",
+        reference=f"GAMERED-{marker_hash[:12].upper()}",
         metadata={"type": "coin_redemption", "coins": req.coins},
+        idempotency_key=idempotency_key,
     )
-
     if not result.success:
-        # Refund coins if wallet credit fails
-        await add_coins(user_id, req.coins, "Rückerstattung: Einlösung fehlgeschlagen")
+        rollback_field = f"gaming_coin_redemption_rollbacks.{marker_hash}"
+        await db.users.update_one(
+            {
+                "_id": user["_id"],
+                reserve_field: {"$exists": True},
+                rollback_field: {"$exists": False},
+            },
+            {
+                "$inc": {"gaming_coins": req.coins},
+                "$unset": {reserve_field: ""},
+                "$set": {rollback_field: {"created_at": datetime.now(timezone.utc).isoformat(), "reason": result.error}},
+            },
+        )
         raise HTTPException(status_code=500, detail="Einlösung fehlgeschlagen")
 
-    new_balance = await get_user_coins(user_id)
+    finalized = await db.users.update_one(
+        {"_id": user["_id"], reserve_field: {"$exists": True}},
+        {
+            "$unset": {reserve_field: ""},
+            "$set": {
+                completed_field: {
+                    "coins": req.coins,
+                    "eur_amount": eur_amount,
+                    "wallet_transaction_id": result.transaction_id,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        already = await db.users.find_one({"_id": user["_id"], completed_field: {"$exists": True}}, {"_id": 1})
+        if not already:
+            raise HTTPException(status_code=500, detail="EUR gutgeschrieben, Coin-Abrechnung muss geprüft werden")
+
+    updated = await db.users.find_one({"_id": user["_id"]}, {"gaming_coins": 1, "_id": 0}) or {}
     return {
         "success": True,
         "coins_redeemed": req.coins,
         "eur_credited": eur_amount,
-        "remaining_coins": new_balance,
+        "remaining_coins": int(updated.get("gaming_coins") or 0),
         "message": f"{req.coins} Coins → €{eur_amount:.2f} auf dein Wallet!",
+        "replayed": result.idempotent_replay,
     }
 
 

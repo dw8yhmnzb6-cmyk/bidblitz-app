@@ -7,7 +7,7 @@ from bson import ObjectId
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, Request
 
-from core.config import JWT_SECRET
+from core.config import JWT_SECRET, TEST_MODE
 from core.database import db
 from core.feature_flags import get_flag
 from services.pos_security import (
@@ -307,9 +307,11 @@ async def create_biopay_terminal(actor: dict, label: str, palm_enabled: bool, fa
         "palm_enabled": bool(palm_enabled),
         "face_enabled": bool(face_enabled and face_allowed),
         "status": "active",
-        "health_status": "healthy",
-        "diagnostic_score": 100.0,
-        "diagnostic_flags": [],
+        "health_status": "test_healthy" if TEST_MODE else "unverified",
+        "diagnostic_score": 100.0 if TEST_MODE else 0.0,
+        "diagnostic_flags": [] if TEST_MODE else ["hardware_attestation_required"],
+        "hardware_verified": False,
+        "attestation_status": "test_mode" if TEST_MODE else "unverified",
         "firmware_version": "1.0.0",
         "created_by": actor["user_id"],
         "created_at": now_iso(),

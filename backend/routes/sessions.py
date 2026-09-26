@@ -3,10 +3,10 @@ BidBlitz V2 - Session Management Routes
 Track active sessions and allow session revocation.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from datetime import datetime, timezone
 from core.database import db
-from core.security import get_current_user
+from core.security import get_current_user, clear_auth_cookies
 from core.audit import log_audit, AuditEvent, get_client_info
 import secrets
 
@@ -63,15 +63,30 @@ async def list_sessions(request: Request):
 
 
 @router.post("/revoke-all")
-async def revoke_all(request: Request):
-    """Logout from all devices."""
+async def revoke_all(request: Request, response: Response):
+    """Logout from all devices and invalidate every existing JWT generation."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
 
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"auth_version": 1}, "$set": {"sessions_revoked_at": datetime.now(timezone.utc).isoformat()}},
+    )
     await revoke_all_sessions(user_id)
-    await log_audit(AuditEvent.SESSION_REVOKED, user_id=user_id, email=user["email"], ip=ip, user_agent=ua,
-                    details={"action": "revoke_all"})
+    await db.pending_2fa.delete_many({"user_id": user_id})
+    await db.otp_codes.delete_many({"user_id": user_id})
+    clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
+
+    await log_audit(
+        AuditEvent.SESSION_REVOKED,
+        user_id=user_id,
+        email=user["email"],
+        ip=ip,
+        user_agent=ua,
+        details={"action": "revoke_all", "auth_version_incremented": True},
+    )
 
     return {"success": True, "message": "All sessions revoked"}
 

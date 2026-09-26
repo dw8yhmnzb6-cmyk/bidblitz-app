@@ -3,7 +3,7 @@
  * Maps an admin section item.key to an async loader returning detail data.
  */
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, {
@@ -17,6 +17,24 @@ async function api(path, opts = {}) {
 }
 
 const MODULE_LIST_CONFIG = {
+  "admin-immobilien": {
+    url: "/api/real-estate/listings",
+    pickItems: (d) => d.listings || [],
+    module: "Immobilien", countLabel: "Inserate",
+    fields: ["title", "type", "city", "price", "status"],
+  },
+  "admin-freelancer": {
+    url: "/api/freelancer/freelancers",
+    pickItems: (d) => d.freelancers || [],
+    module: "Freelancer", countLabel: "Freelancer",
+    fields: ["name", "category", "location", "hourly_rate", "rating"],
+  },
+  "admin-elearning": {
+    url: "/api/elearning/courses",
+    pickItems: (d) => d.courses || [],
+    module: "E-Learning", countLabel: "Kurse",
+    fields: ["title", "category", "level", "price", "rating"],
+  },
   "admin-handwerker": {
     url: "/api/handwerker/list",
     pickItems: (d) => d.handwerker || [],
@@ -163,13 +181,16 @@ export async function loadAdminDetail(item, onNavigate) {
     case "api-keys":
       return { type: "api_keys" };
 
+    case "surveys": {
+      const d = await api("/api/surveys/admin/stats");
+      return { type: "surveys_admin", ...d };
+    }
     case "flash-sales":
     case "banners":
     case "email-marketing":
     case "jackpot":
     case "challenges":
     case "mystery-box":
-    case "surveys":
       return { type: "marketing", subtype: item.key };
 
     case "products":
@@ -225,8 +246,12 @@ export async function loadAdminDetail(item, onNavigate) {
       return { type: "module_stats", module: "Taxi-Fleet", stats: d };
     }
     case "admin-parcels": {
-      const d = await api("/api/admin/stats");
-      return { type: "module_stats", module: "Paket-Verwaltung", stats: d };
+      const d = await api("/api/parcels/admin/list");
+      return { type: "parcels_admin", ...d };
+    }
+    case "voice-commands": {
+      const d = await api("/api/voice/admin/status");
+      return { type: "voice_admin", ...d };
     }
 
     case "maintenance":
@@ -234,7 +259,6 @@ export async function loadAdminDetail(item, onNavigate) {
     case "game-settings":
     case "sustainability":
     case "passwords":
-    case "voice-commands":
     case "debug":
     case "rtk-proxy":
     case "system-health":

@@ -8,14 +8,15 @@ import hashlib
 import json
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 import httpx
-from fastapi import APIRouter, Request, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 
 logger = logging.getLogger("bidblitz.coinbase")
 
@@ -88,7 +89,6 @@ async def create_charge(req: ChargeRequest, request: Request, user=Depends(get_c
         logger.error(f"Coinbase HTTP error: {e}")
         raise HTTPException(status_code=502, detail="Coinbase Commerce nicht erreichbar")
 
-    # Persist charge record
     user_id = user_id_str
     await db.crypto_charges.insert_one(
         {
@@ -130,11 +130,11 @@ async def list_user_charges(user=Depends(get_current_user), limit: int = 20):
 
 
 @router.post("/webhook")
-async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
+async def coinbase_webhook(request: Request):
     """
     Coinbase Commerce Webhook Endpoint.
-    Verifiziert HMAC-SHA256 Signatur, bestätigt sofort mit 200 OK,
-    und verarbeitet Payment asynchron.
+    Verifiziert HMAC-SHA256 und verarbeitet Settlement vor der 2xx-Antwort,
+    damit Provider-Retries einen Prozessabbruch sicher wieder aufnehmen können.
     """
     body = await request.body()
     payload_raw = body.decode("utf-8")
@@ -144,7 +144,6 @@ async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
         logger.error("Webhook received but COINBASE_COMMERCE_WEBHOOK_SECRET not configured")
         raise HTTPException(status_code=503, detail="Webhook secret not configured")
 
-    # Signature check (HMAC-SHA256, HEX - Coinbase Standard)
     expected = hmac.new(
         COMMERCE_WEBHOOK_SECRET.encode("utf-8"),
         payload_raw.encode("utf-8"),
@@ -165,10 +164,8 @@ async def coinbase_webhook(request: Request, background_tasks: BackgroundTasks):
     charge_id = charge_data.get("id")
 
     logger.info(f"Coinbase webhook: {event_type} for charge {charge_id}")
-
-    # Ack immediately, process async
-    background_tasks.add_task(_process_event, event_type, charge_id, charge_data)
-    return {"status": "received", "event": event_type}
+    await _process_event(event_type, charge_id, charge_data)
+    return {"status": "processed", "event": event_type}
 
 
 async def _process_event(event_type: str, charge_id: str, charge_data: dict):
@@ -180,7 +177,6 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
         logger.warning(f"Webhook for unknown charge {charge_id}")
         return
 
-    # Store event for audit
     await db.crypto_charges.update_one(
         {"charge_id": charge_id},
         {"$push": {"webhook_events": {"type": event_type, "at": datetime.now(timezone.utc).isoformat()}}},
@@ -200,40 +196,141 @@ async def _process_event(event_type: str, charge_id: str, charge_data: dict):
     else:
         return
 
-    # Idempotency: only credit once
-    if event_type == "charge:confirmed" and charge.get("status") != "confirmed":
-        user_id = charge["user_id"]
-        amount = float(charge["amount_eur"])
+    if event_type == "charge:confirmed":
+        current = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or charge
+        settlement_state = str(current.get("settlement_status") or "")
+        if settlement_state == "completed":
+            return
+        if settlement_state in {"pending", "reconciliation_required"}:
+            return
 
-        # Credit user wallet
-        await db.users.update_one({"_id": _oid(user_id)}, {"$inc": {"balance": amount}})
+        if settlement_state == "processing":
+            old_started = current.get("settlement_started_at")
+            started_dt = None
+            if old_started:
+                try:
+                    started_dt = datetime.fromisoformat(str(old_started).replace("Z", "+00:00"))
+                    if started_dt.tzinfo is None:
+                        started_dt = started_dt.replace(tzinfo=timezone.utc)
+                except Exception:
+                    started_dt = None
+            if started_dt and started_dt > datetime.now(timezone.utc) - timedelta(minutes=5):
+                return
 
-        # Log wallet transaction
-        await db.transactions.insert_one(
-            {
-                "user_id": user_id,
-                "type": "topup",
-                "amount": amount,
-                "currency": "EUR",
-                "status": "completed",
-                "description": "Krypto-Aufladung via Coinbase",
-                "merchant_name": "Coinbase Commerce",
-                "category": "topup",
-                "reference": f"CB-{charge_id[:8].upper()}",
-                "date": datetime.now(timezone.utc).isoformat(),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "external_id": charge_id,
+            attempt = int(current.get("settlement_attempt", 1) or 1)
+            reclaimed = await db.crypto_charges.update_one(
+                {
+                    "charge_id": charge_id,
+                    "settlement_status": "processing",
+                    "settlement_attempt": attempt,
+                    "settlement_started_at": old_started,
+                },
+                {
+                    "$set": {
+                        "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+                        "settlement_recovered_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "$inc": {"settlement_recovery_count": 1},
+                },
+            )
+            if reclaimed.modified_count != 1:
+                return
+            claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
+        else:
+            claim_filter = {
+                "charge_id": charge_id,
+                "settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]},
             }
-        )
+            if "settlement_status" not in current:
+                claim_filter = {
+                    "charge_id": charge_id,
+                    "$or": [
+                        {"settlement_status": {"$exists": False}},
+                        {"settlement_status": {"$nin": ["completed", "pending", "reconciliation_required", "processing"]}},
+                    ],
+                }
+            claimed = await db.crypto_charges.update_one(
+                claim_filter,
+                {
+                    "$set": {
+                        "settlement_status": "processing",
+                        "settlement_started_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "$inc": {"settlement_attempt": 1},
+                },
+            )
+            if claimed.modified_count != 1:
+                return
+            claimed_charge = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or current
+            attempt = int(claimed_charge.get("settlement_attempt", 1) or 1)
+        user_id = claimed_charge["user_id"]
+        amount = float(claimed_charge["amount_eur"])
 
-        await db.crypto_charges.update_one(
-            {"charge_id": charge_id},
-            {"$set": {"status": "confirmed", "confirmed_at": datetime.now(timezone.utc).isoformat()}},
+        result = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.TOPUP,
+            description="Krypto-Aufladung via Coinbase",
+            source="coinbase_commerce",
+            reference=f"CB-{charge_id[:8].upper()}",
+            metadata={
+                "external_id": charge_id,
+                "provider": "coinbase_commerce",
+                "route": "coinbase_commerce.webhook",
+                "audit_metadata": {"kind": "coinbase_wallet_topup"},
+                "settlement_attempt": attempt,
+            },
+            idempotency_key=f"coinbase_charge:{charge_id}:attempt:{attempt}",
         )
-        logger.info(f"✅ Credited {amount}€ to user {user_id} from Coinbase charge {charge_id}")
+        if not result.success:
+            result_state = str(getattr(result.status, "value", result.status))
+            next_state = (
+                "reconciliation_required"
+                if result_state in {"pending", "reconciliation_required"}
+                else "failed"
+            )
+            await db.crypto_charges.update_one(
+                {"charge_id": charge_id, "settlement_status": "processing", "settlement_attempt": attempt},
+                {"$set": {
+                    "settlement_status": next_state,
+                    "settlement_error": result.error or "Wallet settlement failed",
+                    "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                    "wallet_transaction_id": result.transaction_id,
+                }},
+            )
+            logger.error("Coinbase wallet settlement failed for charge %s: %s", charge_id, result.error)
+            return
+
+        finalized = await db.crypto_charges.update_one(
+            {"charge_id": charge_id, "settlement_status": "processing", "settlement_attempt": attempt},
+            {"$set": {
+                "status": "confirmed",
+                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                "settlement_status": "completed",
+                "settlement_error": None,
+                "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                "wallet_transaction_id": result.transaction_id,
+                "wallet_reference": result.reference,
+            }},
+        )
+        if finalized.modified_count != 1:
+            current = await db.crypto_charges.find_one({"charge_id": charge_id}, {"_id": 0}) or {}
+            if current.get("settlement_status") != "completed":
+                await db.crypto_charges.update_one(
+                    {"charge_id": charge_id},
+                    {"$set": {
+                        "settlement_status": "reconciliation_required",
+                        "settlement_error": "wallet_credited_charge_finalize_failed",
+                        "wallet_transaction_id": result.transaction_id,
+                        "wallet_reference": result.reference,
+                        "settlement_checked_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                logger.error("Coinbase wallet credited but charge finalization needs reconciliation: %s", charge_id)
+                return
+        logger.info("Credited %s EUR to user %s from Coinbase charge %s", amount, user_id, charge_id)
         return
 
-    # All other status updates
     await db.crypto_charges.update_one(
         {"charge_id": charge_id}, {"$set": {"status": new_status}}
     )

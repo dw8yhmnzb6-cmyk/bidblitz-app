@@ -41,6 +41,8 @@ import motor.motor_asyncio
 
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+from core.merchant_commission import effective_merchant_rate
 
 router = APIRouter(prefix="/api/qr", tags=["qr-order"])
 admin_router = APIRouter(prefix="/api/merchant", tags=["qr-order-admin"])
@@ -91,6 +93,7 @@ class QROrderRequest(BaseModel):
     scope: str = Field("food", pattern="^(food|drinks)$")
     note: Optional[str] = Field(None, max_length=300)
     language: Optional[str] = Field("de", max_length=5)
+    idempotency_key: Optional[str] = None
 
 
 class QRSettingsRequest(BaseModel):
@@ -149,11 +152,63 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-async def _require_merchant(request: Request):
+async def _resolve_merchant_financials(merchant_id: str) -> dict:
+    merchant = await db.merchants.find_one(
+        {"$or": [
+            {"merchant_id": merchant_id},
+            {"user_id": merchant_id},
+            *([{"_id": ObjectId(merchant_id)}] if ObjectId.is_valid(str(merchant_id)) else []),
+        ]},
+        {"_id": 0},
+    )
+    if merchant and merchant.get("user_id"):
+        return {
+            "owner_id": str(merchant["user_id"]),
+            "merchant_name": merchant.get("business_name") or merchant.get("name") or "",
+            "fee_rate": effective_merchant_rate(merchant.get("fee_rate")),
+        }
+
+    pos_merchant = await db.pos_merchants.find_one({"merchant_id": merchant_id}, {"_id": 0})
+    if pos_merchant and pos_merchant.get("owner_id"):
+        return {
+            "owner_id": str(pos_merchant["owner_id"]),
+            "merchant_name": pos_merchant.get("business_name") or "",
+            "fee_rate": effective_merchant_rate(pos_merchant.get("fee_rate")),
+        }
+
+    profile = None
+    if ObjectId.is_valid(str(merchant_id)):
+        profile = await db.merchant_profiles.find_one({"_id": ObjectId(merchant_id)}, {"_id": 0})
+    if not profile:
+        profile = await db.merchant_profiles.find_one({"user_id": merchant_id}, {"_id": 0})
+    if profile and profile.get("user_id"):
+        return {
+            "owner_id": str(profile["user_id"]),
+            "merchant_name": profile.get("business_name") or "",
+            "fee_rate": effective_merchant_rate(profile.get("commission_rate")),
+        }
+
+    raise HTTPException(status_code=409, detail="Händlerkonto ist nicht abrechenbar")
+
+
+async def _require_merchant(request: Request, merchant_id: Optional[str] = None):
     user = await get_current_user(request)
     if user.get("role") not in {"admin", "merchant"}:
         raise HTTPException(status_code=403, detail="Merchant- oder Admin-Rolle erforderlich")
+    if user.get("role") == "admin" or not merchant_id:
+        return user
+
+    financials = await _resolve_merchant_financials(merchant_id)
+    if financials["owner_id"] != str(user["_id"]):
+        raise HTTPException(status_code=403, detail="Dieser Händler gehört nicht zu deinem Konto")
     return user
+
+
+def _require_qr_idempotency_key(body_key: Optional[str], request: Request, *, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
 
 
 async def _rotate_token(table_id: str) -> dict:
@@ -347,11 +402,25 @@ def _validate_modifiers(canonical: dict, selected: list) -> tuple[float, list]:
 
 @router.post("/order")
 async def place_qr_order(req: QROrderRequest, request: Request):
-    """Customer places an order from a scanned table. Wallet is deducted
-    atomically (compare-and-swap) and an order doc is persisted."""
+    """Place a server-priced QR order with canonical debit + merchant credit."""
     user = await get_current_user(request)
+    customer_id = str(user["_id"])
+    idempotency_key = _require_qr_idempotency_key(req.idempotency_key, request, prefix="qr-order")
 
-    # 1. Validate token / table
+    existing = await db.qr_orders.find_one(
+        {"customer_id": customer_id, "idempotency_key": idempotency_key},
+        {"_id": 0},
+    )
+    if existing and existing.get("payment_status") == "paid":
+        return {
+            "ok": True,
+            "order_id": existing["order_id"],
+            "status": existing["status"],
+            "total": existing["total"],
+            "message": "Bestellung bereits verarbeitet",
+            "replayed": True,
+        }
+
     table = await db.pos_tables.find_one({"qr_token": req.token}, {"_id": 0})
     if not table:
         raise HTTPException(status_code=410, detail="QR-Code abgelaufen. Bitte erneut scannen.")
@@ -361,30 +430,27 @@ async def place_qr_order(req: QROrderRequest, request: Request):
 
     merchant_id = table.get("merchant_id") or table.get("store_id")
     settings = await _get_merchant_settings(merchant_id)
-
     if req.scope not in settings.get("scopes", DEFAULT_SCOPES):
         raise HTTPException(status_code=400, detail=f"Bereich '{req.scope}' nicht aktiviert")
-
-    # 2. Validate items & compute total (NEVER trust client-supplied price alone;
-    #    re-fetch from the merchant menu for security).
     if not req.items:
         raise HTTPException(status_code=400, detail="Bestellung leer")
 
     menu_resp = await get_merchant_menu(merchant_id)
     menu_items = {str(m.get("item_id") or m.get("id") or m.get("name")): m for m in menu_resp.get("items", [])}
-
     total = 0.0
     order_items: List[dict] = []
     for it in req.items:
-        canonical = menu_items.get(it.item_id) or menu_items.get(it.name) or {}
-        unit_price = float(canonical["price"]) if "price" in canonical else float(it.price)
+        canonical = menu_items.get(it.item_id) or menu_items.get(it.name)
+        if not canonical or "price" not in canonical:
+            raise HTTPException(status_code=400, detail=f"Menüartikel nicht gefunden oder nicht mehr verfügbar: {it.name}")
+        unit_price = float(canonical["price"])
         mod_extra, mod_norm = _validate_modifiers(canonical, it.modifiers)
         unit_with_mods = round(unit_price + mod_extra, 2)
         line_total = round(unit_with_mods * it.qty, 2)
         total += line_total
         order_items.append({
             "item_id": it.item_id,
-            "name": canonical.get("name") if canonical else it.name,
+            "name": canonical.get("name") or it.name,
             "unit_price": round(unit_price, 2),
             "modifiers": mod_norm,
             "modifier_price": mod_extra,
@@ -395,64 +461,136 @@ async def place_qr_order(req: QROrderRequest, request: Request):
             "image_url": canonical.get("image_url"),
         })
     total = round(total, 2)
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Bestellbetrag muss positiv sein")
 
-    # 3. Wallet debit (atomic)
-    user_id = user["_id"]
-    update_res = await db.users.update_one(
-        {"_id": user_id, "balance": {"$gte": total}},
-        {"$inc": {"balance": -total}},
-    )
-    if update_res.modified_count == 0:
-        raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{total:.2f})")
+    merchant_financials = await _resolve_merchant_financials(merchant_id)
+    fee_rate = merchant_financials["fee_rate"]
+    fee = round(total * fee_rate, 2)
+    merchant_net = round(total - fee, 2)
 
-    # 4. Persist order
+    import hashlib
+    order_hash = hashlib.sha256(f"{customer_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:18]
+    order_id = f"qro_{order_hash}"
     now = _now_utc()
     accept_mode = settings.get("acceptance_mode", DEFAULT_ACCEPT_MODE)
-    status = "accepted" if accept_mode == "instant" else "pending"
-    order_id = f"qro_{secrets.token_hex(6)}"
+    final_status = "accepted" if accept_mode == "instant" else "pending"
 
     order = {
         "order_id": order_id,
-        "customer_id": str(user_id),
+        "customer_id": customer_id,
         "customer_name": user.get("name", ""),
         "merchant_id": merchant_id,
+        "merchant_owner_id": merchant_financials["owner_id"],
         "table_id": table["table_id"],
         "table_label": table.get("label") or table.get("name") or "",
         "scope": req.scope,
         "items": order_items,
         "total": total,
+        "fee_rate": fee_rate,
+        "fee_amount": fee,
+        "merchant_net": merchant_net,
         "payment_method": "wallet",
-        "payment_status": "paid",
-        "status": status,
+        "payment_status": "processing",
+        "status": "payment_processing",
         "note": req.note or "",
+        "idempotency_key": idempotency_key,
         "created_at": now.isoformat(),
-        "accepted_at": now.isoformat() if status == "accepted" else None,
-        "status_history": [
-            {"status": "submitted", "at": now.isoformat()},
-            *([{"status": "accepted", "at": now.isoformat(), "auto": True}] if status == "accepted" else []),
-        ],
+        "status_history": [{"status": "payment_processing", "at": now.isoformat()}],
     }
-    await db.qr_orders.insert_one(order)
-    order.pop("_id", None)
+    await db.qr_orders.update_one(
+        {"order_id": order_id},
+        {"$setOnInsert": order},
+        upsert=True,
+    )
 
-    # 5. Log wallet transaction
-    await db.wallet_transactions.insert_one({
-        "transaction_id": secrets.token_hex(8),
-        "user_id": str(user_id),
-        "type": "qr_table_order",
-        "amount": -total,
-        "currency": "EUR",
-        "description": f"Bestellung {order_id} – {table.get('label', 'Tisch')}",
-        "reference": order_id,
-        "created_at": now.isoformat(),
-    })
+    debit = await debit_wallet(
+        user_id=customer_id,
+        amount=total,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"Tischbestellung {table.get('label', 'Tisch')}",
+        reference=order_id,
+        merchant_id=merchant_id,
+        merchant_name=merchant_financials["merchant_name"],
+        metadata={"order_id": order_id, "table_id": table["table_id"], "kind": "qr_table_order"},
+        idempotency_key=f"qr-order-debit:{idempotency_key}",
+    )
+    if not debit.success:
+        await db.qr_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"payment_status": "failed", "status": "payment_failed", "payment_error": debit.error}},
+        )
+        raise HTTPException(status_code=402, detail=debit.error or f"Nicht genug Guthaben (benötigt: €{total:.2f})")
+
+    merchant_credit = await credit_wallet(
+        user_id=merchant_financials["owner_id"],
+        amount=merchant_net,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"QR-Tischbestellung {order_id}",
+        reference=f"QRM-{order_hash.upper()}",
+        source=f"qr_table_order:{customer_id}",
+        metadata={
+            "order_id": order_id,
+            "merchant_id": merchant_id,
+            "gross_amount": total,
+            "fee_amount": fee,
+            "net_amount": merchant_net,
+        },
+        idempotency_key=f"qr-order-credit:{idempotency_key}",
+    )
+    if not merchant_credit.success:
+        refund = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description=f"Rückbuchung Tischbestellung {order_id}",
+            reference=f"REF-{order_id}",
+            source="qr_table_order.rollback",
+            metadata={"order_id": order_id, "merchant_credit_error": merchant_credit.error},
+            idempotency_key=f"qr-order-rollback:{idempotency_key}",
+        )
+        await db.qr_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "payment_status": "refunded" if refund.success else "reconciliation_required",
+                "status": "rejected" if refund.success else "reconciliation_required",
+                "refund_transaction_id": refund.transaction_id if refund.success else None,
+                "payment_error": merchant_credit.error,
+            }},
+        )
+        if refund.success:
+            raise HTTPException(status_code=409, detail="Händlergutschrift fehlgeschlagen; Kundenbetrag wurde zurückgebucht.")
+        raise HTTPException(status_code=500, detail="Zahlung benötigt manuelle Abstimmung.")
+
+    paid_at = _now_utc().isoformat()
+    await db.qr_orders.update_one(
+        {"order_id": order_id},
+        {
+            "$set": {
+                "payment_status": "paid",
+                "status": final_status,
+                "customer_payment_transaction_id": debit.transaction_id,
+                "merchant_credit_transaction_id": merchant_credit.transaction_id,
+                "accepted_at": paid_at if final_status == "accepted" else None,
+                "paid_at": paid_at,
+            },
+            "$push": {
+                "status_history": {
+                    "status": final_status,
+                    "at": paid_at,
+                    "auto": final_status == "accepted",
+                }
+            },
+        },
+    )
 
     return {
         "ok": True,
         "order_id": order_id,
-        "status": status,
+        "status": final_status,
         "total": total,
-        "message": "Bestellung aufgegeben" if status == "accepted" else "Bestellung wartet auf Bestätigung",
+        "message": "Bestellung aufgegeben" if final_status == "accepted" else "Bestellung wartet auf Bestätigung",
+        "replayed": debit.idempotent_replay,
     }
 
 
@@ -570,41 +708,101 @@ async def accept_qr_order(order_id: str, request: Request):
 
 @admin_router.post("/qr-orders/{order_id}/reject")
 async def reject_qr_order(order_id: str, request: Request):
-    """Reject + refund the customer's wallet (compensating transaction)."""
-    await _require_merchant(request)
+    """Reject an order, refund the customer and reverse merchant credit once."""
     order = await db.qr_orders.find_one({"order_id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    if order["status"] in {"rejected", "completed"}:
-        return {"ok": True, "message": "Bereits final"}
-    now = _now_utc().isoformat()
-    refund = float(order.get("total", 0))
-    # Refund wallet (handle both ObjectId and UUID-string ids)
-    customer_id = order["customer_id"]
-    try:
-        cust_query = {"_id": ObjectId(customer_id)} if ObjectId.is_valid(customer_id) else {"id": customer_id}
-    except Exception:
-        cust_query = {"id": customer_id}
-    await db.users.update_one(
-        cust_query,
-        {"$inc": {"balance": refund}},
+    await _require_merchant(request, order["merchant_id"])
+
+    if order.get("status") == "rejected" and order.get("payment_status") == "refunded":
+        return {"ok": True, "message": "Bereits final", "refunded": float(order.get("total") or 0), "replayed": True}
+    if order.get("status") == "completed":
+        raise HTTPException(status_code=409, detail="Abgeschlossene Bestellung kann nicht normal abgelehnt werden")
+
+    claim = await db.qr_orders.update_one(
+        {
+            "order_id": order_id,
+            "status": {"$in": ["pending", "accepted"]},
+            "payment_status": "paid",
+        },
+        {"$set": {"status": "refund_processing", "refund_started_at": _now_utc().isoformat()}},
     )
-    await db.wallet_transactions.insert_one({
-        "transaction_id": secrets.token_hex(8),
-        "user_id": order["customer_id"],
-        "type": "qr_table_order_refund",
-        "amount": refund,
-        "currency": "EUR",
-        "description": f"Rückerstattung {order_id}",
-        "reference": order_id,
-        "created_at": now,
-    })
+    if claim.modified_count != 1:
+        fresh = await db.qr_orders.find_one({"order_id": order_id}, {"_id": 0}) or {}
+        if fresh.get("payment_status") == "refunded":
+            return {"ok": True, "message": "Bereits final", "refunded": float(fresh.get("total") or 0), "replayed": True}
+        raise HTTPException(status_code=409, detail="Bestellung wird bereits verarbeitet")
+
+    refund_amount = round(float(order.get("total") or 0), 2)
+    customer_id = str(order["customer_id"])
+    refund = await credit_wallet(
+        user_id=customer_id,
+        amount=refund_amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Rückerstattung {order_id}",
+        reference=f"REF-{order_id}",
+        source="qr_table_order.rejection",
+        metadata={"order_id": order_id, "merchant_id": order["merchant_id"]},
+        idempotency_key=f"qr-order-refund:{order_id}",
+    )
+    if not refund.success:
+        await db.qr_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"status": "reconciliation_required", "payment_status": "reconciliation_required", "refund_error": refund.error}},
+        )
+        raise HTTPException(status_code=500, detail="Kundenrückzahlung benötigt manuelle Abstimmung")
+
+    owner_id = str(order.get("merchant_owner_id") or "")
+    merchant_net = round(float(order.get("merchant_net") or 0), 2)
+    reversal_ok = True
+    reversal_tx = None
+    reversal_error = None
+    if owner_id and merchant_net > 0:
+        reversal = await debit_wallet(
+            user_id=owner_id,
+            amount=merchant_net,
+            tx_type=TransactionType.MERCHANT_PAYMENT,
+            description=f"Storno QR-Tischbestellung {order_id}",
+            reference=f"REV-{order_id}",
+            merchant_id=order["merchant_id"],
+            metadata={"order_id": order_id, "kind": "qr_order_merchant_reversal"},
+            idempotency_key=f"qr-order-merchant-reversal:{order_id}",
+        )
+        reversal_ok = reversal.success
+        reversal_tx = reversal.transaction_id
+        reversal_error = reversal.error
+
+    now = _now_utc().isoformat()
     await db.qr_orders.update_one(
         {"order_id": order_id},
-        {"$set": {"status": "rejected", "rejected_at": now, "payment_status": "refunded"},
-         "$push": {"status_history": {"status": "rejected", "at": now}}},
+        {
+            "$set": {
+                "status": "rejected",
+                "rejected_at": now,
+                "payment_status": "refunded",
+                "refund_transaction_id": refund.transaction_id,
+                "merchant_reversal_status": "completed" if reversal_ok else "reconciliation_required",
+                "merchant_reversal_transaction_id": reversal_tx,
+                "merchant_reversal_error": reversal_error,
+            },
+            "$push": {"status_history": {"status": "rejected", "at": now}},
+        },
     )
-    return {"ok": True, "refunded": refund}
+    if not reversal_ok:
+        await db.merchant_reconciliation_debts.update_one(
+            {"order_id": order_id, "merchant_id": order["merchant_id"]},
+            {"$setOnInsert": {
+                "order_id": order_id,
+                "merchant_id": order["merchant_id"],
+                "owner_id": owner_id,
+                "amount": merchant_net,
+                "reason": reversal_error or "merchant_reversal_failed",
+                "status": "open",
+                "created_at": now,
+            }},
+            upsert=True,
+        )
+    return {"ok": True, "refunded": refund_amount, "merchant_reversal_ok": reversal_ok, "replayed": refund.idempotent_replay}
 
 
 @admin_router.post("/qr-orders/{order_id}/complete")
@@ -808,54 +1006,111 @@ async def get_order_status(order_id: str, request: Request):
 class TipRequest(BaseModel):
     order_id: str
     amount: float = Field(..., ge=0, le=200)
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/order/tip")
 async def add_tip(req: TipRequest, request: Request):
-    """Add a tip to an existing order, debited atomically from wallet."""
+    """Add one canonical wallet tip to an existing order."""
     user = await get_current_user(request)
     if req.amount <= 0:
         return {"ok": True, "tip": 0.0, "message": "Kein Trinkgeld"}
 
+    customer_id = str(user["_id"])
     order = await db.qr_orders.find_one(
-        {"order_id": req.order_id, "customer_id": str(user["_id"])},
+        {"order_id": req.order_id, "customer_id": customer_id},
         {"_id": 0},
     )
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
-    if order.get("tip"):
-        raise HTTPException(status_code=409, detail="Trinkgeld wurde bereits hinzugefügt")
-    if order.get("status") == "rejected":
-        raise HTTPException(status_code=400, detail="Trinkgeld nicht möglich (abgelehnte Bestellung)")
+    if order.get("status") in {"rejected", "refund_processing", "reconciliation_required"}:
+        raise HTTPException(status_code=400, detail="Trinkgeld für diese Bestellung nicht möglich")
 
+    idempotency_key = _require_qr_idempotency_key(req.idempotency_key, request, prefix="qr-tip")
     amount = round(float(req.amount), 2)
-    # Atomic debit
-    res = await db.users.update_one(
-        {"_id": user["_id"], "balance": {"$gte": amount}},
-        {"$inc": {"balance": -amount}},
+    claim_key = idempotency_key.replace(".", "_")
+    claim = await db.qr_orders.update_one(
+        {
+            "order_id": req.order_id,
+            "$or": [{"tip": {"$exists": False}}, {"tip": None}, {"tip": 0}],
+            "$or": [{"tip_claim": {"$exists": False}}, {"tip_claim": None}, {"tip_claim.key": idempotency_key}],
+        },
+        {"$set": {"tip_claim": {"key": idempotency_key, "amount": amount, "claimed_at": _now_utc().isoformat()}}},
     )
-    if res.modified_count == 0:
-        raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (Trinkgeld {amount:.2f}€)")
+    fresh = await db.qr_orders.find_one({"order_id": req.order_id}, {"_id": 0}) or order
+    if claim.modified_count != 1 and fresh.get("tip"):
+        if fresh.get("tip_idempotency_key") == idempotency_key:
+            return {"ok": True, "tip": float(fresh.get("tip") or 0), "replayed": True}
+        raise HTTPException(status_code=409, detail="Trinkgeld wurde bereits hinzugefügt")
+    if (fresh.get("tip_claim") or {}).get("key") not in {None, idempotency_key}:
+        raise HTTPException(status_code=409, detail="Ein anderes Trinkgeld wird bereits verarbeitet")
+
+    debit = await debit_wallet(
+        user_id=customer_id,
+        amount=amount,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"Trinkgeld {req.order_id}",
+        reference=f"TIP-{req.order_id}",
+        merchant_id=order["merchant_id"],
+        metadata={"order_id": req.order_id, "kind": "qr_table_tip"},
+        idempotency_key=f"qr-tip-debit:{idempotency_key}",
+    )
+    if not debit.success:
+        await db.qr_orders.update_one(
+            {"order_id": req.order_id, "tip_claim.key": idempotency_key},
+            {"$set": {"tip_claim": None}},
+        )
+        raise HTTPException(status_code=402, detail=debit.error or "Nicht genug Guthaben")
+
+    owner_id = str(order.get("merchant_owner_id") or "")
+    if not owner_id:
+        financials = await _resolve_merchant_financials(order["merchant_id"])
+        owner_id = financials["owner_id"]
+
+    credit = await credit_wallet(
+        user_id=owner_id,
+        amount=amount,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Trinkgeld {req.order_id}",
+        reference=f"TIPC-{req.order_id}",
+        source=f"qr_table_tip:{customer_id}",
+        metadata={"order_id": req.order_id, "kind": "tip"},
+        idempotency_key=f"qr-tip-credit:{idempotency_key}",
+    )
+    if not credit.success:
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Trinkgeld Rückbuchung {req.order_id}",
+            reference=f"TIPR-{req.order_id}",
+            source="qr_table_tip.rollback",
+            metadata={"order_id": req.order_id},
+            idempotency_key=f"qr-tip-rollback:{idempotency_key}",
+        )
+        await db.qr_orders.update_one(
+            {"order_id": req.order_id, "tip_claim.key": idempotency_key},
+            {"$set": {"tip_claim": None, "tip_reconciliation_required": not rollback.success}},
+        )
+        raise HTTPException(status_code=409 if rollback.success else 500, detail="Trinkgeld konnte nicht dem Händler gutgeschrieben werden.")
 
     now = _now_utc().isoformat()
     await db.qr_orders.update_one(
-        {"order_id": req.order_id},
-        {"$set": {"tip": amount, "tip_at": now}, "$inc": {"total": amount}},
+        {"order_id": req.order_id, "tip_claim.key": idempotency_key},
+        {
+            "$set": {
+                "tip": amount,
+                "tip_at": now,
+                "tip_idempotency_key": idempotency_key,
+                "tip_debit_transaction_id": debit.transaction_id,
+                "tip_credit_transaction_id": credit.transaction_id,
+                "tip_claim": None,
+            },
+            "$inc": {"total": amount},
+        },
     )
-    await db.wallet_transactions.insert_one({
-        "transaction_id": secrets.token_hex(8),
-        "user_id": str(user["_id"]),
-        "type": "qr_table_tip",
-        "amount": -amount,
-        "currency": "EUR",
-        "description": f"Trinkgeld {req.order_id}",
-        "reference": req.order_id,
-        "created_at": now,
-    })
-    return {"ok": True, "tip": amount}
+    return {"ok": True, "tip": amount, "replayed": debit.idempotent_replay}
 
-
-# ─── New: Popular items + Upsell recommendations ────────────────────────────
 
 @router.get("/popular/{merchant_id}")
 async def popular_items(merchant_id: str, limit: int = 6):

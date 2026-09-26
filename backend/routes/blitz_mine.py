@@ -14,14 +14,135 @@ from datetime import datetime, timezone, timedelta
 from math import log
 from typing import Optional
 import random
+import hashlib
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from bson import ObjectId
+from pymongo import ReturnDocument
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/blitz-mine", tags=["blitz-mine"])
+
+
+def _user_oid(user_id: str):
+    try:
+        return ObjectId(user_id)
+    except Exception:
+        return user_id
+
+
+def _require_blitz_mine_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "BlitzMine ist in Production nur Preview. "
+                "Ohne verifizierten Mining-/Settlement-Provider werden keine BLZ erzeugt, gesperrt oder ausgezahlt."
+            ),
+        )
+
+
+def _require_blitz_idempotency_key(body_key: Optional[str], request: Request, prefix: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
+
+
+async def _mutate_blitz_wallet_once(
+    *,
+    user_id: str,
+    amount: float,
+    direction: str,
+    idempotency_key: str,
+    description: str,
+    category: str,
+) -> dict:
+    amount = round(float(amount or 0), 4)
+    if amount <= 0 or direction not in {"credit", "debit"}:
+        raise HTTPException(status_code=400, detail="Ungültige BlitzMine-BLZ-Buchung")
+
+    user_oid = _user_oid(user_id)
+    user_exists = await db.users.find_one({"_id": user_oid}, {"_id": 1})
+    if not user_exists:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+
+    digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"blitz_mine_value_markers.{digest}"
+    selector = {"_id": user_oid, marker_field: {"$exists": False}}
+    delta = amount if direction == "credit" else -amount
+    if direction == "debit":
+        selector["balance_blz"] = {"$gte": amount}
+
+    result = await db.users.update_one(
+        selector,
+        {
+            "$inc": {"balance_blz": delta},
+            "$set": {
+                marker_field: {
+                    "direction": direction,
+                    "amount": amount,
+                    "category": category,
+                    "created_at": _now().isoformat(),
+                }
+            },
+        },
+    )
+    replayed = False
+    if result.modified_count != 1:
+        existing = await db.users.find_one(
+            {"_id": user_oid, marker_field: {"$exists": True}},
+            {"_id": 0, "balance_blz": 1},
+        )
+        if existing:
+            replayed = True
+        elif direction == "debit":
+            raise HTTPException(status_code=400, detail="Nicht genug BLZ im Wallet.")
+        else:
+            raise HTTPException(status_code=409, detail="BLZ-Buchung konnte nicht atomar angewendet werden")
+
+    tx_id = f"BM-{digest.upper()}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
+            "user_id": user_id,
+            "type": "blitz_mine_value",
+            "amount_blz": amount if direction == "credit" else -amount,
+            "amount_eur": 0.0,
+            "direction": direction,
+            "category": category,
+            "description": description,
+            "status": "completed",
+            "idempotency_key": idempotency_key,
+            "created_at": _now().isoformat(),
+        }},
+        upsert=True,
+    )
+    wallet = await db.users.find_one({"_id": user_oid}, {"_id": 0, "balance_blz": 1}) or {}
+    return {
+        "transaction_id": tx_id,
+        "new_balance_blz": round(float(wallet.get("balance_blz", 0) or 0), 4),
+        "replayed": replayed,
+    }
+
+
+def _blitz_mine_capabilities() -> dict:
+    return {
+        "live_mining_provider_connected": False,
+        "value_actions_enabled": bool(TEST_MODE),
+        "claim_enabled": bool(TEST_MODE),
+        "lockup_enabled": bool(TEST_MODE),
+        "production_message": (
+            None if TEST_MODE else
+            "BlitzMine Preview: Tap/Claim/Bonus/Lockup sind bis zur Live-Provider-Anbindung deaktiviert."
+        ),
+    }
 
 # ── Economic constants (BLZ-based) ──
 BASE_RATE_PER_HOUR = 0.02           # 0.02 BLZ/h → ~0.48 BLZ/day for a pure Pioneer
@@ -337,6 +458,7 @@ class AddCircleReq(BaseModel):
 class LockupReq(BaseModel):
     amount: float = Field(..., gt=0)
     duration_days: int
+    idempotency_key: Optional[str] = None
 
 
 class ReminderSettingsReq(BaseModel):
@@ -350,6 +472,11 @@ class ReminderTestReq(BaseModel):
 
 
 # ── Endpoints ──
+@router.get("/capabilities")
+async def blitz_mine_capabilities():
+    return _blitz_mine_capabilities()
+
+
 @router.get("/status")
 async def status(request: Request):
     user = await get_current_user(request)
@@ -380,14 +507,20 @@ async def status(request: Request):
             "ready_to_claim": ready,
         }
 
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balance_blz": 1})
+    wallet = await db.users.find_one({"_id": _user_oid(user_id)}, {"_id": 0, "balance_blz": 1})
     blz_balance = (wallet or {}).get("balance_blz", 0.0)
 
     # next role target
     role_idx = ROLE_ORDER.index(profile.get("role", "pioneer"))
     next_role = ROLE_ORDER[role_idx + 1] if role_idx + 1 < len(ROLE_ORDER) else None
 
+    if not TEST_MODE:
+        session_info = None
+        blz_balance = 0.0
+        rate = {**rate, "rate_per_hour": 0.0, "estimated_session_earnings": 0.0}
+
     return {
+        "capabilities": _blitz_mine_capabilities(),
         "profile": {
             "user_id": user_id,
             "role": profile["role"],
@@ -418,8 +551,33 @@ async def status(request: Request):
 
 @router.post("/tap")
 async def tap(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-session-start")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    session_id = f"BMS-{digest.upper()}"
+
+    prior = await db.blitz_mine_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    if prior:
+        if prior.get("claimed"):
+            raise HTTPException(status_code=409, detail="Dieser Session-Start-Key wurde bereits abgeschlossen.")
+        remaining = max(
+            0,
+            int((datetime.fromisoformat(prior["ends_at"].replace("Z", "+00:00")) - _now()).total_seconds()),
+        )
+        return {
+            "success": True,
+            "message": "Mining-Session läuft bereits.",
+            "session": {
+                "started_at": prior["started_at"],
+                "ends_at": prior["ends_at"],
+                "remaining_seconds": remaining,
+                "earnings": prior.get("estimated_earnings", 0),
+                "ready_to_claim": remaining == 0,
+            },
+            "replayed": True,
+        }
 
     existing = await _get_active_session(user_id)
     if existing:
@@ -432,6 +590,9 @@ async def tap(request: Request):
     now = _now()
     ends = now + timedelta(hours=SESSION_HOURS)
     session = {
+        "session_id": session_id,
+        "active_slot": user_id,
+        "start_idempotency_key": idem,
         "user_id": user_id,
         "started_at": now.isoformat(),
         "ends_at": ends.isoformat(),
@@ -446,8 +607,30 @@ async def tap(request: Request):
         "boost_rounds_claimed": 0,
         "boost_bonus_blz": 0.0,
     }
-    await db.blitz_mine_sessions.insert_one(dict(session))
-    session.pop("_id", None)
+    try:
+        await db.blitz_mine_sessions.insert_one(dict(session))
+    except Exception as exc:
+        current = await _get_active_session(user_id)
+        if current and current.get("session_id") == session_id:
+            remaining = max(
+                0,
+                int((datetime.fromisoformat(current["ends_at"].replace("Z", "+00:00")) - _now()).total_seconds()),
+            )
+            return {
+                "success": True,
+                "message": "Mining-Session läuft bereits.",
+                "session": {
+                    "started_at": current["started_at"],
+                    "ends_at": current["ends_at"],
+                    "remaining_seconds": remaining,
+                    "earnings": current.get("estimated_earnings", 0),
+                    "ready_to_claim": remaining == 0,
+                },
+                "replayed": True,
+            }
+        if current:
+            raise HTTPException(status_code=409, detail="Eine andere Mining-Session wurde bereits gestartet.") from exc
+        raise HTTPException(status_code=503, detail="Mining-Session konnte nicht atomar gestartet werden.") from exc
 
     if not profile.get("first_session_at"):
         await db.blitz_mine_profile.update_one(
@@ -471,13 +654,24 @@ async def tap(request: Request):
             "earnings": session["estimated_earnings"],
             "ready_to_claim": False,
         },
+        "replayed": False,
     }
 
 
 @router.post("/claim")
 async def claim(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-session-claim")
+    claim_id = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+
+    prior = await db.blitz_mine_sessions.find_one(
+        {"user_id": user_id, "claim_id": claim_id, "claimed": True},
+        {"_id": 0, "claim_result": 1},
+    )
+    if prior and prior.get("claim_result"):
+        return {**prior["claim_result"], "replayed": True}
 
     session = await _get_active_session(user_id)
     if not session:
@@ -488,103 +682,179 @@ async def claim(request: Request):
         remaining = int((ends_at - _now()).total_seconds())
         raise HTTPException(400, f"Session läuft noch {remaining // 3600}h {(remaining % 3600) // 60}m.")
 
-    earnings = float(session.get("estimated_earnings", 0.0)) + float(session.get("boost_bonus_blz", 0.0) or 0.0)
-
-    # Credit BLZ to wallet
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": earnings},
-         "$setOnInsert": {"user_id": user_id, "balance": 0.0}},
-        upsert=True,
-    )
-
-    # Mark session claimed
-    await db.blitz_mine_sessions.update_one(
-        {"user_id": user_id, "started_at": session["started_at"]},
-        {"$set": {"claimed": True, "claimed_at": _now().isoformat(), "final_earnings": earnings}},
-    )
-
-    # Update profile: streak, totals
-    profile = await _get_profile(user_id)
-    last_claim = profile.get("last_claim_date")
-    today = _now().date().isoformat()
-    yesterday = (_now().date() - timedelta(days=1)).isoformat()
-    prev_streak = int(profile.get("streak_days", 0))
-    new_streak = prev_streak + 1 if last_claim == yesterday else 1
-
-    # Streak milestone reward (paid once when crossing a tier)
-    claimed_milestones = set(profile.get("claimed_milestones", []))
-    milestone_bonus = 0.0
-    milestone_hit = None
-    for m in STREAK_MILESTONES:
-        if new_streak >= m["days"] and m["days"] not in claimed_milestones:
-            milestone_bonus += m["bonus_blz"]
-            claimed_milestones.add(m["days"])
-            milestone_hit = m  # last one crossed (if multiple)
-
-    await db.blitz_mine_profile.update_one(
-        {"user_id": user_id},
-        {"$inc": {"total_mined": earnings + milestone_bonus, "total_sessions": 1},
-         "$set": {"last_claim_date": today, "streak_days": new_streak,
-                  "claimed_milestones": list(sorted(claimed_milestones))}},
-    )
-
-    if milestone_bonus > 0:
-        # Credit milestone bonus to wallet
-        await db.wallets.update_one(
-            {"user_id": user_id},
-            {"$inc": {"balance_blz": milestone_bonus}},
-            upsert=True,
-        )
-        # Send milestone email (non-blocking)
-        try:
-            from routes.email_service import notify_streak_milestone
-            import asyncio
-            if milestone_hit:
-                asyncio.create_task(notify_streak_milestone(
-                    user_email=user.get("email", ""),
-                    user_name=user.get("username") or user.get("email", "").split("@")[0],
-                    title=milestone_hit["title"],
-                    days=new_streak,
-                    bonus_blz=milestone_bonus,
-                    rate_bonus=int(milestone_hit["multiplier_bonus"] * 100),
-                ))
-        except Exception:
-            pass
-
-    # Record tx for history
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "blitz_mine_claim",
-        "amount_blz": earnings,
-        "amount_eur": 0.0,
-        "description": f"BlitzMine Reward ({new_streak}d streak)",
-        "created_at": _now().isoformat(),
-    })
-    if milestone_bonus > 0:
-        await db.transactions.insert_one({
+    now = _now()
+    now_iso = now.isoformat()
+    lock_until = (now + timedelta(minutes=5)).isoformat()
+    acquired = await db.blitz_mine_sessions.update_one(
+        {
             "user_id": user_id,
-            "type": "blitz_mine_streak_bonus",
-            "amount_blz": milestone_bonus,
-            "amount_eur": 0.0,
-            "description": f"Streak-Bonus: {milestone_hit['title']} ({new_streak} Tage)",
-            "created_at": _now().isoformat(),
-        })
+            "started_at": session["started_at"],
+            "claimed": False,
+            "$or": [
+                {"claim_lock_until": {"$exists": False}},
+                {"claim_lock_until": {"$lt": now_iso}},
+            ],
+        },
+        {"$set": {
+            "claim_state": "processing",
+            "claim_id": claim_id,
+            "claim_started_at": now_iso,
+            "claim_lock_until": lock_until,
+        }},
+    )
+    if acquired.modified_count != 1:
+        current = await db.blitz_mine_sessions.find_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"_id": 0},
+        ) or {}
+        if current.get("claimed") and current.get("claim_id") == claim_id and current.get("claim_result"):
+            return {**current["claim_result"], "replayed": True}
+        raise HTTPException(status_code=409, detail="Mining-Claim wird bereits verarbeitet.")
 
-    return {
+    earnings = round(
+        float(session.get("estimated_earnings", 0.0))
+        + float(session.get("boost_bonus_blz", 0.0) or 0.0),
+        4,
+    )
+    profile = await _get_profile(user_id)
+    profile_marker = f"claim_markers.{claim_id}"
+    marker = (profile.get("claim_markers") or {}).get(claim_id)
+
+    if marker:
+        new_streak = int(marker.get("streak_days", 1) or 1)
+        milestone_bonus = round(float(marker.get("milestone_bonus_blz", 0.0) or 0.0), 4)
+        milestone_hit = marker.get("milestone_hit")
+    else:
+        last_claim = profile.get("last_claim_date")
+        today = now.date().isoformat()
+        yesterday = (now.date() - timedelta(days=1)).isoformat()
+        prev_streak = int(profile.get("streak_days", 0) or 0)
+        new_streak = prev_streak + 1 if last_claim == yesterday else 1
+
+        claimed_milestones = set(profile.get("claimed_milestones", []))
+        milestone_bonus = 0.0
+        milestone_hit = None
+        for milestone in STREAK_MILESTONES:
+            if new_streak >= milestone["days"] and milestone["days"] not in claimed_milestones:
+                milestone_bonus += milestone["bonus_blz"]
+                claimed_milestones.add(milestone["days"])
+                milestone_hit = milestone
+        milestone_bonus = round(milestone_bonus, 4)
+        marker_value = {
+            "earnings_blz": earnings,
+            "milestone_bonus_blz": milestone_bonus,
+            "milestone_hit": milestone_hit,
+            "streak_days": new_streak,
+            "created_at": now_iso,
+        }
+        profile_update = await db.blitz_mine_profile.update_one(
+            {"user_id": user_id, profile_marker: {"$exists": False}},
+            {
+                "$inc": {
+                    "total_mined": earnings + milestone_bonus,
+                    "total_sessions": 1,
+                },
+                "$set": {
+                    "last_claim_date": today,
+                    "streak_days": new_streak,
+                    "claimed_milestones": list(sorted(claimed_milestones)),
+                    profile_marker: marker_value,
+                },
+            },
+        )
+        if profile_update.modified_count != 1:
+            fresh_profile = await db.blitz_mine_profile.find_one(
+                {"user_id": user_id, profile_marker: {"$exists": True}},
+                {"_id": 0, "claim_markers": 1},
+            ) or {}
+            marker = (fresh_profile.get("claim_markers") or {}).get(claim_id)
+            if not marker:
+                await db.blitz_mine_sessions.update_one(
+                    {"user_id": user_id, "started_at": session["started_at"], "claim_id": claim_id},
+                    {"$set": {"claim_state": "reconciliation_required"}},
+                )
+                raise HTTPException(status_code=500, detail="Mining-Profil benötigt Abstimmung")
+            new_streak = int(marker.get("streak_days", 1) or 1)
+            milestone_bonus = round(float(marker.get("milestone_bonus_blz", 0.0) or 0.0), 4)
+            milestone_hit = marker.get("milestone_hit")
+
+    earning_tx = None
+    if earnings > 0:
+        earning_tx = await _mutate_blitz_wallet_once(
+            user_id=user_id,
+            amount=earnings,
+            direction="credit",
+            idempotency_key=f"blitz-session-claim:{claim_id}:earnings",
+            description=f"BlitzMine Reward ({new_streak}d streak)",
+            category="blitz_mine_claim",
+        )
+
+    milestone_tx = None
+    if milestone_bonus > 0:
+        milestone_tx = await _mutate_blitz_wallet_once(
+            user_id=user_id,
+            amount=milestone_bonus,
+            direction="credit",
+            idempotency_key=f"blitz-session-claim:{claim_id}:milestone",
+            description=f"BlitzMine Streak-Bonus ({new_streak} Tage)",
+            category="blitz_mine_streak_bonus",
+        )
+
+    fresh_profile = await db.blitz_mine_profile.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "total_mined": 1},
+    ) or {}
+    claim_result = {
         "success": True,
-        "amount_blz": round(earnings, 4),
+        "amount_blz": earnings,
         "streak_days": new_streak,
-        "total_mined": round(profile.get("total_mined", 0.0) + earnings + milestone_bonus, 4),
-        "milestone_bonus_blz": round(milestone_bonus, 4),
-        "milestone_hit": milestone_hit,  # contains title, icon, multiplier_bonus
+        "total_mined": round(float(fresh_profile.get("total_mined", 0.0) or 0.0), 4),
+        "milestone_bonus_blz": milestone_bonus,
+        "milestone_hit": milestone_hit,
+        "earning_transaction_id": earning_tx["transaction_id"] if earning_tx else None,
+        "milestone_transaction_id": milestone_tx["transaction_id"] if milestone_tx else None,
     }
+    finalized = await db.blitz_mine_sessions.update_one(
+        {
+            "user_id": user_id,
+            "started_at": session["started_at"],
+            "claimed": False,
+            "claim_state": "processing",
+            "claim_id": claim_id,
+        },
+        {
+            "$set": {
+                "claimed": True,
+                "claim_state": "completed",
+                "claimed_at": _now().isoformat(),
+                "final_earnings": earnings,
+                "claim_result": claim_result,
+            },
+            "$unset": {"claim_lock_until": "", "active_slot": ""},
+        },
+    )
+    if finalized.modified_count != 1:
+        current = await db.blitz_mine_sessions.find_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"_id": 0, "claimed": 1, "claim_id": 1, "claim_result": 1},
+        ) or {}
+        if current.get("claimed") and current.get("claim_id") == claim_id and current.get("claim_result"):
+            return {**current["claim_result"], "replayed": True}
+        raise HTTPException(status_code=500, detail="BLZ wurden gutgeschrieben, Session-Abschluss benötigt Abstimmung")
+
+    return {**claim_result, "replayed": bool(
+        (earning_tx and earning_tx["replayed"]) or (milestone_tx and milestone_tx["replayed"])
+    )}
 
 
 @router.post("/boost-tap")
 async def boost_tap(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    idem = _require_blitz_idempotency_key(None, request, "blitz-boost-tap")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    marker_field = f"boost_tap_markers.{digest}"
 
     session = await _get_active_session(user_id)
     if not session:
@@ -594,26 +864,86 @@ async def boost_tap(request: Request):
     if ends_at <= _now():
         raise HTTPException(400, "Session ist fertig. Bitte jetzt claimen.")
 
-    boost_tap_count = int(session.get("boost_tap_count", 0) or 0)
-    completed_rounds = int(session.get("boost_rounds_claimed", 0) or 0)
-    bonus_blz = float(session.get("boost_bonus_blz", 0.0) or 0.0)
-    if completed_rounds >= BOOST_TAP_MAX_ROUNDS:
-        raise HTTPException(400, "Turbo-Maximum für diese Session erreicht.")
+    existing_marker = (session.get("boost_tap_markers") or {}).get(digest)
+    if existing_marker:
+        count = int(session.get("boost_tap_count", 0) or 0)
+        completed_rounds = min(count // BOOST_TAP_TARGET, BOOST_TAP_MAX_ROUNDS)
+        bonus_blz = round(completed_rounds * BOOST_ROUND_REWARD_BLZ, 4)
+        await db.blitz_mine_sessions.update_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"$max": {
+                "boost_rounds_claimed": completed_rounds,
+                "boost_bonus_blz": bonus_blz,
+            }},
+        )
+        state = _build_boost_state({
+            **session,
+            "boost_rounds_claimed": max(int(session.get("boost_rounds_claimed", 0) or 0), completed_rounds),
+            "boost_bonus_blz": max(float(session.get("boost_bonus_blz", 0.0) or 0.0), bonus_blz),
+        })
+        return {
+            "success": True,
+            "unlocked_round": bool(existing_marker.get("unlocked_round", False)),
+            "boost": state,
+            "message": "Turbo-Tap bereits verarbeitet.",
+            "replayed": True,
+        }
 
-    boost_tap_count += 1
-    unlocked_round = False
-    if boost_tap_count >= (completed_rounds + 1) * BOOST_TAP_TARGET:
-        completed_rounds += 1
-        bonus_blz = round(bonus_blz + BOOST_ROUND_REWARD_BLZ, 4)
-        unlocked_round = True
+    updated = await db.blitz_mine_sessions.find_one_and_update(
+        {
+            "user_id": user_id,
+            "started_at": session["started_at"],
+            "claimed": False,
+            marker_field: {"$exists": False},
+            "boost_tap_count": {"$lt": BOOST_TAP_TARGET * BOOST_TAP_MAX_ROUNDS},
+        },
+        {
+            "$inc": {"boost_tap_count": 1},
+            "$set": {
+                marker_field: {
+                    "idempotency_key": idem,
+                    "created_at": _now().isoformat(),
+                }
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not updated:
+        current = await db.blitz_mine_sessions.find_one(
+            {"user_id": user_id, "started_at": session["started_at"]},
+            {"_id": 0},
+        ) or {}
+        marker = (current.get("boost_tap_markers") or {}).get(digest)
+        if marker:
+            state = _build_boost_state(current)
+            return {
+                "success": True,
+                "unlocked_round": bool(marker.get("unlocked_round", False)),
+                "boost": state,
+                "message": "Turbo-Tap bereits verarbeitet.",
+                "replayed": True,
+            }
+        if int(current.get("boost_rounds_claimed", 0) or 0) >= BOOST_TAP_MAX_ROUNDS:
+            raise HTTPException(400, "Turbo-Maximum für diese Session erreicht.")
+        raise HTTPException(status_code=409, detail="Turbo-Tap konnte nicht atomar reserviert werden.")
+
+    boost_tap_count = int(updated.get("boost_tap_count", 0) or 0)
+    completed_rounds = min(boost_tap_count // BOOST_TAP_TARGET, BOOST_TAP_MAX_ROUNDS)
+    bonus_blz = round(completed_rounds * BOOST_ROUND_REWARD_BLZ, 4)
+    unlocked_round = boost_tap_count > 0 and boost_tap_count % BOOST_TAP_TARGET == 0
 
     await db.blitz_mine_sessions.update_one(
-        {"user_id": user_id, "started_at": session["started_at"]},
-        {"$set": {
-            "boost_tap_count": boost_tap_count,
-            "boost_rounds_claimed": completed_rounds,
-            "boost_bonus_blz": bonus_blz,
-        }},
+        {"user_id": user_id, "started_at": session["started_at"], marker_field: {"$exists": True}},
+        {
+            "$max": {
+                "boost_rounds_claimed": completed_rounds,
+                "boost_bonus_blz": bonus_blz,
+            },
+            "$set": {
+                f"{marker_field}.tap_count_after": boost_tap_count,
+                f"{marker_field}.unlocked_round": unlocked_round,
+            },
+        },
     )
 
     try:
@@ -623,59 +953,147 @@ async def boost_tap(request: Request):
         pass
 
     state = _build_boost_state({
-        **session,
-        "boost_tap_count": boost_tap_count,
-        "boost_rounds_claimed": completed_rounds,
-        "boost_bonus_blz": bonus_blz,
+        **updated,
+        "boost_rounds_claimed": max(int(updated.get("boost_rounds_claimed", 0) or 0), completed_rounds),
+        "boost_bonus_blz": max(float(updated.get("boost_bonus_blz", 0.0) or 0.0), bonus_blz),
     })
     return {
         "success": True,
         "unlocked_round": unlocked_round,
         "boost": state,
         "message": "Turbo gespeichert!" if unlocked_round else "Turbo-Tap gezählt.",
+        "replayed": False,
     }
 
 
 @router.post("/quick-bonus/claim")
 async def claim_quick_bonus(request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    state = await _get_quick_bonus_state(user_id)
-    if not state["available"]:
-        raise HTTPException(400, "Quick Bonus ist noch nicht bereit.")
-
-    reward = float(random.choice(QUICK_BONUS_REWARDS))
+    idem = _require_blitz_idempotency_key(None, request, "blitz-quick-bonus")
+    claim_id = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
     now = _now()
-    next_claim_at = (now + timedelta(hours=QUICK_BONUS_INTERVAL_HOURS)).isoformat()
+    now_iso = now.isoformat()
 
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": reward}, "$setOnInsert": {"user_id": user_id, "balance": 0.0}},
-        upsert=True,
-    )
     await db.blitz_mine_quick_bonus.update_one(
         {"user_id": user_id},
-        {"$set": {
+        {"$setOnInsert": {
             "user_id": user_id,
-            "last_reward_blz": reward,
-            "last_claimed_at": now.isoformat(),
-            "next_claim_at": next_claim_at,
-        }, "$inc": {"total_claims": 1}},
+            "total_claims": 0,
+            "claim_state": "idle",
+            "created_at": now_iso,
+        }},
         upsert=True,
     )
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "blitz_mine_quick_bonus",
-        "amount_blz": reward,
-        "amount_eur": 0.0,
-        "description": "BlitzMine Quick Bonus",
-        "created_at": now.isoformat(),
-    })
+    current = await db.blitz_mine_quick_bonus.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    if current.get("last_claim_id") == claim_id:
+        return {
+            "success": True,
+            "reward_blz": round(float(current.get("last_reward_blz", 0.0) or 0.0), 4),
+            "next_claim_at": current.get("next_claim_at"),
+            "remaining_seconds": max(
+                0,
+                int(
+                    (
+                        datetime.fromisoformat(str(current.get("next_claim_at")).replace("Z", "+00:00")) - now
+                    ).total_seconds()
+                ),
+            ) if current.get("next_claim_at") else 0,
+            "replayed": True,
+        }
+
+    next_claim_at = current.get("next_claim_at")
+    if next_claim_at:
+        try:
+            next_dt = datetime.fromisoformat(str(next_claim_at).replace("Z", "+00:00"))
+            if next_dt > now:
+                raise HTTPException(status_code=400, detail="Quick Bonus ist noch nicht bereit.")
+        except ValueError:
+            pass
+
+    reward = (
+        float(current.get("pending_reward_blz"))
+        if current.get("pending_claim_id") == claim_id and current.get("pending_reward_blz") is not None
+        else float(random.choice(QUICK_BONUS_REWARDS))
+    )
+    lock_until = (now + timedelta(minutes=5)).isoformat()
+    claimed = await db.blitz_mine_quick_bonus.update_one(
+        {
+            "user_id": user_id,
+            "$and": [
+                {
+                    "$or": [
+                        {"next_claim_at": {"$exists": False}},
+                        {"next_claim_at": None},
+                        {"next_claim_at": {"$lte": now_iso}},
+                    ]
+                },
+                {
+                    "$or": [
+                        {"claim_state": {"$ne": "processing"}},
+                        {"claim_lock_until": {"$lt": now_iso}},
+                    ]
+                },
+            ],
+        },
+        {"$set": {
+            "claim_state": "processing",
+            "pending_claim_id": claim_id,
+            "pending_reward_blz": reward,
+            "claim_lock_until": lock_until,
+            "claim_started_at": now_iso,
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.blitz_mine_quick_bonus.find_one({"user_id": user_id}, {"_id": 0}) or {}
+        if current.get("last_claim_id") == claim_id:
+            return {
+                "success": True,
+                "reward_blz": round(float(current.get("last_reward_blz", 0.0) or 0.0), 4),
+                "next_claim_at": current.get("next_claim_at"),
+                "remaining_seconds": 0,
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Quick Bonus wird bereits verarbeitet.")
+
+    payout = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=reward,
+        direction="credit",
+        idempotency_key=f"blitz-quick-bonus:{claim_id}",
+        description="BlitzMine Quick Bonus",
+        category="blitz_mine_quick_bonus",
+    )
+    next_claim_at = (now + timedelta(hours=QUICK_BONUS_INTERVAL_HOURS)).isoformat()
+    finalized = await db.blitz_mine_quick_bonus.update_one(
+        {"user_id": user_id, "claim_state": "processing", "pending_claim_id": claim_id},
+        {
+            "$set": {
+                "claim_state": "completed",
+                "last_claim_id": claim_id,
+                "last_reward_blz": reward,
+                "last_claimed_at": now_iso,
+                "next_claim_at": next_claim_at,
+                "wallet_transaction_id": payout["transaction_id"],
+            },
+            "$inc": {"total_claims": 1},
+            "$unset": {
+                "pending_claim_id": "",
+                "pending_reward_blz": "",
+                "claim_lock_until": "",
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        raise HTTPException(status_code=500, detail="Quick-Bonus wurde gutgeschrieben, Abschluss benötigt Abstimmung")
+
     return {
         "success": True,
         "reward_blz": round(reward, 4),
         "next_claim_at": next_claim_at,
         "remaining_seconds": QUICK_BONUS_INTERVAL_HOURS * 3600,
+        "replayed": bool(payout["replayed"]),
     }
 
 
@@ -729,6 +1147,8 @@ async def save_reminders(req: ReminderSettingsReq, request: Request):
 
 @router.post("/reminders/test")
 async def test_reminder(req: ReminderTestReq, request: Request):
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BlitzMine Test-Push ist außerhalb TEST_MODE deaktiviert.")
     user = await get_current_user(request)
     user_id = str(user["_id"])
     has_push = await db.push_subscriptions.count_documents({"user_id": user_id, "active": True})
@@ -814,8 +1234,14 @@ async def remove_circle(member_id: str, request: Request):
 async def get_lockups(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    cur = db.blitz_mine_lockup.find({"user_id": user_id}, {"_id": 0}).sort("started_at", -1)
-    items = await cur.to_list(100)
+    cur = db.blitz_mine_lockup.find({"user_id": user_id}).sort("started_at", -1)
+    raw_items = await cur.to_list(100)
+    items = []
+    for row in raw_items:
+        item = {**row}
+        item["id"] = item.get("lockup_id") or str(item.get("_id"))
+        item.pop("_id", None)
+        items.append(item)
     return {
         "lockups": items,
         "durations": [{"days": d, **info} for d, info in LOCKUP_DURATIONS.items()],
@@ -826,6 +1252,7 @@ async def get_lockups(request: Request):
 
 @router.post("/lockup")
 async def create_lockup(req: LockupReq, request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -834,73 +1261,200 @@ async def create_lockup(req: LockupReq, request: Request):
     if req.amount < 1:
         raise HTTPException(400, "Mindestbetrag: 1 BLZ.")
 
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
-    if not wallet or (wallet.get("balance_blz", 0) < req.amount):
-        raise HTTPException(400, "Nicht genug BLZ im Wallet.")
+    idem = _require_blitz_idempotency_key(req.idempotency_key, request, "blitz-lockup")
+    digest = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    lockup_key = f"BLK-{digest.upper()}"
+    payload = {
+        "amount": round(float(req.amount), 4),
+        "duration_days": int(req.duration_days),
+    }
+    existing = await db.blitz_mine_lockup.find_one(
+        {"lockup_id": lockup_key, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing and existing.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Lockup-Daten verwendet")
+    if existing:
+        return {"success": True, "lockup": {**existing, "id": lockup_key}, "replayed": True}
 
-    # Deduct from wallet into lockup
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": -req.amount}},
+    debit = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=req.amount,
+        direction="debit",
+        idempotency_key=f"blitz-lockup-create:{lockup_key}:debit",
+        description=f"BlitzMine Lockup {req.duration_days} Tage",
+        category="blitz_mine_lockup",
     )
 
     now = _now()
     ends = now + timedelta(days=req.duration_days)
     bonus = _lockup_bonus_for(req.amount, req.duration_days)
     lk = {
+        "lockup_id": lockup_key,
         "user_id": user_id,
-        "amount": req.amount,
+        "amount": round(float(req.amount), 4),
         "duration_days": req.duration_days,
         "bonus_rate": bonus,
+        "request_payload": payload,
+        "debit_transaction_id": debit["transaction_id"],
         "started_at": now.isoformat(),
         "ends_at": ends.isoformat(),
         "status": "active",
     }
-    await db.blitz_mine_lockup.insert_one(dict(lk))
-    lk.pop("_id", None)
-    return {"success": True, "lockup": lk}
+    try:
+        await db.blitz_mine_lockup.update_one(
+            {"lockup_id": lockup_key, "user_id": user_id},
+            {"$setOnInsert": lk},
+            upsert=True,
+        )
+    except Exception as exc:
+        await _mutate_blitz_wallet_once(
+            user_id=user_id,
+            amount=req.amount,
+            direction="credit",
+            idempotency_key=f"blitz-lockup-create:{lockup_key}:rollback",
+            description="BlitzMine Lockup Rollback",
+            category="blitz_mine_lockup_rollback",
+        )
+        raise HTTPException(status_code=500, detail="Lockup konnte nicht sicher gespeichert werden") from exc
+
+    stored = await db.blitz_mine_lockup.find_one(
+        {"lockup_id": lockup_key, "user_id": user_id},
+        {"_id": 0},
+    ) or lk
+    if stored.get("request_payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Lockup-Daten verwendet")
+    return {"success": True, "lockup": {**stored, "id": lockup_key}, "replayed": bool(debit["replayed"])}
 
 
 @router.post("/lockup/{lockup_id}/release")
 async def release_lockup(lockup_id: str, request: Request):
+    _require_blitz_mine_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    from bson import ObjectId
-    try:
-        oid = ObjectId(lockup_id)
-    except Exception:
-        raise HTTPException(400, "Ungültige Lockup-ID.")
 
-    lk = await db.blitz_mine_lockup.find_one({"_id": oid, "user_id": user_id})
+    selectors = [{"lockup_id": lockup_id}]
+    if ObjectId.is_valid(lockup_id):
+        selectors.append({"_id": ObjectId(lockup_id)})
+    query = {"user_id": user_id, "$or": selectors}
+    lk = await db.blitz_mine_lockup.find_one(query)
     if not lk:
         raise HTTPException(404, "Lockup nicht gefunden.")
-    if lk.get("status") != "active":
-        raise HTTPException(400, "Lockup ist nicht aktiv.")
+    if lk.get("status") in {"completed", "released"}:
+        return {
+            "success": True,
+            "refund_blz": round(float(lk.get("refunded") or 0), 4),
+            "penalty_blz": round(float(lk.get("penalty") or 0), 4),
+            "status": lk.get("status"),
+            "replayed": True,
+        }
+    if lk.get("status") == "reconciliation_required":
+        raise HTTPException(status_code=503, detail="Lockup-Freigabe benötigt Abstimmung; keine erneute BLZ-Gutschrift wird ausgeführt")
 
-    ends_at = datetime.fromisoformat(lk["ends_at"].replace("Z", "+00:00"))
-    amount = float(lk["amount"])
-    if ends_at <= _now():
-        # Completed: full refund
-        refund = amount
-        status = "completed"
-        penalty = 0.0
-    else:
-        # Early release: penalty
-        penalty = round(amount * LOCKUP_EARLY_RELEASE_PENALTY, 4)
-        refund = round(amount - penalty, 4)
-        status = "released"
+    stable_id = str(lk.get("lockup_id") or lk.get("_id"))
+    if lk.get("status") == "active":
+        ends_at = datetime.fromisoformat(lk["ends_at"].replace("Z", "+00:00"))
+        amount = float(lk["amount"])
+        if ends_at <= _now():
+            refund = amount
+            final_status = "completed"
+            penalty = 0.0
+        else:
+            penalty = round(amount * LOCKUP_EARLY_RELEASE_PENALTY, 4)
+            refund = round(amount - penalty, 4)
+            final_status = "released"
 
-    await db.blitz_mine_lockup.update_one(
-        {"_id": oid}, {"$set": {"status": status, "released_at": _now().isoformat(), "refunded": refund, "penalty": penalty}}
+        claimed = await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id, "status": "active"},
+            {"$set": {
+                "status": "releasing",
+                "release_target_status": final_status,
+                "refunded": refund,
+                "penalty": penalty,
+                "release_started_at": _now().isoformat(),
+            }},
+        )
+        if claimed.modified_count != 1:
+            lk = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
+        else:
+            lk = {
+                **lk,
+                "status": "releasing",
+                "release_target_status": final_status,
+                "refunded": refund,
+                "penalty": penalty,
+            }
+
+    if lk.get("status") in {"completed", "released"}:
+        return {
+            "success": True,
+            "refund_blz": round(float(lk.get("refunded") or 0), 4),
+            "penalty_blz": round(float(lk.get("penalty") or 0), 4),
+            "status": lk.get("status"),
+            "replayed": True,
+        }
+    if lk.get("status") != "releasing":
+        raise HTTPException(status_code=409, detail="Lockup kann in diesem Zustand nicht freigegeben werden.")
+
+    refund = round(float(lk.get("refunded") or 0), 4)
+    penalty = round(float(lk.get("penalty") or 0), 4)
+    final_status = lk.get("release_target_status")
+    if final_status not in {"completed", "released"} or refund <= 0:
+        await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id, "status": "releasing"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "release_error": "invalid_persisted_release_state",
+                "reconciliation_required_at": _now().isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=503, detail="Lockup-Freigabezustand unklar; Abstimmung erforderlich")
+
+    payout = await _mutate_blitz_wallet_once(
+        user_id=user_id,
+        amount=refund,
+        direction="credit",
+        idempotency_key=f"blitz-lockup-release:{stable_id}",
+        description=f"BlitzMine Lockup Freigabe ({final_status})",
+        category="blitz_mine_lockup_release",
     )
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": refund}},
+    finalized = await db.blitz_mine_lockup.update_one(
+        {"_id": lk["_id"], "user_id": user_id, "status": "releasing"},
+        {"$set": {
+            "status": final_status,
+            "released_at": _now().isoformat(),
+            "refund_transaction_id": payout["transaction_id"],
+        }, "$unset": {"release_target_status": ""}},
     )
-    return {"success": True, "refund_blz": refund, "penalty_blz": penalty, "status": status}
+    if finalized.modified_count != 1:
+        current = await db.blitz_mine_lockup.find_one({"_id": lk["_id"], "user_id": user_id}) or {}
+        if current.get("status") in {"completed", "released"}:
+            return {
+                "success": True,
+                "refund_blz": round(float(current.get("refunded") or refund), 4),
+                "penalty_blz": round(float(current.get("penalty") or penalty), 4),
+                "status": current.get("status"),
+                "replayed": True,
+            }
+        await db.blitz_mine_lockup.update_one(
+            {"_id": lk["_id"], "user_id": user_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "release_error": "payout_applied_finalize_not_confirmed",
+                "refund_transaction_id": payout["transaction_id"],
+                "reconciliation_required_at": _now().isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=503, detail="BLZ wurden genau einmal gutgeschrieben; Lockup-Abschluss benötigt Abstimmung")
+    return {
+        "success": True,
+        "refund_blz": refund,
+        "penalty_blz": penalty,
+        "status": final_status,
+        "replayed": bool(payout["replayed"]),
+    }
 
 
-# ── Leaderboard ──
 @router.get("/leaderboard")
 async def leaderboard(request: Request):
     await get_current_user(request)

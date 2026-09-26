@@ -12,6 +12,8 @@ Features:
 Provider-Owner: `provider.owner_id` (set by admin via seed or dashboard).
 """
 import secrets
+import hashlib
+import math
 from datetime import datetime, timezone, timedelta, date, time as dtime
 from typing import List, Optional, Dict
 
@@ -19,6 +21,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
@@ -75,7 +78,71 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def _require_booking_idempotency_key(body_key: Optional[str], request: Request) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
+
+
+def _appointment_slot_keys(provider_id: str, date_str: str, time_str: str, duration_min: int) -> List[str]:
+    try:
+        day = datetime.strptime(date_str, "%Y-%m-%d").date()
+        start = _combine(day, _parse_hhmm(time_str))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Ungültiges Datum oder Uhrzeit") from exc
+    duration = max(1, int(duration_min or SLOT_INTERVAL_MIN))
+    segments = max(1, math.ceil(duration / SLOT_INTERVAL_MIN))
+    return [
+        "APS-" + hashlib.sha256(
+            f"{provider_id}:{(start + timedelta(minutes=i * SLOT_INTERVAL_MIN)).isoformat()}".encode("utf-8")
+        ).hexdigest()[:24]
+        for i in range(segments)
+    ]
+
+
+async def _claim_appointment_slots(
+    provider_id: str,
+    date_str: str,
+    time_str: str,
+    duration_min: int,
+    appointment_id: str,
+) -> List[str]:
+    keys = _appointment_slot_keys(provider_id, date_str, time_str, duration_min)
+    claimed = []
+    try:
+        for key in keys:
+            try:
+                await db.appointment_slot_claims.insert_one({
+                    "_id": key,
+                    "provider_id": provider_id,
+                    "appointment_id": appointment_id,
+                    "date": date_str,
+                    "time": time_str,
+                    "created_at": _now().isoformat(),
+                })
+                claimed.append(key)
+            except Exception:
+                existing = await db.appointment_slot_claims.find_one({"_id": key}, {"_id": 0, "appointment_id": 1})
+                if not existing or existing.get("appointment_id") != appointment_id:
+                    raise HTTPException(status_code=409, detail="Dieser Zeitslot ist nicht mehr verfügbar")
+        return keys
+    except Exception:
+        if claimed:
+            await db.appointment_slot_claims.delete_many({
+                "_id": {"$in": claimed},
+                "appointment_id": appointment_id,
+            })
+        raise
+
+
+async def _release_appointment_slots(appointment_id: str) -> None:
+    await db.appointment_slot_claims.delete_many({"appointment_id": appointment_id})
+
+
 async def _seed_providers():
+    if not TEST_MODE:
+        return
     for p in SEED_PROVIDERS:
         exists = await db.appointment_providers.find_one({"id": p["id"]}, {"id": 1, "_id": 0})
         if exists:
@@ -85,6 +152,7 @@ async def _seed_providers():
             "opening_hours": DEFAULT_HOURS,
             "blocks": [],
             "owner_id": None,
+            "is_demo": True,
             "created_at": _now().isoformat(),
         }
         await db.appointment_providers.insert_one(doc)
@@ -93,6 +161,9 @@ async def _seed_providers():
 async def _list_providers(city: str = "") -> List[dict]:
     await _seed_providers()
     q = {}
+    if not TEST_MODE:
+        q["is_demo"] = {"$ne": True}
+        q["id"] = {"$nin": [p["id"] for p in SEED_PROVIDERS]}
     if city:
         q["city"] = {"$regex": f"^{city}$", "$options": "i"}
     out = await db.appointment_providers.find(q, {"_id": 0}).to_list(200)
@@ -101,7 +172,12 @@ async def _list_providers(city: str = "") -> List[dict]:
 
 async def _get_provider(pid: str) -> Optional[dict]:
     await _seed_providers()
-    return await db.appointment_providers.find_one({"id": pid}, {"_id": 0})
+    if not TEST_MODE and pid in {p["id"] for p in SEED_PROVIDERS}:
+        return None
+    query = {"id": pid}
+    if not TEST_MODE:
+        query["is_demo"] = {"$ne": True}
+    return await db.appointment_providers.find_one(query, {"_id": 0})
 
 
 def _parse_hhmm(s: str) -> dtime:
@@ -228,14 +304,39 @@ class BookingReq(BaseModel):
     service_id: str
     date: str
     time: str
-    customer_name: Optional[str] = ""
-    customer_phone: Optional[str] = ""
-    notes: Optional[str] = ""
+    customer_name: Optional[str] = Field(default="", max_length=120)
+    customer_phone: Optional[str] = Field(default="", max_length=80)
+    notes: Optional[str] = Field(default="", max_length=1000)
+    idempotency_key: Optional[str] = Field(default=None, max_length=200)
 
 
 @router.post("/book")
 async def book(req: BookingReq, request: Request):
     user = await get_current_user(request)
+    user_id = str(user.get("_id") or user.get("id"))
+    idempotency_key = _require_booking_idempotency_key(req.idempotency_key, request)
+    key_hash = hashlib.sha256(f"{user_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    appointment_id = f"appt_{key_hash}"
+
+    existing = await db.appointments.find_one({"appointment_id": appointment_id, "user_id": user_id}, {"_id": 0})
+    if existing:
+        expected = (req.provider_id, req.service_id, req.date, req.time)
+        actual = (
+            existing.get("provider_id"),
+            existing.get("service_id"),
+            existing.get("date"),
+            existing.get("time"),
+        )
+        if actual != expected:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für einen anderen Termin verwendet")
+        return {
+            "ok": True,
+            "appointment_id": appointment_id,
+            "price": existing.get("price", 0),
+            "message": f"Termin bereits gebucht: {existing.get('provider_name', '')} · {existing.get('service_name', '')}",
+            "replayed": True,
+        }
+
     p = await _get_provider(req.provider_id)
     if not p:
         raise HTTPException(404, "Anbieter nicht gefunden.")
@@ -243,36 +344,64 @@ async def book(req: BookingReq, request: Request):
     if not service:
         raise HTTPException(404, "Service nicht gefunden.")
 
-    # Verify slot is still free
-    free = await _compute_slots(p, req.date, int(service.get("duration", 30)))
+    duration_min = int(service.get("duration", 30) or 30)
+    free = await _compute_slots(p, req.date, duration_min)
     if req.time not in free:
-        raise HTTPException(409, "Dieser Zeitslot ist nicht (mehr) verfuegbar.")
+        raise HTTPException(409, "Dieser Zeitslot ist nicht (mehr) verfügbar.")
+
+    await _claim_appointment_slots(
+        req.provider_id,
+        req.date,
+        req.time,
+        duration_min,
+        appointment_id,
+    )
 
     fee = round(float(service["price"]) * 0.05, 2)
     booking = {
-        "appointment_id": f"appt_{secrets.token_hex(6)}",
-        "user_id": str(user.get("_id") or user.get("id")),
+        "appointment_id": appointment_id,
+        "user_id": user_id,
         "user_email": user.get("email", ""),
-        "customer_name": req.customer_name or user.get("username") or user.get("email", ""),
-        "customer_phone": req.customer_phone or "",
-        "notes": req.notes or "",
+        "customer_name": (req.customer_name or user.get("username") or user.get("email", "")).strip(),
+        "customer_phone": (req.customer_phone or "").strip(),
+        "notes": (req.notes or "").strip(),
         "provider_id": req.provider_id,
         "provider_name": p["name"],
         "provider_type": p["type"],
         "service_id": service["service_id"],
         "service_name": service["name"],
         "price": service["price"],
-        "duration_min": service["duration"],
+        "duration_min": duration_min,
         "platform_fee": fee,
         "date": req.date,
         "time": req.time,
         "status": "confirmed",
+        "idempotency_key": idempotency_key,
         "created_at": _now().isoformat(),
     }
-    await db.appointments.insert_one(booking)
-    booking.pop("_id", None)
+    try:
+        write = await db.appointments.update_one(
+            {"appointment_id": appointment_id, "user_id": user_id},
+            {"$setOnInsert": booking},
+            upsert=True,
+        )
+    except Exception:
+        await _release_appointment_slots(appointment_id)
+        raise
 
-    # Send booking confirmation email (non-blocking)
+    if write.upserted_id is None:
+        existing = await db.appointments.find_one({"appointment_id": appointment_id, "user_id": user_id}, {"_id": 0})
+        if existing:
+            return {
+                "ok": True,
+                "appointment_id": appointment_id,
+                "price": existing.get("price", 0),
+                "message": "Termin bereits gebucht",
+                "replayed": True,
+            }
+        await _release_appointment_slots(appointment_id)
+        raise HTTPException(status_code=409, detail="Termin konnte nicht eindeutig gespeichert werden")
+
     try:
         from routes.email_service import notify_booking_confirmed
         import asyncio
@@ -284,18 +413,18 @@ async def book(req: BookingReq, request: Request):
             date=req.date,
             time=req.time,
             price=float(service["price"]),
-            appointment_id=booking["appointment_id"],
+            appointment_id=appointment_id,
         ))
-    except Exception as _e:
+    except Exception:
         pass
 
     return {
         "ok": True,
-        "appointment_id": booking["appointment_id"],
+        "appointment_id": appointment_id,
         "price": service["price"],
         "message": f"Termin gebucht: {p['name']} · {service['name']} am {req.date} um {req.time}",
+        "replayed": False,
     }
-
 
 @router.get("/my-appointments")
 async def my_appointments(request: Request):
@@ -322,6 +451,7 @@ async def cancel_appointment(appointment_id: str, request: Request):
         {"appointment_id": appointment_id},
         {"$set": {"status": "cancelled", "cancelled_at": _now().isoformat()}},
     )
+    await _release_appointment_slots(appointment_id)
     return {"ok": True}
 
 
@@ -461,8 +591,12 @@ async def set_appointment_status(pid: str, appointment_id: str, request: Request
     await _require_provider_owner(request, pid)
     if status not in ("confirmed", "cancelled", "completed", "no_show"):
         raise HTTPException(400, "Ungueltiger Status.")
-    await db.appointments.update_one(
+    result = await db.appointments.update_one(
         {"appointment_id": appointment_id, "provider_id": pid},
         {"$set": {"status": status, "updated_at": _now().isoformat()}},
     )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Termin nicht gefunden.")
+    if status == "cancelled":
+        await _release_appointment_slots(appointment_id)
     return {"ok": True}

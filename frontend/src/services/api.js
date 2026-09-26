@@ -1,4 +1,4 @@
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = process.env.REACT_APP_BACKEND_URL || "";
 const REQUEST_TIMEOUT = 15000; // 15 seconds
 
 function emitNetworkStatus(online, meta = {}) {
@@ -35,7 +35,7 @@ function formatApiError(detail) {
   return String(detail);
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const url = `${API_URL}${path}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
@@ -234,12 +234,12 @@ export const api = {
   quickTopUp: (body) => request("/api/stripe/quick-topup", { method: "POST", body: JSON.stringify(body) }),
   removeSavedMethod: () => request("/api/stripe/saved-method", { method: "DELETE" }),
   saveCard: () => request("/api/stripe/save-card", { method: "POST" }),
-  saveCardConfirm: () => request("/api/stripe/save-card-confirm", { method: "POST" }),
+  saveCardConfirm: (sessionId) => request("/api/stripe/save-card-confirm", { method: "POST", body: JSON.stringify({ session_id: sessionId }) }),
 
   // Payment
   pay: (body) => request("/api/payment/pay", { method: "POST", body: JSON.stringify(body) }),
   send: (body) => request("/api/payment/send", { method: "POST", body: JSON.stringify(body) }),
-  getMyBarcode: () => request("/api/payment/my-barcode"),
+  getMyBarcode: () => request("/api/payments/my-barcode"),
   merchantScanPayment: (body) => request("/api/payment/merchant-scan", { method: "POST", body: JSON.stringify(body) }),
   resolveScanCode: (body) => request("/api/scan/resolve", { method: "POST", body: JSON.stringify(body) }),
 
@@ -358,7 +358,11 @@ export const api = {
   getCommerceMerchantDashboard: () => request("/api/commerce-center/merchant-dashboard"),
   createCommerceFlashSale: (body) => request("/api/commerce-center/flash-sales", { method: "POST", body: JSON.stringify(body) }),
   cancelCommerceFlashSale: (saleId) => request(`/api/commerce-center/flash-sales/${saleId}`, { method: "DELETE" }),
-  buyCommerceFlashSale: (saleId, body = {}) => request(`/api/commerce-center/flash-sales/${saleId}/buy`, { method: "POST", body: JSON.stringify(body) }),
+  buyCommerceFlashSale: (saleId, body = {}, idempotencyKey = "") => request(`/api/commerce-center/flash-sales/${saleId}/buy`, {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify({ ...body, idempotency_key: idempotencyKey || body.idempotency_key || null }),
+  }),
 
   // POS Security V2
   posResolveCustomer: (body) => request("/api/pos/customer/resolve", { method: "POST", body: JSON.stringify(body) }),
@@ -599,7 +603,11 @@ export const api = {
   deleteChild: (childId) => request(`/api/kids/children/${childId}`, { method: "DELETE" }),
   
   // Kids Wallet System
-  transferToChild: (childId, body) => request(`/api/kids/children/${childId}/transfer`, { method: "POST", body: JSON.stringify(body) }),
+  transferToChild: (childId, body, idempotencyKey = "") => request(`/api/kids/children/${childId}/transfer`, {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    body: JSON.stringify(body),
+  }),
   getChildWallet: (childId) => request(`/api/kids/children/${childId}/wallet`),
   setChildLimits: (childId, body) => request(`/api/kids/children/${childId}/limits`, { method: "POST", body: JSON.stringify(body) }),
   freezeChild: (childId) => request(`/api/kids/children/${childId}/freeze`, { method: "POST" }),
@@ -619,6 +627,8 @@ export const api = {
   buyBidCreditsStripe: (body) => request("/api/auctions/buy-credits-stripe", { method: "POST", body: JSON.stringify(body) }),
   confirmCreditPurchase: (pendingId) => request(`/api/auctions/buy-credits-confirm/${pendingId}`, { method: "POST" }),
   getAuctionSavedMethod: () => request("/api/auctions/saved-method"),
+  getAuctionWinnerCheckout: (auctionId) => request(`/api/auctions/${auctionId}/winner-checkout`),
+  payAuctionWinnerCheckout: (auctionId, body) => request(`/api/auctions/${auctionId}/winner-checkout/pay`, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": body.idempotency_key }, body: JSON.stringify(body) }),
   getBidCredits: () => request("/api/auctions/credits/balance"),
   createAuction: (body) => request("/api/auctions/admin/create", { method: "POST", body: JSON.stringify(body) }),
   refreshAuctions: () => request("/api/auctions/admin/refresh", { method: "POST" }),

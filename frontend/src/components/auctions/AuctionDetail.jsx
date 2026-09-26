@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Zap, ChevronRight, Coins, Loader2, X, User,
-  Trophy, ShieldCheck, Timer, Truck, Globe, Check, Shield,
-  Flame, Gift, Bot, AlertTriangle, Users, Sparkles, Eye, Gavel,
+  ArrowLeft, Zap, Coins, Loader2, X, User,
+  Trophy, ShieldCheck, Truck, Globe, Check, Shield,
+  Bot, AlertTriangle, Users, Gavel,
   Clock, TrendingUp, Wallet, Package,
 } from "lucide-react";
 import { useUser, useI18n } from "../../store";
 import { api } from "../../services/api";
-import GuestCTABar from "../GuestCTABar";
 import Countdown from "./Countdown";
 import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
@@ -26,19 +25,24 @@ function localizeCondition(condition, t) {
 
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
-  <motion.div className={`flex items-center justify-between py-2 px-3 ${isLatest ? "bg-[#00E0FF]/[0.02]" : ""}`}
+  <motion.div className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 ${isLatest ? "bg-[#00E0FF]/[0.035]" : ""}`}
     initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: isLatest ? "rgba(0,224,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isLatest ? "rgba(0,224,255,0.12)" : "rgba(255,255,255,0.03)"}` }}>
-        {bid.is_auto ? <Bot size={8} className={isLatest ? "text-[#B068FF]" : "text-white/20"} /> : <User size={8} className={isLatest ? "text-[#00E0FF]" : "text-white/20"} />}
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: isLatest ? "rgba(0,224,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isLatest ? "rgba(0,224,255,0.14)" : "rgba(255,255,255,0.04)"}` }}>
+        {bid.is_auto ? <Bot size={10} className={isLatest ? "text-[#B068FF]" : "text-white/25"} /> : <User size={10} className={isLatest ? "text-[#00E0FF]" : "text-white/25"} />}
       </div>
       <div className="min-w-0">
-        <p className={`text-[11px] font-semibold truncate ${isLatest ? "text-white/80" : "text-white/35"}`}>{bid.user_name}</p>
-        <p className="text-[9px] text-white/20">{new Date(bid.created_at).toLocaleTimeString()}</p>
+        <div className="flex items-center gap-2">
+          <p className={`truncate text-[12px] font-semibold ${isLatest ? "text-white/85" : "text-white/45"}`}>{bid.user_name}</p>
+          {isLatest && <span className="rounded-full bg-[#00E0FF]/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#00E0FF]">Neu</span>}
+        </div>
+        <p className="mt-0.5 text-[9px] text-white/25">
+          {new Date(bid.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
       </div>
     </div>
-    <MoneyAmount value={bid.bid_price} locale="de" className={`text-[12px] ${isLatest ? "text-[#00E0FF]" : "text-white/40"}`} testId="auction-bid-row-price" />
+    <MoneyAmount value={bid.bid_price} locale="de" className={`text-[13px] font-bold tabular-nums ${isLatest ? "text-[#00E0FF]" : "text-white/50"}`} testId="auction-bid-row-price" />
   </motion.div>
 );
 
@@ -82,6 +86,7 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
 export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged, onBuyCredits, onNavigate }) {
   const { t } = useI18n();
   const user = useUser();
+  const kycRequired = !isGuest && !KYC_DISABLED && user?.kyc_status !== "approved" && user?.role !== "admin";
   const [auction, setAuction] = useState(null);
   const [bids, setBids] = useState([]);
   const [uniqueBidders, setUniqueBidders] = useState(0);
@@ -91,7 +96,9 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [autoBid, setAutoBid] = useState(null);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
   const [showLocalCredits, setShowLocalCredits] = useState(false);
+  const [showAllBids, setShowAllBids] = useState(false);
   const pollRef = useRef(null);
+  const bidAttemptKeyRef = useRef(null);
   const fallbackImage = getAuctionFallbackImage(auction || {});
   const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url, fallbackImage]).filter(Boolean)));
   const descriptionLines = (auction?.description || "")
@@ -120,26 +127,55 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
 
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
+    if (kycRequired) { onNavigate?.("/profile/kyc"); return; }
     if (userCredits < 1) {
-      // Zeige Fehler + öffne Credits-Kauf-Modal automatisch
       setBidMsg({ ok: false, text: t("auction.no_credits") });
-      setTimeout(() => {
-        setShowLocalCredits(true); // Öffnet Credits-Kauf-Modal
-      }, 800);
+      setTimeout(() => setShowLocalCredits(true), 800);
       return;
     }
+    const bidStorageKey = `bidblitz:auction-bid:${user?.id || user?.email || "unknown"}:${auctionId}`;
+    if (!bidAttemptKeyRef.current && typeof window !== "undefined") {
+      bidAttemptKeyRef.current = window.sessionStorage.getItem(bidStorageKey);
+    }
+    if (!bidAttemptKeyRef.current) {
+      bidAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `auction-bid-${crypto.randomUUID()}`
+        : `auction-bid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(bidStorageKey, bidAttemptKeyRef.current);
+      }
+    }
+    const idempotencyKey = bidAttemptKeyRef.current;
     setBidding(true); setBidMsg(null);
     try {
-      const r = await api.placeBid({ auction_id: auctionId });
+      const r = await api.placeBid({ auction_id: auctionId, idempotency_key: idempotencyKey });
+      bidAttemptKeyRef.current = null;
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(bidStorageKey);
       setAuction(p => ({ ...p, current_price: r.new_price, ends_at: r.ends_at, total_bids: r.total_bids, last_bidder_id: user.id, last_bidder_name: user.name }));
-      setBids(p => [{ bid_id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() }, ...p].slice(0, 30));
+      setBids(p => {
+        const bid = r.bid || { bid_id: `opt-${Date.now()}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() };
+        if (p.some((item) => item.bid_id === bid.bid_id)) return p;
+        return [bid, ...p].slice(0, 30);
+      });
       onCreditsChanged(r.remaining_credits);
-    } catch (e) { setBidMsg({ ok: false, text: e.message }); }
+    } catch (e) {
+      if (!e?.retryable && !["timeout", "network", "server", "unknown"].includes(e?.code)) {
+        bidAttemptKeyRef.current = null;
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(bidStorageKey);
+      }
+      setBidMsg({ ok: false, text: e.message });
+    }
     setBidding(false);
   };
 
   const cancelAuto = async () => {
-    try { await api.cancelAutoBid(auctionId); setAutoBid({ active: false }); } catch (error) { void error; }
+    try {
+      await api.cancelAutoBid(auctionId);
+      setAutoBid({ active: false });
+      setBidMsg(null);
+    } catch (error) {
+      setBidMsg({ ok: false, text: error?.message || "Auto-Bid konnte nicht beendet werden." });
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={20} className="animate-spin text-[#00E0FF]" /></div>;
@@ -151,6 +187,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
   const logisticsLabel = auction.category === "marine" ? t("auction.shipping_pickup") : t("auction.shipping_worldwide_free");
   const conditionLabel = localizeCondition(auction.condition, t);
+  const visibleBids = (showAllBids ? bids.slice(0, 30) : bids.slice(0, 5));
 
   return (
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="auction-detail" data-scroll-page="true">
@@ -235,9 +272,21 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} {t("auction.bids_label")}</span></div>
             <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} {t("auction.bidders_label")}</span></div>
             <div className="flex items-center gap-1"><TrendingUp size={9} className="text-[#00E89D]" /><span className="text-[9px] text-white/40">+0.01</span></div>
-            <div className="flex items-center gap-1"><Clock size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">+10s</span></div>
+            <div className="flex items-center gap-1"><Clock size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">+20s</span></div>
           </div>
         </motion.div>
+
+        {isActive && auction.minimum_target_active && !auction.minimum_target_reached && (
+          <div
+            data-testid="auction-minimum-target-open"
+            className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3"
+          >
+            <p className="text-[11px] font-bold text-amber-200">Mindestziel noch nicht erreicht</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-white/50">
+              Diese Auktion hat ein transparentes Mindestziel. Wenn es beim Timer-Ende noch offen ist, kann die Laufzeit verlängert werden.
+            </p>
+          </div>
+        )}
 
         {/* Bot-Only: Hide bid buttons — humans are spectators */}
         {isActive && auction.bot_only && (
@@ -257,7 +306,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         )}
 
         {/* KYC Banner — show BEFORE bid attempt if KYC not approved */}
-        {isActive && !auction.bot_only && !isGuest && !KYC_DISABLED && user.kyc_status !== "approved" && user.role !== "admin" && (
+        {isActive && !auction.bot_only && kycRequired && (
           <motion.div
             data-testid="kyc-required-banner"
             className="px-4 py-3 rounded-2xl text-center mb-2"
@@ -289,17 +338,23 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding}
               className="w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 relative overflow-hidden"
               style={{ 
-                background: userCredits < 1 
-                  ? `linear-gradient(135deg, ${accentRed}, #CC0033)` 
-                  : `linear-gradient(135deg, ${accentCyan}, #0090BB)`, 
-                boxShadow: userCredits < 1 
-                  ? `0 4px 24px rgba(255,64,96,0.25), inset 0 1px 0 rgba(255,255,255,0.08)`
-                  : `0 4px 24px rgba(0,224,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08)` 
+                background: kycRequired
+                  ? `linear-gradient(135deg, ${accentGold}, #B7791F)`
+                  : userCredits < 1 
+                    ? `linear-gradient(135deg, ${accentRed}, #CC0033)` 
+                    : `linear-gradient(135deg, ${accentCyan}, #0090BB)`, 
+                boxShadow: kycRequired
+                  ? `0 4px 24px rgba(255,209,102,0.18), inset 0 1px 0 rgba(255,255,255,0.08)`
+                  : userCredits < 1 
+                    ? `0 4px 24px rgba(255,64,96,0.25), inset 0 1px 0 rgba(255,255,255,0.08)`
+                    : `0 4px 24px rgba(0,224,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08)` 
               }}
               whileTap={{ scale: 0.97 }}>
               <motion.div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)" }} animate={{ x: ["-100%", "100%"] }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }} />
               {bidding ? (
                 <Loader2 size={16} className="animate-spin text-white" />
+              ) : kycRequired ? (
+                <><ShieldCheck size={16} className="text-black" /><span className="text-black relative z-10">Identität verifizieren</span></>
               ) : userCredits < 1 ? (
                 <><Wallet size={16} className="text-white" /><span className="text-white relative z-10">Credits kaufen</span></>
               ) : (
@@ -315,11 +370,12 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
                   <Bot size={12} />{t("auction.auto_bid_active")} ({autoBid.bids_placed}/{autoBid.max_bids}) — {t("auction.cancel")}
                 </motion.button>
               ) : (
-                <motion.button data-testid="auto-bid-btn" onClick={() => isGuest ? onAuthRequired() : setShowAutoBidModal(true)}
+                <motion.button data-testid="auto-bid-btn" onClick={() => isGuest ? onAuthRequired() : kycRequired ? onNavigate?.("/profile/kyc") : setShowAutoBidModal(true)}
                   className={`flex-1 py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 ${glass}`}
                   style={{ background: "rgba(176,104,255,0.04)", border: "1px solid rgba(176,104,255,0.08)", color: "#888" }}
                   whileTap={{ scale: 0.97 }} whileHover={{ borderColor: "rgba(176,104,255,0.2)", color: accentPurple }}>
-                  <Bot size={12} />{t("auction.auto_bid")}
+                  {kycRequired ? <ShieldCheck size={12} /> : <Bot size={12} />}
+                  {kycRequired ? "Verifizieren für Auto-Bid" : t("auction.auto_bid")}
                 </motion.button>
               )}
             </div>
@@ -335,10 +391,20 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             </div>
             <span className="text-[8px] text-[#333]">{bids.length}</span>
           </div>
-          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }} data-testid="auction-bid-history">
+          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.025] ${glass}`} style={{ background: panelBg, border: panelBorder }} data-testid="auction-bid-history">
             {bids.length === 0 ? (
               <div className="py-8 text-center"><Gavel size={16} className="text-white/5 mx-auto mb-2" /><p className="text-[10px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
-            ) : bids.slice(0, 12).map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}
+            ) : visibleBids.map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}
+            {bids.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllBids((value) => !value)}
+                className="w-full min-h-[44px] px-3 py-2 text-[10px] font-semibold text-[#00E0FF]/80 hover:bg-white/[0.02]"
+                data-testid="auction-bid-history-toggle"
+              >
+                {showAllBids ? "Weniger anzeigen" : `Weitere ${Math.max(0, bids.length - 5)} Gebote anzeigen`}
+              </button>
+            )}
           </div>
         </motion.div>
 

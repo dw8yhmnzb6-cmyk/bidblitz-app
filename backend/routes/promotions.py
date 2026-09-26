@@ -29,11 +29,16 @@ class CreatePromotionRequest(BaseModel):
 @router.post("/admin/create")
 async def create_promotion(req: CreatePromotionRequest, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    normalized_name = req.name.strip()
+    existing = await db.promotions.find_one({"name": normalized_name}, {"_id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Promotion name already exists")
+
     promo = {
-        "name": req.name,
+        "name": normalized_name,
         "type": req.type,
         "description": req.description,
         "value": req.value,
@@ -49,7 +54,7 @@ async def create_promotion(req: CreatePromotionRequest, request: Request):
     }
     result = await db.promotions.insert_one(promo)
 
-    return {"success": True, "promotion_id": str(result.inserted_id), "name": req.name}
+    return {"success": True, "promotion_id": str(result.inserted_id), "name": normalized_name}
 
 
 @router.get("/active")
@@ -70,7 +75,7 @@ async def get_active_promotions(request: Request):
 @router.get("/admin/all")
 async def get_all_promotions(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     promos = await db.promotions.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
@@ -80,15 +85,23 @@ async def get_all_promotions(request: Request):
 @router.put("/admin/toggle/{promo_name}")
 async def toggle_promotion(promo_name: str, request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    promo = await db.promotions.find_one({"name": promo_name})
-    if not promo:
+    match_count = await db.promotions.count_documents({"name": promo_name})
+    if match_count == 0:
         raise HTTPException(status_code=404, detail="Promotion not found")
+    if match_count > 1:
+        raise HTTPException(status_code=409, detail="Promotion name is ambiguous; duplicate records require admin cleanup")
 
+    promo = await db.promotions.find_one({"name": promo_name})
     new_status = not promo.get("active", False)
-    await db.promotions.update_one({"name": promo_name}, {"$set": {"active": new_status}})
+    updated = await db.promotions.update_one(
+        {"_id": promo["_id"], "active": promo.get("active", False)},
+        {"$set": {"active": new_status}},
+    )
+    if updated.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Promotion changed concurrently; reload and retry")
 
     return {"success": True, "name": promo_name, "active": new_status}
 
@@ -135,13 +148,55 @@ async def check_applicable_promotion(user_id: str, txn_type: str, amount: float)
 
 
 async def apply_promotion(user_id: str, promo_name: str, amount: float):
-    """Apply a promotion and record usage."""
+    """Apply one promotion exactly once per user and respect the global usage cap."""
     now = datetime.now(timezone.utc).isoformat()
+    usage_id = f"promo:{promo_name}:{user_id}"
 
-    await db.promotions.update_one({"name": promo_name}, {"$inc": {"current_uses": 1}})
-    await db.promo_usage.insert_one({
+    existing = await db.promo_usage.find_one({"_id": usage_id}, {"_id": 0})
+    if existing:
+        return {"applied": True, "replayed": True, "usage": existing}
+
+    promo = await db.promotions.find_one({"name": promo_name, "active": True})
+    if not promo:
+        return {"applied": False, "reason": "promotion_not_active"}
+
+    starts_at = str(promo.get("starts_at") or "")
+    expires_at = str(promo.get("expires_at") or "")
+    if starts_at and starts_at > now:
+        return {"applied": False, "reason": "promotion_not_started"}
+    if expires_at and expires_at < now:
+        return {"applied": False, "reason": "promotion_expired"}
+
+    usage = {
+        "_id": usage_id,
         "user_id": user_id,
         "promo_name": promo_name,
         "amount": amount,
         "applied_at": now,
-    })
+    }
+    try:
+        await db.promo_usage.insert_one(usage)
+    except Exception:
+        existing = await db.promo_usage.find_one({"_id": usage_id}, {"_id": 0})
+        if existing:
+            return {"applied": True, "replayed": True, "usage": existing}
+        raise
+
+    max_uses = int(promo.get("max_uses") or 0)
+    claim_query = {
+        "_id": promo["_id"],
+        "active": True,
+    }
+    if max_uses > 0:
+        claim_query["current_uses"] = {"$lt": max_uses}
+
+    claimed = await db.promotions.update_one(
+        claim_query,
+        {"$inc": {"current_uses": 1}, "$set": {"updated_at": now}},
+    )
+    if claimed.modified_count != 1:
+        await db.promo_usage.delete_one({"_id": usage_id})
+        return {"applied": False, "reason": "usage_limit_reached"}
+
+    usage.pop("_id", None)
+    return {"applied": True, "replayed": False, "usage": usage}

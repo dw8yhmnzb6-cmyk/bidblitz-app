@@ -3,13 +3,13 @@ BidBlitz V2 - User Profile Routes
 Profile viewing, editing, password management, and KYC.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
-from core.security import get_current_user, hash_password, verify_password, serialize_user
+from core.security import get_current_user, hash_password, verify_password, serialize_user, clear_auth_cookies
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.rate_limit import limiter, RATE_PASSWORD
 
@@ -31,69 +31,30 @@ class KYCSubmitRequest(BaseModel):
 
 @router.get("/kyc")
 async def get_kyc_status(request: Request):
-    """Get current user's KYC data and verification status."""
+    """Compatibility view backed by the canonical /api/kyc status fields."""
     user = await get_current_user(request)
-    kyc = user.get("kyc")
-    if not kyc:
-        return {"status": "not_submitted", "data": None}
+    raw = str(user.get("kyc_status") or "not_started").strip().lower()
+    status = "approved" if raw == "verified" else "rejected" if raw in {"failed", "error"} else raw
+    verified = status == "approved" and bool(user.get("kyc_verified", True))
     return {
-        "status": kyc.get("status", "not_submitted"),
-        "data": {
-            "full_name": kyc.get("full_name", ""),
-            "date_of_birth": kyc.get("date_of_birth", ""),
-            "street": kyc.get("street", ""),
-            "city": kyc.get("city", ""),
-            "postal_code": kyc.get("postal_code", ""),
-            "country": kyc.get("country", ""),
-        },
-        "submitted_at": kyc.get("submitted_at"),
-        "reviewed_at": kyc.get("reviewed_at"),
+        "status": status,
+        "kyc_status": status,
+        "kyc_verified": verified,
+        "submitted_at": user.get("kyc_submitted_at"),
+        "reviewed_at": user.get("kyc_reviewed_at"),
+        "rejection_reason": user.get("kyc_rejection_reason"),
+        "canonical_endpoint": "/api/kyc/status",
     }
 
 
 @router.post("/kyc")
 async def submit_kyc(req: KYCSubmitRequest, request: Request):
-    """Submit KYC data for verification."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    ip, ua = get_client_info(request)
-
-    # Validate date of birth format
-    try:
-        dob = datetime.strptime(req.date_of_birth, "%Y-%m-%d")
-        age = (datetime.now() - dob).days // 365
-        if age < 16:
-            raise HTTPException(status_code=400, detail="You must be at least 16 years old")
-        if age > 120:
-            raise HTTPException(status_code=400, detail="Invalid date of birth")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-
-    kyc_data = {
-        "full_name": req.full_name.strip(),
-        "date_of_birth": req.date_of_birth,
-        "street": req.street.strip(),
-        "city": req.city.strip(),
-        "postal_code": req.postal_code.strip(),
-        "country": req.country.strip(),
-        "status": "pending",
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
-        "reviewed_at": None,
-    }
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"kyc": kyc_data, "kyc_level": "pending"}},
+    """Retired text-only KYC path; document KYC is required for financial access."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser alte KYC-Pfad ist deaktiviert. Bitte nutze die Dokument-Verifizierung unter /api/kyc/submit.",
     )
-
-    await log_audit(AuditEvent.PROFILE_UPDATE, user_id=user_id, email=user["email"],
-                    ip=ip, user_agent=ua,
-                    details={"action": "kyc_submitted"})
-
-    return {
-        "status": "pending",
-        "message": "KYC data submitted successfully. Verification in progress.",
-    }
 
 
 class ProfileUpdate(BaseModel):
@@ -107,7 +68,13 @@ class ProfileUpdate(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class AccountDeletionRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    confirmation: str = Field(..., min_length=6, max_length=32)
+    reason: Optional[str] = Field(None, max_length=500)
 
 
 @router.get("/profile")
@@ -118,7 +85,8 @@ async def get_profile(request: Request):
         **serialize_user(user),
         "language": user.get("language", "de"),
         "kyc_level": user.get("kyc_level", "basic"),
-        "kyc_verified": user.get("kyc_level", "basic") in ("verified", "premium"),
+        "kyc_status": user.get("kyc_status", "not_started"),
+        "kyc_verified": bool(user.get("kyc_status") in ("approved", "verified") and user.get("kyc_verified", True)),
         "notifications_enabled": user.get("notifications_enabled", True),
         "email_notifications": user.get("email_notifications", True),
         "biometric_enabled": user.get("biometric_enabled", False),
@@ -162,7 +130,8 @@ async def update_profile(req: ProfileUpdate, request: Request):
         **serialize_user(updated_user),
         "language": updated_user.get("language", "de"),
         "kyc_level": updated_user.get("kyc_level", "basic"),
-        "kyc_verified": updated_user.get("kyc_level", "basic") in ("verified", "premium"),
+        "kyc_status": updated_user.get("kyc_status", "not_started"),
+        "kyc_verified": bool(updated_user.get("kyc_status") in ("approved", "verified") and updated_user.get("kyc_verified", True)),
         "notifications_enabled": updated_user.get("notifications_enabled", True),
         "email_notifications": updated_user.get("email_notifications", True),
         "biometric_enabled": updated_user.get("biometric_enabled", False),
@@ -172,27 +141,176 @@ async def update_profile(req: ProfileUpdate, request: Request):
 
 @router.post("/change-password")
 @limiter.limit(RATE_PASSWORD)
-async def change_password(req: ChangePasswordRequest, request: Request):
-    """Change user password."""
+async def change_password(req: ChangePasswordRequest, request: Request, response: Response):
+    """Change password and revoke every previously issued credential."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
 
-    if not verify_password(req.current_password, user["password_hash"]):
+    password_hash = (user.get("password_hash") or "").strip()
+    if not password_hash or not verify_password(req.current_password, password_hash):
         await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
                         ip=ip, user_agent=ua, details={"success": False}, severity="warn")
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if req.new_password == req.current_password:
+        raise HTTPException(status_code=400, detail="Das neue Passwort muss sich vom aktuellen Passwort unterscheiden")
 
     new_hash = hash_password(req.new_password)
+    changed_at = datetime.now(timezone.utc).isoformat()
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {
+            "$set": {
+                "password_hash": new_hash,
+                "updated_at": changed_at,
+                "password_changed_at": changed_at,
+            },
+            "$inc": {"auth_version": 1},
+            "$unset": {"password": ""},
+        },
     )
 
-    await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
-                    ip=ip, user_agent=ua, details={"success": True})
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(user_id)
+    await db.pending_2fa.delete_many({"user_id": user_id})
+    await db.otp_codes.delete_many({"user_id": user_id})
+    clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
 
-    return {"success": True, "message": "Password updated successfully"}
+    await log_audit(AuditEvent.PASSWORD_CHANGE, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua, details={"success": True, "all_sessions_revoked": True})
+
+    return {
+        "success": True,
+        "message": "Passwort aktualisiert. Bitte melde dich auf deinen Geräten neu an.",
+        "sessions_revoked": True,
+    }
+
+
+# ═══════════════════════════════════════════════════
+# ACCOUNT CLOSURE / PRIVACY REQUEST
+# ═══════════════════════════════════════════════════
+
+@router.get("/deletion-request")
+async def get_account_deletion_request(request: Request):
+    """Return the current user's account-closure request status."""
+    user = await get_current_user(request)
+    req = await db.privacy_requests.find_one(
+        {"user_id": str(user["_id"]), "type": "account_deletion"},
+        {"_id": 0},
+        sort=[("created_at", -1)],
+    )
+    return {
+        "requested": bool(req),
+        "request": req,
+        "account_status": user.get("account_closure_status"),
+    }
+
+
+@router.post("/deletion-request")
+@limiter.limit(RATE_PASSWORD)
+async def request_account_deletion(req: AccountDeletionRequest, request: Request, response: Response):
+    """Deactivate access and create a traceable privacy deletion/anonymisation request."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    if user.get("role") in {"admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Admin-Konten müssen über den internen Sicherheitsprozess geschlossen werden")
+
+    confirmation = req.confirmation.strip().upper()
+    if confirmation not in {"DELETE", "LÖSCHEN", "LOESCHEN"}:
+        raise HTTPException(status_code=400, detail="Bitte Löschbestätigung eingeben")
+
+    password_hash = (user.get("password_hash") or "").strip()
+    if not password_hash or not verify_password(req.current_password, password_hash):
+        await log_audit(
+            AuditEvent.ADMIN_ACTION,
+            user_id=user_id,
+            email=user.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+            details={"action": "account_deletion_request", "success": False, "reason": "password_mismatch"},
+            severity="warn",
+        )
+        raise HTTPException(status_code=400, detail="Aktuelles Passwort ist falsch")
+
+    existing = await db.privacy_requests.find_one(
+        {"user_id": user_id, "type": "account_deletion", "status": {"$in": ["requested", "reviewing", "retention_hold"]}},
+        {"_id": 0},
+    )
+    if existing:
+        clear_auth_cookies(response)
+        return {"ok": True, "status": existing.get("status"), "request_id": existing.get("request_id"), "replayed": True}
+
+    now = datetime.now(timezone.utc).isoformat()
+    privacy_doc_id = f"account-deletion:{user_id}"
+    request_id = f"PRIV-{__import__('hashlib').sha256(privacy_doc_id.encode('utf-8')).hexdigest()[:16].upper()}"
+    privacy_request = {
+        "_id": privacy_doc_id,
+        "request_id": request_id,
+        "type": "account_deletion",
+        "user_id": user_id,
+        "email": user.get("email", ""),
+        "status": "requested",
+        "reason": (req.reason or "").strip(),
+        "retention_review_required": True,
+        "requested_at": now,
+        "created_at": now,
+    }
+    await db.privacy_requests.update_one(
+        {"_id": privacy_doc_id},
+        {"$setOnInsert": privacy_request},
+        upsert=True,
+    )
+    persisted_request = await db.privacy_requests.find_one({"_id": privacy_doc_id}, {"_id": 0}) or privacy_request
+    request_id = persisted_request.get("request_id") or request_id
+
+    closure_update = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "account_closure_status": {"$ne": "requested"},
+        },
+        {
+            "$set": {
+                "login_disabled": True,
+                "account_closure_status": "requested",
+                "account_closure_requested_at": persisted_request.get("requested_at") or now,
+                "account_closure_request_id": request_id,
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    replayed = closure_update.modified_count == 0
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(user_id)
+    await db.pending_2fa.delete_many({"user_id": user_id})
+    await db.otp_codes.delete_many({"user_id": user_id})
+    clear_auth_cookies(response)
+    response.delete_cookie("pending_2fa_session", path="/")
+
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=user_id,
+        email=user.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={
+            "action": "account_deletion_request",
+            "request_id": request_id,
+            "retention_review_required": True,
+        },
+        severity="info",
+    )
+
+    return {
+        "ok": True,
+        "status": "requested",
+        "request_id": request_id,
+        "message": "Dein Konto wurde deaktiviert und die Lösch-/Anonymisierungsprüfung wurde gestartet.",
+        "replayed": replayed,
+    }
 
 
 # ═══════════════════════════════════════════════════

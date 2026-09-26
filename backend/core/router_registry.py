@@ -39,10 +39,12 @@ def register_all_routers(app):
         ("routes.merchant", "router"),
         ("routes.transactions", "router"),
         ("routes.stripe", "router"),
+        ("routes.apple_google_pay", "router"),
         ("routes.payout", "router"),
         ("routes.admin", "router"),
         ("routes.feature_flags", "router"),
         ("routes.admin_customer_intelligence", "router"),
+        ("routes.aion_project_intelligence", "router"),
         ("routes.admin_biopay", "router"),
         ("routes.monitoring", "router"),
         ("routes.monitoring_public", "router"),
@@ -175,7 +177,7 @@ def register_all_routers(app):
         
         # Systems
         ("routes.referral_system", "router"),
-        ("routes.kids_system", "router"),
+        # routes.kids_system is legacy; canonical Kids money/control flows live in routes.kids.
         ("routes.subscription_system", "router"),
         ("routes.growth_engine", "router"),
         ("routes.boost_system", "router"),
@@ -191,6 +193,11 @@ def register_all_routers(app):
         ("routes.invoicing", "public_router"),
         ("routes.invoicing", "webhook_router"),
         ("routes.virtual_cards", "router"),
+        ("routes.cards_lifecycle", "router"),
+        ("routes.gift_cards", "router"),
+        ("routes.stocks", "router"),
+        ("routes.savings", "router"),
+        ("routes.reselling", "router"),
         ("routes.credit_system", "router"),
         ("routes.bills", "router"),
         ("routes.receipts", "router"),
@@ -198,6 +205,7 @@ def register_all_routers(app):
         ("routes.admin_wallet_reconciliation", "router"),
         ("routes.coinbase_commerce", "router"),
         ("routes.bidblitz_pay", "router"),
+        ("routes.blitzpay", "router"),
         
         # Entertainment
         ("routes.gaming", "router"),
@@ -252,6 +260,7 @@ def register_all_routers(app):
         ("routes.admin_approvals", "router"),
         
         # Crypto
+        ("routes.crypto", "router"),
         ("routes.crypto_wallet", "router"),
         ("routes.crypto_prices", "router"),
         
@@ -259,7 +268,6 @@ def register_all_routers(app):
         ("routes.auction_push", "router"),
         ("routes.super_app_features", "router"),
         ("routes.livekit_streaming", "router"),
-        ("routes.live_shopping", "router"),
         ("routes.live_auctions", "router"),
         ("routes.landing_chatbot", "router"),
         ("routes.readiness", "router"),

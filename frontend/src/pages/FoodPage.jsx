@@ -82,13 +82,15 @@ export default function FoodPage({ onNavigate }) {
   const [showGroupOrder, setShowGroupOrder] = useState(false);
 
   const pollingRef = useRef(null);
+  const orderAttemptKeyRef = useRef(null);
 
   // Derived
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const deliveryFee = selectedRestaurant?.delivery_fee || 1.99;
+  const deliveryFee = deliveryMode === 'pickup' ? 0 : Number(selectedRestaurant?.delivery_fee ?? 1.99);
   const serviceFee = cartTotal * 0.10;
-  const smallOrderFee = cartTotal < 15 ? 2.00 : 0;
-  const orderTotal = cartTotal + deliveryFee + serviceFee + smallOrderFee;
+  const smallOrderFee = deliveryMode === 'pickup' ? 0 : (cartTotal < 15 ? 2.00 : 0);
+  const promoDiscount = Math.min(cartTotal, Number(promoApplied?.discount || 0));
+  const orderTotal = Math.max(0, cartTotal + deliveryFee + serviceFee + smallOrderFee - promoDiscount);
 
   useEffect(() => {
     fetchUserData();
@@ -202,18 +204,31 @@ export default function FoodPage({ onNavigate }) {
 
   // Cart
   const addToCart = (item) => {
+    const sizeId = item.selected_size_id || null;
+    const extraIds = [...(item.selected_extra_ids || [])].map(String).sort();
+    const cartKey = `${item.id}:${sizeId || ''}:${extraIds.join(',')}`;
     setCart((prev) => {
-      const existing = prev.find((i) => i.item_id === item.id);
-      if (existing) return prev.map((i) => (i.item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
-      return [...prev, { item_id: item.id, name: item.name, price: item.price, quantity: 1 }];
+      const existing = prev.find((i) => i.cart_key === cartKey);
+      if (existing) return prev.map((i) => (i.cart_key === cartKey ? { ...i, quantity: i.quantity + 1 } : i));
+      return [...prev, {
+        cart_key: cartKey,
+        item_id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: 1,
+        size_id: sizeId,
+        extra_ids: extraIds,
+        extras_detail: item.extras_detail || '',
+        size_detail: item.size_detail || '',
+      }];
     });
   };
 
-  const updateQuantity = (itemId, delta) => {
+  const updateQuantity = (cartKey, delta) => {
     setCart((prev) =>
       prev
         .map((i) => {
-          if (i.item_id === itemId) {
+          if (i.cart_key === cartKey) {
             const q = Math.max(0, i.quantity + delta);
             return q === 0 ? null : { ...i, quantity: q };
           }
@@ -226,7 +241,7 @@ export default function FoodPage({ onNavigate }) {
   // Orders
   const placeOrder = async () => {
     if (cart.length === 0 || !selectedRestaurant) return;
-    if (!deliveryAddress.street || !deliveryAddress.city) {
+    if (deliveryMode === 'delivery' && (!deliveryAddress.street || !deliveryAddress.city)) {
       setError('Bitte Lieferadresse eingeben');
       return;
     }
@@ -234,31 +249,52 @@ export default function FoodPage({ onNavigate }) {
       setError(`Nicht genug Guthaben. Benötigt: €${orderTotal.toFixed(2)}, Verfügbar: €${userBalance.toFixed(2)}.`);
       return;
     }
+    if (!orderAttemptKeyRef.current) {
+      orderAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+        ? `food-order-${crypto.randomUUID()}`
+        : `food-order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = orderAttemptKeyRef.current;
+
     setLoading(true);
     setError('');
     try {
       const res = await fetch(`${API}/api/food/order`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify({
           restaurant_id: selectedRestaurant.restaurant_id,
-          items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
+          items: cart.map((i) => ({
+            item_id: i.item_id,
+            quantity: i.quantity,
+            size_id: i.size_id || null,
+            extra_ids: i.extra_ids || [],
+          })),
           delivery_address: deliveryAddress,
+          delivery_type: deliveryMode,
           payment_method: 'wallet',
           tip: 0,
+          promo_code: promoApplied?.code || null,
+          idempotency_key: idempotencyKey,
         }),
       });
+      const d = await res.json().catch(() => ({}));
       if (res.ok) {
-        const d = await res.json();
+        orderAttemptKeyRef.current = null;
         setActiveOrder(d.order);
         setCart([]);
+        setPromoApplied(null);
+        setPromoCode('');
         setView('tracking');
-        setUserBalance((p) => p - orderTotal);
+        setUserBalance(Number(d.new_balance ?? userBalance));
         startOrderPolling(d.order.order_id);
       } else {
-        const e = await res.json();
-        setError(e.detail || 'Bestellung fehlgeschlagen');
+        if (res.status < 500 && res.status !== 409) orderAttemptKeyRef.current = null;
+        setError(typeof d.detail === 'string' ? d.detail : d.detail?.message || 'Bestellung fehlgeschlagen');
       }
     } catch {
       setError('Netzwerkfehler');
@@ -332,6 +368,8 @@ export default function FoodPage({ onNavigate }) {
     addToCart({
       ...extrasModal,
       price: total,
+      selected_extra_ids: selectedExtras.map((e) => e.id),
+      selected_size_id: selectedSize?.id || null,
       extras_detail: selectedExtras.map((e) => e.name).join(', '),
       size_detail: selectedSize?.name || '',
     });

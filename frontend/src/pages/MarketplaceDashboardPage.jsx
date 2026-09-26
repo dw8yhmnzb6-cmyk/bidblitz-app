@@ -3,7 +3,7 @@
  * Merchant view for managing listings, boosts, and VIP upgrades
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, Package, Eye, Zap, Star, TrendingUp, 
@@ -36,6 +36,7 @@ export default function MarketplaceDashboardPage({ onBack, onNavigate }) {
   const [flashPrice, setFlashPrice] = useState('');
   const [flashDuration, setFlashDuration] = useState('180');
   const [savingFlash, setSavingFlash] = useState(false);
+  const promotionAttemptKeysRef = useRef({});
 
   // Fetch data
   useEffect(() => {
@@ -139,26 +140,43 @@ export default function MarketplaceDashboardPage({ onBack, onNavigate }) {
   // Boost listing
   const boostListing = async (listingId, boostType) => {
     setBoosting(true);
+    const actionKey = `boost:${listingId}:${boostType}`;
     try {
+      if (!promotionAttemptKeysRef.current[actionKey]) {
+        promotionAttemptKeysRef.current[actionKey] = typeof crypto?.randomUUID === 'function'
+          ? `marketplace-boost-${crypto.randomUUID()}`
+          : `marketplace-boost-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = promotionAttemptKeysRef.current[actionKey];
       const res = await fetch(`${API}/api/marketplace/boost`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         credentials: 'include',
-        body: JSON.stringify({ listing_id: listingId, type: boostType }),
+        body: JSON.stringify({
+          listing_id: listingId,
+          boost_type: boostType,
+          idempotency_key: idempotencyKey,
+        }),
       });
       
       const data = await res.json();
       
       if (res.ok && data.ok) {
+        delete promotionAttemptKeysRef.current[actionKey];
         toast.success(data.message || 'Boost aktiviert!');
         setBalance(data.new_balance);
         setShowBoostModal(false);
         fetchData();
       } else {
+        if (res.status < 500 && res.status !== 409) delete promotionAttemptKeysRef.current[actionKey];
         toast.error(data.detail || 'Boost fehlgeschlagen');
       }
     } catch (e) {
       toast.error('Verbindungsfehler');
+      void e;
     }
     setBoosting(false);
   };
@@ -166,25 +184,38 @@ export default function MarketplaceDashboardPage({ onBack, onNavigate }) {
   // VIP upgrade
   const upgradeToVip = async (listingId) => {
     setBoosting(true);
+    const actionKey = `vip:${listingId}`;
     try {
+      if (!promotionAttemptKeysRef.current[actionKey]) {
+        promotionAttemptKeysRef.current[actionKey] = typeof crypto?.randomUUID === 'function'
+          ? `marketplace-vip-${crypto.randomUUID()}`
+          : `marketplace-vip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = promotionAttemptKeysRef.current[actionKey];
       const res = await fetch(`${API}/api/marketplace/vip`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         credentials: 'include',
-        body: JSON.stringify({ listing_id: listingId }),
+        body: JSON.stringify({ listing_id: listingId, idempotency_key: idempotencyKey }),
       });
       
       const data = await res.json();
       
       if (res.ok && data.ok) {
-        toast.success('VIP aktiviert!');
+        delete promotionAttemptKeysRef.current[actionKey];
+        toast.success(data.message || 'VIP aktiviert!');
         setBalance(data.new_balance);
         fetchData();
       } else {
+        if (res.status < 500 && res.status !== 409) delete promotionAttemptKeysRef.current[actionKey];
         toast.error(data.detail || 'VIP Upgrade fehlgeschlagen');
       }
     } catch (e) {
       toast.error('Verbindungsfehler');
+      void e;
     }
     setBoosting(false);
   };

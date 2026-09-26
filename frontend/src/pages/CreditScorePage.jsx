@@ -3,7 +3,7 @@
  * Shows user's credit score (A/B/C) and available credit options
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, TrendingUp, CreditCard, Shield, Clock,
@@ -48,6 +48,11 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
   const [applyAmount, setApplyAmount] = useState("");
   const [applyLoading, setApplyLoading] = useState(false);
   const [selectedTerm, setSelectedTerm] = useState(6);
+  const creditAttemptKeyRef = useRef(null);
+
+  useEffect(() => {
+    creditAttemptKeyRef.current = null;
+  }, [applyAmount, selectedTerm]);
 
   useEffect(() => {
     loadCreditData();
@@ -72,14 +77,27 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
       setError("Mindestbetrag ist €50");
       return;
     }
+    if (!creditAttemptKeyRef.current) {
+      creditAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `credit-apply-${crypto.randomUUID()}`
+        : `credit-apply-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = creditAttemptKeyRef.current;
     setApplyLoading(true);
     setError(null);
     try {
       const res = await fetch(`${API_URL}/api/credit/apply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         credentials: "include",
-        body: JSON.stringify({ amount, term_months: selectedTerm }),
+        body: JSON.stringify({
+          amount,
+          term_months: selectedTerm,
+          idempotency_key: idempotencyKey,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -87,6 +105,7 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
         throw new Error(msg);
       }
       const result = await res.json();
+      creditAttemptKeyRef.current = null;
       await loadCreditData();
       setShowApply(false);
       setApplyAmount("");

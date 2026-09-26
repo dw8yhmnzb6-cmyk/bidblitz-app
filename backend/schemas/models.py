@@ -1,6 +1,10 @@
-from pydantic import BaseModel, EmailStr, Field
+import os
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from datetime import datetime
+
+
+IDEMPOTENCY_KEY_PATTERN = r"^[A-Za-z0-9._:-]+$"
 
 
 class RegisterRequest(BaseModel):
@@ -24,19 +28,41 @@ class TopUpRequest(BaseModel):
     payment_method: str = "bank_transfer"
     idempotency_key: Optional[str] = None
 
+    @model_validator(mode="after")
+    def block_unverified_direct_topup_in_production(self):
+        """Direct wallet credits are test-only and must never be enabled in production."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower() == "true"
+        app_env = os.environ.get("APP_ENV", "development").strip().lower()
+        if app_env == "production" or not test_mode:
+            raise ValueError(
+                "Direct wallet top-up is disabled outside TEST_MODE or in production; "
+                "use a verified payment-provider flow"
+            )
+        return self
+
 
 class PaymentRequest(BaseModel):
     amount: float = Field(gt=0)
     merchant_id: str
     description: Optional[str] = ""
-    idempotency_key: Optional[str] = None
+    idempotency_key: str = Field(
+        ...,
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    )
 
 
 class SendRequest(BaseModel):
     amount: float = Field(gt=0)
     recipient_email: EmailStr
     description: Optional[str] = ""
-    idempotency_key: Optional[str] = None
+    idempotency_key: str = Field(
+        ...,
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    )
 
 
 class UserResponse(BaseModel):
@@ -79,4 +105,9 @@ class MerchantScanPayment(BaseModel):
     customer_barcode: str = Field(min_length=6, max_length=64)
     amount: float = Field(gt=0)
     description: Optional[str] = ""
-    idempotency_key: Optional[str] = None
+    idempotency_key: str = Field(
+        ...,
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    )

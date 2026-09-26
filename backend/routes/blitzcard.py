@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 import secrets, random
 
@@ -26,7 +27,20 @@ class OrderCard(BaseModel):
 
 @router.get("/tiers")
 async def get_card_tiers():
-    return {"tiers": CARD_TIERS}
+    return {
+        "tiers": CARD_TIERS,
+        "issuer_live": False,
+        "orders_enabled": bool(TEST_MODE),
+    }
+
+
+@router.get("/capabilities")
+async def blitzcard_capabilities():
+    return {
+        "issuer_live": False,
+        "orders_enabled": bool(TEST_MODE),
+        "message": None if TEST_MODE else "BlitzCard-Ausgabe wartet auf einen verifizierten Live-Issuer.",
+    }
 
 
 @router.get("/my-card")
@@ -36,12 +50,28 @@ async def get_my_card(request: Request):
         {"user_email": user.get("email", ""), "status": "active"}, {"_id": 0}
     )
     if not card:
-        return {"has_card": False}
-    return {"has_card": True, "card": card}
+        return {"has_card": False, "issuer_live": False}
+    if not TEST_MODE:
+        return {
+            "has_card": False,
+            "issuer_live": False,
+            "legacy_demo_card_detected": True,
+            "message": "Lokale Demo-Karte ist in Production nicht als echte Karte verfügbar.",
+        }
+    card = dict(card)
+    raw_number = str(card.get("card_number") or "")
+    if raw_number:
+        card["card_number"] = f"•••• •••• •••• {raw_number.replace(' ', '')[-4:]}"
+    return {"has_card": True, "card": card, "issuer_live": False}
 
 
 @router.post("/order")
 async def order_card(req: OrderCard, request: Request):
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="BlitzCard-Ausgabe ist deaktiviert, bis ein verifizierter Karten-Issuer live verbunden ist.",
+        )
     user = await get_current_user(request)
     tier = next((t for t in CARD_TIERS if t["id"] == req.card_tier), None)
     if not tier:

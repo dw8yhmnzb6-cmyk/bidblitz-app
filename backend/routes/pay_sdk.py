@@ -23,6 +23,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 
 from core.security import get_current_user
+from core.payment_engine import transfer_between_wallets, TransactionType
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
@@ -188,69 +189,93 @@ async def get_session(session_id: str):
 
 @router.post("/session/{session_id}/confirm")
 async def confirm_session(session_id: str, request: Request):
-    """Authenticated user confirms payment. Debits wallet → credits merchant."""
+    """Authenticated user confirms one payment through the canonical wallet ledger."""
     user = await get_current_user(request)
+    user_id = str(user["_id"])
     s = await db.pay_sessions.find_one({"session_id": session_id})
     if not s:
         raise HTTPException(404, "Session nicht gefunden")
-    if s["status"] != "pending":
-        raise HTTPException(400, f"Session bereits {s['status']}")
 
-    # Session expiry check (30 min)
+    if s.get("status") == "paid":
+        if str(s.get("paid_by") or "") != user_id and user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Diese Zahlung wurde bereits von einem anderen Konto abgeschlossen")
+        return {
+            "ok": True,
+            "status": "paid",
+            "transaction_id": s.get("transaction_id"),
+            "success_url": s.get("success_url", ""),
+            "replayed": True,
+        }
+    if s.get("status") != "pending":
+        raise HTTPException(400, f"Session bereits {s.get('status')}")
+
     created = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00"))
-    age_s = (datetime.now(timezone.utc) - created).total_seconds()
-    if age_s > 1800:
-        await db.pay_sessions.update_one({"session_id": session_id}, {"$set": {"status": "expired"}})
+    if (datetime.now(timezone.utc) - created).total_seconds() > 1800:
+        await db.pay_sessions.update_one(
+            {"session_id": session_id, "status": "pending"},
+            {"$set": {"status": "expired", "expired_at": datetime.now(timezone.utc).isoformat()}},
+        )
         raise HTTPException(400, "Session abgelaufen")
 
-    balance = float(user.get("balance", 0))
-    if balance < s["amount"]:
-        raise HTTPException(400, f"Unzureichendes Guthaben. Benötigt: €{s['amount']:.2f}, vorhanden: €{balance:.2f}")
-
-    # Credit merchant user
     merchant = await db.users.find_one({"email": s["merchant_email"]})
     if not merchant:
         raise HTTPException(500, "Händler-Konto nicht mehr auffindbar")
+    merchant_id = str(merchant["_id"])
+    if merchant_id == user_id:
+        raise HTTPException(status_code=400, detail="Händler kann die eigene Checkout-Session nicht bezahlen")
 
-    tx_id = secrets.token_hex(8)
-    now = datetime.now(timezone.utc).isoformat()
-
-    # Wallet debit (user)
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -s["amount"]}})
-    # Wallet credit (merchant)
-    await db.users.update_one({"_id": merchant["_id"]}, {"$inc": {"balance": s["amount"]}})
-
-    # Ledger: 2 transactions (debit & credit)
-    await db.transactions.insert_many([
-        {
-            "id": tx_id, "user_id": str(user["_id"]), "type": "pay_sdk_debit",
-            "amount": -s["amount"], "description": f"BidBlitz Pay: {s.get('description') or s['merchant_name']}",
-            "status": "completed", "reference": session_id, "category": "pay_sdk",
-            "counterparty_email": s["merchant_email"], "created_at": now,
+    transfer = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=merchant_id,
+        amount=round(float(s["amount"]), 2),
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"BidBlitz Pay: {s.get('description') or s.get('merchant_name') or session_id}",
+        reference=f"PAYSDK-{session_id[:20]}",
+        metadata={
+            "session_id": session_id,
+            "merchant_email": s["merchant_email"],
+            "order_id": s.get("order_id", ""),
+            "source": "pay_sdk",
         },
-        {
-            "id": secrets.token_hex(8), "user_id": str(merchant["_id"]), "type": "pay_sdk_credit",
-            "amount": s["amount"], "description": f"BidBlitz Pay Einnahme — {s.get('order_id') or session_id}",
-            "status": "completed", "reference": session_id, "category": "pay_sdk",
-            "counterparty_email": user.get("email", ""), "created_at": now,
-        },
-    ])
-
-    await db.pay_sessions.update_one(
-        {"session_id": session_id},
-        {"$set": {"status": "paid", "paid_at": now, "paid_by": str(user["_id"]),
-                  "paid_by_email": user.get("email", ""), "transaction_id": tx_id}},
+        idempotency_key=f"pay-sdk:{session_id}:{user_id}",
     )
-    await db.pay_merchant_keys.update_one({"public_key": s["public_key"]}, {"$inc": {"total_paid": s["amount"]}})
+    if not transfer.success:
+        raise HTTPException(status_code=400, detail=transfer.error or "Wallet-Zahlung fehlgeschlagen")
 
-    # Fire webhook async (best-effort)
-    if s.get("webhook_url"):
+    now = datetime.now(timezone.utc).isoformat()
+    claimed = await db.pay_sessions.update_one(
+        {"session_id": session_id, "status": "pending"},
+        {"$set": {
+            "status": "paid",
+            "paid_at": now,
+            "paid_by": user_id,
+            "paid_by_email": user.get("email", ""),
+            "transaction_id": transfer.transaction_id,
+            "payment_reference": transfer.reference,
+        }},
+    )
+    if claimed.modified_count == 1:
+        await db.pay_merchant_keys.update_one(
+            {"public_key": s["public_key"]},
+            {"$inc": {"total_paid": round(float(s["amount"]), 2)}},
+        )
+    else:
+        fresh = await db.pay_sessions.find_one({"session_id": session_id}, {"_id": 0}) or {}
+        if fresh.get("status") != "paid" or str(fresh.get("paid_by") or "") != user_id:
+            raise HTTPException(status_code=409, detail="Checkout-Session wurde parallel geändert")
+
+    if claimed.modified_count == 1 and s.get("webhook_url"):
         key_doc = await db.pay_merchant_keys.find_one({"public_key": s["public_key"]})
         if key_doc:
             payload = {
-                "event": "session.paid", "session_id": session_id, "amount": s["amount"],
-                "currency": s["currency"], "order_id": s.get("order_id", ""),
-                "transaction_id": tx_id, "paid_at": now, "customer_email": user.get("email", ""),
+                "event": "session.paid",
+                "session_id": session_id,
+                "amount": s["amount"],
+                "currency": s["currency"],
+                "order_id": s.get("order_id", ""),
+                "transaction_id": transfer.transaction_id,
+                "paid_at": now,
+                "customer_email": user.get("email", ""),
             }
             sig = _sign(key_doc["secret_key"], payload)
             try:
@@ -258,26 +283,38 @@ async def confirm_session(session_id: str, request: Request):
                     await http.post(s["webhook_url"], json=payload, headers={"X-BidBlitz-Signature": sig})
             except Exception:
                 await db.pay_webhook_failures.insert_one({
-                    "session_id": session_id, "webhook_url": s["webhook_url"],
-                    "payload": payload, "failed_at": now,
+                    "session_id": session_id,
+                    "webhook_url": s["webhook_url"],
+                    "payload": payload,
+                    "failed_at": now,
                 })
 
-    return {"ok": True, "status": "paid", "transaction_id": tx_id, "success_url": s.get("success_url", "")}
+    return {
+        "ok": True,
+        "status": "paid",
+        "transaction_id": transfer.transaction_id,
+        "success_url": s.get("success_url", ""),
+        "replayed": transfer.idempotent_replay or claimed.modified_count == 0,
+    }
 
 
 @router.post("/session/{session_id}/cancel")
 async def cancel_session(session_id: str, request: Request):
+    """Only the merchant owner/admin may invalidate a pending checkout session."""
     user = await get_current_user(request)
-    _ = user  # any authed user can cancel a pending session they're viewing
     s = await db.pay_sessions.find_one({"session_id": session_id})
     if not s:
         raise HTTPException(404, "Session nicht gefunden")
+    if user.get("role") != "admin" and str(user.get("email") or "").lower() != str(s.get("merchant_email") or "").lower():
+        raise HTTPException(status_code=403, detail="Nur der Händler kann diese Checkout-Session abbrechen")
     if s["status"] != "pending":
         raise HTTPException(400, f"Session bereits {s['status']}")
-    await db.pay_sessions.update_one(
-        {"session_id": session_id},
+    result = await db.pay_sessions.update_one(
+        {"session_id": session_id, "status": "pending"},
         {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if result.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Session wurde parallel geändert")
     return {"ok": True, "status": "cancelled", "cancel_url": s.get("cancel_url", "")}
 
 

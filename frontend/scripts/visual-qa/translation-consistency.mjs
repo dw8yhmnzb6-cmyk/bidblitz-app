@@ -1,3 +1,4 @@
+import { findVisibleTranslationKey } from '../../tests/visual/translation-key-check.cjs';
 import { ensureOutputDir, rawAuditPath, readJson, routeFileMap, sanitizeIssue, translationReportPath, writeJson } from './shared.mjs';
 
 const raw = readJson(rawAuditPath, { results: [] });
@@ -31,14 +32,15 @@ for (const entry of raw.results || []) {
       before_screenshot: entry.screenshot,
     }));
   }
-  if (/\b[a-z0-9_-]+\.[a-z0-9_.-]+\b/.test(text)) {
+  const visibleTranslationKey = findVisibleTranslationKey(text);
+  if (visibleTranslationKey) {
     issues.push(sanitizeIssue({
       issue_id: `${entry.route_key}-${entry.viewport}-translation-key-${issues.length}`,
       severity: 'high',
       category: 'translation',
       route: entry.route,
       viewport: entry.viewport,
-      problem: 'An untranslated translation key appears to be visible.',
+      problem: `An untranslated translation key is visible: ${visibleTranslationKey}`,
       root_cause: 'Ein I18n-Key wurde nicht in eine lesbare Übersetzung aufgelöst.',
       affected_component: 'Visible translation key',
       suggested_fix: 'Fehlenden Übersetzungseintrag ergänzen oder richtigen Key binden.',

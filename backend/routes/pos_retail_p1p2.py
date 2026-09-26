@@ -47,10 +47,11 @@ async def create_bulk_discount(req: BulkDiscountRule, request: Request, store_id
 @router.post("/cart/apply-bulk-discounts")
 async def apply_bulk_discounts(request: Request, cart_id: str):
     """Prüft Cart-Items gegen Bulk-Discount-Regeln."""
-    await get_current_user(request)
+    user = await get_current_user(request)
     cart = await db.pos_carts.find_one({"cart_id": cart_id})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart nicht gefunden")
+    await _require_store_access(user, cart["store_id"])
     
     rules = await db.pos_bulk_discount_rules.find(
         {"store_id": cart["store_id"], "active": True}
@@ -212,10 +213,11 @@ async def create_vendor_return(req: VendorReturn, request: Request, store_id: st
 
 @router.post("/cart/upsell-suggestions")
 async def upsell_suggestions(request: Request, cart_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
     cart = await db.pos_carts.find_one({"cart_id": cart_id})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart nicht gefunden")
+    await _require_store_access(user, cart["store_id"])
     
     suggestions = []
     # Rule: Bier gekauft → Chips vorschlagen
@@ -275,7 +277,8 @@ async def create_pick_task(req: PickTask, request: Request, store_id: str):
 
 @router.get("/pick/tasks/pending")
 async def pending_pick_tasks(request: Request, store_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     tasks = await db.pos_pick_tasks.find(
         {"store_id": store_id, "status": "pending"},
         {"_id": 0}

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: bidblitz-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
@@ -51,9 +55,29 @@ jobs:
 
       - name: Run backend CI smoke suite
         env:
-          PYTHONPATH: ${{ github.workspace }}/backend
+          PYTHONPATH: backend
           DEMO_SEED: "false"
-        run: pytest backend/tests/test_ci_smoke.py
+        run: >-
+          pytest
+          backend/tests/test_ci_smoke.py
+          backend/tests/test_quick_topup_idempotency.py
+          backend/tests/test_stripe_wallet_settlement.py
+          backend/tests/test_stripe_bid_credit_settlement.py
+          backend/tests/test_bidblitz_pay_safety.py
+          backend/tests/test_admin_financial_metrics.py
+          backend/tests/test_wallet_reconciliation.py
+          backend/tests/test_payment_idempotency_index.py
+          backend/tests/test_topup_production_guard.py
+          backend/tests/test_admin_topup_approval.py
+          backend/tests/test_production_test_mode_guard.py
+          backend/tests/test_admin_grants_hardening.py
+          backend/tests/test_payment_engine_reconciliation_status.py
+          backend/tests/test_admin_wallet_safety.py
+          backend/tests/test_ev_settlement.py
+          backend/tests/test_mobility_local_pricing_contract.py
+          backend/tests/test_taxi_canonical_flow_contract.py
+          backend/tests/test_admin_navigation_contract.py
+          backend/tests/test_parcel_survey_money_safety.py
 
   frontend-eslint:
     runs-on: ubuntu-latest
@@ -71,3 +95,8 @@ jobs:
 
       - name: Run ESLint
         run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+
+      - name: Verify frontend update and cache safety
+        run: node frontend/scripts/check-update-safety.js
+      - name: Verify admin wallet retry contract
+        run: node --test frontend/scripts/admin-wallet-attempt.test.mjs

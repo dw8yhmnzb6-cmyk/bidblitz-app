@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from core.database import db
+from core.config import TEST_MODE
 from core.payment_engine import credit_wallet, TransactionType
 import csv
 import io
@@ -18,6 +19,15 @@ from bson import ObjectId
 
 router = APIRouter(prefix="/api/rewards", tags=["Rewards"])
 logger = logging.getLogger("bidblitz.rewards")
+
+
+def _require_random_value_rewards_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert.",
+        )
+
 
 # Streak reward table (day 1-7, then repeats day 7)
 STREAK_REWARDS = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 7, 7: 10}
@@ -453,7 +463,7 @@ async def _get_spin_status(user: dict, config: dict):
     is_premium = await _has_active_premium(uid)
     limit = int(config.get("premium_daily_spins", 3) if is_premium else config.get("free_daily_spins", 1))
     spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    remaining = max(0, limit - spins_today)
+    remaining = max(0, limit - spins_today) if TEST_MODE else 0
     next_reset = (datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
     return {
         "spins_today": spins_today,
@@ -461,7 +471,8 @@ async def _get_spin_status(user: dict, config: dict):
         "remaining": remaining,
         "is_premium": is_premium,
         "next_reset": next_reset,
-        "prizes": config.get("spin_rewards", []),
+        "prizes": config.get("spin_rewards", []) if TEST_MODE else [],
+        "value_random_rewards_enabled": bool(TEST_MODE),
     }
 
 
@@ -476,8 +487,8 @@ async def _build_mystery_boxes_payload(user: dict, config: dict):
     for box in config.get("mystery_boxes", []):
         boxes.append({
             **box,
-            "can_open_with_bidcoins": int(loyalty.get("coins_balance", 0) or 0) >= int(box.get("price_bidcoins", 0) or 0),
-            "premium_can_open_free": bool(is_premium and monthly_free < int(box.get("premium_free_opens_per_month", 0) or 0)),
+            "can_open_with_bidcoins": bool(TEST_MODE and int(loyalty.get("coins_balance", 0) or 0) >= int(box.get("price_bidcoins", 0) or 0)),
+            "premium_can_open_free": bool(TEST_MODE and is_premium and monthly_free < int(box.get("premium_free_opens_per_month", 0) or 0)),
         })
     return {
         "boxes": boxes,
@@ -485,6 +496,7 @@ async def _build_mystery_boxes_payload(user: dict, config: dict):
         "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
         "premium_free_used_this_month": monthly_free,
         "is_premium": is_premium,
+        "value_random_rewards_enabled": bool(TEST_MODE),
     }
 
 
@@ -510,6 +522,7 @@ async def _build_reward_hub_dashboard(user: dict):
     recent_activity = await db.reward_events.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     open_count = await db.reward_box_openings.count_documents({"user_id": uid})
     return {
+        "value_random_rewards_enabled": bool(TEST_MODE),
         "overview": {
             "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
             "bid_credits": int(user.get("bid_credits", 0) or 0),
@@ -526,7 +539,8 @@ async def _build_reward_hub_dashboard(user: dict):
         "recent_activity": recent_activity,
         "reward_status": reward_status,
         "config": {
-            "spin_enabled": config.get("spin_enabled", True),
+            "spin_enabled": bool(TEST_MODE and config.get("spin_enabled", True)),
+            "value_random_rewards_enabled": bool(TEST_MODE),
             "premium_cashback_multiplier": config.get("premium_cashback_multiplier", 1.5),
         },
     }
@@ -551,24 +565,57 @@ async def _ensure_user_loyalty(user_id: str):
 
 async def _credit_bidcoins(user_id: str, amount: int, source_type: str, description: str, source_id: str | None = None):
     if amount <= 0:
-        return
-    loyalty = await _ensure_user_loyalty(user_id)
-    new_total = int(loyalty.get("total_coins_earned", 0) or 0) + amount
-    new_badge = _badge_for_points(new_total)
-    await db.user_loyalty.update_one(
-        {"user_id": user_id},
-        {"$inc": {"coins_balance": amount, "total_coins_earned": amount}, "$set": {"level": new_badge, "updated_at": _now_iso()}},
+        return {"credited": False, "replayed": False}
+
+    await _ensure_user_loyalty(user_id)
+    marker_hash = hashlib.sha256(f"{source_type}:{source_id or description}".encode("utf-8")).hexdigest()[:24]
+    marker_field = f"grant_markers.{marker_hash}"
+
+    if source_id:
+        update = await db.user_loyalty.update_one(
+            {"user_id": user_id, marker_field: {"$exists": False}},
+            {
+                "$inc": {"coins_balance": amount, "total_coins_earned": amount},
+                "$set": {
+                    marker_field: {
+                        "source_type": source_type,
+                        "source_id": source_id,
+                        "amount": amount,
+                        "created_at": _now_iso(),
+                    },
+                    "updated_at": _now_iso(),
+                },
+            },
+            upsert=True,
+        )
+        replayed = update.modified_count != 1 and update.upserted_id is None
+    else:
+        await db.user_loyalty.update_one(
+            {"user_id": user_id},
+            {"$inc": {"coins_balance": amount, "total_coins_earned": amount}, "$set": {"updated_at": _now_iso()}},
+            upsert=True,
+        )
+        replayed = False
+
+    loyalty = await db.user_loyalty.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    new_badge = _badge_for_points(int(loyalty.get("total_coins_earned", 0) or 0))
+    await db.user_loyalty.update_one({"user_id": user_id}, {"$set": {"level": new_badge, "updated_at": _now_iso()}})
+
+    event_id = f"RWD-{marker_hash.upper()}"
+    await db.reward_events.update_one(
+        {"event_id": event_id},
+        {"$setOnInsert": {
+            "event_id": event_id,
+            "user_id": user_id,
+            "source_type": source_type,
+            "source_id": source_id,
+            "bidcoins": amount,
+            "description": description,
+            "created_at": _now_iso(),
+        }},
         upsert=True,
     )
-    await db.reward_events.insert_one({
-        "event_id": f"RWD-{source_type[:3].upper()}-{datetime.now(timezone.utc).strftime('%H%M%S%f')}",
-        "user_id": user_id,
-        "source_type": source_type,
-        "source_id": source_id,
-        "bidcoins": amount,
-        "description": description,
-        "created_at": _now_iso(),
-    })
+    return {"credited": not replayed, "replayed": replayed}
 
 
 async def _build_rewards_history(uid: str, reward_type: str | None = None, limit: int = 100):
@@ -660,34 +707,25 @@ async def _build_rewards_dashboard(user: dict):
 
 @router.post("/daily-claim")
 async def claim_daily_reward(request: Request):
-    """Claim daily login reward with streak tracking."""
+    """Claim one daily login reward exactly once."""
     user = await get_current_user(request)
     uid = user["_id"]
+    uid_str = str(uid)
     now = datetime.now(timezone.utc)
     today = today_str()
-
     last_claim = user.get("reward_last_claim")
-    streak = user.get("reward_streak", 0)
-
-    # Already claimed today?
-    if last_claim == today:
-        raise HTTPException(status_code=400, detail="Already claimed today")
-
+    streak = int(user.get("reward_streak", 0) or 0)
     yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
     if last_claim == yesterday:
-        # Consecutive day
         streak = min(streak + 1, 7)
-    else:
-        # Streak broken or first claim
+    elif last_claim != today:
         streak = 1
 
     reward = STREAK_REWARDS.get(streak, STREAK_REWARDS[7])
-
-    # Check comeback bonus
     comeback = 0
     comeback_message = None
-    if last_claim:
+    if last_claim and last_claim != today:
         last_dt = parse_date(last_claim)
         if last_dt:
             days_away = (now - last_dt).days
@@ -696,38 +734,66 @@ async def claim_daily_reward(request: Request):
                 comeback_message = f"Welcome back! +{COMEBACK_BONUS} bonus credits"
 
     total_add = reward + comeback
-
-    await db.users.update_one(
-        {"_id": uid},
+    claim = await db.users.update_one(
+        {"_id": uid, "reward_last_claim": {"$ne": today}},
         {
             "$inc": {"bid_credits": total_add, "total_reward_credits": total_add},
             "$set": {
                 "reward_last_claim": today,
                 "reward_streak": streak,
                 "last_active_date": today,
+                "reward_last_claim_reward": reward,
+                "reward_last_claim_comeback": comeback,
             },
         },
     )
-    await _credit_bidcoins(str(uid), total_add, "daily_login", f"Daily Login Reward ({streak} Tage)")
+
+    replayed = claim.modified_count != 1
+    if replayed:
+        current = await db.users.find_one({"_id": uid}, {"_id": 0, "reward_last_claim": 1, "reward_streak": 1, "reward_last_claim_reward": 1, "reward_last_claim_comeback": 1, "bid_credits": 1, "total_reward_credits": 1}) or {}
+        if current.get("reward_last_claim") != today:
+            raise HTTPException(status_code=409, detail="Daily Reward wurde parallel geändert")
+        streak = int(current.get("reward_streak") or streak)
+        reward = int(current.get("reward_last_claim_reward") or STREAK_REWARDS.get(streak, 0))
+        comeback = int(current.get("reward_last_claim_comeback") or 0)
+        total_add = reward + comeback
+
+    await _credit_bidcoins(
+        uid_str,
+        total_add,
+        "daily_login",
+        f"Daily Login Reward ({streak} Tage)",
+        source_id=f"daily:{today}",
+    )
+
     if streak in REWARDS_V3_STREAKS:
         cfg = await _get_rewards_v3_config()
         streak_bonus = int(cfg.get(f"streak_bonus_{streak}", 0) or 0)
-        already = await db.reward_events.find_one({"user_id": str(uid), "source_type": f"streak_{streak}"})
-        if streak_bonus > 0 and not already:
-            await _credit_bidcoins(str(uid), streak_bonus, f"streak_{streak}", f"Streak Bonus {streak} Tage")
+        if streak_bonus > 0:
+            await _credit_bidcoins(
+                uid_str,
+                streak_bonus,
+                f"streak_{streak}",
+                f"Streak Bonus {streak} Tage",
+                source_id=f"streak:{streak}:{today}",
+            )
 
-    # Create reward notification
-    await db.reward_notifications.insert_one({
-        "user_id": str(uid),
-        "type": "daily_reward",
-        "credits": reward,
-        "streak_day": streak,
-        "comeback_bonus": comeback,
-        "read": False,
-        "created_at": now.isoformat(),
-    })
+    await db.reward_notifications.update_one(
+        {"user_id": uid_str, "type": "daily_reward", "date": today},
+        {"$setOnInsert": {
+            "user_id": uid_str,
+            "type": "daily_reward",
+            "date": today,
+            "credits": reward,
+            "streak_day": streak,
+            "comeback_bonus": comeback,
+            "read": False,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
 
-    updated = await db.users.find_one({"_id": uid})
+    updated = await db.users.find_one({"_id": uid}) or {}
     return {
         "credits_awarded": reward,
         "streak_day": streak,
@@ -735,6 +801,7 @@ async def claim_daily_reward(request: Request):
         "comeback_message": comeback_message,
         "total_credits": updated.get("bid_credits", 0),
         "total_reward_credits": updated.get("total_reward_credits", 0),
+        "replayed": replayed,
     }
 
 
@@ -790,45 +857,52 @@ async def _get_milestones(user, uid):
 
 @router.post("/milestone/{milestone_id}")
 async def claim_milestone(milestone_id: str, request: Request):
-    """Claim a completed milestone reward."""
+    """Claim a completed milestone reward exactly once."""
     user = await get_current_user(request)
     uid = str(user["_id"])
 
     if milestone_id not in MILESTONES:
         raise HTTPException(status_code=400, detail="Invalid milestone")
 
-    claimed = user.get("milestones_claimed", {})
-    if claimed.get(milestone_id):
-        raise HTTPException(status_code=400, detail="Already claimed")
-
     milestones = await _get_milestones(user, uid)
     ms = next((m for m in milestones if m["id"] == milestone_id), None)
     if not ms or not ms["completed"]:
         raise HTTPException(status_code=400, detail="Milestone not completed yet")
 
-    credits = MILESTONES[milestone_id]["credits"]
-    await db.users.update_one(
-        {"_id": user["_id"]},
+    credits = int(MILESTONES[milestone_id]["credits"])
+    marker = f"milestones_claimed.{milestone_id}"
+    claim = await db.users.update_one(
+        {"_id": user["_id"], marker: {"$ne": True}},
         {
             "$inc": {"bid_credits": credits, "total_reward_credits": credits},
-            "$set": {f"milestones_claimed.{milestone_id}": True},
+            "$set": {marker: True},
         },
     )
+    replayed = claim.modified_count != 1
+    if replayed:
+        current = await db.users.find_one({"_id": user["_id"], marker: True}, {"_id": 1})
+        if not current:
+            raise HTTPException(status_code=409, detail="Milestone wurde parallel geändert")
 
-    await db.reward_notifications.insert_one({
-        "user_id": uid,
-        "type": "milestone",
-        "milestone_id": milestone_id,
-        "credits": credits,
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await db.reward_notifications.update_one(
+        {"user_id": uid, "type": "milestone", "milestone_id": milestone_id},
+        {"$setOnInsert": {
+            "user_id": uid,
+            "type": "milestone",
+            "milestone_id": milestone_id,
+            "credits": credits,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
 
-    updated = await db.users.find_one({"_id": user["_id"]})
+    updated = await db.users.find_one({"_id": user["_id"]}) or {}
     return {
         "credits_awarded": credits,
         "milestone_id": milestone_id,
         "total_credits": updated.get("bid_credits", 0),
+        "replayed": replayed,
     }
 
 
@@ -881,6 +955,7 @@ async def get_mystery_boxes(request: Request):
 @router.post("/mystery-boxes/open")
 async def open_mystery_box(req: MysteryBoxOpenRequest, request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     box = next((item for item in config.get("mystery_boxes", []) if item.get("box_key") == req.box_key), None)
@@ -993,16 +1068,17 @@ async def _get_plinko_status(user: dict, config: dict):
     premium_multiplier = float(config.get("premium_cashback_multiplier", 1.5) or 1.5) if is_premium else 1.0
     last_drop = reward_profile.get("last_plinko_drop_at")
     return {
-        "enabled": bool(config.get("plinko_enabled", True)),
+        "enabled": bool(TEST_MODE and config.get("plinko_enabled", True)),
+        "value_random_rewards_enabled": bool(TEST_MODE),
         "is_premium": is_premium,
         "free_limit": free_limit,
-        "free_remaining": max(0, free_limit - free_used),
-        "ticket_balance": tickets,
-        "bidcoin_cost": int(config.get("plinko_bidcoin_cost", 40) or 0),
+        "free_remaining": max(0, free_limit - free_used) if TEST_MODE else 0,
+        "ticket_balance": tickets if TEST_MODE else 0,
+        "bidcoin_cost": int(config.get("plinko_bidcoin_cost", 40) or 0) if TEST_MODE else 0,
         "premium_multiplier": premium_multiplier,
         "energy_cost": int(config.get("plinko_energy_cost", 0) or 0),
         "next_reset": next_reset,
-        "payouts": config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"]),
+        "payouts": config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"]) if TEST_MODE else [],
         "last_drop_at": last_drop,
     }
 
@@ -1060,6 +1136,7 @@ async def reward_plinko_history(request: Request, limit: int = 20):
 @router.post("/plinko/drop")
 async def reward_plinko_drop(req: RewardPlinkoDropRequest, request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     if not config.get("plinko_enabled", True):
@@ -1161,6 +1238,7 @@ async def reward_plinko_drop(req: RewardPlinkoDropRequest, request: Request):
 @router.post("/spin-wheel/spin")
 async def reward_spin(request: Request):
     user = await get_current_user(request)
+    _require_random_value_rewards_test_mode()
     uid = str(user["_id"])
     config = await _get_reward_hub_config()
     if not config.get("spin_enabled", True):

@@ -5,6 +5,7 @@ import {
   CreditCard, Smartphone, ArrowUpRight, QrCode
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import { QRCodeSVG } from "qrcode.react";
 import { api } from "../services/api";
 
 const panelBg = "rgba(8,12,20,0.7)";
@@ -14,60 +15,94 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const PaymentPage = ({ onBack, onNavigate }) => {
   const { t, lang } = useI18n();
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
-  const L = {
+  const paymentCopy = {
     de: { checkoutOnly: "Nur für Händler & Kasse", showOnlyAtCheckout: "Diesen Code nur an der Kasse zeigen", merchantScans: "Der Händler scannt deinen Code, gibt den Betrag ein und belastet deine Wallet direkt.", sendMoney: "Geld senden", notForCheckout: "Nicht für Kasse", topupWallet: "Wallet aufladen", onlineOrCheckout: "Online oder an Kasse", checkoutFlow: "Kassen-Flow", openPay: "1. Bezahlen öffnen", showCode: "2. Code zeigen", done: "3. Fertig", openPayDesc: "Du öffnest diesen Screen direkt aus dem Wallet.", showCodeDesc: "Der Händler scannt deinen Code an der Kasse.", doneDesc: "Die Bestätigung erscheint sofort. Für private Transfers bitte 'Geld senden' nutzen." },
     en: { checkoutOnly: "For merchant checkout only", showOnlyAtCheckout: "Show this code only at checkout", merchantScans: "The merchant scans your code, enters the amount and charges your wallet directly.", sendMoney: "Send money", notForCheckout: "Not for checkout", topupWallet: "Top up wallet", onlineOrCheckout: "Online or at checkout", checkoutFlow: "Checkout flow", openPay: "1. Open Pay", showCode: "2. Show code", done: "3. Done", openPayDesc: "Open this screen directly from the wallet.", showCodeDesc: "The merchant scans your code at checkout.", doneDesc: "Confirmation appears instantly. For private transfers, please use 'Send money'." },
     sq: { checkoutOnly: "Vetëm për tregtarin dhe arkën", showOnlyAtCheckout: "Shfaq këtë kod vetëm në arkë", merchantScans: "Tregtari skanon kodin tënd, vendos shumën dhe e ngarkon direkt nga wallet-i yt.", sendMoney: "Dërgo para", notForCheckout: "Jo për arkë", topupWallet: "Mbush wallet-in", onlineOrCheckout: "Online ose në arkë", checkoutFlow: "Rrjedha e arkës", openPay: "1. Hap Paguaj", showCode: "2. Shfaq kodin", done: "3. U krye", openPayDesc: "E hap këtë ekran direkt nga wallet-i.", showCodeDesc: "Tregtari skanon kodin tënd në arkë.", doneDesc: "Konfirmimi shfaqet menjëherë. Për transfere private, përdor 'Dërgo para'." },
     ar: { checkoutOnly: "للتاجر ونقطة الدفع فقط", showOnlyAtCheckout: "اعرض هذا الرمز عند نقطة الدفع فقط", merchantScans: "يقوم التاجر بمسح رمزك وإدخال المبلغ وخصمه مباشرة من محفظتك.", sendMoney: "إرسال المال", notForCheckout: "ليس لنقطة الدفع", topupWallet: "شحن المحفظة", onlineOrCheckout: "عبر الإنترنت أو عند نقطة الدفع", checkoutFlow: "مسار نقطة الدفع", openPay: "1. افتح الدفع", showCode: "2. اعرض الرمز", done: "3. تم", openPayDesc: "تفتح هذه الشاشة مباشرة من المحفظة.", showCodeDesc: "يقوم التاجر بمسح رمزك عند نقطة الدفع.", doneDesc: "يظهر التأكيد فورًا. للتحويلات الخاصة استخدم 'إرسال المال'." },
-  }[locale];
+  };
+  const L = paymentCopy[locale] || paymentCopy.de;
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [feeInfo, setFeeInfo] = useState(null);
+  const [paymentError, setPaymentError] = useState("");
   const timerRef = useRef(null);
+  const expiresAtRef = useRef(0);
+  const refreshPendingRef = useRef(false);
 
   const loadBarcode = useCallback(async () => {
     try {
       const res = await api.getMyBarcode();
+      const seconds = Number(res.seconds_remaining ?? res.expires_in ?? 0);
+      if (!res?.barcode || !Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error("Zahlungscode ist abgelaufen oder nicht verfügbar.");
+      }
+      expiresAtRef.current = Date.now() + seconds * 1000;
       setBarcode(res);
-      setSecondsLeft(res.seconds_remaining || 0);
+      setSecondsLeft(Math.ceil(seconds));
+      setPaymentError("");
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Zahlungscode konnte nicht geladen werden.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { loadBarcode(); api.getFeeInfo().then(setFeeInfo).catch(() => {}); }, [loadBarcode]);
 
-  // Countdown timer
+  // Wall-clock countdown: background tabs cannot extend a payment code.
   useEffect(() => {
-    if (secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(p => {
-          if (p <= 1) { clearInterval(timerRef.current); loadBarcode(); return 0; }
-          return p - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [secondsLeft, loadBarcode]);
+    if (!barcode) return undefined;
+    let expired = false;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (!expired && remaining === 0) {
+        expired = true;
+        setBarcode(null);
+        refresh();
+      }
+    };
+    timerRef.current = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  // refresh is intentionally read at expiry time; barcode change owns the timer lifecycle.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barcode]);
 
   const refresh = async () => {
+    if (refreshPendingRef.current) return;
+    refreshPendingRef.current = true;
     setRefreshing(true);
+    setBarcode(null);
+    setSecondsLeft(0);
     try {
       const res = await api.refreshBarcode();
-      setBarcode(p => ({ ...p, ...res }));
-      setSecondsLeft(res.seconds_remaining || 0);
+      const seconds = Number(res.seconds_remaining ?? res.expires_in ?? 0);
+      if (!res?.barcode || !Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error("Zahlungscode ist abgelaufen oder nicht verfügbar.");
+      }
+      expiresAtRef.current = Date.now() + seconds * 1000;
+      setBarcode(res);
+      setSecondsLeft(Math.ceil(seconds));
+      setPaymentError("");
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Zahlungscode konnte nicht erneuert werden.");
+    } finally {
+      refreshPendingRef.current = false;
+      setRefreshing(false);
     }
-    setRefreshing(false);
   };
 
   const openBuyCredits = async (pkgId) => {
     try {
+      setPaymentError("");
       const origin = window.location.origin;
       const res = await fetch(`${API}/api/stripe/checkout`, {
         method: "POST",
@@ -75,12 +110,17 @@ const PaymentPage = ({ onBack, onNavigate }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ package_id: pkgId, origin_url: origin }),
       });
-      const data = await res.json();
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = typeof data?.detail === "string" ? data.detail : "Wallet-Aufladung konnte nicht gestartet werden.";
+        throw new Error(detail);
       }
+      if (!data.checkout_url) {
+        throw new Error("Stripe Checkout hat keine Zahlungs-URL zurückgegeben.");
+      }
+      window.location.href = data.checkout_url;
     } catch (error) {
-      void error;
+      setPaymentError(error?.message || "Wallet-Aufladung konnte nicht gestartet werden.");
     }
   };
 
@@ -105,6 +145,24 @@ const PaymentPage = ({ onBack, onNavigate }) => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+        {paymentError && (
+          <div
+            className="rounded-2xl border border-[#FF4757]/20 bg-[#FF4757]/[0.07] px-4 py-3"
+            data-testid="payment-error"
+            role="alert"
+          >
+            <p className="text-[11px] font-bold text-[#FF6B7A]">Zahlung konnte nicht ausgeführt werden</p>
+            <p className="mt-1 break-words text-[10px] text-white/55">{paymentError}</p>
+            <button
+              type="button"
+              onClick={loadBarcode}
+              className="mt-2 rounded-lg bg-white/[0.06] px-3 py-1.5 text-[9px] font-bold text-white/65"
+              data-testid="payment-error-retry"
+            >
+              Erneut prüfen
+            </button>
+          </div>
+        )}
 
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-start gap-3">
@@ -142,14 +200,18 @@ const PaymentPage = ({ onBack, onNavigate }) => {
             {/* Barcode display */}
             <div className="text-center mb-3">
               <p className="text-[9px] text-white/25 mb-2">{t("pay.your_code") || "Your Payment Code"}</p>
-              <div data-testid="barcode-display" className="bg-white rounded-xl p-4 mx-auto max-w-[200px]">
-                {/* Barcode visual representation */}
-                <div className="flex items-center justify-center gap-[2px] mb-2">
-                  {barcode.barcode.split("").map((c, i) => (
-                    <div key={i} className="bg-black" style={{ width: (c.charCodeAt(0) % 3) + 1, height: 48 }} />
-                  ))}
+              <div data-testid="barcode-display" className="bg-white rounded-xl p-4 mx-auto max-w-[220px]">
+                <div className="flex justify-center">
+                  <QRCodeSVG
+                    value={barcode.barcode}
+                    size={176}
+                    level="H"
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    includeMargin={false}
+                  />
                 </div>
-                <p className="text-[14px] font-mono font-black text-black tracking-widest">{barcode.barcode}</p>
+                <p className="mt-3 break-all text-[10px] font-mono font-black text-black tracking-wide">{barcode.barcode}</p>
               </div>
             </div>
 

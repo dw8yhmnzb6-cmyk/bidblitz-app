@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart3, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent, TrendingUp, Trophy } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [buyingSaleId, setBuyingSaleId] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const flashPurchaseKeysRef = useRef({});
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -104,13 +105,29 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
       toast.error("Bitte zuerst anmelden, um einen Flash Sale zu kaufen.");
       return;
     }
+
+    if (!flashPurchaseKeysRef.current[saleId]) {
+      flashPurchaseKeysRef.current[saleId] = typeof crypto?.randomUUID === "function"
+        ? `commerce-flash-${crypto.randomUUID()}`
+        : `commerce-flash-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = flashPurchaseKeysRef.current[saleId];
+
     setBuyingSaleId(saleId);
     trackEvent("cta_click", "flash_sale_buy", saleId);
     try {
-      const result = await api.buyCommerceFlashSale(saleId, { use_shipping: false });
+      const result = await api.buyCommerceFlashSale(
+        saleId,
+        { use_shipping: false, idempotency_key: idempotencyKey },
+        idempotencyKey,
+      );
+      delete flashPurchaseKeysRef.current[saleId];
       toast.success(result.message || "Flash Sale gekauft.");
       await loadOverview();
     } catch (error) {
+      if (!error?.retryable && error?.status && error.status < 500 && error.status !== 409) {
+        delete flashPurchaseKeysRef.current[saleId];
+      }
       toast.error(error.message || "Kauf fehlgeschlagen.");
     } finally {
       setBuyingSaleId("");
@@ -300,7 +317,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-[#ffd8b5]">Flash Sales</p>
-                <h2 className="mt-2 text-base md:text-lg font-bold">Kurzfristige Commerce-Deals mit echtem Wallet-Checkout</h2>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Kurzfristige Commerce-Deals mit sicherem Checkout</h2>
               </div>
               <button onClick={() => onNavigate("/marketplace")} data-testid="commerce-flash-more-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/70">Mehr Produkte</button>
             </div>
@@ -331,14 +348,25 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                       <button onClick={() => openMarketplaceDetail(sale.listing_id)} data-testid={`flash-sale-detail-${sale.sale_id}`} className="rounded-full border border-white/10 px-4 py-3 text-sm font-semibold text-white/80">
                         Details
                       </button>
-                      <button
-                        onClick={() => handleBuyFlashSale(sale.sale_id)}
-                        disabled={buyingSaleId === sale.sale_id}
-                        data-testid={`flash-sale-buy-${sale.sale_id}`}
-                        className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
-                      >
-                        {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
-                      </button>
+                      {sale.seller_id ? (
+                        <button
+                          disabled
+                          data-testid={`flash-sale-escrow-pending-${sale.sale_id}`}
+                          className="rounded-full border border-[#ff7a18]/25 bg-[#ff7a18]/10 px-4 py-3 text-sm font-bold text-[#ffd8b5] opacity-80"
+                          title="Externe Flash-Sale-Verkäufer werden erst nach vollständiger Escrow-Anbindung freigeschaltet."
+                        >
+                          Escrow noch nicht live
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleBuyFlashSale(sale.sale_id)}
+                          disabled={buyingSaleId === sale.sale_id}
+                          data-testid={`flash-sale-buy-${sale.sale_id}`}
+                          className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
+                        >
+                          {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

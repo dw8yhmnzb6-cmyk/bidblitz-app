@@ -7,6 +7,8 @@ NO FAKE DRIVERS - Only registered verified users.
 import secrets
 import math
 import logging
+import hashlib
+import json
 from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -17,6 +19,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from utils.commission import DRIVER_COMMISSION, PLATFORM_COMMISSION
 from models.taxi import (
     OperatorRegistration,
     FavoriteLocationRequest,
@@ -924,7 +927,7 @@ async def toggle_private_driver_online(request: Request):
 async def approve_private_driver(driver_id: str, request: Request):
     """Admin: Approve a private driver."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.private_drivers.update_one(
@@ -1013,7 +1016,7 @@ async def toggle_driver_online(request: Request):
 async def list_taxi_operators(request: Request, status: Optional[str] = None):
     """Admin: List all taxi operators."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     query = {}
@@ -1029,7 +1032,7 @@ async def list_taxi_operators(request: Request, status: Optional[str] = None):
 async def approve_taxi_operator(operator_id: str, request: Request):
     """Admin: Approve a taxi operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.taxi_operators.update_one(
@@ -1071,7 +1074,7 @@ async def approve_taxi_operator(operator_id: str, request: Request):
 async def reject_taxi_operator(operator_id: str, request: Request, reason: str = ""):
     """Admin: Reject a taxi operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     result = await db.taxi_operators.update_one(
@@ -1093,7 +1096,7 @@ async def reject_taxi_operator(operator_id: str, request: Request, reason: str =
 async def set_operator_commission(operator_id: str, request: Request):
     """Admin: Manually set commission rate for an operator."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     body = await request.json()
@@ -1183,8 +1186,6 @@ def detect_region(lat: float, lng: float) -> str:
         return "dubai"
     return "default"
 
-DRIVER_COMMISSION = 0.85  # Driver gets 85%
-PLATFORM_COMMISSION = 0.15  # Platform gets 15%
 CANCELLATION_FEE = 3.00
 MIN_WALLET_BALANCE = 10.00
 
@@ -1214,6 +1215,72 @@ class RideMessageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=400)
 
 
+def _require_taxi_booking_idempotency_key(req: FlexBookRequest, request: Request) -> str:
+    key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
+
+
+def _taxi_booking_request_fingerprint(req: FlexBookRequest) -> str:
+    if hasattr(req, "model_dump"):
+        payload = req.model_dump(exclude={"idempotency_key"})
+    else:
+        payload = req.dict(exclude={"idempotency_key"})
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+async def _finalize_taxi_booking_replay(ride: dict, user_id: str) -> None:
+    """Repair quote/promo side effects after a persisted ride is replayed."""
+    quote_id = ride.get("pricing_quote_id")
+    client_key = ride.get("booking_idempotency_key")
+    ride_id = ride.get("ride_id")
+    if quote_id and client_key and ride_id:
+        try:
+            await db.taxi_price_quotes.update_one(
+                {
+                    "quote_id": quote_id,
+                    "$or": [
+                        {
+                            "status": "booking",
+                            "booking_idempotency_key": client_key,
+                            "booking_user_id": str(user_id),
+                            "booking_ride_id": ride_id,
+                        },
+                        {"status": "used", "ride_id": ride_id},
+                    ],
+                },
+                {"$set": {
+                    "status": "used",
+                    "used_at": datetime.now(timezone.utc).isoformat(),
+                    "ride_id": ride_id,
+                }},
+            )
+        except Exception as exc:
+            logger.warning("Taxi quote replay finalization failed: %s", exc)
+
+    promo = ride.get("promo") or {}
+    if promo.get("code") and ride_id:
+        try:
+            from utils.taxi_promo import record_redemption
+            await record_redemption(
+                str(user_id),
+                promo["code"],
+                ride_id,
+                promo.get("discount") or 0,
+            )
+        except Exception as exc:
+            logger.warning("Taxi promo replay finalization failed: %s", exc)
+
+
+def NumberErrorSafe(lat, lng) -> bool:
+    try:
+        return lat is not None and lng is not None and math.isfinite(float(lat)) and math.isfinite(float(lng))
+    except (TypeError, ValueError):
+        return False
+
+
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance in km using Haversine formula."""
     R = 6371
@@ -1221,6 +1288,53 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     dlat, dlng = math.radians(lat2 - lat1), math.radians(lng2 - lng1)
     a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
+async def get_driving_route_metrics(points: List[tuple]) -> tuple:
+    """Return (distance_km, duration_minutes, source).
+
+    Uses Mapbox Directions when configured; falls back to a conservative
+    Haversine estimate so booking still works if the provider is unavailable.
+    """
+    if len(points) < 2:
+        return 0.0, 5.0, "fallback_haversine"
+
+    fallback_distance = 0.0
+    for idx in range(len(points) - 1):
+        fallback_distance += haversine_distance(*points[idx], *points[idx + 1])
+    fallback_duration = max(5.0, (fallback_distance / 30.0) * 60.0)
+
+    import os
+    token = os.environ.get("MAPBOX_TOKEN") or os.environ.get("REACT_APP_MAPBOX_TOKEN") or ""
+    if not token:
+        return fallback_distance, fallback_duration, "fallback_haversine"
+
+    coordinates = ";".join(f"{lng},{lat}" for lat, lng in points)
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            response = await client.get(
+                f"https://api.mapbox.com/directions/v5/mapbox/driving/{coordinates}",
+                params={
+                    "access_token": token,
+                    "overview": "false",
+                    "steps": "false",
+                    "alternatives": "false",
+                },
+            )
+        if response.status_code == 200:
+            routes = response.json().get("routes") or []
+            if routes:
+                route = routes[0]
+                distance_km = max(0.0, float(route.get("distance") or 0.0) / 1000.0)
+                duration_minutes = max(1.0, float(route.get("duration") or 0.0) / 60.0)
+                if distance_km > 0:
+                    return distance_km, duration_minutes, "mapbox_directions"
+        logger.warning("Taxi directions provider returned status %s", response.status_code)
+    except Exception as exc:
+        logger.warning("Taxi directions lookup failed: %s", exc)
+
+    return fallback_distance, fallback_duration, "fallback_haversine"
 
 
 def calculate_bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -1306,6 +1420,7 @@ async def calculate_fare_with_overrides(
     car_type: str,
     region: str,
 ) -> dict:
+    # 1) Explicit geofenced operator/admin zones stay the most specific source.
     zone = await _find_matching_tariff_zone(pickup_lat, pickup_lng)
     city_key = _normalize_city_key(pickup_address)
     city_doc = None
@@ -1328,8 +1443,78 @@ async def calculate_fare_with_overrides(
             "region_label": zone.get("name") or region,
             "tariff_zone": {"id": zone.get("id"), "label": zone.get("name") or "Zone"},
             "pricing_source": "zone",
+            "currency": "EUR",
+            "booking_supported": True,
+            "min_balance": MIN_WALLET_BALANCE,
         }
 
+    # 2) Canonical Mobility pricing: country -> city override -> transport mode.
+    try:
+        from routes.mobility_platform import _resolve_pricing_context, build_option
+        pricing_context = await _resolve_pricing_context(pickup_lat, pickup_lng, pickup_address)
+        if "taxi" in (pricing_context.get("modes") or {}):
+            option = build_option(
+                "taxi",
+                distance_km,
+                max(1, round(duration_minutes)),
+                1.0,
+                55,
+                pricing_context,
+            )
+            mode = (pricing_context.get("modes") or {}).get("taxi") or {}
+            vehicle_multiplier = {
+                "standard": 1.0,
+                "premium": float(mode.get("premium_multiplier", 1.35) or 1.35),
+                "van": float(mode.get("van_multiplier", 1.20) or 1.20),
+            }.get(car_type, 1.0)
+            total = round(float(option.get("price_local") or 0) * vehicle_multiplier, 2)
+            base_fare = round(float(mode.get("base") or 0) * vehicle_multiplier, 2)
+            booking_fee = round(float(mode.get("booking_fee") or 0) * vehicle_multiplier, 2)
+            per_min = float(mode.get("per_min") or 0)
+            time_cost = round(max(1, round(duration_minutes)) * per_min * vehicle_multiplier, 2)
+            distance_cost = max(0.0, round(total - base_fare - booking_fee - time_cost, 2))
+            region_label = pricing_context.get("city") or pricing_context.get("region") or pricing_context.get("country") or region
+            return {
+                "base_fare": base_fare,
+                "booking_fee": booking_fee,
+                "distance_cost": distance_cost,
+                "time_cost": time_cost,
+                "total": total,
+                "driver_earnings": round(total * DRIVER_COMMISSION, 2),
+                "platform_fee": round(total * PLATFORM_COMMISSION, 2),
+                "region": pricing_context.get("country_code") or region,
+                "region_label": region_label,
+                "pricing_source": "mobility_profile",
+                "pricing_basis": option.get("pricing_basis"),
+                "profile_scope": option.get("pricing_scope") or pricing_context.get("profile_scope") or "country",
+                "currency": option.get("currency") or "EUR",
+                "booking_supported": bool(option.get("booking_supported", True)),
+                "settlement_reason": option.get("settlement_reason"),
+                "vehicle_multiplier": vehicle_multiplier,
+                "min_balance": float(mode.get("min_balance", MIN_WALLET_BALANCE) or 0),
+            }
+        if pricing_context.get("strict_modes"):
+            return {
+                "base_fare": 0.0,
+                "booking_fee": 0.0,
+                "distance_cost": 0.0,
+                "time_cost": 0.0,
+                "total": 0.0,
+                "driver_earnings": 0.0,
+                "platform_fee": 0.0,
+                "region": pricing_context.get("country_code") or region,
+                "region_label": pricing_context.get("city") or pricing_context.get("country") or pricing_context.get("region") or "Nicht verfügbar",
+                "pricing_source": "mobility_profile_unavailable",
+                "profile_scope": pricing_context.get("profile_scope") or "country",
+                "currency": pricing_context.get("currency") or "EUR",
+                "booking_supported": False,
+                "settlement_reason": "Für diesen Standort ist noch kein verifizierter Taxi-Tarif freigeschaltet.",
+                "min_balance": 0.0,
+            }
+    except Exception as exc:
+        logger.warning("Canonical taxi pricing lookup failed; using legacy fallback: %s", exc)
+
+    # 3) Legacy city defaults remain as a compatibility fallback.
     if city_doc and isinstance(city_doc.get("options"), dict) and isinstance(city_doc["options"].get("pricing"), dict):
         pricing = city_doc["options"]["pricing"]
         base_fare = float(pricing.get("base_fare") or 0)
@@ -1348,11 +1533,174 @@ async def calculate_fare_with_overrides(
             "region_label": city_doc.get("options", {}).get("region_label") or city_doc.get("city_label") or city_key,
             "city_default": {"city": city_key, "label": city_doc.get("city_label") or city_key.title()},
             "fixed_fares": city_doc.get("options", {}).get("airport_fixed_fares") or {},
-            "pricing_source": "city",
+            "pricing_source": "city_legacy",
+            "currency": "EUR",
+            "booking_supported": True,
+            "min_balance": MIN_WALLET_BALANCE,
         }
 
     fallback = calculate_fare(distance_km, duration_minutes, car_type, region)
-    return {**fallback, "pricing_source": "region"}
+    return {
+        **fallback,
+        "pricing_source": "region_legacy",
+        "currency": "EUR",
+        "booking_supported": True,
+        "min_balance": MIN_WALLET_BALANCE,
+    }
+
+
+TAXI_QUOTE_TTL_SECONDS = 120
+
+
+def _taxi_quote_coord_match(left, right, tolerance: float = 0.00002) -> bool:
+    try:
+        return abs(float(left) - float(right)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def _taxi_normalized_promo(value: Optional[str]) -> str:
+    return str(value or "").strip().upper()
+
+
+def _taxi_parse_pricing_time(value: Optional[str]) -> datetime:
+    if not value:
+        return datetime.now(timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Ungültige Abholzeit") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _taxi_schedule_key(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return _taxi_parse_pricing_time(value).replace(microsecond=0).isoformat()
+
+
+async def _load_taxi_price_quote(quote_id: Optional[str], user_id: str, req: FlexBookRequest) -> Optional[dict]:
+    if not quote_id:
+        return None
+
+    quote_doc = await db.taxi_price_quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if not quote_doc:
+        raise HTTPException(status_code=409, detail="Preisangebot nicht gefunden. Bitte Preis neu berechnen.")
+
+    quote_user_id = str(quote_doc.get("user_id") or "")
+    if quote_user_id and quote_user_id != str(user_id):
+        raise HTTPException(status_code=403, detail="Preisangebot gehört zu einem anderen Konto.")
+
+    status = str(quote_doc.get("status") or "active")
+    if status in {"failed", "used", "claimed"}:
+        raise HTTPException(status_code=409, detail="Preisangebot ist nicht mehr frei verfügbar. Bitte Preis neu berechnen.")
+    if status not in {"active", "booking"}:
+        raise HTTPException(status_code=409, detail="Preisangebot hat einen ungültigen Status. Bitte Preis neu berechnen.")
+
+    try:
+        expires_at = datetime.fromisoformat(str(quote_doc.get("expires_at") or ""))
+    except Exception:
+        expires_at = None
+    if not expires_at or expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=409, detail="Preisangebot ist abgelaufen. Bitte Preis neu berechnen.")
+
+    vehicle_type = req.vehicle_type.value if hasattr(req.vehicle_type, "value") else str(req.vehicle_type)
+    if str(quote_doc.get("vehicle_type") or "") != vehicle_type:
+        raise HTTPException(status_code=409, detail="Preisangebot passt nicht zur gewählten Fahrzeugklasse.")
+
+    if req.stops:
+        raise HTTPException(status_code=409, detail="Zwischenstopps erfordern eine neue Preisberechnung.")
+
+    for key, requested in (
+        ("pickup_lat", req.pickup_lat),
+        ("pickup_lng", req.pickup_lng),
+        ("dropoff_lat", req.dropoff_lat),
+        ("dropoff_lng", req.dropoff_lng),
+    ):
+        if not _taxi_quote_coord_match(quote_doc.get(key), requested):
+            raise HTTPException(status_code=409, detail="Route wurde geändert. Bitte Preis neu berechnen.")
+
+    if _taxi_normalized_promo(quote_doc.get("promo_code")) != _taxi_normalized_promo(req.promo_code):
+        raise HTTPException(status_code=409, detail="Promo-Code wurde geändert. Bitte Preis neu berechnen.")
+
+    if str(quote_doc.get("scheduled_at") or "") != _taxi_schedule_key(req.scheduled_at):
+        raise HTTPException(status_code=409, detail="Abholzeit wurde geändert. Bitte Preis neu berechnen.")
+
+    return quote_doc
+
+
+async def _ensure_taxi_settlement_reporting(
+    *,
+    driver_id: str,
+    ride_id: str,
+    driver_earnings: float,
+    platform_fee: float,
+    settled_at: Optional[str] = None,
+) -> None:
+    """Idempotently project a settled ride into driver stats and platform revenue."""
+    marker_hash = hashlib.sha256(str(ride_id).encode("utf-8")).hexdigest()[:24]
+    timestamp = settled_at or datetime.now(timezone.utc).isoformat()
+
+    driver_marker = f"settled_ride_markers.{marker_hash}"
+    await db.drivers.update_one(
+        {"driver_id": driver_id, driver_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "total_rides": 1,
+                "total_earnings": float(driver_earnings or 0),
+            },
+            "$set": {
+                driver_marker: {
+                    "ride_id": ride_id,
+                    "amount": float(driver_earnings or 0),
+                    "settled_at": timestamp,
+                }
+            },
+        },
+    )
+
+    revenue_date = str(timestamp)[:10] if timestamp else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.platform_revenue.update_one(
+        {"date": revenue_date},
+        {"$setOnInsert": {"date": revenue_date}},
+        upsert=True,
+    )
+    revenue_marker = f"taxi_ride_markers.{marker_hash}"
+    await db.platform_revenue.update_one(
+        {"date": revenue_date, revenue_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "total": float(platform_fee or 0),
+                "by_source.taxi_fees": float(platform_fee or 0),
+            },
+            "$set": {
+                revenue_marker: {
+                    "ride_id": ride_id,
+                    "amount": float(platform_fee or 0),
+                    "settled_at": timestamp,
+                }
+            },
+        },
+    )
+
+
+def _taxi_quote_metadata(matched_zone: Optional[dict], time_info: dict) -> tuple[Optional[dict], dict]:
+    tariff_zone = None
+    if matched_zone:
+        tariff_zone = {
+            "id": matched_zone.get("id"),
+            "name": matched_zone.get("name"),
+        }
+    time_tariff = {
+        "multiplier": time_info.get("multiplier", 1.0),
+        "label": time_info.get("label", ""),
+        "night": bool(time_info.get("night")),
+        "weekend": bool(time_info.get("weekend")),
+        "holiday": bool(time_info.get("holiday")),
+    }
+    return tariff_zone, time_tariff
 
 
 def _looks_like_kosovo_airport(address: str, lat: float, lng: float) -> bool:
@@ -1631,36 +1979,45 @@ async def get_nearby_drivers(
 ):
     """Get online drivers near location (public)."""
     
-    query = {"online": True, "verified": True, "status": "approved"}
-    if car_type:
-        query["car.type"] = car_type
-    if with_pet:
-        query["car.pet_friendly"] = True
-    if luggage == "much_combi":
-        query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
-    elif luggage == "much":
-        query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
-    if assistance:
-        query["car.assistance"] = True
-    
     drivers = await db.drivers.find(
-        query,
-        {"_id": 0, "license_number": 0, "user_email": 0}  # Hide sensitive data
+        {
+            "$or": [
+                {"online": True, "verified": True, "status": "approved"},
+                {"is_online": True, "is_verified": True, "status": "active"},
+            ]
+        },
+        {"_id": 0, "license_number": 0, "user_email": 0}
     ).to_list(100)
     
-    # Filter by distance
     nearby = []
     for d in drivers:
-        loc = d.get("location", {})
-        dlat, dlng = loc.get("lat", 0), loc.get("lng", 0)
-        if dlat == 0 and dlng == 0:
+        loc = d.get("location") or d.get("current_location") or {}
+        car = d.get("car") or d.get("vehicle") or {}
+        effective_type = car.get("type") or car.get("vehicle_type") or "standard"
+        if car_type and effective_type != car_type:
+            continue
+        if with_pet and not car.get("pet_friendly"):
+            continue
+        luggage_class = car.get("luggage_class")
+        if luggage == "much_combi" and luggage_class not in ["much_combi", "combi", "wagon", "much"]:
+            continue
+        if luggage == "much" and luggage_class not in ["much", "much_combi", "combi", "wagon", "large"]:
+            continue
+        if assistance and not car.get("assistance"):
+            continue
+
+        dlat, dlng = loc.get("lat"), loc.get("lng")
+        if not NumberErrorSafe(dlat, dlng):
             continue
         
-        dist = haversine_distance(lat, lng, dlat, dlng)
+        dist = haversine_distance(lat, lng, float(dlat), float(dlng))
         if dist <= radius:
-            d["distance_km"] = round(dist, 2)
-            d["eta_minutes"] = max(2, round(dist * 2.5))  # Rough ETA
-            nearby.append(d)
+            normalized = dict(d)
+            normalized["location"] = {"lat": float(dlat), "lng": float(dlng)}
+            normalized["car"] = {**car, "type": effective_type}
+            normalized["distance_km"] = round(dist, 2)
+            normalized["eta_minutes"] = max(2, round(dist * 2.5))
+            nearby.append(normalized)
     
     nearby.sort(key=lambda x: x["distance_km"])
     
@@ -1687,10 +2044,12 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     
     p_lat, p_lng, d_lat, d_lng, p_addr, d_addr = req.get_coords()
     
-    if not p_lat or not d_lat:
-        raise HTTPException(400, "Koordinaten fehlen")
+    if not NumberErrorSafe(p_lat, p_lng) or not NumberErrorSafe(d_lat, d_lng):
+        raise HTTPException(400, "Koordinaten fehlen oder sind ungültig")
     
-    distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
+    distance_km, duration_minutes, route_source = await get_driving_route_metrics(
+        [(p_lat, p_lng), (d_lat, d_lng)]
+    )
     # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
     MAX_RIDE_KM = 250
     if distance_km > MAX_RIDE_KM:
@@ -1699,7 +2058,6 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             f"Diese Strecke ({distance_km:.0f} km) übersteigt unsere maximale Fahrtdistanz von {MAX_RIDE_KM} km. "
             "Bitte buche stattdessen einen Langstreckentransfer.",
         )
-    duration_minutes = max(5, (distance_km / 30) * 60)
     
     # Detect pricing region from pickup coordinates
     region = detect_region(p_lat, p_lng)
@@ -1707,23 +2065,27 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     # Multi-Tarif: Zone-Match + Time-Multiplier (P2)
     from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
     matched_zone = await find_matching_zone(p_lat, p_lng)
-    time_info = compute_time_multiplier(matched_zone)
+    pricing_time = _taxi_parse_pricing_time(req.scheduled_at)
+    time_info = compute_time_multiplier(matched_zone, now=pricing_time)
+
+    quote_user = None
+    if request is not None:
+        try:
+            quote_user = await get_current_user(request)
+        except Exception:
+            quote_user = None
+    quote_user_id = str((quote_user or {}).get("_id") or (quote_user or {}).get("id") or "")
 
     # Optional promo validation
     promo_info = None
     if req.promo_code:
         try:
             from utils.taxi_promo import validate_promo
-            user = None
-            if request is not None:
-                try:
-                    user = await get_current_user(request)
-                except Exception:
-                    user = None
-            uid = str(user.get("_id") or user.get("id")) if user else None
-            promo_info = await validate_promo(req.promo_code, uid)
+            promo_info = await validate_promo(req.promo_code, quote_user_id or None)
         except Exception:
             promo_info = {"valid": False, "code": req.promo_code, "reason": "internal_error"}
+
+    tariff_zone_meta, time_tariff_meta = _taxi_quote_metadata(matched_zone, time_info)
 
     VEHICLE_INFO = {
         "standard": {"name": "Standard", "description": "Komfortabel & günstig", "capacity": 4},
@@ -1771,15 +2133,84 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
             "eta_minutes": max(3, round(duration_minutes * 0.05)),
             "distance_km": round(distance_km, 2),
             "duration_minutes": round(duration_minutes),
+            "route_source": route_source,
             "fare_breakdown": fare,
+            "currency": fare.get("currency", "EUR"),
+            "booking_supported": fare.get("booking_supported", True),
+            "settlement_reason": fare.get("settlement_reason"),
+            "region": fare.get("region", region),
+            "region_label": fare.get("region_label") or REGIONAL_PRICING.get(region, {}).get("label", ""),
+            "profile_scope": fare.get("profile_scope"),
+            "pricing_source": fare.get("pricing_source"),
+            "pricing_basis": fare.get("pricing_basis"),
+            "min_balance": fare.get("min_balance", MIN_WALLET_BALANCE),
+            "base_fare": fare.get("base_fare", 0),
+            "tariff_zone": fare.get("tariff_zone"),
         }
         # Apply promo on top of computed fare (per-vehicle so user sees the impact)
+        promo_applied_for_quote = None
         if promo_info and promo_info.get("valid"):
             from utils.taxi_promo import apply_discount
             disc = apply_discount(fare["total"], promo_info)
             item["fare_original"] = disc["original"]
             item["fare_discount"] = disc["discount"]
             item["fare"] = disc["final"]
+            promo_applied_for_quote = {
+                "code": disc.get("code"),
+                "label": disc.get("label"),
+                "original": disc.get("original"),
+                "discount": disc.get("discount"),
+                "final": disc.get("final"),
+            }
+
+        if (
+            item.get("booking_supported") is False
+            or str(item.get("currency") or "EUR").upper() != "EUR"
+            or float(item.get("fare") or 0) <= 0
+        ):
+            item["quote_id"] = None
+            item["quote_expires_at"] = None
+            estimates.append(item)
+            continue
+
+        quote_id = f"tq_{secrets.token_hex(16)}"
+        quote_created_at = datetime.now(timezone.utc)
+        quote_expires_at = quote_created_at + timedelta(seconds=TAXI_QUOTE_TTL_SECONDS)
+        quote_doc = {
+            "quote_id": quote_id,
+            "status": "active",
+            "user_id": quote_user_id or None,
+            "vehicle_type": vtype,
+            "pickup_lat": round(float(p_lat), 6),
+            "pickup_lng": round(float(p_lng), 6),
+            "dropoff_lat": round(float(d_lat), 6),
+            "dropoff_lng": round(float(d_lng), 6),
+            "pickup_address": p_addr,
+            "dropoff_address": d_addr,
+            "promo_code": _taxi_normalized_promo(req.promo_code),
+            "scheduled_at": _taxi_schedule_key(req.scheduled_at) or None,
+            "fare_total": round(float(item["fare"]), 2),
+            "fare_original": round(float(fare.get("total") or item["fare"]), 2),
+            "fare_breakdown": fare,
+            "promo_applied": promo_applied_for_quote,
+            "currency": item.get("currency") or "EUR",
+            "booking_supported": item.get("booking_supported", True),
+            "settlement_reason": item.get("settlement_reason"),
+            "min_balance": float(item.get("min_balance") or 0),
+            "distance_km": round(float(distance_km), 4),
+            "duration_minutes": round(float(duration_minutes), 2),
+            "route_source": route_source,
+            "region": item.get("region") or region,
+            "region_label": item.get("region_label") or "",
+            "fixed_fare": fixed,
+            "tariff_zone": tariff_zone_meta or item.get("tariff_zone"),
+            "time_tariff": time_tariff_meta,
+            "created_at": quote_created_at.isoformat(),
+            "expires_at": quote_expires_at.isoformat(),
+        }
+        await db.taxi_price_quotes.insert_one(quote_doc)
+        item["quote_id"] = quote_id
+        item["quote_expires_at"] = quote_expires_at.isoformat()
         estimates.append(item)
     
     return {
@@ -1855,17 +2286,44 @@ async def book_ride(req: FlexBookRequest, request: Request):
     if not TAXI_MODULE_ENABLED:
         raise HTTPException(status_code=503, detail="Taxi-Modul ist derzeit nicht verfügbar")
     
-    from core.payment_engine import TransactionType
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
     
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    balance = user.get("balance", 0)
-    if balance < MIN_WALLET_BALANCE:
+    client_key = _require_taxi_booking_idempotency_key(req, request)
+    request_fingerprint = _taxi_booking_request_fingerprint(req)
+    ride_digest = hashlib.sha256(f"{user_id}:{client_key}".encode("utf-8")).hexdigest()
+    ride_id = ride_digest[:16]
+
+    existing_ride = await db.taxi_rides.find_one(
+        {"_id": ride_id, "customer_id": user_id},
+        {"_id": 0},
+    )
+    if existing_ride:
+        if existing_ride.get("booking_request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        await _finalize_taxi_booking_replay(existing_ride, user_id)
+        return {
+            "ok": True,
+            "ride": existing_ride,
+            "matching_drivers": int(existing_ride.get("matching_drivers_notified") or 0),
+            "message": "Taxi-Buchung bereits verarbeitet.",
+            "replayed": True,
+        }
+
+    refunded_attempt = await db.taxi_booking_attempts.find_one(
+        {"_id": f"{user_id}:{ride_id}", "status": "refunded"},
+        {"_id": 0, "request_fingerprint": 1},
+    )
+    if refunded_attempt:
+        if refunded_attempt.get("request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
         raise HTTPException(
-            status_code=400,
-            detail=f"Mindestguthaben €{MIN_WALLET_BALANCE:.2f} erforderlich. Aktuell: €{balance:.2f}"
+            status_code=409,
+            detail="Der vorherige Taxi-Buchungsversuch wurde zurückerstattet. Bitte Buchung erneut starten.",
         )
+
+    balance = float(user.get("balance", 0) or 0)
     
     active = await db.taxi_rides.find_one({
         "customer_id": user_id,
@@ -1881,68 +2339,239 @@ async def book_ride(req: FlexBookRequest, request: Request):
         {"lat": s.lat, "lng": s.lng, "address": s.address, "notes": s.notes or ""}
         for s in (req.stops or [])
     ]
-    route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
-    distance_km = 0.0
-    for i in range(len(route_pts) - 1):
-        distance_km += haversine_distance(*route_pts[i], *route_pts[i + 1])
-    # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
-    MAX_RIDE_KM = 250
-    if distance_km > MAX_RIDE_KM:
+    locked_quote = await _load_taxi_price_quote(req.quote_id, user_id, req)
+
+    if locked_quote:
+        distance_km = float(locked_quote.get("distance_km") or 0)
+        duration_minutes = float(locked_quote.get("duration_minutes") or 0)
+        route_source = f"locked_quote:{locked_quote.get('route_source') or 'server'}"
+        region = str(locked_quote.get("region") or detect_region(p_lat, p_lng))
+        fare_estimate = dict(locked_quote.get("fare_breakdown") or {})
+        fare_estimate["currency"] = locked_quote.get("currency") or fare_estimate.get("currency") or "EUR"
+        fare_estimate["booking_supported"] = bool(locked_quote.get("booking_supported", fare_estimate.get("booking_supported", True)))
+        fare_estimate["settlement_reason"] = locked_quote.get("settlement_reason") or fare_estimate.get("settlement_reason")
+        fare_estimate["min_balance"] = float(locked_quote.get("min_balance") or fare_estimate.get("min_balance") or 0)
+        fixed = locked_quote.get("fixed_fare")
+        tariff_zone_info = locked_quote.get("tariff_zone")
+        time_tariff_info = locked_quote.get("time_tariff") or {
+            "multiplier": 1.0,
+            "label": "",
+            "night": False,
+            "weekend": False,
+            "holiday": False,
+        }
+        promo_applied = locked_quote.get("promo_applied")
+        fare_total = round(float(locked_quote.get("fare_total") or fare_estimate.get("total") or 0), 2)
+    else:
+        route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
+        distance_km, duration_minutes, route_source = await get_driving_route_metrics(route_pts)
+        # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
+        MAX_RIDE_KM = 250
+        if distance_km > MAX_RIDE_KM:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
+            )
+        region = detect_region(p_lat, p_lng)
+        fare_estimate = await calculate_fare_with_overrides(
+            pickup_address=p_addr,
+            pickup_lat=p_lat,
+            pickup_lng=p_lng,
+            distance_km=distance_km,
+            duration_minutes=duration_minutes,
+            car_type=car_type,
+            region=region,
+        )
+
+        # Use the same zone/time pricing stack as /estimate.
+        from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
+        matched_zone = await find_matching_zone(p_lat, p_lng)
+        pricing_time = _taxi_parse_pricing_time(req.scheduled_at)
+        time_info = compute_time_multiplier(matched_zone, now=pricing_time)
+
+        fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
+        if fixed:
+            fare_estimate = {
+                **fare_estimate,
+                "distance_cost": 0.0,
+                "time_cost": 0.0,
+                "total": fixed["fixed_fare"],
+                "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
+                "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
+                "fixed_fare": True,
+                "fixed_fare_label": fixed["label"],
+                "fixed_fare_zone": fixed["zone"],
+            }
+        else:
+            fare_estimate = apply_multi_tariff(fare_estimate, matched_zone, time_info)
+
+        tariff_zone_info, time_tariff_info = _taxi_quote_metadata(matched_zone, time_info)
+        fare_total = round(float(fare_estimate["total"]), 2)
+
+        # Apply promo if provided & valid.
+        promo_applied = None
+        if req.promo_code:
+            try:
+                from utils.taxi_promo import validate_promo, apply_discount
+                promo_info = await validate_promo(req.promo_code, user_id)
+                if promo_info.get("valid"):
+                    disc = apply_discount(fare_total, promo_info)
+                    fare_total = round(float(disc["final"]), 2)
+                    promo_applied = {
+                        "code": disc["code"],
+                        "label": disc["label"],
+                        "original": disc["original"],
+                        "discount": disc["discount"],
+                        "final": disc["final"],
+                    }
+            except Exception:
+                promo_applied = None
+
+    if fare_estimate.get("booking_supported") is False or str(fare_estimate.get("currency") or "EUR").upper() != "EUR":
+        raise HTTPException(
+            status_code=503,
+            detail=fare_estimate.get("settlement_reason") or "Lokaler Taxi-Tarif ist verfügbar, aber FX-/Wallet-Settlement ist noch nicht verbunden.",
+        )
+
+    required_balance = max(0.0, float(fare_estimate.get("min_balance", MIN_WALLET_BALANCE) or 0))
+    if balance < required_balance:
         raise HTTPException(
             status_code=400,
-            detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
+            detail=f"Mindestguthaben €{required_balance:.2f} erforderlich. Aktuell: €{balance:.2f}",
         )
-    duration_minutes = max(5, (distance_km / 30) * 60)
-    region = detect_region(p_lat, p_lng)
-    fare_estimate = await calculate_fare_with_overrides(
-        pickup_address=p_addr,
-        pickup_lat=p_lat,
-        pickup_lng=p_lng,
-        distance_km=distance_km,
-        duration_minutes=duration_minutes,
-        car_type=car_type,
-        region=region,
-    )
-    fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
-    if fixed:
-        fare_estimate = {
-            **fare_estimate,
-            "distance_cost": 0.0,
-            "time_cost": 0.0,
-            "total": fixed["fixed_fare"],
-            "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
-            "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
-            "fixed_fare": True,
-            "fixed_fare_label": fixed["label"],
-            "fixed_fare_zone": fixed["zone"],
-        }
-    fare_total = fare_estimate["total"]
 
-    # Apply promo if provided & valid
-    promo_applied = None
-    if req.promo_code:
-        try:
-            from utils.taxi_promo import validate_promo, apply_discount
-            promo_info = await validate_promo(req.promo_code, user_id)
-            if promo_info.get("valid"):
-                disc = apply_discount(fare_total, promo_info)
-                fare_total = disc["final"]
-                promo_applied = {
-                    "code": disc["code"],
-                    "label": disc["label"],
-                    "original": disc["original"],
-                    "discount": disc["discount"],
-                    "final": disc["final"],
-                }
-        except Exception:
-            promo_applied = None
-    
+    if balance < fare_total:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nicht genug Guthaben für diese Fahrt. Benötigt: €{fare_total:.2f}, verfügbar: €{balance:.2f}"
+        )
+
     now = datetime.now(timezone.utc)
-    ride_id = secrets.token_hex(8)
+
+    if locked_quote:
+        quote_claim = await db.taxi_price_quotes.update_one(
+            {
+                "quote_id": req.quote_id,
+                "$or": [
+                    {"status": "active"},
+                    {
+                        "status": "booking",
+                        "booking_idempotency_key": client_key,
+                        "booking_user_id": user_id,
+                        "booking_ride_id": ride_id,
+                    },
+                ],
+            },
+            {"$set": {
+                "status": "booking",
+                "booking_idempotency_key": client_key,
+                "booking_user_id": user_id,
+                "booking_ride_id": ride_id,
+                "booking_started_at": now.isoformat(),
+            }},
+        )
+        if quote_claim.matched_count != 1:
+            raise HTTPException(status_code=409, detail="Preisangebot wird bereits verwendet. Bitte Preis neu berechnen.")
+
+    promo_reserved = False
+    if promo_applied:
+        from utils.taxi_promo import reserve_redemption
+        promo_reservation = await reserve_redemption(
+            user_id,
+            promo_applied["code"],
+            ride_id,
+            promo_applied.get("discount", 0),
+        )
+        if not promo_reservation.get("ok"):
+            if locked_quote and promo_reservation.get("reason") != "reservation_in_progress":
+                await db.taxi_price_quotes.update_one(
+                    {
+                        "quote_id": req.quote_id,
+                        "status": "booking",
+                        "booking_idempotency_key": client_key,
+                        "booking_user_id": user_id,
+                    },
+                    {
+                        "$set": {"status": "active", "booking_released_at": datetime.now(timezone.utc).isoformat()},
+                        "$unset": {
+                            "booking_idempotency_key": "",
+                            "booking_user_id": "",
+                            "booking_ride_id": "",
+                            "booking_started_at": "",
+                        },
+                    },
+                )
+            status_code = 503 if promo_reservation.get("retryable") else 409
+            detail = (
+                "Promo-Code wird gerade verarbeitet. Bitte Buchung mit demselben Versuch erneut senden."
+                if promo_reservation.get("reason") == "reservation_in_progress"
+                else "Promo-Code wurde bereits verwendet oder kann nicht reserviert werden."
+            )
+            raise HTTPException(status_code=status_code, detail=detail)
+        promo_reserved = True
+
+    reservation = await debit_wallet(
+        user_id=user_id,
+        amount=fare_total,
+        tx_type=TransactionType.TAXI_PAYMENT,
+        description=f"Taxi-Reservierung: {p_addr or 'Abholung'} → {d_addr or 'Ziel'}",
+        reference=f"TAXI-HOLD-{ride_id[:8].upper()}",
+        metadata={"ride_id": ride_id, "kind": "taxi_reservation", "pricing_quote_id": req.quote_id},
+        idempotency_key=f"taxi-reserve:{user_id}:{ride_id}",
+    )
+    if not reservation.success:
+        reservation_state = str(getattr(reservation.status, "value", reservation.status))
+        if reservation_state in {"pending", "reconciliation_required"}:
+            await db.taxi_booking_attempts.update_one(
+                {"_id": f"{user_id}:{ride_id}"},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "request_fingerprint": request_fingerprint,
+                    "ride_id": ride_id,
+                    "user_id": user_id,
+                    "wallet_status": reservation_state,
+                    "wallet_transaction_id": reservation.transaction_id,
+                    "wallet_error": reservation.error,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=reservation.error or "Taxi-Reservierung benötigt Wallet-Abstimmung; bitte denselben Buchungsversuch erneut senden.",
+            )
+
+        if promo_reserved:
+            from utils.taxi_promo import release_redemption
+            await release_redemption(user_id, promo_applied["code"], ride_id)
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {
+                    "quote_id": req.quote_id,
+                    "status": "booking",
+                    "booking_idempotency_key": client_key,
+                    "booking_user_id": user_id,
+                },
+                {
+                    "$set": {"status": "active", "booking_released_at": datetime.now(timezone.utc).isoformat()},
+                    "$unset": {
+                        "booking_idempotency_key": "",
+                        "booking_user_id": "",
+                        "booking_ride_id": "",
+                        "booking_started_at": "",
+                    },
+                },
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fahrbetrag konnte nicht reserviert werden: {reservation.error or 'Wallet nicht verfügbar'}",
+        )
     
     ride = {
         "ride_id": ride_id,
         "customer_id": user_id,
+        "booking_idempotency_key": client_key,
+        "booking_request_fingerprint": request_fingerprint,
         "customer_name": user.get("name", ""),
         "customer_phone": user.get("phone", ""),
         "driver_id": None,
@@ -1963,13 +2592,24 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "car_type": car_type,
         "distance_km_estimate": round(distance_km, 2),
         "duration_estimate_minutes": round(duration_minutes),
+        "route_source": route_source,
         "fare_estimate": fare_total,
         "fare_estimate_original": fare_estimate["total"],
         "fare_breakdown": fare_estimate,
+        "payment_status": "reserved",
+        "payment_reserved_amount": round(fare_total, 2),
+        "payment_reserved_transaction_id": reservation.transaction_id,
+        "payment_reserved_reference": reservation.reference,
         "region": region,
-        "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
+        "region_label": fare_estimate.get("region_label") or REGIONAL_PRICING.get(region, {}).get("label", ""),
         "fixed_fare": fixed if fixed else None,
+        "tariff_zone": tariff_zone_info,
+        "time_tariff": time_tariff_info,
         "promo": promo_applied,
+        "pricing_quote_id": req.quote_id,
+        "pricing_quote_expires_at": (locked_quote or {}).get("expires_at") if locked_quote else None,
+        "pricing_source": "locked_server_quote" if locked_quote else fare_estimate.get("pricing_source"),
+        "scheduled_at": req.scheduled_at,
         "status": RideStatus.REQUESTED.value,
         "recipient": {
             "name": (req.recipient_name or "").strip(),
@@ -1988,8 +2628,102 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
     
-    await db.taxi_rides.insert_one(ride)
-    ride.pop("_id", None)
+    ride_doc = dict(ride)
+    try:
+        write_result = await db.taxi_rides.update_one(
+            {"_id": ride_id, "customer_id": user_id},
+            {"$setOnInsert": ride_doc},
+            upsert=True,
+        )
+    except Exception as exc:
+        current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0})
+        if current and current.get("booking_request_fingerprint") == request_fingerprint:
+            await _finalize_taxi_booking_replay(current, user_id)
+            return {
+                "ok": True,
+                "ride": current,
+                "matching_drivers": int(current.get("matching_drivers_notified") or 0),
+                "message": "Taxi-Buchung bereits verarbeitet.",
+                "replayed": True,
+            }
+        logger.exception("Taxi ride persist failed after wallet reservation: %s", exc)
+        try:
+            await credit_wallet(
+                user_id=user_id,
+                amount=fare_total,
+                tx_type=TransactionType.REFUND,
+                description="Rückerstattung fehlgeschlagene Taxi-Buchung",
+                reference=f"TAXI-HOLD-ROLLBACK-{ride_id[:8].upper()}",
+                source="taxi_booking_rollback",
+                metadata={"ride_id": ride_id, "reservation_transaction_id": reservation.transaction_id},
+                idempotency_key=f"taxi-reserve-rollback:{ride_id}",
+            )
+        except Exception as refund_exc:
+            logger.exception("Taxi booking reservation rollback failed: %s", refund_exc)
+        if promo_reserved:
+            try:
+                from utils.taxi_promo import release_redemption
+                await release_redemption(user_id, promo_applied["code"], ride_id)
+            except Exception as promo_release_exc:
+                logger.exception("Taxi promo rollback failed: %s", promo_release_exc)
+        await db.taxi_booking_attempts.update_one(
+            {"_id": f"{user_id}:{ride_id}"},
+            {"$set": {
+                "status": "refunded",
+                "request_fingerprint": request_fingerprint,
+                "ride_id": ride_id,
+                "user_id": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+                {"$set": {
+                    "status": "failed",
+                    "failed_at": datetime.now(timezone.utc).isoformat(),
+                    "failed_reason": "ride_persist_rollback",
+                }},
+            )
+        raise HTTPException(status_code=500, detail="Buchung konnte nicht gespeichert werden. Reservierung wurde zurückgebucht.")
+
+    if write_result.upserted_id is None:
+        current = await db.taxi_rides.find_one({"_id": ride_id, "customer_id": user_id}, {"_id": 0}) or {}
+        if current.get("booking_request_fingerprint") != request_fingerprint:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde bereits für eine andere Taxi-Buchung verwendet")
+        if locked_quote:
+            await db.taxi_price_quotes.update_one(
+                {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+                {"$set": {
+                    "status": "used",
+                    "used_at": datetime.now(timezone.utc).isoformat(),
+                    "ride_id": ride_id,
+                }},
+            )
+        if promo_applied:
+            try:
+                from utils.taxi_promo import record_redemption
+                await record_redemption(user_id, promo_applied["code"], ride_id, promo_applied["discount"])
+            except Exception as promo_finalize_exc:
+                logger.warning("Taxi promo replay finalization failed: %s", promo_finalize_exc)
+        return {
+            "ok": True,
+            "ride": current,
+            "matching_drivers": int(current.get("matching_drivers_notified") or 0),
+            "message": "Taxi-Buchung bereits verarbeitet.",
+            "replayed": True,
+        }
+
+    if locked_quote:
+        await db.taxi_price_quotes.update_one(
+            {"quote_id": req.quote_id, "booking_idempotency_key": client_key},
+            {"$set": {
+                "status": "used",
+                "used_at": datetime.now(timezone.utc).isoformat(),
+                "ride_id": ride_id,
+            }},
+        )
 
     # Promo redemption tracking (idempotent per ride)
     if promo_applied:
@@ -2002,7 +2736,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
     # Track recent addresses (pickup + dropoff + any stops) so the search-sheet
     # can show "Letzte Adressen" on the next booking.
     async def _track_recent(addr, lat, lng):
-        if not (addr and lat and lng):
+        if not addr or lat is None or lng is None:
             return
         try:
             await db.taxi_recent_addresses.update_one(
@@ -2023,40 +2757,70 @@ async def book_ride(req: FlexBookRequest, request: Request):
     # Find nearby drivers and notify them (in real app, use push notifications).
     # Filter by ride options: vehicle must be pet-friendly if requested, and have
     # sufficient luggage capacity (combi/wagon for 'much_combi', any for 'much', etc.).
-    driver_query = {
-        "online": True,
-        "verified": True,
-        "status": "approved",
-        "car.type": car_type,
-    }
-    if req.with_pet:
-        driver_query["car.pet_friendly"] = True
-    if req.luggage == "much_combi":
-        driver_query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
-    elif req.luggage == "much":
-        driver_query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
-    if req.assistance:
-        driver_query["car.assistance"] = True
+    nearby_drivers = await db.drivers.find({
+        "$or": [
+            {"online": True, "verified": True, "status": "approved"},
+            {"is_online": True, "is_verified": True, "status": "active"},
+        ]
+    }).to_list(100)
     
-    nearby_drivers = await db.drivers.find(driver_query).to_list(50)
-    
-    # Filter by distance from pickup
     matching_drivers = []
     for d in nearby_drivers:
-        loc = d.get("location", {})
-        if loc.get("lat"):
-            dist = haversine_distance(p_lat, p_lng, loc["lat"], loc["lng"])
-            if dist <= 10:  # Within 10km
-                matching_drivers.append({
-                    "driver_id": d["driver_id"],
-                    "distance_km": round(dist, 2),
-                })
+        if d.get("is_busy") or d.get("active_ride_id"):
+            continue
+        loc = d.get("location") or d.get("current_location") or {}
+        car = d.get("car") or d.get("vehicle") or {}
+        effective_type = car.get("type") or car.get("vehicle_type") or "standard"
+        if effective_type != car_type:
+            continue
+        if req.with_pet and not car.get("pet_friendly"):
+            continue
+        luggage_class = car.get("luggage_class")
+        if req.luggage == "much_combi" and luggage_class not in ["much_combi", "combi", "wagon", "much"]:
+            continue
+        if req.luggage == "much" and luggage_class not in ["much", "much_combi", "combi", "wagon", "large"]:
+            continue
+        if req.assistance and not car.get("assistance"):
+            continue
+        if not NumberErrorSafe(loc.get("lat"), loc.get("lng")):
+            continue
+
+        dist = haversine_distance(p_lat, p_lng, float(loc["lat"]), float(loc["lng"]))
+        if dist <= 10:
+            matching_drivers.append({
+                "driver_id": d["driver_id"],
+                "user_id": d.get("user_id"),
+                "distance_km": round(dist, 2),
+            })
+
+    matching_drivers.sort(key=lambda item: item["distance_km"])
+
+    for candidate in matching_drivers[:10]:
+        if not candidate.get("user_id"):
+            continue
+        await db.notifications.insert_one({
+            "notification_id": secrets.token_hex(8),
+            "user_id": str(candidate["user_id"]),
+            "title": "Neue Taxi-Anfrage",
+            "message": f"Abholung {p_addr or 'in deiner Nähe'} · ca. {candidate['distance_km']:.1f} km entfernt",
+            "type": "new_ride_request",
+            "data": {"ride_id": ride_id, "distance_km": candidate["distance_km"]},
+            "read": False,
+            "created_at": now.isoformat(),
+        })
     
+    await db.taxi_rides.update_one(
+        {"_id": ride_id, "customer_id": user_id},
+        {"$set": {"matching_drivers_notified": len(matching_drivers)}},
+    )
+    ride["matching_drivers_notified"] = len(matching_drivers)
+
     return {
         "ok": True,
         "ride": ride,
         "matching_drivers": len(matching_drivers),
         "message": f"Fahrt angefragt. {len(matching_drivers)} Fahrer in der Nähe.",
+        "replayed": False,
     }
 
 
@@ -2073,25 +2837,44 @@ async def get_driver_requests(request: Request):
     driver = await db.drivers.find_one({"user_id": user_id})
     if not driver:
         raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
-    
-    if not driver.get("online"):
+    driver_verified = (
+        (driver.get("verified") is True and driver.get("status") == "approved")
+        or (driver.get("is_verified") is True and driver.get("status") == "active")
+    )
+    if not driver_verified:
+        raise HTTPException(status_code=403, detail="Fahrer ist noch nicht freigeschaltet")
+    if not (driver.get("online") or driver.get("is_online")):
         return {"requests": [], "message": "Du bist offline"}
+    if driver.get("is_busy") or driver.get("active_ride_id"):
+        return {"requests": [], "message": "Du hast bereits eine aktive Fahrt"}
     
-    loc = driver.get("location", {})
-    if not loc.get("lat"):
+    loc = driver.get("location") or driver.get("current_location") or {}
+    if not NumberErrorSafe(loc.get("lat"), loc.get("lng")):
         return {"requests": [], "message": "Standort nicht verfügbar"}
+
+    car = driver.get("car") or driver.get("vehicle") or {}
+    driver_car_type = car.get("type") or car.get("vehicle_type") or "standard"
     
-    # Find requested rides for driver's car type
+    # Find requested rides for driver's car type.
+    # Scheduled rides only enter dispatch shortly before pickup.
+    dispatch_cutoff = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
     rides = await db.taxi_rides.find({
         "status": RideStatus.REQUESTED.value,
-        "car_type": driver.get("car", {}).get("type", "standard"),
+        "car_type": driver_car_type,
+        "rejected_driver_ids": {"$ne": driver["driver_id"]},
+        "$or": [
+            {"scheduled_at": None},
+            {"scheduled_at": {"$lte": dispatch_cutoff}},
+            {"scheduled_at": {"$exists": False}, "options.scheduled_at": None},
+            {"options.scheduled_at": {"$lte": dispatch_cutoff}},
+        ],
     }, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Filter by distance
     nearby_requests = []
     for ride in rides:
         pickup = ride.get("pickup", {})
-        if pickup.get("lat"):
+        if NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
             dist = haversine_distance(loc["lat"], loc["lng"], pickup["lat"], pickup["lng"])
             if dist <= 10:
                 ride["distance_to_pickup_km"] = round(dist, 2)
@@ -2128,6 +2911,114 @@ async def get_driver_active_ride(request: Request):
 # DRIVER: ACCEPT / REJECT RIDE
 # ══════════════════════════════════════════════════════════════════════════════
 
+async def _claim_driver_active_ride(driver_id: str, ride_id: str) -> bool:
+    """Serialize ride assignment per driver and repair stale locks safely."""
+    active_statuses = [
+        RideStatus.ACCEPTED.value,
+        RideStatus.ARRIVING.value,
+        RideStatus.STARTED.value,
+    ]
+    for _ in range(2):
+        claim = await db.drivers.update_one(
+            {
+                "driver_id": driver_id,
+                "$or": [
+                    {"active_ride_id": {"$exists": False}},
+                    {"active_ride_id": None},
+                    {"active_ride_id": ride_id},
+                ],
+            },
+            {"$set": {
+                "active_ride_id": ride_id,
+                "active_ride_claimed_at": datetime.now(timezone.utc).isoformat(),
+                "is_busy": True,
+            }},
+        )
+        if claim.matched_count == 1:
+            return True
+
+        current_driver = await db.drivers.find_one(
+            {"driver_id": driver_id},
+            {"_id": 0, "active_ride_id": 1},
+        ) or {}
+        current_ride_id = str(current_driver.get("active_ride_id") or "")
+        if not current_ride_id:
+            continue
+        if current_ride_id == ride_id:
+            return True
+
+        current_ride = await db.taxi_rides.find_one(
+            {
+                "ride_id": current_ride_id,
+                "driver_id": driver_id,
+                "status": {"$in": active_statuses},
+            },
+            {"_id": 0, "ride_id": 1},
+        )
+        if current_ride:
+            return False
+
+        released = await db.drivers.update_one(
+            {"driver_id": driver_id, "active_ride_id": current_ride_id},
+            {
+                "$unset": {
+                    "active_ride_id": "",
+                    "active_ride_claimed_at": "",
+                },
+                "$set": {"is_busy": False},
+            },
+        )
+        if released.modified_count != 1:
+            return False
+    return False
+
+
+async def _release_driver_active_ride(driver_id: Optional[str], ride_id: str) -> None:
+    if not driver_id or not ride_id:
+        return
+    await db.drivers.update_one(
+        {
+            "driver_id": driver_id,
+            "$or": [
+                {"active_ride_id": ride_id},
+                {"active_ride_id": {"$exists": False}},
+                {"active_ride_id": None},
+            ],
+        },
+        {
+            "$unset": {
+                "active_ride_id": "",
+                "active_ride_claimed_at": "",
+            },
+            "$set": {"is_busy": False},
+        },
+    )
+
+
+async def _ensure_driver_accept_notification(ride: dict, driver: dict) -> None:
+    ride_id = str(ride.get("ride_id") or "")
+    customer_id = str(ride.get("customer_id") or "")
+    driver_id = str(driver.get("driver_id") or "")
+    if not ride_id or not customer_id or not driver_id:
+        return
+    notification_id = f"taxi-accepted:{ride_id}:{driver_id}"
+    await db.notifications.update_one(
+        {"_id": notification_id},
+        {"$setOnInsert": {
+            "_id": notification_id,
+            "notification_id": notification_id,
+            "user_id": customer_id,
+            "title": "Fahrer gefunden!",
+            "message": "Dein Fahrer hat die Fahrt angenommen und ist unterwegs.",
+            "type": "ride_accepted",
+            "data": {"ride_id": ride_id, "driver_id": driver_id},
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+
 @router.post("/driver/accept")
 async def driver_accept_ride(req: RideActionRequest, request: Request):
     """Driver accepts a ride request."""
@@ -2137,8 +3028,13 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
     driver = await db.drivers.find_one({"user_id": user_id})
     if not driver:
         raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
-    
-    if not driver.get("online"):
+    driver_verified = (
+        (driver.get("verified") is True and driver.get("status") == "approved")
+        or (driver.get("is_verified") is True and driver.get("status") == "active")
+    )
+    if not driver_verified:
+        raise HTTPException(status_code=403, detail="Fahrer ist noch nicht freigeschaltet")
+    if not (driver.get("online") or driver.get("is_online")):
         raise HTTPException(status_code=400, detail="Du musst online sein")
     
     # Check driver doesn't have active ride
@@ -2146,36 +3042,96 @@ async def driver_accept_ride(req: RideActionRequest, request: Request):
         "driver_id": driver["driver_id"],
         "status": {"$in": ["accepted", "arriving", "started"]}
     })
-    if active:
+    if active and active.get("ride_id") != req.ride_id:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
-    # Get ride
+    # Read once for validation, then claim atomically below.
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if (
+        ride.get("driver_id") == driver["driver_id"]
+        and ride.get("status") in {RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value, RideStatus.STARTED.value}
+    ):
+        await _claim_driver_active_ride(driver["driver_id"], req.ride_id)
+        await _ensure_driver_accept_notification(ride, driver)
+        return {
+            "ok": True,
+            "ride": {k: v for k, v in ride.items() if k != "_id"},
+            "message": "Fahrt war bereits angenommen.",
+            "replayed": True,
+        }
     if ride["status"] != RideStatus.REQUESTED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
-    
+    if driver["driver_id"] in (ride.get("rejected_driver_ids") or []):
+        raise HTTPException(status_code=409, detail="Diese Anfrage wurde von dir bereits abgelehnt")
+
+    driver_car = driver.get("car") or driver.get("vehicle") or {}
+    driver_car_type = driver_car.get("type") or driver_car.get("vehicle_type") or "standard"
+    if ride.get("car_type", "standard") != driver_car_type:
+        raise HTTPException(status_code=400, detail="Fahrzeugklasse passt nicht zur Anfrage")
+
+    driver_loc = driver.get("location") or driver.get("current_location") or {}
+    pickup = ride.get("pickup") or {}
+    if not NumberErrorSafe(driver_loc.get("lat"), driver_loc.get("lng")) or not NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
+        raise HTTPException(status_code=400, detail="Fahrer- oder Abholstandort fehlt")
+    distance_to_pickup = haversine_distance(
+        float(driver_loc["lat"]), float(driver_loc["lng"]),
+        float(pickup["lat"]), float(pickup["lng"]),
+    )
+    if distance_to_pickup > 10:
+        raise HTTPException(status_code=400, detail="Anfrage liegt nicht mehr in deinem Suchradius")
+
     now = datetime.now(timezone.utc)
-    
-    # Update ride
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    scheduled_at = ride.get("scheduled_at") or (ride.get("options") or {}).get("scheduled_at")
+    if scheduled_at:
+        try:
+            scheduled_dt = datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+            if scheduled_dt > now + timedelta(minutes=15):
+                raise HTTPException(status_code=400, detail="Diese Vorbestellung ist noch nicht zur Fahrerannahme freigegeben")
+        except HTTPException:
+            raise
+        except Exception:
+            logger.warning("Invalid scheduled_at on ride %s: %s", req.ride_id, scheduled_at)
+
+    if not await _claim_driver_active_ride(driver["driver_id"], req.ride_id):
+        raise HTTPException(status_code=409, detail="Du hast bereits eine andere aktive Fahrt")
+
+    # Atomic claim: exactly one driver can transition requested -> accepted.
+    claim = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": RideStatus.REQUESTED.value,
+            "driver_id": None,
+            "cancellation_state": {"$nin": ["processing", "completed"]},
+        },
         {"$set": {
             "driver_id": driver["driver_id"],
-            "driver_name": driver.get("user_name", ""),
+            "driver_name": driver.get("user_name") or driver.get("name") or "",
             "driver_phone": driver.get("phone", ""),
-            "driver_car": driver.get("car", {}),
+            "driver_car": driver_car,
             "driver_rating": driver.get("rating", 5.0),
-            "driver_location": driver.get("location", {}),
+            "driver_location": {
+                "lat": float(driver_loc["lat"]),
+                "lng": float(driver_loc["lng"]),
+            },
             "status": RideStatus.ACCEPTED.value,
             "accepted_at": now.isoformat(),
         },
         "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}}}
     )
+    if claim.modified_count != 1:
+        await _release_driver_active_ride(driver["driver_id"], req.ride_id)
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
+        raise HTTPException(status_code=409, detail="Fahrt wurde gerade von einem anderen Fahrer angenommen")
     
     updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
+    await _ensure_driver_accept_notification(updated_ride or ride, driver)
     
     return {
         "ok": True,
@@ -2198,19 +3154,31 @@ async def driver_arriving(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.ARRIVING.value:
+        return {"ok": True, "status": "arriving", "message": "Kunde wurde bereits benachrichtigt", "replayed": True}
     if ride["status"] != RideStatus.ACCEPTED.value:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     
     now = datetime.now(timezone.utc)
     
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    transition = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "driver_id": driver["driver_id"],
+            "status": RideStatus.ACCEPTED.value,
+            "cancellation_state": {"$nin": ["processing", "completed"]},
+        },
         {"$set": {
             "status": RideStatus.ARRIVING.value,
             "arriving_at": now.isoformat(),
         },
         "$push": {"status_history": {"status": "arriving", "at": now.isoformat()}}}
     )
+    if transition.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
+        raise HTTPException(status_code=409, detail="Fahrtstatus wurde bereits geändert")
     
     return {"ok": True, "status": "arriving", "message": "Kunde wird benachrichtigt"}
 
@@ -2229,20 +3197,34 @@ async def driver_start_ride(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.STARTED.value:
+        return {"ok": True, "status": "started", "message": "Fahrt bereits gestartet", "replayed": True}
     if ride["status"] not in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     
     now = datetime.now(timezone.utc)
     
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    transition = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "driver_id": driver["driver_id"],
+            "status": {"$in": [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]},
+            "cancellation_state": {"$nin": ["processing", "completed"]},
+        },
         {"$set": {
             "status": RideStatus.STARTED.value,
             "started_at": now.isoformat(),
-            "start_location": driver.get("location", ride.get("pickup", {})),
+            "start_location": driver.get("location") or driver.get("current_location") or ride.get("pickup", {}),
         },
         "$push": {"status_history": {"status": "started", "at": now.isoformat()}}}
     )
+    if transition.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("cancellation_state") in {"processing", "completed"} or current.get("status") == RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wird storniert oder wurde bereits storniert")
+        if current.get("status") == RideStatus.STARTED.value:
+            return {"ok": True, "status": "started", "message": "Fahrt bereits gestartet", "replayed": True}
+        raise HTTPException(status_code=409, detail="Fahrtstatus wurde bereits geändert")
     
     return {"ok": True, "status": "started", "message": "Fahrt gestartet"}
 
@@ -2267,6 +3249,33 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
+    if ride["status"] == RideStatus.COMPLETED.value and ride.get("payment_status") == "settled":
+        replay_fare = {
+            "total": float(ride.get("final_fare") or ride.get("fare_estimate") or 0),
+            "driver_earnings": float(ride.get("driver_earnings") or 0),
+            "platform_fee": float(ride.get("platform_fee") or 0),
+        }
+        await _ensure_taxi_settlement_reporting(
+            driver_id=driver["driver_id"],
+            ride_id=req.ride_id,
+            driver_earnings=replay_fare["driver_earnings"],
+            platform_fee=replay_fare["platform_fee"],
+            settled_at=ride.get("completed_at") or ride.get("ended_at"),
+        )
+        await _release_driver_active_ride(driver["driver_id"], req.ride_id)
+        return {
+            "ok": True,
+            "ride_summary": {
+                "ride_id": req.ride_id,
+                "distance_km": float(ride.get("actual_distance_km") or ride.get("distance_km_estimate") or 0),
+                "duration_minutes": float(ride.get("actual_duration_minutes") or ride.get("duration_estimate_minutes") or 0),
+                "fare": replay_fare,
+            },
+            "driver_earnings": replay_fare["driver_earnings"],
+            "message": "Fahrt war bereits abgeschlossen.",
+            "replayed": True,
+        }
+
     if ride["status"] != RideStatus.STARTED.value:
         raise HTTPException(status_code=400, detail="Fahrt noch nicht gestartet")
     
@@ -2279,10 +3288,10 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
     
     # Calculate actual distance (from start to current driver location)
     start_loc = ride.get("start_location", ride.get("pickup", {}))
-    end_loc = driver.get("location", ride.get("dropoff", {}))
+    end_loc = driver.get("location") or driver.get("current_location") or ride.get("dropoff", {})
     
     distance_km = ride.get("distance_km_estimate", 5)
-    if start_loc.get("lat") and end_loc.get("lat"):
+    if NumberErrorSafe(start_loc.get("lat"), start_loc.get("lng")) and NumberErrorSafe(end_loc.get("lat"), end_loc.get("lng")):
         distance_km = haversine_distance(
             start_loc["lat"], start_loc["lng"],
             end_loc["lat"], end_loc["lng"]
@@ -2290,23 +3299,52 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         # Use at least the estimate if actual is much less (short route taken)
         distance_km = max(distance_km, ride.get("distance_km_estimate", 0) * 0.8)
     
-    # Calculate final fare
-    fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
+    # Settle against the price that was shown and accepted at booking.
+    # This keeps fixed fares, regional pricing, tariff zones and promos consistent.
+    quoted_total = float(ride.get("fare_estimate") or 0)
+    if quoted_total > 0:
+        fare = {
+            "total": round(quoted_total, 2),
+            "driver_earnings": round(quoted_total * DRIVER_COMMISSION, 2),
+            "platform_fee": round(quoted_total * PLATFORM_COMMISSION, 2),
+        }
+        pricing_source = "locked_booking_quote"
+    else:
+        # Legacy rides without a stored quote keep a safe fallback.
+        fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
+        pricing_source = "legacy_meter_fallback"
     
-    # Deduct from customer wallet
-    customer_payment = await debit_wallet(
-        user_id=ride["customer_id"],
-        amount=fare["total"],
-        tx_type=TransactionType.TAXI_PAYMENT,
-        description=f"Taxi: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
-        reference=f"TAXI-{req.ride_id[:8].upper()}",
-        metadata={"ride_id": req.ride_id, "driver_id": driver["driver_id"]}
-    )
+    # Consume the amount reserved at booking. Legacy rides without a reservation
+    # still use the atomic debit path.
+    reserved_amount = float(ride.get("payment_reserved_amount") or 0)
+    customer_payment_id = ride.get("payment_reserved_transaction_id")
+    settlement_additional_payment_id = None
+    payment_source = "reserved_at_booking"
+    additional_charge = round(max(0.0, float(fare["total"]) - reserved_amount), 2)
+    if additional_charge > 0.001:
+        customer_payment = await debit_wallet(
+            user_id=ride["customer_id"],
+            amount=additional_charge,
+            tx_type=TransactionType.TAXI_PAYMENT,
+            description=f"Taxi Nachbelastung: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
+            reference=f"TAXI-SETTLE-{req.ride_id[:8].upper()}",
+            metadata={
+                "ride_id": req.ride_id,
+                "driver_id": driver["driver_id"],
+                "reserved_amount": reserved_amount,
+                "final_fare": fare["total"],
+                "additional_charge": additional_charge,
+            },
+            idempotency_key=f"taxi-settle-delta:{req.ride_id}",
+        )
+        if not customer_payment.success:
+            raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
+        settlement_additional_payment_id = customer_payment.transaction_id
+        if not customer_payment_id:
+            customer_payment_id = customer_payment.transaction_id
+        payment_source = "reserved_plus_settlement_delta" if reserved_amount > 0 else "legacy_end_of_ride_debit"
     
-    if not customer_payment.success:
-        raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
-    
-    # Credit driver wallet
+    # Credit driver wallet exactly once for this ride.
     driver_credit = await credit_wallet(
         user_id=driver["user_id"],
         amount=fare["driver_earnings"],
@@ -2314,42 +3352,57 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
         description=f"Fahrt-Verdienst: {req.ride_id[:8].upper()}",
         reference=f"TAXI-EARN-{req.ride_id[:8].upper()}",
         source="taxi_ride",
-        metadata={"ride_id": req.ride_id, "total_fare": fare["total"]}
+        metadata={"ride_id": req.ride_id, "total_fare": fare["total"]},
+        idempotency_key=f"taxi-driver-earning:{req.ride_id}",
     )
+    if not driver_credit.success:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Fahrerverdienst konnte nicht sicher finalisiert werden: {driver_credit.error or 'Wallet-Reconciliation erforderlich'}",
+        )
     
-    # Update ride
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
+    # Complete the ride once. Money movements above are idempotent, so a
+    # concurrent retry cannot duplicate wallet value.
+    completed = await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id, "status": RideStatus.STARTED.value},
         {"$set": {
             "status": RideStatus.COMPLETED.value,
             "ended_at": now.isoformat(),
+            "completed_at": now.isoformat(),
             "end_location": end_loc,
             "actual_distance_km": round(distance_km, 2),
             "actual_duration_minutes": round(duration_minutes),
             "final_fare": fare["total"],
+            "pricing_source": pricing_source,
             "driver_earnings": fare["driver_earnings"],
             "platform_fee": fare["platform_fee"],
-            "customer_payment_id": customer_payment.transaction_id,
-            "driver_payment_id": driver_credit.transaction_id if driver_credit.success else None,
+            "customer_payment_id": customer_payment_id,
+            "settlement_additional_payment_id": settlement_additional_payment_id,
+            "payment_status": "settled",
+            "payment_source": payment_source,
+            "driver_payment_id": driver_credit.transaction_id,
         },
         "$push": {"status_history": {"status": "completed", "at": now.isoformat()}}}
     )
-    
-    # Update driver stats
-    await db.drivers.update_one(
-        {"driver_id": driver["driver_id"]},
-        {"$inc": {
-            "total_rides": 1,
-            "total_earnings": fare["driver_earnings"],
-        }}
+
+    if completed.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") != RideStatus.COMPLETED.value:
+            raise HTTPException(status_code=409, detail="Fahrtabschluss wird bereits verarbeitet. Bitte erneut prüfen.")
+        fare = {
+            "total": float(current.get("final_fare") or fare["total"]),
+            "driver_earnings": float(current.get("driver_earnings") or fare["driver_earnings"]),
+            "platform_fee": float(current.get("platform_fee") or fare["platform_fee"]),
+        }
+
+    await _ensure_taxi_settlement_reporting(
+        driver_id=driver["driver_id"],
+        ride_id=req.ride_id,
+        driver_earnings=fare["driver_earnings"],
+        platform_fee=fare["platform_fee"],
+        settled_at=now.isoformat(),
     )
-    
-    # Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": fare["platform_fee"], "by_source.taxi_fees": fare["platform_fee"]}},
-        upsert=True
-    )
+    await _release_driver_active_ride(driver["driver_id"], req.ride_id)
     
     return {
         "ok": True,
@@ -2370,72 +3423,216 @@ async def driver_end_ride(req: RideActionRequest, request: Request):
 
 @router.post("/cancel")
 async def cancel_ride(req: RideActionRequest, request: Request):
-    """Customer or driver cancels a ride."""
+    """Cancel a ride with an atomic state claim and retry-safe money movements."""
     from core.payment_engine import debit_wallet, credit_wallet, TransactionType
-    
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
+
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    # Check if user is customer or driver
+
     is_customer = ride["customer_id"] == user_id
     driver = await db.drivers.find_one({"user_id": user_id})
-    is_driver = driver and ride.get("driver_id") == driver.get("driver_id")
-    
+    is_driver = bool(driver and ride.get("driver_id") == driver.get("driver_id"))
     if not is_customer and not is_driver:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
-    
-    if ride["status"] in [RideStatus.COMPLETED.value, RideStatus.CANCELLED.value]:
+
+    if ride.get("status") == RideStatus.CANCELLED.value:
+        await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)
+        return {
+            "ok": True,
+            "status": "cancelled",
+            "cancellation_fee": float(ride.get("cancellation_fee") or 0),
+            "refund_amount": float(ride.get("refund_amount") or 0),
+            "message": "Fahrt war bereits storniert.",
+            "replayed": True,
+        }
+    if ride.get("status") == RideStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
-    
+    if ride.get("status") == RideStatus.STARTED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Eine bereits gestartete Fahrt kann nicht normal storniert werden. Bitte nutze Support/SOS.",
+        )
+
+    allowed_statuses = [
+        RideStatus.REQUESTED.value,
+        RideStatus.ACCEPTED.value,
+        RideStatus.ARRIVING.value,
+    ]
+    if ride.get("status") not in allowed_statuses:
+        raise HTTPException(status_code=409, detail="Fahrtstatus erlaubt keine Stornierung")
+
     now = datetime.now(timezone.utc)
     cancelled_by = "customer" if is_customer else "driver"
-    
-    # Cancellation fee if ride was already accepted
-    cancel_fee = 0
-    if ride["status"] in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value] and is_customer:
-        cancel_fee = CANCELLATION_FEE
-        # Charge customer
-        await debit_wallet(
+    reserved_amount = round(float(ride.get("payment_reserved_amount") or 0), 2)
+    cancel_fee = 0.0
+    if is_customer and ride.get("status") in {RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value}:
+        cancel_fee = round(
+            min(float(CANCELLATION_FEE), reserved_amount) if reserved_amount > 0 else float(CANCELLATION_FEE),
+            2,
+        )
+
+    claim = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": {"$in": allowed_statuses},
+            "$or": [
+                {"cancellation_state": {"$exists": False}},
+                {"cancellation_state": {"$in": ["failed", "released"]}},
+            ],
+        },
+        {"$set": {
+            "cancellation_state": "processing",
+            "cancellation_user_id": user_id,
+            "cancellation_claimed_at": now.isoformat(),
+            "cancelled_by": cancelled_by,
+            "cancellation_fee": cancel_fee,
+            "cancellation_reserved_amount": reserved_amount,
+            "cancellation_reason": req.reason or None,
+        }},
+    )
+
+    if claim.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") == RideStatus.CANCELLED.value:
+            return {
+                "ok": True,
+                "status": "cancelled",
+                "cancellation_fee": float(current.get("cancellation_fee") or 0),
+                "refund_amount": float(current.get("refund_amount") or 0),
+                "message": "Fahrt war bereits storniert.",
+                "replayed": True,
+            }
+        if current.get("status") == RideStatus.STARTED.value:
+            raise HTTPException(
+                status_code=409,
+                detail="Fahrt wurde bereits gestartet und kann nicht normal storniert werden.",
+            )
+        if current.get("status") == RideStatus.COMPLETED.value:
+            raise HTTPException(status_code=409, detail="Fahrt wurde bereits abgeschlossen.")
+        if (
+            current.get("cancellation_state") == "processing"
+            and str(current.get("cancellation_user_id") or "") == user_id
+        ):
+            ride = current
+            cancelled_by = current.get("cancelled_by") or cancelled_by
+            reserved_amount = round(float(current.get("cancellation_reserved_amount") or 0), 2)
+            cancel_fee = round(float(current.get("cancellation_fee") or 0), 2)
+        else:
+            raise HTTPException(status_code=409, detail="Stornierung wird bereits von einem anderen Vorgang verarbeitet.")
+    else:
+        ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or ride
+
+    await _release_driver_active_ride(ride.get("driver_id"), req.ride_id)
+
+    refund_amount = round(max(0.0, reserved_amount - cancel_fee), 2)
+    refund_transaction_id = ride.get("refund_transaction_id")
+    if reserved_amount > 0 and refund_amount > 0:
+        refund = await credit_wallet(
+            user_id=ride["customer_id"],
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description="Taxi-Reservierung zurückgezahlt",
+            reference=f"TAXI-REFUND-{req.ride_id[:8].upper()}",
+            source="taxi_cancellation",
+            metadata={"ride_id": req.ride_id, "cancel_fee": cancel_fee},
+            idempotency_key=f"taxi-cancel-refund:{req.ride_id}",
+        )
+        if not refund.success:
+            raise HTTPException(status_code=503, detail=f"Rückerstattung noch nicht finalisiert: {refund.error}")
+        refund_transaction_id = refund.transaction_id
+    elif reserved_amount <= 0 and cancel_fee > 0:
+        fee_payment = await debit_wallet(
             user_id=ride["customer_id"],
             amount=cancel_fee,
             tx_type=TransactionType.TAXI_PAYMENT,
             description="Stornierungsgebühr",
             reference=f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
-            metadata={"ride_id": req.ride_id}
+            metadata={"ride_id": req.ride_id},
+            idempotency_key=f"taxi-cancel-fee:{req.ride_id}",
         )
-        # Pay driver compensation (half of cancel fee)
-        if ride.get("driver_id"):
-            driver_user_id = (await db.drivers.find_one({"driver_id": ride["driver_id"]}))["user_id"]
-            await credit_wallet(
-                user_id=driver_user_id,
-                amount=cancel_fee * 0.5,
+        if not fee_payment.success:
+            raise HTTPException(status_code=503, detail=f"Stornierungsgebühr noch nicht finalisiert: {fee_payment.error}")
+
+    compensation_transaction_id = ride.get("cancellation_compensation_transaction_id")
+    compensation_status = ride.get("cancellation_compensation_status") or "not_required"
+    if cancel_fee > 0 and ride.get("driver_id"):
+        assigned_driver = await db.drivers.find_one({"driver_id": ride["driver_id"]})
+        if assigned_driver and assigned_driver.get("user_id"):
+            compensation = await credit_wallet(
+                user_id=assigned_driver["user_id"],
+                amount=round(cancel_fee * 0.5, 2),
                 tx_type=TransactionType.DRIVER_EARNINGS,
                 description="Stornierungsentschädigung",
                 reference=f"TAXI-COMP-{req.ride_id[:8].upper()}",
                 source="cancellation",
+                metadata={"ride_id": req.ride_id, "cancellation_fee": cancel_fee},
+                idempotency_key=f"taxi-cancel-comp:{req.ride_id}",
             )
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
-        {"$set": {
-            "status": RideStatus.CANCELLED.value,
-            "cancelled_at": now.isoformat(),
-            "cancelled_by": cancelled_by,
-            "cancellation_fee": cancel_fee,
-            "cancellation_reason": req.reason or None,
+            if not compensation.success:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Fahrerentschädigung noch nicht finalisiert: {compensation.error}",
+                )
+            compensation_transaction_id = compensation.transaction_id
+            compensation_status = "paid"
+        else:
+            compensation_status = "driver_unavailable"
+
+    finalized = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "status": {"$in": allowed_statuses},
+            "cancellation_state": "processing",
+            "cancellation_user_id": user_id,
         },
-        "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by, "reason": req.reason or None}}}
+        {
+            "$set": {
+                "status": RideStatus.CANCELLED.value,
+                "cancellation_state": "completed",
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "cancelled_by": cancelled_by,
+                "cancellation_fee": cancel_fee,
+                "refund_amount": refund_amount,
+                "refund_transaction_id": refund_transaction_id,
+                "payment_status": "cancelled_refunded" if reserved_amount > 0 else "cancelled",
+                "cancellation_reason": ride.get("cancellation_reason") or req.reason or None,
+                "cancellation_compensation_status": compensation_status,
+                "cancellation_compensation_transaction_id": compensation_transaction_id,
+            },
+            "$push": {
+                "status_history": {
+                    "status": "cancelled",
+                    "at": datetime.now(timezone.utc).isoformat(),
+                    "by": cancelled_by,
+                    "reason": ride.get("cancellation_reason") or req.reason or None,
+                }
+            },
+        },
     )
-    
+    if finalized.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0}) or {}
+        if current.get("status") != RideStatus.CANCELLED.value:
+            raise HTTPException(status_code=409, detail="Stornierung konnte nicht atomar abgeschlossen werden.")
+        return {
+            "ok": True,
+            "status": "cancelled",
+            "cancellation_fee": float(current.get("cancellation_fee") or 0),
+            "refund_amount": float(current.get("refund_amount") or 0),
+            "message": "Fahrt war bereits storniert.",
+            "replayed": True,
+        }
+
     return {
         "ok": True,
         "status": "cancelled",
         "cancellation_fee": cancel_fee,
+        "refund_amount": refund_amount,
         "message": "Fahrt storniert" + (f" (Gebühr: €{cancel_fee:.2f})" if cancel_fee else ""),
+        "replayed": False,
     }
 
 
@@ -2469,11 +3666,11 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     d = await db.drivers.find_one({"driver_id": drv_id}, {"_id": 0})
     if not d:
         return ride
-    loc = d.get("location") or {}
+    loc = d.get("location") or d.get("current_location") or {}
     pickup = ride.get("pickup") or {}
     eta = None
     try:
-        if loc.get("lat") is not None and pickup.get("lat") is not None:
+        if NumberErrorSafe(loc.get("lat"), loc.get("lng")) and NumberErrorSafe(pickup.get("lat"), pickup.get("lng")):
             # haversine in km
             from math import radians, sin, cos, asin, sqrt
             lat1, lon1 = radians(loc["lat"]), radians(loc["lng"])
@@ -2486,17 +3683,17 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
             eta = max(1, round(km / 30 * 60))
     except Exception:
         eta = None
-    car = d.get("car") or {}
+    car = d.get("car") or d.get("vehicle") or {}
     target = ride.get("dropoff") if ride.get("status") == RideStatus.STARTED.value else ride.get("pickup")
     driver_bearing = None
     try:
-        if loc.get("lat") is not None and target and target.get("lat") is not None:
+        if target and NumberErrorSafe(loc.get("lat"), loc.get("lng")) and NumberErrorSafe(target.get("lat"), target.get("lng")):
             driver_bearing = calculate_bearing(loc["lat"], loc["lng"], target["lat"], target["lng"])
     except Exception:
         driver_bearing = None
     ride["driver"] = {
         "driver_id": d.get("driver_id"),
-        "name": d.get("user_name") or ride.get("driver_name") or "",
+        "name": d.get("user_name") or d.get("name") or ride.get("driver_name") or "",
         "photo_url": d.get("photo_url", ""),
         "phone": d.get("phone", ""),
         "rating": d.get("rating", 5.0),
@@ -2510,7 +3707,7 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
             "type": car.get("type"),
         },
     }
-    if loc.get("lat") is not None:
+    if NumberErrorSafe(loc.get("lat"), loc.get("lng")):
         ride["driver_lat"] = loc["lat"]
         ride["driver_lng"] = loc["lng"]
     if driver_bearing is not None:
@@ -2611,6 +3808,20 @@ async def get_ride_history(request: Request, limit: int = 20):
     }
 
 
+@router.get("/rides/{ride_id}")
+async def get_ride_detail(ride_id: str, request: Request):
+    """Return one ride to its customer, assigned driver or an admin."""
+    user = await get_current_user(request)
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    role = await _get_ride_party_role(ride, user)
+    if not role:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Fahrt")
+    ride = await _enrich_ride_with_driver(ride)
+    return {"ok": True, "role": role, "ride": ride}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DRIVER: EARNINGS & HISTORY
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2664,7 +3875,7 @@ async def get_driver_earnings(request: Request):
 async def admin_list_drivers(request: Request):
     """Admin: List all drivers."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     drivers = await db.drivers.find({}, {"_id": 0}).to_list(200)
@@ -2684,7 +3895,7 @@ async def admin_approve_driver(driver_id: str, request: Request):
     """Admin: Approve a driver. Also propagates vehicle_capabilities from
     any matching driver-onboarding application (by email) into drivers.car.*."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     driver = await db.drivers.find_one({"driver_id": driver_id})
@@ -2748,7 +3959,7 @@ async def admin_approve_driver(driver_id: str, request: Request):
 async def list_driver_applications(request: Request, status: Optional[str] = None):
     """Admin: List all driver onboarding applications (filter by status)."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     query = {}
     if status:
@@ -2772,7 +3983,7 @@ async def approve_driver_application(application_id: str, request: Request):
     """Admin: Approve an onboarding application. Creates a driver record
     in db.drivers with vehicle_capabilities propagated to car.* fields."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     app = await db.taxi_driver_applications.find_one({"application_id": application_id})
@@ -2842,7 +4053,7 @@ async def approve_driver_application(application_id: str, request: Request):
 async def reject_driver_application(application_id: str, request: Request):
     """Admin: Reject an onboarding application."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     res = await db.taxi_driver_applications.update_one(
         {"application_id": application_id},
@@ -2861,7 +4072,7 @@ async def reject_driver_application(application_id: str, request: Request):
 async def admin_suspend_driver(driver_id: str, request: Request):
     """Admin: Suspend a driver."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     await db.drivers.update_one(
@@ -3276,7 +4487,7 @@ async def get_ride_receipt_pdf(ride_id: str, request: Request):
     ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id and user.get("role") != "admin":
+    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id and user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Nicht berechtigt")
     if ride.get("status") not in ("completed", "cancelled"):
         raise HTTPException(status_code=400, detail="Fahrt noch nicht abgeschlossen")
@@ -3361,49 +4572,119 @@ async def get_ride_receipt(ride_id: str, request: Request):
 
 @router.post("/rides/tip")
 async def add_ride_tip(req: TipRequest, request: Request):
-    """Add a tip to a completed ride. Charges customer wallet, credits driver."""
-    from core.payment_engine import debit_wallet, TransactionType
+    """Add one retry-safe tip to a completed ride using the canonical wallet transfer engine."""
+    from core.payment_engine import transfer_between_wallets, TransactionType
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    amount = round(float(req.tip_amount), 2)
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
 
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride or ride.get("customer_id") != user_id:
         raise HTTPException(status_code=403, detail="Nicht berechtigt")
     if ride.get("status") != "completed":
         raise HTTPException(status_code=400, detail="Fahrt nicht abgeschlossen")
-    if ride.get("tip", 0) > 0:
-        raise HTTPException(status_code=400, detail="Trinkgeld bereits hinzugefügt")
-    if req.amount <= 0:
-        raise HTTPException(status_code=400, detail="Betrag muss > 0 sein")
+    driver_id = str(ride.get("driver_id") or "")
+    if not driver_id:
+        raise HTTPException(status_code=409, detail="Fahrt hat keinen abrechenbaren Fahrer")
 
-    # Charge customer
-    pay = await debit_wallet(
-        user_id=user_id,
-        amount=req.amount,
+    idem_key = f"taxi-tip:{req.ride_id}:{raw_key}"
+    marker_hash = hashlib.sha256(idem_key.encode("utf-8")).hexdigest()[:24]
+    now = datetime.now(timezone.utc).isoformat()
+
+    # A ride may receive only one tip. Reserve the ride before any money moves.
+    reserved = await db.taxi_rides.update_one(
+        {
+            "ride_id": req.ride_id,
+            "customer_id": user_id,
+            "status": "completed",
+            "$or": [
+                {"tip_status": {"$exists": False}},
+                {"tip_status": "failed"},
+            ],
+            "tip": {"$in": [None, 0, 0.0]},
+        },
+        {"$set": {
+            "tip_status": "reserved",
+            "tip_amount": amount,
+            "tip_idempotency_key": idem_key,
+            "tip_reserved_at": now,
+        }},
+    )
+
+    if reserved.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or {}
+        existing_amount = round(float(current.get("tip_amount") or current.get("tip") or 0), 2)
+        if current.get("tip_status") == "completed":
+            if existing_amount == amount:
+                return {
+                    "ok": True,
+                    "tip": existing_amount,
+                    "transaction_id": current.get("tip_transaction_id"),
+                    "replayed": True,
+                }
+            raise HTTPException(status_code=409, detail="Für diese Fahrt wurde bereits Trinkgeld gebucht")
+        if current.get("tip_status") == "reserved":
+            if current.get("tip_idempotency_key") != idem_key or existing_amount != amount:
+                raise HTTPException(status_code=409, detail="Trinkgeld wird bereits verarbeitet")
+            # Same retry continues through the idempotent transfer below.
+        else:
+            raise HTTPException(status_code=409, detail="Trinkgeld konnte nicht reserviert werden")
+
+    pay = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=driver_id,
+        amount=amount,
         tx_type=TransactionType.TAXI_PAYMENT,
         description=f"Trinkgeld Fahrt {req.ride_id[:6].upper()}",
-        reference=f"TIP-{req.ride_id[:6].upper()}",
+        reference=f"TIP-{req.ride_id[:10].upper()}",
+        metadata={"ride_id": req.ride_id, "kind": "taxi_tip"},
+        idempotency_key=idem_key,
     )
     if not pay.success:
-        raise HTTPException(status_code=400, detail=pay.error)
+        await db.taxi_rides.update_one(
+            {"ride_id": req.ride_id, "tip_idempotency_key": idem_key, "tip_status": "reserved"},
+            {"$set": {
+                "tip_status": "failed",
+                "tip_error": (pay.error or "wallet_transfer_failed")[:300],
+                "tip_failed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=400, detail=pay.error or "Trinkgeld konnte nicht gebucht werden")
 
-    # Credit driver
-    if ride.get("driver_id"):
-        try:
-            await db.users.update_one(
-                {"_id": ObjectId(ride["driver_id"])},
-                {"$inc": {"balance": req.amount, "earnings": req.amount}},
-            )
-        except Exception:
-            pass
-
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
-        {"$set": {"tip": req.amount, "tip_at": datetime.now(timezone.utc).isoformat()}}
+    # Driver earnings is reporting metadata only; wallet value already moved atomically above.
+    earnings_marker = f"taxi_tip_earning_markers.{marker_hash}"
+    await db.users.update_one(
+        {"_id": ObjectId(driver_id) if ObjectId.is_valid(driver_id) else driver_id, earnings_marker: {"$exists": False}},
+        {
+            "$inc": {"earnings": amount},
+            "$set": {earnings_marker: {"ride_id": req.ride_id, "amount": amount, "created_at": now}},
+        },
     )
 
-    return {"ok": True, "tip": req.amount}
+    finalized = await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id, "tip_idempotency_key": idem_key, "tip_status": "reserved"},
+        {"$set": {
+            "tip": amount,
+            "tip_status": "completed",
+            "tip_transaction_id": pay.transaction_id,
+            "tip_at": datetime.now(timezone.utc).isoformat(),
+        }, "$unset": {"tip_error": "", "tip_failed_at": ""}},
+    )
+    if finalized.modified_count != 1:
+        current = await db.taxi_rides.find_one({"ride_id": req.ride_id}) or {}
+        if current.get("tip_status") != "completed" or current.get("tip_transaction_id") != pay.transaction_id:
+            raise HTTPException(status_code=500, detail="Trinkgeld transferiert; Ride-Abgleich benötigt Prüfung")
+
+    return {
+        "ok": True,
+        "tip": amount,
+        "transaction_id": pay.transaction_id,
+        "replayed": bool(pay.idempotent_replay),
+    }
 
 
 

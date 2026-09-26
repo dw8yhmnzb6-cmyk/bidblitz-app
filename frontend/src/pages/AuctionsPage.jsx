@@ -225,6 +225,77 @@ const TrustBar = ({ t, recentWinners }) => (
 /* ════════════════════════════════════════════
    CATEGORIES
    ════════════════════════════════════════════ */
+const PremiumAuctionHero = ({ auction, onOpen, onBid, bidding, t, lang }) => {
+  if (!auction) return null;
+  const loc = localized(auction, lang);
+  const bidValue = Number(auction.bid_value_eur || 0.5);
+  const increment = Number(auction.price_increment || 0.01);
+  return (
+    <motion.section
+      data-testid="auction-premium-hero"
+      className="overflow-hidden rounded-[28px] border border-[#FFD166]/35"
+      style={{
+        background: "linear-gradient(135deg, rgba(255,209,102,0.10), rgba(8,12,22,0.98) 34%, rgba(0,224,255,0.05))",
+        boxShadow: "0 16px 46px rgba(255,209,102,0.10)",
+      }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex items-center justify-between border-b border-[#FFD166]/15 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Crown size={15} className="text-[#FFD166]" />
+          <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#FFD166]">Premium Auktion</span>
+        </div>
+        <span className="rounded-full border border-[#FFD166]/20 bg-[#FFD166]/10 px-2.5 py-1 text-[9px] font-black text-[#FFD166]">TOP DEAL</span>
+      </div>
+      <div className="grid gap-0 md:grid-cols-[0.9fr_1.1fr]">
+        <button type="button" data-testid={`auction-card-${auction.auction_id}`} onClick={onOpen} className="relative min-h-[250px] overflow-hidden bg-[#080C16] text-left">
+          {auction.image_url ? (
+            <img src={auction.image_url} alt={loc.title} className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center"><Package size={52} className="text-white/10" /></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050913] via-transparent to-black/15" />
+          <div className="absolute bottom-3 left-3 rounded-full border border-[#00E89D]/20 bg-[#00E89D]/15 px-3 py-1.5 text-[9px] font-black text-[#00E89D]">
+            Neu · Versand kostenlos
+          </div>
+        </button>
+        <div className="p-4 sm:p-5">
+          <button type="button" onClick={onOpen} className="w-full text-left">
+            <h2 className="text-[20px] font-black leading-tight text-white">{loc.title}</h2>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">{loc.description || "Premium Deal · Neu & OVP"}</p>
+          </button>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-[#00E0FF]/15 bg-[#00E0FF]/[0.05] p-3">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-white/30">Aktueller Preis</p>
+              <MoneyAmount value={auction.current_price} locale={lang} className="mt-1 text-[26px] font-black text-[#00E0FF]" />
+            </div>
+            <div className="rounded-2xl border border-[#FF4060]/15 bg-[#FF4060]/[0.04] p-3">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-white/30">Endet in</p>
+              <div className="mt-1 text-[#FF4060]"><Countdown endsAt={auction.ends_at} status={auction.status} size="sm" /></div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[10px] text-white/35">
+            <span>{auction.total_bids || 0} Gebote</span>
+            <span>Preis +{increment.toFixed(2).replace(".", ",")} € je Gebot</span>
+          </div>
+          <motion.button
+            type="button"
+            data-testid={`auction-premium-quick-bid-${auction.auction_id}`}
+            onClick={() => onBid?.(auction)}
+            disabled={bidding}
+            className="mt-4 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#00DFFB] to-[#54E8FF] text-[15px] font-black text-[#03131A] disabled:opacity-55"
+            whileTap={{ scale: 0.98 }}
+          >
+            {bidding ? <Loader2 size={16} className="animate-spin" /> : <Gavel size={17} />}
+            {bidding ? "Bietet…" : `${bidValue.toFixed(2).replace(".", ",")} € bieten`}
+          </motion.button>
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
 const CATS = [
   { id: "all", label: "All", color: accentCyan },
   { id: "phones", label: "Phones", color: accentPurple },
@@ -240,7 +311,7 @@ const CATS = [
 /* ════════════════════════════════════════════
    WIN / LOSE MODAL
    ════════════════════════════════════════════ */
-const WinLoseModal = ({ type, auction, onClose, t }) => {
+const WinLoseModal = ({ type, auction, onClose, onClaimPrize, t }) => {
   if (!type || !auction) return null;
   const isWin = type === "won";
   return (
@@ -262,13 +333,126 @@ const WinLoseModal = ({ type, auction, onClose, t }) => {
           {auction.image_url && <img src={auction.image_url} alt="" className="w-full h-32 object-cover rounded-xl mb-3 opacity-80" />}
           <p className="text-[12px] font-semibold text-white/70 mb-1">{auction.title}</p>
           {isWin && <p className="text-[22px] font-black font-mono text-[#00E0FF] mb-4" style={{ textShadow: "0 0 12px rgba(0,224,255,0.2)" }}>{auction.current_price?.toFixed(2)}</p>}
-          <motion.button data-testid="winlose-close-btn" onClick={onClose}
+          <motion.button data-testid="winlose-close-btn" onClick={isWin ? onClaimPrize : onClose}
             className="w-full py-3 rounded-xl text-[12px] font-bold"
             style={{ background: isWin ? "rgba(255,209,102,0.1)" : "rgba(0,224,255,0.06)", border: `1px solid ${isWin ? "rgba(255,209,102,0.2)" : "rgba(0,224,255,0.1)"}`, color: isWin ? accentGold : accentCyan }}
             whileTap={{ scale: 0.97 }}>
             {isWin ? t("auction.claim_prize") : t("auction.browse_more")}
           </motion.button>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const WinnerCheckoutModal = ({
+  open,
+  checkout,
+  loading,
+  paying,
+  error,
+  form,
+  onChange,
+  onPay,
+  onClose,
+}) => {
+  if (!open) return null;
+  const paid = checkout?.payment_status === "paid";
+  return (
+    <motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={paying ? undefined : onClose} />
+      <motion.div
+        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl border border-[#FFD166]/20 bg-[#080C14] p-5"
+        initial={{ scale: 0.94, y: 20 }} animate={{ scale: 1, y: 0 }}
+        data-testid="auction-winner-checkout"
+      >
+        <button onClick={onClose} disabled={paying} className="absolute right-4 top-4 text-white/40 disabled:opacity-30"><X size={18} /></button>
+        <div className="flex items-center gap-3 pr-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#FFD166]/20 bg-[#FFD166]/10"><Package size={20} className="text-[#FFD166]" /></div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#FFD166]/70">Gewinner-Checkout</p>
+            <h3 className="text-lg font-black text-white">{checkout?.title || "Auktionsgewinn"}</h3>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-48 items-center justify-center"><Loader2 className="animate-spin text-[#FFD166]" /></div>
+        ) : paid ? (
+          <div className="mt-5 space-y-4">
+            <div className="rounded-2xl border border-[#00E89D]/20 bg-[#00E89D]/10 p-4" data-testid="winner-order-paid">
+              <div className="flex items-center gap-2 text-[#00E89D]"><Check size={18} /><span className="font-bold">Bestellung bezahlt</span></div>
+              <p className="mt-2 text-sm text-white/65">Order-ID: {checkout?.order_id}</p>
+              <p className="text-sm text-white/65">Endpreis: €{Number(checkout?.final_price || 0).toFixed(2)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <Truck size={16} className="mb-2 text-[#00C2FF]" />
+                <p className="text-xs font-bold text-white/80">Versand kostenlos</p>
+                <p className="mt-1 text-[10px] text-white/40">Fulfillment: {checkout?.fulfillment_status || "pending"}</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <Globe size={16} className="mb-2 text-[#A855F7]" />
+                <p className="text-xs font-bold text-white/80">{checkout?.shipping_address?.country || "Versandland"}</p>
+                {checkout?.tracking_number ? (
+                  <>
+                    <p className="mt-1 text-[10px] text-white/50">{checkout?.carrier || "Carrier"}</p>
+                    <p className="mt-1 break-all font-mono text-[10px] text-[#00C2FF]" data-testid="winner-tracking-number">{checkout.tracking_number}</p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-[10px] text-white/40">Tracking erst nach echter Übergabe an Versand</p>
+                )}
+              </div>
+            </div>
+            <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-3 text-sm font-bold text-white/80">Schließen</button>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/40">Zu zahlen</p>
+                <p className="mt-1 text-2xl font-black text-[#00E0FF]">€{Number(checkout?.total_due || 0).toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-[#00E89D]">0,00 € Versand</p>
+                <p className="text-[10px] text-white/35">weltweit kostenlos</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ["full_name", "Vor- und Nachname"],
+                ["phone", "Telefon (optional)"],
+                ["address_line1", "Straße + Hausnummer"],
+                ["address_line2", "Adresszusatz (optional)"],
+                ["postal_code", "PLZ"],
+                ["city", "Stadt"],
+                ["country", "Land"],
+              ].map(([key, label]) => (
+                <label key={key} className={key === "address_line1" || key === "address_line2" ? "sm:col-span-2" : ""}>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-white/35">{label}</span>
+                  <input
+                    value={form[key] || ""}
+                    onChange={(e) => onChange(key, e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-white outline-none focus:border-[#00C2FF]/40"
+                    data-testid={`winner-checkout-${key}`}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300" data-testid="winner-checkout-error">{error}</div>}
+            <button
+              onClick={onPay}
+              disabled={paying}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00E89D] py-3.5 text-sm font-black text-black disabled:opacity-50"
+              data-testid="winner-checkout-pay"
+            >
+              {paying ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />}
+              {paying ? "Zahlung wird verarbeitet…" : `Mit Wallet bezahlen · €${Number(checkout?.total_due || 0).toFixed(2)}`}
+            </button>
+            <p className="text-center text-[10px] text-white/30">Die Bestellung wird erst nach erfolgreicher zentraler Wallet-Buchung als bezahlt markiert.</p>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -359,7 +543,7 @@ const WalletTopUpBanner = ({ balance, onTopUp, t }) => {
    LIVE ACTIVITY INDICATOR
    ════════════════════════════════════════════ */
 const LiveActivityBar = ({ auctions, t }) => {
-  const [activity, setActivity] = useState({ bids: 0, watching: 0, hot: false });
+  const [activity, setActivity] = useState({ bids: 0, activeAuctions: 0, hot: false });
   
   useEffect(() => {
     // Calculate activity from auctions
@@ -369,7 +553,7 @@ const LiveActivityBar = ({ auctions, t }) => {
     
     setActivity({
       bids: totalBids,
-      watching: Math.floor(activeCount * 3 + Math.random() * 10),
+      activeAuctions: activeCount,
       hot: hotAuctions > 0,
     });
   }, [auctions]);
@@ -390,7 +574,7 @@ const LiveActivityBar = ({ auctions, t }) => {
         </div>
         <div className="flex items-center gap-1">
           <Users size={10} className="text-[#B068FF]" />
-          <span className="text-[9px] text-white/50">{activity.watching} {t("auction.watching") || "schauen zu"}</span>
+          <span className="text-[9px] text-white/50">{activity.activeAuctions} aktive Auktionen</span>
         </div>
       </div>
       {activity.hot && (
@@ -452,20 +636,28 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [auctionNotifs, setAuctionNotifs] = useState([]);
   const [showNotifToast, setShowNotifToast] = useState(false);
   const [winLose, setWinLose] = useState({ type: null, auction: null });
+  const [winnerCheckoutOpen, setWinnerCheckoutOpen] = useState(false);
+  const [winnerCheckout, setWinnerCheckout] = useState(null);
+  const [winnerCheckoutLoading, setWinnerCheckoutLoading] = useState(false);
+  const [winnerCheckoutPaying, setWinnerCheckoutPaying] = useState(false);
+  const [winnerCheckoutError, setWinnerCheckoutError] = useState("");
+  const [biddingAuctionId, setBiddingAuctionId] = useState(null);
+  const quickBidKeysRef = useRef({});
+  const [winnerCheckoutForm, setWinnerCheckoutForm] = useState({
+    full_name: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+  });
+  const winnerCheckoutKeyRef = useRef(null);
   const prevAuctionsRef = useRef([]);
   const pollRef = useRef(null);
 
   const fetchAuctions = useCallback(async () => {
     try {
-      // Clear any cached auction data first
-      if ('caches' in window) {
-        const cacheKeys = await caches.keys();
-        for (const key of cacheKeys) {
-          if (key.includes('auction') || key.includes('bidblitz-api')) {
-            await caches.delete(key);
-          }
-        }
-      }
       const r = await api.getAuctions();
       setAuctions(r.auctions || []);
     } catch (e) {
@@ -506,7 +698,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     const status = params.get("status");
     const sessionId = params.get("session_id");
     const purchaseId = params.get("credit_purchase");
-    if (!sessionId || !purchaseId) return;
+    if (!purchaseId) return;
 
     const cleanupUrl = () => {
       const url = new URL(window.location.href);
@@ -520,7 +712,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       return;
     }
 
-    if (status !== "success") return;
+    if (status !== "success" || !sessionId) return;
 
     let attempts = 0;
     let cancelled = false;
@@ -531,8 +723,8 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       attempts++;
       try {
         const r = await fetch(`${API_URL}/api/auctions/credits-purchase-status/${sessionId}`, { credentials: "include" });
+        const d = await r.json().catch(() => ({}));
         if (r.ok) {
-          const d = await r.json();
           if (d.status === "completed" && d.credits_added > 0) {
             const { toast } = await import("sonner");
             toast.success(`✓ ${d.credits_added} Credits gutgeschrieben!`);
@@ -540,6 +732,12 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
             cleanupUrl();
             return;
           }
+        } else if ([400, 401, 403, 404, 409, 500, 503].includes(r.status)) {
+          const { toast } = await import("sonner");
+          const detail = typeof d?.detail === "string" ? d.detail : "Zahlungsstatus konnte nicht bestätigt werden.";
+          toast.error(detail);
+          cleanupUrl();
+          return;
         }
       } catch (error) { void error; }
       if (attempts < 12) setTimeout(poll, 1500);
@@ -572,13 +770,133 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     prevAuctionsRef.current = auctions;
   }, [auctions, isGuest, user?.id]);
 
+  const openWinnerCheckout = async (auction) => {
+    if (!auction?.auction_id) return;
+    setWinLose({ type: null, auction: null });
+    setWinnerCheckoutOpen(true);
+    setWinnerCheckoutLoading(true);
+    setWinnerCheckoutError("");
+    setWinnerCheckoutForm((prev) => ({ ...prev, full_name: prev.full_name || user?.name || "" }));
+    try {
+      const data = await api.getAuctionWinnerCheckout(auction.auction_id);
+      setWinnerCheckout(data);
+      if (data.shipping_address) {
+        setWinnerCheckoutForm((prev) => ({ ...prev, ...data.shipping_address }));
+      }
+    } catch (e) {
+      setWinnerCheckoutError(e.message || "Gewinner-Checkout konnte nicht geladen werden.");
+    } finally {
+      setWinnerCheckoutLoading(false);
+    }
+  };
+
+  const payWinnerCheckout = async () => {
+    if (!winnerCheckout?.auction_id || winnerCheckoutPaying) return;
+    const required = ["full_name", "address_line1", "postal_code", "city", "country"];
+    if (required.some((key) => !String(winnerCheckoutForm[key] || "").trim())) {
+      setWinnerCheckoutError("Bitte fülle Name, Straße, PLZ, Stadt und Land vollständig aus.");
+      return;
+    }
+    const attemptStorageKey = `bidblitz:auction-winner:${user?.id || user?.email || "unknown"}:${winnerCheckout.auction_id}`;
+    if (!winnerCheckoutKeyRef.current && typeof window !== "undefined") {
+      winnerCheckoutKeyRef.current = window.sessionStorage.getItem(attemptStorageKey);
+    }
+    if (!winnerCheckoutKeyRef.current) {
+      winnerCheckoutKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `auction-winner-${crypto.randomUUID()}`
+        : `auction-winner-${Date.now()}-${winnerCheckout.auction_id}`;
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(attemptStorageKey, winnerCheckoutKeyRef.current);
+      }
+    }
+    setWinnerCheckoutPaying(true);
+    setWinnerCheckoutError("");
+    try {
+      const data = await api.payAuctionWinnerCheckout(winnerCheckout.auction_id, {
+        ...winnerCheckoutForm,
+        idempotency_key: winnerCheckoutKeyRef.current,
+      });
+      winnerCheckoutKeyRef.current = null;
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
+      setWinnerCheckout(data);
+      await fetchAuctions();
+    } catch (e) {
+      if (e?.status === 400) {
+        winnerCheckoutKeyRef.current = null;
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(attemptStorageKey);
+      }
+      setWinnerCheckoutError(e.message || "Zahlung fehlgeschlagen.");
+    } finally {
+      setWinnerCheckoutPaying(false);
+    }
+  };
+
+  const handleQuickBid = async (auction) => {
+    if (!auction?.auction_id || biddingAuctionId) return;
+    if (isGuest) { onAuthRequired(); return; }
+    if (credits < 1) {
+      setShowCredits(true);
+      return;
+    }
+
+    const auctionId = auction.auction_id;
+    const owner = user?.id || user?.email || "unknown";
+    const storageKey = `bidblitz:auction-bid:${owner}:${auctionId}`;
+    let idempotencyKey = quickBidKeysRef.current[auctionId];
+    if (!idempotencyKey && typeof window !== "undefined") {
+      idempotencyKey = window.sessionStorage.getItem(storageKey);
+    }
+    if (!idempotencyKey) {
+      idempotencyKey = typeof crypto?.randomUUID === "function"
+        ? `auction-bid-${crypto.randomUUID()}`
+        : `auction-bid-${Date.now()}-${auctionId}-${owner}`;
+      if (typeof window !== "undefined") window.sessionStorage.setItem(storageKey, idempotencyKey);
+    }
+    quickBidKeysRef.current[auctionId] = idempotencyKey;
+    setBiddingAuctionId(auctionId);
+
+    try {
+      const result = await api.placeBid({ auction_id: auctionId, idempotency_key: idempotencyKey });
+      delete quickBidKeysRef.current[auctionId];
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(storageKey);
+      setCredits(result.remaining_credits);
+      setAuctions((prev) => prev.map((item) => item.auction_id === auctionId ? {
+        ...item,
+        current_price: result.new_price,
+        ends_at: result.ends_at,
+        total_bids: result.total_bids,
+        last_bidder_id: user?.id,
+        last_bidder_name: user?.name,
+      } : item));
+      import("sonner").then(({ toast }) => toast.success("Gebot erfolgreich platziert"));
+    } catch (error) {
+      const retryable = error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+      if (!retryable) {
+        delete quickBidKeysRef.current[auctionId];
+        if (typeof window !== "undefined") window.sessionStorage.removeItem(storageKey);
+      }
+      const msg = String(error?.message || "");
+      if (error?.status === 403 && msg.toLowerCase().includes("verif")) {
+        onNavigate?.("/profile/kyc");
+      } else if (msg.toLowerCase().includes("credit")) {
+        setShowCredits(true);
+      } else {
+        import("sonner").then(({ toast }) => toast.error(msg || "Gebot konnte nicht platziert werden"));
+      }
+    } finally {
+      setBiddingAuctionId(null);
+    }
+  };
+
   const toggleWatch = async (auctionId) => {
     if (isGuest) { onAuthRequired(); return; }
     try {
       const r = await api.toggleWatchlist(auctionId);
       if (r.watched) setWatchlist(p => [...p, auctionId]);
       else setWatchlist(p => p.filter(id => id !== auctionId));
-    } catch (error) { void error; }
+    } catch (error) {
+      import("sonner").then(({ toast }) => toast.error(error?.message || "Watchlist konnte nicht geändert werden."));
+    }
   };
 
   const dismissNotif = () => {
@@ -614,16 +932,48 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   };
 
   const active = applyFiltersAndSort(auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter)));
+  const premiumAuction = active.find(a => a.featured) || active[0] || null;
+  const regularActive = premiumAuction ? active.filter(a => a.auction_id !== premiumAuction.auction_id) : active;
   const ended = applyFiltersAndSort(auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter)));
   const activeCats = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
   const winners = auctions.filter(a => a.status === "ended" && a.winner_name);
+  const pendingWins = (!isGuest && user?.id)
+    ? auctions.filter(a =>
+        a.status === "ended"
+        && a.winner_id === user.id
+        && !a.requires_manual_review
+        && a.winner_payment_status !== "paid"
+      )
+    : [];
+  const paidWins = (!isGuest && user?.id)
+    ? auctions.filter(a =>
+        a.status === "ended"
+        && a.winner_id === user.id
+        && a.winner_payment_status === "paid"
+      )
+    : [];
 
   return (
     <motion.div data-testid="auctions-page" className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       {/* Notification Toast */}
       <AnimatePresence>{showNotifToast && <NotifToast notifs={auctionNotifs} onDismiss={dismissNotif} />}</AnimatePresence>
       {/* Win/Lose Modal */}
-      <AnimatePresence>{winLose.type && <WinLoseModal type={winLose.type} auction={winLose.auction} onClose={() => setWinLose({ type: null, auction: null })} t={t} />}</AnimatePresence>
+      <AnimatePresence>{winLose.type && <WinLoseModal type={winLose.type} auction={winLose.auction} onClose={() => setWinLose({ type: null, auction: null })} onClaimPrize={() => openWinnerCheckout(winLose.auction)} t={t} />}</AnimatePresence>
+      <AnimatePresence>
+        {winnerCheckoutOpen && (
+          <WinnerCheckoutModal
+            open={winnerCheckoutOpen}
+            checkout={winnerCheckout}
+            loading={winnerCheckoutLoading}
+            paying={winnerCheckoutPaying}
+            error={winnerCheckoutError}
+            form={winnerCheckoutForm}
+            onChange={(key, value) => { setWinnerCheckoutForm((prev) => ({ ...prev, [key]: value })); setWinnerCheckoutError(""); }}
+            onPay={payWinnerCheckout}
+            onClose={() => { if (!winnerCheckoutPaying) { setWinnerCheckoutOpen(false); setWinnerCheckoutError(""); } }}
+          />
+        )}
+      </AnimatePresence>
       {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[60vw] max-h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(160px)", background: "rgba(0,224,255,0.02)" }} />
 
@@ -644,6 +994,16 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       {isGuest && !isDemoMode && <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />}
 
       <div className="pb-8 relative z-10 space-y-3">
+        {premiumAuction && (
+          <PremiumAuctionHero
+            auction={premiumAuction}
+            onOpen={() => setSelected(premiumAuction.auction_id)}
+            onBid={handleQuickBid}
+            bidding={biddingAuctionId === premiumAuction.auction_id}
+            t={t}
+            lang={lang}
+          />
+        )}
         {/* Daily Reward */}
         {!isGuest && <DailyReward onClaimed={setCredits} />}
 
@@ -652,6 +1012,65 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
         {/* Trust */}
         <TrustBar t={t} recentWinners={winners} />
+
+        {pendingWins.length > 0 && (
+          <div className="space-y-2" data-testid="auction-pending-wins">
+            {pendingWins.slice(0, 3).map((auc) => (
+              <div key={auc.auction_id} className="flex items-center gap-3 rounded-2xl border border-[#FFD166]/20 bg-[#FFD166]/[0.07] p-3">
+                {auc.image_url ? (
+                  <img src={auc.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#FFD166]/10"><Trophy size={20} className="text-[#FFD166]" /></div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#FFD166]/70">Gewonnen · Zahlung offen</p>
+                  <p className="truncate text-sm font-bold text-white/85">{auc.title}</p>
+                  <p className="text-xs text-[#00E0FF]">Endpreis €{Number(auc.current_price || 0).toFixed(2)} · Versand kostenlos</p>
+                </div>
+                <button
+                  onClick={() => openWinnerCheckout(auc)}
+                  className="rounded-xl border border-[#FFD166]/25 bg-[#FFD166]/10 px-3 py-2 text-xs font-black text-[#FFD166]"
+                  data-testid={`auction-pay-win-${auc.auction_id}`}
+                >
+                  Bezahlen
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {paidWins.length > 0 && (
+          <div className="space-y-2" data-testid="auction-paid-wins">
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#00E89D]/70">Meine Bestellungen</p>
+              <p className="text-[10px] text-white/30">{paidWins.length} bezahlt</p>
+            </div>
+            {paidWins.slice(0, 5).map((auc) => {
+              const fulfillment = auc.winner_fulfillment_status || "pending";
+              return (
+                <div key={auc.auction_id} className="flex items-center gap-3 rounded-2xl border border-[#00E89D]/15 bg-[#00E89D]/[0.05] p-3">
+                  {auc.image_url ? (
+                    <img src={auc.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#00E89D]/10"><Package size={20} className="text-[#00E89D]" /></div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#00E89D]/70">Bezahlt · {fulfillment}</p>
+                    <p className="truncate text-sm font-bold text-white/85">{auc.title}</p>
+                    <p className="text-xs text-white/40">Endpreis €{Number(auc.current_price || 0).toFixed(2)} · Versand kostenlos</p>
+                  </div>
+                  <button
+                    onClick={() => openWinnerCheckout(auc)}
+                    className="rounded-xl border border-[#00E89D]/20 bg-[#00E89D]/10 px-3 py-2 text-xs font-black text-[#00E89D]"
+                    data-testid={`auction-order-win-${auc.auction_id}`}
+                  >
+                    Bestellung
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Premium How It Works — DealDash Style */}
         {!isGuest && <div className="px-4"><KYCBanner onNavigate={onNavigate} /></div>}
@@ -788,7 +1207,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                 </div>
                 {/* Premium Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
-                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} lang={lang} />)}
+                  {regularActive.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} onBid={handleQuickBid} bidding={biddingAuctionId === a.auction_id} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} lang={lang} />)}
                 </div>
               </motion.div>
             )}

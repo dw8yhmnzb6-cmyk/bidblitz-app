@@ -167,43 +167,64 @@ export default function BidBlitzPayHostedCheckoutPage({ paymentId, onNavigate })
               <div className="mb-2 flex items-center gap-2 text-[#00C2FF]"><Smartphone size={16} /> In BidBlitz-Pay-App öffnen</div>
               <p className="text-sm text-white/60">Deep-Link vorbereitet. Fallback bleibt auf dieser Seite.</p>
             </button>
-            <button
-              type="button"
-              onClick={handleApprove}
-              disabled={busy || payment.status !== "pending" || !user.isAuthenticated}
-              className="rounded-2xl border border-[#00E89D]/30 bg-[#00E89D]/10 px-4 py-4 text-left transition hover:bg-[#00E89D]/15 disabled:opacity-50"
-              data-testid="bidblitz-pay-wallet-approve-button"
-            >
-              <div className="mb-2 flex items-center gap-2 text-[#00E89D]"><ShieldCheck size={16} /> Im Wallet freigeben</div>
-              <p className="text-sm text-white/60">Sandbox-Freigabe aus dem Wallet/App-Kontext.</p>
-            </button>
+            {payment.test_mode ? (
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={busy || payment.status !== "pending" || !user.isAuthenticated}
+                className="rounded-2xl border border-[#00E89D]/30 bg-[#00E89D]/10 px-4 py-4 text-left transition hover:bg-[#00E89D]/15 disabled:opacity-50"
+                data-testid="bidblitz-pay-wallet-approve-button"
+              >
+                <div className="mb-2 flex items-center gap-2 text-[#00E89D]"><ShieldCheck size={16} /> Im Wallet freigeben</div>
+                <p className="text-sm text-white/60">Sandbox-Freigabe aus dem Wallet/App-Kontext.</p>
+              </button>
+            ) : payment.redirect_url ? (
+              <a
+                href={payment.redirect_url}
+                className="rounded-2xl border border-[#00E89D]/30 bg-[#00E89D]/10 px-4 py-4 text-left transition hover:bg-[#00E89D]/15"
+                data-testid="bidblitz-pay-provider-button"
+              >
+                <div className="mb-2 flex items-center gap-2 text-[#00E89D]"><ExternalLink size={16} /> Beim Zahlungsanbieter fortfahren</div>
+                <p className="text-sm text-white/60">Live-Zahlung sicher beim verbundenen Provider fortsetzen.</p>
+              </a>
+            ) : (
+              <div
+                className="rounded-2xl border border-[#FFB800]/20 bg-[#FFB800]/[0.07] px-4 py-4 text-left"
+                data-testid="bidblitz-pay-provider-unavailable"
+              >
+                <div className="mb-2 flex items-center gap-2 text-[#FFB800]"><ShieldCheck size={16} /> Provider-Aktion ausstehend</div>
+                <p className="text-sm text-white/60">Für diese Live-Zahlung wurde keine Provider-Weiterleitung geliefert.</p>
+              </div>
+            )}
           </div>
 
-          {!user.isAuthenticated && payment.status === "pending" ? (
+          {payment.test_mode && !user.isAuthenticated && payment.status === "pending" ? (
             <div className="mt-4 rounded-2xl border border-[#FFB800]/20 bg-[#FFB800]/8 p-3 text-sm text-white/70" data-testid="bidblitz-pay-hosted-login-note">
-              Bitte zuerst einloggen, damit die Wallet-Freigabe verfügbar ist.
+              Bitte zuerst einloggen, damit die Sandbox-Wallet-Freigabe verfügbar ist.
             </div>
           ) : null}
 
           {error ? <p className="mt-4 text-sm text-red-400" data-testid="bidblitz-pay-hosted-error-text">{error}</p> : null}
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={busy || payment.status !== "pending"}
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/65 disabled:opacity-50"
-              data-testid="bidblitz-pay-cancel-button"
-            >
-              Zahlung abbrechen
-            </button>
+            {payment.test_mode ? (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={busy || payment.status !== "pending"}
+                className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/65 disabled:opacity-50"
+                data-testid="bidblitz-pay-cancel-button"
+              >
+                Zahlung abbrechen
+              </button>
+            ) : null}
             {payment.redirect_url ? (
               <a
                 href={payment.redirect_url}
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/65"
                 data-testid="bidblitz-pay-redirect-link"
               >
-                Redirect-URL <ExternalLink size={14} />
+                Zum Provider <ExternalLink size={14} />
               </a>
             ) : null}
           </div>
@@ -218,11 +239,15 @@ export default function BidBlitzPayHostedCheckoutPage({ paymentId, onNavigate })
               <div className="flex justify-between gap-3"><dt>Payment-ID</dt><dd className="font-mono text-xs">{payment.payment_id}</dd></div>
             </dl>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5" data-testid="bidblitz-pay-hosted-mock-note">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-white/40">Sandbox-Hinweis</p>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5" data-testid="bidblitz-pay-hosted-mode-note">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-white/40">{payment.test_mode ? "Sandbox-Hinweis" : "Live-Zahlung"}</p>
             <div className="mt-4 flex items-start gap-3 text-sm text-white/70">
               <CheckCircle2 className="mt-0.5 text-[#00E89D]" size={18} />
-              <p>Diese Wallet-/App-Freigabe ist aktuell <strong>MOCKED</strong>. Echte Zugangsdaten können später nur per Environment-Variablen ergänzt werden.</p>
+              <p>
+                {payment.test_mode
+                  ? <>Diese Wallet-/App-Freigabe ist aktuell <strong>MOCKED</strong>. Es wird kein echter Provider belastet.</>
+                  : <>Diese Zahlung läuft im <strong>Live-Modus</strong>. Freigabe, Abbruch und Erstattung werden nur über verifizierte Provider-Aktionen ausgeführt.</>}
+              </p>
             </div>
           </div>
         </div>

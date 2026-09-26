@@ -41,6 +41,7 @@ import TestBuildDebugLine from "./components/TestBuildDebugLine";
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
 const HomePage = lazy(() => import("./pages/HomePage"));
+const AboutBidBlitzPage = lazy(() => import("./pages/AboutBidBlitzPage"));
 const WalletPage = lazy(() => import("./pages/WalletPage"));
 const ScannerPage = lazy(() => import("./pages/ScannerPage"));
 const MerchantPage = lazy(() => import("./pages/MerchantPage"));
@@ -223,6 +224,7 @@ const AIContentGeneratorPage = lazy(() => import("./pages/AIContentGeneratorPage
 const KidsPremiumHubPage = lazy(() => import("./pages/KidsPremiumHubPage"));
 const InstantCreditPage = lazy(() => import("./pages/InstantCreditPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
+const AdminMobilityPricingPage = lazy(() => import("./pages/AdminMobilityPricingPage"));
 const AdminDirectoryPage = lazy(() => import("./pages/AdminDirectoryPage"));
 const AdminAdManagerPage = lazy(() => import("./pages/AdminAdManagerPage"));
 const AdminBookingManagerPage = lazy(() => import("./pages/AdminBookingManagerPage"));
@@ -284,8 +286,8 @@ const LiveAuctionsPage = lazy(() => import("./pages/LiveAuctionsPage"));
 const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const BlitzLearnPage = lazy(() => import("./pages/BlitzLearnPage"));
 const BlitzHubPage = lazy(() => import("./pages/BlitzHubPage"));
-const GlobalSearch = lazy(() => import("./pages/ExtraFeatures"));
-const OnboardingTour = lazy(() => import("./pages/ExtraFeatures"));
+const GlobalSearch = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.GlobalSearch })));
+const OnboardingTour = lazy(() => import("./pages/ExtraFeatures").then(m => ({ default: m.OnboardingTour })));
 const CityServicesPage = lazy(() => import("./pages/CityServicesPage"));
 const BlitzPayPage = lazy(() => import("./pages/BlitzPayPage"));
 const CryptoEarnPage = lazy(() => import("./pages/CryptoEarnPage"));
@@ -299,6 +301,7 @@ const DeFiWalletPage = lazy(() => import("./pages/DeFiWalletPage"));
 const CryptoLoansPage = lazy(() => import("./pages/CryptoLoansPage"));
 const P2PLendingPage = lazy(() => import("./pages/P2PLendingPage"));
 const TradingBotPage = lazy(() => import("./pages/TradingBotPage"));
+const ProviderUnavailablePage = lazy(() => import("./pages/ProviderUnavailablePage"));
 const LiveShoppingPage = lazy(() => import("./pages/LiveShoppingPage"));
 const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
@@ -307,7 +310,6 @@ const TermsPage = lazy(() => import("./pages/TermsPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 const StoreSupportPage = lazy(() => import("./pages/StoreSupportPage"));
-const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 const CreatorsPage = lazy(() => import("./pages/CreatorsPage"));
 const P2PPage = lazy(() => import("./pages/P2PPage"));
 const CardPage = lazy(() => import("./pages/CardPage"));
@@ -376,6 +378,7 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
+  const isAdminRole = ["admin", "super_admin"].includes(user?.role);
   const isGuest = !user.isAuthenticated;
   const serverKycApproved = useEffectiveKycAccess({ isGuest, isDemoMode, user });
   const isKycVerified = KYC_DISABLED || serverKycApproved || isKycApprovedOrAdmin(user);
@@ -543,15 +546,13 @@ function AppContent() {
       }
     }
 
-    // Scan tab
-    if (path === "/scan") {
-      if (isGuest) {
-        requireAuth();
-        return;
-      }
+    // Auth-required feature entry points should never fail silently back to Home.
+    if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {
+      requireAuth(path === "/mining" || path === "/blitz-mine" ? "Bitte anmelden, um Mining zu öffnen." : "");
+      return;
     }
     // Admin page requires admin role
-    if (path === "/admin" && (!user.isAuthenticated || user.role !== "admin")) {
+    if (path === "/admin" && (!user.isAuthenticated || !isAdminRole)) {
       requireAuth();
       return;
     }
@@ -664,6 +665,8 @@ function AppContent() {
     switch (basePath) {
       case "/":
         return <HomePage {...homeProps} />;
+      case "/about-bidblitz":
+        return <AboutBidBlitzPage onNavigate={handleNavigate} onRegister={homeProps.onRegister} />;
       case "/landing":
         return <LandingPage onGetStarted={() => handleNavigate("/")} />;
       case "/wallet":
@@ -677,11 +680,11 @@ function AppContent() {
       case "/merchant-connect":
         return <MerchantConnectPage onBack={() => handleNavigate("/merchant")} />;
       case "/influencer":
-        return user.role === "influencer" || user.role === "admin"
+        return user.role === "influencer" || isAdminRole
           ? <InfluencerDashboard onBack={() => handleNavigate("/more")} />
           : <InfluencerPage onBack={() => handleNavigate("/more")} />;
       case "/manager-dashboard":
-        return user.role === "manager" || user.role === "admin"
+        return user.role === "manager" || isAdminRole
           ? <ManagerDashboard onBack={() => handleNavigate("/more")} />
           : <HomePage {...homeProps} />;
       case "/investor":
@@ -736,40 +739,48 @@ function AppContent() {
       case "/merchant-landing":
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
-        return <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return isGuest
+          ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
+          : <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/")} />;
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
       case "/mining-trust-admin":
-        return <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />;
+        return isAdminRole
+          ? <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />
+          : <HomePage {...homeProps} />;
       case "/nft":
-        return <NFTGeneratorPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <NFTGeneratorPage onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="NFT Studio" description="NFT-Erzeugung, Minting und Handel werden erst aktiviert, wenn ein verifizierter Mint-/Custody-/Marketplace-Provider live verbunden ist. Es werden keine Wallet- oder Mining-Werte für lokale NFT-Simulationen bewegt." onBack={() => handleNavigate("/more")} />;
       case "/admin":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
           : <HomePage {...homeProps} />;
       case "/admin/monitoring":
-        return user.role === "admin"
+        return isAdminRole
           ? <MonitoringDashboard onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/investor-leads":
-        return user.role === "admin" ? <AdminInvestorLeadsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorLeadsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-dashboard":
-        return user.role === "admin" ? <AdminInvestorDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-documents":
-        return user.role === "admin" ? <AdminInvestorDocumentsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorDocumentsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-updates":
-        return user.role === "admin" ? <AdminInvestorUpdatesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorUpdatesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-meetings":
-        return user.role === "admin" ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/visual-qa":
-        return user.role === "admin" ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/master-roadmap":
-        return user.role === "admin" ? <AdminMasterRoadmapPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMasterRoadmapPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/investors/progress":
       case "/investor-progress":
         return <InvestorProgressPage onBack={() => handleNavigate("/")} />;
       case "/design-system":
-        return process.env.NODE_ENV !== "production" || user.role === "admin"
+        return process.env.NODE_ENV !== "production" || isAdminRole
           ? <DesignSystemPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/admin/ai-assistant":
@@ -777,15 +788,15 @@ function AppContent() {
           ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/merchants":
-        return user.role === "admin"
+        return isAdminRole
           ? <MerchantAdminPage onNavigate={handleNavigate} onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/qr-management":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminQrManagementPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffManagementPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/staff/login":
@@ -800,25 +811,25 @@ function AppContent() {
       case "/staff/upgrade":
         return <StaffUpgradeScreen onSuccess={() => handleNavigate("/merchant/staff")} onBack={() => handleNavigate("/merchant/staff")} />;
       case "/staff/settings":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffSettingsPage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff/geofence":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <ManagerGeofencePage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/staff/chat":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <StaffChatPage role="manager" onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/taxi/promos":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <TaxiPromoManagerPage onBack={() => handleNavigate("/merchant/dashboard")} />
           : <HomePage {...homeProps} />;
       case "/taxi/pro":
         return <HomePage {...homeProps} />;
       case "/merchant/staff/live-map":
-        return user.role === "merchant" || user.role === "admin"
+        return user.role === "merchant" || isAdminRole
           ? <ManagerStaffLiveMapPage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/merchant/setup":
@@ -832,11 +843,11 @@ function AppContent() {
       case "/merchant/pos/hardware":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosHardwarePage onBack={() => handleNavigate("/merchant/pos")} />;
       case "/admin/feature-control":
-        return user.role === "admin" ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-settlements":
-        return user.role === "admin" ? <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-onboarding":
-        return user.role === "admin" ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/pool":
@@ -852,7 +863,7 @@ function AppContent() {
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/test/kyc":
@@ -873,7 +884,9 @@ function AppContent() {
       case "/blitz-boost":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-mine":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return isGuest
+          ? <AuthPage onBack={() => handleNavigate("/")} initialMode="login" onAuthSuccess={handleAuthSuccess} />
+          : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/legal/agb":
       case "/legal/datenschutz":
       case "/legal/impressum":
@@ -882,27 +895,27 @@ function AppContent() {
         return <LegalPage slug={slug} onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       }
       case "/admin/legal":
-        return user.role === "admin" ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-features":
-        return user.role === "admin" ? <AdminMerchantFeaturesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminMerchantFeaturesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/audit-log":
-        return user.role === "admin" ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/biopay-audit":
-        return user.role === "admin" ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/diag":
-        return user.role === "admin" ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/rtk":
-        return user.role === "admin" ? <AdminRtkPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminRtkPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/pool":
-        return user.role === "admin" ? <PoolAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <PoolAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/staff/ui-audit":
         return <StaffUIAuditPage onBack={() => handleNavigate("/staff")} />;
       case "/admin/push-broadcast":
-        return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/analytics":
-        return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/deployment-info":
-        return user.role === "admin" ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
       case "/staff/gps":
@@ -912,15 +925,19 @@ function AppContent() {
       case "/pos/extended":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSExtendedPage onBack={() => handleNavigate("/pos")} />;
       case "/admin/wallet":
-        return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/smm":
-        return user.role === "admin" ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/arcade":
-        return <ArcadePage onBack={() => handleNavigate("/")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <ArcadePage onBack={() => handleNavigate("/")} />
+            : <ProviderUnavailablePage title="Arcade & Casino" description="BLZ-Einsätze und spielbasierte BLZ-Gewinne sind in Production deaktiviert. Es werden keine wertbasierten Spieleinsätze angenommen." onBack={() => handleNavigate("/more")} />;
       case "/affiliate":
         return <AffiliatePage onBack={() => handleNavigate("/")} />;
       case "/lottery":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LotteryPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Lotterie" description="Ticketverkauf und Ziehungen sind in Production deaktiviert, bis ein verifizierter, zulässiger Lotterie-/Gewinnspielbetrieb technisch und regulatorisch freigegeben ist." onBack={() => handleNavigate("/more")} />;
       case "/ai/content":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AIContentGeneratorPage onBack={() => handleNavigate("/more")} />;
       case "/kids-premium":
@@ -928,38 +945,40 @@ function AppContent() {
       case "/instant-credit":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InstantCreditPage onBack={() => handleNavigate("/more")} />;
       case "/admin/manage":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/kyc":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="verification" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="verification" /> : <HomePage {...homeProps} />;
       case "/admin/pay-requests":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
       case "/admin/payouts":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
       case "/admin/credits":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="credits" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="credits" /> : <HomePage {...homeProps} />;
       case "/admin/testimonials":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
       case "/admin/pay-sdk":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
       case "/admin/loyalty-config":
       case "/admin/loyalty-analytics":
       case "/admin/coin-rates":
       case "/admin/cashback-rates":
-        return user.role === "admin" ? <LoyaltyPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <LoyaltyPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/scooter-fleet":
       case "/admin/scooter-add":
-        return user.role === "admin" ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/taxi-drivers":
-        return user.role === "admin" ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/mobility-pricing":
+        return isAdminRole ? <AdminMobilityPricingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/restaurants":
       case "/admin/qr-tables":
-        return user.role === "admin" ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/audi-ticket-system":
-        return user.role === "admin" ? <AudiTicketSalesPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AudiTicketSalesPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/biopay-audit-center":
-        return user.role === "admin" ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/system-health":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="flags" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="flags" /> : <HomePage {...homeProps} />;
       case "/admin/users":
       case "/admin/managers":
       case "/admin/employees":
@@ -979,6 +998,7 @@ function AppContent() {
       case "/admin/merchant-coupons":
       case "/admin/bidder-coupons":
       case "/admin/partner-coupons":
+      case "/admin/coupons":
       case "/admin/discounts":
       case "/admin/transactions":
       case "/admin/topup":
@@ -992,38 +1012,50 @@ function AppContent() {
       case "/admin/debug":
       case "/admin/health":
       case "/admin/database":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab={getAdminTabFromPath(currentPath)} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab={getAdminTabFromPath(currentPath)} /> : <HomePage {...homeProps} />;
       case "/admin/taxi":
-        return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/directory":
-        return user.role === "admin" ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/ads":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="promos" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminPage onNavigate={handleNavigate} defaultTab="promos" /> : <HomePage {...homeProps} />;
       case "/admin/bookings":
-        return user.role === "admin" ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Spin Wheel" description="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert. Es werden keine BidCoins, BLZ oder Wallet-Werte durch das Glücksrad erzeugt." onBack={() => handleNavigate("/rewards")} />;
       case "/classifieds":
         return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/quests":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Quests" description="BLZ-Quest-Belohnungen sind in Production deaktiviert. Quests mit übertragbaren Token-Rewards werden erst nach einem freigegebenen Reward-Modell aktiviert." onBack={() => handleNavigate("/more")} />;
       case "/move":
       case "/move-earn":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
       case "/reward-plinko":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Reward Plinko" description="Zufallsbasierte Rewards mit übertragbarem Wert sind in Production deaktiviert. Es werden keine BidCoins oder Wallet-Werte durch Plinko erzeugt." onBack={() => handleNavigate("/rewards")} />;
       case "/rewards-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/marketing-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketingHubPage onBack={() => handleNavigate("/")} />;
       case "/admin/revenue":
-        return user.role === "admin" ? <AdminRevenueDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminRevenueDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/customers":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/payments":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
       case "/admin/modules":
-        return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
@@ -1033,7 +1065,7 @@ function AppContent() {
       case "/auctions":
         return <AuctionsPage {...pageProps} routeParams={routeParams} />;
       case "/auction-admin":
-        return user.role === "admin"
+        return isAdminRole
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
@@ -1103,7 +1135,7 @@ function AppContent() {
       case "/savings":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SavingsPage onBack={() => handleNavigate("/more")} />;
       case "/bnpl":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Buy Now Pay Later" description="BNPL wird erst aktiviert, wenn Kreditprüfung, Finanzierungspartner und Rückzahlungs-Settlement live verbunden sind." onBack={() => handleNavigate("/more")} />;
       case "/gift-cards":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
       case "/ai-assistant":
@@ -1127,7 +1159,7 @@ function AppContent() {
       case "/restaurants":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantReservationPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/insurance":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Versicherungen" description="Versicherungsabschluss, Policen und Schadenauszahlungen werden erst nach Live-Anbindung eines verifizierten Versicherungs-/Underwriting-Partners freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/appointments":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/social":
@@ -1157,11 +1189,15 @@ function AppContent() {
             childName={navState?.childName}
           />;
       case "/admin/auction-images":
-        return (!user.isAuthenticated || user.role !== "admin")
+        return (!user.isAuthenticated || !isAdminRole)
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
       case "/gaming":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />
+            : <ProviderUnavailablePage title="Game Center" description="Wertbasierte Gaming-Coins, BLZ-Belohnungen und Einlösungen sind in Production deaktiviert. Es werden keine Wallet- oder BLZ-Werte durch Spiele erzeugt oder eingelöst." onBack={() => handleNavigate("/more")} />;
       case "/real-estate":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RealEstatePage onBack={() => handleNavigate("/more")} />;
       case "/freelancer":
@@ -1189,13 +1225,13 @@ function AppContent() {
       case "/reiseplaner":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
       case "/ladesaeulen":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/admin/email-marketing":
-        return user.role === "admin"
+        return isAdminRole
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/charge-offer-rules":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminChargeOfferRulesPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/all-services":
@@ -1207,53 +1243,55 @@ function AppContent() {
       case "/blitzjobs":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzJobsPage onBack={() => handleNavigate("/more")} />;
       case "/cashback":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CashbackPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Cashback" description="Cashback wird erst aktiviert, wenn Käufe über verifizierte Affiliate-/Merchant-Events bestätigt werden. Nutzer können keine Einkaufsbeträge selbst melden und dadurch Wallet-Gutschriften erzeugen." onBack={() => handleNavigate("/more")} />;
       case "/premium":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PremiumPage onBack={() => handleNavigate("/more")} />;
       case "/stories":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StoriesPage onBack={() => handleNavigate("/more")} />;
       case "/live-auctions":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <LiveAuctionsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />
+            : <ProviderUnavailablePage title="Live Auktionen" description="Live-Gebote sind in Production deaktiviert, bis Escrow, Gewinnerzahlung und Settlement vollständig implementiert und freigegeben sind." onBack={() => handleNavigate("/more")} />;
       case "/social-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
       case "/blitzlearn":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
       case "/blitzhub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
-      case "/leaderboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MorePage {...pageProps} initialPanel="discover" />;
       case "/city":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzPayPage onBack={() => handleNavigate("/more")} />;
       case "/crypto-earn":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoEarnPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Earn" description="Crypto Earn wird erst nach Live-Anbindung eines verifizierten Custody-/Earn-Providers freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/crypto-baskets":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoBasketsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Baskets" description="Krypto-Baskets werden erst nach Live-Custody, Order-Routing und echter Asset-Abwicklung freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/derivatives":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DerivativesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Derivatives" description="Derivate/Futures bleiben deaktiviert, bis ein regulierter Handels- und Margin-Provider live integriert ist." onBack={() => handleNavigate("/more")} />;
       case "/levelup":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LevelUpPage onBack={() => handleNavigate("/more")} />;
       case "/predictions":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PredictionsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Prediction Markets" description="Prediction-Market-Einsätze sind deaktiviert. Es werden keine Wetten oder Wallet-Einsätze angenommen." onBack={() => handleNavigate("/more")} />;
       case "/blitzcard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzCardPage onBack={() => handleNavigate("/more")} />;
       case "/supercharger":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
       case "/defi-wallet":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="DeFi Wallet" description="Self-Custody und DApp-Signing werden erst nach echter Wallet-/Key-Management-Integration freigeschaltet." onBack={() => handleNavigate("/more")} />;
       case "/crypto-loans":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoLoansPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Crypto Loans" description="Krypto-besicherte Kredite bleiben deaktiviert, bis Collateral-Custody, Liquidation und Kredit-Settlement live sind." onBack={() => handleNavigate("/more")} />;
       case "/p2p-lending":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <P2PLendingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="P2P Lending" description="Privatkredite werden erst nach Kreditprüfung, Vertrags-/Rückzahlungslogik und regulatorischer Freigabe aktiviert." onBack={() => handleNavigate("/more")} />;
       case "/trading-bot":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Trading Bot" description="Automatisierter Handel bleibt deaktiviert, bis ein echter Exchange-/Broker-Orderkanal und Risikosteuerung live integriert sind." onBack={() => handleNavigate("/more")} />;
       case "/live-shopping":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
       case "/livekit-stream":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
       case "/admin/landing-leads":
-        return user.role === "admin"
+        return isAdminRole
           ? <AdminLandingLeadsPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/datenschutz":
@@ -1271,7 +1309,7 @@ function AppContent() {
       case "/wallet-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletPage {...pageProps} />;
       case "/super-marketplace":
-        return <SuperAppMarketplace />;
+        return <MarketplacePage onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/creators":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
       case "/p2p":
@@ -1283,7 +1321,7 @@ function AppContent() {
       case "/groupchat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GroupChatPage onNavigate={handleNavigate} />;
       case "/roundup":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RoundupPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ProviderUnavailablePage title="Round-up Savings" description="Automatisches Aufrunden bleibt deaktiviert, bis die Rundungsbuchung atomar in den zentralen Wallet-Engine integriert ist. Es werden keine virtuellen Sparbeträge vorgespiegelt." onBack={() => handleNavigate("/more")} />;
       case "/apartments":
         return <ApartmentsPage onNavigate={handleNavigate} />;
       case "/skills-market":
@@ -1336,9 +1374,17 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       
       case "/challenges":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChallengesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <ChallengesPage onBack={() => handleNavigate("/more")} />
+            : <ProviderUnavailablePage title="Challenges" description="BLZ-Gamification-Rewards sind in Production deaktiviert. Challenges bleiben gesperrt, bis ein freigegebenes Reward-Modell verwendet wird." onBack={() => handleNavigate("/more")} />;
       case "/achievements":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AchievementsPage onBack={() => handleNavigate("/gaming")} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : TEST_MODE_FULL_ACCESS
+            ? <AchievementsPage onBack={() => handleNavigate("/gaming")} />
+            : <ProviderUnavailablePage title="Achievements" description="BLZ-Achievement-Rewards sind in Production deaktiviert. Es werden keine Token-Rewards aus Achievements erzeugt." onBack={() => handleNavigate("/more")} />;
       case "/friends":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FriendsPage onBack={() => handleNavigate("/more")} />;
       case "/settings/2fa":
@@ -1347,11 +1393,25 @@ function AppContent() {
       default:
         // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
         if (currentPath.startsWith("/admin/")) {
-          if (user.role !== "admin") return <HomePage {...homeProps} />;
+          if (!isAdminRole) return <HomePage {...homeProps} />;
           const tab = getAdminTabFromPath(currentPath);
           return <AdminPage onNavigate={handleNavigate} defaultTab={tab} />;
         }
         // Handle dynamic routes
+        if (currentPath.startsWith("/ev/start/")) {
+          const parts = currentPath.split("/");
+          const chargePointId = decodeURIComponent(parts[3] || "");
+          const connectorId = Number(parts[4] || 1);
+          return (isGuest && !isDemoMode)
+            ? <HomePage {...homeProps} />
+            : <EVStartChargingPage chargePointId={chargePointId} connectorId={connectorId} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/ev/session/")) {
+          const sessionId = decodeURIComponent(currentPath.split("/ev/session/")[1] || "");
+          return (isGuest && !isDemoMode)
+            ? <HomePage {...homeProps} />
+            : <EVLiveSessionPage sessionId={sessionId} onNavigate={handleNavigate} />;
+        }
         if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
           const bId = currentPath.split("/car-rental/vendor/bookings/")[1];
           return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/vendor/bookings")} onNavigate={handleNavigate} />;
@@ -1390,7 +1450,7 @@ function AppContent() {
 
   const showActiveAccountBanner =
     user.isAuthenticated &&
-    user.role === "admin" &&
+    isAdminRole &&
     !isDemoMode &&
     !isCheckout &&
     !isPublicInvoicePayment &&
@@ -1403,7 +1463,7 @@ function AppContent() {
 
   const showTestBuildDebugLine =
     user.isAuthenticated &&
-    user.role === "admin" &&
+    isAdminRole &&
     TEST_MODE_FULL_ACCESS &&
     !isDemoMode &&
     !isCheckout &&
@@ -1462,7 +1522,7 @@ function AppContent() {
         onClose={() => setShowAuthGate(false)}
         message={authGateMessage}
       />
-      <PWAInstallPrompt />
+      {["/", "/more"].includes(routeBase) && <PWAInstallPrompt />}
       <PushPermissionPrompt isAuthenticated={user.isAuthenticated} />
       {/* Global Search Overlay */}
       <AnimatePresence>
@@ -1470,7 +1530,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/about-bidblitz", "/pay/directory"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&

@@ -1,16 +1,17 @@
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 async function readJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
-export async function mobilitySearch(query, { lat, lng, lang = "de" } = {}) {
+export async function mobilitySearch(query, { lat, lng, lang = "de", countryCode } = {}) {
   if (!query || query.trim().length < 2) return [];
-  const qs = new URLSearchParams({ q: query.trim(), limit: "8", lang });
+  const qs = new URLSearchParams({ q: query.trim(), limit: "10", lang });
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
     qs.set("lat", String(lat));
     qs.set("lng", String(lng));
   }
+  if (countryCode) qs.set("country_code", String(countryCode).slice(0, 2));
   const res = await fetch(`${API}/api/mobility-platform/search?${qs.toString()}`, { credentials: "include" });
   if (!res.ok) return [];
   const data = await readJson(res);

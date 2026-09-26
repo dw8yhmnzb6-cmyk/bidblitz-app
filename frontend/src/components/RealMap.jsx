@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import mapboxgl from 'mapbox-gl';
@@ -134,12 +134,13 @@ export const TaxiMapbox = ({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !mapboxgl.accessToken) return undefined;
-    const center = pickup?.lng && pickup?.lat ? [pickup.lng, pickup.lat] : [13.405, 52.52];
+    const hasPickup = Number.isFinite(pickup?.lng) && Number.isFinite(pickup?.lat);
+    const center = hasPickup ? [pickup.lng, pickup.lat] : [15.0, 48.5];
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
       center,
-      zoom: pickup?.lng && pickup?.lat ? 16 : 13.5,
+      zoom: hasPickup ? 16 : 4.5,
       attributionControl: false,
       pitchWithRotate: false,
       dragRotate: false,
@@ -159,6 +160,69 @@ export const TaxiMapbox = ({
       mapRef.current = null;
     };
   }, [onPickupChange, pickup?.lat, pickup?.lng, pickupMoveMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+
+    const validPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng);
+    const validDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng);
+    const removeRoute = () => {
+      if (!map.getStyle()) return;
+      if (map.getLayer('taxi-route-line')) map.removeLayer('taxi-route-line');
+      if (map.getSource('taxi-route')) map.removeSource('taxi-route');
+    };
+
+    if (!validPickup || !validDropoff || !mapboxgl.accessToken) {
+      if (map.isStyleLoaded()) removeRoute();
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const drawRoute = async () => {
+      try {
+        const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
+        const response = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?access_token=${mapboxgl.accessToken}&geometries=geojson&overview=full&steps=false&alternatives=false`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const geometry = data?.routes?.[0]?.geometry;
+        if (!geometry || controller.signal.aborted) return;
+
+        const applyRoute = () => {
+          if (controller.signal.aborted || mapRef.current !== map) return;
+          removeRoute();
+          map.addSource('taxi-route', {
+            type: 'geojson',
+            data: { type: 'Feature', properties: {}, geometry },
+          });
+          map.addLayer({
+            id: 'taxi-route-line',
+            type: 'line',
+            source: 'taxi-route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': '#2563EB',
+              'line-width': 5,
+              'line-opacity': 0.82,
+            },
+          });
+        };
+
+        if (map.isStyleLoaded()) applyRoute();
+        else map.once('load', applyRoute);
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          console.warn('Taxi route preview unavailable', error);
+        }
+      }
+    };
+
+    drawRoute();
+    return () => controller.abort();
+  }, [dropoff?.lat, dropoff?.lng, pickup?.lat, pickup?.lng]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -182,15 +246,15 @@ export const TaxiMapbox = ({
       addMarker(driver.lng, driver.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 16 }));
     });
 
-    if (pickup?.lat && pickup?.lng) {
+    if (Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng)) {
       addMarker(pickup.lng, pickup.lat, createMapboxPin({ background: '#2563EB', border: '#ffffff', size: 20, ring: true }));
     }
 
-    if (dropoff?.lat && dropoff?.lng) {
+    if (Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng)) {
       addMarker(dropoff.lng, dropoff.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 20, innerHtml: '<span style="font-size:11px">■</span>' }));
     }
 
-    if (driverLocation?.lat && driverLocation?.lng) {
+    if (Number.isFinite(driverLocation?.lat) && Number.isFinite(driverLocation?.lng)) {
       addMarker(driverLocation.lng, driverLocation.lat, createMapboxPin({ background: '#16A34A', border: '#ffffff', size: 18 }));
     }
 
@@ -198,6 +262,19 @@ export const TaxiMapbox = ({
       map.fitBounds(bounds, { padding: { top: 90, right: 32, bottom: 320, left: 32 }, duration: 900, maxZoom: 16.4 });
     }
   }, [driverLocation?.lat, driverLocation?.lng, dropoff?.lat, dropoff?.lng, nearbyDrivers, pickup?.lat, pickup?.lng]);
+
+  if (!mapboxgl.accessToken) {
+    return (
+      <TaxiMap
+        pickup={pickup}
+        dropoff={dropoff}
+        driverLocation={driverLocation}
+        nearbyDrivers={nearbyDrivers}
+        height={height}
+        onMapClick={pickupMoveMode && onPickupChange ? onPickupChange : null}
+      />
+    );
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden" style={{ height }} data-testid="taxi-mapbox-view">
@@ -281,6 +358,17 @@ const FitBounds = ({ bounds }) => {
   return null;
 };
 
+const MapClickHandler = ({ onMapClick }) => {
+  useMapEvents({
+    click: (event) => {
+      if (onMapClick) {
+        onMapClick({ lat: event.latlng.lat, lng: event.latlng.lng });
+      }
+    },
+  });
+  return null;
+};
+
 // Main Map Component
 export const RealMap = ({
   center = [52.52, 13.405], // Berlin default
@@ -323,6 +411,8 @@ export const RealMap = ({
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
+
+        {onMapClick ? <MapClickHandler onMapClick={onMapClick} /> : null}
         
         <MapUpdater center={currentLocation || center} zoom={zoom} />
         
@@ -380,6 +470,7 @@ export const TaxiMap = ({
   driverPath = [],
   nearbyDrivers = [],
   height = '250px',
+  onMapClick = null,
 }) => {
   const markers = [];
   
@@ -422,10 +513,14 @@ export const TaxiMap = ({
 
   return (
     <RealMap
+      center={pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng) ? [pickup.lat, pickup.lng] : [48.5, 15.0]}
+      zoom={pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng) ? 14 : 5}
       height={height}
       markers={markers}
       route={route}
       fitBounds={fitBounds.length >= 2 ? fitBounds : null}
+      onMapClick={onMapClick}
+      showUserLocation={false}
     >
       {driverPath.length >= 2 ? (
         <Polyline

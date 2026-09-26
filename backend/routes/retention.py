@@ -14,9 +14,18 @@ import secrets
 import string
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["retention"])
+
+
+def _require_retention_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="Dieser wertbewegende Retention-Pfad ist in Production deaktiviert.",
+        )
 
 
 def _oid(s):
@@ -122,37 +131,12 @@ async def streak_status(request: Request):
 
 @router.post("/streak/claim/{days}")
 async def claim_streak_milestone(days: int, request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    if days not in STREAK_MILESTONES:
-        raise HTTPException(400, "Unbekanntes Streak-Ziel")
-    s = await _get_streak(uid)
-    if s.get("current_streak", 0) < days:
-        raise HTTPException(400, f"Du brauchst noch {days - s.get('current_streak', 0)} Tag(e)")
-    claimed = s.get("claimed_milestones", [])
-    if days in claimed:
-        raise HTTPException(400, "Belohnung bereits abgeholt")
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Streak-Wertbelohnungen sind deaktiviert. Verwende den kanonischen Rewards-/Loyalty-Pfad.",
+    )
 
-    reward = STREAK_MILESTONES[days]
-    inc = {}
-    if reward.get("blz"): inc["balance_blz"] = reward["blz"]
-    if reward.get("eur"): inc["balance"] = reward["eur"]
-    if inc:
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": inc})
-    claimed.append(days)
-    await db.user_streaks.update_one({"user_id": uid}, {"$set": {"claimed_milestones": claimed}})
-
-    now = _now()
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus",
-        "amount": reward.get("blz") or reward.get("eur"),
-        "currency": "BLZ" if reward.get("blz") else "EUR",
-        "status": "completed", "description": f"🔥 Streak {reward['label']}",
-        "merchant_name": "BidBlitz", "category": "streak_milestone",
-        "reference": f"STREAK-{days}-{_today()}",
-        "date": now, "created_at": now,
-    })
-    return {"ok": True, "reward": reward}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -289,8 +273,9 @@ async def exchange_rates(request: Request):
     ]):
         used_today = float(r.get("total", 0))
     return {
-        "buy_rate": RATE_BLZ_PER_EUR_BUY,   # 1€ gives you X BLZ
-        "sell_rate": RATE_BLZ_PER_EUR_SELL, # X BLZ gives you 1€
+        "value_actions_enabled": bool(TEST_MODE),
+        "buy_rate": RATE_BLZ_PER_EUR_BUY if TEST_MODE else None,
+        "sell_rate": RATE_BLZ_PER_EUR_SELL if TEST_MODE else None,
         "min_eur": MIN_EXCHANGE_EUR,
         "max_per_day": MAX_EXCHANGE_EUR_DAY,
         "used_today": round(used_today, 2),
@@ -307,51 +292,12 @@ class ExchangeRequest(BaseModel):
 
 @router.post("/exchange/execute")
 async def execute_exchange(req: ExchangeRequest, request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    eur = float(req.amount)
-    if eur < MIN_EXCHANGE_EUR:
-        raise HTTPException(400, f"Mindestbetrag: €{MIN_EXCHANGE_EUR}")
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy BLZ/EUR Exchange ist deaktiviert. Es werden keine Wallet- oder BLZ-Werte bewegt.",
+    )
 
-    # Daily limit
-    day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    used_today = 0.0
-    async for r in db.transactions.aggregate([
-        {"$match": {"user_id": uid, "category": "exchange", "created_at": {"$gte": day_start}}},
-        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}},
-    ]):
-        used_today = float(r.get("total", 0))
-    if used_today + eur > MAX_EXCHANGE_EUR_DAY:
-        raise HTTPException(400, f"Tageslimit überschritten (€{MAX_EXCHANGE_EUR_DAY - used_today:.2f} übrig)")
-
-    if req.direction == "buy_blz":
-        bal_eur = float(user.get("balance", 0) or 0)
-        if bal_eur < eur:
-            raise HTTPException(400, "Nicht genug EUR-Guthaben")
-        blz = int(eur * RATE_BLZ_PER_EUR_BUY)
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -eur, "balance_blz": blz}})
-        msg = f"Exchange: €{eur:.2f} → {blz} BLZ"
-    else:  # sell_blz
-        blz_needed = int(eur * RATE_BLZ_PER_EUR_SELL)
-        bal_blz = float(user.get("balance_blz", 0) or 0)
-        if bal_blz < blz_needed:
-            raise HTTPException(400, f"Du brauchst {blz_needed} BLZ (hast {int(bal_blz)})")
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": -blz_needed, "balance": eur}})
-        blz = blz_needed
-        msg = f"Exchange: {blz_needed} BLZ → €{eur:.2f}"
-
-    now = _now()
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "exchange",
-        "amount": eur if req.direction == "buy_blz" else -eur,
-        "currency": "EUR",
-        "status": "completed", "description": msg,
-        "merchant_name": "BidBlitz Exchange", "category": "exchange",
-        "reference": f"EX-{secrets.token_hex(4)}",
-        "metadata": {"direction": req.direction, "blz": blz, "eur": eur},
-        "date": now, "created_at": now,
-    })
-    return {"ok": True, "direction": req.direction, "eur": eur, "blz": blz}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -485,44 +431,11 @@ class GiftCreateRequest(BaseModel):
 
 @router.post("/gift/create")
 async def create_gift_code(req: GiftCreateRequest, request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    bal = float(user.get("balance", 0) or 0)
-    if bal < req.amount_eur:
-        raise HTTPException(400, f"Nicht genug Guthaben (brauchst €{req.amount_eur})")
-
-    code = _gen_gift_code()
-    while await db.gift_codes.find_one({"code": code}):
-        code = _gen_gift_code()
-
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -req.amount_eur}})
-    now = _now()
-    await db.gift_codes.insert_one({
-        "code": code,
-        "from_user_id": uid,
-        "from_name": user.get("name"),
-        "amount_eur": req.amount_eur,
-        "message": (req.message or "").strip(),
-        "redeemed": False,
-        "redeemed_by": None,
-        "redeemed_at": None,
-        "created_at": now,
-    })
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "payment",
-        "amount": req.amount_eur, "currency": "EUR",
-        "status": "completed", "description": f"🎁 Geschenk-Code gekauft ({code})",
-        "merchant_name": "BidBlitz", "category": "gift_code",
-        "reference": code,
-        "date": now, "created_at": now,
-    })
-    return {
-        "ok": True,
-        "code": code,
-        "amount_eur": req.amount_eur,
-        "share_url": f"https://bidblitz.ae/redeem?code={code}",
-        "share_text": f"🎁 Ich habe dir €{req.amount_eur} BidBlitz-Guthaben geschenkt! Löse ein mit Code: {code} auf https://bidblitz.ae",
-    }
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Geschenkcodes mit Wallet-Guthaben sind deaktiviert. Verwende einen kanonischen Gift-/Payment-Flow.",
+    )
 
 
 class GiftRedeemRequest(BaseModel):
@@ -531,43 +444,12 @@ class GiftRedeemRequest(BaseModel):
 
 @router.post("/gift/redeem")
 async def redeem_gift_code(req: GiftRedeemRequest, request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    code = req.code.strip().upper()
-    gift = await db.gift_codes.find_one({"code": code})
-    if not gift:
-        raise HTTPException(404, "Code nicht gefunden oder ungültig")
-    if gift.get("redeemed"):
-        raise HTTPException(400, "Dieser Code wurde bereits eingelöst")
-    if gift.get("from_user_id") == uid:
-        raise HTTPException(400, "Du kannst eigene Codes nicht einlösen")
-
-    now = _now()
-    amount = float(gift["amount_eur"])
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": amount}})
-    await db.gift_codes.update_one(
-        {"code": code},
-        {"$set": {"redeemed": True, "redeemed_by": uid, "redeemed_by_name": user.get("name"), "redeemed_at": now}},
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Geschenkcode-Einlösung ist deaktiviert. Es werden keine Wallet-Gutschriften erzeugt.",
     )
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus",
-        "amount": amount, "currency": "EUR",
-        "status": "completed",
-        "description": f"🎁 Geschenk-Code von {gift.get('from_name', 'Freund')} eingelöst",
-        "merchant_name": "BidBlitz", "category": "gift_code_redeem",
-        "reference": code,
-        "date": now, "created_at": now,
-    })
-    # Notify sender
-    if gift.get("from_user_id"):
-        await db.notifications.insert_one({
-            "notification_id": secrets.token_hex(8),
-            "user_id": gift["from_user_id"],
-            "title": "🎁 Dein Geschenk wurde eingelöst!",
-            "message": f"{user.get('name', 'Dein Freund')} hat €{amount} eingelöst",
-            "type": "gift_redeemed", "read": False, "created_at": now,
-        })
-    return {"ok": True, "amount_eur": amount, "from_name": gift.get("from_name"), "message": gift.get("message")}
+
 
 
 @router.get("/gift/my-codes")

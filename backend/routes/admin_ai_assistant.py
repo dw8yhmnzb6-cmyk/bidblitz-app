@@ -70,6 +70,13 @@ CATEGORY_ALIASES = {
     "roboter": "robots",
 }
 
+BLOCKED_HIGH_RISK_OPERATIONS = {
+    "customer_ban_toggle",
+    "customer_delete_by_email",
+    "wallet_credit_user",
+    "wallet_debit_user",
+}
+
 SUPPORTED_OPERATIONS = {
     "auction_reseed_current_catalog",
     "auction_replace_with_items",
@@ -78,10 +85,6 @@ SUPPORTED_OPERATIONS = {
     "auction_update_by_title",
     "monitoring_run_probes",
     "customer_reset_password",
-    "customer_ban_toggle",
-    "customer_delete_by_email",
-    "wallet_credit_user",
-    "wallet_debit_user",
     "lead_update_status",
     "report_auth_failures",
     "report_system_errors",
@@ -284,7 +287,7 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
             "assistant_message": f"Ich werde den Status für {email} {'sperren' if banned else 'entsperren'}.",
             "requires_confirmation": True,
             "warnings": ["Diese Aktion beeinflusst den Kundenzugang."],
-            "operations": [{"type": "customer_ban_toggle", "reason": "Kundenstatus ändern", "target_email": email, "banned": banned}],
+            "operations": [{"type": "unsupported_request", "reason": "Kundensperren werden ausschließlich über die kanonische Admin-Kontoverwaltung ausgeführt."}],
         }
 
     if email and any(token in lowered for token in ["lösch kunde", "kunde löschen", "account löschen", "konto löschen"]):
@@ -293,7 +296,7 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
             "assistant_message": f"Ich werde das Konto {email} löschen.",
             "requires_confirmation": True,
             "warnings": ["Das Löschen ist dauerhaft und gefährlich."],
-            "operations": [{"type": "customer_delete_by_email", "reason": "Konto löschen", "target_email": email}],
+            "operations": [{"type": "unsupported_request", "reason": "Kontolöschung/Schließung wird ausschließlich über den kanonischen sicheren Admin-Kontopfad ausgeführt."}],
         }
 
     if email and amount > 0 and any(token in lowered for token in ["gutschrift", "gutschreib", "aufladen", "geb", "add", "topup", "top up", "gib", "schenk", "schreib", "gut"]):
@@ -302,7 +305,7 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
             "assistant_message": f"Ich werde {email} {amount:.2f} {currency} gutschreiben.",
             "requires_confirmation": True,
             "warnings": ["Wallet-Buchung wird sofort verbucht."],
-            "operations": [{"type": "wallet_credit_user", "reason": "Admin Wallet Gutschrift", "target_email": email, "amount": amount, "currency": currency}],
+            "operations": [{"type": "unsupported_request", "reason": "Wallet-Gutschriften werden ausschließlich über das kanonische Admin-Wallet mit Step-up und Audit ausgeführt."}],
         }
 
     if email and amount > 0 and any(token in lowered for token in ["abziehen", "belasten", "debit", "reduzier", "minus", "zieh", "ziehe"]):
@@ -311,7 +314,7 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
             "assistant_message": f"Ich werde bei {email} {amount:.2f} {currency} abziehen.",
             "requires_confirmation": True,
             "warnings": ["Wallet-Abzüge sind sensibel und wirken sofort."],
-            "operations": [{"type": "wallet_debit_user", "reason": "Admin Wallet Abzug", "target_email": email, "amount": amount, "currency": currency}],
+            "operations": [{"type": "unsupported_request", "reason": "Wallet-Abzüge werden ausschließlich über das kanonische Admin-Wallet mit Step-up und Audit ausgeführt."}],
         }
 
     if any(token in lowered for token in ["lead", "mining lead", "interessent"]) and any(token in lowered for token in ["status", "setze", "änder", "update"]):
@@ -454,10 +457,6 @@ Unterstützte Operationen:
 - auction_update_by_title
 - monitoring_run_probes
 - customer_reset_password
-- customer_ban_toggle
-- customer_delete_by_email
-- wallet_credit_user
-- wallet_debit_user
 - lead_update_status
 - unsupported_request
 
@@ -519,6 +518,12 @@ Letzter Verlauf:
     safe_ops = []
     for op in parsed.get("operations", []):
         op_type = op.get("type")
+        if op_type in BLOCKED_HIGH_RISK_OPERATIONS:
+            safe_ops.append({
+                "type": "unsupported_request",
+                "reason": "Diese Hochrisiko-Aktion ist im Admin-KI-Assistenten deaktiviert. Verwende den kanonischen Admin-Wallet-/Kontoverwaltungs-Pfad.",
+            })
+            continue
         if op_type not in SUPPORTED_OPERATIONS:
             safe_ops.append({"type": "unsupported_request", "reason": f"Nicht unterstützte Operation: {op_type}"})
             continue
@@ -540,6 +545,14 @@ Letzter Verlauf:
 async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str, Any]:
     op_type = op.get("type")
     now = datetime.now(timezone.utc)
+
+    if op_type in BLOCKED_HIGH_RISK_OPERATIONS:
+        return {
+            "type": op_type,
+            "ok": False,
+            "blocked": True,
+            "message": "Hochrisiko-Aktion im Admin-KI-Assistenten deaktiviert. Verwende den kanonischen Admin-Wallet-/Kontoverwaltungs-Pfad.",
+        }
 
     if op_type == "unsupported_request":
         return {"type": op_type, "ok": False, "message": op.get("reason") or "Noch nicht automatisch ausführbar."}
@@ -567,51 +580,6 @@ async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str
             "message": "Reset-E-Mail gesendet." if email_sent else "Reset-E-Mail konnte nicht zugestellt werden. Login wurde deshalb NICHT gesperrt.",
             "enforcement_skipped": bool((issued or {}).get("enforcement_skipped")),
         }
-
-    if op_type == "customer_ban_toggle":
-        email = (op.get("target_email") or "").strip().lower()
-        user = await _find_user_by_email(email)
-        if not user:
-            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
-        banned = bool(op.get("banned", True))
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"banned": banned, "ban_reason": "admin_ai_assistant", "banned_at": now.isoformat() if banned else None, "banned_by": admin_user_id if banned else None}})
-        return {"type": op_type, "ok": True, "email": email, "banned": banned}
-
-    if op_type == "customer_delete_by_email":
-        email = (op.get("target_email") or "").strip().lower()
-        user = await _find_user_by_email(email)
-        if not user:
-            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
-        await db.users.delete_one({"_id": user["_id"]})
-        await db.wallets.delete_many({"user_id": str(user["_id"])})
-        await db.transactions.delete_many({"user_id": str(user["_id"])})
-        return {"type": op_type, "ok": True, "email": email, "deleted": True}
-
-    if op_type in {"wallet_credit_user", "wallet_debit_user"}:
-        email = (op.get("target_email") or "").strip().lower()
-        amount = float(op.get("amount") or 0)
-        currency = str(op.get("currency") or "EUR").upper()
-        user = await _find_user_by_email(email)
-        if not user:
-            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
-        user_id = str(user["_id"])
-        if currency == "BLZ":
-            if op_type == "wallet_credit_user":
-                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": amount}})
-                await db.transactions.insert_one({"user_id": user_id, "type": "admin_credit_blz", "amount_blz": amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Gutschrift", "admin_id": admin_user_id, "created_at": now.isoformat()})
-            else:
-                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
-                await db.transactions.insert_one({"user_id": user_id, "type": "admin_debit_blz", "amount_blz": -amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Abzug", "admin_id": admin_user_id, "created_at": now.isoformat()})
-        else:
-            if op_type == "wallet_credit_user":
-                result = await credit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_CREDIT, description=op.get("reason") or "Admin KI Gutschrift", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.credit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
-                if not result.success:
-                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Gutschrift fehlgeschlagen"}
-            else:
-                result = await debit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_DEBIT, description=op.get("reason") or "Admin KI Abzug", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.debit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
-                if not result.success:
-                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Abzug fehlgeschlagen"}
-        return {"type": op_type, "ok": True, "email": email, "amount": amount, "currency": currency}
 
     if op_type == "lead_update_status":
         lead_id = str(op.get("lead_id") or "").strip()
