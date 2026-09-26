@@ -141,9 +141,47 @@ async def global_search(
         {"_id": 0},
     ).limit(limit).to_list(limit)
 
+    city_rows = await db.the_eye_devices.aggregate(
+        [
+            {"$match": {"city": rx}},
+            {
+                "$group": {
+                    "_id": {"city": "$city", "country": "$country"},
+                    "device_count": {"$sum": 1},
+                }
+            },
+            {"$sort": {"device_count": -1}},
+            {"$limit": 8},
+        ]
+    ).to_list(8)
+
+    city_results = [
+        {
+            "entity_type": "city",
+            "entity_id": f"CITY:{(row.get('_id') or {}).get('country') or ''}:{(row.get('_id') or {}).get('city') or ''}",
+            "title": (row.get("_id") or {}).get("city"),
+            "subtitle": " · ".join(
+                [
+                    str(v)
+                    for v in [
+                        (row.get("_id") or {}).get("country"),
+                        f"{int(row.get('device_count') or 0)} Geräte",
+                    ]
+                    if v
+                ]
+            ),
+            "country": (row.get("_id") or {}).get("country"),
+            "city": (row.get("_id") or {}).get("city"),
+            "device_count": int(row.get("device_count") or 0),
+        }
+        for row in city_rows
+        if (row.get("_id") or {}).get("city")
+    ]
+
     results: List[dict] = [
-        *[_device_result(row) for row in device_rows],
+        *city_results,
         *[_location_result(row) for row in location_rows],
+        *[_device_result(row) for row in device_rows],
     ]
 
     lowered = needle.lower()
