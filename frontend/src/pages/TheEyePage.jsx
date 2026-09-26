@@ -80,6 +80,7 @@ export default function TheEyePage({ onNavigate }) {
   const [query, setQuery] = useState("");
   const [activeLayers, setActiveLayers] = useState(() => Object.fromEntries(LAYERS.map(([name]) => [name, true])));
   const [tab, setTab] = useState("Übersicht");
+  const [liveConnected, setLiveConnected] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +101,65 @@ export default function TheEyePage({ onNavigate }) {
     };
     load();
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let stopped = false;
+    let socket = null;
+    let retryTimer = null;
+
+    const mergeDevice = (deviceId, patch) => {
+      setDevices((current) => current.map((device) => (
+        device.device_id === deviceId ? { ...device, ...patch } : device
+      )));
+    };
+
+    const connect = () => {
+      if (stopped) return;
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(`${protocol}//${window.location.host}/api/the-eye/ws`);
+
+      socket.onopen = () => setLiveConnected(true);
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          const payload = message?.payload || {};
+
+          if (message.type === "device.registered" && payload.device_id) {
+            setDevices((current) => (
+              current.some((device) => device.device_id === payload.device_id)
+                ? current.map((device) => device.device_id === payload.device_id ? { ...device, ...payload } : device)
+                : [payload, ...current]
+            ));
+          } else if (message.type === "device.heartbeat" && payload.device_id) {
+            mergeDevice(payload.device_id, payload);
+          } else if (message.type === "device.location" && payload.device_id) {
+            mergeDevice(payload.device_id, payload);
+          } else if (message.type === "device.telemetry" && payload.device_id) {
+            mergeDevice(payload.device_id, {
+              connection_status: payload.connection_status || "online",
+              last_telemetry: payload.metrics,
+              last_seen_at: payload.received_at,
+            });
+          }
+        } catch {
+          // Ignore malformed realtime messages; REST data remains authoritative.
+        }
+      };
+      socket.onclose = () => {
+        setLiveConnected(false);
+        if (!stopped) retryTimer = window.setTimeout(connect, 2000);
+      };
+      socket.onerror = () => socket?.close();
+    };
+
+    connect();
+    return () => {
+      stopped = true;
+      setLiveConnected(false);
+      if (retryTimer) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
   }, []);
 
   const selected = useMemo(
@@ -137,7 +197,7 @@ export default function TheEyePage({ onNavigate }) {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Suche nach Gerät, Ort, Flug, Schiff, Kamera ..." />
         </div>
 
-        <div className="eye-user"><span className="eye-live-dot" /> Admin <ChevronDown size={15} /></div>
+        <div className="eye-user"><span className={`eye-live-dot${liveConnected ? "" : " offline"}`} /> Admin · {liveConnected ? "Live" : "Verbinden"} <ChevronDown size={15} /></div>
       </header>
 
       <div className="eye-layout">
