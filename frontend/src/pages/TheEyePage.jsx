@@ -89,6 +89,33 @@ export default function TheEyePage({ onNavigate }) {
   const [locationDetail, setLocationDetail] = useState(null);
   const [scopedDevices, setScopedDevices] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
+  const [cameras, setCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState(null);
+  const [streamSession, setStreamSession] = useState(null);
+  const [streamMessage, setStreamMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCameras = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/cameras?limit=500", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.cameras)) {
+          setCameras(data.cameras);
+          setSelectedCameraId((current) => (
+            current && data.cameras.some((camera) => camera.camera_id === current)
+              ? current
+              : data.cameras[0]?.camera_id || null
+          ));
+        }
+      } catch {
+        if (!cancelled) setCameras([]);
+      }
+    };
+    loadCameras();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +319,16 @@ export default function TheEyePage({ onNavigate }) {
               last_telemetry: payload.metrics,
               last_seen_at: payload.received_at,
             });
+          } else if (message.type === "camera.created" && payload.camera_id) {
+            setCameras((current) => (
+              current.some((camera) => camera.camera_id === payload.camera_id)
+                ? current.map((camera) => camera.camera_id === payload.camera_id ? { ...camera, ...payload } : camera)
+                : [payload, ...current]
+            ));
+          } else if ((message.type === "camera.updated" || message.type === "camera.health") && payload.camera_id) {
+            setCameras((current) => current.map((camera) => (
+              camera.camera_id === payload.camera_id ? { ...camera, ...payload } : camera
+            )));
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -314,6 +351,34 @@ export default function TheEyePage({ onNavigate }) {
   }, []);
 
   const visibleDevices = scopedDevices ?? devices;
+
+  const selectedCamera = useMemo(() => {
+    const byId = cameras.find((camera) => camera.camera_id === selectedCameraId);
+    if (byId) return byId;
+    const byDevice = cameras.find((camera) => camera.device_id === selectedId);
+    return byDevice || cameras[0] || null;
+  }, [cameras, selectedCameraId, selectedId]);
+
+  const openCameraStream = async () => {
+    if (!selectedCamera?.camera_id) {
+      setStreamMessage("Für dieses Gerät ist noch keine Kamera registriert.");
+      return;
+    }
+    setStreamMessage("Stream wird vorbereitet …");
+    setStreamSession(null);
+    try {
+      const res = await fetch(
+        `/api/the-eye/admin/cameras/${encodeURIComponent(selectedCamera.camera_id)}/stream-session`,
+        { method: "POST", credentials: "include" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      setStreamSession(data);
+      setStreamMessage(data.configured ? "Live-Session aktiv" : (data.notice || "Media Gateway noch nicht konfiguriert."));
+    } catch (error) {
+      setStreamMessage(error?.message || "Stream konnte nicht geöffnet werden.");
+    }
+  };
 
   const selected = useMemo(
     () => devices.find((d) => d.device_id === selectedId)
@@ -433,7 +498,7 @@ export default function TheEyePage({ onNavigate }) {
               {filteredDevices.slice(0, 6).map((device) => {
                 const Icon = ICONS[device.device_type] || Cpu;
                 return (
-                  <button key={device.device_id} className={selectedId === device.device_id ? "selected" : ""} onClick={() => setSelectedId(device.device_id)}>
+                  <button key={device.device_id} className={selectedId === device.device_id ? "selected" : ""} onClick={() => { setSelectedId(device.device_id); const linked = cameras.find((camera) => camera.device_id === device.device_id); if (linked) setSelectedCameraId(linked.camera_id); }}>
                     <Icon size={16} />
                     <span><strong>{device.device_id}</strong><small>{device.city || "Unbekannt"}</small></span>
                     <i className={device.connection_status === "online" ? "online" : "offline"} />
@@ -509,7 +574,7 @@ export default function TheEyePage({ onNavigate }) {
                           fillOpacity: 0.8,
                           weight: 2,
                         }}
-                        eventHandlers={{ click: () => setSelectedId(device.device_id) }}
+                        eventHandlers={{ click: () => { setSelectedId(device.device_id); const linked = cameras.find((camera) => camera.device_id === device.device_id); if (linked) setSelectedCameraId(linked.camera_id); } }}
                       >
                         <Popup>
                           <strong>{device.device_id}</strong><br />
@@ -617,10 +682,22 @@ export default function TheEyePage({ onNavigate }) {
         <aside className="eye-rightbar">
           <div className="eye-camera-card">
             <div className="eye-camera-image">
-              <div className="eye-camera-sky" />
-              <div className="eye-camera-city" />
-              <span className="eye-camera-live"><span />LIVE</span>
-              <strong>Prishtina – City Center</strong>
+              {streamSession?.playback_url ? (
+                <video className="eye-camera-video" src={streamSession.playback_url} controls autoPlay muted playsInline />
+              ) : (
+                <>
+                  <div className="eye-camera-sky" />
+                  <div className="eye-camera-city" />
+                </>
+              )}
+              <span className="eye-camera-live"><span />{selectedCamera?.connection_status === "online" ? "LIVE" : "CAM"}</span>
+              <strong>{selectedCamera?.name || "Keine Kamera ausgewählt"}</strong>
+              {streamMessage ? <small className="eye-camera-message">{streamMessage}</small> : null}
+            </div>
+            <div className="eye-camera-meta">
+              <span>{selectedCamera?.camera_id || "—"}</span>
+              <span>{selectedCamera?.camera_type || "—"}</span>
+              <span>{selectedCamera?.mode || "—"}</span>
             </div>
           </div>
 
@@ -644,7 +721,7 @@ export default function TheEyePage({ onNavigate }) {
             </div>
 
             <div className="eye-actions">
-              <button className="primary"><Camera size={16} />Live öffnen</button>
+              <button className="primary" onClick={openCameraStream}><Camera size={16} />Live öffnen</button>
               <button><Send size={16} />Befehl senden</button>
               <button><RefreshCw size={16} />Neustarten</button>
               <button><HardDrive size={16} />Firmware</button>
