@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
@@ -28,6 +29,29 @@ async def _require_admin(request: Request) -> dict:
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
     return user
+
+
+def _hash_connector_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+async def _require_project_connector(project_key: str, token: Optional[str], required_scope: str) -> dict:
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing connector token")
+    connector = await db.the_eye_project_connectors.find_one(
+        {
+            "project_key": project_key,
+            "status": "active",
+            "token_hash": _hash_connector_token(token),
+        },
+        {"_id": 0},
+    )
+    if not connector:
+        raise HTTPException(status_code=401, detail="Invalid connector token")
+    scopes = set(connector.get("scopes") or [])
+    if required_scope not in scopes and "*" not in scopes:
+        raise HTTPException(status_code=403, detail=f"Connector scope required: {required_scope}")
+    return connector
 
 
 class ProjectRegister(BaseModel):
@@ -63,6 +87,25 @@ class ProjectSnapshot(BaseModel):
     period: str = Field(default="24h", max_length=32)
     source_timestamp: Optional[str] = None
     metrics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectorTokenCreate(BaseModel):
+    scopes: List[str] = Field(default_factory=lambda: ["status.write", "kpis.write", "events.write"], max_length=100)
+    label: Optional[str] = Field(default=None, max_length=160)
+
+
+class ProjectEventIn(BaseModel):
+    event_id: Optional[str] = Field(default=None, max_length=160)
+    event_type: str = Field(..., min_length=3, max_length=180)
+    timestamp: Optional[str] = None
+    severity: Literal["info", "low", "medium", "high", "critical"] = "info"
+    tenant_id: Optional[str] = Field(default=None, max_length=160)
+    customer_id: Optional[str] = Field(default=None, max_length=160)
+    site_id: Optional[str] = Field(default=None, max_length=160)
+    device_id: Optional[str] = Field(default=None, max_length=160)
+    source: Optional[str] = Field(default=None, max_length=160)
+    correlation_id: Optional[str] = Field(default=None, max_length=160)
+    payload: Dict[str, Any] = Field(default_factory=dict)
 
 
 class KpiDefinitionCreate(BaseModel):
@@ -128,6 +171,155 @@ async def list_projects(
 
     rows = await db.the_eye_projects.find(query, {"_id": 0}).sort("name", 1).to_list(limit)
     return {"ok": True, "count": len(rows), "projects": rows}
+
+
+@router.post("/admin/projects/{project_key}/connector-token")
+async def create_project_connector_token(project_key: str, req: ConnectorTokenCreate, request: Request):
+    admin = await _require_admin(request)
+    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    token = secrets.token_urlsafe(40)
+    connector_id = "CON-" + secrets.token_hex(8).upper()
+    now = _now()
+    doc = {
+        "connector_id": connector_id,
+        "project_id": project.get("project_id"),
+        "project_key": project_key,
+        "label": req.label,
+        "scopes": list(dict.fromkeys(req.scopes)),
+        "token_hash": _hash_connector_token(token),
+        "status": "active",
+        "created_at": now,
+        "updated_at": now,
+        "last_seen_at": None,
+        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+    }
+    await db.the_eye_project_connectors.insert_one(doc)
+    await db.the_eye_projects.update_one(
+        {"project_key": project_key},
+        {"$addToSet": {"connector_ids": connector_id}, "$set": {"updated_at": now}},
+    )
+    return {
+        "ok": True,
+        "connector": {k: v for k, v in doc.items() if k not in {"_id", "token_hash"}},
+        "connector_token": token,
+        "token_notice": "Shown once. Store it securely in the project connector.",
+    }
+
+
+@router.post("/connectors/{project_key}/snapshot")
+async def connector_snapshot(
+    project_key: str,
+    req: ProjectSnapshot,
+    x_the_eye_connector_token: Optional[str] = Header(default=None),
+):
+    connector = await _require_project_connector(project_key, x_the_eye_connector_token, "kpis.write")
+    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = _now()
+    profit = req.profit
+    if profit is None and req.revenue is not None and req.cost is not None:
+        profit = req.revenue - req.cost
+
+    snapshot = {
+        "snapshot_id": "KPI-" + secrets.token_hex(8).upper(),
+        "project_id": project.get("project_id"),
+        "project_key": project_key,
+        "status": req.status,
+        "health_score": req.health_score,
+        "revenue": req.revenue,
+        "cost": req.cost,
+        "profit": profit,
+        "active_users": req.active_users,
+        "primary_actions": req.primary_actions,
+        "errors": req.errors,
+        "error_rate": req.error_rate,
+        "critical_alerts": req.critical_alerts,
+        "open_incidents": req.open_incidents,
+        "uptime_percent": req.uptime_percent,
+        "latency_p50_ms": req.latency_p50_ms,
+        "latency_p95_ms": req.latency_p95_ms,
+        "latency_p99_ms": req.latency_p99_ms,
+        "usage": req.usage,
+        "risk_score": req.risk_score,
+        "data_trust_score": req.data_trust_score,
+        "period": req.period,
+        "source_timestamp": req.source_timestamp,
+        "received_at": now,
+        "connector_id": connector.get("connector_id"),
+        "metrics": req.metrics,
+    }
+    await db.the_eye_project_snapshots.insert_one(snapshot)
+    snapshot.pop("_id", None)
+    await db.the_eye_projects.update_one(
+        {"project_key": project_key},
+        {"$set": {
+            "status": req.status,
+            "health_score": req.health_score,
+            "risk_score": req.risk_score,
+            "data_trust_score": req.data_trust_score,
+            "last_snapshot": snapshot,
+            "last_snapshot_at": now,
+            "updated_at": now,
+        }},
+    )
+    await db.the_eye_project_connectors.update_one(
+        {"connector_id": connector.get("connector_id")},
+        {"$set": {"last_seen_at": now, "updated_at": now}},
+    )
+    await broadcast_the_eye_event("project.snapshot", snapshot)
+    return {"ok": True, "snapshot": snapshot}
+
+
+@router.post("/connectors/{project_key}/events")
+async def connector_event(
+    project_key: str,
+    req: ProjectEventIn,
+    x_the_eye_connector_token: Optional[str] = Header(default=None),
+):
+    connector = await _require_project_connector(project_key, x_the_eye_connector_token, "events.write")
+    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0, "project_id": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = _now()
+    event_id = req.event_id or ("EVT-" + secrets.token_hex(10).upper())
+    existing = await db.the_eye_project_events.find_one(
+        {"project_key": project_key, "event_id": event_id},
+        {"_id": 0, "event_id": 1},
+    )
+    if existing:
+        return {"ok": True, "duplicate": True, "event_id": event_id}
+
+    doc = {
+        "event_id": event_id,
+        "project_id": project.get("project_id"),
+        "project_key": project_key,
+        "event_type": req.event_type,
+        "timestamp": req.timestamp or now,
+        "severity": req.severity,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
+        "site_id": req.site_id,
+        "device_id": req.device_id,
+        "source": req.source or project_key,
+        "correlation_id": req.correlation_id,
+        "payload": req.payload,
+        "connector_id": connector.get("connector_id"),
+        "received_at": now,
+    }
+    await db.the_eye_project_events.insert_one(doc)
+    doc.pop("_id", None)
+    await db.the_eye_project_connectors.update_one(
+        {"connector_id": connector.get("connector_id")},
+        {"$set": {"last_seen_at": now, "updated_at": now}},
+    )
+    await broadcast_the_eye_event("project.event", doc)
+    return {"ok": True, "duplicate": False, "event": doc}
 
 
 @router.post("/admin/projects/{project_key}/snapshot")
