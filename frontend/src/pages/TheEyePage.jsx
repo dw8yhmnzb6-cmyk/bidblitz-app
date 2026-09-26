@@ -97,6 +97,46 @@ export default function TheEyePage({ onNavigate }) {
   const [incidents, setIncidents] = useState([]);
   const [incidentSummary, setIncidentSummary] = useState({ open_total: 0, by_severity: {} });
   const [correlating, setCorrelating] = useState(false);
+  const [actions, setActions] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [actionSummary, setActionSummary] = useState({
+    open_actions: 0,
+    open_tickets: 0,
+    actions_by_priority: {},
+    tickets_by_priority: {},
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadActions = async () => {
+      try {
+        const [actionsRes, ticketsRes, summaryRes] = await Promise.all([
+          fetch("/api/the-eye/admin/actions?limit=50", { credentials: "include" }),
+          fetch("/api/the-eye/admin/tickets?limit=50", { credentials: "include" }),
+          fetch("/api/the-eye/admin/actions/summary", { credentials: "include" }),
+        ]);
+        if (actionsRes.ok) {
+          const data = await actionsRes.json();
+          if (!cancelled) setActions(Array.isArray(data.actions) ? data.actions : []);
+        }
+        if (ticketsRes.ok) {
+          const data = await ticketsRes.json();
+          if (!cancelled) setTickets(Array.isArray(data.tickets) ? data.tickets : []);
+        }
+        if (summaryRes.ok) {
+          const data = await summaryRes.json();
+          if (!cancelled) setActionSummary(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setActions([]);
+          setTickets([]);
+        }
+      }
+    };
+    loadActions();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -415,6 +455,20 @@ export default function TheEyePage({ onNavigate }) {
               ...current,
               open_total: Math.max(0, current.open_total + (message.type === "incident.created" ? 1 : 0)),
             }));
+          } else if ((message.type === "action.created" || message.type === "action.updated") && payload.action_id) {
+            setActions((current) => {
+              const exists = current.some((item) => item.action_id === payload.action_id);
+              return exists
+                ? current.map((item) => item.action_id === payload.action_id ? payload : item)
+                : [payload, ...current];
+            });
+          } else if ((message.type === "ticket.created" || message.type === "ticket.updated") && payload.ticket_id) {
+            setTickets((current) => {
+              const exists = current.some((item) => item.ticket_id === payload.ticket_id);
+              return exists
+                ? current.map((item) => item.ticket_id === payload.ticket_id ? payload : item)
+                : [payload, ...current];
+            });
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -815,6 +869,42 @@ export default function TheEyePage({ onNavigate }) {
               {!incidents.some((incident) => !["resolved", "closed"].includes(incident.status)) ? (
                 <div className="eye-incident-empty">Keine offenen Incidents</div>
               ) : null}
+            </div>
+          </section>
+
+          <section className="eye-action-center">
+            <div className="eye-action-head">
+              <div>
+                <span>ACTION CENTER</span>
+                <strong>{actionSummary.open_actions || 0} Aktionen · {actionSummary.open_tickets || 0} Tickets</strong>
+              </div>
+              <div className="eye-action-kpis">
+                <span>P1 {actionSummary.actions_by_priority?.p1 || 0}</span>
+                <span>P2 {actionSummary.actions_by_priority?.p2 || 0}</span>
+                <span>Tickets P1 {actionSummary.tickets_by_priority?.p1 || 0}</span>
+              </div>
+            </div>
+            <div className="eye-action-columns">
+              <div>
+                <h4>Offene Aktionen</h4>
+                {actions.filter((item) => !["done", "cancelled"].includes(item.status)).slice(0, 4).map((item) => (
+                  <div className="eye-action-row" key={item.action_id}>
+                    <span className={`prio ${item.priority}`}>{item.priority?.toUpperCase()}</span>
+                    <div><strong>{item.title}</strong><small>{item.status} · {item.assigned_to || item.assigned_team || "nicht zugewiesen"}</small></div>
+                  </div>
+                ))}
+                {!actions.some((item) => !["done", "cancelled"].includes(item.status)) ? <div className="eye-action-empty">Keine offenen Aktionen</div> : null}
+              </div>
+              <div>
+                <h4>Techniker / Tickets</h4>
+                {tickets.filter((item) => !["resolved", "closed", "cancelled"].includes(item.status)).slice(0, 4).map((item) => (
+                  <div className="eye-action-row" key={item.ticket_id}>
+                    <span className={`prio ${item.priority}`}>{item.priority?.toUpperCase()}</span>
+                    <div><strong>{item.title}</strong><small>{item.category} · {item.status} · {item.assigned_to || item.assigned_team || "nicht zugewiesen"}</small></div>
+                  </div>
+                ))}
+                {!tickets.some((item) => !["resolved", "closed", "cancelled"].includes(item.status)) ? <div className="eye-action-empty">Keine offenen Tickets</div> : null}
+              </div>
             </div>
           </section>
 
