@@ -88,9 +88,11 @@ class StudioTest(unittest.TestCase):
 
     def test_unconfirmed_rights_and_duplicate_language_rejected(self):
         for changes in ({"rights_confirmed": False}, {"languages": ["de", "de"]},
-                        {"title": " a "}):
+                        {"languages": ["invalid"]}, {"title": " a "}):
             with self.assertRaises(ValidationError):
                 studio.GameDraftInput(**{**self.draft.model_dump(), **changes})
+        accepted = studio.GameDraftInput(**{**self.draft.model_dump(), "languages": ["zh-Hans", "zh-Hant"]})
+        self.assertEqual(accepted.languages, ["zh-Hans", "zh-Hant"])
 
     def test_draft_never_enters_published_status(self):
         created = asyncio.run(studio.create_draft(None, self.draft))

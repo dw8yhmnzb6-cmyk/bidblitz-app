@@ -13,6 +13,11 @@ from core.security import get_current_user
 
 router = APIRouter(prefix="/api/game-studio", tags=["game-studio"])
 
+SUPPORTED_LANGUAGES = frozenset(
+    "de en sq fr es pt it nl pl cs sk hu ro bg el hr sr bs sl mk tr ru uk "
+    "sv da nb fi ar he fa hi bn ur zh-Hans zh-Hant ja ko id vi th".split()
+)
+
 
 class GameDraftInput(BaseModel):
     title: str = Field(min_length=3, max_length=80)
@@ -34,11 +39,7 @@ class GameDraftInput(BaseModel):
     @field_validator("languages")
     @classmethod
     def validate_languages(cls, languages: list[str]) -> list[str]:
-        if len(set(languages)) != len(languages) or any(
-            len(code) < 2 or len(code) > 12 or
-            not code.replace("-", "").isalpha() or code != code.lower()
-            for code in languages
-        ):
+        if len(set(languages)) != len(languages) or any(code not in SUPPORTED_LANGUAGES for code in languages):
             raise ValueError("Ungültige oder doppelte Sprachcodes")
         return languages
 

@@ -830,6 +830,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const growthMenu = filterStoreSafeItems([
     { id: "gaming", icon: Gamepad2, label: t("more.gaming"), desc: t("more.gaming_desc"), color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")), roles: ["all"] },
+    { id: "game-studio", icon: Gamepad2, label: "BidBlitz Games Studio", desc: "Eigene Spiele als Entwurf verwalten", color: "#41E4F4", action: gatedAction(() => onNavigate("/game-studio")), roles: ["all"] },
     { id: "loyalty", icon: Coins, label: t("loyalty.title") || "Coins & Cashback", desc: t("loyalty.menu_desc") || "Verdiene mit jeder Transaktion", color: "#FFD700", action: gatedAction(() => onNavigate("/loyalty")), roles: ["all"] },
     { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")), roles: ["all"] },
     { id: "mining", icon: Cpu, label: t("mining.title") || "Mining", desc: t("mining.menu_desc") || "Mine BLZ tokens", color: "#00E89D", action: gatedAction(() => onNavigate("/mining")), roles: ["all"] },

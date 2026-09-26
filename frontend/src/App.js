@@ -151,6 +151,7 @@ const TwoFactorSettingsPage = lazy(() => import("./pages/TwoFactorSettingsPage")
 const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
+const GameStudioPage = lazy(() => import("./pages/GameStudioPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
 const VirtualCardsPage = lazy(() => import("./pages/VirtualCardsPage"));
@@ -1192,6 +1193,10 @@ function AppContent() {
         return (!user.isAuthenticated || !isAdminRole)
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
+      case "/game-studio":
+        return user.isAuthenticated
+          ? <GameStudioPage onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
       case "/gaming":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
