@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
@@ -188,7 +189,7 @@ async def list_locations(
     if parent_id:
         query["parent_id"] = parent_id
     if city:
-        query["city"] = {"$regex": f"^{city}$", "$options": "i"}
+        query["city"] = {"$regex": f"^{re.escape(city)}$", "$options": "i"}
 
     rows = await db.the_eye_locations.find(query, {"_id": 0}).sort(
         [("country", 1), ("city", 1), ("name", 1)]
@@ -233,9 +234,9 @@ async def get_location(location_id: str, request: Request):
     if row.get("location_type") == "site":
         device_query["metadata.site_id"] = row.get("code") or row.get("location_id")
     elif row.get("city"):
-        device_query["city"] = {"$regex": f"^{row['city']}$", "$options": "i"}
+        device_query["city"] = {"$regex": f"^{re.escape(str(row['city']))}$", "$options": "i"}
         if row.get("country"):
-            device_query["country"] = {"$regex": f"^{row['country']}$", "$options": "i"}
+            device_query["country"] = {"$regex": f"^{re.escape(str(row['country']))}$", "$options": "i"}
 
     total_devices = await db.the_eye_devices.count_documents(device_query) if device_query else 0
     online_devices = await db.the_eye_devices.count_documents(
@@ -276,7 +277,7 @@ async def update_location(location_id: str, req: LocationUpdate, request: Reques
         parent = await _load_parent(update["parent_id"])
         _validate_parent(current["location_type"], parent)
 
-    if "location" in update and update["location"] is not None:
+    if "location" in update and update["location"] is not None and hasattr(update["location"], "model_dump"):
         update["location"] = update["location"].model_dump()
 
     update["updated_at"] = _now()
