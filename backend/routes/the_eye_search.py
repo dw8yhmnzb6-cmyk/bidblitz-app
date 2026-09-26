@@ -27,6 +27,31 @@ def _regex(value: str, anchored: bool = False) -> Dict[str, Any]:
     return {"$regex": pattern, "$options": "i"}
 
 
+def _camera_result(row: dict) -> dict:
+    return {
+        "entity_type": "camera",
+        "entity_id": row.get("camera_id"),
+        "title": row.get("name") or row.get("camera_id"),
+        "subtitle": " · ".join(
+            [
+                str(v)
+                for v in [
+                    row.get("camera_type"),
+                    row.get("site_id"),
+                    row.get("connection_status"),
+                ]
+                if v
+            ]
+        ),
+        "status": row.get("connection_status"),
+        "camera_id": row.get("camera_id"),
+        "device_id": row.get("device_id"),
+        "location_id": row.get("location_id"),
+        "site_id": row.get("site_id"),
+        "camera_type": row.get("camera_type"),
+    }
+
+
 def _device_result(row: dict) -> dict:
     return {
         "entity_type": "device",
@@ -125,6 +150,25 @@ async def global_search(
         },
     ).limit(limit).to_list(limit)
 
+    camera_rows = await db.the_eye_cameras.find(
+        {
+            "status": {"$ne": "disabled"},
+            "$or": [
+                {"camera_id": rx},
+                {"name": rx},
+                {"camera_type": rx},
+                {"site_id": rx},
+                {"device_id": rx},
+            ],
+        },
+        {
+            "_id": 0,
+            "metadata": 0,
+            "privacy_masks": 0,
+            "stream_path": 0,
+        },
+    ).limit(limit).to_list(limit)
+
     location_rows = await db.the_eye_locations.find(
         {
             "$or": [
@@ -181,6 +225,7 @@ async def global_search(
     results: List[dict] = [
         *city_results,
         *[_location_result(row) for row in location_rows],
+        *[_camera_result(row) for row in camera_rows],
         *[_device_result(row) for row in device_rows],
     ]
 
