@@ -148,6 +148,33 @@ export default function TheEyePage({ onNavigate }) {
     open_incidents: 0,
     projects: [],
   });
+  const [securityOverview, setSecurityOverview] = useState({
+    open_security_events: 0,
+    critical: 0,
+    high: 0,
+    auth_events: 0,
+    device_events: 0,
+    api_events: 0,
+    pending_approvals: 0,
+    events: [],
+    approvals: [],
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSecurity = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/security/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setSecurityOverview(data);
+      } catch {
+        // Security Intelligence remains empty until events or approvals exist.
+      }
+    };
+    loadSecurity();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -671,6 +698,35 @@ export default function TheEyePage({ onNavigate }) {
                   : [row, ...(current.projects || [])],
               };
             });
+          } else if (message.type === "security.event" && payload.event_id) {
+            setSecurityOverview((current) => ({
+              ...current,
+              open_security_events: Number(current.open_security_events || 0) + 1,
+              critical: Number(current.critical || 0) + (payload.severity === "critical" ? 1 : 0),
+              high: Number(current.high || 0) + (payload.severity === "high" ? 1 : 0),
+              events: [payload, ...(current.events || [])].slice(0, 20),
+            }));
+          } else if (message.type === "security.event_resolved" && payload.event_id) {
+            setSecurityOverview((current) => ({
+              ...current,
+              open_security_events: Math.max(0, Number(current.open_security_events || 0) - 1),
+              critical: Math.max(0, Number(current.critical || 0) - (payload.severity === "critical" ? 1 : 0)),
+              high: Math.max(0, Number(current.high || 0) - (payload.severity === "high" ? 1 : 0)),
+              events: (current.events || []).filter((event) => event.event_id !== payload.event_id),
+            }));
+          } else if ((message.type === "approval.created" || message.type === "approval.updated") && payload.approval_id) {
+            setSecurityOverview((current) => {
+              const pending = payload.status === "pending";
+              const existedPending = (current.approvals || []).some((item) => item.approval_id === payload.approval_id && item.status === "pending");
+              const nextApprovals = pending
+                ? [payload, ...(current.approvals || []).filter((item) => item.approval_id !== payload.approval_id)].slice(0, 20)
+                : (current.approvals || []).filter((item) => item.approval_id !== payload.approval_id);
+              return {
+                ...current,
+                pending_approvals: Math.max(0, Number(current.pending_approvals || 0) + (pending && !existedPending ? 1 : !pending && existedPending ? -1 : 0)),
+                approvals: nextApprovals,
+              };
+            });
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -811,7 +867,7 @@ export default function TheEyePage({ onNavigate }) {
           <button><Cpu size={18} />Geräte</button>
           <button><Activity size={18} />Analyse</button>
           <button><Bell size={18} />Warnungen{incidentSummary.open_total ? <span className="eye-nav-badge">{incidentSummary.open_total}</span> : null}</button>
-          <button><Bot size={18} />AION</button>
+          <button><Bot size={18} />AION{securityOverview.pending_approvals ? <span className="eye-nav-badge approval">{securityOverview.pending_approvals}</span> : null}</button>
         </nav>
 
         <div className="eye-search">
@@ -1249,6 +1305,44 @@ export default function TheEyePage({ onNavigate }) {
                 </div>
               ))}
               {!projectOverview.projects?.length ? <div className="eye-project-empty">Noch keine Projekte mit KPI-Snapshots verbunden</div> : null}
+            </div>
+          </section>
+
+          <section className="eye-security-center">
+            <div className="eye-security-head">
+              <div>
+                <span>SECURITY & APPROVAL CENTER</span>
+                <strong>{securityOverview.open_security_events || 0} offene Security Events · {securityOverview.pending_approvals || 0} Freigaben</strong>
+              </div>
+              <div className="eye-security-kpis">
+                <span>Critical {securityOverview.critical || 0}</span>
+                <span>High {securityOverview.high || 0}</span>
+                <span>Auth {securityOverview.auth_events || 0}</span>
+                <span>Device {securityOverview.device_events || 0}</span>
+                <span>API {securityOverview.api_events || 0}</span>
+              </div>
+            </div>
+            <div className="eye-security-columns">
+              <div>
+                <h4>Security Events</h4>
+                {(securityOverview.events || []).slice(0, 4).map((event) => (
+                  <div className="eye-security-row" key={event.event_id}>
+                    <span className={`security-severity ${event.severity || "medium"}`}>{event.severity || "medium"}</span>
+                    <div><strong>{event.event_type}</strong><small>{event.description} · Risk {event.risk_score || 0}/100</small></div>
+                  </div>
+                ))}
+                {!securityOverview.events?.length ? <div className="eye-security-empty">Keine offenen Security Events</div> : null}
+              </div>
+              <div>
+                <h4>Wartende Freigaben</h4>
+                {(securityOverview.approvals || []).slice(0, 4).map((approval) => (
+                  <div className="eye-security-row" key={approval.approval_id}>
+                    <span className={`approval-risk ${approval.risk_level || "high"}`}>{approval.risk_level || "high"}</span>
+                    <div><strong>{approval.title}</strong><small>{approval.action_type} · {approval.mode} · {approval.status}</small></div>
+                  </div>
+                ))}
+                {!securityOverview.approvals?.length ? <div className="eye-security-empty">Keine wartenden Freigaben</div> : null}
+              </div>
             </div>
           </section>
 
