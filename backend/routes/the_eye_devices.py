@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.the_eye_live import broadcast_the_eye_event
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Device Hub"])
@@ -186,6 +187,7 @@ async def register_device(req: DeviceRegisterRequest, request: Request):
     await db.the_eye_devices.insert_one(doc)
 
     safe = {k: v for k, v in doc.items() if k not in {"_id", "token_hash"}}
+    await broadcast_the_eye_event("device.registered", safe)
     return {
         "ok": True,
         "device": safe,
@@ -256,6 +258,7 @@ async def device_heartbeat(
         update["uptime_seconds"] = req.uptime_seconds
 
     await db.the_eye_devices.update_one({"device_id": device_id}, {"$set": update})
+    await broadcast_the_eye_event("device.heartbeat", {"device_id": device_id, **update})
     return {"ok": True, "device_id": device_id, "server_time": now}
 
 
@@ -291,6 +294,16 @@ async def device_location(
     await db.the_eye_device_locations.insert_one(
         {"device_id": device_id, **location, "received_at": now}
     )
+    await broadcast_the_eye_event(
+        "device.location",
+        {
+            "device_id": device_id,
+            "location": location,
+            "connection_status": "online",
+            "last_seen_at": now,
+            "updated_at": now,
+        },
+    )
     return {"ok": True, "device_id": device_id, "server_time": now}
 
 
@@ -317,6 +330,16 @@ async def device_telemetry(
             "updated_at": now,
             "last_telemetry": req.metrics,
         }},
+    )
+    await broadcast_the_eye_event(
+        "device.telemetry",
+        {
+            "device_id": device_id,
+            "metrics": req.metrics,
+            "recorded_at": req.recorded_at or now,
+            "received_at": now,
+            "connection_status": "online",
+        },
     )
     return {"ok": True, "device_id": device_id, "server_time": now}
 
@@ -378,6 +401,7 @@ async def create_device_command(
     }
     await db.the_eye_device_commands.insert_one(doc)
     doc.pop("_id", None)
+    await broadcast_the_eye_event("command.queued", doc)
     return {"ok": True, "command": doc}
 
 
@@ -439,6 +463,16 @@ async def acknowledge_device_command(
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Command not found or already final")
+    await broadcast_the_eye_event(
+        "command.status",
+        {
+            "command_id": req.command_id,
+            "device_id": device_id,
+            "status": req.status,
+            "result": req.result,
+            "updated_at": now,
+        },
+    )
     return {"ok": True, "command_id": req.command_id, "status": req.status}
 
 
