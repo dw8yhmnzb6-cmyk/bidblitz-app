@@ -1,0 +1,44 @@
+name: Diagnose Payment Availability Deploy Once
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/diagnose-payment-availability-once.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Inspect backend runtime
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -x
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set +e
+          cd /var/www/bidblitz/backend
+          echo "=== PM2 STATUS ==="
+          pm2 status
+          echo "=== IMPORT CURRENT LIVE ROUTE ==="
+          python3 - <<'PY'
+          try:
+              import routes.pos_payments
+              print("CURRENT_IMPORT_OK")
+          except Exception as e:
+              import traceback; traceback.print_exc()
+          PY
+          echo "=== CORE CONFIG STRIPE SYMBOL ==="
+          python3 - <<'PY'
+          try:
+              import core.config as c
+              print("HAS_STRIPE_API_KEY", hasattr(c, "STRIPE_API_KEY"))
+              print("STRIPE_API_KEY_BOOL", bool(getattr(c, "STRIPE_API_KEY", None)))
+          except Exception:
+              import traceback; traceback.print_exc()
+          PY
+          echo "=== RECENT PM2 API LOGS ==="
+          pm2 logs api --lines 120 --nostream
+          REMOTE
