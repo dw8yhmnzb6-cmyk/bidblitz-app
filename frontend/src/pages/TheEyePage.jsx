@@ -114,6 +114,34 @@ export default function TheEyePage({ onNavigate }) {
   });
   const [workOrders, setWorkOrders] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [dataQuality, setDataQuality] = useState({
+    overall_trust: 100,
+    sources_total: 0,
+    live_sources: 0,
+    delayed_sources: 0,
+    offline_sources: 0,
+    open_issues: 0,
+    conflicts: 0,
+    schema_errors: 0,
+    sources: [],
+    issues: [],
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDataQuality = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/data-quality/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setDataQuality(data);
+      } catch {
+        // Keep default trust summary when the quality service has no data yet.
+      }
+    };
+    loadDataQuality();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -528,6 +556,30 @@ export default function TheEyePage({ onNavigate }) {
             setMaintenanceSummary((current) => ({
               ...current,
               active_rma: Math.max(0, current.active_rma + (message.type === "rma.created" ? 1 : 0)),
+            }));
+          } else if (message.type === "data_quality.source" && payload.source_id) {
+            setDataQuality((current) => ({
+              ...current,
+              sources: [
+                payload,
+                ...(current.sources || []).filter((source) => source.source_id !== payload.source_id),
+              ].slice(0, 20),
+            }));
+          } else if (message.type === "data_quality.issue_created" && payload.issue_id) {
+            setDataQuality((current) => ({
+              ...current,
+              open_issues: Number(current.open_issues || 0) + 1,
+              conflicts: Number(current.conflicts || 0) + (payload.issue_type === "data_conflict" ? 1 : 0),
+              schema_errors: Number(current.schema_errors || 0) + (payload.issue_type === "schema_error" ? 1 : 0),
+              issues: [payload, ...(current.issues || [])].slice(0, 20),
+            }));
+          } else if (message.type === "data_quality.issue_resolved" && payload.issue_id) {
+            setDataQuality((current) => ({
+              ...current,
+              open_issues: Math.max(0, Number(current.open_issues || 0) - 1),
+              conflicts: Math.max(0, Number(current.conflicts || 0) - (payload.issue_type === "data_conflict" ? 1 : 0)),
+              schema_errors: Math.max(0, Number(current.schema_errors || 0) - (payload.issue_type === "schema_error" ? 1 : 0)),
+              issues: (current.issues || []).filter((issue) => issue.issue_id !== payload.issue_id),
             }));
           }
         } catch {
@@ -1003,6 +1055,49 @@ export default function TheEyePage({ onNavigate }) {
                     </div>
                   ))}
                 {!inventoryItems.some((item) => (Number(item.quantity || 0) - Number(item.reserved_quantity || 0)) <= Number(item.reorder_point || 0)) ? <div className="eye-maintenance-empty">Lagerbestand im grünen Bereich</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="eye-quality-center">
+            <div className="eye-quality-head">
+              <div>
+                <span>DATA QUALITY & TRUST</span>
+                <strong>{Number(dataQuality.overall_trust ?? 100).toFixed(1)} / 100 Trust</strong>
+              </div>
+              <div className="eye-quality-kpis">
+                <span>Live {dataQuality.live_sources || 0}</span>
+                <span>Delayed {dataQuality.delayed_sources || 0}</span>
+                <span>Offline {dataQuality.offline_sources || 0}</span>
+                <span>Issues {dataQuality.open_issues || 0}</span>
+              </div>
+            </div>
+            <div className="eye-quality-columns">
+              <div>
+                <h4>Datenquellen</h4>
+                {(dataQuality.sources || []).slice(0, 4).map((source) => (
+                  <div className="eye-quality-row" key={source.source_id}>
+                    <span className={`trust-state ${source.status || "offline"}`}>{source.status || "offline"}</span>
+                    <div>
+                      <strong>{source.name || source.source_id}</strong>
+                      <small>Trust {Number(source.trust_score || 0).toFixed(0)} · Freshness {Number(source.freshness_percent || 0).toFixed(0)} %</small>
+                    </div>
+                  </div>
+                ))}
+                {!dataQuality.sources?.length ? <div className="eye-quality-empty">Noch keine Datenquellen registriert</div> : null}
+              </div>
+              <div>
+                <h4>Qualitätsprobleme</h4>
+                {(dataQuality.issues || []).slice(0, 4).map((issue) => (
+                  <div className="eye-quality-row" key={issue.issue_id}>
+                    <span className={`quality-severity ${issue.severity || "medium"}`}>{issue.severity || "medium"}</span>
+                    <div>
+                      <strong>{issue.issue_type}</strong>
+                      <small>{issue.description}</small>
+                    </div>
+                  </div>
+                ))}
+                {!dataQuality.issues?.length ? <div className="eye-quality-empty">Keine offenen Data-Quality-Probleme</div> : null}
               </div>
             </div>
           </section>
