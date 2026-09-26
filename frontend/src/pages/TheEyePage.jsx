@@ -126,6 +126,32 @@ export default function TheEyePage({ onNavigate }) {
     sources: [],
     issues: [],
   });
+  const [providerOverview, setProviderOverview] = useState({
+    providers_total: 0,
+    healthy: 0,
+    degraded: 0,
+    down_or_partial: 0,
+    high_risk: 0,
+    without_fallback: 0,
+    monthly_cost: 0,
+    providers: [],
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProviders = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/providers/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setProviderOverview(data);
+      } catch {
+        // Provider intelligence can start empty until integrations are registered.
+      }
+    };
+    loadProviders();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -580,6 +606,14 @@ export default function TheEyePage({ onNavigate }) {
               conflicts: Math.max(0, Number(current.conflicts || 0) - (payload.issue_type === "data_conflict" ? 1 : 0)),
               schema_errors: Math.max(0, Number(current.schema_errors || 0) - (payload.issue_type === "schema_error" ? 1 : 0)),
               issues: (current.issues || []).filter((issue) => issue.issue_id !== payload.issue_id),
+            }));
+          } else if ((message.type === "provider.created" || message.type === "provider.updated" || message.type === "provider.health") && payload.provider_id) {
+            setProviderOverview((current) => ({
+              ...current,
+              providers: [
+                payload,
+                ...(current.providers || []).filter((provider) => provider.provider_id !== payload.provider_id),
+              ].slice(0, 20),
             }));
           }
         } catch {
@@ -1099,6 +1133,35 @@ export default function TheEyePage({ onNavigate }) {
                 ))}
                 {!dataQuality.issues?.length ? <div className="eye-quality-empty">Keine offenen Data-Quality-Probleme</div> : null}
               </div>
+            </div>
+          </section>
+
+          <section className="eye-provider-center">
+            <div className="eye-provider-head">
+              <div>
+                <span>PROVIDER INTELLIGENCE</span>
+                <strong>{providerOverview.providers_total || 0} Provider · {Number(providerOverview.monthly_cost || 0).toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € Kosten</strong>
+              </div>
+              <div className="eye-provider-kpis">
+                <span>Healthy {providerOverview.healthy || 0}</span>
+                <span>Degraded {providerOverview.degraded || 0}</span>
+                <span>Down {providerOverview.down_or_partial || 0}</span>
+                <span>High Risk {providerOverview.high_risk || 0}</span>
+                <span>No Fallback {providerOverview.without_fallback || 0}</span>
+              </div>
+            </div>
+            <div className="eye-provider-list">
+              {(providerOverview.providers || []).slice(0, 5).map((provider) => (
+                <div className="eye-provider-row" key={provider.provider_id}>
+                  <span className={`provider-state ${provider.status || "healthy"}`}>{provider.status || "healthy"}</span>
+                  <div>
+                    <strong>{provider.name}</strong>
+                    <small>{provider.category || provider.provider_type} · Risk {provider.risk_score || 0}/100 · {provider.fallback_provider_id ? "Fallback vorhanden" : "Kein Fallback"}</small>
+                  </div>
+                  <em>{Number(provider.current_cost || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</em>
+                </div>
+              ))}
+              {!providerOverview.providers?.length ? <div className="eye-provider-empty">Noch keine Provider registriert</div> : null}
             </div>
           </section>
 
