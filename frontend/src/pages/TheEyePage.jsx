@@ -93,6 +93,7 @@ export default function TheEyePage({ onNavigate }) {
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [streamSession, setStreamSession] = useState(null);
   const [streamMessage, setStreamMessage] = useState("");
+  const [siteHealth, setSiteHealth] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +218,22 @@ export default function TheEyePage({ onNavigate }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const detail = await res.json();
         setLocationDetail(detail);
+        setSiteHealth(null);
+        if (detail?.location?.location_type === "site") {
+          const siteId = detail?.location?.code || detail?.location?.location_id;
+          if (siteId) {
+            try {
+              const healthRes = await fetch(`/api/the-eye/admin/sites/${encodeURIComponent(siteId)}/health`, {
+                credentials: "include",
+              });
+              if (healthRes.ok) {
+                setSiteHealth(await healthRes.json());
+              }
+            } catch {
+              setSiteHealth(null);
+            }
+          }
+        }
         const point = detail?.location?.location;
         if (point?.lat != null && point?.lng != null) {
           setMapFocus({
@@ -347,6 +364,16 @@ export default function TheEyePage({ onNavigate }) {
             setCameras((current) => current.map((camera) => (
               camera.camera_id === payload.camera_id ? { ...camera, ...payload } : camera
             )));
+          } else if (message.type === "network.health" && payload.node_id) {
+            setSiteHealth((current) => {
+              if (!current?.network) return current;
+              return {
+                ...current,
+                network: current.network.map((node) => (
+                  node.node_id === payload.node_id ? { ...node, ...payload } : node
+                )),
+              };
+            });
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -416,6 +443,7 @@ export default function TheEyePage({ onNavigate }) {
     setMapFocus(null);
     setLocationSummary(null);
     setLocationDetail(null);
+    setSiteHealth(null);
     setScopedDevices(null);
     setQuery("");
     setSearchResults([]);
@@ -561,6 +589,29 @@ export default function TheEyePage({ onNavigate }) {
                 <div><span>Warnung</span><strong>{locationSummary.devices?.warning ?? 0}</strong></div>
                 <div><span>Offline</span><strong>{locationSummary.devices?.offline ?? 0}</strong></div>
               </div>
+              {siteHealth ? (
+                <div className="eye-site-health">
+                  <div>
+                    <span>SITE HEALTH</span>
+                    <strong>{siteHealth.health_score ?? "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Netzwerk</span>
+                    <strong>{siteHealth.summary?.network_nodes ?? 0}</strong>
+                    <small>{siteHealth.summary?.network_offline ?? 0} offline</small>
+                  </div>
+                  <div>
+                    <span>Kameras</span>
+                    <strong>{siteHealth.summary?.cameras ?? 0}</strong>
+                    <small>{siteHealth.summary?.cameras_offline ?? 0} offline</small>
+                  </div>
+                  <div>
+                    <span>Root Cause</span>
+                    <strong>{siteHealth.root_cause?.classification || "Kein gemeinsamer Fehler"}</strong>
+                    <small>{siteHealth.root_cause?.confidence != null ? `${Math.round(siteHealth.root_cause.confidence * 100)} % Confidence` : "—"}</small>
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
