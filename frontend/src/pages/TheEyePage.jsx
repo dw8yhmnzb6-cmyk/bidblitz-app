@@ -94,6 +94,36 @@ export default function TheEyePage({ onNavigate }) {
   const [streamSession, setStreamSession] = useState(null);
   const [streamMessage, setStreamMessage] = useState("");
   const [siteHealth, setSiteHealth] = useState(null);
+  const [incidents, setIncidents] = useState([]);
+  const [incidentSummary, setIncidentSummary] = useState({ open_total: 0, by_severity: {} });
+  const [correlating, setCorrelating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadIncidents = async () => {
+      try {
+        const [listRes, summaryRes] = await Promise.all([
+          fetch("/api/the-eye/admin/incidents?limit=50", { credentials: "include" }),
+          fetch("/api/the-eye/admin/incidents/summary", { credentials: "include" }),
+        ]);
+        if (listRes.ok) {
+          const data = await listRes.json();
+          if (!cancelled) setIncidents(Array.isArray(data.incidents) ? data.incidents : []);
+        }
+        if (summaryRes.ok) {
+          const summary = await summaryRes.json();
+          if (!cancelled) setIncidentSummary(summary);
+        }
+      } catch {
+        if (!cancelled) {
+          setIncidents([]);
+          setIncidentSummary({ open_total: 0, by_severity: {} });
+        }
+      }
+    };
+    loadIncidents();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -374,6 +404,17 @@ export default function TheEyePage({ onNavigate }) {
                 )),
               };
             });
+          } else if ((message.type === "incident.created" || message.type === "incident.updated") && payload.incident_id) {
+            setIncidents((current) => {
+              const exists = current.some((incident) => incident.incident_id === payload.incident_id);
+              return exists
+                ? current.map((incident) => incident.incident_id === payload.incident_id ? payload : incident)
+                : [payload, ...current];
+            });
+            setIncidentSummary((current) => ({
+              ...current,
+              open_total: Math.max(0, current.open_total + (message.type === "incident.created" ? 1 : 0)),
+            }));
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -394,6 +435,37 @@ export default function TheEyePage({ onNavigate }) {
       socket?.close();
     };
   }, []);
+
+  const correlateCurrentSite = async () => {
+    const siteId = locationDetail?.location?.location_type === "site"
+      ? (locationDetail?.location?.code || locationDetail?.location?.location_id)
+      : null;
+    if (!siteId || correlating) return;
+
+    setCorrelating(true);
+    try {
+      const res = await fetch(
+        `/api/the-eye/admin/incidents/correlate-site/${encodeURIComponent(siteId)}`,
+        { method: "POST", credentials: "include" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      if (data?.incident?.incident_id) {
+        setIncidents((current) => {
+          const exists = current.some((incident) => incident.incident_id === data.incident.incident_id);
+          return exists
+            ? current.map((incident) => incident.incident_id === data.incident.incident_id ? data.incident : incident)
+            : [data.incident, ...current];
+        });
+      }
+      const summaryRes = await fetch("/api/the-eye/admin/incidents/summary", { credentials: "include" });
+      if (summaryRes.ok) setIncidentSummary(await summaryRes.json());
+    } catch {
+      // Keep the dashboard usable if correlation cannot run.
+    } finally {
+      setCorrelating(false);
+    }
+  };
 
   const visibleDevices = scopedDevices ?? devices;
 
@@ -482,7 +554,7 @@ export default function TheEyePage({ onNavigate }) {
           <button><Camera size={18} />Live</button>
           <button><Cpu size={18} />Geräte</button>
           <button><Activity size={18} />Analyse</button>
-          <button><Bell size={18} />Warnungen</button>
+          <button><Bell size={18} />Warnungen{incidentSummary.open_total ? <span className="eye-nav-badge">{incidentSummary.open_total}</span> : null}</button>
           <button><Bot size={18} />AION</button>
         </nav>
 
@@ -609,6 +681,9 @@ export default function TheEyePage({ onNavigate }) {
                     <span>Root Cause</span>
                     <strong>{siteHealth.root_cause?.classification || "Kein gemeinsamer Fehler"}</strong>
                     <small>{siteHealth.root_cause?.confidence != null ? `${Math.round(siteHealth.root_cause.confidence * 100)} % Confidence` : "—"}</small>
+                    <button className="eye-correlate-btn" onClick={correlateCurrentSite} disabled={correlating}>
+                      {correlating ? "Analysiere …" : "Incident korrelieren"}
+                    </button>
                   </div>
                 </div>
               ) : null}
@@ -721,6 +796,26 @@ export default function TheEyePage({ onNavigate }) {
             <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
             <MetricCard icon={Flame} value="342" label="Aktive Feuer" tone="red" />
             <MetricCard icon={Activity} value="12" label="Erdbeben" tone="orange" />
+          </section>
+
+          <section className="eye-incident-strip">
+            <div className="eye-incident-summary">
+              <span>INCIDENT CENTER</span>
+              <strong>{incidentSummary.open_total || 0} offen</strong>
+              <small>Critical {incidentSummary.by_severity?.critical || 0} · High {incidentSummary.by_severity?.high || 0}</small>
+            </div>
+            <div className="eye-incident-list">
+              {incidents.filter((incident) => !["resolved", "closed"].includes(incident.status)).slice(0, 3).map((incident) => (
+                <div key={incident.incident_id} className={`eye-incident-item ${incident.severity || "medium"}`}>
+                  <span>{incident.severity}</span>
+                  <strong>{incident.title}</strong>
+                  <small>{incident.site_id || "Global"} · {incident.root_cause || "Analyse läuft"}</small>
+                </div>
+              ))}
+              {!incidents.some((incident) => !["resolved", "closed"].includes(incident.status)) ? (
+                <div className="eye-incident-empty">Keine offenen Incidents</div>
+              ) : null}
+            </div>
           </section>
 
           <section className="eye-bottom-grid">
