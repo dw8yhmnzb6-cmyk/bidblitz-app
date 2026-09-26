@@ -1,0 +1,82 @@
+name: One-time Payment Availability Fixed Live Deploy
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/deploy-payment-availability-fixed-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c1a5735df13c0e9131e31cb0a664a1fe66f15ea5
+          fetch-depth: 0
+      - name: Verify exact tested target
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "c1a5735df13c0e9131e31cb0a664a1fe66f15ea5"
+          grep -F 'availability = payment_method_availability()' backend/routes/pos_payments.py
+          grep -F '"terminal_provider_required"' backend/routes/pos_payments.py
+          grep -F '"settlement_webhook_required"' backend/routes/pos_payments.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate source
+        run: |
+          python -m py_compile backend/routes/pos_payments.py
+          python -m py_compile backend/tests/test_ci_smoke.py
+      - name: Package backend file
+        run: tar -C backend -czf /tmp/bidblitz-payment-availability-fixed.tgz routes/pos_payments.py
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Upload
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: sshpass -e scp -o StrictHostKeyChecking=no /tmp/bidblitz-payment-availability-fixed.tgz root@212.227.20.190:/tmp/
+      - name: Activate backend with rollback
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          BACK=/var/www/bidblitz/backend
+          STAMP=$(date -u +%Y%m%d%H%M%S)
+          cp "$BACK/routes/pos_payments.py" "$BACK/routes/pos_payments.py.previous.$STAMP"
+          rollback() {
+            rc=$?; trap - ERR
+            cp "$BACK/routes/pos_payments.py.previous.$STAMP" "$BACK/routes/pos_payments.py" || true
+            pm2 restart api --update-env || true
+            exit "$rc"
+          }
+          trap rollback ERR
+          tar -xzf /tmp/bidblitz-payment-availability-fixed.tgz -C "$BACK"
+          python3 -m py_compile "$BACK/routes/pos_payments.py"
+          pm2 restart api --update-env
+          sleep 4
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/payments/fee-info >/tmp/fee.json
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/payments/pricing >/tmp/pricing.json
+          python3 - <<'PY'
+          import json
+          fee=json.load(open('/tmp/fee.json'))
+          pricing=json.load(open('/tmp/pricing.json'))
+          methods={m['method']:m for m in fee['methods']}
+          assert methods['wallet']['available'] is True
+          assert methods['barcode']['available'] is True
+          assert methods['nfc_wallet']['available'] is True
+          assert methods['card']['available'] is False
+          assert methods['nfc_card']['available'] is False
+          assert pricing['fee_structure']['card']['available'] is False
+          assert 'provider connection required' in ' '.join(pricing['plans'][1]['features']).lower()
+          print('PAYMENT_AVAILABILITY_LIVE_OK')
+          PY
+          nginx -t
+          systemctl reload nginx
+          trap - ERR
+          rm -f /tmp/bidblitz-payment-availability-fixed.tgz
+          REMOTE
