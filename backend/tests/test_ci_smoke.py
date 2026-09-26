@@ -507,6 +507,18 @@ def test_pos_payments_fail_closed_and_retry_safely():
     assert 'window.localStorage.removeItem(posCartRecoveryKey)' in pos_page
 
 
+def test_payment_method_availability_is_fail_closed():
+    pos_source = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
+
+    assert "def payment_method_availability() -> dict:" in pos_source
+    assert '"nfc_card": {"available": False, "reason": "terminal_provider_required"}' in pos_source
+    assert '"card": {"available": False, "reason": "terminal_provider_required"}' in pos_source
+    assert '"settlement_webhook_required"' in pos_source
+    assert '"available": bool(state["available"])' in pos_source
+    assert '"unavailable_reason": state["reason"]' in pos_source
+    assert 'External card/contactless — provider connection required' in pos_source
+
+
 def test_customer_and_merchant_barcode_payment_flow_is_canonical():
     pos_source = (BACKEND_DIR / "routes" / "pos_payments.py").read_text(encoding="utf-8")
     api_source = (BACKEND_DIR.parent / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
