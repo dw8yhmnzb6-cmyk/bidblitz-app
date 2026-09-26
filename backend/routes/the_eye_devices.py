@@ -80,6 +80,7 @@ class DeviceRegisterRequest(BaseModel):
     country: Optional[str] = Field(default=None, max_length=2)
     city: Optional[str] = Field(default=None, max_length=120)
     owner_id: Optional[str] = Field(default=None, max_length=128)
+    location_id: Optional[str] = Field(default=None, max_length=128)
     group_ids: List[str] = Field(default_factory=list, max_length=50)
     capabilities: List[str] = Field(default_factory=list, max_length=100)
     firmware_version: Optional[str] = Field(default=None, max_length=64)
@@ -110,6 +111,10 @@ class DeviceTelemetryRequest(BaseModel):
 
 class DeviceStatusRequest(BaseModel):
     status: Literal["active", "maintenance", "disabled"]
+
+
+class DeviceLocationAssignment(BaseModel):
+    location_id: Optional[str] = Field(default=None, max_length=128)
 
 
 class DeviceCommandCreate(BaseModel):
@@ -160,6 +165,15 @@ async def register_device(req: DeviceRegisterRequest, request: Request):
     if existing:
         raise HTTPException(status_code=409, detail="Serial number already registered")
 
+    assigned_location = None
+    if req.location_id:
+        assigned_location = await db.the_eye_locations.find_one(
+            {"location_id": req.location_id, "status": {"$ne": "deleted"}},
+            {"_id": 0},
+        )
+        if not assigned_location:
+            raise HTTPException(status_code=400, detail="Location not found")
+
     device_id = "BB-" + secrets.token_hex(8).upper()
     device_token = secrets.token_urlsafe(32)
     now = _now()
@@ -172,6 +186,12 @@ async def register_device(req: DeviceRegisterRequest, request: Request):
         "country": (req.country or "").upper() or None,
         "city": req.city,
         "owner_id": req.owner_id,
+        "location_id": req.location_id,
+        "site_id": (
+            (assigned_location or {}).get("code")
+            if (assigned_location or {}).get("location_type") == "site"
+            else None
+        ),
         "group_ids": req.group_ids,
         "capabilities": req.capabilities,
         "firmware_version": req.firmware_version,
@@ -218,6 +238,53 @@ async def list_devices(
     ).sort("updated_at", -1).to_list(limit)
 
     return {"ok": True, "count": len(rows), "devices": rows}
+
+
+@router.patch("/admin/devices/{device_id}/location-assignment")
+async def assign_device_location(
+    device_id: str,
+    req: DeviceLocationAssignment,
+    request: Request,
+):
+    await _require_admin(request)
+
+    location = None
+    if req.location_id:
+        location = await db.the_eye_locations.find_one(
+            {"location_id": req.location_id, "status": {"$ne": "deleted"}},
+            {"_id": 0},
+        )
+        if not location:
+            raise HTTPException(status_code=400, detail="Location not found")
+
+    result = await db.the_eye_devices.update_one(
+        {"device_id": device_id},
+        {
+            "$set": {
+                "location_id": req.location_id,
+                "site_id": (
+                    location.get("code")
+                    if location and location.get("location_type") == "site"
+                    else None
+                ),
+                "updated_at": _now(),
+            }
+        },
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    payload = {
+        "device_id": device_id,
+        "location_id": req.location_id,
+        "site_id": (
+            location.get("code")
+            if location and location.get("location_type") == "site"
+            else None
+        ),
+    }
+    await broadcast_the_eye_event("device.location_assignment", payload)
+    return {"ok": True, **payload}
 
 
 @router.patch("/admin/devices/{device_id}/status")
