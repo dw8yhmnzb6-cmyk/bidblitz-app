@@ -10,6 +10,7 @@ No external provider calls and no production device actions are triggered here.
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
@@ -412,16 +413,30 @@ async def device_telemetry(
 
 
 @router.get("/admin/map/devices")
-async def map_devices(request: Request, limit: int = 2000):
+async def map_devices(
+    request: Request,
+    limit: int = 2000,
+    city: Optional[str] = None,
+    country: Optional[str] = None,
+    location_id: Optional[str] = None,
+):
     await _require_admin(request)
     limit = max(1, min(limit, 5000))
 
+    query: Dict[str, Any] = {
+        "status": {"$ne": "disabled"},
+        "location.lat": {"$exists": True},
+        "location.lng": {"$exists": True},
+    }
+    if city:
+        query["city"] = {"$regex": f"^{re.escape(city)}$", "$options": "i"}
+    if country:
+        query["country"] = {"$regex": f"^{re.escape(country)}$", "$options": "i"}
+    if location_id:
+        query["location_id"] = location_id
+
     rows = await db.the_eye_devices.find(
-        {
-            "status": {"$ne": "disabled"},
-            "location.lat": {"$exists": True},
-            "location.lng": {"$exists": True},
-        },
+        query,
         {
             "_id": 0,
             "token_hash": 0,
