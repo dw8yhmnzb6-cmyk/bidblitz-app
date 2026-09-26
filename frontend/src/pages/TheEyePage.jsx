@@ -84,6 +84,7 @@ export default function TheEyePage({ onNavigate }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [locationSummary, setLocationSummary] = useState(null);
+  const [locationDetail, setLocationDetail] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,13 +143,30 @@ export default function TheEyePage({ onNavigate }) {
   const selectSearchResult = async (result) => {
     setSearchOpen(false);
     setQuery(result?.title || "");
+    setLocationDetail(null);
 
     if (result?.entity_type === "device" && result?.entity_id) {
       setSelectedId(result.entity_id);
     }
 
+    if (result?.entity_id?.startsWith?.("LOC-")) {
+      try {
+        const res = await fetch(`/api/the-eye/admin/locations/${encodeURIComponent(result.entity_id)}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const detail = await res.json();
+        setLocationDetail(detail);
+      } catch {
+        setLocationDetail(null);
+      }
+    }
+
     const city = result?.city || (result?.entity_type === "city" ? result?.title : null);
-    if (!city) return;
+    if (!city) {
+      setLocationSummary(null);
+      return;
+    }
 
     try {
       const params = new URLSearchParams({ city });
@@ -323,6 +341,16 @@ export default function TheEyePage({ onNavigate }) {
         </aside>
 
         <main className="eye-main">
+          {locationDetail?.breadcrumb?.length ? (
+            <div className="eye-breadcrumb">
+              {locationDetail.breadcrumb.map((item, index) => (
+                <span key={item.location_id}>
+                  {index > 0 ? <b>›</b> : null}
+                  <strong>{item.name}</strong>
+                </span>
+              ))}
+            </div>
+          ) : null}
           {locationSummary ? (
             <section className="eye-location-twin">
               <div className="eye-location-title">
