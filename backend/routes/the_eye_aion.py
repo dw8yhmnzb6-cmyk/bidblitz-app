@@ -447,6 +447,11 @@ async def execute_aion_action(approval_id: str, request: Request):
             raise HTTPException(status_code=404, detail="Device not found or disabled")
 
         command_id = "CMD-" + secrets.token_hex(8).upper()
+        now_dt = datetime.now(timezone.utc)
+        expires_at = datetime.fromtimestamp(
+            now_dt.timestamp() + 300,
+            tz=timezone.utc,
+        ).isoformat()
         command = {
             "command_id": command_id,
             "device_id": target_id,
@@ -454,9 +459,13 @@ async def execute_aion_action(approval_id: str, request: Request):
             "payload": payload,
             "status": "queued",
             "created_at": now,
+            "expires_at": expires_at,
             "created_by": _actor_id(admin),
             "approval_id": approval_id,
             "source": "aion",
+            "acknowledged_at": None,
+            "completed_at": None,
+            "result": None,
         }
         await db.the_eye_device_commands.insert_one(command)
         command.pop("_id", None)
