@@ -4207,3 +4207,29 @@ def test_biopay_requires_verified_provider_in_production():
     assert 'serverseitige Hardware-Attestation ist noch nicht verifiziert' in panel
     assert 'data-testid="pos-biopay-preview-disabled"' in panel
     assert 'Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.' in panel
+
+
+def test_the_eye_v1_modules_and_safety_contracts_are_present():
+    route_names = [
+        "the_eye_devices", "the_eye_ws", "the_eye_search", "the_eye_locations",
+        "the_eye_cameras", "the_eye_network", "the_eye_incidents", "the_eye_actions",
+        "the_eye_maintenance", "the_eye_data_quality", "the_eye_providers",
+        "the_eye_projects", "the_eye_security", "the_eye_executive", "the_eye_aion",
+        "the_eye_continuity", "the_eye_readiness",
+    ]
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    for name in route_names:
+        path = BACKEND_DIR / "routes" / f"{name}.py"
+        assert path.exists(), f"Missing The Eye route module: {name}"
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        assert f'("routes.{name}", "router")' in registry
+
+    guard = (BACKEND_DIR / "core" / "the_eye_guard.py").read_text(encoding="utf-8")
+    devices = (BACKEND_DIR / "routes" / "the_eye_devices.py").read_text(encoding="utf-8")
+    aion = (BACKEND_DIR / "routes" / "the_eye_aion.py").read_text(encoding="utf-8")
+    readiness = (BACKEND_DIR / "routes" / "the_eye_readiness.py").read_text(encoding="utf-8")
+    assert "read_only" in guard and "lockdown" in guard
+    assert 'require_the_eye_writes_allowed("device_command")' in devices
+    assert 'require_the_eye_writes_allowed("firmware_release")' in devices
+    assert 'require_the_eye_writes_allowed("aion_execute")' in aion
+    assert "production_ready = False" in readiness
