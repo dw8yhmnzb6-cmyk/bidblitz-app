@@ -159,6 +159,10 @@ export default function TheEyePage({ onNavigate }) {
     events: [],
     approvals: [],
   });
+  const [aionInput, setAionInput] = useState("");
+  const [aionBusy, setAionBusy] = useState(false);
+  const [aionAnswer, setAionAnswer] = useState(null);
+  const [aionSessionId, setAionSessionId] = useState(null);
   const [executiveOverview, setExecutiveOverview] = useState({
     snapshot: {
       projects_total: 0,
@@ -816,6 +820,43 @@ export default function TheEyePage({ onNavigate }) {
       // Keep the dashboard usable if correlation cannot run.
     } finally {
       setCorrelating(false);
+    }
+  };
+
+  const askAion = async () => {
+    const question = aionInput.trim();
+    if (!question || aionBusy) return;
+    setAionBusy(true);
+    try {
+      const res = await fetch("/api/the-eye/admin/aion/query", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          context: {
+            session_id: aionSessionId,
+            selected_device_id: selectedId,
+            selected_camera_id: selectedCameraId,
+            location_id: locationDetail?.location?.location_id || null,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      setAionSessionId(data.session_id || aionSessionId);
+      setAionAnswer(data.answer || null);
+      setAionInput("");
+    } catch (error) {
+      setAionAnswer({
+        intent: "error",
+        facts: [],
+        analysis: [error?.message || "AION konnte die Anfrage nicht verarbeiten."],
+        assumptions: [],
+        confidence: 0,
+      });
+    } finally {
+      setAionBusy(false);
     }
   };
 
@@ -1502,9 +1543,30 @@ export default function TheEyePage({ onNavigate }) {
             <div className="eye-panel-title"><span>KI-Assistent AION</span><Bot size={16} /></div>
             <div className="eye-aion-message">
               <div className="eye-aion-orb"><Bot size={26} /></div>
-              <p>Hallo. Ich überwache The Eye. Frag mich nach Geräten, Kameras, Verkehr, Flügen oder Warnungen.</p>
+              <p>{aionAnswer ? `Intent: ${aionAnswer.intent} · Confidence ${Math.round((aionAnswer.confidence || 0) * 100)}%` : "Frag AION nach Projekten, Incidents, Geräten, Security, Providern oder Datenqualität."}</p>
             </div>
-            <div className="eye-aion-input"><input placeholder="Sprich mit AION ..." /><button><Send size={17} /></button></div>
+            {aionAnswer ? (
+              <div className="eye-aion-answer">
+                {(aionAnswer.facts || []).slice(0, 4).map((fact, index) => (
+                  <div key={`${fact.label}:${index}`}><span>{fact.label}</span><strong>{String(fact.value)}</strong></div>
+                ))}
+                {(aionAnswer.analysis || []).slice(0, 2).map((item, index) => (
+                  <p key={`analysis:${index}`}><b>Analyse</b>{item}</p>
+                ))}
+                {(aionAnswer.assumptions || []).slice(0, 1).map((item, index) => (
+                  <p key={`assumption:${index}`} className="assumption"><b>Annahme</b>{item}</p>
+                ))}
+              </div>
+            ) : null}
+            <div className="eye-aion-input">
+              <input
+                value={aionInput}
+                onChange={(event) => setAionInput(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") askAion(); }}
+                placeholder="Frag AION ..."
+              />
+              <button onClick={askAion} disabled={aionBusy}><Send size={17} /></button>
+            </div>
           </div>
 
           <div className="eye-alert-strip"><Siren size={17} /><span>Systemstatus</span><strong>Alle Kerndienste online</strong><Wifi size={16} /></div>
