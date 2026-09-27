@@ -1,0 +1,515 @@
+"""AION intelligence layer for The Eye.
+
+Read-only analysis is available directly. Any state-changing action is prepared
+first and must pass the existing Approval Center before execution.
+"""
+
+from __future__ import annotations
+
+import secrets
+from datetime import datetime, timezone
+from typing import Any, Dict, Literal, Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from core.database import db
+from core.security import get_current_user
+from core.the_eye_live import broadcast_the_eye_event
+
+
+router = APIRouter(prefix="/api/the-eye", tags=["The Eye AION"])
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def _require_admin(request: Request) -> dict:
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin required")
+    return user
+
+
+def _actor_id(user: dict) -> str:
+    return str(user.get("_id") or user.get("id") or user.get("email"))
+
+
+class AionQuery(BaseModel):
+    question: str = Field(..., min_length=2, max_length=2000)
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AionActionPrepare(BaseModel):
+    action_type: Literal[
+        "restart_device",
+        "create_ticket",
+        "bulk_restart",
+        "bulk_ota",
+        "disable_site",
+        "config_change",
+    ]
+    target_type: str = Field(..., min_length=2, max_length=120)
+    target_id: Optional[str] = Field(default=None, max_length=160)
+    project: Optional[str] = Field(default=None, max_length=120)
+    site_id: Optional[str] = Field(default=None, max_length=160)
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    reason: str = Field(..., min_length=3, max_length=2000)
+
+
+async def _project_summary() -> dict:
+    projects = await db.the_eye_projects.find({}, {"_id": 0}).to_list(2000)
+    rows = []
+    for project in projects:
+        snap = project.get("last_snapshot") or {}
+        rows.append({
+            "project_key": project.get("project_key"),
+            "name": project.get("name"),
+            "status": project.get("status"),
+            "health_score": project.get("health_score"),
+            "risk_score": project.get("risk_score"),
+            "data_trust_score": project.get("data_trust_score"),
+            "revenue": float(snap.get("revenue") or 0),
+            "cost": float(snap.get("cost") or 0),
+            "profit": float(snap.get("profit") or 0),
+            "open_incidents": int(snap.get("open_incidents") or 0),
+        })
+    rows.sort(key=lambda row: (
+        0 if row.get("status") in {"critical", "offline"} else 1,
+        -(float(row.get("risk_score") or 0)),
+    ))
+    return {
+        "count": len(rows),
+        "revenue": round(sum(row["revenue"] for row in rows), 2),
+        "cost": round(sum(row["cost"] for row in rows), 2),
+        "profit": round(sum(row["profit"] for row in rows), 2),
+        "projects": rows[:10],
+    }
+
+
+async def _incident_summary() -> dict:
+    rows = await db.the_eye_incidents.find(
+        {"status": {"$nin": ["resolved", "closed"]}},
+        {"_id": 0},
+    ).sort([("severity", -1), ("updated_at", -1)]).to_list(200)
+    return {
+        "count": len(rows),
+        "critical": sum(1 for row in rows if row.get("severity") == "critical"),
+        "high": sum(1 for row in rows if row.get("severity") == "high"),
+        "incidents": rows[:10],
+    }
+
+
+async def _device_summary() -> dict:
+    total = await db.the_eye_devices.count_documents({"status": {"$ne": "disabled"}})
+    online = await db.the_eye_devices.count_documents({
+        "status": {"$ne": "disabled"},
+        "connection_status": "online",
+    })
+    warning = await db.the_eye_devices.count_documents({
+        "status": {"$ne": "disabled"},
+        "connection_status": "warning",
+    })
+    offline = max(total - online - warning, 0)
+    return {
+        "total": total,
+        "online": online,
+        "warning": warning,
+        "offline": offline,
+    }
+
+
+async def _provider_summary() -> dict:
+    rows = await db.the_eye_providers.find({}, {"_id": 0}).sort("risk_score", -1).to_list(200)
+    return {
+        "count": len(rows),
+        "down": sum(1 for row in rows if row.get("status") in {"partial_outage", "down"}),
+        "high_risk": sum(1 for row in rows if row.get("risk_level") in {"high", "critical"}),
+        "without_fallback": sum(1 for row in rows if not row.get("fallback_provider_id")),
+        "providers": rows[:10],
+    }
+
+
+async def _security_summary() -> dict:
+    events = await db.the_eye_security_events.find(
+        {"status": {"$ne": "resolved"}},
+        {"_id": 0},
+    ).sort("risk_score", -1).to_list(200)
+    approvals = await db.the_eye_approvals.find(
+        {"status": "pending"},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
+    return {
+        "open_events": len(events),
+        "critical": sum(1 for row in events if row.get("severity") == "critical"),
+        "pending_approvals": len(approvals),
+        "events": events[:10],
+        "approvals": approvals[:10],
+    }
+
+
+async def _quality_summary() -> dict:
+    sources = await db.the_eye_data_sources.find({}, {"_id": 0}).to_list(2000)
+    issues = await db.the_eye_data_quality_issues.find(
+        {"status": {"$ne": "resolved"}},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+    scores = [float(row.get("trust_score") or 0) for row in sources]
+    return {
+        "trust": round(sum(scores) / len(scores), 1) if scores else 100.0,
+        "sources": len(sources),
+        "issues": len(issues),
+        "conflicts": sum(1 for row in issues if row.get("issue_type") == "data_conflict"),
+        "recent_issues": issues[:10],
+    }
+
+
+async def _maintenance_summary() -> dict:
+    return {
+        "work_orders": await db.the_eye_work_orders.count_documents(
+            {"status": {"$nin": ["completed", "cancelled"]}}
+        ),
+        "waiting_parts": await db.the_eye_work_orders.count_documents(
+            {"status": "waiting_parts"}
+        ),
+        "tickets": await db.the_eye_tickets.count_documents(
+            {"status": {"$nin": ["resolved", "closed", "cancelled"]}}
+        ),
+        "rma": await db.the_eye_rma.count_documents(
+            {"status": {"$nin": ["closed", "credited", "rejected"]}}
+        ),
+    }
+
+
+def _detect_intent(question: str) -> str:
+    q = question.lower()
+    mapping = [
+        ("security", ["security", "sicherheit", "angriff", "login", "api missbrauch", "fraud"]),
+        ("providers", ["provider", "anbieter", "stripe", "openai", "cloudflare", "ausfall"]),
+        ("incidents", ["incident", "störung", "fehler", "offline", "root cause", "ursache"]),
+        ("maintenance", ["wartung", "techniker", "ticket", "ersatzteil", "rma", "maintenance"]),
+        ("data_quality", ["datenqualität", "data quality", "trust", "freshness", "konflikt", "stale"]),
+        ("devices", ["gerät", "geräte", "device", "kamera", "cameras", "online"]),
+        ("projects", ["projekt", "projekte", "project", "trade", "power", "charging", "bidblitz"]),
+        ("executive", ["gesamt", "übersicht", "summary", "executive", "heute", "brief", "lage"]),
+    ]
+    for intent, words in mapping:
+        if any(word in q for word in words):
+            return intent
+    return "executive"
+
+
+def _fact(label: str, value: Any) -> dict:
+    return {"kind": "fact", "label": label, "value": value}
+
+
+@router.post("/admin/aion/query")
+async def aion_query(req: AionQuery, request: Request):
+    admin = await _require_admin(request)
+    intent = _detect_intent(req.question)
+
+    confidence = 0.92
+    facts = []
+    analysis = []
+    assumptions = []
+
+    if intent == "projects":
+        data = await _project_summary()
+        facts = [
+            _fact("Projekte", data["count"]),
+            _fact("Umsatz", data["revenue"]),
+            _fact("Kosten", data["cost"]),
+            _fact("Profit", data["profit"]),
+        ]
+        risky = [p for p in data["projects"] if p.get("status") in {"warning", "degraded", "critical", "offline"}]
+        analysis.append(
+            f"{len(risky)} der geladenen Projekte zeigen aktuell einen Status außerhalb von healthy."
+            if risky else "Die geladenen Projekte zeigen aktuell keinen Status außerhalb von healthy."
+        )
+        source = data
+    elif intent == "incidents":
+        data = await _incident_summary()
+        facts = [
+            _fact("Offene Incidents", data["count"]),
+            _fact("Critical", data["critical"]),
+            _fact("High", data["high"]),
+        ]
+        if data["incidents"]:
+            top = data["incidents"][0]
+            analysis.append(
+                f"Priorität hat aktuell {top.get('incident_id')} mit Severity {top.get('severity')} und Root Cause {top.get('root_cause') or 'noch offen'}."
+            )
+        source = data
+    elif intent == "devices":
+        data = await _device_summary()
+        facts = [
+            _fact("Geräte gesamt", data["total"]),
+            _fact("Online", data["online"]),
+            _fact("Warning", data["warning"]),
+            _fact("Offline/sonstige", data["offline"]),
+        ]
+        if data["total"]:
+            online_ratio = round(data["online"] / data["total"] * 100, 1)
+            analysis.append(f"{online_ratio}% der aktiven Geräte melden aktuell online.")
+        source = data
+    elif intent == "providers":
+        data = await _provider_summary()
+        facts = [
+            _fact("Provider", data["count"]),
+            _fact("Down/Partial", data["down"]),
+            _fact("High Risk", data["high_risk"]),
+            _fact("Ohne Fallback", data["without_fallback"]),
+        ]
+        if data["without_fallback"]:
+            analysis.append("Mindestens ein Provider ist ohne registrierten Fallback und stellt damit ein erhöhtes Abhängigkeitsrisiko dar.")
+        source = data
+    elif intent == "security":
+        data = await _security_summary()
+        facts = [
+            _fact("Offene Security Events", data["open_events"]),
+            _fact("Critical", data["critical"]),
+            _fact("Wartende Freigaben", data["pending_approvals"]),
+        ]
+        if data["critical"]:
+            analysis.append("Kritische Security Events sollten vor nicht notwendigen administrativen Änderungen priorisiert werden.")
+        source = data
+    elif intent == "data_quality":
+        data = await _quality_summary()
+        facts = [
+            _fact("Trust Score", data["trust"]),
+            _fact("Datenquellen", data["sources"]),
+            _fact("Offene Issues", data["issues"]),
+            _fact("Konflikte", data["conflicts"]),
+        ]
+        if data["trust"] < 80:
+            analysis.append("Der aktuelle Data-Trust-Wert ist niedrig genug, dass AION Ergebnisse mit zusätzlicher Unsicherheitskennzeichnung behandeln sollte.")
+        source = data
+    elif intent == "maintenance":
+        data = await _maintenance_summary()
+        facts = [
+            _fact("Work Orders", data["work_orders"]),
+            _fact("Warten auf Teile", data["waiting_parts"]),
+            _fact("Tickets", data["tickets"]),
+            _fact("RMA", data["rma"]),
+        ]
+        if data["waiting_parts"]:
+            analysis.append("Offene Work Orders mit fehlenden Teilen können die Wiederherstellungszeit verlängern.")
+        source = data
+    else:
+        projects = await _project_summary()
+        incidents = await _incident_summary()
+        security = await _security_summary()
+        providers = await _provider_summary()
+        quality = await _quality_summary()
+        facts = [
+            _fact("Projekte", projects["count"]),
+            _fact("Profit", projects["profit"]),
+            _fact("Offene Incidents", incidents["count"]),
+            _fact("Security Events", security["open_events"]),
+            _fact("Provider High Risk", providers["high_risk"]),
+            _fact("Data Trust", quality["trust"]),
+        ]
+        if incidents["critical"]:
+            analysis.append(f"{incidents['critical']} kritische Incidents sind aktuell offen.")
+        if security["critical"]:
+            analysis.append(f"{security['critical']} kritische Security Events sind aktuell offen.")
+        if providers["high_risk"]:
+            analysis.append(f"{providers['high_risk']} Provider sind als high/critical risk markiert.")
+        source = {
+            "projects": projects,
+            "incidents": incidents,
+            "security": security,
+            "providers": providers,
+            "data_quality": quality,
+        }
+
+    if not facts:
+        confidence = 0.5
+        assumptions.append("Für diese Frage liegen noch keine normalisierten The-Eye-Daten vor.")
+
+    answer = {
+        "intent": intent,
+        "facts": facts,
+        "analysis": analysis,
+        "assumptions": assumptions,
+        "confidence": confidence,
+        "source_snapshot": source,
+    }
+
+    session_id = req.context.get("session_id") or ("AION-" + secrets.token_hex(8).upper())
+    now = _now()
+    await db.the_eye_aion_messages.insert_one({
+        "session_id": session_id,
+        "user_id": _actor_id(admin),
+        "question": req.question,
+        "answer": answer,
+        "context": req.context,
+        "created_at": now,
+    })
+    await broadcast_the_eye_event("aion.answer", {
+        "session_id": session_id,
+        "intent": intent,
+        "confidence": confidence,
+        "created_at": now,
+    })
+    return {"ok": True, "session_id": session_id, "answer": answer}
+
+
+@router.post("/admin/aion/actions/prepare")
+async def prepare_aion_action(req: AionActionPrepare, request: Request):
+    admin = await _require_admin(request)
+    now = _now()
+    approval_id = "APR-" + secrets.token_hex(10).upper()
+
+    high_impact = req.action_type in {"bulk_restart", "bulk_ota", "disable_site", "config_change"}
+    mode = "four_eyes" if high_impact else "single"
+    risk_level = "critical" if req.action_type in {"bulk_ota", "disable_site"} else "high"
+
+    dry_run = {
+        "action_type": req.action_type,
+        "target_type": req.target_type,
+        "target_id": req.target_id,
+        "site_id": req.site_id,
+        "payload_keys": sorted(req.payload.keys()),
+        "will_execute_now": False,
+    }
+    impact = {
+        "state_change": True,
+        "high_impact": high_impact,
+        "requires_approval": True,
+    }
+
+    doc = {
+        "approval_id": approval_id,
+        "title": f"AION: {req.action_type}",
+        "action_type": req.action_type,
+        "target_type": req.target_type,
+        "target_id": req.target_id,
+        "project": req.project,
+        "site_id": req.site_id,
+        "mode": mode,
+        "risk_level": risk_level,
+        "dry_run": dry_run,
+        "impact": impact,
+        "proposed_payload": req.payload,
+        "reason": req.reason,
+        "status": "pending",
+        "requested_by": _actor_id(admin),
+        "approved_by": [],
+        "created_at": now,
+        "updated_at": now,
+        "source": "aion",
+    }
+    await db.the_eye_approvals.insert_one(doc)
+    doc.pop("_id", None)
+    await db.the_eye_aion_actions.insert_one({
+        "action_id": "AIA-" + secrets.token_hex(8).upper(),
+        "approval_id": approval_id,
+        "requested_by": _actor_id(admin),
+        "action_type": req.action_type,
+        "status": "pending_approval",
+        "created_at": now,
+    })
+    await broadcast_the_eye_event("approval.created", doc)
+    return {
+        "ok": True,
+        "approval": doc,
+        "message": "Action prepared only. No state-changing command has been executed.",
+    }
+
+
+@router.post("/admin/aion/actions/{approval_id}/execute")
+async def execute_aion_action(approval_id: str, request: Request):
+    admin = await _require_admin(request)
+    approval = await db.the_eye_approvals.find_one({"approval_id": approval_id}, {"_id": 0})
+    if not approval:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    if approval.get("status") != "approved":
+        raise HTTPException(status_code=409, detail="Action is not approved")
+
+    action_type = approval.get("action_type")
+    target_id = approval.get("target_id")
+    payload = approval.get("proposed_payload") or {}
+    now = _now()
+    result: Dict[str, Any]
+
+    if action_type == "restart_device":
+        if not target_id:
+            raise HTTPException(status_code=400, detail="Target device required")
+        device = await db.the_eye_devices.find_one(
+            {"device_id": target_id, "status": {"$ne": "disabled"}},
+            {"_id": 0, "device_id": 1},
+        )
+        if not device:
+            raise HTTPException(status_code=404, detail="Device not found or disabled")
+
+        command_id = "CMD-" + secrets.token_hex(8).upper()
+        command = {
+            "command_id": command_id,
+            "device_id": target_id,
+            "command": "restart",
+            "payload": payload,
+            "status": "queued",
+            "created_at": now,
+            "created_by": _actor_id(admin),
+            "approval_id": approval_id,
+            "source": "aion",
+        }
+        await db.the_eye_device_commands.insert_one(command)
+        command.pop("_id", None)
+        await broadcast_the_eye_event("command.queued", command)
+        result = {"command": command}
+    elif action_type == "create_ticket":
+        ticket_id = "TKT-" + secrets.token_hex(8).upper()
+        ticket = {
+            "ticket_id": ticket_id,
+            "title": payload.get("title") or f"AION action for {target_id or 'target'}",
+            "description": payload.get("description") or approval.get("reason"),
+            "priority": payload.get("priority") or "p3",
+            "category": payload.get("category") or "other",
+            "status": "open",
+            "incident_id": payload.get("incident_id"),
+            "site_id": approval.get("site_id"),
+            "device_id": target_id if approval.get("target_type") == "device" else None,
+            "created_at": now,
+            "updated_at": now,
+            "created_by": _actor_id(admin),
+            "source": "aion",
+        }
+        await db.the_eye_tickets.insert_one(ticket)
+        ticket.pop("_id", None)
+        await broadcast_the_eye_event("ticket.created", ticket)
+        result = {"ticket": ticket}
+    else:
+        raise HTTPException(
+            status_code=409,
+            detail="Approved action type is not executable by the current AION tool adapter",
+        )
+
+    await db.the_eye_approvals.update_one(
+        {"approval_id": approval_id},
+        {"$set": {
+            "status": "executed",
+            "executed_at": now,
+            "executed_by": _actor_id(admin),
+            "execution_result": result,
+            "updated_at": now,
+        }},
+    )
+    await db.the_eye_aion_actions.update_one(
+        {"approval_id": approval_id},
+        {"$set": {
+            "status": "executed",
+            "executed_at": now,
+            "executed_by": _actor_id(admin),
+            "result": result,
+        }},
+    )
+    await broadcast_the_eye_event("aion.action_executed", {
+        "approval_id": approval_id,
+        "action_type": action_type,
+        "target_id": target_id,
+        "result": result,
+    })
+    return {"ok": True, "approval_id": approval_id, "result": result}
