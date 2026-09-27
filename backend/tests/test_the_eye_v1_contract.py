@@ -20,6 +20,7 @@ ROUTES = [
     "the_eye_executive.py",
     "the_eye_aion.py",
     "the_eye_continuity.py",
+    "the_eye_readiness.py",
 ]
 
 
@@ -87,3 +88,20 @@ def test_emergency_modes_and_continuity_contract():
         "firmware_rollback",
     ]:
         assert drill in continuity
+
+
+def test_emergency_write_guard_is_wired_to_operator_actions():
+    guard = _read(BACKEND / "core" / "the_eye_guard.py")
+    devices = _read(BACKEND / "routes" / "the_eye_devices.py")
+    aion = _read(BACKEND / "routes" / "the_eye_aion.py")
+    assert "read_only" in guard
+    assert "lockdown" in guard
+    assert 'require_the_eye_writes_allowed("device_command")' in devices
+    assert 'require_the_eye_writes_allowed("firmware_release")' in devices
+    assert 'require_the_eye_writes_allowed("aion_execute")' in aion
+
+
+def test_readiness_never_claims_production_ready():
+    readiness = _read(BACKEND / "routes" / "the_eye_readiness.py")
+    assert "production_ready = False" in readiness
+    assert "successful CI/build" in readiness
