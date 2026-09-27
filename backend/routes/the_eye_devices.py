@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
+from core.the_eye_guard import require_the_eye_writes_allowed
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Device Hub"])
@@ -455,6 +456,7 @@ async def create_device_command(
     request: Request,
 ):
     admin = await _require_admin(request)
+    await require_the_eye_writes_allowed("device_command")
     device = await db.the_eye_devices.find_one(
         {"device_id": device_id, "status": {"$ne": "disabled"}},
         {"_id": 0, "device_id": 1},
@@ -606,6 +608,7 @@ async def list_device_groups(request: Request, limit: int = 250):
 @router.post("/admin/firmware")
 async def create_firmware_release(req: FirmwareReleaseCreate, request: Request):
     admin = await _require_admin(request)
+    await require_the_eye_writes_allowed("firmware_release")
     normalized_hash = req.sha256.lower()
     if any(ch not in "0123456789abcdef" for ch in normalized_hash):
         raise HTTPException(status_code=400, detail="sha256 must be hexadecimal")
