@@ -159,6 +159,41 @@ export default function TheEyePage({ onNavigate }) {
     events: [],
     approvals: [],
   });
+  const [executiveOverview, setExecutiveOverview] = useState({
+    snapshot: {
+      projects_total: 0,
+      projects_healthy: 0,
+      revenue: 0,
+      cost: 0,
+      profit: 0,
+      active_users: 0,
+      open_incidents: 0,
+      critical_incidents: 0,
+      security_open: 0,
+      security_critical: 0,
+      pending_approvals: 0,
+      provider_monthly_cost: 0,
+      data_trust_score: 100,
+      priorities: [],
+    },
+    recent_briefs: [],
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadExecutive = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/executive/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setExecutiveOverview(data);
+      } catch {
+        // Executive Intelligence starts with the local empty summary.
+      }
+    };
+    loadExecutive();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -727,6 +762,11 @@ export default function TheEyePage({ onNavigate }) {
                 approvals: nextApprovals,
               };
             });
+          } else if (message.type === "executive.brief_created" && payload.brief_id) {
+            setExecutiveOverview((current) => ({
+              ...current,
+              recent_briefs: [payload, ...(current.recent_briefs || []).filter((brief) => brief.brief_id !== payload.brief_id)].slice(0, 10),
+            }));
           }
         } catch {
           // Ignore malformed realtime messages; REST data remains authoritative.
@@ -1342,6 +1382,44 @@ export default function TheEyePage({ onNavigate }) {
                   </div>
                 ))}
                 {!securityOverview.approvals?.length ? <div className="eye-security-empty">Keine wartenden Freigaben</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="eye-executive-center">
+            <div className="eye-executive-head">
+              <div>
+                <span>EXECUTIVE INTELLIGENCE</span>
+                <strong>{executiveOverview.snapshot?.projects_total || 0} Projekte · {executiveOverview.snapshot?.projects_healthy || 0} healthy</strong>
+              </div>
+              <div className="eye-executive-kpis">
+                <span>Umsatz {Number(executiveOverview.snapshot?.revenue || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
+                <span>Profit {Number(executiveOverview.snapshot?.profit || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
+                <span>Incidents {executiveOverview.snapshot?.open_incidents || 0}</span>
+                <span>Security {executiveOverview.snapshot?.security_open || 0}</span>
+                <span>Trust {Number(executiveOverview.snapshot?.data_trust_score ?? 100).toFixed(0)}</span>
+              </div>
+            </div>
+            <div className="eye-executive-columns">
+              <div>
+                <h4>Top Prioritäten</h4>
+                {(executiveOverview.snapshot?.priorities || []).slice(0, 5).map((priority, index) => (
+                  <div className="eye-executive-row" key={`${priority.type}:${index}`}>
+                    <span className={`exec-severity ${priority.severity || "medium"}`}>{priority.severity || "medium"}</span>
+                    <div><strong>{priority.title}</strong><small>{priority.type}</small></div>
+                  </div>
+                ))}
+                {!executiveOverview.snapshot?.priorities?.length ? <div className="eye-executive-empty">Keine dringenden Prioritäten</div> : null}
+              </div>
+              <div>
+                <h4>Letzte Executive Briefs</h4>
+                {(executiveOverview.recent_briefs || []).slice(0, 4).map((brief) => (
+                  <div className="eye-executive-row" key={brief.brief_id}>
+                    <span className="exec-brief">{brief.period}</span>
+                    <div><strong>{brief.title}</strong><small>{brief.created_at ? new Date(brief.created_at).toLocaleString("de-DE") : "—"}</small></div>
+                  </div>
+                ))}
+                {!executiveOverview.recent_briefs?.length ? <div className="eye-executive-empty">Noch keine gespeicherten Briefings</div> : null}
               </div>
             </div>
           </section>
