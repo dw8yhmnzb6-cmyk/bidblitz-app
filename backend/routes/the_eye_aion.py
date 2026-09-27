@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
+from core.the_eye_guard import require_the_eye_writes_allowed
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye AION"])
@@ -422,6 +423,7 @@ async def prepare_aion_action(req: AionActionPrepare, request: Request):
 @router.post("/admin/aion/actions/{approval_id}/execute")
 async def execute_aion_action(approval_id: str, request: Request):
     admin = await _require_admin(request)
+    await require_the_eye_writes_allowed("aion_execute")
     approval = await db.the_eye_approvals.find_one({"approval_id": approval_id}, {"_id": 0})
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found")
