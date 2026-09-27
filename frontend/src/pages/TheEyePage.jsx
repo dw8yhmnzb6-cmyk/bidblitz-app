@@ -159,6 +159,14 @@ export default function TheEyePage({ onNavigate }) {
     events: [],
     approvals: [],
   });
+  const [readiness, setReadiness] = useState({
+    code_ready: false,
+    staging_ready: false,
+    production_ready: false,
+    staging_blockers: [],
+    warnings: [],
+    runtime_config: {},
+  });
   const [continuityOverview, setContinuityOverview] = useState({
     continuity_score: 100,
     status: "healthy",
@@ -199,6 +207,22 @@ export default function TheEyePage({ onNavigate }) {
     },
     recent_briefs: [],
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadReadiness = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/readiness", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setReadiness(data);
+      } catch {
+        // Readiness remains conservative if the diagnostic endpoint is unavailable.
+      }
+    };
+    loadReadiness();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1534,6 +1558,43 @@ export default function TheEyePage({ onNavigate }) {
                   </div>
                 ))}
                 {!continuityOverview.backups?.length ? <div className="eye-continuity-empty">Noch keine Backup-Reports</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="eye-readiness-center">
+            <div className="eye-readiness-head">
+              <div>
+                <span>V1 READINESS</span>
+                <strong>{readiness.staging_ready ? "Staging Ready" : readiness.code_ready ? "Code Ready · Staging Blocked" : "Readiness wird geprüft"}</strong>
+              </div>
+              <div className="eye-readiness-kpis">
+                <span>Code {readiness.code_ready ? "OK" : "CHECK"}</span>
+                <span>Staging {readiness.staging_ready ? "OK" : "BLOCKED"}</span>
+                <span>Production {readiness.production_ready ? "READY" : "NOT READY"}</span>
+              </div>
+            </div>
+            <div className="eye-readiness-columns">
+              <div>
+                <h4>Runtime</h4>
+                {Object.entries(readiness.runtime_config || {}).map(([key, value]) => (
+                  <div className="eye-readiness-row" key={key}>
+                    <span className={`readiness-state ${value ? "ready" : "missing"}`}>{value ? "ready" : "missing"}</span>
+                    <div><strong>{key.replaceAll("_", " ")}</strong></div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h4>Blocker / Hinweise</h4>
+                {(readiness.staging_blockers || []).slice(0, 4).map((item, index) => (
+                  <div className="eye-readiness-note blocker" key={`blocker:${index}`}>{item}</div>
+                ))}
+                {(readiness.warnings || []).slice(0, 3).map((item, index) => (
+                  <div className="eye-readiness-note warning" key={`warning:${index}`}>{item}</div>
+                ))}
+                {!readiness.staging_blockers?.length && !readiness.warnings?.length ? (
+                  <div className="eye-readiness-empty">Keine bekannten Readiness-Hinweise</div>
+                ) : null}
               </div>
             </div>
           </section>
