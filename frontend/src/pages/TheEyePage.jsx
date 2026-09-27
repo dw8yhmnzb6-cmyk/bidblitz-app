@@ -159,6 +159,23 @@ export default function TheEyePage({ onNavigate }) {
     events: [],
     approvals: [],
   });
+  const [continuityOverview, setContinuityOverview] = useState({
+    continuity_score: 100,
+    status: "healthy",
+    emergency_mode: { mode: "normal" },
+    backup_services: 0,
+    backup_failed: 0,
+    backup_warning: 0,
+    restore_untested: 0,
+    failover_records: 0,
+    failover_failed: 0,
+    without_secondary: 0,
+    drills_total: 0,
+    drill_failed: 0,
+    backups: [],
+    failovers: [],
+    drills: [],
+  });
   const [aionInput, setAionInput] = useState("");
   const [aionBusy, setAionBusy] = useState(false);
   const [aionAnswer, setAionAnswer] = useState(null);
@@ -182,6 +199,22 @@ export default function TheEyePage({ onNavigate }) {
     },
     recent_briefs: [],
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadContinuity = async () => {
+      try {
+        const res = await fetch("/api/the-eye/admin/continuity/overview", { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setContinuityOverview(data);
+      } catch {
+        // Continuity starts healthy until reports are registered.
+      }
+    };
+    loadContinuity();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -770,6 +803,11 @@ export default function TheEyePage({ onNavigate }) {
             setExecutiveOverview((current) => ({
               ...current,
               recent_briefs: [payload, ...(current.recent_briefs || []).filter((brief) => brief.brief_id !== payload.brief_id)].slice(0, 10),
+            }));
+          } else if (message.type === "continuity.emergency_mode" && payload.mode) {
+            setContinuityOverview((current) => ({
+              ...current,
+              emergency_mode: payload,
             }));
           }
         } catch {
@@ -1461,6 +1499,41 @@ export default function TheEyePage({ onNavigate }) {
                   </div>
                 ))}
                 {!executiveOverview.recent_briefs?.length ? <div className="eye-executive-empty">Noch keine gespeicherten Briefings</div> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="eye-continuity-center">
+            <div className="eye-continuity-head">
+              <div>
+                <span>BUSINESS CONTINUITY</span>
+                <strong>{continuityOverview.continuity_score ?? 100}/100 · {continuityOverview.status || "healthy"}</strong>
+              </div>
+              <div className="eye-continuity-kpis">
+                <span>Backups {continuityOverview.backup_services || 0}</span>
+                <span>Backup Fail {continuityOverview.backup_failed || 0}</span>
+                <span>Restore untested {continuityOverview.restore_untested || 0}</span>
+                <span>Failover Fail {continuityOverview.failover_failed || 0}</span>
+                <span>Drill Fail {continuityOverview.drill_failed || 0}</span>
+              </div>
+            </div>
+            <div className="eye-continuity-columns">
+              <div>
+                <h4>Emergency Mode</h4>
+                <div className={`eye-emergency-mode ${continuityOverview.emergency_mode?.mode || "normal"}`}>
+                  <strong>{continuityOverview.emergency_mode?.mode || "normal"}</strong>
+                  <small>{continuityOverview.emergency_mode?.reason || "Normalbetrieb"}</small>
+                </div>
+              </div>
+              <div>
+                <h4>Backup Health</h4>
+                {(continuityOverview.backups || []).slice(0, 3).map((backup) => (
+                  <div className="eye-continuity-row" key={backup.backup_id}>
+                    <span className={`continuity-state ${backup.status || "unknown"}`}>{backup.status || "unknown"}</span>
+                    <div><strong>{backup.service}</strong><small>{backup.tier} · {backup.backup_type} · RPO {backup.rpo_minutes ?? "—"}m</small></div>
+                  </div>
+                ))}
+                {!continuityOverview.backups?.length ? <div className="eye-continuity-empty">Noch keine Backup-Reports</div> : null}
               </div>
             </div>
           </section>
