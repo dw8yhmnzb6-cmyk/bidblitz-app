@@ -11,7 +11,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -30,16 +30,24 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+    )
 
 
 class CameraCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=160)
     device_id: Optional[str] = Field(default=None, max_length=128)
     location_id: Optional[str] = Field(default=None, max_length=128)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
     site_id: Optional[str] = Field(default=None, max_length=128)
     camera_type: Literal["bullet", "dome", "ptz", "panoramic", "low_light", "thermal", "other"] = "other"
     mode: CameraMode = "live_only"
@@ -118,7 +126,8 @@ async def _validate_device(device_id: Optional[str]) -> Optional[dict]:
 
 
 def _safe_camera(row: dict) -> dict:
-    return {k: v for k, v in row.items() if k not in {"_id", "rtsp_url", "username", "password", "credentials"}}
+    hidden = {"_id", "rtsp_url", "username", "password", "credentials", "metadata"}
+    return {k: v for k, v in row.items() if k not in hidden}
 
 
 @router.post("/admin/cameras")
@@ -142,6 +151,9 @@ async def create_camera(req: CameraCreate, request: Request):
         "name": req.name,
         "device_id": req.device_id,
         "location_id": req.location_id,
+        "project_id": req.project_id or (device or {}).get("project_id"),
+        "tenant_id": req.tenant_id or (device or {}).get("tenant_id"),
+        "customer_id": req.customer_id or (device or {}).get("customer_id"),
         "site_id": req.site_id or (location or {}).get("code") or (device or {}).get("site_id"),
         "camera_type": req.camera_type,
         "mode": req.mode,
@@ -172,7 +184,7 @@ async def list_cameras(
     connection_status: Optional[str] = None,
     limit: int = Query(default=250, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {"status": {"$ne": "disabled"}}
     if location_id:
         query["location_id"] = location_id
@@ -180,6 +192,7 @@ async def list_cameras(
         query["site_id"] = site_id
     if connection_status:
         query["connection_status"] = connection_status
+    query = access.scope_query(query)
 
     rows = await db.the_eye_cameras.find(query).sort("updated_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "cameras": [_safe_camera(row) for row in rows]}
@@ -187,10 +200,11 @@ async def list_cameras(
 
 @router.get("/admin/cameras/{camera_id}")
 async def get_camera(camera_id: str, request: Request):
-    await _require_admin(request)
-    row = await db.the_eye_cameras.find_one(
+    access = await _require_reader(request)
+    query = access.scope_query(
         {"camera_id": camera_id, "status": {"$ne": "disabled"}}
     )
+    row = await db.the_eye_cameras.find_one(query)
     if not row:
         raise HTTPException(status_code=404, detail="Camera not found")
     return {"ok": True, "camera": _safe_camera(row)}
@@ -290,7 +304,12 @@ async def list_camera_events(
     request: Request,
     limit: int = Query(default=100, ge=1, le=1000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
+    camera_query = access.scope_query(
+        {"camera_id": camera_id, "status": {"$ne": "disabled"}}
+    )
+    if not await db.the_eye_cameras.find_one(camera_query, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Camera not found")
     rows = await db.the_eye_camera_events.find(
         {"camera_id": camera_id},
         {"_id": 0},
@@ -300,11 +319,11 @@ async def list_camera_events(
 
 @router.post("/admin/cameras/{camera_id}/stream-session")
 async def create_camera_stream_session(camera_id: str, request: Request):
-    admin = await _require_admin(request)
-    camera = await db.the_eye_cameras.find_one(
-        {"camera_id": camera_id, "status": {"$ne": "disabled"}},
-        {"_id": 0},
+    access = await _require_reader(request)
+    camera_query = access.scope_query(
+        {"camera_id": camera_id, "status": {"$ne": "disabled"}}
     )
+    camera = await db.the_eye_cameras.find_one(camera_query, {"_id": 0})
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
     if camera.get("connection_status") == "offline":
@@ -319,7 +338,7 @@ async def create_camera_stream_session(camera_id: str, request: Request):
     doc = {
         "session_id": session_id,
         "camera_id": camera_id,
-        "user_id": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "user_id": access.actor_id,
         "token_hash": __import__("hashlib").sha256(session_token.encode("utf-8")).hexdigest(),
         "created_at": _now(),
         "expires_at": expires.isoformat(),

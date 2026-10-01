@@ -19,7 +19,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 from core.the_eye_guard import require_the_eye_writes_allowed
 
@@ -53,10 +53,15 @@ def _hash_token(token: str) -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+    )
 
 
 async def _require_device(device_id: str, x_device_token: Optional[str]) -> dict:
@@ -82,6 +87,9 @@ class DeviceRegisterRequest(BaseModel):
     country: Optional[str] = Field(default=None, max_length=2)
     city: Optional[str] = Field(default=None, max_length=120)
     owner_id: Optional[str] = Field(default=None, max_length=128)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
     location_id: Optional[str] = Field(default=None, max_length=128)
     group_ids: List[str] = Field(default_factory=list, max_length=50)
     capabilities: List[str] = Field(default_factory=list, max_length=100)
@@ -188,6 +196,9 @@ async def register_device(req: DeviceRegisterRequest, request: Request):
         "country": (req.country or "").upper() or None,
         "city": req.city,
         "owner_id": req.owner_id,
+        "project_id": req.project_id,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
         "location_id": req.location_id,
         "site_id": (
             (assigned_location or {}).get("code")
@@ -225,7 +236,7 @@ async def list_devices(
     connection_status: Optional[str] = None,
     limit: int = 250,
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     limit = max(1, min(limit, 1000))
 
     query: Dict[str, Any] = {}
@@ -233,10 +244,11 @@ async def list_devices(
         query["device_type"] = device_type
     if connection_status:
         query["connection_status"] = connection_status
+    query = access.scope_query(query)
 
     rows = await db.the_eye_devices.find(
         query,
-        {"_id": 0, "token_hash": 0},
+        {"_id": 0, "token_hash": 0, "metadata": 0, "last_telemetry": 0},
     ).sort("updated_at", -1).to_list(limit)
 
     return {"ok": True, "count": len(rows), "devices": rows}
@@ -421,7 +433,7 @@ async def map_devices(
     country: Optional[str] = None,
     location_id: Optional[str] = None,
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     limit = max(1, min(limit, 5000))
 
     query: Dict[str, Any] = {
@@ -435,6 +447,7 @@ async def map_devices(
         query["country"] = {"$regex": f"^{re.escape(country)}$", "$options": "i"}
     if location_id:
         query["location_id"] = location_id
+    query = access.scope_query(query)
 
     rows = await db.the_eye_devices.find(
         query,

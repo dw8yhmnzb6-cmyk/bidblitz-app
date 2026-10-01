@@ -34,6 +34,7 @@ def test_the_eye_python_modules_parse():
         assert path.exists(), f"missing {path}"
         ast.parse(_read(path), filename=str(path))
     ast.parse(_read(BACKEND / "core" / "the_eye_live.py"))
+    ast.parse(_read(BACKEND / "core" / "the_eye_access.py"))
 
 
 def test_all_the_eye_routers_are_registered():
@@ -41,6 +42,25 @@ def test_all_the_eye_routers_are_registered():
     expected = [name.removesuffix(".py") for name in ROUTES]
     for module in expected:
         assert f'("routes.{module}", "router")' in registry, module
+
+
+def test_the_eye_rbac_and_scope_isolation_contract():
+    access = _read(BACKEND / "core" / "the_eye_access.py")
+    devices = _read(BACKEND / "routes" / "the_eye_devices.py")
+    cameras = _read(BACKEND / "routes" / "the_eye_cameras.py")
+
+    for role in [
+        "super_admin", "admin", "project_admin", "site_manager",
+        "technician", "customer", "partner", "public",
+    ]:
+        assert f'"{role}"' in access
+
+    assert "scope_query" in access
+    assert "_deny_all_query" in access
+    assert '"project_id"' in devices and '"tenant_id"' in devices and '"customer_id"' in devices
+    assert "access.scope_query(query)" in devices
+    assert '"project_id"' in cameras and '"tenant_id"' in cameras and '"customer_id"' in cameras
+    assert "camera_query = access.scope_query" in cameras
 
 
 def test_high_impact_actions_are_approval_gated():
