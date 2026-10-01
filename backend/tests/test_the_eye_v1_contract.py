@@ -294,3 +294,20 @@ def test_incident_state_machine_is_enforced():
     assert "_validate_incident_transition(current_status, req.status)" in incidents
     assert "Invalid incident transition" in incidents
     assert '"unchanged": True' in incidents
+
+
+def test_readiness_is_evidence_based_and_fail_closed():
+    readiness = _read(BACKEND / "routes" / "the_eye_readiness.py")
+    database = _read(BACKEND / "core" / "database.py")
+
+    assert "CODE_EVIDENCE_KEYS" in readiness
+    assert "STAGING_EVIDENCE_KEYS" in readiness
+    assert "_evidence_state" in readiness
+    assert "_evidence_checks" in readiness
+    assert 'all(item["passed"] for item in code_checks.values())' in readiness
+    assert 'all(item["passed"] for item in staging_checks.values())' in readiness
+    assert "production_ready = False" in readiness
+    assert '"device_hub": True' not in readiness
+    assert '@router.post("/admin/readiness/evidence")' in readiness
+    assert "_require_super_admin" in readiness
+    assert 'the_eye_readiness_evidence, "key"' in database

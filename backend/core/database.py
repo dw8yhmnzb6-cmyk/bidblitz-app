@@ -440,6 +440,8 @@ async def create_indexes():
     await safe_create_index(db.the_eye_approvals, [("project_id", 1), ("status", 1), ("created_at", -1)])
     await safe_create_index(db.the_eye_audit_logs, "audit_id", unique=True, critical=True)
     await safe_create_index(db.the_eye_audit_logs, [("project_id", 1), ("created_at", -1)])
+    await safe_create_index(db.the_eye_readiness_evidence, "key", unique=True, critical=True)
+    await safe_create_index(db.the_eye_readiness_evidence_history, [("key", 1), ("recorded_at", -1)])
 
     await safe_create_index(db.monitoring_probes, "key", unique=True)
     await safe_create_index(db.monitoring_incidents, [("created_at", -1), ("type", 1)])
