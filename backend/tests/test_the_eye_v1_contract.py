@@ -311,3 +311,31 @@ def test_readiness_is_evidence_based_and_fail_closed():
     assert '@router.post("/admin/readiness/evidence")' in readiness
     assert "_require_super_admin" in readiness
     assert 'the_eye_readiness_evidence, "key"' in database
+
+
+def test_aion_data_trust_is_fail_closed():
+    aion = _read(BACKEND / "routes" / "the_eye_aion.py")
+    quality = _read(BACKEND / "routes" / "the_eye_data_quality.py")
+
+    assert "overall_trust = round(sum(scores) / len(scores), 1) if scores else None" in quality
+    assert '"unknown"' in quality
+    assert "trust = max(0, 100 - penalty) if source_count else None" in quality
+
+    assert "_confidence_for_quality" in aion
+    assert "ACTION_MIN_DATA_TRUST" in aion
+    assert '"restart_device": 70.0' in aion
+    assert '"bulk_restart": 90.0' in aion
+    assert '"bulk_ota": 90.0' in aion
+    assert '"disable_site": 90.0' in aion
+    assert '"config_change": 90.0' in aion
+    assert '"create_ticket": 0.0' in aion
+    assert "data trust is UNKNOWN" in aion
+    assert "below required" in aion
+    assert "_assert_action_data_trust(req.action_type, quality)" in aion
+    assert '_assert_action_data_trust(str(action_type or ""), quality)' in aion
+    assert '"data_trust_score": quality.get("trust")' in aion
+    assert '"minimum_data_trust": minimum_data_trust' in aion
+
+    assert 'idempotency_key = f"aion:{approval_id}"' in aion
+    assert '"delivery_attempts": 0' in aion
+    assert "DuplicateKeyError" in aion

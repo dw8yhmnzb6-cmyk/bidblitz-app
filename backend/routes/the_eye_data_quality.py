@@ -295,7 +295,18 @@ async def data_quality_overview(request: Request):
     ).sort("created_at", -1).to_list(5000)
 
     scores = [float(row.get("trust_score") or 0) for row in refreshed_sources]
-    overall_trust = round(sum(scores) / len(scores), 1) if scores else 100.0
+    overall_trust = round(sum(scores) / len(scores), 1) if scores else None
+    trust_state = (
+        "unknown"
+        if overall_trust is None
+        else "trusted"
+        if overall_trust >= 90
+        else "acceptable"
+        if overall_trust >= 70
+        else "degraded"
+        if overall_trust >= 50
+        else "unreliable"
+    )
     live_sources = sum(1 for row in refreshed_sources if row.get("status") in {"live", "verified"})
     delayed_sources = sum(1 for row in refreshed_sources if row.get("status") == "delayed")
     offline_sources = sum(1 for row in refreshed_sources if row.get("status") == "offline")
@@ -305,6 +316,7 @@ async def data_quality_overview(request: Request):
     return {
         "ok": True,
         "overall_trust": overall_trust,
+        "trust_state": trust_state,
         "sources_total": len(refreshed_sources),
         "live_sources": live_sources,
         "delayed_sources": delayed_sources,
@@ -330,6 +342,10 @@ async def entity_trust(entity_type: str, entity_id: str, request: Request):
         {"_id": 0},
     ).sort("created_at", -1).to_list(200)
 
+    source_count = await db.the_eye_data_sources.count_documents({
+        "entity_type": entity_type,
+    })
+
     penalty = 0
     for issue in issues:
         penalty += {
@@ -338,13 +354,27 @@ async def entity_trust(entity_type: str, entity_id: str, request: Request):
             "high": 20,
             "critical": 40,
         }.get(str(issue.get("severity")), 8)
-    trust = max(0, 100 - penalty)
+
+    trust = max(0, 100 - penalty) if source_count else None
+    trust_state = (
+        "unknown"
+        if trust is None
+        else "trusted"
+        if trust >= 90
+        else "acceptable"
+        if trust >= 70
+        else "degraded"
+        if trust >= 50
+        else "unreliable"
+    )
 
     return {
         "ok": True,
         "entity_type": entity_type,
         "entity_id": entity_id,
         "trust_score": trust,
+        "trust_state": trust_state,
+        "source_count": source_count,
         "open_issues": len(issues),
         "issues": issues,
     }

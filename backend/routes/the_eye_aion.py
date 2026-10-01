@@ -12,10 +12,11 @@ from typing import Any, Dict, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
-from core.the_eye_data_safety import sanitize_the_eye_payload
-from core.security import get_current_user
+from core.the_eye_access import require_the_eye_access
+from core.the_eye_data_safety import safe_the_eye_document, sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 from core.the_eye_guard import require_the_eye_writes_allowed
 
@@ -28,10 +29,8 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
 
 
 def _actor_id(user: dict) -> str:
@@ -151,20 +150,82 @@ async def _security_summary() -> dict:
     }
 
 
-async def _quality_summary() -> dict:
-    sources = await db.the_eye_data_sources.find({}, {"_id": 0}).to_list(2000)
+async def _quality_summary(project: Optional[str] = None) -> dict:
+    source_query: Dict[str, Any] = {}
+    issue_query: Dict[str, Any] = {"status": {"$ne": "resolved"}}
+    if project:
+        source_query["project"] = project
+        issue_query["project"] = project
+
+    sources = await db.the_eye_data_sources.find(source_query, {"_id": 0}).to_list(2000)
     issues = await db.the_eye_data_quality_issues.find(
-        {"status": {"$ne": "resolved"}},
+        issue_query,
         {"_id": 0},
     ).sort("created_at", -1).to_list(200)
+
     scores = [float(row.get("trust_score") or 0) for row in sources]
+    trust = round(sum(scores) / len(scores), 1) if scores else None
+    state = (
+        "unknown"
+        if trust is None
+        else "trusted"
+        if trust >= 90
+        else "acceptable"
+        if trust >= 70
+        else "degraded"
+        if trust >= 50
+        else "unreliable"
+    )
     return {
-        "trust": round(sum(scores) / len(scores), 1) if scores else 100.0,
+        "trust": trust,
+        "state": state,
         "sources": len(sources),
         "issues": len(issues),
         "conflicts": sum(1 for row in issues if row.get("issue_type") == "data_conflict"),
         "recent_issues": issues[:10],
     }
+
+
+def _confidence_for_quality(base: float, quality: dict) -> float:
+    trust = quality.get("trust")
+    if trust is None:
+        return min(base, 0.35)
+    trust = float(trust)
+    if trust >= 90:
+        return min(base, 0.92)
+    if trust >= 70:
+        return min(base, 0.78)
+    if trust >= 50:
+        return min(base, 0.58)
+    return min(base, 0.35)
+
+
+ACTION_MIN_DATA_TRUST = {
+    "create_ticket": 0.0,
+    "restart_device": 70.0,
+    "bulk_restart": 90.0,
+    "bulk_ota": 90.0,
+    "disable_site": 90.0,
+    "config_change": 90.0,
+}
+
+
+def _assert_action_data_trust(action_type: str, quality: dict) -> float:
+    minimum = float(ACTION_MIN_DATA_TRUST.get(action_type, 90.0))
+    if minimum <= 0:
+        return minimum
+    trust = quality.get("trust")
+    if trust is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"AION action blocked: data trust is UNKNOWN; minimum required is {minimum:.0f}",
+        )
+    if float(trust) < minimum:
+        raise HTTPException(
+            status_code=409,
+            detail=f"AION action blocked: data trust {float(trust):.1f} is below required {minimum:.0f}",
+        )
+    return minimum
 
 
 async def _maintenance_summary() -> dict:
@@ -211,10 +272,24 @@ async def aion_query(req: AionQuery, request: Request):
     admin = await _require_admin(request)
     intent = _detect_intent(req.question)
 
-    confidence = 0.92
+    quality = await _quality_summary()
+    confidence = _confidence_for_quality(0.92, quality)
     facts = []
     analysis = []
     assumptions = []
+
+    if quality["trust"] is None:
+        assumptions.append(
+            "Data Trust ist UNKNOWN, weil keine normalisierten Datenquellen vorliegen."
+        )
+    elif float(quality["trust"]) < 50:
+        assumptions.append(
+            "Data Trust ist unzuverlässig; AION behandelt operative Schlussfolgerungen als unsicher."
+        )
+    elif float(quality["trust"]) < 70:
+        assumptions.append(
+            "Data Trust ist degradiert; AION reduziert die Aussagekonfidenz."
+        )
 
     if intent == "projects":
         data = await _project_summary()
@@ -277,15 +352,21 @@ async def aion_query(req: AionQuery, request: Request):
             analysis.append("Kritische Security Events sollten vor nicht notwendigen administrativen Änderungen priorisiert werden.")
         source = data
     elif intent == "data_quality":
-        data = await _quality_summary()
+        data = quality
         facts = [
             _fact("Trust Score", data["trust"]),
             _fact("Datenquellen", data["sources"]),
             _fact("Offene Issues", data["issues"]),
             _fact("Konflikte", data["conflicts"]),
         ]
-        if data["trust"] < 80:
-            analysis.append("Der aktuelle Data-Trust-Wert ist niedrig genug, dass AION Ergebnisse mit zusätzlicher Unsicherheitskennzeichnung behandeln sollte.")
+        if data["trust"] is None:
+            analysis.append(
+                "Es liegen keine normalisierten Datenquellen vor; der Data-Trust-Status ist UNKNOWN."
+            )
+        elif float(data["trust"]) < 80:
+            analysis.append(
+                "Der aktuelle Data-Trust-Wert reduziert die Verlässlichkeit der AION-Analyse."
+            )
         source = data
     elif intent == "maintenance":
         data = await _maintenance_summary()
@@ -303,7 +384,6 @@ async def aion_query(req: AionQuery, request: Request):
         incidents = await _incident_summary()
         security = await _security_summary()
         providers = await _provider_summary()
-        quality = await _quality_summary()
         facts = [
             _fact("Projekte", projects["count"]),
             _fact("Profit", projects["profit"]),
@@ -327,7 +407,7 @@ async def aion_query(req: AionQuery, request: Request):
         }
 
     if not facts:
-        confidence = 0.5
+        confidence = min(confidence, 0.5)
         assumptions.append("Für diese Frage liegen noch keine normalisierten The-Eye-Daten vor.")
 
     answer = {
@@ -336,6 +416,11 @@ async def aion_query(req: AionQuery, request: Request):
         "analysis": analysis,
         "assumptions": assumptions,
         "confidence": confidence,
+        "data_quality": {
+            "trust_score": quality.get("trust"),
+            "trust_state": quality.get("state"),
+            "sources": quality.get("sources"),
+        },
         "source_snapshot": source,
     }
 
@@ -361,6 +446,8 @@ async def aion_query(req: AionQuery, request: Request):
 @router.post("/admin/aion/actions/prepare")
 async def prepare_aion_action(req: AionActionPrepare, request: Request):
     admin = await _require_admin(request)
+    quality = await _quality_summary(req.project)
+    minimum_data_trust = _assert_action_data_trust(req.action_type, quality)
     now = _now()
     approval_id = "APR-" + secrets.token_hex(10).upper()
 
@@ -394,6 +481,9 @@ async def prepare_aion_action(req: AionActionPrepare, request: Request):
         "risk_level": risk_level,
         "dry_run": dry_run,
         "impact": impact,
+        "data_trust_score": quality.get("trust"),
+        "data_trust_state": quality.get("state"),
+        "minimum_data_trust": minimum_data_trust,
         "proposed_payload": sanitize_the_eye_payload(req.payload),
         "reason": req.reason,
         "status": "pending",
@@ -434,6 +524,10 @@ async def execute_aion_action(approval_id: str, request: Request):
     action_type = approval.get("action_type")
     target_id = approval.get("target_id")
     payload = approval.get("proposed_payload") or {}
+
+    quality = await _quality_summary(approval.get("project"))
+    _assert_action_data_trust(str(action_type or ""), quality)
+
     now = _now()
     result: Dict[str, Any]
 
@@ -448,6 +542,7 @@ async def execute_aion_action(approval_id: str, request: Request):
             raise HTTPException(status_code=404, detail="Device not found or disabled")
 
         command_id = "CMD-" + secrets.token_hex(8).upper()
+        idempotency_key = f"aion:{approval_id}"
         now_dt = datetime.now(timezone.utc)
         expires_at = datetime.fromtimestamp(
             now_dt.timestamp() + 300,
@@ -455,23 +550,47 @@ async def execute_aion_action(approval_id: str, request: Request):
         ).isoformat()
         command = {
             "command_id": command_id,
+            "execution_key": command_id,
+            "idempotency_key": idempotency_key,
             "device_id": target_id,
+            "site_id": approval.get("site_id"),
             "command": "restart",
             "payload": payload,
             "status": "queued",
+            "delivery_attempts": 0,
             "created_at": now,
             "expires_at": expires_at,
             "created_by": _actor_id(admin),
             "approval_id": approval_id,
             "source": "aion",
+            "delivered_at": None,
+            "ack_deadline_at": None,
             "acknowledged_at": None,
+            "accepted_at": None,
             "completed_at": None,
+            "unknown_at": None,
+            "unknown_reason": None,
             "result": None,
         }
-        await db.the_eye_device_commands.insert_one(command)
-        command.pop("_id", None)
-        await broadcast_the_eye_event("command.queued", command)
-        result = {"command": command}
+        existing = await db.the_eye_device_commands.find_one(
+            {"device_id": target_id, "idempotency_key": idempotency_key},
+            {"_id": 0},
+        )
+        if existing:
+            command = existing
+        else:
+            try:
+                await db.the_eye_device_commands.insert_one(command)
+                command.pop("_id", None)
+                await broadcast_the_eye_event("command.queued", command)
+            except DuplicateKeyError:
+                command = await db.the_eye_device_commands.find_one(
+                    {"device_id": target_id, "idempotency_key": idempotency_key},
+                    {"_id": 0},
+                )
+                if not command:
+                    raise
+        result = {"command": safe_the_eye_document(command)}
     elif action_type == "create_ticket":
         ticket_id = "TKT-" + secrets.token_hex(8).upper()
         ticket = {
