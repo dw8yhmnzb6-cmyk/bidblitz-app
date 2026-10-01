@@ -12,11 +12,13 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
@@ -26,6 +28,8 @@ from core.the_eye_guard import require_the_eye_writes_allowed
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Device Hub"])
+
+COMMAND_ACK_TIMEOUT_SECONDS = 30
 
 DeviceType = Literal[
     "camera",
@@ -62,6 +66,13 @@ async def _require_reader(request: Request) -> TheEyeAccess:
     return await require_the_eye_access(
         request,
         {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
     )
 
 
@@ -132,6 +143,7 @@ class DeviceCommandCreate(BaseModel):
     command: str = Field(..., min_length=1, max_length=128)
     payload: Dict[str, Any] = Field(default_factory=dict)
     expires_in_seconds: int = Field(default=300, ge=5, le=86400)
+    idempotency_key: Optional[str] = Field(default=None, min_length=8, max_length=160)
 
 
 class DeviceCommandAck(BaseModel):
@@ -464,44 +476,119 @@ async def map_devices(
     return {"ok": True, "count": len(rows), "devices": rows}
 
 
+
 @router.post("/admin/devices/{device_id}/commands")
 async def create_device_command(
     device_id: str,
     req: DeviceCommandCreate,
     request: Request,
 ):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
     await require_the_eye_writes_allowed("device_command")
+    device_query = access.scope_query(
+        {"device_id": device_id, "status": {"$ne": "disabled"}}
+    )
     device = await db.the_eye_devices.find_one(
-        {"device_id": device_id, "status": {"$ne": "disabled"}},
-        {"_id": 0, "device_id": 1},
+        device_query,
+        {"_id": 0, "device_id": 1, "project_id": 1, "tenant_id": 1,
+         "customer_id": 1, "site_id": 1},
     )
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found or disabled")
+        raise HTTPException(status_code=404, detail="Device not found or outside scope")
 
-    now = datetime.now(timezone.utc)
-    expires_at = datetime.fromtimestamp(
-        now.timestamp() + req.expires_in_seconds,
-        tz=timezone.utc,
-    ).isoformat()
+    if req.idempotency_key:
+        existing = await db.the_eye_device_commands.find_one(
+            {"device_id": device_id, "idempotency_key": req.idempotency_key},
+            {"_id": 0},
+        )
+        if existing:
+            return {
+                "ok": True,
+                "duplicate": True,
+                "command": safe_the_eye_document(existing),
+            }
+
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+    expires_at = (now_dt + timedelta(seconds=req.expires_in_seconds)).isoformat()
     command_id = "CMD-" + secrets.token_hex(8).upper()
     doc = {
         "command_id": command_id,
+        "execution_key": command_id,
+        "idempotency_key": req.idempotency_key,
         "device_id": device_id,
+        "project_id": device.get("project_id"),
+        "tenant_id": device.get("tenant_id"),
+        "customer_id": device.get("customer_id"),
+        "site_id": device.get("site_id"),
         "command": req.command,
         "payload": req.payload,
         "status": "queued",
-        "created_at": now.isoformat(),
+        "delivery_attempts": 0,
+        "created_at": now,
         "expires_at": expires_at,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
+        "delivered_at": None,
+        "ack_deadline_at": None,
         "acknowledged_at": None,
+        "accepted_at": None,
         "completed_at": None,
+        "unknown_at": None,
+        "unknown_reason": None,
         "result": None,
     }
-    await db.the_eye_device_commands.insert_one(doc)
+    try:
+        await db.the_eye_device_commands.insert_one(doc)
+    except DuplicateKeyError:
+        existing = await db.the_eye_device_commands.find_one(
+            {"device_id": device_id, "idempotency_key": req.idempotency_key},
+            {"_id": 0},
+        )
+        if existing:
+            return {
+                "ok": True,
+                "duplicate": True,
+                "command": safe_the_eye_document(existing),
+            }
+        raise
+
     doc.pop("_id", None)
     await broadcast_the_eye_event("command.queued", doc)
-    return {"ok": True, "command": safe_the_eye_document(doc)}
+    return {
+        "ok": True,
+        "duplicate": False,
+        "command": safe_the_eye_document(doc),
+    }
+
+
+@router.get("/admin/devices/{device_id}/commands")
+async def list_device_command_history(
+    device_id: str,
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 100,
+):
+    access = await _require_reader(request)
+    device = await db.the_eye_devices.find_one(
+        access.scope_query({"device_id": device_id}),
+        {"_id": 0, "device_id": 1},
+    )
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or outside scope")
+
+    limit = max(1, min(limit, 1000))
+    query: Dict[str, Any] = {"device_id": device_id}
+    if status:
+        query["status"] = status
+    rows = await db.the_eye_device_commands.find(
+        query,
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(limit)
+    return {
+        "ok": True,
+        "count": len(rows),
+        "commands": [safe_the_eye_document(row) for row in rows],
+    }
 
 
 @router.get("/devices/{device_id}/commands")
@@ -512,28 +599,83 @@ async def poll_device_commands(
 ):
     await _require_device(device_id, x_device_token)
     limit = max(1, min(limit, 100))
-    now = _now()
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
 
-    rows = await db.the_eye_device_commands.find(
+    # Commands that were never delivered can safely expire.
+    await db.the_eye_device_commands.update_many(
         {
             "device_id": device_id,
             "status": "queued",
-            "expires_at": {"$gt": now},
+            "expires_at": {"$lte": now},
         },
-        {"_id": 0},
-    ).sort("created_at", 1).to_list(limit)
+        {"$set": {
+            "status": "expired",
+            "expired_at": now,
+        }},
+    )
 
-    if rows:
-        ids = [r["command_id"] for r in rows]
-        await db.the_eye_device_commands.update_many(
-            {"command_id": {"$in": ids}, "status": "queued"},
-            {"$set": {"status": "delivered", "delivered_at": now}},
+    # Delivered/accepted commands are never blindly re-sent. Missing final
+    # confirmation becomes UNKNOWN and requires reconciliation or a late ACK.
+    await db.the_eye_device_commands.update_many(
+        {
+            "device_id": device_id,
+            "status": "delivered",
+            "ack_deadline_at": {"$lte": now},
+        },
+        {"$set": {
+            "status": "unknown",
+            "unknown_at": now,
+            "unknown_reason": "ack_timeout_no_blind_resend",
+        }},
+    )
+    await db.the_eye_device_commands.update_many(
+        {
+            "device_id": device_id,
+            "status": "accepted",
+            "expires_at": {"$lte": now},
+        },
+        {"$set": {
+            "status": "unknown",
+            "unknown_at": now,
+            "unknown_reason": "accepted_without_final_result",
+        }},
+    )
+
+    ack_deadline = (
+        now_dt + timedelta(seconds=COMMAND_ACK_TIMEOUT_SECONDS)
+    ).isoformat()
+    rows = []
+    for _ in range(limit):
+        claimed = await db.the_eye_device_commands.find_one_and_update(
+            {
+                "device_id": device_id,
+                "status": "queued",
+                "expires_at": {"$gt": now},
+            },
+            {
+                "$set": {
+                    "status": "delivered",
+                    "delivered_at": now,
+                    "ack_deadline_at": ack_deadline,
+                },
+                "$inc": {"delivery_attempts": 1},
+            },
+            sort=[("created_at", 1)],
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
         )
-        for row in rows:
-            row["status"] = "delivered"
-            row["delivered_at"] = now
+        if not claimed:
+            break
+        rows.append(claimed)
 
-    return {"ok": True, "count": len(rows), "commands": rows, "server_time": now}
+    return {
+        "ok": True,
+        "count": len(rows),
+        "commands": rows,
+        "server_time": now,
+        "delivery_policy": "no_blind_resend",
+    }
 
 
 @router.post("/devices/{device_id}/commands/ack")
@@ -544,11 +686,39 @@ async def acknowledge_device_command(
 ):
     await _require_device(device_id, x_device_token)
     now = _now()
-    update = {
+    command = await db.the_eye_device_commands.find_one(
+        {"command_id": req.command_id, "device_id": device_id},
+        {"_id": 0},
+    )
+    if not command:
+        raise HTTPException(status_code=404, detail="Command not found")
+
+    current_status = str(command.get("status") or "")
+    if current_status in {"completed", "failed", "expired"}:
+        raise HTTPException(status_code=409, detail="Command is already final")
+
+    if current_status == "queued" and str(command.get("expires_at") or "") <= now:
+        await db.the_eye_device_commands.update_one(
+            {"command_id": req.command_id, "device_id": device_id, "status": "queued"},
+            {"$set": {"status": "expired", "expired_at": now}},
+        )
+        raise HTTPException(status_code=409, detail="Command expired before delivery")
+
+    if current_status not in {"delivered", "accepted", "unknown"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Command cannot be acknowledged from state: {current_status}",
+        )
+
+    safe_result = sanitize_the_eye_payload(req.result)
+    update: Dict[str, Any] = {
         "status": req.status,
         "acknowledged_at": now,
-        "result": sanitize_the_eye_payload(req.result),
+        "result": safe_result,
+        "unknown_reason": None,
     }
+    if req.status == "accepted":
+        update["accepted_at"] = now
     if req.status in {"completed", "failed"}:
         update["completed_at"] = now
 
@@ -556,24 +726,30 @@ async def acknowledge_device_command(
         {
             "command_id": req.command_id,
             "device_id": device_id,
-            "status": {"$in": ["queued", "delivered", "accepted"]},
+            "status": current_status,
         },
         {"$set": update},
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Command not found or already final")
+        raise HTTPException(status_code=409, detail="Command state changed; retry reconciliation")
+
     await broadcast_the_eye_event(
         "command.status",
         {
             "command_id": req.command_id,
             "device_id": device_id,
             "status": req.status,
-            "result": sanitize_the_eye_payload(req.result),
+            "result": safe_result,
+            "previous_status": current_status,
             "updated_at": now,
         },
     )
-    return {"ok": True, "command_id": req.command_id, "status": req.status}
-
+    return {
+        "ok": True,
+        "command_id": req.command_id,
+        "status": req.status,
+        "previous_status": current_status,
+    }
 
 @router.post("/admin/groups")
 async def create_device_group(req: DeviceGroupCreate, request: Request):

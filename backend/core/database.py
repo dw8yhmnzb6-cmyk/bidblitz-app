@@ -394,6 +394,13 @@ async def create_indexes():
     await safe_create_index(db.the_eye_devices, [("tenant_id", 1), ("customer_id", 1), ("site_id", 1)])
 
     await safe_create_index(db.the_eye_device_commands, "command_id", unique=True, critical=True)
+    await safe_create_index(
+        db.the_eye_device_commands,
+        [("device_id", 1), ("idempotency_key", 1)],
+        unique=True,
+        sparse=True,
+        critical=True,
+    )
     await safe_create_index(db.the_eye_device_commands, [("device_id", 1), ("status", 1), ("expires_at", 1)])
     await safe_create_index(db.the_eye_device_locations, [("device_id", 1), ("received_at", -1)])
     await safe_create_index(db.the_eye_device_telemetry, [("device_id", 1), ("received_at", -1)])

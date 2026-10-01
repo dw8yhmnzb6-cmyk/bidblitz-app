@@ -258,3 +258,24 @@ def test_the_eye_database_integrity_and_connector_idempotency_contract():
     assert "snapshot_id: Optional[str]" in projects
     assert "schema_version: str" in projects
     assert '"duplicate": True' in projects
+
+
+def test_device_command_lifecycle_is_fail_closed_and_idempotent():
+    devices = _read(BACKEND / "routes" / "the_eye_devices.py")
+    database = _read(BACKEND / "core" / "database.py")
+
+    assert "idempotency_key: Optional[str]" in devices
+    assert "find_one_and_update" in devices
+    assert "ReturnDocument.AFTER" in devices
+    assert '"delivery_attempts": 0' in devices
+    assert '"status": "expired"' in devices
+    assert '"status": "unknown"' in devices
+    assert "ack_timeout_no_blind_resend" in devices
+    assert "accepted_without_final_result" in devices
+    assert '"delivery_policy": "no_blind_resend"' in devices
+    assert 'current_status not in {"delivered", "accepted", "unknown"}' in devices
+    assert '@router.get("/admin/devices/{device_id}/commands")' in devices
+    assert "DuplicateKeyError" in devices
+
+    assert '[("device_id", 1), ("idempotency_key", 1)]' in database
+    assert "sparse=True" in database
