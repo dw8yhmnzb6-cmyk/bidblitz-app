@@ -279,3 +279,18 @@ def test_device_command_lifecycle_is_fail_closed_and_idempotent():
 
     assert '[("device_id", 1), ("idempotency_key", 1)]' in database
     assert "sparse=True" in database
+
+
+def test_incident_state_machine_is_enforced():
+    incidents = _read(BACKEND / "routes" / "the_eye_incidents.py")
+
+    assert "INCIDENT_TRANSITIONS" in incidents
+    assert '"new": {"acknowledged"}' in incidents
+    assert '"acknowledged": {"investigating"}' in incidents
+    assert '"investigating": {"mitigating", "resolved"}' in incidents
+    assert '"mitigating": {"resolved"}' in incidents
+    assert '"resolved": {"closed"}' in incidents
+    assert '"closed": set()' in incidents
+    assert "_validate_incident_transition(current_status, req.status)" in incidents
+    assert "Invalid incident transition" in incidents
+    assert '"unchanged": True' in incidents

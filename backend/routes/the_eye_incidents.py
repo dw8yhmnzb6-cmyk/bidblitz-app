@@ -27,6 +27,26 @@ IncidentStatus = Literal[
     "closed",
 ]
 
+INCIDENT_TRANSITIONS = {
+    "new": {"acknowledged"},
+    "acknowledged": {"investigating"},
+    "investigating": {"mitigating", "resolved"},
+    "mitigating": {"resolved"},
+    "resolved": {"closed"},
+    "closed": set(),
+}
+
+
+def _validate_incident_transition(current: str, target: str) -> None:
+    if current == target:
+        return
+    allowed = INCIDENT_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invalid incident transition: {current} -> {target}",
+        )
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -381,13 +401,22 @@ async def update_incident_status(
     if not current:
         raise HTTPException(status_code=404, detail="Incident not found")
 
+    current_status = str(current.get("status") or "new")
+    _validate_incident_transition(current_status, req.status)
+    if current_status == req.status:
+        return {
+            "ok": True,
+            "unchanged": True,
+            "incident": current,
+        }
+
     now = _now()
     actor = access.actor_id
     timeline_entry = {
         "at": now,
         "type": "status_changed",
         "by": actor,
-        "from": current.get("status"),
+        "from": current_status,
         "to": req.status,
         "note": req.note,
     }
