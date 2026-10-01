@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -46,10 +46,43 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
+
+
+def _actor_aliases(access: TheEyeAccess) -> List[str]:
+    values = [
+        access.actor_id,
+        str(access.user.get("id") or ""),
+        str(access.user.get("user_id") or ""),
+        str(access.user.get("email") or ""),
+    ]
+    return list(dict.fromkeys(value for value in values if value))
+
+
+def _scope_owned(access: TheEyeAccess, query: Dict[str, Any]) -> Dict[str, Any]:
+    scoped = access.scope_query(query)
+    if access.role != "technician":
+        return scoped
+    return {"$and": [scoped, {"assigned_to": {"$in": _actor_aliases(access)}}]}
+
+
+def _inventory_scope(access: TheEyeAccess, query: Dict[str, Any]) -> Dict[str, Any]:
+    return access.scope_query(query, field_map={"site_id": "assigned_site_id"})
 
 
 class InventoryItemCreate(BaseModel):
@@ -66,6 +99,10 @@ class InventoryItemCreate(BaseModel):
     unit_cost: Optional[float] = Field(default=None, ge=0)
     currency: str = Field(default="EUR", min_length=3, max_length=3)
     warranty_until: Optional[str] = None
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
+    assigned_site_id: Optional[str] = Field(default=None, max_length=128)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -86,6 +123,9 @@ class WorkOrderCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=240)
     description: Optional[str] = Field(default=None, max_length=4000)
     priority: Literal["p1", "p2", "p3", "p4"] = "p3"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
     site_id: Optional[str] = Field(default=None, max_length=128)
     location_id: Optional[str] = Field(default=None, max_length=128)
     device_id: Optional[str] = Field(default=None, max_length=128)
@@ -121,10 +161,10 @@ class RmaStatusUpdate(BaseModel):
     actual_credit: Optional[float] = Field(default=None, ge=0)
 
 
+
 @router.post("/admin/inventory/items")
 async def create_inventory_item(req: InventoryItemCreate, request: Request):
-    admin = await _require_admin(request)
-
+    access = await _require_operator(request)
     if req.serial_number:
         existing = await db.the_eye_inventory.find_one(
             {"serial_number": req.serial_number, "status": {"$ne": "retired"}},
@@ -151,21 +191,20 @@ async def create_inventory_item(req: InventoryItemCreate, request: Request):
         "unit_cost": req.unit_cost,
         "currency": req.currency.upper(),
         "warranty_until": req.warranty_until,
+        "project_id": req.project_id,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
         "metadata": req.metadata,
         "status": "in_stock",
-        "assigned_site_id": None,
+        "assigned_site_id": req.assigned_site_id,
         "assigned_device_id": None,
         "assigned_camera_id": None,
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
-        "timeline": [{
-            "at": now,
-            "type": "created",
-            "by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
-            "note": "Inventory item created",
-        }],
+        "created_by": access.actor_id,
+        "timeline": [{"at": now, "type": "created", "by": access.actor_id, "note": "Inventory item created"}],
     }
+    access.assert_document(doc, field_map={"site_id": "assigned_site_id"})
     await db.the_eye_inventory.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("inventory.created", doc)
@@ -181,7 +220,7 @@ async def list_inventory_items(
     low_stock_only: bool = False,
     limit: int = Query(default=500, ge=1, le=5000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
@@ -189,25 +228,26 @@ async def list_inventory_items(
         query["asset_type"] = asset_type
     if warehouse:
         query["warehouse"] = warehouse
-
+    query = _inventory_scope(access, query)
     rows = await db.the_eye_inventory.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
     if low_stock_only:
         rows = [
             row for row in rows
-            if int(row.get("quantity") or 0) - int(row.get("reserved_quantity") or 0) <= int(row.get("reorder_point") or 0)
+            if int(row.get("quantity") or 0) - int(row.get("reserved_quantity") or 0)
+            <= int(row.get("reorder_point") or 0)
         ]
     return {"ok": True, "count": len(rows), "items": rows}
 
 
 @router.patch("/admin/inventory/items/{item_id}/status")
 async def update_inventory_status(item_id: str, req: InventoryStatusUpdate, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_inventory.find_one({"inventory_item_id": item_id}, {"_id": 0})
+    access = await _require_operator(request)
+    current_query = _inventory_scope(access, {"inventory_item_id": item_id})
+    current = await db.the_eye_inventory.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Inventory item not found")
 
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     update = {
         "status": req.status,
         "assigned_site_id": req.assigned_site_id,
@@ -215,69 +255,65 @@ async def update_inventory_status(item_id: str, req: InventoryStatusUpdate, requ
         "assigned_camera_id": req.assigned_camera_id,
         "updated_at": now,
     }
+    prospective = {**current, **update}
+    access.assert_document(prospective, field_map={"site_id": "assigned_site_id"})
     await db.the_eye_inventory.update_one(
-        {"inventory_item_id": item_id},
-        {
-            "$set": update,
-            "$push": {"timeline": {
-                "at": now,
-                "type": "status_changed",
-                "from": current.get("status"),
-                "to": req.status,
-                "by": actor,
-                "note": req.note,
-            }},
-        },
+        current_query,
+        {"$set": update, "$push": {"timeline": {
+            "at": now, "type": "status_changed", "from": current.get("status"),
+            "to": req.status, "by": access.actor_id, "note": req.note,
+        }}},
     )
-    fresh = await db.the_eye_inventory.find_one({"inventory_item_id": item_id}, {"_id": 0})
+    fresh = await db.the_eye_inventory.find_one(
+        _inventory_scope(access, {"inventory_item_id": item_id}), {"_id": 0}
+    )
     await broadcast_the_eye_event("inventory.updated", fresh)
     return {"ok": True, "item": fresh}
 
 
 @router.post("/admin/inventory/items/{item_id}/adjust")
 async def adjust_stock(item_id: str, req: StockAdjustRequest, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_inventory.find_one({"inventory_item_id": item_id}, {"_id": 0})
+    access = await _require_operator(request)
+    current_query = _inventory_scope(access, {"inventory_item_id": item_id})
+    current = await db.the_eye_inventory.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Inventory item not found")
-
     current_qty = int(current.get("quantity") or 0)
     new_qty = current_qty + req.delta
     if new_qty < 0:
         raise HTTPException(status_code=409, detail="Stock cannot become negative")
-
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     await db.the_eye_inventory.update_one(
-        {"inventory_item_id": item_id},
-        {
-            "$set": {"quantity": new_qty, "updated_at": now},
-            "$push": {"timeline": {
-                "at": now,
-                "type": "stock_adjusted",
-                "by": actor,
-                "delta": req.delta,
-                "quantity": new_qty,
-                "note": req.note,
-            }},
-        },
+        current_query,
+        {"$set": {"quantity": new_qty, "updated_at": now}, "$push": {"timeline": {
+            "at": now, "type": "stock_adjusted", "by": access.actor_id,
+            "delta": req.delta, "quantity": new_qty, "note": req.note,
+        }}},
     )
-    fresh = await db.the_eye_inventory.find_one({"inventory_item_id": item_id}, {"_id": 0})
+    fresh = await db.the_eye_inventory.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("inventory.updated", fresh)
     return {"ok": True, "item": fresh}
 
 
 @router.post("/admin/work-orders")
 async def create_work_order(req: WorkOrderCreate, request: Request):
-    admin = await _require_admin(request)
-
-    if req.incident_id and not await db.the_eye_incidents.find_one({"incident_id": req.incident_id}, {"_id": 1}):
-        raise HTTPException(status_code=400, detail="Incident not found")
-    if req.ticket_id and not await db.the_eye_tickets.find_one({"ticket_id": req.ticket_id}, {"_id": 1}):
-        raise HTTPException(status_code=400, detail="Ticket not found")
+    access = await _require_operator(request)
+    incident = None
+    ticket = None
+    if req.incident_id:
+        incident = await db.the_eye_incidents.find_one(
+            access.scope_query({"incident_id": req.incident_id}), {"_id": 0}
+        )
+        if not incident:
+            raise HTTPException(status_code=400, detail="Incident not found")
+    if req.ticket_id:
+        ticket = await db.the_eye_tickets.find_one(
+            access.scope_query({"ticket_id": req.ticket_id}), {"_id": 0}
+        )
+        if not ticket:
+            raise HTTPException(status_code=400, detail="Ticket not found")
 
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     work_order_id = "WO-" + secrets.token_hex(8).upper()
     doc = {
         "work_order_id": work_order_id,
@@ -285,8 +321,11 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "description": req.description,
         "priority": req.priority,
         "status": "assigned" if req.assigned_to else "new",
-        "site_id": req.site_id,
-        "location_id": req.location_id,
+        "project_id": req.project_id or (ticket or incident or {}).get("project_id"),
+        "tenant_id": req.tenant_id or (ticket or incident or {}).get("tenant_id"),
+        "customer_id": req.customer_id or (ticket or incident or {}).get("customer_id"),
+        "site_id": req.site_id or (ticket or incident or {}).get("site_id"),
+        "location_id": req.location_id or (ticket or incident or {}).get("location_id"),
         "device_id": req.device_id,
         "camera_id": req.camera_id,
         "incident_id": req.incident_id,
@@ -302,28 +341,22 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "validation_passed": None,
         "created_at": now,
         "updated_at": now,
-        "created_by": actor,
-        "timeline": [{
-            "at": now,
-            "type": "created",
-            "by": actor,
-            "note": "Work order created",
-        }],
+        "created_by": access.actor_id,
+        "timeline": [{"at": now, "type": "created", "by": access.actor_id, "note": "Work order created"}],
     }
+    access.assert_document(doc)
     await db.the_eye_work_orders.insert_one(doc)
     doc.pop("_id", None)
-
     if req.ticket_id:
         await db.the_eye_tickets.update_one(
-            {"ticket_id": req.ticket_id},
+            access.scope_query({"ticket_id": req.ticket_id}),
             {"$addToSet": {"work_order_ids": work_order_id}, "$set": {"updated_at": now}},
         )
     if req.incident_id:
         await db.the_eye_incidents.update_one(
-            {"incident_id": req.incident_id},
+            access.scope_query({"incident_id": req.incident_id}),
             {"$addToSet": {"work_order_ids": work_order_id}, "$set": {"updated_at": now}},
         )
-
     await broadcast_the_eye_event("work_order.created", doc)
     return {"ok": True, "work_order": doc}
 
@@ -337,7 +370,7 @@ async def list_work_orders(
     assigned_to: Optional[str] = None,
     limit: int = Query(default=300, ge=1, le=3000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
@@ -347,66 +380,61 @@ async def list_work_orders(
         query["site_id"] = site_id
     if assigned_to:
         query["assigned_to"] = assigned_to
-
+    query = _scope_owned(access, query)
     rows = await db.the_eye_work_orders.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "work_orders": rows}
 
 
 @router.patch("/admin/work-orders/{work_order_id}/status")
 async def update_work_order_status(work_order_id: str, req: WorkOrderStatusUpdate, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_work_orders.find_one({"work_order_id": work_order_id}, {"_id": 0})
+    access = await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician"},
+    )
+    current_query = _scope_owned(access, {"work_order_id": work_order_id})
+    current = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Work order not found")
-
     if req.status == "completed" and req.validation_passed is not True:
         raise HTTPException(status_code=409, detail="Validation must pass before completing a work order")
 
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     update: Dict[str, Any] = {"status": req.status, "updated_at": now}
-
     for key in ["labor_minutes", "travel_cost", "labor_cost", "parts_cost", "validation_passed"]:
         value = getattr(req, key)
         if value is not None:
             update[key] = value
-
     if req.status == "completed":
         update["completed_at"] = now
-        update["completed_by"] = actor
-
+        update["completed_by"] = access.actor_id
     await db.the_eye_work_orders.update_one(
-        {"work_order_id": work_order_id},
-        {
-            "$set": update,
-            "$push": {"timeline": {
-                "at": now,
-                "type": "status_changed",
-                "from": current.get("status"),
-                "to": req.status,
-                "by": actor,
-                "note": req.note,
-            }},
-        },
+        current_query,
+        {"$set": update, "$push": {"timeline": {
+            "at": now, "type": "status_changed", "from": current.get("status"),
+            "to": req.status, "by": access.actor_id, "note": req.note,
+        }}},
     )
-    fresh = await db.the_eye_work_orders.find_one({"work_order_id": work_order_id}, {"_id": 0})
+    fresh = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("work_order.updated", fresh)
     return {"ok": True, "work_order": fresh}
 
 
 @router.post("/admin/rma")
 async def create_rma(req: RmaCreate, request: Request):
-    admin = await _require_admin(request)
-    item = await db.the_eye_inventory.find_one({"inventory_item_id": req.inventory_item_id}, {"_id": 0})
+    access = await _require_operator(request)
+    item_query = _inventory_scope(access, {"inventory_item_id": req.inventory_item_id})
+    item = await db.the_eye_inventory.find_one(item_query, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Inventory item not found")
-
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     rma_id = "RMA-" + secrets.token_hex(8).upper()
     doc = {
         "rma_id": rma_id,
         "inventory_item_id": req.inventory_item_id,
+        "project_id": item.get("project_id"),
+        "tenant_id": item.get("tenant_id"),
+        "customer_id": item.get("customer_id"),
+        "site_id": item.get("assigned_site_id"),
         "serial_number": item.get("serial_number"),
         "vendor": item.get("vendor"),
         "reason": req.reason,
@@ -417,18 +445,13 @@ async def create_rma(req: RmaCreate, request: Request):
         "status": "requested",
         "created_at": now,
         "updated_at": now,
-        "created_by": actor,
-        "timeline": [{
-            "at": now,
-            "type": "requested",
-            "by": actor,
-            "note": req.reason,
-        }],
+        "created_by": access.actor_id,
+        "timeline": [{"at": now, "type": "requested", "by": access.actor_id, "note": req.reason}],
     }
+    access.assert_document(doc)
     await db.the_eye_rma.insert_one(doc)
     await db.the_eye_inventory.update_one(
-        {"inventory_item_id": req.inventory_item_id},
-        {"$set": {"status": "rma", "updated_at": now}},
+        item_query, {"$set": {"status": "rma", "updated_at": now}}
     )
     doc.pop("_id", None)
     await broadcast_the_eye_event("rma.created", doc)
@@ -437,65 +460,54 @@ async def create_rma(req: RmaCreate, request: Request):
 
 @router.patch("/admin/rma/{rma_id}/status")
 async def update_rma_status(rma_id: str, req: RmaStatusUpdate, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_rma.find_one({"rma_id": rma_id}, {"_id": 0})
+    access = await _require_operator(request)
+    current_query = access.scope_query({"rma_id": rma_id})
+    current = await db.the_eye_rma.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="RMA not found")
-
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
     update: Dict[str, Any] = {"status": req.status, "updated_at": now}
     if req.actual_credit is not None:
         update["actual_credit"] = req.actual_credit
-
     await db.the_eye_rma.update_one(
-        {"rma_id": rma_id},
-        {
-            "$set": update,
-            "$push": {"timeline": {
-                "at": now,
-                "type": "status_changed",
-                "from": current.get("status"),
-                "to": req.status,
-                "by": actor,
-                "note": req.note,
-            }},
-        },
+        current_query,
+        {"$set": update, "$push": {"timeline": {
+            "at": now, "type": "status_changed", "from": current.get("status"),
+            "to": req.status, "by": access.actor_id, "note": req.note,
+        }}},
     )
-
     if req.status in {"closed", "credited", "rejected"}:
         next_status = "in_stock" if req.status == "credited" else "quarantine"
-        await db.the_eye_inventory.update_one(
-            {"inventory_item_id": current.get("inventory_item_id")},
-            {"$set": {"status": next_status, "updated_at": now}},
+        item_query = _inventory_scope(
+            access, {"inventory_item_id": current.get("inventory_item_id")}
         )
-
-    fresh = await db.the_eye_rma.find_one({"rma_id": rma_id}, {"_id": 0})
+        await db.the_eye_inventory.update_one(
+            item_query, {"$set": {"status": next_status, "updated_at": now}}
+        )
+    fresh = await db.the_eye_rma.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("rma.updated", fresh)
     return {"ok": True, "rma": fresh}
 
-
 @router.get("/admin/maintenance/summary")
 async def maintenance_summary(request: Request):
-    await _require_admin(request)
+    access = await _require_reader(request)
+    wo_open = _scope_owned(access, {"status": {"$nin": ["completed", "cancelled"]}})
+    wo_waiting = _scope_owned(access, {"status": "waiting_parts"})
+    rma_open = access.scope_query({"status": {"$nin": ["closed", "credited", "rejected"]}})
+    inv_query = _inventory_scope(access, {"status": {"$nin": ["retired", "replaced"]}})
 
-    open_work_orders = await db.the_eye_work_orders.count_documents(
-        {"status": {"$nin": ["completed", "cancelled"]}}
-    )
-    waiting_parts = await db.the_eye_work_orders.count_documents({"status": "waiting_parts"})
-    active_rma = await db.the_eye_rma.count_documents(
-        {"status": {"$nin": ["closed", "credited", "rejected"]}}
-    )
-
+    open_work_orders = await db.the_eye_work_orders.count_documents(wo_open)
+    waiting_parts = await db.the_eye_work_orders.count_documents(wo_waiting)
+    active_rma = await db.the_eye_rma.count_documents(rma_open)
     inventory_rows = await db.the_eye_inventory.find(
-        {"status": {"$nin": ["retired", "replaced"]}},
+        inv_query,
         {"_id": 0, "quantity": 1, "reserved_quantity": 1, "reorder_point": 1},
     ).to_list(10000)
     low_stock = sum(
         1 for row in inventory_rows
-        if int(row.get("quantity") or 0) - int(row.get("reserved_quantity") or 0) <= int(row.get("reorder_point") or 0)
+        if int(row.get("quantity") or 0) - int(row.get("reserved_quantity") or 0)
+        <= int(row.get("reorder_point") or 0)
     )
-
     return {
         "ok": True,
         "open_work_orders": open_work_orders,

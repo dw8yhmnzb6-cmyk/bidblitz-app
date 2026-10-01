@@ -125,3 +125,26 @@ def test_readiness_never_claims_production_ready():
     readiness = _read(BACKEND / "routes" / "the_eye_readiness.py")
     assert "production_ready = False" in readiness
     assert "successful CI/build" in readiness
+
+
+def test_operational_routes_use_scoped_rbac():
+    incidents = _read(BACKEND / "routes" / "the_eye_incidents.py")
+    actions = _read(BACKEND / "routes" / "the_eye_actions.py")
+    maintenance = _read(BACKEND / "routes" / "the_eye_maintenance.py")
+
+    for source in [incidents, actions, maintenance]:
+        assert "require_the_eye_access" in source
+        assert "scope_query" in source
+
+    for field in ["project_id", "tenant_id", "customer_id", "site_id"]:
+        assert f'"{field}"' in incidents
+        assert f'"{field}"' in actions
+
+    assert "_scope_owned" in actions
+    assert '"technician"' in actions
+    assert "_scope_owned" in maintenance
+    assert "_inventory_scope" in maintenance
+    assert "assigned_site_id" in maintenance
+    assert "access.assert_document" in incidents
+    assert "access.assert_document" in actions
+    assert "access.assert_document" in maintenance

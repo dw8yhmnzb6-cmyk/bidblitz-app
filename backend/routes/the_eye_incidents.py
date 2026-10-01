@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -32,15 +32,30 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
 
 
 class IncidentCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=240)
     severity: Severity = "medium"
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
     site_id: Optional[str] = Field(default=None, max_length=128)
     location_id: Optional[str] = Field(default=None, max_length=128)
     category: str = Field(default="operations", max_length=80)
@@ -158,7 +173,8 @@ async def _find_open_correlated_incident(site_id: str, root_cause: Optional[str]
 
 @router.post("/admin/incidents")
 async def create_incident(req: IncidentCreate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
+    admin = dict(access.user)
     now = _now()
     incident_id = "INC-" + secrets.token_hex(8).upper()
     doc = {
@@ -166,6 +182,9 @@ async def create_incident(req: IncidentCreate, request: Request):
         "title": req.title,
         "severity": req.severity,
         "status": "new",
+        "project_id": req.project_id,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
         "site_id": req.site_id,
         "location_id": req.location_id,
         "category": req.category,
@@ -186,6 +205,7 @@ async def create_incident(req: IncidentCreate, request: Request):
             "note": "Incident created",
         }],
     }
+    access.assert_document(doc)
     await db.the_eye_incidents.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("incident.created", doc)
@@ -194,7 +214,9 @@ async def create_incident(req: IncidentCreate, request: Request):
 
 @router.post("/admin/incidents/correlate-site/{site_id}")
 async def correlate_site_incident(site_id: str, request: Request):
-    admin = await _require_admin(request)
+    access = await require_the_eye_access(request, {"super_admin", "admin", "site_manager"})
+    access.assert_document({"site_id": site_id})
+    admin = dict(access.user)
     snapshot = await _site_snapshot(site_id)
 
     offline_cameras = snapshot["offline_cameras"]
@@ -295,7 +317,7 @@ async def list_incidents(
     site_id: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
@@ -303,18 +325,20 @@ async def list_incidents(
         query["severity"] = severity
     if site_id:
         query["site_id"] = site_id
+    query = access.scope_query(query)
     rows = await db.the_eye_incidents.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "incidents": rows}
 
 
 @router.get("/admin/incidents/summary")
 async def incident_summary(request: Request):
-    await _require_admin(request)
+    access = await _require_reader(request)
+    match_query = access.scope_query({
+        "status": {"$nin": ["resolved", "closed"]},
+    })
     rows = await db.the_eye_incidents.aggregate([
         {
-            "$match": {
-                "status": {"$nin": ["resolved", "closed"]},
-            }
+            "$match": match_query,
         },
         {
             "$group": {
@@ -333,8 +357,9 @@ async def incident_summary(request: Request):
 
 @router.get("/admin/incidents/{incident_id}")
 async def get_incident(incident_id: str, request: Request):
-    await _require_admin(request)
-    row = await db.the_eye_incidents.find_one({"incident_id": incident_id}, {"_id": 0})
+    access = await _require_reader(request)
+    query = access.scope_query({"incident_id": incident_id})
+    row = await db.the_eye_incidents.find_one(query, {"_id": 0})
     if not row:
         raise HTTPException(status_code=404, detail="Incident not found")
     return {"ok": True, "incident": row}
@@ -346,16 +371,17 @@ async def update_incident_status(
     req: IncidentStatusUpdate,
     request: Request,
 ):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
+    current_query = access.scope_query({"incident_id": incident_id})
     current = await db.the_eye_incidents.find_one(
-        {"incident_id": incident_id},
+        current_query,
         {"_id": 0},
     )
     if not current:
         raise HTTPException(status_code=404, detail="Incident not found")
 
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
+    actor = access.actor_id
     timeline_entry = {
         "at": now,
         "type": "status_changed",
@@ -376,9 +402,9 @@ async def update_incident_status(
         update["closed_by"] = actor
 
     await db.the_eye_incidents.update_one(
-        {"incident_id": incident_id},
+        current_query,
         {"$set": update, "$push": {"timeline": timeline_entry}},
     )
-    fresh = await db.the_eye_incidents.find_one({"incident_id": incident_id}, {"_id": 0})
+    fresh = await db.the_eye_incidents.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("incident.updated", fresh)
     return {"ok": True, "incident": fresh}
