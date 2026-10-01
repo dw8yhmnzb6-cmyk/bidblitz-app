@@ -1,0 +1,123 @@
+name: One-time Stripe Origin Hardening Live Deploy
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/deploy-stripe-origin-hardening-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9dcb7d96a3defe0c60fb8aded7680bfb54823d47
+          fetch-depth: 0
+
+      - name: Verify exact tested delta
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "9dcb7d96a3defe0c60fb8aded7680bfb54823d47"
+          changed="$(git diff --name-only 35a71757504a614d876d5ecbf1adf31d2025e2a5 9dcb7d96a3defe0c60fb8aded7680bfb54823d47 | sort)"
+          expected="$(printf '%s\n' backend/routes/stripe.py backend/tests/test_ci_smoke.py | sort)"
+          printf '%s\n' "$changed"
+          test "$changed" = "$expected"
+          grep -F 'def _normalize_checkout_origin(raw_origin: str) -> str:' backend/routes/stripe.py
+          grep -F 'Checkout origin is not allowed' backend/routes/stripe.py
+          grep -F 'Checkout origin must use HTTPS' backend/routes/stripe.py
+          grep -F 'origin = _normalize_checkout_origin(req.origin_url)' backend/routes/stripe.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate source
+        run: |
+          python -m py_compile backend/routes/stripe.py
+          python -m py_compile backend/tests/test_ci_smoke.py
+
+      - name: Package backend route
+        run: tar -C backend -czf /tmp/bidblitz-stripe-origin-hardening.tgz routes/stripe.py
+
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Upload
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: sshpass -e scp -o StrictHostKeyChecking=no /tmp/bidblitz-stripe-origin-hardening.tgz root@212.227.20.190:/tmp/
+
+      - name: Activate backend with rollback and runtime checks
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          BACK=/var/www/bidblitz/backend
+          STAMP=$(date -u +%Y%m%d%H%M%S)
+          PREV="$BACK/routes/stripe.py.previous.$STAMP"
+          cp "$BACK/routes/stripe.py" "$PREV"
+
+          rollback() {
+            rc=$?
+            trap - ERR
+            cp "$PREV" "$BACK/routes/stripe.py" || true
+            pm2 restart api --update-env || true
+            exit "$rc"
+          }
+          trap rollback ERR
+
+          tar -xzf /tmp/bidblitz-stripe-origin-hardening.tgz -C "$BACK"
+          "$BACK/venv/bin/python" -m py_compile "$BACK/routes/stripe.py"
+
+          cd "$BACK"
+          "$BACK/venv/bin/python" - <<'PY'
+          from fastapi import HTTPException
+          from core.config import FRONTEND_URL, IS_PRODUCTION
+          from routes.stripe import _normalize_checkout_origin
+
+          good = _normalize_checkout_origin(FRONTEND_URL)
+          assert good.startswith(("https://", "http://"))
+          if IS_PRODUCTION:
+              assert good.startswith("https://")
+
+          try:
+              _normalize_checkout_origin("https://evil.example")
+          except HTTPException as exc:
+              assert exc.status_code == 400
+              assert "not allowed" in str(exc.detail).lower()
+          else:
+              raise AssertionError("untrusted checkout origin was accepted")
+
+          try:
+              _normalize_checkout_origin("https://bidblitz.ae@evil.example")
+          except HTTPException:
+              pass
+          else:
+              raise AssertionError("credential-style checkout origin was accepted")
+
+          print("STRIPE_ORIGIN_RUNTIME_OK")
+          PY
+
+          pm2 restart api --update-env
+          sleep 4
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/stripe/plans >/tmp/plans.json
+          curl -fsS --retry 8 --retry-delay 2 https://bidblitz.ae/api/stripe/packages >/tmp/packages.json
+          python3 - <<'PY'
+          import json
+          plans=json.load(open('/tmp/plans.json'))['plans']
+          packages=json.load(open('/tmp/packages.json'))['packages']
+          assert len(plans) == 6
+          assert [str(p['package_id']) for p in plans] == [str(p['id']) for p in packages]
+          print("STRIPE_PUBLIC_READINESS_OK")
+          PY
+
+          nginx -t
+          systemctl reload nginx
+          trap - ERR
+          rm -f /tmp/bidblitz-stripe-origin-hardening.tgz
+          REMOTE
