@@ -147,18 +147,18 @@ class TheEyeAccess:
         clause: Dict[str, Any] = {field: {"$in": list(values)}}
         return _merge_query(query, clause)
 
-    def assert_document(
+    def can_access_document(
         self,
         document: Mapping[str, Any],
         *,
         field_map: Optional[Mapping[str, Optional[str]]] = None,
-    ) -> None:
+    ) -> bool:
         if self.unrestricted:
-            return
+            return True
 
         field, values = self._active_scope(field_map)
         if not field or not values:
-            raise HTTPException(status_code=403, detail="The Eye scope is not configured")
+            return False
 
         current: Any = document
         for part in field.split("."):
@@ -167,12 +167,63 @@ class TheEyeAccess:
                 break
             current = current.get(part)
 
+        if current is None and "." not in field and field.endswith("_id"):
+            plural_field = f"{field[:-3]}_ids"
+            current = document.get(plural_field)
+
         current_values = _clean_ids(current)
-        if not current_values or not any(value in values for value in current_values):
-            raise HTTPException(
-                status_code=403,
-                detail="Resource is outside your The Eye scope",
+        return bool(
+            current_values
+            and any(value in values for value in current_values)
+        )
+
+    def actor_aliases(self) -> tuple[str, ...]:
+        return _clean_ids((
+            self.actor_id,
+            self.user.get("id"),
+            self.user.get("user_id"),
+            self.user.get("email"),
+        ))
+
+    def can_receive_realtime(
+        self,
+        event_type: str,
+        payload: Mapping[str, Any],
+    ) -> bool:
+        if self.unrestricted:
+            return True
+        if not self.can_access_document(payload):
+            return False
+
+        if self.role == "technician":
+            if not str(event_type or "").startswith(
+                ("ticket.", "action.", "work_order.")
+            ):
+                return False
+            assigned_to = str(payload.get("assigned_to") or "")
+            return bool(
+                assigned_to
+                and assigned_to in self.actor_aliases()
             )
+
+        return self.role != "public"
+
+    def assert_document(
+        self,
+        document: Mapping[str, Any],
+        *,
+        field_map: Optional[Mapping[str, Optional[str]]] = None,
+    ) -> None:
+        if self.can_access_document(document, field_map=field_map):
+            return
+
+        field, values = self._active_scope(field_map)
+        if not field or not values:
+            raise HTTPException(status_code=403, detail="The Eye scope is not configured")
+        raise HTTPException(
+            status_code=403,
+            detail="Resource is outside your The Eye scope",
+        )
 
 
 async def require_the_eye_access(

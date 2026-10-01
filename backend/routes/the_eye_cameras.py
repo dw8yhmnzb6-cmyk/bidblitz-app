@@ -38,7 +38,17 @@ async def _require_admin(request: Request) -> dict:
 async def _require_reader(request: Request) -> TheEyeAccess:
     return await require_the_eye_access(
         request,
-        {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+        {
+            "super_admin", "admin", "project_admin", "site_manager",
+            "technician", "customer", "partner",
+        },
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
     )
 
 
@@ -235,9 +245,12 @@ async def update_camera(camera_id: str, req: CameraUpdate, request: Request):
 
 @router.post("/admin/cameras/{camera_id}/health")
 async def update_camera_health(camera_id: str, req: CameraHealthRequest, request: Request):
-    await _require_admin(request)
+    access = await _require_operator(request)
+    camera_query = access.scope_query(
+        {"camera_id": camera_id, "status": {"$ne": "disabled"}}
+    )
     camera = await db.the_eye_cameras.find_one(
-        {"camera_id": camera_id, "status": {"$ne": "disabled"}},
+        camera_query,
         {"_id": 0},
     )
     if not camera:
@@ -257,7 +270,7 @@ async def update_camera_health(camera_id: str, req: CameraHealthRequest, request
         "recorded_at": now,
     }
     await db.the_eye_cameras.update_one(
-        {"camera_id": camera_id},
+        camera_query,
         {"$set": {
             "connection_status": req.status,
             "last_health": health,
@@ -265,33 +278,51 @@ async def update_camera_health(camera_id: str, req: CameraHealthRequest, request
             "updated_at": now,
         }},
     )
-    await db.the_eye_camera_health.insert_one({"camera_id": camera_id, **health})
+    scope = {
+        "project_id": camera.get("project_id"),
+        "tenant_id": camera.get("tenant_id"),
+        "customer_id": camera.get("customer_id"),
+        "site_id": camera.get("site_id"),
+    }
+    await db.the_eye_camera_health.insert_one(
+        {"camera_id": camera_id, **scope, **health}
+    )
     await broadcast_the_eye_event(
         "camera.health",
-        {"camera_id": camera_id, "connection_status": req.status, "last_health": health, "last_seen_at": now},
+        {
+            "camera_id": camera_id,
+            **scope,
+            "connection_status": req.status,
+            "last_health": health,
+            "last_seen_at": now,
+        },
     )
     return {"ok": True, "camera_id": camera_id, "health": health}
 
 
 @router.post("/admin/cameras/{camera_id}/events")
 async def create_camera_event(camera_id: str, req: CameraEventRequest, request: Request):
-    admin = await _require_admin(request)
-    exists = await db.the_eye_cameras.find_one(
-        {"camera_id": camera_id, "status": {"$ne": "disabled"}},
-        {"_id": 0, "camera_id": 1},
+    access = await _require_operator(request)
+    camera_query = access.scope_query(
+        {"camera_id": camera_id, "status": {"$ne": "disabled"}}
     )
-    if not exists:
+    camera = await db.the_eye_cameras.find_one(camera_query, {"_id": 0})
+    if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
 
     doc = {
         "event_id": "CEV-" + secrets.token_hex(8).upper(),
         "camera_id": camera_id,
+        "project_id": camera.get("project_id"),
+        "tenant_id": camera.get("tenant_id"),
+        "customer_id": camera.get("customer_id"),
+        "site_id": camera.get("site_id"),
         "event_type": req.event_type,
         "severity": req.severity,
         "payload": sanitize_the_eye_payload(req.payload),
         "recorded_at": req.recorded_at or _now(),
         "received_at": _now(),
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
     await db.the_eye_camera_events.insert_one(doc)
     doc.pop("_id", None)
@@ -339,6 +370,10 @@ async def create_camera_stream_session(camera_id: str, request: Request):
     doc = {
         "session_id": session_id,
         "camera_id": camera_id,
+        "project_id": camera.get("project_id"),
+        "tenant_id": camera.get("tenant_id"),
+        "customer_id": camera.get("customer_id"),
+        "site_id": camera.get("site_id"),
         "user_id": access.actor_id,
         "token_hash": __import__("hashlib").sha256(session_token.encode("utf-8")).hexdigest(),
         "created_at": _now(),
@@ -355,7 +390,15 @@ async def create_camera_stream_session(camera_id: str, request: Request):
 
     await broadcast_the_eye_event(
         "camera.stream_session",
-        {"camera_id": camera_id, "session_id": session_id, "expires_at": expires.isoformat()},
+        {
+            "camera_id": camera_id,
+            "project_id": camera.get("project_id"),
+            "tenant_id": camera.get("tenant_id"),
+            "customer_id": camera.get("customer_id"),
+            "site_id": camera.get("site_id"),
+            "session_id": session_id,
+            "expires_at": expires.isoformat(),
+        },
     )
 
     return {

@@ -405,9 +405,10 @@ def test_remaining_intelligence_routes_use_central_rbac_and_scope():
     assert '"data_trust_state": "unknown" if data_trust is None else "measured"' in executive
 
     assert "resolve_the_eye_role" in ws
-    assert "GLOBAL_ROLES" in ws
-    assert "role not in GLOBAL_ROLES" in ws
-    assert "Scoped realtime access is not enabled for this role" in ws
+    assert "THE_EYE_ROLES" in ws
+    assert 'role not in THE_EYE_ROLES or role == "public"' in ws
+    assert "TheEyeAccess(user=user, role=role)" in ws
+    assert "the_eye_live_hub.connect(websocket, access)" in ws
 
     assert 'the_eye_network_nodes, "node_id"' in database
     assert 'the_eye_data_sources, "source_id"' in database
@@ -464,3 +465,41 @@ def test_work_order_parts_reserve_consume_and_release_inventory():
     assert 'the_eye_inventory_reservations, "reservation_id"' in database
     assert 'partialFilterExpression={"status": "reserved"}' in database
     assert '[("work_order_id", 1), ("inventory_item_id", 1)]' in database
+
+
+def test_realtime_fanout_is_scope_filtered():
+    access = _read(BACKEND / "core" / "the_eye_access.py")
+    live = _read(BACKEND / "core" / "the_eye_live.py")
+    ws = _read(BACKEND / "routes" / "the_eye_ws.py")
+    devices = _read(BACKEND / "routes" / "the_eye_devices.py")
+    cameras = _read(BACKEND / "routes" / "the_eye_cameras.py")
+    network = _read(BACKEND / "routes" / "the_eye_network.py")
+
+    assert "def can_access_document" in access
+    assert "def can_receive_realtime" in access
+    assert 'self.role == "technician"' in access
+    assert '("ticket.", "action.", "work_order.")' in access
+    assert "self._clients: Dict[WebSocket, TheEyeAccess]" in live
+    assert "access.can_receive_realtime(event_type, safe_payload)" in live
+    assert "the_eye_live_hub.connect(websocket, access)" in ws
+    assert 'role == "public"' in ws
+
+    for source in [devices, cameras, network]:
+        for field in ["project_id", "tenant_id", "customer_id", "site_id"]:
+            assert f'"{field}"' in source
+
+    assert '"camera.health"' in cameras
+    assert '"camera.event"' in cameras
+    assert '"camera.stream_session"' in cameras
+    assert '"project_id": camera.get("project_id")' in cameras
+    assert '"site_id": camera.get("site_id")' in cameras
+
+    assert '"network.health"' in network
+    assert '"project_id": node.get("project_id")' in network
+    assert '"site_id": node.get("site_id")' in network
+
+    assert '"device.heartbeat"' in devices
+    assert '"device.telemetry"' in devices
+    assert '"device.location"' in devices
+    assert '"project_id": device.get("project_id")' in devices
+    assert '"site_id": device.get("site_id")' in devices

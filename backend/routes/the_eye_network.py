@@ -218,7 +218,16 @@ async def update_network_health(node_id: str, req: NetworkNodeHealth, request: R
     })
     await broadcast_the_eye_event(
         "network.health",
-        {"node_id": node_id, "connection_status": req.status, "last_health": health, "last_seen_at": now},
+        {
+            "node_id": node_id,
+            "project_id": node.get("project_id"),
+            "tenant_id": node.get("tenant_id"),
+            "customer_id": node.get("customer_id"),
+            "site_id": node.get("site_id"),
+            "connection_status": req.status,
+            "last_health": health,
+            "last_seen_at": now,
+        },
     )
     return {"ok": True, "node_id": node_id, "health": health}
 
@@ -261,7 +270,6 @@ def _score_component(status: str) -> int:
 @router.get("/admin/sites/{site_id}/health")
 async def site_health(site_id: str, request: Request):
     access = await _require_reader(request)
-    site_scope = access.scope_query({"site_id": site_id})
     if not access.unrestricted and not await db.the_eye_network_nodes.find_one(
         access.scope_query({"site_id": site_id}),
         {"_id": 1},

@@ -336,7 +336,7 @@ async def device_heartbeat(
     req: DeviceHeartbeatRequest,
     x_device_token: Optional[str] = Header(default=None),
 ):
-    await _require_device(device_id, x_device_token)
+    device = await _require_device(device_id, x_device_token)
     now = _now()
 
     update: Dict[str, Any] = {
@@ -352,7 +352,17 @@ async def device_heartbeat(
         update["uptime_seconds"] = req.uptime_seconds
 
     await db.the_eye_devices.update_one({"device_id": device_id}, {"$set": update})
-    await broadcast_the_eye_event("device.heartbeat", {"device_id": device_id, **update})
+    await broadcast_the_eye_event(
+        "device.heartbeat",
+        {
+            "device_id": device_id,
+            "project_id": device.get("project_id"),
+            "tenant_id": device.get("tenant_id"),
+            "customer_id": device.get("customer_id"),
+            "site_id": device.get("site_id"),
+            **update,
+        },
+    )
     return {"ok": True, "device_id": device_id, "server_time": now}
 
 
@@ -362,7 +372,7 @@ async def device_location(
     req: DeviceLocationRequest,
     x_device_token: Optional[str] = Header(default=None),
 ):
-    await _require_device(device_id, x_device_token)
+    device = await _require_device(device_id, x_device_token)
     now = _now()
     recorded_at = req.recorded_at or now
 
@@ -386,12 +396,24 @@ async def device_location(
         }},
     )
     await db.the_eye_device_locations.insert_one(
-        {"device_id": device_id, **location, "received_at": now}
+        {
+            "device_id": device_id,
+            "project_id": device.get("project_id"),
+            "tenant_id": device.get("tenant_id"),
+            "customer_id": device.get("customer_id"),
+            "site_id": device.get("site_id"),
+            **location,
+            "received_at": now,
+        }
     )
     await broadcast_the_eye_event(
         "device.location",
         {
             "device_id": device_id,
+            "project_id": device.get("project_id"),
+            "tenant_id": device.get("tenant_id"),
+            "customer_id": device.get("customer_id"),
+            "site_id": device.get("site_id"),
             "location": location,
             "connection_status": "online",
             "last_seen_at": now,
@@ -407,12 +429,16 @@ async def device_telemetry(
     req: DeviceTelemetryRequest,
     x_device_token: Optional[str] = Header(default=None),
 ):
-    await _require_device(device_id, x_device_token)
+    device = await _require_device(device_id, x_device_token)
     now = _now()
 
     safe_metrics = sanitize_the_eye_payload(req.metrics)
     await db.the_eye_device_telemetry.insert_one({
         "device_id": device_id,
+        "project_id": device.get("project_id"),
+        "tenant_id": device.get("tenant_id"),
+        "customer_id": device.get("customer_id"),
+        "site_id": device.get("site_id"),
         "metrics": safe_metrics,
         "recorded_at": req.recorded_at or now,
         "received_at": now,
@@ -430,6 +456,10 @@ async def device_telemetry(
         "device.telemetry",
         {
             "device_id": device_id,
+            "project_id": device.get("project_id"),
+            "tenant_id": device.get("tenant_id"),
+            "customer_id": device.get("customer_id"),
+            "site_id": device.get("site_id"),
             "metrics": safe_metrics,
             "recorded_at": req.recorded_at or now,
             "received_at": now,
@@ -738,6 +768,10 @@ async def acknowledge_device_command(
         {
             "command_id": req.command_id,
             "device_id": device_id,
+            "project_id": command.get("project_id"),
+            "tenant_id": command.get("tenant_id"),
+            "customer_id": command.get("customer_id"),
+            "site_id": command.get("site_id"),
             "status": req.status,
             "result": safe_result,
             "previous_status": current_status,
