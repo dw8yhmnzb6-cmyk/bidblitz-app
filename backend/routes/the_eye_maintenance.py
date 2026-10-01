@@ -41,6 +41,27 @@ WorkOrderStatus = Literal[
 ]
 RmaStatus = Literal["requested", "approved", "shipped", "received", "credited", "rejected", "closed"]
 
+WORK_ORDER_TRANSITIONS = {
+    "new": {"assigned", "cancelled"},
+    "assigned": {"in_progress", "cancelled"},
+    "in_progress": {"waiting_parts", "validation", "cancelled"},
+    "waiting_parts": {"in_progress", "cancelled"},
+    "validation": {"in_progress", "completed", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+}
+
+
+def _validate_work_order_transition(current: str, target: str) -> None:
+    if current == target:
+        return
+    allowed = WORK_ORDER_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invalid work order transition: {current} -> {target}",
+        )
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -147,6 +168,15 @@ class WorkOrderStatusUpdate(BaseModel):
     labor_cost: Optional[float] = Field(default=None, ge=0)
     parts_cost: Optional[float] = Field(default=None, ge=0)
     validation_passed: Optional[bool] = None
+
+
+class WorkOrderValidationCreate(BaseModel):
+    outcome: Literal["passed", "failed"]
+    note: Optional[str] = Field(default=None, max_length=4000)
+    checklist: List[Dict[str, Any]] = Field(default_factory=list, max_length=200)
+    measurements: Dict[str, Any] = Field(default_factory=dict)
+    before_media_refs: List[str] = Field(default_factory=list, max_length=100)
+    after_media_refs: List[str] = Field(default_factory=list, max_length=100)
 
 
 class RmaCreate(BaseModel):
@@ -340,6 +370,7 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "labor_cost": 0.0,
         "parts_cost": 0.0,
         "validation_passed": None,
+        "validation": None,
         "created_at": now,
         "updated_at": now,
         "created_by": access.actor_id,
@@ -386,6 +417,28 @@ async def list_work_orders(
     return {"ok": True, "count": len(rows), "work_orders": rows}
 
 
+
+@router.get("/technician/work-orders")
+async def my_technician_work_orders(
+    request: Request,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    limit: int = Query(default=300, ge=1, le=1000),
+):
+    access = await require_the_eye_access(request, {"technician"})
+    query: Dict[str, Any] = {}
+    if status:
+        query["status"] = status
+    if priority:
+        query["priority"] = priority
+    query = _scope_owned(access, query)
+    rows = await db.the_eye_work_orders.find(
+        query,
+        {"_id": 0},
+    ).sort("updated_at", -1).to_list(limit)
+    return {"ok": True, "count": len(rows), "work_orders": rows}
+
+
 @router.patch("/admin/work-orders/{work_order_id}/status")
 async def update_work_order_status(work_order_id: str, req: WorkOrderStatusUpdate, request: Request):
     access = await require_the_eye_access(
@@ -396,27 +449,130 @@ async def update_work_order_status(work_order_id: str, req: WorkOrderStatusUpdat
     current = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Work order not found")
-    if req.status == "completed" and req.validation_passed is not True:
-        raise HTTPException(status_code=409, detail="Validation must pass before completing a work order")
+
+    if req.validation_passed is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Validation result must be recorded via the validation endpoint",
+        )
+
+    current_status = str(current.get("status") or "new")
+    _validate_work_order_transition(current_status, req.status)
+    if current_status == req.status:
+        return {"ok": True, "unchanged": True, "work_order": current}
+
+    if req.status == "completed":
+        if access.role == "technician":
+            raise HTTPException(
+                status_code=403,
+                detail="Technician cannot validate or complete own work order",
+            )
+        validation = current.get("validation") or {}
+        if (
+            current.get("validation_passed") is not True
+            or validation.get("outcome") != "passed"
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Independent validation must pass before completing a work order",
+            )
 
     now = _now()
     update: Dict[str, Any] = {"status": req.status, "updated_at": now}
-    for key in ["labor_minutes", "travel_cost", "labor_cost", "parts_cost", "validation_passed"]:
+    for key in ["labor_minutes", "travel_cost", "labor_cost", "parts_cost"]:
         value = getattr(req, key)
         if value is not None:
             update[key] = value
+
+    if req.status == "validation":
+        update["validation_requested_at"] = now
+        update["validation_requested_by"] = access.actor_id
     if req.status == "completed":
         update["completed_at"] = now
         update["completed_by"] = access.actor_id
+
     await db.the_eye_work_orders.update_one(
         current_query,
         {"$set": update, "$push": {"timeline": {
-            "at": now, "type": "status_changed", "from": current.get("status"),
-            "to": req.status, "by": access.actor_id, "note": req.note,
+            "at": now,
+            "type": "status_changed",
+            "from": current_status,
+            "to": req.status,
+            "by": access.actor_id,
+            "note": req.note,
         }}},
     )
     fresh = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("work_order.updated", fresh)
+    return {"ok": True, "work_order": fresh}
+
+
+@router.post("/admin/work-orders/{work_order_id}/validation")
+async def validate_work_order(
+    work_order_id: str,
+    req: WorkOrderValidationCreate,
+    request: Request,
+):
+    access = await _require_operator(request)
+    current_query = access.scope_query({"work_order_id": work_order_id})
+    current = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
+    if not current:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if current.get("status") != "validation":
+        raise HTTPException(
+            status_code=409,
+            detail="Work order must be in validation state",
+        )
+
+    assigned_to = str(current.get("assigned_to") or "")
+    if assigned_to and assigned_to in _actor_aliases(access):
+        raise HTTPException(
+            status_code=409,
+            detail="Assigned technician cannot validate their own work order",
+        )
+
+    now = _now()
+    validation = {
+        "validation_id": "VAL-" + secrets.token_hex(8).upper(),
+        "outcome": req.outcome,
+        "note": req.note,
+        "checklist": sanitize_the_eye_payload(req.checklist),
+        "measurements": sanitize_the_eye_payload(req.measurements),
+        "before_media_refs": list(dict.fromkeys(req.before_media_refs)),
+        "after_media_refs": list(dict.fromkeys(req.after_media_refs)),
+        "validated_at": now,
+        "validated_by": access.actor_id,
+    }
+    passed = req.outcome == "passed"
+    update: Dict[str, Any] = {
+        "validation": validation,
+        "validation_passed": passed,
+        "updated_at": now,
+    }
+    if not passed:
+        update["status"] = "in_progress"
+
+    await db.the_eye_work_orders.update_one(
+        current_query,
+        {"$set": update, "$push": {"timeline": {
+            "at": now,
+            "type": "validation_passed" if passed else "validation_failed",
+            "by": access.actor_id,
+            "validation_id": validation["validation_id"],
+            "note": req.note,
+        }}},
+    )
+    fresh = await db.the_eye_work_orders.find_one(
+        access.scope_query({"work_order_id": work_order_id}),
+        {"_id": 0},
+    )
+    await broadcast_the_eye_event("work_order.validation", {
+        "work_order_id": work_order_id,
+        "site_id": fresh.get("site_id"),
+        "project_id": fresh.get("project_id"),
+        "validation": validation,
+        "status": fresh.get("status"),
+    })
     return {"ok": True, "work_order": fresh}
 
 

@@ -426,6 +426,7 @@ async def create_indexes():
     await safe_create_index(db.the_eye_tickets, [("site_id", 1), ("assigned_to", 1), ("status", 1)])
     await safe_create_index(db.the_eye_work_orders, "work_order_id", unique=True, critical=True)
     await safe_create_index(db.the_eye_work_orders, [("site_id", 1), ("assigned_to", 1), ("status", 1)])
+    await safe_create_index(db.the_eye_work_orders, "validation.validation_id", unique=True, sparse=True, critical=True)
     await safe_create_index(db.the_eye_inventory, "inventory_item_id", unique=True, critical=True)
     await safe_create_index(db.the_eye_inventory, "serial_number", unique=True, sparse=True, critical=True)
     await safe_create_index(db.the_eye_rma, "rma_id", unique=True, critical=True)

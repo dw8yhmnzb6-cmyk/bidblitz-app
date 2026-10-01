@@ -412,6 +412,28 @@ async def list_tickets(
     return {"ok": True, "count": len(rows), "tickets": rows}
 
 
+
+@router.get("/technician/tickets")
+async def my_technician_tickets(
+    request: Request,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+):
+    access = await require_the_eye_access(request, {"technician"})
+    query: Dict[str, Any] = {}
+    if status:
+        query["status"] = status
+    if priority:
+        query["priority"] = priority
+    query = _scope_owned(access, query)
+    rows = await db.the_eye_tickets.find(
+        query,
+        {"_id": 0},
+    ).sort("updated_at", -1).to_list(limit)
+    return {"ok": True, "count": len(rows), "tickets": rows}
+
+
 @router.patch("/admin/tickets/{ticket_id}/assign")
 async def assign_ticket(ticket_id: str, req: AssignmentRequest, request: Request):
     access = await _require_operator(request)

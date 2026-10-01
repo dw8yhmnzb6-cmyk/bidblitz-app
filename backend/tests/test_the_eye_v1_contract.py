@@ -413,3 +413,27 @@ def test_remaining_intelligence_routes_use_central_rbac_and_scope():
     assert 'the_eye_data_sources, "source_id"' in database
     assert 'the_eye_data_quality_issues, "issue_id"' in database
     assert 'the_eye_executive_briefs, "brief_id"' in database
+
+
+def test_technician_workflow_requires_independent_validation():
+    actions = _read(BACKEND / "routes" / "the_eye_actions.py")
+    maintenance = _read(BACKEND / "routes" / "the_eye_maintenance.py")
+    database = _read(BACKEND / "core" / "database.py")
+
+    assert '@router.get("/technician/tickets")' in actions
+    assert '@router.get("/technician/work-orders")' in maintenance
+    assert 'require_the_eye_access(request, {"technician"})' in actions
+    assert 'require_the_eye_access(request, {"technician"})' in maintenance
+    assert "_scope_owned(access, query)" in actions
+    assert "_scope_owned(access, query)" in maintenance
+
+    assert "WORK_ORDER_TRANSITIONS" in maintenance
+    assert "_validate_work_order_transition(current_status, req.status)" in maintenance
+    assert '@router.post("/admin/work-orders/{work_order_id}/validation")' in maintenance
+    assert "Assigned technician cannot validate their own work order" in maintenance
+    assert "Technician cannot validate or complete own work order" in maintenance
+    assert "Independent validation must pass before completing a work order" in maintenance
+    assert "Validation result must be recorded via the validation endpoint" in maintenance
+    assert '"validation_passed": passed' in maintenance
+    assert '"validated_by": access.actor_id' in maintenance
+    assert '"validation.validation_id"' in database
