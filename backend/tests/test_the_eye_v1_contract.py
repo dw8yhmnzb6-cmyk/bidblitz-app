@@ -148,3 +148,20 @@ def test_operational_routes_use_scoped_rbac():
     assert "access.assert_document" in incidents
     assert "access.assert_document" in actions
     assert "access.assert_document" in maintenance
+
+
+def test_location_search_and_project_scope_contracts():
+    locations = _read(BACKEND / "routes" / "the_eye_locations.py")
+    search = _read(BACKEND / "routes" / "the_eye_search.py")
+    projects = _read(BACKEND / "routes" / "the_eye_projects.py")
+
+    assert '"world"' in locations
+    assert '"country": {"world"}' in locations
+    assert "access.scope_query" in locations
+    assert "access.assert_document" in locations
+    assert "device_query = access.scope_query" in search
+    assert "camera_query = access.scope_query" in search
+    assert "location_query = access.scope_query" in search
+    assert "_project_scope" in projects
+    assert '"schema_version"' in projects
+    assert '"project_admin"' in projects

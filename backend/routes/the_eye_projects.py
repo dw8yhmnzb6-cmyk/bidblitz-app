@@ -11,7 +11,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -24,11 +24,30 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+PROJECT_SCOPE_MAP = {"tenant_id": None, "customer_id": None, "site_id": None}
+
+
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_project_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "partner"},
+    )
+
+
+async def _require_project_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin"},
+    )
+
+
+def _project_scope(access: TheEyeAccess, query: Dict[str, Any]) -> Dict[str, Any]:
+    return access.scope_query(query, field_map=PROJECT_SCOPE_MAP)
 
 
 def _hash_connector_token(token: str) -> str:
@@ -105,6 +124,7 @@ class ProjectEventIn(BaseModel):
     device_id: Optional[str] = Field(default=None, max_length=160)
     source: Optional[str] = Field(default=None, max_length=160)
     correlation_id: Optional[str] = Field(default=None, max_length=160)
+    schema_version: str = Field(default="1", min_length=1, max_length=32)
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -162,12 +182,13 @@ async def list_projects(
     category: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_project_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
     if category:
         query["category"] = category
+    query = _project_scope(access, query)
 
     rows = await db.the_eye_projects.find(query, {"_id": 0}).sort("name", 1).to_list(limit)
     return {"ok": True, "count": len(rows), "projects": rows}
@@ -175,8 +196,9 @@ async def list_projects(
 
 @router.post("/admin/projects/{project_key}/connector-token")
 async def create_project_connector_token(project_key: str, req: ConnectorTokenCreate, request: Request):
-    admin = await _require_admin(request)
-    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
+    access = await _require_project_operator(request)
+    project_query = _project_scope(access, {"project_key": project_key})
+    project = await db.the_eye_projects.find_one(project_query, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -194,11 +216,11 @@ async def create_project_connector_token(project_key: str, req: ConnectorTokenCr
         "created_at": now,
         "updated_at": now,
         "last_seen_at": None,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
     await db.the_eye_project_connectors.insert_one(doc)
     await db.the_eye_projects.update_one(
-        {"project_key": project_key},
+        project_query,
         {"$addToSet": {"connector_ids": connector_id}, "$set": {"updated_at": now}},
     )
     return {
@@ -308,6 +330,7 @@ async def connector_event(
         "device_id": req.device_id,
         "source": req.source or project_key,
         "correlation_id": req.correlation_id,
+        "schema_version": req.schema_version,
         "payload": req.payload,
         "connector_id": connector.get("connector_id"),
         "received_at": now,
@@ -324,8 +347,9 @@ async def connector_event(
 
 @router.post("/admin/projects/{project_key}/snapshot")
 async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, request: Request):
-    await _require_admin(request)
-    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
+    access = await _require_project_operator(request)
+    project_query = _project_scope(access, {"project_key": project_key})
+    project = await db.the_eye_projects.find_one(project_query, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -365,7 +389,7 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
     snapshot.pop("_id", None)
 
     await db.the_eye_projects.update_one(
-        {"project_key": project_key},
+        project_query,
         {"$set": {
             "status": req.status,
             "health_score": req.health_score,
@@ -383,13 +407,14 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
 
 @router.get("/admin/projects/{project_key}")
 async def get_project(project_key: str, request: Request):
-    await _require_admin(request)
-    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
+    access = await _require_project_reader(request)
+    project_query = _project_scope(access, {"project_key": project_key})
+    project = await db.the_eye_projects.find_one(project_query, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     history = await db.the_eye_project_snapshots.find(
-        {"project_key": project_key},
+        {"project_id": project.get("project_id")},
         {"_id": 0, "metrics": 0},
     ).sort("received_at", -1).to_list(100)
 
@@ -438,8 +463,9 @@ async def list_kpis(request: Request, limit: int = Query(default=500, ge=1, le=5
 
 @router.get("/admin/project-intelligence/overview")
 async def project_intelligence_overview(request: Request):
-    await _require_admin(request)
-    projects = await db.the_eye_projects.find({}, {"_id": 0}).to_list(2000)
+    access = await _require_project_reader(request)
+    project_query = _project_scope(access, {})
+    projects = await db.the_eye_projects.find(project_query, {"_id": 0}).to_list(2000)
 
     total_revenue = 0.0
     total_cost = 0.0

@@ -8,17 +8,17 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Search"])
 
 
-async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+    )
 
 
 def _regex(value: str, anchored: bool = False) -> Dict[str, Any]:
@@ -127,21 +127,22 @@ async def global_search(
     limit: int = Query(default=12, ge=1, le=50),
 ):
     """Search known The Eye devices and internal location entities."""
-    await _require_admin(request)
+    access = await _require_reader(request)
     needle = q.strip()
     rx = _regex(needle)
 
+    device_query = access.scope_query({
+        "$or": [
+            {"device_id": rx},
+            {"serial_number": rx},
+            {"name": rx},
+            {"device_type": rx},
+            {"city": rx},
+            {"country": rx},
+        ]
+    })
     device_rows = await db.the_eye_devices.find(
-        {
-            "$or": [
-                {"device_id": rx},
-                {"serial_number": rx},
-                {"name": rx},
-                {"device_type": rx},
-                {"city": rx},
-                {"country": rx},
-            ]
-        },
+        device_query,
         {
             "_id": 0,
             "token_hash": 0,
@@ -150,17 +151,18 @@ async def global_search(
         },
     ).limit(limit).to_list(limit)
 
+    camera_query = access.scope_query({
+        "status": {"$ne": "disabled"},
+        "$or": [
+            {"camera_id": rx},
+            {"name": rx},
+            {"camera_type": rx},
+            {"site_id": rx},
+            {"device_id": rx},
+        ],
+    })
     camera_rows = await db.the_eye_cameras.find(
-        {
-            "status": {"$ne": "disabled"},
-            "$or": [
-                {"camera_id": rx},
-                {"name": rx},
-                {"camera_type": rx},
-                {"site_id": rx},
-                {"device_id": rx},
-            ],
-        },
+        camera_query,
         {
             "_id": 0,
             "metadata": 0,
@@ -169,25 +171,28 @@ async def global_search(
         },
     ).limit(limit).to_list(limit)
 
+    location_query = access.scope_query({
+        "status": {"$ne": "deleted"},
+        "$or": [
+            {"name": rx},
+            {"country": rx},
+            {"region": rx},
+            {"city": rx},
+            {"district": rx},
+            {"street": rx},
+            {"site_id": rx},
+            {"location_id": rx},
+        ]
+    })
     location_rows = await db.the_eye_locations.find(
-        {
-            "$or": [
-                {"name": rx},
-                {"country": rx},
-                {"region": rx},
-                {"city": rx},
-                {"district": rx},
-                {"street": rx},
-                {"site_id": rx},
-                {"location_id": rx},
-            ]
-        },
+        location_query,
         {"_id": 0},
     ).limit(limit).to_list(limit)
 
+    city_match = access.scope_query({"city": rx})
     city_rows = await db.the_eye_devices.aggregate(
         [
-            {"$match": {"city": rx}},
+            {"$match": city_match},
             {
                 "$group": {
                     "_id": {"city": "$city", "country": "$country"},
@@ -254,11 +259,12 @@ async def location_summary(
     country: str | None = Query(default=None, max_length=2),
 ):
     """Return a live device summary for a known city/location context."""
-    await _require_admin(request)
+    access = await _require_reader(request)
 
     query: Dict[str, Any] = {"city": _regex(city, anchored=True)}
     if country:
         query["country"] = _regex(country, anchored=True)
+    query = access.scope_query(query)
 
     total = await db.the_eye_devices.count_documents(query)
     online = await db.the_eye_devices.count_documents(
@@ -284,11 +290,13 @@ async def location_summary(
         ]
     ).to_list(100)
 
+    location_query = access.scope_query({
+        "status": {"$ne": "deleted"},
+        "city": _regex(city, anchored=True),
+        **({"country": _regex(country, anchored=True)} if country else {}),
+    })
     location_doc = await db.the_eye_locations.find_one(
-        {
-            "city": _regex(city, anchored=True),
-            **({"country": _regex(country, anchored=True)} if country else {}),
-        },
+        location_query,
         {"_id": 0},
     )
 

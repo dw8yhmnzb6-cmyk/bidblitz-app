@@ -11,13 +11,14 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Locations"])
 
 LocationType = Literal[
+    "world",
     "country",
     "region",
     "city",
@@ -28,7 +29,8 @@ LocationType = Literal[
 ]
 
 PARENT_RULES = {
-    "country": set(),
+    "world": set(),
+    "country": {"world"},
     "region": {"country"},
     "city": {"country", "region"},
     "district": {"city"},
@@ -43,10 +45,22 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "customer", "partner"},
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
 
 
 class Coordinates(BaseModel):
@@ -59,6 +73,9 @@ class LocationCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=160)
     code: Optional[str] = Field(default=None, max_length=64)
     parent_id: Optional[str] = Field(default=None, max_length=128)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
     country: Optional[str] = Field(default=None, max_length=2)
     region: Optional[str] = Field(default=None, max_length=160)
     city: Optional[str] = Field(default=None, max_length=160)
@@ -84,11 +101,17 @@ class LocationUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-async def _load_parent(parent_id: Optional[str]) -> Optional[dict]:
+async def _load_parent(
+    parent_id: Optional[str],
+    access: Optional[TheEyeAccess] = None,
+) -> Optional[dict]:
     if not parent_id:
         return None
+    query: Dict[str, Any] = {"location_id": parent_id, "status": {"$ne": "deleted"}}
+    if access is not None:
+        query = access.scope_query(query)
     parent = await db.the_eye_locations.find_one(
-        {"location_id": parent_id, "status": {"$ne": "deleted"}},
+        query,
         {"_id": 0},
     )
     if not parent:
@@ -99,7 +122,7 @@ async def _load_parent(parent_id: Optional[str]) -> Optional[dict]:
 def _validate_parent(location_type: str, parent: Optional[dict]) -> None:
     allowed = PARENT_RULES[location_type]
     if not parent:
-        if allowed and location_type not in {"city", "site", "zone"}:
+        if allowed and location_type not in {"country", "city", "site", "zone"}:
             raise HTTPException(status_code=400, detail=f"{location_type} requires a parent")
         return
     parent_type = parent.get("location_type")
@@ -135,16 +158,17 @@ def _inherit_geo(req: LocationCreate, parent: Optional[dict]) -> dict:
     return inherited
 
 
+
 @router.post("/admin/locations")
 async def create_location(req: LocationCreate, request: Request):
-    admin = await _require_admin(request)
-    parent = await _load_parent(req.parent_id)
+    access = await _require_operator(request)
+    parent = await _load_parent(req.parent_id, access)
     _validate_parent(req.location_type, parent)
 
     if req.code:
+        existing_query = access.scope_query({"code": req.code, "status": {"$ne": "deleted"}})
         existing = await db.the_eye_locations.find_one(
-            {"code": req.code, "status": {"$ne": "deleted"}},
-            {"_id": 0, "location_id": 1},
+            existing_query, {"_id": 0, "location_id": 1}
         )
         if existing:
             raise HTTPException(status_code=409, detail="Location code already exists")
@@ -152,12 +176,21 @@ async def create_location(req: LocationCreate, request: Request):
     now = _now()
     location_id = "LOC-" + secrets.token_hex(8).upper()
     geo = _inherit_geo(req, parent)
+    site_id = (
+        (req.code or location_id)
+        if req.location_type == "site"
+        else (parent or {}).get("site_id")
+    )
     doc = {
         "location_id": location_id,
         "location_type": req.location_type,
         "name": req.name,
         "code": req.code,
         "parent_id": req.parent_id,
+        "project_id": req.project_id or (parent or {}).get("project_id"),
+        "tenant_id": req.tenant_id or (parent or {}).get("tenant_id"),
+        "customer_id": req.customer_id or (parent or {}).get("customer_id"),
+        "site_id": site_id,
         **geo,
         "address": req.address,
         "location": req.location.model_dump() if req.location else None,
@@ -166,8 +199,9 @@ async def create_location(req: LocationCreate, request: Request):
         "status": "active",
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
+    access.assert_document(doc)
     await db.the_eye_locations.insert_one(doc)
     safe = {k: v for k, v in doc.items() if k != "_id"}
     await broadcast_the_eye_event("location.created", safe)
@@ -182,7 +216,7 @@ async def list_locations(
     city: Optional[str] = None,
     limit: int = Query(default=500, ge=1, le=5000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {"status": {"$ne": "deleted"}}
     if location_type:
         query["location_type"] = location_type
@@ -190,7 +224,7 @@ async def list_locations(
         query["parent_id"] = parent_id
     if city:
         query["city"] = {"$regex": f"^{re.escape(city)}$", "$options": "i"}
-
+    query = access.scope_query(query)
     rows = await db.the_eye_locations.find(query, {"_id": 0}).sort(
         [("country", 1), ("city", 1), ("name", 1)]
     ).to_list(limit)
@@ -199,11 +233,11 @@ async def list_locations(
 
 @router.get("/admin/locations/{location_id}")
 async def get_location(location_id: str, request: Request):
-    await _require_admin(request)
-    row = await db.the_eye_locations.find_one(
-        {"location_id": location_id, "status": {"$ne": "deleted"}},
-        {"_id": 0},
+    access = await _require_reader(request)
+    current_query = access.scope_query(
+        {"location_id": location_id, "status": {"$ne": "deleted"}}
     )
+    row = await db.the_eye_locations.find_one(current_query, {"_id": 0})
     if not row:
         raise HTTPException(status_code=404, detail="Location not found")
 
@@ -215,9 +249,13 @@ async def get_location(location_id: str, request: Request):
         if parent_id in seen:
             break
         seen.add(parent_id)
+        parent_query = access.scope_query(
+            {"location_id": parent_id, "status": {"$ne": "deleted"}}
+        )
         parent = await db.the_eye_locations.find_one(
-            {"location_id": parent_id, "status": {"$ne": "deleted"}},
-            {"_id": 0, "location_id": 1, "location_type": 1, "name": 1, "parent_id": 1},
+            parent_query,
+            {"_id": 0, "location_id": 1, "location_type": 1, "name": 1,
+             "parent_id": 1, "project_id": 1, "tenant_id": 1, "customer_id": 1, "site_id": 1},
         )
         if not parent:
             break
@@ -225,23 +263,26 @@ async def get_location(location_id: str, request: Request):
         cursor = parent
     ancestors.reverse()
 
+    children_query = access.scope_query(
+        {"parent_id": location_id, "status": {"$ne": "deleted"}}
+    )
     children = await db.the_eye_locations.find(
-        {"parent_id": location_id, "status": {"$ne": "deleted"}},
+        children_query,
         {"_id": 0, "location_id": 1, "location_type": 1, "name": 1, "health_score": 1},
     ).sort("name", 1).to_list(500)
 
     device_query: Dict[str, Any] = {}
     if row.get("location_type") == "site":
-        device_query["metadata.site_id"] = row.get("code") or row.get("location_id")
+        device_query["site_id"] = row.get("site_id") or row.get("code") or row.get("location_id")
     elif row.get("city"):
         device_query["city"] = {"$regex": f"^{re.escape(str(row['city']))}$", "$options": "i"}
         if row.get("country"):
             device_query["country"] = {"$regex": f"^{re.escape(str(row['country']))}$", "$options": "i"}
+    device_query = access.scope_query(device_query) if device_query else {}
 
     total_devices = await db.the_eye_devices.count_documents(device_query) if device_query else 0
-    online_devices = await db.the_eye_devices.count_documents(
-        {**device_query, "connection_status": "online"}
-    ) if device_query else 0
+    online_query = {**device_query, "connection_status": "online"} if device_query else {}
+    online_devices = await db.the_eye_devices.count_documents(online_query) if online_query else 0
 
     return {
         "ok": True,
@@ -262,11 +303,11 @@ async def get_location(location_id: str, request: Request):
 
 @router.patch("/admin/locations/{location_id}")
 async def update_location(location_id: str, req: LocationUpdate, request: Request):
-    await _require_admin(request)
-    current = await db.the_eye_locations.find_one(
-        {"location_id": location_id, "status": {"$ne": "deleted"}},
-        {"_id": 0},
+    access = await _require_operator(request)
+    current_query = access.scope_query(
+        {"location_id": location_id, "status": {"$ne": "deleted"}}
     )
+    current = await db.the_eye_locations.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Location not found")
 
@@ -274,43 +315,45 @@ async def update_location(location_id: str, req: LocationUpdate, request: Reques
     if "parent_id" in update:
         if update["parent_id"] == location_id:
             raise HTTPException(status_code=400, detail="Location cannot be its own parent")
-        parent = await _load_parent(update["parent_id"])
+        parent = await _load_parent(update["parent_id"], access)
         _validate_parent(current["location_type"], parent)
-
     if "location" in update and update["location"] is not None and hasattr(update["location"], "model_dump"):
         update["location"] = update["location"].model_dump()
 
     update["updated_at"] = _now()
-    await db.the_eye_locations.update_one(
-        {"location_id": location_id},
-        {"$set": update},
+    prospective = {**current, **update}
+    access.assert_document(prospective)
+    await db.the_eye_locations.update_one(current_query, {"$set": update})
+    fresh = await db.the_eye_locations.find_one(
+        access.scope_query({"location_id": location_id}), {"_id": 0}
     )
-    fresh = await db.the_eye_locations.find_one({"location_id": location_id}, {"_id": 0})
     await broadcast_the_eye_event("location.updated", fresh)
     return {"ok": True, "location": fresh}
 
-
 @router.delete("/admin/locations/{location_id}")
 async def delete_location(location_id: str, request: Request):
-    await _require_admin(request)
-    child_count = await db.the_eye_locations.count_documents(
+    access = await _require_operator(request)
+    current_query = access.scope_query(
+        {"location_id": location_id, "status": {"$ne": "deleted"}}
+    )
+    current = await db.the_eye_locations.find_one(current_query, {"_id": 0})
+    if not current:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    child_query = access.scope_query(
         {"parent_id": location_id, "status": {"$ne": "deleted"}}
     )
+    child_count = await db.the_eye_locations.count_documents(child_query)
     if child_count:
         raise HTTPException(
             status_code=409,
             detail="Location has active children and cannot be deleted",
         )
-
     result = await db.the_eye_locations.update_one(
-        {"location_id": location_id, "status": {"$ne": "deleted"}},
+        current_query,
         {"$set": {"status": "deleted", "updated_at": _now()}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Location not found")
-
-    await broadcast_the_eye_event(
-        "location.deleted",
-        {"location_id": location_id},
-    )
+    await broadcast_the_eye_event("location.deleted", {"location_id": location_id})
     return {"ok": True, "location_id": location_id, "status": "deleted"}
