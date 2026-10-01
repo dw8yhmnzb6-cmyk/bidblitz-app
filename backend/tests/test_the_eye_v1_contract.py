@@ -229,3 +229,32 @@ def test_recursive_data_safety_contract():
     assert "sanitize_the_eye_payload(before)" in security
     assert "sanitize_the_eye_payload(after)" in security
     assert "safe_the_eye_document(doc)" in security
+
+
+def test_the_eye_database_integrity_and_connector_idempotency_contract():
+    database = _read(BACKEND / "core" / "database.py")
+    projects = _read(BACKEND / "routes" / "the_eye_projects.py")
+
+    for collection_field in [
+        'the_eye_devices, "device_id"',
+        'the_eye_device_commands, "command_id"',
+        'the_eye_cameras, "camera_id"',
+        'the_eye_locations, "location_id"',
+        'the_eye_incidents, "incident_id"',
+        'the_eye_tickets, "ticket_id"',
+        'the_eye_work_orders, "work_order_id"',
+        'the_eye_projects, "project_key"',
+        'the_eye_project_connectors, "connector_id"',
+        'the_eye_approvals, "approval_id"',
+    ]:
+        assert collection_field in database
+
+    assert '[("project_key", 1), ("event_id", 1)]' in database
+    assert '[("project_key", 1), ("snapshot_id", 1)]' in database
+    assert "unique=True, critical=True" in database
+
+    assert "DuplicateKeyError" in projects
+    assert "except DuplicateKeyError" in projects
+    assert "snapshot_id: Optional[str]" in projects
+    assert "schema_version: str" in projects
+    assert '"duplicate": True' in projects

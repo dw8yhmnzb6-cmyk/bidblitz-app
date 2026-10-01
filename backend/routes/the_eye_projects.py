@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
@@ -86,6 +87,8 @@ class ProjectRegister(BaseModel):
 
 
 class ProjectSnapshot(BaseModel):
+    snapshot_id: Optional[str] = Field(default=None, max_length=160)
+    schema_version: str = Field(default="1", min_length=1, max_length=32)
     status: ProjectStatus = "unknown"
     health_score: Optional[float] = Field(default=None, ge=0, le=100)
     revenue: Optional[float] = None
@@ -232,24 +235,31 @@ async def create_project_connector_token(project_key: str, req: ConnectorTokenCr
     }
 
 
+
 @router.post("/connectors/{project_key}/snapshot")
 async def connector_snapshot(
     project_key: str,
     req: ProjectSnapshot,
     x_the_eye_connector_token: Optional[str] = Header(default=None),
 ):
-    connector = await _require_project_connector(project_key, x_the_eye_connector_token, "kpis.write")
+    connector = await _require_project_connector(
+        project_key,
+        x_the_eye_connector_token,
+        "kpis.write",
+    )
     project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     now = _now()
+    snapshot_id = req.snapshot_id or ("KPI-" + secrets.token_hex(8).upper())
     profit = req.profit
     if profit is None and req.revenue is not None and req.cost is not None:
         profit = req.revenue - req.cost
 
     snapshot = {
-        "snapshot_id": "KPI-" + secrets.token_hex(8).upper(),
+        "snapshot_id": snapshot_id,
+        "schema_version": req.schema_version,
         "project_id": project.get("project_id"),
         "project_key": project_key,
         "status": req.status,
@@ -276,7 +286,15 @@ async def connector_snapshot(
         "connector_id": connector.get("connector_id"),
         "metrics": sanitize_the_eye_payload(req.metrics),
     }
-    await db.the_eye_project_snapshots.insert_one(snapshot)
+    try:
+        await db.the_eye_project_snapshots.insert_one(snapshot)
+    except DuplicateKeyError:
+        return {
+            "ok": True,
+            "duplicate": True,
+            "snapshot_id": snapshot_id,
+        }
+
     snapshot.pop("_id", None)
     await db.the_eye_projects.update_one(
         {"project_key": project_key},
@@ -295,7 +313,7 @@ async def connector_snapshot(
         {"$set": {"last_seen_at": now, "updated_at": now}},
     )
     await broadcast_the_eye_event("project.snapshot", snapshot)
-    return {"ok": True, "snapshot": snapshot}
+    return {"ok": True, "duplicate": False, "snapshot": snapshot}
 
 
 @router.post("/connectors/{project_key}/events")
@@ -304,20 +322,20 @@ async def connector_event(
     req: ProjectEventIn,
     x_the_eye_connector_token: Optional[str] = Header(default=None),
 ):
-    connector = await _require_project_connector(project_key, x_the_eye_connector_token, "events.write")
-    project = await db.the_eye_projects.find_one({"project_key": project_key}, {"_id": 0, "project_id": 1})
+    connector = await _require_project_connector(
+        project_key,
+        x_the_eye_connector_token,
+        "events.write",
+    )
+    project = await db.the_eye_projects.find_one(
+        {"project_key": project_key},
+        {"_id": 0, "project_id": 1},
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     now = _now()
     event_id = req.event_id or ("EVT-" + secrets.token_hex(10).upper())
-    existing = await db.the_eye_project_events.find_one(
-        {"project_key": project_key, "event_id": event_id},
-        {"_id": 0, "event_id": 1},
-    )
-    if existing:
-        return {"ok": True, "duplicate": True, "event_id": event_id}
-
     doc = {
         "event_id": event_id,
         "project_id": project.get("project_id"),
@@ -336,7 +354,15 @@ async def connector_event(
         "connector_id": connector.get("connector_id"),
         "received_at": now,
     }
-    await db.the_eye_project_events.insert_one(doc)
+    try:
+        await db.the_eye_project_events.insert_one(doc)
+    except DuplicateKeyError:
+        return {
+            "ok": True,
+            "duplicate": True,
+            "event_id": event_id,
+        }
+
     doc.pop("_id", None)
     await db.the_eye_project_connectors.update_one(
         {"connector_id": connector.get("connector_id")},
@@ -355,12 +381,14 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
         raise HTTPException(status_code=404, detail="Project not found")
 
     now = _now()
+    snapshot_id = req.snapshot_id or ("KPI-" + secrets.token_hex(8).upper())
     profit = req.profit
     if profit is None and req.revenue is not None and req.cost is not None:
         profit = req.revenue - req.cost
 
     snapshot = {
-        "snapshot_id": "KPI-" + secrets.token_hex(8).upper(),
+        "snapshot_id": snapshot_id,
+        "schema_version": req.schema_version,
         "project_id": project.get("project_id"),
         "project_key": project_key,
         "status": req.status,
@@ -386,9 +414,16 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
         "received_at": now,
         "metrics": sanitize_the_eye_payload(req.metrics),
     }
-    await db.the_eye_project_snapshots.insert_one(snapshot)
-    snapshot.pop("_id", None)
+    try:
+        await db.the_eye_project_snapshots.insert_one(snapshot)
+    except DuplicateKeyError:
+        return {
+            "ok": True,
+            "duplicate": True,
+            "snapshot_id": snapshot_id,
+        }
 
+    snapshot.pop("_id", None)
     await db.the_eye_projects.update_one(
         project_query,
         {"$set": {
@@ -401,10 +436,8 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
             "updated_at": now,
         }},
     )
-
     await broadcast_the_eye_event("project.snapshot", snapshot)
-    return {"ok": True, "snapshot": snapshot}
-
+    return {"ok": True, "duplicate": False, "snapshot": snapshot}
 
 @router.get("/admin/projects/{project_key}")
 async def get_project(project_key: str, request: Request):

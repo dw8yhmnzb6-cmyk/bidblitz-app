@@ -384,6 +384,56 @@ async def create_indexes():
     await safe_create_index(db.merchant_daily_closing_reports, "report_number", unique=True)
     await safe_create_index(db.merchant_z_reports, "report_number", unique=True)
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # THE EYE V1 — IDENTITY, IDEMPOTENCY & SCOPE INDEXES
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    await safe_create_index(db.the_eye_devices, "device_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_devices, "serial_number", unique=True, sparse=True, critical=True)
+    await safe_create_index(db.the_eye_devices, [("project_id", 1), ("site_id", 1), ("status", 1)])
+    await safe_create_index(db.the_eye_devices, [("tenant_id", 1), ("customer_id", 1), ("site_id", 1)])
+
+    await safe_create_index(db.the_eye_device_commands, "command_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_device_commands, [("device_id", 1), ("status", 1), ("expires_at", 1)])
+    await safe_create_index(db.the_eye_device_locations, [("device_id", 1), ("received_at", -1)])
+    await safe_create_index(db.the_eye_device_telemetry, [("device_id", 1), ("received_at", -1)])
+    await safe_create_index(db.the_eye_device_groups, "group_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_firmware_releases, [("device_type", 1), ("version", 1)], unique=True, critical=True)
+
+    await safe_create_index(db.the_eye_cameras, "camera_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_cameras, [("project_id", 1), ("site_id", 1), ("connection_status", 1)])
+    await safe_create_index(db.the_eye_locations, "location_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_locations, [("parent_id", 1), ("status", 1)])
+    await safe_create_index(db.the_eye_locations, [("project_id", 1), ("site_id", 1), ("status", 1)])
+
+    await safe_create_index(db.the_eye_incidents, "incident_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_incidents, [("project_id", 1), ("site_id", 1), ("status", 1), ("severity", 1)])
+    await safe_create_index(db.the_eye_actions, "action_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_tickets, "ticket_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_tickets, [("site_id", 1), ("assigned_to", 1), ("status", 1)])
+    await safe_create_index(db.the_eye_work_orders, "work_order_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_work_orders, [("site_id", 1), ("assigned_to", 1), ("status", 1)])
+    await safe_create_index(db.the_eye_inventory, "inventory_item_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_inventory, "serial_number", unique=True, sparse=True, critical=True)
+    await safe_create_index(db.the_eye_rma, "rma_id", unique=True, critical=True)
+
+    await safe_create_index(db.the_eye_projects, "project_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_projects, "project_key", unique=True, critical=True)
+    await safe_create_index(db.the_eye_project_connectors, "connector_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_project_connectors, "token_hash", unique=True, critical=True)
+    await safe_create_index(db.the_eye_project_events, [("project_key", 1), ("event_id", 1)], unique=True, critical=True)
+    await safe_create_index(db.the_eye_project_snapshots, [("project_key", 1), ("snapshot_id", 1)], unique=True, critical=True)
+    await safe_create_index(db.the_eye_project_snapshots, [("project_id", 1), ("received_at", -1)])
+
+    await safe_create_index(db.the_eye_providers, "provider_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_providers, "project_ids")
+    await safe_create_index(db.the_eye_security_events, "event_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_security_events, [("project_id", 1), ("status", 1), ("risk_score", -1)])
+    await safe_create_index(db.the_eye_approvals, "approval_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_approvals, [("project_id", 1), ("status", 1), ("created_at", -1)])
+    await safe_create_index(db.the_eye_audit_logs, "audit_id", unique=True, critical=True)
+    await safe_create_index(db.the_eye_audit_logs, [("project_id", 1), ("created_at", -1)])
+
     await safe_create_index(db.monitoring_probes, "key", unique=True)
     await safe_create_index(db.monitoring_incidents, [("created_at", -1), ("type", 1)])
     await safe_create_index(db.monitoring_alert_notifications, "alert_key", unique=True)
