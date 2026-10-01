@@ -6,6 +6,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.security import get_current_user_from_token
+from core.the_eye_access import GLOBAL_ROLES, resolve_the_eye_role
 from core.the_eye_live import the_eye_live_hub
 
 
@@ -29,16 +30,20 @@ async def the_eye_websocket(websocket: WebSocket):
         await websocket.close(code=4401)
         return
 
-    if user.get("role") != "admin":
+    role = resolve_the_eye_role(user)
+    if role not in GLOBAL_ROLES:
         await websocket.accept()
-        await websocket.send_json({"type": "error", "message": "Admin required"})
+        await websocket.send_json({
+            "type": "error",
+            "message": "Scoped realtime access is not enabled for this role",
+        })
         await websocket.close(code=4403)
         return
 
     await the_eye_live_hub.connect(websocket)
     await websocket.send_json({
         "type": "connected",
-        "payload": {"service": "the-eye", "role": "admin"},
+        "payload": {"service": "the-eye", "role": role},
     })
 
     try:

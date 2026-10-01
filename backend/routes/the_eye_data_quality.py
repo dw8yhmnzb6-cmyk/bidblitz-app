@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_data_safety import sanitize_the_eye_payload
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -38,17 +38,28 @@ def _now() -> str:
     return _now_dt().isoformat()
 
 
-async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
+    )
+
+
+async def _require_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
 
 
 class DataSourceCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=160)
     source_type: str = Field(..., min_length=2, max_length=100)
     project: Optional[str] = Field(default=None, max_length=120)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
+    site_id: Optional[str] = Field(default=None, max_length=128)
     entity_type: Optional[str] = Field(default=None, max_length=120)
     expected_freshness_seconds: int = Field(default=300, ge=1, le=604800)
     source_of_truth: bool = False
@@ -72,6 +83,10 @@ class QualityIssueCreate(BaseModel):
     severity: Literal["low", "medium", "high", "critical"] = "medium"
     source_id: Optional[str] = Field(default=None, max_length=128)
     project: Optional[str] = Field(default=None, max_length=120)
+    project_id: Optional[str] = Field(default=None, max_length=128)
+    tenant_id: Optional[str] = Field(default=None, max_length=128)
+    customer_id: Optional[str] = Field(default=None, max_length=128)
+    site_id: Optional[str] = Field(default=None, max_length=128)
     entity_type: Optional[str] = Field(default=None, max_length=120)
     entity_id: Optional[str] = Field(default=None, max_length=160)
     description: str = Field(..., min_length=3, max_length=2000)
@@ -115,9 +130,10 @@ def _trust_score(freshness: float, completeness: float, consistency: float, avai
     )
 
 
+
 @router.post("/admin/data-quality/sources")
 async def create_source(req: DataSourceCreate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
     now = _now()
     source_id = "SRC-" + secrets.token_hex(8).upper()
     doc = {
@@ -125,6 +141,10 @@ async def create_source(req: DataSourceCreate, request: Request):
         "name": req.name,
         "source_type": req.source_type,
         "project": req.project,
+        "project_id": req.project_id,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
+        "site_id": req.site_id,
         "entity_type": req.entity_type,
         "expected_freshness_seconds": req.expected_freshness_seconds,
         "source_of_truth": req.source_of_truth,
@@ -136,8 +156,9 @@ async def create_source(req: DataSourceCreate, request: Request):
         "last_seen_at": None,
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
+    access.assert_document(doc)
     await db.the_eye_data_sources.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("data_quality.source_created", doc)
@@ -146,8 +167,9 @@ async def create_source(req: DataSourceCreate, request: Request):
 
 @router.post("/admin/data-quality/sources/{source_id}/heartbeat")
 async def source_heartbeat(source_id: str, req: DataSourceHeartbeat, request: Request):
-    await _require_admin(request)
-    source = await db.the_eye_data_sources.find_one({"source_id": source_id}, {"_id": 0})
+    access = await _require_operator(request)
+    source_query = access.scope_query({"source_id": source_id})
+    source = await db.the_eye_data_sources.find_one(source_query, {"_id": 0})
     if not source:
         raise HTTPException(status_code=404, detail="Data source not found")
 
@@ -167,6 +189,10 @@ async def source_heartbeat(source_id: str, req: DataSourceHeartbeat, request: Re
     )
     assessment = {
         "source_id": source_id,
+        "project_id": source.get("project_id"),
+        "tenant_id": source.get("tenant_id"),
+        "customer_id": source.get("customer_id"),
+        "site_id": source.get("site_id"),
         "status": status,
         "trust_score": trust,
         "freshness_percent": freshness,
@@ -181,7 +207,7 @@ async def source_heartbeat(source_id: str, req: DataSourceHeartbeat, request: Re
         "recorded_at": now,
     }
     await db.the_eye_data_sources.update_one(
-        {"source_id": source_id},
+        source_query,
         {"$set": {
             "status": status,
             "trust_score": trust,
@@ -199,7 +225,16 @@ async def source_heartbeat(source_id: str, req: DataSourceHeartbeat, request: Re
 
 @router.post("/admin/data-quality/issues")
 async def create_quality_issue(req: QualityIssueCreate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
+    source = None
+    if req.source_id:
+        source = await db.the_eye_data_sources.find_one(
+            access.scope_query({"source_id": req.source_id}),
+            {"_id": 0},
+        )
+        if not source:
+            raise HTTPException(status_code=400, detail="Data source not found")
+
     now = _now()
     issue_id = "DQI-" + secrets.token_hex(8).upper()
     doc = {
@@ -208,17 +243,22 @@ async def create_quality_issue(req: QualityIssueCreate, request: Request):
         "severity": req.severity,
         "status": "open",
         "source_id": req.source_id,
-        "project": req.project,
+        "project": req.project or (source or {}).get("project"),
+        "project_id": req.project_id or (source or {}).get("project_id"),
+        "tenant_id": req.tenant_id or (source or {}).get("tenant_id"),
+        "customer_id": req.customer_id or (source or {}).get("customer_id"),
+        "site_id": req.site_id or (source or {}).get("site_id"),
         "entity_type": req.entity_type,
         "entity_id": req.entity_id,
         "description": req.description,
-        "expected_value": req.expected_value,
-        "observed_value": req.observed_value,
+        "expected_value": sanitize_the_eye_payload(req.expected_value),
+        "observed_value": sanitize_the_eye_payload(req.observed_value),
         "metadata": sanitize_the_eye_payload(req.metadata),
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
+    access.assert_document(doc)
     await db.the_eye_data_quality_issues.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("data_quality.issue_created", doc)
@@ -227,16 +267,24 @@ async def create_quality_issue(req: QualityIssueCreate, request: Request):
 
 @router.patch("/admin/data-quality/issues/{issue_id}/resolve")
 async def resolve_quality_issue(issue_id: str, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_operator(request)
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
+    issue_query = access.scope_query({"issue_id": issue_id, "status": {"$ne": "resolved"}})
     result = await db.the_eye_data_quality_issues.update_one(
-        {"issue_id": issue_id, "status": {"$ne": "resolved"}},
-        {"$set": {"status": "resolved", "resolved_at": now, "resolved_by": actor, "updated_at": now}},
+        issue_query,
+        {"$set": {
+            "status": "resolved",
+            "resolved_at": now,
+            "resolved_by": access.actor_id,
+            "updated_at": now,
+        }},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Open data quality issue not found")
-    row = await db.the_eye_data_quality_issues.find_one({"issue_id": issue_id}, {"_id": 0})
+    row = await db.the_eye_data_quality_issues.find_one(
+        access.scope_query({"issue_id": issue_id}),
+        {"_id": 0},
+    )
     await broadcast_the_eye_event("data_quality.issue_resolved", row)
     return {"ok": True, "issue": row}
 
@@ -249,7 +297,7 @@ async def list_quality_issues(
     issue_type: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
@@ -257,15 +305,17 @@ async def list_quality_issues(
         query["severity"] = severity
     if issue_type:
         query["issue_type"] = issue_type
+    query = access.scope_query(query)
     rows = await db.the_eye_data_quality_issues.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "issues": rows}
 
 
 @router.get("/admin/data-quality/overview")
 async def data_quality_overview(request: Request):
-    await _require_admin(request)
+    access = await _require_reader(request)
 
-    sources = await db.the_eye_data_sources.find({}, {"_id": 0}).to_list(5000)
+    source_query = access.scope_query({})
+    sources = await db.the_eye_data_sources.find(source_query, {"_id": 0}).to_list(5000)
     refreshed_sources = []
     for source in sources:
         freshness, derived_status, age_seconds = _freshness_score(
@@ -289,8 +339,9 @@ async def data_quality_overview(request: Request):
             "age_seconds": age_seconds,
         })
 
+    issue_query = access.scope_query({"status": {"$ne": "resolved"}})
     open_issues = await db.the_eye_data_quality_issues.find(
-        {"status": {"$ne": "resolved"}},
+        issue_query,
         {"_id": 0},
     ).sort("created_at", -1).to_list(5000)
 
@@ -299,12 +350,9 @@ async def data_quality_overview(request: Request):
     trust_state = (
         "unknown"
         if overall_trust is None
-        else "trusted"
-        if overall_trust >= 90
-        else "acceptable"
-        if overall_trust >= 70
-        else "degraded"
-        if overall_trust >= 50
+        else "trusted" if overall_trust >= 90
+        else "acceptable" if overall_trust >= 70
+        else "degraded" if overall_trust >= 50
         else "unreliable"
     )
     live_sources = sum(1 for row in refreshed_sources if row.get("status") in {"live", "verified"})
@@ -328,23 +376,22 @@ async def data_quality_overview(request: Request):
         "issues": open_issues[:20],
     }
 
-
 @router.get("/admin/data-quality/entity/{entity_type}/{entity_id}")
 async def entity_trust(entity_type: str, entity_id: str, request: Request):
-    await _require_admin(request)
+    access = await _require_reader(request)
 
     issues = await db.the_eye_data_quality_issues.find(
-        {
+        access.scope_query({
             "entity_type": entity_type,
             "entity_id": entity_id,
             "status": {"$ne": "resolved"},
-        },
+        }),
         {"_id": 0},
     ).sort("created_at", -1).to_list(200)
 
-    source_count = await db.the_eye_data_sources.count_documents({
-        "entity_type": entity_type,
-    })
+    source_count = await db.the_eye_data_sources.count_documents(
+        access.scope_query({"entity_type": entity_type})
+    )
 
     penalty = 0
     for issue in issues:
@@ -359,12 +406,9 @@ async def entity_trust(entity_type: str, entity_id: str, request: Request):
     trust_state = (
         "unknown"
         if trust is None
-        else "trusted"
-        if trust >= 90
-        else "acceptable"
-        if trust >= 70
-        else "degraded"
-        if trust >= 50
+        else "trusted" if trust >= 90
+        else "acceptable" if trust >= 70
+        else "degraded" if trust >= 50
         else "unreliable"
     )
 

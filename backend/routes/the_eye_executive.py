@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -23,11 +23,19 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+async def _require_admin(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(request, {"super_admin", "admin"})
+
+
+async def _require_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin"},
+    )
+
+
+PROJECT_SCOPE_MAP = {"tenant_id": None, "customer_id": None, "site_id": None}
+PROVIDER_SCOPE_MAP = {"project_id": "project_ids", "tenant_id": None, "customer_id": None, "site_id": None}
 
 
 class ExecutiveBriefCreate(BaseModel):
@@ -36,8 +44,9 @@ class ExecutiveBriefCreate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=4000)
 
 
-async def _project_totals() -> dict:
-    projects = await db.the_eye_projects.find({}, {"_id": 0}).to_list(2000)
+async def _project_totals(access: TheEyeAccess) -> dict:
+    project_query = access.scope_query({}, field_map=PROJECT_SCOPE_MAP)
+    projects = await db.the_eye_projects.find(project_query, {"_id": 0}).to_list(2000)
     revenue = cost = profit = 0.0
     active_users = critical_alerts = open_incidents = 0
     healthy = 0
@@ -46,6 +55,7 @@ async def _project_totals() -> dict:
     for project in projects:
         snap = project.get("last_snapshot") or {}
         row = {
+            "project_id": project.get("project_id"),
             "project_key": project.get("project_key"),
             "name": project.get("name"),
             "status": project.get("status"),
@@ -74,7 +84,6 @@ async def _project_totals() -> dict:
         -(float(x.get("risk_score") or 0)),
         x.get("name") or "",
     ))
-
     return {
         "projects_total": len(projects),
         "projects_healthy": healthy,
@@ -88,24 +97,24 @@ async def _project_totals() -> dict:
     }
 
 
-async def _operations_totals() -> dict:
+async def _operations_totals(access: TheEyeAccess) -> dict:
     open_incidents = await db.the_eye_incidents.count_documents(
-        {"status": {"$nin": ["resolved", "closed"]}}
+        access.scope_query({"status": {"$nin": ["resolved", "closed"]}})
     )
     critical_incidents = await db.the_eye_incidents.count_documents(
-        {"status": {"$nin": ["resolved", "closed"]}, "severity": "critical"}
+        access.scope_query({"status": {"$nin": ["resolved", "closed"]}, "severity": "critical"})
     )
     open_actions = await db.the_eye_actions.count_documents(
-        {"status": {"$nin": ["done", "cancelled"]}}
+        access.scope_query({"status": {"$nin": ["done", "cancelled"]}})
     )
     open_tickets = await db.the_eye_tickets.count_documents(
-        {"status": {"$nin": ["resolved", "closed", "cancelled"]}}
+        access.scope_query({"status": {"$nin": ["resolved", "closed", "cancelled"]}})
     )
     open_work_orders = await db.the_eye_work_orders.count_documents(
-        {"status": {"$nin": ["completed", "cancelled"]}}
+        access.scope_query({"status": {"$nin": ["completed", "cancelled"]}})
     )
     waiting_parts = await db.the_eye_work_orders.count_documents(
-        {"status": "waiting_parts"}
+        access.scope_query({"status": "waiting_parts"})
     )
     return {
         "open_incidents": open_incidents,
@@ -117,24 +126,30 @@ async def _operations_totals() -> dict:
     }
 
 
-async def _risk_totals() -> dict:
+async def _risk_totals(access: TheEyeAccess) -> dict:
     security_open = await db.the_eye_security_events.count_documents(
-        {"status": {"$ne": "resolved"}}
+        access.scope_query({"status": {"$ne": "resolved"}})
     )
     security_critical = await db.the_eye_security_events.count_documents(
-        {"status": {"$ne": "resolved"}, "severity": "critical"}
+        access.scope_query({"status": {"$ne": "resolved"}, "severity": "critical"})
     )
     pending_approvals = await db.the_eye_approvals.count_documents(
-        {"status": "pending"}
+        access.scope_query({"status": "pending"})
     )
     provider_high_risk = await db.the_eye_providers.count_documents(
-        {"risk_level": {"$in": ["high", "critical"]}}
+        access.scope_query(
+            {"risk_level": {"$in": ["high", "critical"]}},
+            field_map=PROVIDER_SCOPE_MAP,
+        )
     )
     provider_down = await db.the_eye_providers.count_documents(
-        {"status": {"$in": ["partial_outage", "down"]}}
+        access.scope_query(
+            {"status": {"$in": ["partial_outage", "down"]}},
+            field_map=PROVIDER_SCOPE_MAP,
+        )
     )
     quality_issues = await db.the_eye_data_quality_issues.count_documents(
-        {"status": {"$ne": "resolved"}}
+        access.scope_query({"status": {"$ne": "resolved"}})
     )
     return {
         "security_open": security_open,
@@ -146,23 +161,30 @@ async def _risk_totals() -> dict:
     }
 
 
-async def _provider_cost() -> float:
-    rows = await db.the_eye_providers.find({}, {"_id": 0, "current_cost": 1}).to_list(2000)
+async def _provider_cost(access: TheEyeAccess) -> float:
+    query = access.scope_query({}, field_map=PROVIDER_SCOPE_MAP)
+    rows = await db.the_eye_providers.find(
+        query,
+        {"_id": 0, "current_cost": 1},
+    ).to_list(2000)
     return round(sum(float(row.get("current_cost") or 0) for row in rows), 2)
 
 
-async def _data_trust() -> float:
-    rows = await db.the_eye_data_sources.find({}, {"_id": 0, "trust_score": 1}).to_list(5000)
+async def _data_trust(access: TheEyeAccess) -> Optional[float]:
+    rows = await db.the_eye_data_sources.find(
+        access.scope_query({}),
+        {"_id": 0, "trust_score": 1},
+    ).to_list(5000)
     scores = [float(row.get("trust_score") or 0) for row in rows]
-    return round(sum(scores) / len(scores), 1) if scores else 100.0
+    return round(sum(scores) / len(scores), 1) if scores else None
 
 
-async def _executive_snapshot() -> dict:
-    projects = await _project_totals()
-    operations = await _operations_totals()
-    risk = await _risk_totals()
-    provider_cost = await _provider_cost()
-    data_trust = await _data_trust()
+async def _executive_snapshot(access: TheEyeAccess) -> dict:
+    projects = await _project_totals(access)
+    operations = await _operations_totals(access)
+    risk = await _risk_totals(access)
+    provider_cost = await _provider_cost(access)
+    data_trust = await _data_trust(access)
 
     priorities = []
     if operations["critical_incidents"]:
@@ -203,14 +225,15 @@ async def _executive_snapshot() -> dict:
         **risk,
         "provider_monthly_cost": provider_cost,
         "data_trust_score": data_trust,
+        "data_trust_state": "unknown" if data_trust is None else "measured",
         "priorities": priorities[:10],
     }
 
 
 @router.get("/admin/executive/overview")
 async def executive_overview(request: Request):
-    await _require_admin(request)
-    snapshot = await _executive_snapshot()
+    access = await _require_reader(request)
+    snapshot = await _executive_snapshot(access)
 
     recent = await db.the_eye_executive_briefs.find(
         {},
@@ -226,8 +249,8 @@ async def executive_overview(request: Request):
 
 @router.post("/admin/executive/briefs")
 async def create_executive_brief(req: ExecutiveBriefCreate, request: Request):
-    admin = await _require_admin(request)
-    snapshot = await _executive_snapshot()
+    access = await _require_admin(request)
+    snapshot = await _executive_snapshot(access)
     now = _now()
     brief_id = "BRF-" + secrets.token_hex(8).upper()
 
@@ -247,7 +270,11 @@ async def create_executive_brief(req: ExecutiveBriefCreate, request: Request):
         f"Open incidents: {snapshot['open_incidents']}",
         f"Security events: {snapshot['security_open']}",
         f"Provider monthly cost: {snapshot['provider_monthly_cost']:.2f}",
-        f"Data trust: {snapshot['data_trust_score']:.1f}",
+        (
+            f"Data trust: {snapshot['data_trust_score']:.1f}"
+            if snapshot["data_trust_score"] is not None
+            else "Data trust: UNKNOWN"
+        ),
     ]
 
     doc = {
@@ -259,7 +286,7 @@ async def create_executive_brief(req: ExecutiveBriefCreate, request: Request):
         "priorities": snapshot.get("priorities") or [],
         "snapshot": snapshot,
         "created_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
     await db.the_eye_executive_briefs.insert_one(doc)
     doc.pop("_id", None)

@@ -376,3 +376,40 @@ def test_frontend_never_presents_preview_data_as_live_truth():
     assert 'data_trust_score: null' in frontend
     assert "systemStatus.label" in frontend
     assert 'value="—"' in frontend
+
+
+def test_remaining_intelligence_routes_use_central_rbac_and_scope():
+    network = _read(BACKEND / "routes" / "the_eye_network.py")
+    quality = _read(BACKEND / "routes" / "the_eye_data_quality.py")
+    executive = _read(BACKEND / "routes" / "the_eye_executive.py")
+    ws = _read(BACKEND / "routes" / "the_eye_ws.py")
+    database = _read(BACKEND / "core" / "database.py")
+
+    for source in [network, quality, executive]:
+        assert "get_current_user" not in source
+        assert 'user.get("role") != "admin"' not in source
+        assert "require_the_eye_access" in source
+
+    assert "access.scope_query" in network
+    assert "access.assert_document(doc)" in network
+    for field in ["project_id", "tenant_id", "customer_id", "site_id"]:
+        assert f'"{field}"' in network
+        assert f'"{field}"' in quality
+
+    assert "access.scope_query" in quality
+    assert "access.assert_document(doc)" in quality
+    assert "overall_trust = round(sum(scores) / len(scores), 1) if scores else None" in quality
+
+    assert "_executive_snapshot(access)" in executive
+    assert "return round(sum(scores) / len(scores), 1) if scores else None" in executive
+    assert '"data_trust_state": "unknown" if data_trust is None else "measured"' in executive
+
+    assert "resolve_the_eye_role" in ws
+    assert "GLOBAL_ROLES" in ws
+    assert "role not in GLOBAL_ROLES" in ws
+    assert "Scoped realtime access is not enabled for this role" in ws
+
+    assert 'the_eye_network_nodes, "node_id"' in database
+    assert 'the_eye_data_sources, "source_id"' in database
+    assert 'the_eye_data_quality_issues, "issue_id"' in database
+    assert 'the_eye_executive_briefs, "brief_id"' in database
