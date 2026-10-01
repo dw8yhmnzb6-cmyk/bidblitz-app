@@ -314,8 +314,21 @@ async def aion_query(req: AionQuery, request: Request):
         ]
         if data["incidents"]:
             top = data["incidents"][0]
+            assessment = top.get("root_cause_assessment") or {}
+            likely_cause = (
+                assessment.get("likely_cause")
+                or top.get("root_cause")
+                or "noch offen"
+            )
+            cause_confidence = assessment.get("confidence")
+            confidence_text = (
+                f" ({round(float(cause_confidence) * 100)}% Confidence)"
+                if cause_confidence is not None
+                else ""
+            )
             analysis.append(
-                f"Priorität hat aktuell {top.get('incident_id')} mit Severity {top.get('severity')} und Root Cause {top.get('root_cause') or 'noch offen'}."
+                f"Priorität hat aktuell {top.get('incident_id')} mit Severity "
+                f"{top.get('severity')}. Likely Cause: {likely_cause}{confidence_text}."
             )
         source = data
     elif intent == "devices":

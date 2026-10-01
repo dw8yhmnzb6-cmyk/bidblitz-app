@@ -35,6 +35,8 @@ def test_the_eye_python_modules_parse():
         ast.parse(_read(path), filename=str(path))
     ast.parse(_read(BACKEND / "core" / "the_eye_live.py"))
     ast.parse(_read(BACKEND / "core" / "the_eye_access.py"))
+    ast.parse(_read(BACKEND / "core" / "the_eye_data_safety.py"))
+    ast.parse(_read(BACKEND / "core" / "the_eye_root_cause.py"))
 
 
 def test_all_the_eye_routers_are_registered():
@@ -339,3 +341,20 @@ def test_aion_data_trust_is_fail_closed():
     assert 'idempotency_key = f"aion:{approval_id}"' in aion
     assert '"delivery_attempts": 0' in aion
     assert "DuplicateKeyError" in aion
+
+
+def test_root_cause_output_is_explicitly_probabilistic():
+    helper = _read(BACKEND / "core" / "the_eye_root_cause.py")
+    network = _read(BACKEND / "routes" / "the_eye_network.py")
+    incidents = _read(BACKEND / "routes" / "the_eye_incidents.py")
+    aion = _read(BACKEND / "routes" / "the_eye_aion.py")
+
+    for key in ["fact", "likely_cause", "confidence", "recommended_check"]:
+        assert f'"{key}"' in helper
+
+    assert "build_root_cause_assessment" in network
+    assert "health_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else None" in network
+    assert '"health_state": health_state' in network
+    assert '"root_cause_assessment"' in incidents
+    assert '"recommended_checks"' in incidents
+    assert "Likely Cause:" in aion

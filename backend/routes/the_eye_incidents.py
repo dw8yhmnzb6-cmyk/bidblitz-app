@@ -13,6 +13,7 @@ from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
+from core.the_eye_root_cause import build_root_cause_assessment
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Incidents"])
@@ -83,6 +84,7 @@ class IncidentCreate(BaseModel):
     root_cause: Optional[str] = Field(default=None, max_length=160)
     confidence: Optional[float] = Field(default=None, ge=0, le=1)
     evidence: List[str] = Field(default_factory=list, max_length=100)
+    recommended_checks: List[str] = Field(default_factory=list, max_length=50)
     affected_devices: List[str] = Field(default_factory=list, max_length=5000)
     affected_cameras: List[str] = Field(default_factory=list, max_length=5000)
     affected_network_nodes: List[str] = Field(default_factory=list, max_length=1000)
@@ -169,6 +171,11 @@ async def _site_snapshot(site_id: str) -> dict:
             "No shared upstream failure confirmed",
         ]
 
+    assessment = build_root_cause_assessment(
+        root_cause,
+        confidence,
+        evidence,
+    )
     return {
         "network": network,
         "cameras": cameras,
@@ -179,6 +186,10 @@ async def _site_snapshot(site_id: str) -> dict:
         "root_cause": root_cause,
         "confidence": confidence,
         "evidence": evidence,
+        "recommended_checks": (
+            assessment.get("recommended_check", []) if assessment else []
+        ),
+        "root_cause_assessment": assessment,
     }
 
 
@@ -198,6 +209,12 @@ async def create_incident(req: IncidentCreate, request: Request):
     admin = dict(access.user)
     now = _now()
     incident_id = "INC-" + secrets.token_hex(8).upper()
+    root_cause_assessment = build_root_cause_assessment(
+        req.root_cause,
+        req.confidence,
+        req.evidence,
+        req.recommended_checks,
+    )
     doc = {
         "incident_id": incident_id,
         "title": req.title,
@@ -212,6 +229,12 @@ async def create_incident(req: IncidentCreate, request: Request):
         "root_cause": req.root_cause,
         "confidence": req.confidence,
         "evidence": req.evidence,
+        "recommended_checks": (
+            root_cause_assessment.get("recommended_check", [])
+            if root_cause_assessment
+            else list(dict.fromkeys(req.recommended_checks))
+        ),
+        "root_cause_assessment": root_cause_assessment,
         "affected_devices": list(dict.fromkeys(req.affected_devices)),
         "affected_cameras": list(dict.fromkeys(req.affected_cameras)),
         "affected_network_nodes": list(dict.fromkeys(req.affected_network_nodes)),
@@ -271,6 +294,8 @@ async def correlate_site_incident(site_id: str, request: Request):
             "root_cause": root_cause,
             "confidence": snapshot["confidence"],
             "evidence": snapshot["evidence"],
+            "recommended_checks": snapshot["recommended_checks"],
+            "root_cause_assessment": snapshot["root_cause_assessment"],
             "affected_cameras": affected_cameras,
             "affected_devices": affected_devices,
             "affected_network_nodes": affected_nodes,
@@ -310,6 +335,8 @@ async def correlate_site_incident(site_id: str, request: Request):
         "root_cause": root_cause,
         "confidence": snapshot["confidence"],
         "evidence": snapshot["evidence"],
+        "recommended_checks": snapshot["recommended_checks"],
+        "root_cause_assessment": snapshot["root_cause_assessment"],
         "affected_devices": affected_devices,
         "affected_cameras": affected_cameras,
         "affected_network_nodes": affected_nodes,

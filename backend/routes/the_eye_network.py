@@ -13,6 +13,7 @@ from core.database import db
 from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
+from core.the_eye_root_cause import build_root_cause_assessment
 
 
 router = APIRouter(prefix="/api/the-eye", tags=["The Eye Network"])
@@ -240,7 +241,8 @@ async def site_health(site_id: str, request: Request):
     camera_scores = [_score_component(str(c.get("connection_status") or "never_seen")) for c in cameras]
     device_scores = [_score_component(str(d.get("connection_status") or "never_seen")) for d in devices]
     all_scores = node_scores + camera_scores + device_scores
-    health_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else 100.0
+    health_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else None
+    health_state = "unknown" if health_score is None else "measured"
 
     offline_nodes = [n for n in network if n.get("connection_status") == "offline"]
     offline_cameras = [c for c in cameras if c.get("connection_status") == "offline"]
@@ -278,6 +280,7 @@ async def site_health(site_id: str, request: Request):
         "ok": True,
         "site_id": site_id,
         "health_score": health_score,
+        "health_state": health_state,
         "summary": {
             "network_nodes": len(network),
             "network_offline": len(offline_nodes),
@@ -287,10 +290,10 @@ async def site_health(site_id: str, request: Request):
             "devices": len(devices),
             "devices_offline": len([d for d in devices if d.get("connection_status") == "offline"]),
         },
-        "root_cause": {
-            "classification": root_cause,
-            "confidence": confidence,
-            "evidence": evidence,
-        } if root_cause else None,
+        "root_cause": build_root_cause_assessment(
+            root_cause,
+            confidence,
+            evidence,
+        ),
         "network": network,
     }
