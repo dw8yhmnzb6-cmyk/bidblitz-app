@@ -207,3 +207,25 @@ def test_central_emergency_write_policy_contract():
 
     assert "_require_super_admin" in continuity
     assert 'require_the_eye_access(request, {"super_admin"})' in continuity
+
+
+def test_recursive_data_safety_contract():
+    safety = _read(BACKEND / "core" / "the_eye_data_safety.py")
+    live = _read(BACKEND / "core" / "the_eye_live.py")
+    security = _read(BACKEND / "routes" / "the_eye_security.py")
+
+    for classification in [
+        "public", "internal", "confidential", "sensitive", "restricted",
+    ]:
+        assert f'"{classification}"' in safety
+
+    for restricted_key in [
+        "password", "access_token", "refresh_token", "api_key",
+        "client_secret", "private_key", "credentials", "rtsp_url",
+    ]:
+        assert f'"{restricted_key}"' in safety
+
+    assert "sanitize_the_eye_payload(payload)" in live
+    assert "sanitize_the_eye_payload(before)" in security
+    assert "sanitize_the_eye_payload(after)" in security
+    assert "safe_the_eye_document(doc)" in security

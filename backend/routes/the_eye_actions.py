@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -181,7 +182,7 @@ async def create_action(req: ActionCreate, request: Request):
         "assigned_to": req.assigned_to,
         "assigned_team": None,
         "due_at": req.due_at,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "created_at": now,
         "updated_at": now,
         "created_by": access.actor_id,
@@ -307,7 +308,7 @@ async def create_incident_action(incident_id: str, req: ActionCreate, request: R
         "assigned_to": req.assigned_to,
         "assigned_team": None,
         "due_at": req.due_at,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "created_at": now,
         "updated_at": now,
         "created_by": access.actor_id,

@@ -11,6 +11,8 @@ from typing import Any, Dict, Set
 
 from fastapi import WebSocket
 
+from core.the_eye_data_safety import sanitize_the_eye_payload
+
 
 class TheEyeLiveHub:
     def __init__(self) -> None:
@@ -27,7 +29,10 @@ class TheEyeLiveHub:
             self._clients.discard(websocket)
 
     async def broadcast(self, event_type: str, payload: Dict[str, Any]) -> None:
-        message = {"type": event_type, "payload": payload}
+        message = {
+            "type": event_type,
+            "payload": sanitize_the_eye_payload(payload),
+        }
         async with self._lock:
             clients = list(self._clients)
 

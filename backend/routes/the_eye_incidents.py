@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -194,7 +195,7 @@ async def create_incident(req: IncidentCreate, request: Request):
         "affected_devices": list(dict.fromkeys(req.affected_devices)),
         "affected_cameras": list(dict.fromkeys(req.affected_cameras)),
         "affected_network_nodes": list(dict.fromkeys(req.affected_network_nodes)),
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "created_at": now,
         "updated_at": now,
         "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),

@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
 
@@ -127,7 +128,7 @@ async def create_network_node(req: NetworkNodeCreate, request: Request):
         "model": req.model,
         "vendor": req.vendor,
         "poe_port_count": req.poe_port_count,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "active",
         "connection_status": "never_seen",
         "last_health": None,

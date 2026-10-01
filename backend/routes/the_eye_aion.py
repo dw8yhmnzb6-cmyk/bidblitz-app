@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
 from core.the_eye_guard import require_the_eye_writes_allowed
@@ -345,7 +346,7 @@ async def aion_query(req: AionQuery, request: Request):
         "user_id": _actor_id(admin),
         "question": req.question,
         "answer": answer,
-        "context": req.context,
+        "context": sanitize_the_eye_payload(req.context),
         "created_at": now,
     })
     await broadcast_the_eye_event("aion.answer", {
@@ -393,7 +394,7 @@ async def prepare_aion_action(req: AionActionPrepare, request: Request):
         "risk_level": risk_level,
         "dry_run": dry_run,
         "impact": impact,
-        "proposed_payload": req.payload,
+        "proposed_payload": sanitize_the_eye_payload(req.payload),
         "reason": req.reason,
         "status": "pending",
         "requested_by": _actor_id(admin),

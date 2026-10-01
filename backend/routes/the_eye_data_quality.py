@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.security import get_current_user
 from core.the_eye_live import broadcast_the_eye_event
 
@@ -128,7 +129,7 @@ async def create_source(req: DataSourceCreate, request: Request):
         "expected_freshness_seconds": req.expected_freshness_seconds,
         "source_of_truth": req.source_of_truth,
         "schema_version": req.schema_version,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "offline",
         "trust_score": 0.0,
         "last_data_at": None,
@@ -176,7 +177,7 @@ async def source_heartbeat(source_id: str, req: DataSourceHeartbeat, request: Re
         "age_seconds": age_seconds,
         "last_data_at": last_data_at,
         "schema_version": req.schema_version or source.get("schema_version"),
-        "details": req.details,
+        "details": sanitize_the_eye_payload(req.details),
         "recorded_at": now,
     }
     await db.the_eye_data_sources.update_one(
@@ -213,7 +214,7 @@ async def create_quality_issue(req: QualityIssueCreate, request: Request):
         "description": req.description,
         "expected_value": req.expected_value,
         "observed_value": req.observed_value,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "created_at": now,
         "updated_at": now,
         "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),

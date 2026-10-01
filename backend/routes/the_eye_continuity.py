@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -106,7 +107,7 @@ async def create_backup_report(req: BackupReportCreate, request: Request):
         "rpo_minutes": req.rpo_minutes,
         "rto_minutes": req.rto_minutes,
         "restore_tested_at": req.restore_tested_at,
-        "details": req.details,
+        "details": sanitize_the_eye_payload(req.details),
         "created_at": now,
         "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
     }
@@ -148,7 +149,7 @@ async def create_failover_report(req: FailoverReportCreate, request: Request):
         "last_tested_at": req.last_tested_at,
         "actual_recovery_seconds": req.actual_recovery_seconds,
         "expected_recovery_seconds": req.expected_recovery_seconds,
-        "details": req.details,
+        "details": sanitize_the_eye_payload(req.details),
         "created_at": now,
         "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
     }

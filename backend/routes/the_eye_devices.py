@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import safe_the_eye_document, sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 from core.the_eye_guard import require_the_eye_writes_allowed
 
@@ -208,7 +209,7 @@ async def register_device(req: DeviceRegisterRequest, request: Request):
         "group_ids": req.group_ids,
         "capabilities": req.capabilities,
         "firmware_version": req.firmware_version,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "active",
         "connection_status": "never_seen",
         "token_hash": _hash_token(device_token),
@@ -397,9 +398,10 @@ async def device_telemetry(
     await _require_device(device_id, x_device_token)
     now = _now()
 
+    safe_metrics = sanitize_the_eye_payload(req.metrics)
     await db.the_eye_device_telemetry.insert_one({
         "device_id": device_id,
-        "metrics": req.metrics,
+        "metrics": safe_metrics,
         "recorded_at": req.recorded_at or now,
         "received_at": now,
     })
@@ -409,14 +411,14 @@ async def device_telemetry(
             "last_seen_at": now,
             "connection_status": "online",
             "updated_at": now,
-            "last_telemetry": req.metrics,
+            "last_telemetry": safe_metrics,
         }},
     )
     await broadcast_the_eye_event(
         "device.telemetry",
         {
             "device_id": device_id,
-            "metrics": req.metrics,
+            "metrics": safe_metrics,
             "recorded_at": req.recorded_at or now,
             "received_at": now,
             "connection_status": "online",
@@ -499,7 +501,7 @@ async def create_device_command(
     await db.the_eye_device_commands.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("command.queued", doc)
-    return {"ok": True, "command": doc}
+    return {"ok": True, "command": safe_the_eye_document(doc)}
 
 
 @router.get("/devices/{device_id}/commands")
@@ -545,7 +547,7 @@ async def acknowledge_device_command(
     update = {
         "status": req.status,
         "acknowledged_at": now,
-        "result": req.result,
+        "result": sanitize_the_eye_payload(req.result),
     }
     if req.status in {"completed", "failed"}:
         update["completed_at"] = now
@@ -566,7 +568,7 @@ async def acknowledge_device_command(
             "command_id": req.command_id,
             "device_id": device_id,
             "status": req.status,
-            "result": req.result,
+            "result": sanitize_the_eye_payload(req.result),
             "updated_at": now,
         },
     )

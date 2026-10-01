@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -159,7 +160,7 @@ async def register_project(req: ProjectRegister, request: Request):
         "currency": req.currency.upper(),
         "connector_base_url": req.connector_base_url,
         "scopes": list(dict.fromkeys(req.scopes)),
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "unknown",
         "health_score": None,
         "risk_score": None,
@@ -273,7 +274,7 @@ async def connector_snapshot(
         "source_timestamp": req.source_timestamp,
         "received_at": now,
         "connector_id": connector.get("connector_id"),
-        "metrics": req.metrics,
+        "metrics": sanitize_the_eye_payload(req.metrics),
     }
     await db.the_eye_project_snapshots.insert_one(snapshot)
     snapshot.pop("_id", None)
@@ -331,7 +332,7 @@ async def connector_event(
         "source": req.source or project_key,
         "correlation_id": req.correlation_id,
         "schema_version": req.schema_version,
-        "payload": req.payload,
+        "payload": sanitize_the_eye_payload(req.payload),
         "connector_id": connector.get("connector_id"),
         "received_at": now,
     }
@@ -383,7 +384,7 @@ async def ingest_project_snapshot(project_key: str, req: ProjectSnapshot, reques
         "period": req.period,
         "source_timestamp": req.source_timestamp,
         "received_at": now,
-        "metrics": req.metrics,
+        "metrics": sanitize_the_eye_payload(req.metrics),
     }
     await db.the_eye_project_snapshots.insert_one(snapshot)
     snapshot.pop("_id", None)

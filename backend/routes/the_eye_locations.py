@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -195,7 +196,7 @@ async def create_location(req: LocationCreate, request: Request):
         "address": req.address,
         "location": req.location.model_dump() if req.location else None,
         "health_score": req.health_score,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "active",
         "created_at": now,
         "updated_at": now,

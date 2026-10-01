@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import safe_the_eye_document, sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -127,7 +128,7 @@ async def _validate_device(device_id: Optional[str]) -> Optional[dict]:
 
 def _safe_camera(row: dict) -> dict:
     hidden = {"_id", "rtsp_url", "username", "password", "credentials", "metadata"}
-    return {k: v for k, v in row.items() if k not in hidden}
+    return safe_the_eye_document(row, drop_keys=tuple(hidden))
 
 
 @router.post("/admin/cameras")
@@ -160,8 +161,8 @@ async def create_camera(req: CameraCreate, request: Request):
         "stream_path": req.stream_path,
         "onvif_enabled": req.onvif_enabled,
         "ptz_enabled": req.ptz_enabled,
-        "privacy_masks": req.privacy_masks,
-        "metadata": req.metadata,
+        "privacy_masks": sanitize_the_eye_payload(req.privacy_masks),
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "active",
         "connection_status": (device or {}).get("connection_status") or "never_seen",
         "last_health": None,
@@ -252,7 +253,7 @@ async def update_camera_health(camera_id: str, req: CameraHealthRequest, request
         "temperature_c": req.temperature_c,
         "bitrate_kbps": req.bitrate_kbps,
         "storage_free_gb": req.storage_free_gb,
-        "details": req.details,
+        "details": sanitize_the_eye_payload(req.details),
         "recorded_at": now,
     }
     await db.the_eye_cameras.update_one(
@@ -287,7 +288,7 @@ async def create_camera_event(camera_id: str, req: CameraEventRequest, request: 
         "camera_id": camera_id,
         "event_type": req.event_type,
         "severity": req.severity,
-        "payload": req.payload,
+        "payload": sanitize_the_eye_payload(req.payload),
         "recorded_at": req.recorded_at or _now(),
         "received_at": _now(),
         "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -194,7 +195,7 @@ async def create_inventory_item(req: InventoryItemCreate, request: Request):
         "project_id": req.project_id,
         "tenant_id": req.tenant_id,
         "customer_id": req.customer_id,
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "in_stock",
         "assigned_site_id": req.assigned_site_id,
         "assigned_device_id": None,
@@ -331,7 +332,7 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "incident_id": req.incident_id,
         "ticket_id": req.ticket_id,
         "assigned_to": req.assigned_to,
-        "parts": req.parts,
+        "parts": sanitize_the_eye_payload(req.parts),
         "scheduled_at": req.scheduled_at,
         "due_at": req.due_at,
         "labor_minutes": 0,

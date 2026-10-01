@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -137,7 +138,7 @@ async def create_provider(req: ProviderCreate, request: Request):
         "sla_percent": req.sla_percent,
         "monthly_budget": req.monthly_budget,
         "currency": req.currency.upper(),
-        "metadata": req.metadata,
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "status": "healthy",
         "latency_ms": None,
         "error_rate_percent": None,
@@ -204,7 +205,7 @@ async def update_provider_health(provider_id: str, req: ProviderHealthUpdate, re
         "availability_percent": req.availability_percent,
         "current_cost": current_cost,
         "affected_projects": req.affected_projects,
-        "details": req.details,
+        "details": sanitize_the_eye_payload(req.details),
         "risk_score": risk_score,
         "risk_level": risk_level,
         "last_seen_at": now,

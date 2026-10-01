@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
+from core.the_eye_data_safety import safe_the_eye_document, sanitize_the_eye_payload
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -84,13 +85,14 @@ async def _write_audit(
         "tenant_id": tenant_id,
         "customer_id": customer_id,
         "site_id": site_id,
-        "before": before,
-        "after": after,
+        "before": sanitize_the_eye_payload(before),
+        "after": sanitize_the_eye_payload(after),
         "result": result,
         "source": source,
-        "metadata": metadata or {},
+        "metadata": sanitize_the_eye_payload(metadata or {}),
         "created_at": now,
     }
+    doc = safe_the_eye_document(doc)
     doc["integrity_hash"] = _hash_payload({k: v for k, v in doc.items() if k != "integrity_hash"})
     await db.the_eye_audit_logs.insert_one(doc)
     doc.pop("_id", None)
@@ -206,8 +208,8 @@ async def create_security_event(req: SecurityEventCreate, request: Request):
         "device_id": req.device_id,
         "source_ip": req.source_ip,
         "description": req.description,
-        "signals": req.signals,
-        "metadata": req.metadata,
+        "signals": sanitize_the_eye_payload(req.signals),
+        "metadata": sanitize_the_eye_payload(req.metadata),
         "risk_score": risk_score,
         "status": "open",
         "created_at": now,
@@ -314,9 +316,9 @@ async def create_approval(req: ApprovalCreate, request: Request):
         "site_id": req.site_id,
         "mode": effective_mode,
         "risk_level": req.risk_level,
-        "dry_run": req.dry_run,
-        "impact": req.impact,
-        "proposed_payload": req.proposed_payload,
+        "dry_run": sanitize_the_eye_payload(req.dry_run),
+        "impact": sanitize_the_eye_payload(req.impact),
+        "proposed_payload": sanitize_the_eye_payload(req.proposed_payload),
         "reason": req.reason,
         "status": "pending",
         "requested_by": access.actor_id,
