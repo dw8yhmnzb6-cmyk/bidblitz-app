@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -26,10 +26,12 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_super_admin(request: Request):
+    return await require_the_eye_access(request, {"super_admin"})
 
 
 class BackupReportCreate(BaseModel):
@@ -181,9 +183,9 @@ async def create_recovery_drill(req: RecoveryDrillCreate, request: Request):
 
 @router.patch("/admin/continuity/emergency-mode")
 async def update_emergency_mode(req: EmergencyModeUpdate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_super_admin(request)
     now = _now()
-    actor = str(admin.get("_id") or admin.get("id") or admin.get("email"))
+    actor = access.actor_id
 
     doc = {
         "key": "global",

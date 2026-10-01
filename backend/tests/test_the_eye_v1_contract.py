@@ -184,3 +184,26 @@ def test_security_and_provider_scope_hardening_contracts():
     assert '"project_ids"' in providers
     assert "PROVIDER_SCOPE_MAP" in providers
     assert "access.assert_document(doc, field_map=PROVIDER_SCOPE_MAP)" in providers
+
+
+def test_central_emergency_write_policy_contract():
+    guard = _read(BACKEND / "core" / "the_eye_guard.py")
+    middleware = _read(BACKEND / "core" / "middleware.py")
+    continuity = _read(BACKEND / "routes" / "the_eye_continuity.py")
+
+    assert "classify_the_eye_write" in guard
+    assert '"observation"' in guard
+    assert '"recovery"' in guard
+    assert '"control"' in guard
+    assert "commands/ack" in guard
+    assert "stream-session" in guard
+    assert "admin/aion/query" in guard
+    assert "connectors/[^/]+/(snapshot|events)" in guard
+
+    assert "the_eye_emergency_write_guard" in middleware
+    assert 'mode in {"read_only", "lockdown"}' in middleware
+    assert "status_code=423" in middleware
+    assert '"write_class": write_class' in middleware
+
+    assert "_require_super_admin" in continuity
+    assert 'require_the_eye_access(request, {"super_admin"})' in continuity

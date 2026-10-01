@@ -81,6 +81,32 @@ def setup_middleware(app):
         return await call_next(request)
 
     @app.middleware("http")
+    async def the_eye_emergency_write_guard(request: Request, call_next):
+        path = request.url.path
+        if not path.startswith("/api/the-eye"):
+            return await call_next(request)
+
+        from core.the_eye_guard import classify_the_eye_write, get_the_eye_emergency_mode
+
+        write_class = classify_the_eye_write(path, request.method)
+        if write_class in {"read", "observation", "recovery"}:
+            return await call_next(request)
+
+        mode = await get_the_eye_emergency_mode()
+        if mode in {"read_only", "lockdown"}:
+            mode_label = "READ_ONLY" if mode == "read_only" else "LOCKDOWN"
+            return JSONResponse(
+                status_code=423,
+                content={
+                    "detail": f"The Eye is in {mode_label}; control-plane write blocked",
+                    "code": f"the_eye_{mode}",
+                    "mode": mode,
+                    "write_class": write_class,
+                },
+            )
+        return await call_next(request)
+
+    @app.middleware("http")
     async def credentialed_options_guard(request: Request, call_next):
         if request.method == "OPTIONS" and request.url.path.startswith("/api/"):
             origin = allowed_origin(request.headers.get("origin", ""))
