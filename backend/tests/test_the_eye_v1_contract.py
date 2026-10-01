@@ -437,3 +437,30 @@ def test_technician_workflow_requires_independent_validation():
     assert '"validation_passed": passed' in maintenance
     assert '"validated_by": access.actor_id' in maintenance
     assert '"validation.validation_id"' in database
+
+
+def test_work_order_parts_reserve_consume_and_release_inventory():
+    maintenance = _read(BACKEND / "routes" / "the_eye_maintenance.py")
+    database = _read(BACKEND / "core" / "database.py")
+
+    assert "class WorkOrderPartRequest" in maintenance
+    assert "_reserve_work_order_parts" in maintenance
+    assert "_release_work_order_reservations" in maintenance
+    assert "Active reservation already exists" in maintenance
+    assert "Concurrent active reservation exists" in maintenance
+    assert "Insufficient available stock" in maintenance
+
+    assert '@router.post("/admin/work-orders/{work_order_id}/parts/reserve")' in maintenance
+    assert '@router.get("/technician/work-orders/{work_order_id}/parts")' in maintenance
+    assert '@router.post("/technician/work-orders/{work_order_id}/parts/consume")' in maintenance
+    assert '"quantity": -quantity' in maintenance
+    assert '"reserved_quantity": -quantity' in maintenance
+    assert "Reservation changed concurrently; inventory rollback completed" in maintenance
+    assert '"parts_cost": cost_delta' in maintenance
+    assert '"parts.$[part].quantity_consumed": quantity' in maintenance
+    assert 'if req.status in {"completed", "cancelled"}' in maintenance
+    assert 'reason=f"work_order_{req.status}"' in maintenance
+
+    assert 'the_eye_inventory_reservations, "reservation_id"' in database
+    assert 'partialFilterExpression={"status": "reserved"}' in database
+    assert '[("work_order_id", 1), ("inventory_item_id", 1)]' in database

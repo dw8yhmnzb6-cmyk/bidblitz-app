@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from core.database import db
 from core.the_eye_access import TheEyeAccess, require_the_eye_access
@@ -107,6 +108,198 @@ def _inventory_scope(access: TheEyeAccess, query: Dict[str, Any]) -> Dict[str, A
     return access.scope_query(query, field_map={"site_id": "assigned_site_id"})
 
 
+def _combine_part_requests(
+    parts: List[WorkOrderPartRequest],
+) -> List[WorkOrderPartRequest]:
+    totals: Dict[str, int] = {}
+    for part in parts:
+        totals[part.inventory_item_id] = (
+            totals.get(part.inventory_item_id, 0) + int(part.quantity)
+        )
+    return [
+        WorkOrderPartRequest(inventory_item_id=item_id, quantity=quantity)
+        for item_id, quantity in totals.items()
+    ]
+
+
+async def _release_inventory_reservation(
+    access: TheEyeAccess,
+    reservation: Dict[str, Any],
+    *,
+    reason: str,
+) -> None:
+    reserved = int(reservation.get("quantity_reserved") or 0)
+    consumed = int(reservation.get("quantity_consumed") or 0)
+    remaining = max(reserved - consumed, 0)
+    now = _now()
+    if remaining:
+        await db.the_eye_inventory.update_one(
+            _inventory_scope(
+                access,
+                {"inventory_item_id": reservation.get("inventory_item_id")},
+            ),
+            {
+                "$inc": {"reserved_quantity": -remaining},
+                "$set": {"updated_at": now},
+            },
+        )
+    final_status = "consumed" if consumed >= reserved else "released"
+    await db.the_eye_inventory_reservations.update_one(
+        {"reservation_id": reservation.get("reservation_id")},
+        {"$set": {
+            "status": final_status,
+            "released_at": now,
+            "release_reason": reason,
+            "updated_at": now,
+        }},
+    )
+    await db.the_eye_work_orders.update_one(
+        access.scope_query({"work_order_id": reservation.get("work_order_id")}),
+        {"$set": {
+            "parts.$[part].status": final_status,
+            "parts.$[part].updated_at": now,
+        }},
+        array_filters=[{"part.reservation_id": reservation.get("reservation_id")}],
+    )
+
+
+async def _release_work_order_reservations(
+    access: TheEyeAccess,
+    work_order_id: str,
+    *,
+    reason: str,
+) -> None:
+    rows = await db.the_eye_inventory_reservations.find(
+        access.scope_query({
+            "work_order_id": work_order_id,
+            "status": "reserved",
+        }),
+        {"_id": 0},
+    ).to_list(500)
+    for row in rows:
+        await _release_inventory_reservation(access, row, reason=reason)
+
+
+async def _reserve_work_order_parts(
+    access: TheEyeAccess,
+    work_order_id: str,
+    parts: List[WorkOrderPartRequest],
+) -> List[Dict[str, Any]]:
+    normalized = _combine_part_requests(parts)
+    if not normalized:
+        return []
+
+    created: List[Dict[str, Any]] = []
+    now = _now()
+    try:
+        for part in normalized:
+            item_id = part.inventory_item_id
+            quantity = int(part.quantity)
+            active_reservation = await db.the_eye_inventory_reservations.find_one(
+                access.scope_query({
+                    "work_order_id": work_order_id,
+                    "inventory_item_id": item_id,
+                    "status": "reserved",
+                }),
+                {"_id": 0, "reservation_id": 1},
+            )
+            if active_reservation:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Active reservation already exists for {item_id}",
+                )
+            item_query = _inventory_scope(
+                access,
+                {
+                    "inventory_item_id": item_id,
+                    "status": {
+                        "$nin": ["retired", "replaced", "rma", "quarantine"],
+                    },
+                    "$expr": {
+                        "$gte": [
+                            {
+                                "$subtract": [
+                                    {"$ifNull": ["$quantity", 0]},
+                                    {"$ifNull": ["$reserved_quantity", 0]},
+                                ]
+                            },
+                            quantity,
+                        ]
+                    },
+                },
+            )
+            result = await db.the_eye_inventory.update_one(
+                item_query,
+                {
+                    "$inc": {"reserved_quantity": quantity},
+                    "$set": {"updated_at": now},
+                },
+            )
+            if result.matched_count == 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Insufficient available stock for {item_id}",
+                )
+
+            item = await db.the_eye_inventory.find_one(
+                _inventory_scope(access, {"inventory_item_id": item_id}),
+                {"_id": 0},
+            )
+            reservation = {
+                "reservation_id": "RES-" + secrets.token_hex(8).upper(),
+                "work_order_id": work_order_id,
+                "inventory_item_id": item_id,
+                "project_id": (item or {}).get("project_id"),
+                "tenant_id": (item or {}).get("tenant_id"),
+                "customer_id": (item or {}).get("customer_id"),
+                "site_id": (item or {}).get("assigned_site_id"),
+                "quantity_reserved": quantity,
+                "quantity_consumed": 0,
+                "unit_cost": (item or {}).get("unit_cost"),
+                "currency": (item or {}).get("currency") or "EUR",
+                "item_name": (item or {}).get("name"),
+                "status": "reserved",
+                "reserved_at": now,
+                "reserved_by": access.actor_id,
+                "updated_at": now,
+            }
+            try:
+                await db.the_eye_inventory_reservations.insert_one(reservation)
+            except DuplicateKeyError:
+                await db.the_eye_inventory.update_one(
+                    _inventory_scope(access, {"inventory_item_id": item_id}),
+                    {
+                        "$inc": {"reserved_quantity": -quantity},
+                        "$set": {"updated_at": _now()},
+                    },
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Concurrent active reservation exists for {item_id}",
+                )
+            except Exception:
+                await db.the_eye_inventory.update_one(
+                    _inventory_scope(access, {"inventory_item_id": item_id}),
+                    {
+                        "$inc": {"reserved_quantity": -quantity},
+                        "$set": {"updated_at": _now()},
+                    },
+                )
+                raise
+            reservation.pop("_id", None)
+            created.append(reservation)
+    except Exception:
+        for reservation in created:
+            await _release_inventory_reservation(
+                access,
+                reservation,
+                reason="reservation_batch_rollback",
+            )
+        raise
+
+    return created
+
+
 class InventoryItemCreate(BaseModel):
     asset_type: str = Field(..., min_length=2, max_length=120)
     asset_class: Optional[str] = Field(default=None, max_length=120)
@@ -141,6 +334,22 @@ class StockAdjustRequest(BaseModel):
     note: str = Field(..., min_length=2, max_length=1000)
 
 
+class WorkOrderPartRequest(BaseModel):
+    inventory_item_id: str = Field(..., min_length=5, max_length=128)
+    quantity: int = Field(..., ge=1, le=100000)
+
+
+class WorkOrderPartsReserveRequest(BaseModel):
+    parts: List[WorkOrderPartRequest] = Field(..., min_length=1, max_length=200)
+    note: Optional[str] = Field(default=None, max_length=2000)
+
+
+class WorkOrderPartConsumeRequest(BaseModel):
+    inventory_item_id: str = Field(..., min_length=5, max_length=128)
+    quantity: int = Field(..., ge=1, le=100000)
+    note: Optional[str] = Field(default=None, max_length=2000)
+
+
 class WorkOrderCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=240)
     description: Optional[str] = Field(default=None, max_length=4000)
@@ -155,7 +364,7 @@ class WorkOrderCreate(BaseModel):
     incident_id: Optional[str] = Field(default=None, max_length=128)
     ticket_id: Optional[str] = Field(default=None, max_length=128)
     assigned_to: Optional[str] = Field(default=None, max_length=128)
-    parts: List[Dict[str, Any]] = Field(default_factory=list, max_length=200)
+    parts: List[WorkOrderPartRequest] = Field(default_factory=list, max_length=200)
     scheduled_at: Optional[str] = None
     due_at: Optional[str] = None
 
@@ -333,20 +542,22 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
     ticket = None
     if req.incident_id:
         incident = await db.the_eye_incidents.find_one(
-            access.scope_query({"incident_id": req.incident_id}), {"_id": 0}
+            access.scope_query({"incident_id": req.incident_id}),
+            {"_id": 0},
         )
         if not incident:
             raise HTTPException(status_code=400, detail="Incident not found")
     if req.ticket_id:
         ticket = await db.the_eye_tickets.find_one(
-            access.scope_query({"ticket_id": req.ticket_id}), {"_id": 0}
+            access.scope_query({"ticket_id": req.ticket_id}),
+            {"_id": 0},
         )
         if not ticket:
             raise HTTPException(status_code=400, detail="Ticket not found")
 
     now = _now()
     work_order_id = "WO-" + secrets.token_hex(8).upper()
-    doc = {
+    base_doc = {
         "work_order_id": work_order_id,
         "title": req.title,
         "description": req.description,
@@ -362,7 +573,6 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "incident_id": req.incident_id,
         "ticket_id": req.ticket_id,
         "assigned_to": req.assigned_to,
-        "parts": sanitize_the_eye_payload(req.parts),
         "scheduled_at": req.scheduled_at,
         "due_at": req.due_at,
         "labor_minutes": 0,
@@ -374,20 +584,50 @@ async def create_work_order(req: WorkOrderCreate, request: Request):
         "created_at": now,
         "updated_at": now,
         "created_by": access.actor_id,
-        "timeline": [{"at": now, "type": "created", "by": access.actor_id, "note": "Work order created"}],
     }
-    access.assert_document(doc)
-    await db.the_eye_work_orders.insert_one(doc)
+    access.assert_document(base_doc)
+
+    reservations = await _reserve_work_order_parts(
+        access,
+        work_order_id,
+        req.parts,
+    )
+    doc = {
+        **base_doc,
+        "parts": reservations,
+        "timeline": [{
+            "at": now,
+            "type": "created",
+            "by": access.actor_id,
+            "note": "Work order created",
+        }],
+    }
+    try:
+        await db.the_eye_work_orders.insert_one(doc)
+    except Exception:
+        await _release_work_order_reservations(
+            access,
+            work_order_id,
+            reason="work_order_create_failed",
+        )
+        raise
+
     doc.pop("_id", None)
     if req.ticket_id:
         await db.the_eye_tickets.update_one(
             access.scope_query({"ticket_id": req.ticket_id}),
-            {"$addToSet": {"work_order_ids": work_order_id}, "$set": {"updated_at": now}},
+            {
+                "$addToSet": {"work_order_ids": work_order_id},
+                "$set": {"updated_at": now},
+            },
         )
     if req.incident_id:
         await db.the_eye_incidents.update_one(
             access.scope_query({"incident_id": req.incident_id}),
-            {"$addToSet": {"work_order_ids": work_order_id}, "$set": {"updated_at": now}},
+            {
+                "$addToSet": {"work_order_ids": work_order_id},
+                "$set": {"updated_at": now},
+            },
         )
     await broadcast_the_eye_event("work_order.created", doc)
     return {"ok": True, "work_order": doc}
@@ -437,6 +677,247 @@ async def my_technician_work_orders(
         {"_id": 0},
     ).sort("updated_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "work_orders": rows}
+
+
+
+@router.post("/admin/work-orders/{work_order_id}/parts/reserve")
+async def reserve_additional_work_order_parts(
+    work_order_id: str,
+    req: WorkOrderPartsReserveRequest,
+    request: Request,
+):
+    access = await _require_operator(request)
+    current_query = access.scope_query({"work_order_id": work_order_id})
+    current = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
+    if not current:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if current.get("status") in {"completed", "cancelled", "validation"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Parts cannot be reserved in the current work order state",
+        )
+
+    reservations = await _reserve_work_order_parts(
+        access,
+        work_order_id,
+        req.parts,
+    )
+    now = _now()
+    try:
+        await db.the_eye_work_orders.update_one(
+            current_query,
+            {
+                "$push": {
+                    "parts": {"$each": reservations},
+                    "timeline": {
+                        "at": now,
+                        "type": "parts_reserved",
+                        "by": access.actor_id,
+                        "reservation_ids": [
+                            row.get("reservation_id") for row in reservations
+                        ],
+                        "note": req.note,
+                    },
+                },
+                "$set": {"updated_at": now},
+            },
+        )
+    except Exception:
+        for reservation in reservations:
+            await _release_inventory_reservation(
+                access,
+                reservation,
+                reason="work_order_parts_attach_failed",
+            )
+        raise
+
+    fresh = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
+    await broadcast_the_eye_event("work_order.parts_reserved", {
+        "work_order_id": work_order_id,
+        "reservation_ids": [row.get("reservation_id") for row in reservations],
+        "site_id": fresh.get("site_id"),
+        "project_id": fresh.get("project_id"),
+    })
+    return {
+        "ok": True,
+        "reservations": reservations,
+        "work_order": fresh,
+    }
+
+
+@router.get("/admin/work-orders/{work_order_id}/parts")
+@router.get("/technician/work-orders/{work_order_id}/parts")
+async def list_work_order_part_reservations(
+    work_order_id: str,
+    request: Request,
+):
+    access = await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician"},
+    )
+    work_order_query = _scope_owned(access, {"work_order_id": work_order_id})
+    work_order = await db.the_eye_work_orders.find_one(
+        work_order_query,
+        {"_id": 0, "work_order_id": 1},
+    )
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
+
+    rows = await db.the_eye_inventory_reservations.find(
+        access.scope_query({"work_order_id": work_order_id}),
+        {"_id": 0},
+    ).sort("reserved_at", 1).to_list(500)
+    return {"ok": True, "count": len(rows), "reservations": rows}
+
+
+@router.post("/technician/work-orders/{work_order_id}/parts/consume")
+async def consume_work_order_part(
+    work_order_id: str,
+    req: WorkOrderPartConsumeRequest,
+    request: Request,
+):
+    access = await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician"},
+    )
+    work_order_query = _scope_owned(access, {"work_order_id": work_order_id})
+    work_order = await db.the_eye_work_orders.find_one(
+        work_order_query,
+        {"_id": 0},
+    )
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if work_order.get("status") not in {"in_progress", "waiting_parts"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Parts can only be consumed while work is in progress",
+        )
+
+    reservation_query = access.scope_query({
+        "work_order_id": work_order_id,
+        "inventory_item_id": req.inventory_item_id,
+        "status": "reserved",
+    })
+    reservation = await db.the_eye_inventory_reservations.find_one(
+        reservation_query,
+        {"_id": 0},
+    )
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Active part reservation not found")
+
+    reserved = int(reservation.get("quantity_reserved") or 0)
+    consumed = int(reservation.get("quantity_consumed") or 0)
+    remaining = max(reserved - consumed, 0)
+    quantity = int(req.quantity)
+    if quantity > remaining:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only {remaining} reserved unit(s) remain",
+        )
+
+    now = _now()
+    inventory_query = _inventory_scope(
+        access,
+        {
+            "inventory_item_id": req.inventory_item_id,
+            "quantity": {"$gte": quantity},
+            "reserved_quantity": {"$gte": quantity},
+        },
+    )
+    inventory_result = await db.the_eye_inventory.update_one(
+        inventory_query,
+        {
+            "$inc": {
+                "quantity": -quantity,
+                "reserved_quantity": -quantity,
+            },
+            "$set": {"updated_at": now},
+        },
+    )
+    if inventory_result.matched_count == 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Inventory changed; reserved stock is no longer available",
+        )
+
+    new_consumed = consumed + quantity
+    new_status = "consumed" if new_consumed >= reserved else "reserved"
+    reservation_result = await db.the_eye_inventory_reservations.update_one(
+        {
+            "reservation_id": reservation.get("reservation_id"),
+            "status": "reserved",
+            "quantity_consumed": consumed,
+        },
+        {
+            "$set": {
+                "quantity_consumed": new_consumed,
+                "status": new_status,
+                "consumed_at": now if new_status == "consumed" else None,
+                "consumed_by": access.actor_id,
+                "updated_at": now,
+            }
+        },
+    )
+    if reservation_result.matched_count == 0:
+        await db.the_eye_inventory.update_one(
+            _inventory_scope(access, {"inventory_item_id": req.inventory_item_id}),
+            {
+                "$inc": {
+                    "quantity": quantity,
+                    "reserved_quantity": quantity,
+                },
+                "$set": {"updated_at": _now()},
+            },
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="Reservation changed concurrently; inventory rollback completed",
+        )
+
+    unit_cost = float(reservation.get("unit_cost") or 0)
+    cost_delta = round(unit_cost * quantity, 2)
+    await db.the_eye_work_orders.update_one(
+        work_order_query,
+        {
+            "$inc": {
+                "parts_cost": cost_delta,
+                "parts.$[part].quantity_consumed": quantity,
+            },
+            "$set": {
+                "parts.$[part].status": new_status,
+                "parts.$[part].updated_at": now,
+                "updated_at": now,
+            },
+            "$push": {
+                "timeline": {
+                    "at": now,
+                    "type": "part_consumed",
+                    "by": access.actor_id,
+                    "inventory_item_id": req.inventory_item_id,
+                    "quantity": quantity,
+                    "cost_delta": cost_delta,
+                    "note": req.note,
+                }
+            },
+        },
+        array_filters=[{"part.reservation_id": reservation.get("reservation_id")}],
+    )
+
+    fresh = await db.the_eye_work_orders.find_one(work_order_query, {"_id": 0})
+    await broadcast_the_eye_event("work_order.part_consumed", {
+        "work_order_id": work_order_id,
+        "inventory_item_id": req.inventory_item_id,
+        "quantity": quantity,
+        "reservation_status": new_status,
+        "parts_cost": fresh.get("parts_cost"),
+    })
+    return {
+        "ok": True,
+        "reservation_id": reservation.get("reservation_id"),
+        "quantity_consumed": quantity,
+        "reservation_status": new_status,
+        "work_order": fresh,
+    }
 
 
 @router.patch("/admin/work-orders/{work_order_id}/status")
@@ -502,6 +983,12 @@ async def update_work_order_status(work_order_id: str, req: WorkOrderStatusUpdat
             "note": req.note,
         }}},
     )
+    if req.status in {"completed", "cancelled"}:
+        await _release_work_order_reservations(
+            access,
+            work_order_id,
+            reason=f"work_order_{req.status}",
+        )
     fresh = await db.the_eye_work_orders.find_one(current_query, {"_id": 0})
     await broadcast_the_eye_event("work_order.updated", fresh)
     return {"ok": True, "work_order": fresh}
