@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -28,10 +28,22 @@ def _now() -> str:
 
 
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_security_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
+
+
+async def _require_security_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager"},
+    )
 
 
 def _actor_id(user: dict) -> str:
@@ -50,6 +62,10 @@ async def _write_audit(
     target_type: Optional[str] = None,
     target_id: Optional[str] = None,
     project: Optional[str] = None,
+    project_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    site_id: Optional[str] = None,
     before: Any = None,
     after: Any = None,
     result: str = "success",
@@ -64,6 +80,10 @@ async def _write_audit(
         "target_type": target_type,
         "target_id": target_id,
         "project": project,
+        "project_id": project_id,
+        "tenant_id": tenant_id,
+        "customer_id": customer_id,
+        "site_id": site_id,
         "before": before,
         "after": after,
         "result": result,
@@ -94,8 +114,10 @@ class SecurityEventCreate(BaseModel):
         "other",
     ] = "other"
     project: Optional[str] = Field(default=None, max_length=120)
+    project_id: Optional[str] = Field(default=None, max_length=160)
     tenant_id: Optional[str] = Field(default=None, max_length=160)
     customer_id: Optional[str] = Field(default=None, max_length=160)
+    site_id: Optional[str] = Field(default=None, max_length=160)
     user_id: Optional[str] = Field(default=None, max_length=160)
     device_id: Optional[str] = Field(default=None, max_length=160)
     source_ip: Optional[str] = Field(default=None, max_length=128)
@@ -110,6 +132,9 @@ class ApprovalCreate(BaseModel):
     target_type: Optional[str] = Field(default=None, max_length=120)
     target_id: Optional[str] = Field(default=None, max_length=160)
     project: Optional[str] = Field(default=None, max_length=120)
+    project_id: Optional[str] = Field(default=None, max_length=160)
+    tenant_id: Optional[str] = Field(default=None, max_length=160)
+    customer_id: Optional[str] = Field(default=None, max_length=160)
     site_id: Optional[str] = Field(default=None, max_length=160)
     mode: ApprovalMode = "single"
     risk_level: Literal["medium", "high", "critical"] = "high"
@@ -160,9 +185,10 @@ def _security_risk_score(severity: str, signals: Dict[str, Any]) -> int:
     return min(score, 100)
 
 
+
 @router.post("/admin/security/events")
 async def create_security_event(req: SecurityEventCreate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_security_operator(request)
     now = _now()
     event_id = "SEC-" + secrets.token_hex(10).upper()
     risk_score = _security_risk_score(req.severity, req.signals)
@@ -172,8 +198,10 @@ async def create_security_event(req: SecurityEventCreate, request: Request):
         "severity": req.severity,
         "category": req.category,
         "project": req.project,
+        "project_id": req.project_id,
         "tenant_id": req.tenant_id,
         "customer_id": req.customer_id,
+        "site_id": req.site_id,
         "user_id": req.user_id,
         "device_id": req.device_id,
         "source_ip": req.source_ip,
@@ -184,16 +212,21 @@ async def create_security_event(req: SecurityEventCreate, request: Request):
         "status": "open",
         "created_at": now,
         "updated_at": now,
-        "created_by": _actor_id(admin),
+        "created_by": access.actor_id,
     }
+    access.assert_document(doc)
     await db.the_eye_security_events.insert_one(doc)
     doc.pop("_id", None)
     await _write_audit(
-        actor=_actor_id(admin),
+        actor=access.actor_id,
         action="security.event.create",
         target_type="security_event",
         target_id=event_id,
         project=req.project,
+        project_id=req.project_id,
+        tenant_id=req.tenant_id,
+        customer_id=req.customer_id,
+        site_id=req.site_id,
         after=doc,
     )
     await broadcast_the_eye_event("security.event", doc)
@@ -208,7 +241,7 @@ async def list_security_events(
     status: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_security_reader(request)
     query: Dict[str, Any] = {}
     if severity:
         query["severity"] = severity
@@ -216,7 +249,7 @@ async def list_security_events(
         query["category"] = category
     if status:
         query["status"] = status
-
+    query = access.scope_query(query)
     rows = await db.the_eye_security_events.find(query, {"_id": 0}).sort(
         [("risk_score", -1), ("created_at", -1)]
     ).to_list(limit)
@@ -225,28 +258,32 @@ async def list_security_events(
 
 @router.patch("/admin/security/events/{event_id}/resolve")
 async def resolve_security_event(event_id: str, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_security_events.find_one({"event_id": event_id}, {"_id": 0})
+    access = await _require_security_operator(request)
+    current_query = access.scope_query({"event_id": event_id})
+    current = await db.the_eye_security_events.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Security event not found")
-
     now = _now()
-    actor = _actor_id(admin)
     await db.the_eye_security_events.update_one(
-        {"event_id": event_id},
+        current_query,
         {"$set": {
             "status": "resolved",
             "resolved_at": now,
-            "resolved_by": actor,
+            "resolved_by": access.actor_id,
             "updated_at": now,
         }},
     )
-    fresh = await db.the_eye_security_events.find_one({"event_id": event_id}, {"_id": 0})
+    fresh = await db.the_eye_security_events.find_one(current_query, {"_id": 0})
     await _write_audit(
-        actor=actor,
+        actor=access.actor_id,
         action="security.event.resolve",
         target_type="security_event",
         target_id=event_id,
+        project=current.get("project"),
+        project_id=current.get("project_id"),
+        tenant_id=current.get("tenant_id"),
+        customer_id=current.get("customer_id"),
+        site_id=current.get("site_id"),
         before=current,
         after=fresh,
     )
@@ -256,13 +293,14 @@ async def resolve_security_event(event_id: str, request: Request):
 
 @router.post("/admin/approvals")
 async def create_approval(req: ApprovalCreate, request: Request):
-    admin = await _require_admin(request)
-
-    if req.action_type in HIGH_IMPACT_ACTIONS and not req.dry_run:
+    access = await _require_security_operator(request)
+    high_impact = req.action_type in HIGH_IMPACT_ACTIONS
+    if high_impact and not req.dry_run:
         raise HTTPException(status_code=400, detail="High-impact actions require a dry_run payload")
 
     now = _now()
     approval_id = "APR-" + secrets.token_hex(10).upper()
+    effective_mode: ApprovalMode = "four_eyes" if high_impact else req.mode
     doc = {
         "approval_id": approval_id,
         "title": req.title,
@@ -270,15 +308,18 @@ async def create_approval(req: ApprovalCreate, request: Request):
         "target_type": req.target_type,
         "target_id": req.target_id,
         "project": req.project,
+        "project_id": req.project_id,
+        "tenant_id": req.tenant_id,
+        "customer_id": req.customer_id,
         "site_id": req.site_id,
-        "mode": req.mode,
+        "mode": effective_mode,
         "risk_level": req.risk_level,
         "dry_run": req.dry_run,
         "impact": req.impact,
         "proposed_payload": req.proposed_payload,
         "reason": req.reason,
         "status": "pending",
-        "requested_by": _actor_id(admin),
+        "requested_by": access.actor_id,
         "first_approved_by": None,
         "approved_by": [],
         "rejected_by": None,
@@ -286,14 +327,19 @@ async def create_approval(req: ApprovalCreate, request: Request):
         "created_at": now,
         "updated_at": now,
     }
+    access.assert_document(doc)
     await db.the_eye_approvals.insert_one(doc)
     doc.pop("_id", None)
     await _write_audit(
-        actor=_actor_id(admin),
+        actor=access.actor_id,
         action="approval.create",
         target_type=req.target_type,
         target_id=req.target_id,
         project=req.project,
+        project_id=req.project_id,
+        tenant_id=req.tenant_id,
+        customer_id=req.customer_id,
+        site_id=req.site_id,
         after=doc,
         metadata={"approval_id": approval_id},
     )
@@ -308,73 +354,60 @@ async def list_approvals(
     risk_level: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_security_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
     if risk_level:
         query["risk_level"] = risk_level
+    query = access.scope_query(query)
     rows = await db.the_eye_approvals.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "approvals": rows}
 
 
 @router.patch("/admin/approvals/{approval_id}/decision")
 async def approval_decision(approval_id: str, req: ApprovalDecision, request: Request):
-    admin = await _require_admin(request)
-    current = await db.the_eye_approvals.find_one({"approval_id": approval_id}, {"_id": 0})
+    access = await _require_security_operator(request)
+    current_query = access.scope_query({"approval_id": approval_id})
+    current = await db.the_eye_approvals.find_one(current_query, {"_id": 0})
     if not current:
         raise HTTPException(status_code=404, detail="Approval not found")
     if current.get("status") != "pending":
         raise HTTPException(status_code=409, detail="Approval is no longer pending")
 
-    actor = _actor_id(admin)
+    actor = access.actor_id
     now = _now()
     update: Dict[str, Any] = {"updated_at": now}
-
     if req.decision == "reject":
-        update.update({
-            "status": "rejected",
-            "rejected_by": actor,
-            "rejected_at": now,
-            "decision_note": req.note,
-        })
+        update.update({"status": "rejected", "rejected_by": actor, "rejected_at": now, "decision_note": req.note})
     elif req.decision == "cancel":
         if actor != current.get("requested_by"):
             raise HTTPException(status_code=403, detail="Only requester can cancel")
-        update.update({
-            "status": "cancelled",
-            "cancelled_by": actor,
-            "cancelled_at": now,
-            "decision_note": req.note,
-        })
+        update.update({"status": "cancelled", "cancelled_by": actor, "cancelled_at": now, "decision_note": req.note})
     else:
         approved_by = list(current.get("approved_by") or [])
         if actor in approved_by:
             raise HTTPException(status_code=409, detail="This admin already approved")
         if current.get("mode") == "four_eyes" and actor == current.get("requested_by"):
             raise HTTPException(status_code=409, detail="Four-eyes approval requires a different admin")
-
         approved_by.append(actor)
         update["approved_by"] = approved_by
         update["decision_note"] = req.note
+        update["status"] = "approved"
+        update["approved_at"] = now
 
-        if current.get("mode") == "four_eyes" and len(set(approved_by)) < 1:
-            update["status"] = "pending"
-        else:
-            update["status"] = "approved"
-            update["approved_at"] = now
-
-    await db.the_eye_approvals.update_one(
-        {"approval_id": approval_id},
-        {"$set": update},
-    )
-    fresh = await db.the_eye_approvals.find_one({"approval_id": approval_id}, {"_id": 0})
+    await db.the_eye_approvals.update_one(current_query, {"$set": update})
+    fresh = await db.the_eye_approvals.find_one(current_query, {"_id": 0})
     await _write_audit(
         actor=actor,
         action=f"approval.{req.decision}",
         target_type=current.get("target_type"),
         target_id=current.get("target_id"),
         project=current.get("project"),
+        project_id=current.get("project_id"),
+        tenant_id=current.get("tenant_id"),
+        customer_id=current.get("customer_id"),
+        site_id=current.get("site_id"),
         before=current,
         after=fresh,
         metadata={"approval_id": approval_id},
@@ -391,7 +424,7 @@ async def list_audit_logs(
     target_type: Optional[str] = None,
     limit: int = Query(default=200, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_security_reader(request)
     query: Dict[str, Any] = {}
     if actor:
         query["actor"] = actor
@@ -399,22 +432,20 @@ async def list_audit_logs(
         query["action"] = action
     if target_type:
         query["target_type"] = target_type
-
+    query = access.scope_query(query)
     rows = await db.the_eye_audit_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "audit_logs": rows}
 
-
 @router.get("/admin/security/overview")
 async def security_overview(request: Request):
-    await _require_admin(request)
-
+    access = await _require_security_reader(request)
+    event_query = access.scope_query({"status": {"$ne": "resolved"}})
+    approval_query = access.scope_query({"status": "pending"})
     events = await db.the_eye_security_events.find(
-        {"status": {"$ne": "resolved"}},
-        {"_id": 0},
+        event_query, {"_id": 0}
     ).sort([("risk_score", -1), ("created_at", -1)]).to_list(1000)
     approvals = await db.the_eye_approvals.find(
-        {"status": "pending"},
-        {"_id": 0},
+        approval_query, {"_id": 0}
     ).sort("created_at", -1).to_list(1000)
 
     critical = sum(1 for row in events if row.get("severity") == "critical")
@@ -422,7 +453,6 @@ async def security_overview(request: Request):
     auth_events = sum(1 for row in events if row.get("category") in {"auth", "account_takeover"})
     device_events = sum(1 for row in events if row.get("category") == "device")
     api_events = sum(1 for row in events if row.get("category") == "api")
-
     return {
         "ok": True,
         "open_security_events": len(events),

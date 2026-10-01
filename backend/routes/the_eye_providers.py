@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
-from core.security import get_current_user
+from core.the_eye_access import TheEyeAccess, require_the_eye_access
 from core.the_eye_live import broadcast_the_eye_event
 
 
@@ -24,17 +24,42 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+PROVIDER_SCOPE_MAP = {
+    "project_id": "project_ids",
+    "tenant_id": None,
+    "customer_id": None,
+    "site_id": None,
+}
+
+
 async def _require_admin(request: Request) -> dict:
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
+    access = await require_the_eye_access(request, {"super_admin", "admin"})
+    return dict(access.user)
+
+
+async def _require_provider_reader(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "partner"},
+    )
+
+
+async def _require_provider_operator(request: Request) -> TheEyeAccess:
+    return await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin"},
+    )
+
+
+def _provider_scope(access: TheEyeAccess, query: Dict[str, Any]) -> Dict[str, Any]:
+    return access.scope_query(query, field_map=PROVIDER_SCOPE_MAP)
 
 
 class ProviderCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=160)
     provider_type: str = Field(..., min_length=2, max_length=120)
     category: Optional[str] = Field(default=None, max_length=120)
+    project_ids: List[str] = Field(default_factory=list, max_length=100)
     projects: List[str] = Field(default_factory=list, max_length=100)
     primary_for: List[str] = Field(default_factory=list, max_length=100)
     fallback_provider_id: Optional[str] = Field(default=None, max_length=128)
@@ -89,9 +114,10 @@ def _risk_score(status: str, fallback_ready: bool, availability: Optional[float]
     return score, level
 
 
+
 @router.post("/admin/providers")
 async def create_provider(req: ProviderCreate, request: Request):
-    admin = await _require_admin(request)
+    access = await _require_provider_operator(request)
     now = _now()
     provider_id = "PRV-" + secrets.token_hex(8).upper()
     doc = {
@@ -99,6 +125,7 @@ async def create_provider(req: ProviderCreate, request: Request):
         "name": req.name,
         "provider_type": req.provider_type,
         "category": req.category,
+        "project_ids": list(dict.fromkeys(req.project_ids)),
         "projects": list(dict.fromkeys(req.projects)),
         "primary_for": list(dict.fromkeys(req.primary_for)),
         "fallback_provider_id": req.fallback_provider_id,
@@ -120,8 +147,9 @@ async def create_provider(req: ProviderCreate, request: Request):
         "risk_level": "low",
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin.get("_id") or admin.get("id") or admin.get("email")),
+        "created_by": access.actor_id,
     }
+    access.assert_document(doc, field_map=PROVIDER_SCOPE_MAP)
     await db.the_eye_providers.insert_one(doc)
     doc.pop("_id", None)
     await broadcast_the_eye_event("provider.created", doc)
@@ -136,7 +164,7 @@ async def list_providers(
     project: Optional[str] = None,
     limit: int = Query(default=250, ge=1, le=2000),
 ):
-    await _require_admin(request)
+    access = await _require_provider_reader(request)
     query: Dict[str, Any] = {}
     if status:
         query["status"] = status
@@ -144,14 +172,16 @@ async def list_providers(
         query["category"] = category
     if project:
         query["projects"] = project
+    query = _provider_scope(access, query)
     rows = await db.the_eye_providers.find(query, {"_id": 0}).sort("risk_score", -1).to_list(limit)
     return {"ok": True, "count": len(rows), "providers": rows}
 
 
 @router.patch("/admin/providers/{provider_id}/health")
 async def update_provider_health(provider_id: str, req: ProviderHealthUpdate, request: Request):
-    await _require_admin(request)
-    provider = await db.the_eye_providers.find_one({"provider_id": provider_id}, {"_id": 0})
+    access = await _require_provider_operator(request)
+    provider_query = _provider_scope(access, {"provider_id": provider_id})
+    provider = await db.the_eye_providers.find_one(provider_query, {"_id": 0})
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -180,23 +210,32 @@ async def update_provider_health(provider_id: str, req: ProviderHealthUpdate, re
         "last_seen_at": now,
         "updated_at": now,
     }
-    await db.the_eye_providers.update_one({"provider_id": provider_id}, {"$set": update})
-    await db.the_eye_provider_health.insert_one({"provider_id": provider_id, **update, "recorded_at": now})
-    fresh = await db.the_eye_providers.find_one({"provider_id": provider_id}, {"_id": 0})
+    await db.the_eye_providers.update_one(provider_query, {"$set": update})
+    await db.the_eye_provider_health.insert_one(
+        {
+            "provider_id": provider_id,
+            "project_ids": provider.get("project_ids") or [],
+            **update,
+            "recorded_at": now,
+        }
+    )
+    fresh = await db.the_eye_providers.find_one(provider_query, {"_id": 0})
     await broadcast_the_eye_event("provider.health", fresh)
     return {"ok": True, "provider": fresh}
 
 
 @router.patch("/admin/providers/{provider_id}/fallback")
 async def update_provider_fallback(provider_id: str, req: ProviderFallbackUpdate, request: Request):
-    await _require_admin(request)
-    provider = await db.the_eye_providers.find_one({"provider_id": provider_id}, {"_id": 0})
+    access = await _require_provider_operator(request)
+    provider_query = _provider_scope(access, {"provider_id": provider_id})
+    provider = await db.the_eye_providers.find_one(provider_query, {"_id": 0})
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
     if req.fallback_provider_id:
+        fallback_query = _provider_scope(access, {"provider_id": req.fallback_provider_id})
         fallback = await db.the_eye_providers.find_one(
-            {"provider_id": req.fallback_provider_id},
+            fallback_query,
             {"_id": 0, "provider_id": 1},
         )
         if not fallback:
@@ -206,7 +245,7 @@ async def update_provider_fallback(provider_id: str, req: ProviderFallbackUpdate
 
     now = _now()
     await db.the_eye_providers.update_one(
-        {"provider_id": provider_id},
+        provider_query,
         {"$set": {
             "fallback_provider_id": req.fallback_provider_id,
             "fallback_mode": req.fallback_mode,
@@ -215,15 +254,16 @@ async def update_provider_fallback(provider_id: str, req: ProviderFallbackUpdate
             "updated_at": now,
         }},
     )
-    fresh = await db.the_eye_providers.find_one({"provider_id": provider_id}, {"_id": 0})
+    fresh = await db.the_eye_providers.find_one(provider_query, {"_id": 0})
     await broadcast_the_eye_event("provider.updated", fresh)
     return {"ok": True, "provider": fresh}
 
 
 @router.get("/admin/providers/dependencies")
 async def provider_dependencies(request: Request):
-    await _require_admin(request)
-    providers = await db.the_eye_providers.find({}, {"_id": 0}).to_list(2000)
+    access = await _require_provider_reader(request)
+    provider_query = _provider_scope(access, {})
+    providers = await db.the_eye_providers.find(provider_query, {"_id": 0}).to_list(2000)
 
     project_map: Dict[str, List[dict]] = {}
     for provider in providers:
@@ -252,11 +292,11 @@ async def provider_dependencies(request: Request):
         "single_points_of_failure": single_points,
     }
 
-
 @router.get("/admin/providers/overview")
 async def provider_overview(request: Request):
-    await _require_admin(request)
-    providers = await db.the_eye_providers.find({}, {"_id": 0}).to_list(2000)
+    access = await _require_provider_reader(request)
+    provider_query = _provider_scope(access, {})
+    providers = await db.the_eye_providers.find(provider_query, {"_id": 0}).to_list(2000)
     total = len(providers)
     healthy = sum(1 for p in providers if p.get("status") == "healthy")
     degraded = sum(1 for p in providers if p.get("status") == "degraded")

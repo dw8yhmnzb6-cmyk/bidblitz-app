@@ -165,3 +165,22 @@ def test_location_search_and_project_scope_contracts():
     assert "_project_scope" in projects
     assert '"schema_version"' in projects
     assert '"project_admin"' in projects
+
+
+def test_security_and_provider_scope_hardening_contracts():
+    access = _read(BACKEND / "core" / "the_eye_access.py")
+    security = _read(BACKEND / "routes" / "the_eye_security.py")
+    providers = _read(BACKEND / "routes" / "the_eye_providers.py")
+
+    assert "current_values = _clean_ids(current)" in access
+    assert 'effective_mode: ApprovalMode = "four_eyes" if high_impact else req.mode' in security
+    assert "access.scope_query" in security
+    assert '"project_id"' in security
+    assert '"tenant_id"' in security
+    assert '"customer_id"' in security
+    assert '"site_id"' in security
+
+    assert "_provider_scope" in providers
+    assert '"project_ids"' in providers
+    assert "PROVIDER_SCOPE_MAP" in providers
+    assert "access.assert_document(doc, field_map=PROVIDER_SCOPE_MAP)" in providers

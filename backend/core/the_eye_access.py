@@ -167,7 +167,8 @@ class TheEyeAccess:
                 break
             current = current.get(part)
 
-        if str(current or "") not in values:
+        current_values = _clean_ids(current)
+        if not current_values or not any(value in values for value in current_values):
             raise HTTPException(
                 status_code=403,
                 detail="Resource is outside your The Eye scope",
