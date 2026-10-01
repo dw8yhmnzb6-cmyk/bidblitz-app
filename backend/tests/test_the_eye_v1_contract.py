@@ -358,3 +358,21 @@ def test_root_cause_output_is_explicitly_probabilistic():
     assert '"root_cause_assessment"' in incidents
     assert '"recommended_checks"' in incidents
     assert "Likely Cause:" in aion
+
+
+def test_frontend_never_presents_preview_data_as_live_truth():
+    frontend = _read(ROOT / "frontend" / "src" / "pages" / "TheEyePage.jsx")
+
+    assert "MOCK_DEVICES" not in frontend
+    for fake_value in ["177.721", "12.438", "39.217", "Feuer-Warnung",
+                       "Flugzeug über Gebiet", "Schiff erkannt",
+                       "Alle Kerndienste online"]:
+        assert fake_value not in frontend
+
+    assert 'setDeviceDataState("unavailable")' in frontend
+    assert 'overall_trust: null' in frontend
+    assert 'continuity_score: null' in frontend
+    assert 'status: "unknown"' in frontend
+    assert 'data_trust_score: null' in frontend
+    assert "systemStatus.label" in frontend
+    assert 'value="—"' in frontend

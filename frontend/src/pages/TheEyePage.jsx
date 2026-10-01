@@ -30,22 +30,16 @@ import {
 } from "lucide-react";
 import "./TheEyePage.css";
 
-const MOCK_DEVICES = [
-  { device_id: "AION-KS-000145", device_type: "camera", connection_status: "online", city: "Prishtina", country: "XK", battery_percent: 87, firmware_version: "1.0.4", location: { lat: 42.6629, lng: 21.1655 } },
-  { device_id: "POWER-KS-0032", device_type: "power_station", connection_status: "offline", city: "Prizren", country: "XK", battery_percent: 42, firmware_version: "1.0.2", location: { lat: 42.2139, lng: 20.7397 } },
-  { device_id: "SCOOTER-KS-118", device_type: "scooter", connection_status: "online", city: "Prishtina", country: "XK", battery_percent: 64, firmware_version: "2.2.1", location: { lat: 42.6557, lng: 21.1598 } },
-];
-
 const LAYERS = [
-  ["Kameras", Camera, 177721, "cyan"],
-  ["Flugzeuge", Plane, 12438, "blue"],
-  ["Schiffe", Ship, 39217, "amber"],
-  ["Satelliten", Satellite, 2914, "violet"],
+  ["Kameras", Camera, null, "cyan"],
+  ["Flugzeuge", Plane, null, "blue"],
+  ["Schiffe", Ship, null, "amber"],
+  ["Satelliten", Satellite, null, "violet"],
   ["Wetter", CloudSun, null, "sky"],
-  ["Feuer", Flame, 342, "red"],
-  ["Erdbeben", Activity, 12, "orange"],
-  ["Kraftwerke", Zap, 34901, "yellow"],
-  ["BidBlitz Geräte", Cpu, 1328, "green"],
+  ["Feuer", Flame, null, "red"],
+  ["Erdbeben", Activity, null, "orange"],
+  ["Kraftwerke", Zap, null, "yellow"],
+  ["BidBlitz Geräte", Cpu, null, "green"],
 ];
 
 const ICONS = {
@@ -62,8 +56,15 @@ const ICONS = {
 };
 
 function StatusDot({ status }) {
-  const normalized = status === "online" ? "online" : status === "warning" ? "warning" : "offline";
-  return <span className={`eye-status eye-status--${normalized}`}><span />{normalized === "online" ? "Online" : normalized === "warning" ? "Warnung" : "Offline"}</span>;
+  const normalized = ["online", "warning", "offline"].includes(status) ? status : "unknown";
+  const label = normalized === "online"
+    ? "Online"
+    : normalized === "warning"
+      ? "Warnung"
+      : normalized === "offline"
+        ? "Offline"
+        : "Unknown";
+  return <span className={`eye-status eye-status--${normalized}`}><span />{label}</span>;
 }
 
 function MetricCard({ icon: Icon, value, label, tone }) {
@@ -76,9 +77,10 @@ function MetricCard({ icon: Icon, value, label, tone }) {
 }
 
 export default function TheEyePage({ onNavigate }) {
-  const [devices, setDevices] = useState(MOCK_DEVICES);
-  const [selectedId, setSelectedId] = useState(MOCK_DEVICES[0].device_id);
+  const [devices, setDevices] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deviceDataState, setDeviceDataState] = useState("loading");
   const [query, setQuery] = useState("");
   const [activeLayers, setActiveLayers] = useState(() => Object.fromEntries(LAYERS.map(([name]) => [name, true])));
   const [tab, setTab] = useState("Übersicht");
@@ -115,7 +117,8 @@ export default function TheEyePage({ onNavigate }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [dataQuality, setDataQuality] = useState({
-    overall_trust: 100,
+    overall_trust: null,
+    trust_state: "unknown",
     sources_total: 0,
     live_sources: 0,
     delayed_sources: 0,
@@ -168,9 +171,9 @@ export default function TheEyePage({ onNavigate }) {
     runtime_config: {},
   });
   const [continuityOverview, setContinuityOverview] = useState({
-    continuity_score: 100,
-    status: "healthy",
-    emergency_mode: { mode: "normal" },
+    continuity_score: null,
+    status: "unknown",
+    emergency_mode: { mode: "unknown" },
     backup_services: 0,
     backup_failed: 0,
     backup_warning: 0,
@@ -202,7 +205,7 @@ export default function TheEyePage({ onNavigate }) {
       security_critical: 0,
       pending_approvals: 0,
       provider_monthly_cost: 0,
-      data_trust_score: 100,
+      data_trust_score: null,
       priorities: [],
     },
     recent_briefs: [],
@@ -441,12 +444,22 @@ export default function TheEyePage({ onNavigate }) {
         const res = await fetch("/api/the-eye/admin/map/devices", { credentials: "include" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (!cancelled && Array.isArray(data.devices) && data.devices.length) {
-          setDevices(data.devices);
-          setSelectedId((current) => data.devices.some((d) => d.device_id === current) ? current : data.devices[0].device_id);
+        if (!cancelled) {
+          const nextDevices = Array.isArray(data.devices) ? data.devices : [];
+          setDevices(nextDevices);
+          setDeviceDataState(nextDevices.length ? "live" : "empty");
+          setSelectedId((current) => (
+            current && nextDevices.some((d) => d.device_id === current)
+              ? current
+              : nextDevices[0]?.device_id || null
+          ));
         }
       } catch {
-        // Preview remains useful before a real device is registered.
+        if (!cancelled) {
+          setDevices([]);
+          setSelectedId(null);
+          setDeviceDataState("unavailable");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -655,6 +668,7 @@ export default function TheEyePage({ onNavigate }) {
           const payload = message?.payload || {};
 
           if (message.type === "device.registered" && payload.device_id) {
+            setDeviceDataState("live");
             setDevices((current) => (
               current.some((device) => device.device_id === payload.device_id)
                 ? current.map((device) => device.device_id === payload.device_id ? { ...device, ...payload } : device)
@@ -996,6 +1010,32 @@ export default function TheEyePage({ onNavigate }) {
 
   const toggleLayer = (name) => setActiveLayers((prev) => ({ ...prev, [name]: !prev[name] }));
 
+  const layerCountFor = (name) => {
+    if (name === "Kameras") return cameras.length;
+    if (name === "BidBlitz Geräte") return visibleDevices.length;
+    return null;
+  };
+
+  const dataTrustLabel = dataQuality.overall_trust == null
+    ? "UNKNOWN"
+    : `${Number(dataQuality.overall_trust).toFixed(1)} / 100 Trust`;
+  const executiveTrustLabel = executiveOverview.snapshot?.data_trust_score == null
+    ? "UNKNOWN"
+    : Number(executiveOverview.snapshot.data_trust_score).toFixed(0);
+  const continuityLabel = continuityOverview.continuity_score == null
+    ? "UNKNOWN"
+    : `${continuityOverview.continuity_score}/100 · ${continuityOverview.status || "unknown"}`;
+
+  const systemStatus = loading
+    ? { label: "Daten werden geladen", tone: "unknown" }
+    : readiness.staging_ready && liveConnected
+      ? { label: "Staging verifiziert", tone: "healthy" }
+      : !liveConnected
+        ? { label: "Realtime nicht verbunden", tone: "warning" }
+        : readiness.staging_blockers?.length
+          ? { label: "Readiness blockiert", tone: "warning" }
+          : { label: "Readiness nicht verifiziert", tone: "unknown" };
+
   return (
     <div className="the-eye-page">
       <header className="eye-topbar">
@@ -1055,14 +1095,17 @@ export default function TheEyePage({ onNavigate }) {
 
           <section className="eye-layer-list">
             <div className="eye-section-title"><span>Layer</span><span className="eye-count">{LAYERS.filter(([n]) => activeLayers[n]).length}</span></div>
-            {LAYERS.map(([name, Icon, count, tone]) => (
-              <button className="eye-layer-row" key={name} onClick={() => toggleLayer(name)}>
-                <span className={`eye-layer-icon eye-tone-${tone}`}><Icon size={17} /></span>
-                <span className="eye-layer-name">{name}</span>
-                {count ? <span className="eye-layer-count">{count.toLocaleString("de-DE")}</span> : null}
-                <span className={`eye-switch ${activeLayers[name] ? "on" : ""}`}><span /></span>
-              </button>
-            ))}
+            {LAYERS.map(([name, Icon, , tone]) => {
+              const count = layerCountFor(name);
+              return (
+                <button className="eye-layer-row" key={name} onClick={() => toggleLayer(name)}>
+                  <span className={`eye-layer-icon eye-tone-${tone}`}><Icon size={17} /></span>
+                  <span className="eye-layer-name">{name}</span>
+                  <span className="eye-layer-count">{count == null ? "—" : count.toLocaleString("de-DE")}</span>
+                  <span className={`eye-switch ${activeLayers[name] ? "on" : ""}`}><span /></span>
+                </button>
+              );
+            })}
           </section>
 
           <section>
@@ -1241,16 +1284,16 @@ export default function TheEyePage({ onNavigate }) {
               <button>+</button><button>−</button><button><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : undefined}>{mapFocus ? "Welt" : "3D"}</button>
             </div>
 
-            <div className="eye-live-clock"><span><Camera size={15} /> Live</span><strong>UTC+2</strong></div>
+            <div className="eye-live-clock"><span><Camera size={15} /> {liveConnected ? "Realtime" : "No Realtime"}</span><strong>{deviceDataState.toUpperCase()}</strong></div>
           </section>
 
           <section className="eye-metrics">
-            <MetricCard icon={Camera} value="177.721" label="Kameras" tone="cyan" />
-            <MetricCard icon={Plane} value="12.438" label="Flugzeuge" tone="blue" />
-            <MetricCard icon={Ship} value="39.217" label="Schiffe" tone="amber" />
+            <MetricCard icon={Camera} value={cameras.length.toLocaleString("de-DE")} label="Interne Kameras" tone="cyan" />
+            <MetricCard icon={Plane} value="—" label="Flüge · keine Quelle" tone="blue" />
+            <MetricCard icon={Ship} value="—" label="Schiffe · keine Quelle" tone="amber" />
             <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
-            <MetricCard icon={Flame} value="342" label="Aktive Feuer" tone="red" />
-            <MetricCard icon={Activity} value="12" label="Erdbeben" tone="orange" />
+            <MetricCard icon={Flame} value="—" label="Feuer · keine Quelle" tone="red" />
+            <MetricCard icon={Activity} value="—" label="Erdbeben · keine Quelle" tone="orange" />
           </section>
 
           <section className="eye-incident-strip">
@@ -1352,7 +1395,7 @@ export default function TheEyePage({ onNavigate }) {
             <div className="eye-quality-head">
               <div>
                 <span>DATA QUALITY & TRUST</span>
-                <strong>{Number(dataQuality.overall_trust ?? 100).toFixed(1)} / 100 Trust</strong>
+                <strong>{dataTrustLabel}</strong>
               </div>
               <div className="eye-quality-kpis">
                 <span>Live {dataQuality.live_sources || 0}</span>
@@ -1500,7 +1543,7 @@ export default function TheEyePage({ onNavigate }) {
                 <span>Profit {Number(executiveOverview.snapshot?.profit || 0).toLocaleString("de-DE", { maximumFractionDigits: 0 })} €</span>
                 <span>Incidents {executiveOverview.snapshot?.open_incidents || 0}</span>
                 <span>Security {executiveOverview.snapshot?.security_open || 0}</span>
-                <span>Trust {Number(executiveOverview.snapshot?.data_trust_score ?? 100).toFixed(0)}</span>
+                <span>Trust {executiveTrustLabel}</span>
               </div>
             </div>
             <div className="eye-executive-columns">
@@ -1531,7 +1574,7 @@ export default function TheEyePage({ onNavigate }) {
             <div className="eye-continuity-head">
               <div>
                 <span>BUSINESS CONTINUITY</span>
-                <strong>{continuityOverview.continuity_score ?? 100}/100 · {continuityOverview.status || "healthy"}</strong>
+                <strong>{continuityLabel}</strong>
               </div>
               <div className="eye-continuity-kpis">
                 <span>Backups {continuityOverview.backup_services || 0}</span>
@@ -1601,24 +1644,29 @@ export default function TheEyePage({ onNavigate }) {
 
           <section className="eye-bottom-grid">
             <div className="eye-panel">
-              <div className="eye-panel-title"><span>Letzte Ereignisse</span><RefreshCw size={15} /></div>
+              <div className="eye-panel-title"><span>Verifizierte Incidents</span><RefreshCw size={15} /></div>
               <div className="eye-events">
-                <div><i className="cyan" /><span>23:10</span><strong>Kamera online</strong><small>AION-KS-000145 · Prishtina</small></div>
-                <div><i className="blue" /><span>23:08</span><strong>Flugzeug über Gebiet</strong><small>10.668 m</small></div>
-                <div><i className="amber" /><span>23:03</span><strong>Schiff erkannt</strong><small>Adria</small></div>
-                <div><i className="red" /><span>22:59</span><strong>Feuer-Warnung</strong><small>Region Balkan</small></div>
-                <div><i className="orange" /><span>22:54</span><strong>Gerät offline</strong><small>POWER-KS-0032 · Prizren</small></div>
+                {incidents.slice(0, 5).map((incident) => (
+                  <div key={incident.incident_id}>
+                    <i className={incident.severity === "critical" ? "red" : incident.severity === "high" ? "orange" : "cyan"} />
+                    <span>{incident.updated_at ? new Date(incident.updated_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                    <strong>{incident.title}</strong>
+                    <small>{incident.site_id || "Global"} · {incident.status || "unknown"}</small>
+                  </div>
+                ))}
+                {!incidents.length ? <div className="eye-events-empty">Keine verifizierten Ereignisse</div> : null}
               </div>
             </div>
 
             <div className="eye-panel eye-analysis">
-              <div className="eye-panel-title"><span>Weltkarte Analyse</span><Activity size={15} /></div>
+              <div className="eye-panel-title"><span>Quellenstatus</span><Activity size={15} /></div>
               <div className="eye-mini-map">
-                <span className="hotspot hs1" /><span className="hotspot hs2" /><span className="hotspot hs3" />
                 <div className="eye-mini-grid" />
               </div>
               <div className="eye-analysis-stats">
-                <span><Camera size={14} />177.721</span><span><Plane size={14} />12.438</span><span><Ship size={14} />39.217</span>
+                <span><Camera size={14} />{cameras.length}</span>
+                <span><Cpu size={14} />{visibleDevices.length}</span>
+                <span><Globe2 size={14} />World: —</span>
               </div>
             </div>
           </section>
@@ -1662,14 +1710,14 @@ export default function TheEyePage({ onNavigate }) {
               <div><span>Standort</span><strong>{selected?.location ? `${selected.location.lat}, ${selected.location.lng}` : "—"}</strong></div>
               <div><span>Firmware</span><strong>{selected?.firmware_version || "—"}</strong></div>
               <div><span>Batterie</span><strong>{selected?.battery_percent ?? "—"}{selected?.battery_percent != null ? " %" : ""}</strong></div>
-              <div><span>Letzte Verbindung</span><strong>{selected?.last_seen_at ? new Date(selected.last_seen_at).toLocaleTimeString("de-DE") : "Preview"}</strong></div>
+              <div><span>Letzte Verbindung</span><strong>{selected?.last_seen_at ? new Date(selected.last_seen_at).toLocaleTimeString("de-DE") : "—"}</strong></div>
             </div>
 
             <div className="eye-actions">
-              <button className="primary" onClick={openCameraStream}><Camera size={16} />Live öffnen</button>
-              <button><Send size={16} />Befehl senden</button>
-              <button><RefreshCw size={16} />Neustarten</button>
-              <button><HardDrive size={16} />Firmware</button>
+              <button className="primary" onClick={openCameraStream} disabled={!selectedCamera?.camera_id}><Camera size={16} />Live öffnen</button>
+              <button disabled title="Command UI ist noch nicht sicher verdrahtet"><Send size={16} />Befehl senden</button>
+              <button disabled title="Restart muss über Approval/AION verdrahtet werden"><RefreshCw size={16} />Neustarten</button>
+              <button disabled title="OTA UI ist noch nicht sicher verdrahtet"><HardDrive size={16} />Firmware</button>
             </div>
           </div>
 
@@ -1703,7 +1751,7 @@ export default function TheEyePage({ onNavigate }) {
             </div>
           </div>
 
-          <div className="eye-alert-strip"><Siren size={17} /><span>Systemstatus</span><strong>Alle Kerndienste online</strong><Wifi size={16} /></div>
+          <div className={`eye-alert-strip ${systemStatus.tone}`}><Siren size={17} /><span>Systemstatus</span><strong>{systemStatus.label}</strong><Wifi size={16} /></div>
         </aside>
       </div>
     </div>
