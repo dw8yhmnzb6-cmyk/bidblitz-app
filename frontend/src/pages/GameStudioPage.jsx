@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, ChevronRight, Gamepad2, Globe2, Layers3, Loader2, Pencil, Plus, Save, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 
@@ -38,6 +38,7 @@ export default function GameStudioPage({ onBack }) {
   const { lang } = useI18n();
   const c = COPY[lang?.split("-")[0]] || COPY.en;
   const editCopy = EDIT_COPY[lang?.split("-")[0]] || EDIT_COPY.en;
+  const dialogRef = useRef(null);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -55,6 +56,20 @@ export default function GameStudioPage({ onBack }) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
+
+  useEffect(() => {
+    if (!editing) return undefined;
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [editing]);
 
   const closeEditor = () => {
     if (busy || (dirty && !window.confirm(editCopy.discard))) return false;
@@ -151,7 +166,7 @@ export default function GameStudioPage({ onBack }) {
         <p className="mt-9 text-xs leading-relaxed text-white/40"><ShieldCheck size={14} className="mr-1 inline" />{c.privacy} {c.noMoney}</p>
       </div>
 
-      {editing && <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="presentation"><div role="dialog" aria-modal="true" aria-label={c.formTitle} className="max-h-[93vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-cyan-200/15 bg-[#0c203d] p-6 shadow-2xl sm:rounded-3xl sm:p-8"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-bold">{c.formTitle}</h2><button type="button" onClick={closeEditor} disabled={busy} className="rounded-xl p-2 text-white/60 hover:bg-white/10" aria-label={c.cancel}><X size={20} /></button></div>{error && <div role="alert" className="mb-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-3 text-sm text-rose-100">{error}</div>}<form onSubmit={save} className="space-y-5"><label className="block text-sm font-medium">{c.name}<input required minLength={3} maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${field} mt-2`} /></label><label className="block text-sm font-medium">{c.description}<textarea required minLength={30} maxLength={2000} rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${field} mt-2 resize-y`} /></label><label className="block text-sm font-medium">{c.category}<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-2`}>{["Puzzle", "Arcade", "Strategy", "Sports"].map((item) => <option key={item}>{item}</option>)}</select></label><fieldset><legend className="mb-2 text-sm font-medium">{c.languages}</legend><div className="max-h-40 overflow-auto rounded-2xl border border-white/10 bg-[#071b36]/80 p-3"><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{LANGUAGES.map(([code, name]) => <label key={code} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl p-2 text-xs text-white/70 hover:bg-white/5"><input type="checkbox" checked={form.languages.includes(code)} onChange={() => toggleLanguage(code)} className="accent-cyan-300" /><span className="truncate">{name}</span></label>)}</div></div></fieldset><label className="flex items-start gap-3 rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/75"><input required type="checkbox" checked={form.rights_confirmed} onChange={(e) => setForm({ ...form, rights_confirmed: e.target.checked })} className="mt-0.5 accent-cyan-300" />{c.rights}</label><div className="flex gap-3 pt-2"><button type="button" onClick={closeEditor} disabled={busy} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold">{c.cancel}</button><button type="submit" disabled={busy || !form.languages.length || !form.rights_confirmed} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-bold text-[#061329] disabled:opacity-40">{busy ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}{c.save}</button></div></form></div></div>}
+      {editing && <dialog ref={dialogRef} aria-label={c.formTitle} onCancel={(event) => { event.preventDefault(); closeEditor(); }} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none bg-transparent p-0 text-white backdrop:bg-black/75 backdrop:backdrop-blur-sm"><div className="flex h-full items-end justify-center sm:items-center sm:p-5"><div className="max-h-[93vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-cyan-200/15 bg-[#0c203d] p-6 shadow-2xl sm:rounded-3xl sm:p-8"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-bold">{c.formTitle}</h2><button type="button" onClick={closeEditor} disabled={busy} className="rounded-xl p-2 text-white/60 hover:bg-white/10" aria-label={c.cancel}><X size={20} /></button></div>{error && <div role="alert" className="mb-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-3 text-sm text-rose-100">{error}</div>}<form onSubmit={save}><fieldset disabled={busy} className="min-w-0 space-y-5"><label className="block text-sm font-medium">{c.name}<input required minLength={3} maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${field} mt-2`} /></label><label className="block text-sm font-medium">{c.description}<textarea required minLength={30} maxLength={2000} rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${field} mt-2 resize-y`} /></label><label className="block text-sm font-medium">{c.category}<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-2`}>{["Puzzle", "Arcade", "Strategy", "Sports"].map((item) => <option key={item}>{item}</option>)}</select></label><fieldset><legend className="mb-2 text-sm font-medium">{c.languages}</legend><div className="max-h-40 overflow-auto rounded-2xl border border-white/10 bg-[#071b36]/80 p-3"><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{LANGUAGES.map(([code, name]) => <label key={code} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl p-2 text-xs text-white/70 hover:bg-white/5"><input type="checkbox" checked={form.languages.includes(code)} onChange={() => toggleLanguage(code)} className="accent-cyan-300" /><span className="truncate">{name}</span></label>)}</div></div></fieldset><label className="flex items-start gap-3 rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/75"><input required type="checkbox" checked={form.rights_confirmed} onChange={(e) => setForm({ ...form, rights_confirmed: e.target.checked })} className="mt-0.5 accent-cyan-300" />{c.rights}</label><div className="flex gap-3 pt-2"><button type="button" onClick={closeEditor} disabled={busy} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold">{c.cancel}</button><button type="submit" disabled={busy || !form.languages.length || !form.rights_confirmed} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-bold text-[#061329] disabled:opacity-40">{busy ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}{c.save}</button></div></fieldset></form></div></div></dialog>}
     </main>
   );
 }
