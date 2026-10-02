@@ -111,6 +111,21 @@ class StudioTest(unittest.TestCase):
         accepted = studio.GameDraftInput(**{**self.draft.model_dump(), "languages": ["zh-Hans", "zh-Hant"]})
         self.assertEqual(accepted.languages, ["zh-Hans", "zh-Hant"])
 
+    def test_all_fifty_languages_and_fifty_one_options_are_accepted(self):
+        codes = sorted(studio.SUPPORTED_LANGUAGES)
+        self.assertEqual(len(codes), 51)
+        self.assertEqual(len({code.split("-")[0] for code in codes}), 50)
+        accepted = studio.GameDraftInput(**{**self.draft.model_dump(), "languages": codes})
+        created = asyncio.run(studio.create_draft(None, accepted))
+        self.assertEqual(created["languages"], codes)
+        self.assertEqual(asyncio.run(studio.get_draft(created["id"], None))["languages"], codes)
+
+    def test_language_boundaries_reject_empty_duplicates_and_unknown_codes(self):
+        for languages in ([], ["et", "et"], ["zh"], ["zh-Hans", "unknown"],
+                          sorted(studio.SUPPORTED_LANGUAGES) + ["de"]):
+            with self.assertRaises(ValidationError):
+                studio.GameDraftInput(**{**self.draft.model_dump(), "languages": languages})
+
     def test_draft_never_enters_published_status(self):
         created = asyncio.run(studio.create_draft(None, self.draft))
         self.assertEqual(created["status"], "draft")
@@ -150,3 +165,4 @@ class StudioTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

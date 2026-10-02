@@ -1,5 +1,8 @@
 """Developer-owned game metadata drafts. No payments or publication in this phase."""
 
+import json
+from pathlib import Path
+
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
@@ -13,17 +16,18 @@ from core.security import get_current_user
 
 router = APIRouter(prefix="/api/game-studio", tags=["game-studio"])
 
-SUPPORTED_LANGUAGES = frozenset(
-    "de en sq fr es pt it nl pl cs sk hu ro bg el hr sr bs sl mk tr ru uk "
-    "sv da nb fi ar he fa hi bn ur zh-Hans zh-Hant ja ko id vi th".split()
+# Checked deployment copy of frontend/src/config/gamesLanguages.json.
+_language_registry = json.loads(
+    (Path(__file__).resolve().parents[1] / "data" / "games_languages.json").read_text(encoding="utf-8")
 )
+SUPPORTED_LANGUAGES = frozenset(entry["code"] for entry in _language_registry)
 
 
 class GameDraftInput(BaseModel):
     title: str = Field(min_length=3, max_length=80)
     description: str = Field(min_length=30, max_length=2000)
     category: Literal["Puzzle", "Arcade", "Strategy", "Sports"]
-    languages: list[str] = Field(min_length=1, max_length=40)
+    languages: list[str] = Field(min_length=1, max_length=len(SUPPORTED_LANGUAGES))
     rights_confirmed: bool
 
     @field_validator("title", "description", mode="before")
@@ -138,3 +142,4 @@ async def delete_draft(draft_id: str, request: Request, revision: int = Query(..
     if not result.deleted_count:
         await _edit_failed(draft_id, owner_id)
     return {"deleted": True}
+

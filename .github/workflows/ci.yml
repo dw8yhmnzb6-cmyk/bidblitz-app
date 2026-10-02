@@ -95,7 +95,17 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+        run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}" src/config/languagePolicy.mjs
+
+      - name: Verify Games language registry and preference rules
+        run: |
+          node frontend/scripts/sync-games-languages.cjs --check
+          node --test frontend/scripts/test-games-languages.mjs
+
+      - name: Build frontend
+        env:
+          CI: "false"
+        run: npm run build
 
       - name: Verify local Games preview rules
         run: node --test frontend/scripts/test-match-preview.cjs
@@ -104,4 +114,5 @@ jobs:
         run: node frontend/scripts/check-update-safety.js
       - name: Verify admin wallet retry contract
         run: node --test frontend/scripts/admin-wallet-attempt.test.mjs
+
 

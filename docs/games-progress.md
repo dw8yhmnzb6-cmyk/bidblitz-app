@@ -1,36 +1,33 @@
 # BidBlitz Games implementation status
 
-Scope: the existing BidBlitz application, Games platform, one original Match game and developer portal. Work remains on the draft branch; no production deployment or monetary Games transactions.
+Scope: existing BidBlitz application, Games platform, original Match game and developer portal. Draft branch only; no production deployment or monetary Games transactions.
 
 ## Implemented
 
-- `/games`: React catalog with three illustrated cards, search, category filters, no-results/reset state and German, English and Albanian UI copy.
-- `/games/match`: embeds a trusted first-party local Match preview. Dedicated entry document loads only the Match engine, game UI and initial-level dialog. No local developer portal is embedded.
-- Only Match is playable. Bubble Islands and Blitz Runner are visibly planned, with no play actions.
-- Match has 30 levels, special stones, lives and device-local save data/test coins. It has no server progress or monetary wallet connection.
-- `/game-studio`: authenticated account-owned metadata drafts with revisions; the catalog links to it using the existing authentication prompt for guests.
-- Existing legacy `/gaming` financial/reward production guards remain in place.
-- Optimized WebP assets are stored with the application, without third-party image URLs.
+- Games catalog with search, category filters and illustrated cards; German, English and Albanian page copy.
+- First-party device-local Match preview with 30 levels, specials, lives and test coins. Bubble Islands and Blitz Runner remain planned.
+- Existing authentication and owner-scoped developer metadata drafts, revision checks and unsaved-input protection.
+- Language selectors in catalog and studio: 50 distinct languages, 51 options including separate Chinese scripts. Preferences persist locally; existing regional options remain supported.
+- Shared checked frontend/backend registry; metadata API accepts all 51 codes. Script-sensitive locale resolution, RTL metadata and visible English fallback for untranslated Games pages.
+- Existing financial production guards remain in place.
 
 ## Verification
 
-- 33 existing local rule/storage tests passed during porting; the 23 Match rule tests are added to CI.
-- Dedicated preview HTML was checked against game DOM IDs, script order and referenced files.
-- Full application build/lint is required on the resulting commit. Existing visual QA does not constitute a Games browser/device acceptance test.
-- No browser/device acceptance or production deployment has been completed.
+- 28 local Node tests passed: five language policy/registry tests and 23 Match rules/storage tests.
+- Eight developer API unit tests passed using mocked authentication and storage.
+- CI includes registry consistency, language tests, Match tests, ESLint and frontend build. Record actual resulting CI outcome separately.
+- Games browser/device acceptance remains pending. Local Match game copy is not translated into 50 languages.
 
 ## Remaining
 
-1. Render and test the complete Games journey on desktop/mobile.
-2. Connect catalog/favorites and game progress to the existing account/database.
-3. Make draft creation quota atomic, protect retried creates and add Mongo indexes.
-4. Implement secure game uploads, review, versions and publishing.
-5. Implement developer plans, Games purchase settlement, refunds and payouts.
-6. Implement operator administration and complete 30+ interface translations.
-7. Complete deployment, operational checks and launch acceptance.
+1. Desktop/mobile Games acceptance, including RTL and language switching.
+2. Account-backed catalog, favorites and game progress.
+3. Atomic draft quota, create idempotency and Mongo indexes.
+4. Secure uploads, review, versioning and publication.
+5. Developer plans, Games purchases, refunds and payouts.
+6. Operator administration and reviewed translations for all 50 languages.
+7. Deployment and launch acceptance.
 
-## Progress reporting convention
+## Progress reporting
 
-After each development milestone, report planning document completion, approximate overall programming completion, new verified work, next step and remaining work. Percentages are rough scope estimates, not measured test coverage or production readiness. Do not increment them merely for refactoring or passing a check.
-
-Baseline on 2026-10-02: planning document 100%; unresolved binding details approximately 90%; overall implementation approximately 20%. The catalog/preview port is a new integration milestone; server progress, fees and publication are still pending.
+Planning document: 100%. Overall programming: approximately 23%. Public Games deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Business, payment and regulatory launch decisions remain unresolved. Report verified changes and the next milestone after each programming block.

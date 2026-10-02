@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Gamepad2, Layers3, Search, Sparkles } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import GamesLanguageSelect from "../components/GamesLanguageSelect";
+import gameLanguages from "../config/gamesLanguages.json";
+import { resolveLocale } from "../config/languagePolicy.mjs";
 
 const ART = "/games/match-preview/assets";
 const COPY = {
@@ -44,8 +47,10 @@ const GAMES = [
 
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
   const { lang } = useI18n();
-  const locale = lang?.split("-")[0];
-  const c = COPY[locale] || COPY.en;
+  const locale = resolveLocale(lang, Object.keys(COPY));
+  const c = COPY[locale];
+  const selectedCode = resolveLocale(lang, gameLanguages.map(({ code }) => code));
+  const rtl = gameLanguages.find(({ code }) => code === selectedCode)?.rtl;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const games = useMemo(() => {
@@ -55,12 +60,13 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
   }, [query, category, c]);
 
   return (
-    <main lang={COPY[locale] ? locale : "en"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="games-platform-page">
+    <main lang={locale} dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="games-platform-page">
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-7">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm hover:bg-white/10"><ArrowLeft size={18} />{c.back}</button>
           <div className="flex items-center gap-3 font-black tracking-widest"><span className="rounded-xl bg-cyan-300 px-3 py-2 text-[#061329]">B</span><span>BIDBLITZ <span className="text-cyan-300">GAMES</span></span></div>
         </header>
+        <GamesLanguageSelect textLocale={locale} />
 
         {preview ? <section className="mt-6" aria-labelledby="match-preview-title">
           <h1 id="match-preview-title" className="text-2xl font-black">BidBlitz Match</h1>
@@ -91,7 +97,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
             <p className="mt-5 text-sm text-white/60" role="status">{games.length} / {GAMES.length} {c.count}</p>
             {games.length ? <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{games.map((game) => <article key={game.id} className="overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-b from-[#17355a] to-[#0b1e37] shadow-xl">
               <img src={`${ART}/${game.id}.webp`} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
-              <div className="p-5"><p className="text-sm text-cyan-200">{game.category}</p><h2 className="mt-2 text-2xl font-bold">{game.title}</h2><p className="mt-3 min-h-12 text-sm leading-relaxed text-sky-100/70">{c[game.text]}</p>
+              <div className="p-5"><p className="text-sm text-cyan-200">{game.category === "Puzzle" ? c.puzzle : c.arcade}</p><h2 className="mt-2 text-2xl font-bold">{game.title}</h2><p className="mt-3 min-h-12 text-sm leading-relaxed text-sky-100/70">{c[game.text]}</p>
                 {game.available ? <button onClick={() => onNavigate("/games/match")} className="mt-5 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="mt-5 inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
               </div>
             </article>)}</div> : <div className="mt-4 rounded-3xl border border-dashed border-white/20 px-5 py-10 text-center"><p className="text-lg">{c.empty}</p><button onClick={() => { setQuery(""); setCategory("all"); }} className="mt-4 rounded-full bg-cyan-300 px-5 py-3 font-semibold text-[#061329]">{c.clear}</button></div>}
@@ -107,3 +113,4 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
     </main>
   );
 }
+
