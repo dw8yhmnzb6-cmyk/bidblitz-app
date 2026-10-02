@@ -1,0 +1,35 @@
+name: Diagnose Nginx Duplicate Server Names Once
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/diagnose-nginx-duplicates-once.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Inspect active Nginx configuration
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          echo "=== NGINX TEST ==="
+          nginx -t || true
+          echo "=== SITES ENABLED ==="
+          ls -la /etc/nginx/sites-enabled || true
+          echo "=== BIDBLITZ SERVER_NAME OCCURRENCES IN ACTIVE CONFIG ==="
+          nginx -T 2>&1 | grep -nE 'server_name[[:space:]]+.*(bidblitz\.ae|www\.bidblitz\.ae)' || true
+          echo "=== BIDBLITZ CANDIDATE FILES ==="
+          for f in /etc/nginx/sites-enabled/* /etc/nginx/sites-available/* /etc/nginx/conf.d/*; do
+            [ -f "$f" ] || continue
+            if grep -qE 'server_name[[:space:]]+.*(bidblitz\.ae|www\.bidblitz\.ae)' "$f"; then
+              echo "--- FILE: $f"
+              grep -nE '^[[:space:]]*(listen|server_name|root|proxy_pass|include|ssl_certificate|ssl_certificate_key)' "$f" || true
+            fi
+          done
+          REMOTE
