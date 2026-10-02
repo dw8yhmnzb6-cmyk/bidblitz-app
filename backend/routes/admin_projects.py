@@ -63,11 +63,21 @@ async def list_admin_projects(request: Request):
             "permissions": ["*"],
         },
         "projects": [
-            {**project, "permissions": ["*"]}
+            {
+                **project,
+                "permissions": ["*"],
+                "sso_ready": bool(
+                    project["id"] == "bidblitz"
+                    or (
+                        project["id"] == "eyes"
+                        and len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) >= 32
+                    )
+                ),
+            }
             for project in PROJECTS
         ],
         "sso_rollout": {
-            "enabled": False,
+            "enabled": len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) >= 32,
             "message": "BidBlitz ID SSO wird projektweise aktiviert.",
         },
     }
