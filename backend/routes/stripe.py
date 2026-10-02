@@ -709,6 +709,33 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
         )
         raise HTTPException(status_code=502, detail="Payment verification failed. Please retry safely.")
 
+    # Fail closed before wallet credit: a durable/retrieved PaymentIntent must
+    # still belong to this user and represent this exact EUR package amount.
+    intent_metadata = dict(getattr(intent, "metadata", {}) or {})
+    intent_amount = int(getattr(intent, "amount", 0) or 0)
+    intent_currency = str(getattr(intent, "currency", "") or "").lower()
+    intent_user_id = str(intent_metadata.get("user_id") or "")
+    intent_type = str(intent_metadata.get("type") or "")
+    if (
+        intent_amount != int(amount * 100)
+        or intent_currency != "eur"
+        or intent_user_id != user_id
+        or intent_type != "quick_topup"
+    ):
+        await db.quick_topup_attempts.update_one(
+            {"_id": attempt_id},
+            {"$set": {
+                "stripe_pi_id": getattr(intent, "id", None),
+                "status": "manual_review_required",
+                "last_error": "stripe_intent_identity_mismatch",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="Payment identity mismatch; wallet credit blocked for manual review",
+        )
+
     if intent.status != "succeeded":
         await db.quick_topup_attempts.update_one(
             {"_id": attempt_id},
