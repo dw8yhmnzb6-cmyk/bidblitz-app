@@ -39,6 +39,8 @@ export default function GameStudioPage({ onBack }) {
   const c = COPY[lang?.split("-")[0]] || COPY.en;
   const editCopy = EDIT_COPY[lang?.split("-")[0]] || EDIT_COPY.en;
   const dialogRef = useRef(null);
+  const listRequestRef = useRef(null);
+  const mutationRef = useRef(false);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -72,25 +74,34 @@ export default function GameStudioPage({ onBack }) {
   }, [editing]);
 
   const closeEditor = () => {
-    if (busy || (dirty && !window.confirm(editCopy.discard))) return false;
+    if (mutationRef.current || (dirty && !window.confirm(editCopy.discard))) return false;
     setEditing(null);
     return true;
   };
 
   const load = useCallback(async () => {
+    listRequestRef.current?.abort();
+    const controller = new AbortController();
+    listRequestRef.current = controller;
     setLoading(true);
     setError("");
     try {
-      const data = await request(API);
-      setDrafts(data.drafts || []);
+      const data = await request(API, { signal: controller.signal });
+      if (!controller.signal.aborted) setDrafts(data.drafts || []);
     } catch (err) {
-      setError(err.status === 401 ? c.loginError : c.loadError);
-    } finally { setLoading(false); }
+      if (!controller.signal.aborted) setError(err.status === 401 ? c.loginError : c.loadError);
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, [c.loginError, c.loadError]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => listRequestRef.current?.abort();
+  }, [load]);
 
   const start = (draft) => {
+    if (mutationRef.current) return;
     setError(""); setNotice("");
     setEditing(draft?.id || "new");
     const next = draft ? { title: draft.title, description: draft.description, category: draft.category,
@@ -102,7 +113,10 @@ export default function GameStudioPage({ onBack }) {
 
   const save = async (event) => {
     event.preventDefault();
-    if (busy) return;
+    if (mutationRef.current) return;
+    mutationRef.current = true;
+    listRequestRef.current?.abort();
+    setLoading(false);
     setBusy(true); setError(""); setNotice("");
     try {
       const id = editing === "new" ? null : editing;
@@ -113,17 +127,20 @@ export default function GameStudioPage({ onBack }) {
       setNotice(c.saved);
       await load();
     } catch (err) { setError(err.status === 401 ? c.loginError : err.status === 409 && editing !== "new" ? editCopy.conflict : c.saveError); }
-    finally { setBusy(false); }
+    finally { mutationRef.current = false; setBusy(false); }
   };
 
   const remove = async (draft) => {
-    if (busy || !window.confirm(c.confirmDelete)) return;
+    if (mutationRef.current || !window.confirm(c.confirmDelete)) return;
+    mutationRef.current = true;
+    listRequestRef.current?.abort();
+    setLoading(false);
     setBusy(true); setError("");
     try {
       await request(`${API}/${encodeURIComponent(draft.id)}?revision=${draft.revision ?? 0}`, { method: "DELETE" });
       setDrafts((items) => items.filter((item) => item.id !== draft.id));
     } catch (err) { setError(err.status === 401 ? c.loginError : err.status === 409 ? editCopy.conflict : c.deleteError); }
-    finally { setBusy(false); }
+    finally { mutationRef.current = false; setBusy(false); }
   };
 
   const toggleLanguage = (code) => setForm((current) => ({
@@ -157,7 +174,7 @@ export default function GameStudioPage({ onBack }) {
         </div>
 
         <div className="mt-9 flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-bold"><Sparkles size={20} className="text-cyan-300" />{c.draft}</h2><span className="text-xs text-white/40">{drafts.length} / 100</span></div>
-        {error && <div role="alert" className="mt-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-4 text-sm text-rose-100">{error} <button onClick={load} className="ml-3 underline">{c.retry}</button></div>}
+        {error && <div role="alert" className="mt-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-4 text-sm text-rose-100">{error} <button onClick={load} disabled={busy} className="ml-3 underline disabled:opacity-50">{c.retry}</button></div>}
         {notice && <div role="status" className="mt-4 rounded-xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm text-emerald-100">{notice}</div>}
         {loading ? <div className="mt-8 flex items-center gap-3 text-white/60"><Loader2 className="animate-spin" size={20} />{c.draft}…</div> : drafts.length === 0 ?
           <div className="mt-5 rounded-3xl border border-dashed border-white/15 bg-white/[.03] px-6 py-12 text-center"><Gamepad2 size={42} className="mx-auto text-cyan-300/70" /><h3 className="mt-4 text-lg font-bold">{c.emptyTitle}</h3><p className="mt-2 text-sm text-white/50">{c.emptyText}</p></div> :
