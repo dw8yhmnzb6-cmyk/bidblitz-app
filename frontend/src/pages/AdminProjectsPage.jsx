@@ -16,6 +16,7 @@ export default function AdminProjectsPage({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [opening, setOpening] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/admin/projects`, { credentials: "include" })
@@ -37,10 +38,41 @@ export default function AdminProjectsPage({ onNavigate }) {
     return projects.filter((p) => `${p.name} ${p.description}`.toLowerCase().includes(q));
   }, [projects, query]);
 
-  const openProject = (project) => {
+  const openProject = async (project) => {
     if (!project.admin_url) return;
-    if (project.admin_url.startsWith("/")) onNavigate(project.admin_url);
-    else window.location.assign(project.admin_url);
+    if (project.admin_url.startsWith("/")) {
+      onNavigate(project.admin_url);
+      return;
+    }
+    if (project.id !== "eyes") {
+      window.location.assign(project.admin_url);
+      return;
+    }
+
+    setOpening(project.id);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/admin/sso/${project.id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "SSO konnte nicht gestartet werden.");
+
+      const handoff = await fetch(data.handoff_url, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: data.code }),
+      });
+      const handoffData = await handoff.json().catch(() => ({}));
+      if (!handoff.ok) throw new Error(handoffData.detail || "Eyes-Anmeldung konnte nicht übernommen werden.");
+      window.location.assign(project.admin_url);
+    } catch (err) {
+      setError(err.message || "Projekt konnte nicht geöffnet werden.");
+    } finally {
+      setOpening("");
+    }
   };
 
   return (
@@ -105,14 +137,14 @@ export default function AdminProjectsPage({ onNavigate }) {
                       {project.sso ? "BidBlitz ID verbunden" : enabled ? "SSO-Anbindung folgt" : "Admin-Anbindung folgt"}
                     </div>
                     <button
-                      disabled={!enabled}
+                      disabled={!enabled || opening === project.id}
                       onClick={() => openProject(project)}
                       className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 ${
                         enabled ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      {enabled ? "Admin öffnen" : "Noch nicht verbunden"}
-                      {enabled && <ExternalLink size={14} />}
+                      {opening === project.id ? "Wird angemeldet…" : enabled ? "Admin öffnen" : "Noch nicht verbunden"}
+                      {opening === project.id ? <Loader2 size={14} className="animate-spin" /> : enabled && <ExternalLink size={14} />}
                     </button>
                   </div>
                 </article>
