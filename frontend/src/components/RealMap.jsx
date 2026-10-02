@@ -131,9 +131,10 @@ export const TaxiMapbox = ({
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+  const [mapboxFailed, setMapboxFailed] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current || !mapboxgl.accessToken) return undefined;
+    if (!containerRef.current || mapRef.current || !mapboxgl.accessToken || mapboxFailed) return undefined;
     const hasPickup = Number.isFinite(pickup?.lng) && Number.isFinite(pickup?.lat);
     const center = hasPickup ? [pickup.lng, pickup.lat] : [15.0, 48.5];
     const map = new mapboxgl.Map({
@@ -146,6 +147,22 @@ export const TaxiMapbox = ({
       dragRotate: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+
+    const handleMapError = (event) => {
+      const status = Number(event?.error?.status || event?.error?.statusCode || 0);
+      const message = String(event?.error?.message || '').toLowerCase();
+      const authFailure = status === 401 || status === 403
+        || message.includes('access token')
+        || message.includes('api key')
+        || message.includes('unauthorized')
+        || message.includes('forbidden');
+      if (authFailure) {
+        console.warn('Mapbox unavailable; switching Taxi map to first-party fallback');
+        setMapboxFailed(true);
+      }
+    };
+    map.on('error', handleMapError);
+
     if (onPickupChange) {
       map.on('click', async (event) => {
         if (!pickupMoveMode) return;
@@ -156,10 +173,11 @@ export const TaxiMapbox = ({
     return () => {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
+      map.off('error', handleMapError);
       map.remove();
       mapRef.current = null;
     };
-  }, [onPickupChange, pickup?.lat, pickup?.lng, pickupMoveMode]);
+  }, [mapboxFailed, onPickupChange, pickup?.lat, pickup?.lng, pickupMoveMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -263,7 +281,7 @@ export const TaxiMapbox = ({
     }
   }, [driverLocation?.lat, driverLocation?.lng, dropoff?.lat, dropoff?.lng, nearbyDrivers, pickup?.lat, pickup?.lng]);
 
-  if (!mapboxgl.accessToken) {
+  if (!mapboxgl.accessToken || mapboxFailed) {
     return (
       <TaxiMap
         pickup={pickup}
