@@ -69,7 +69,7 @@ async def list_admin_projects(request: Request):
                 "sso_ready": bool(
                     project["id"] == "bidblitz"
                     or (
-                        project["id"] == "eyes"
+                        project["id"] in {"eyes", "trade"}
                         and len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) >= 32
                     )
                 ),
