@@ -29,6 +29,7 @@ fastapi.APIRouter = Router
 fastapi.HTTPException = HTTPException
 fastapi.Request = object
 fastapi.Query = lambda *args, **kwargs: None
+fastapi.Header = lambda *args, **kwargs: None
 database = types.ModuleType("core.database")
 database.db = types.SimpleNamespace()
 security = types.ModuleType("core.security")
@@ -54,14 +55,20 @@ def matches(doc, query):
     return True
 
 
+class DuplicateKeyError(Exception):
+    code = 11000
+
+
 class Collection:
     def __init__(self):
         self.docs = []
 
     async def count_documents(self, query, **kwargs):
-        return sum(d["owner_id"] == query["owner_id"] for d in self.docs)
+        return sum(matches(d, query) for d in self.docs)
 
     async def insert_one(self, doc):
+        if "_id" in doc and any(d.get("_id") == doc["_id"] for d in self.docs):
+            raise DuplicateKeyError()
         self.docs.append(dict(doc))
 
     async def find_one(self, query, projection=None):
@@ -86,13 +93,15 @@ class StudioTest(unittest.TestCase):
     def setUp(self):
         self.collection = Collection()
         database.db.game_studio_drafts = self.collection
+        database.db.game_studio_draft_requests = Collection()
+        database.db.game_studio_draft_slots = Collection()
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
         self.draft = studio.GameDraftInput(title="  Island Quest  ", description="A puzzle adventure on floating islands with thirty levels.", category="Puzzle", languages=["de", "en"], rights_confirmed=True)
         self.update = studio.GameDraftUpdate(**self.draft.model_dump(), revision=1)
 
     def test_draft_is_account_bound_and_cannot_be_changed_by_another_user(self):
-        created = asyncio.run(studio.create_draft(None, self.draft))
+        created = asyncio.run(studio.create_draft(None, self.draft, "create-alice-0001"))
         self.assertEqual(created["title"], "Island Quest")
         self.assertNotIn("owner_id", created)
         security.get_current_user.return_value = {"_id": "bob"}
@@ -116,7 +125,7 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(len(codes), 51)
         self.assertEqual(len({code.split("-")[0] for code in codes}), 50)
         accepted = studio.GameDraftInput(**{**self.draft.model_dump(), "languages": codes})
-        created = asyncio.run(studio.create_draft(None, accepted))
+        created = asyncio.run(studio.create_draft(None, accepted, "create-all-languages-0001"))
         self.assertEqual(created["languages"], codes)
         self.assertEqual(asyncio.run(studio.get_draft(created["id"], None))["languages"], codes)
 
@@ -127,14 +136,14 @@ class StudioTest(unittest.TestCase):
                 studio.GameDraftInput(**{**self.draft.model_dump(), "languages": languages})
 
     def test_draft_never_enters_published_status(self):
-        created = asyncio.run(studio.create_draft(None, self.draft))
+        created = asyncio.run(studio.create_draft(None, self.draft, "create-alice-0001"))
         self.assertEqual(created["status"], "draft")
         self.collection.docs[0]["status"] = "published"
         with self.assertRaises(HTTPException):
             asyncio.run(studio.update_draft(created["id"], None, self.update))
 
     def test_stale_edit_and_delete_preserve_newer_version(self):
-        created = asyncio.run(studio.create_draft(None, self.draft))
+        created = asyncio.run(studio.create_draft(None, self.draft, "create-alice-0001"))
         first = self.update.model_copy(update={"title": "New island title"})
         result = asyncio.run(studio.update_draft(created["id"], None, first))
         self.assertEqual(result["revision"], 2)
@@ -147,7 +156,7 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(self.collection.docs[0]["revision"], 2)
 
     def test_legacy_draft_is_upgraded_once_and_current_delete_works(self):
-        created = asyncio.run(studio.create_draft(None, self.draft))
+        created = asyncio.run(studio.create_draft(None, self.draft, "create-alice-0001"))
         del self.collection.docs[0]["revision"]
         self.assertEqual(asyncio.run(studio.get_draft(created["id"], None))["revision"], 0)
         legacy = self.update.model_copy(update={"revision": 0})
@@ -161,6 +170,32 @@ class StudioTest(unittest.TestCase):
         for revision in (None, -1, True, 1.5, "1"):
             with self.assertRaises(ValidationError):
                 studio.GameDraftUpdate(**self.draft.model_dump(), revision=revision)
+
+
+    def test_repeated_create_key_returns_the_same_draft(self):
+        first = asyncio.run(studio.create_draft(None, self.draft, "same-create-key-0001"))
+        second = asyncio.run(studio.create_draft(None, self.draft, "same-create-key-0001"))
+        self.assertEqual(first["id"], second["id"])
+        self.assertEqual(len(self.collection.docs), 1)
+        self.assertEqual(len(database.db.game_studio_draft_slots.docs), 1)
+
+    def test_quota_slots_stop_parallel_style_overflow(self):
+        for index in range(100):
+            created = asyncio.run(studio.create_draft(None, self.draft, f"quota-create-key-{index:04d}"))
+            self.assertEqual(created["slot"], index)
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(studio.create_draft(None, self.draft, "quota-create-key-overflow"))
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(len(self.collection.docs), 100)
+        self.assertEqual(len(database.db.game_studio_draft_slots.docs), 100)
+
+    def test_deleted_create_key_cannot_resurrect_draft(self):
+        created = asyncio.run(studio.create_draft(None, self.draft, "deleted-create-key-0001"))
+        asyncio.run(studio.delete_draft(created["id"], None, revision=1))
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(studio.create_draft(None, self.draft, "deleted-create-key-0001"))
+        self.assertEqual(context.exception.status_code, 410)
+        self.assertEqual(self.collection.docs, [])
 
 
 if __name__ == "__main__":
