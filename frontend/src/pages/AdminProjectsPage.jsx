@@ -44,12 +44,12 @@ export default function AdminProjectsPage({ onNavigate }) {
       onNavigate(project.admin_url);
       return;
     }
-    if (project.id !== "eyes") {
+    if (!["eyes", "trade"].includes(project.id)) {
       window.location.assign(project.admin_url);
       return;
     }
     if (!project.sso_ready) {
-      setError("Eyes SSO ist vorbereitet, aber auf Production noch nicht aktiviert.");
+      setError(`${project.name} SSO ist vorbereitet, aber auf Production noch nicht aktiviert.`);
       return;
     }
 
@@ -62,6 +62,11 @@ export default function AdminProjectsPage({ onNavigate }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "SSO konnte nicht gestartet werden.");
+
+      if (project.id === "trade") {
+        window.location.assign(`${project.admin_url}/auth/bidblitz-sso#code=${encodeURIComponent(data.code)}`);
+        return;
+      }
 
       const handoff = await fetch(data.handoff_url, {
         method: "POST",
