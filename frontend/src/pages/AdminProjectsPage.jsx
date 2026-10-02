@@ -64,7 +64,7 @@ export default function AdminProjectsPage({ onNavigate }) {
       if (!res.ok) throw new Error(data.detail || "SSO konnte nicht gestartet werden.");
 
       if (project.id === "trade") {
-        window.location.assign(`${project.admin_url}/auth/bidblitz-sso#code=${encodeURIComponent(data.code)}`);
+        window.location.assign(`${data.browser_url}#code=${encodeURIComponent(data.code)}`);
         return;
       }
 
