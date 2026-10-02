@@ -1,0 +1,39 @@
+name: Diagnose Current NoneType Error Once
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/diagnose-current-nonetype-once.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Inspect recent production errors
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          for filename in ["/root/.pm2/logs/api-error.log", "/root/.pm2/logs/api-out.log"]:
+              print("===", filename, "===")
+              p=Path(filename)
+              if not p.exists():
+                  print("MISSING")
+                  continue
+              raw=p.read_bytes()[-8_000_000:]
+              text=raw.decode("utf-8","ignore").replace("\x00","")
+              lines=text.splitlines()
+              if filename.endswith("error.log"):
+                  hits=[line for line in lines if ("NoneType" in line or "AttributeError" in line or "2026-10-02" in line)]
+              else:
+                  hits=[line for line in lines if ("500 Internal Server Error" in line or " 500 " in line)]
+              for line in hits[-180:]:
+                  print(line)
+          PY
+          REMOTE
