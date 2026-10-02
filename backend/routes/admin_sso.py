@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/admin/sso", tags=["admin-sso"])
 
 SSO_TARGETS = {
     "eyes": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
+    "trade": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
 }
 
 
