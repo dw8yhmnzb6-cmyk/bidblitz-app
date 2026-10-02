@@ -331,6 +331,21 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_quick_topup_verifies_stripe_intent_identity_before_wallet_credit():
+    source = _stripe_source()
+
+    identity_check = source.index('intent_metadata = dict(getattr(intent, "metadata", {}) or {})')
+    wallet_credit = source.index('wallet_credit = await credit_wallet(', identity_check)
+    assert identity_check < wallet_credit
+    assert 'intent_amount != int(amount * 100)' in source
+    assert 'intent_currency != "eur"' in source
+    assert 'intent_user_id != user_id' in source
+    assert 'intent_type != "quick_topup"' in source
+    assert '"status": "manual_review_required"' in source
+    assert '"last_error": "stripe_intent_identity_mismatch"' in source
+    assert "wallet credit blocked for manual review" in source
+
+
 def test_stripe_checkout_redirect_origin_is_first_party_only():
     source = _stripe_source()
 
