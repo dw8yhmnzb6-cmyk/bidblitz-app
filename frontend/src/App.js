@@ -152,6 +152,7 @@ const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
 const GameStudioPage = lazy(() => import("./pages/GameStudioPage"));
+const GamesPage = lazy(() => import("./pages/GamesPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
 const VirtualCardsPage = lazy(() => import("./pages/VirtualCardsPage"));
@@ -550,6 +551,10 @@ function AppContent() {
     // Auth-required feature entry points should never fail silently back to Home.
     if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {
       requireAuth(path === "/mining" || path === "/blitz-mine" ? "Bitte anmelden, um Mining zu öffnen." : "");
+      return;
+    }
+    if (isGuest && path === "/game-studio") {
+      requireAuth("Bitte melde dich an, um dein Spiele-Studio zu öffnen.");
       return;
     }
     // Admin page requires admin role
@@ -1193,9 +1198,13 @@ function AppContent() {
         return (!user.isAuthenticated || !isAdminRole)
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
+      case "/games":
+        return <GamesPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/games/match":
+        return <GamesPage preview onBack={() => handleNavigate("/games")} onNavigate={handleNavigate} />;
       case "/game-studio":
         return user.isAuthenticated
-          ? <GameStudioPage onBack={() => handleNavigate("/more")} />
+          ? <GameStudioPage onBack={() => handleNavigate("/games")} />
           : <HomePage {...homeProps} />;
       case "/gaming":
         return (isGuest && !isDemoMode)
@@ -1579,3 +1588,4 @@ function App() {
 }
 
 export default App;
+

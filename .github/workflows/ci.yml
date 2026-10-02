@@ -97,7 +97,11 @@ jobs:
       - name: Run ESLint
         run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
 
+      - name: Verify local Games preview rules
+        run: node --test frontend/scripts/test-match-preview.cjs
+
       - name: Verify frontend update and cache safety
         run: node frontend/scripts/check-update-safety.js
       - name: Verify admin wallet retry contract
         run: node --test frontend/scripts/admin-wallet-attempt.test.mjs
+
