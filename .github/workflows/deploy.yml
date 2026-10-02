@@ -266,6 +266,46 @@ jobs:
               echo "✓ MAPBOX_TOKEN appended to backend/.env"
             fi
 
+      - name: Sync central SSO settings into backend .env
+        if: steps.run_mode.outputs.should_deploy == 'true'
+        env:
+          SSO_SECRET_VALUE: ${{ secrets.BIDBLITZ_SSO_SHARED_SECRET }}
+        run: |
+          if [ -z "${SSO_SECRET_VALUE}" ]; then
+            echo "::warning::BIDBLITZ_SSO_SHARED_SECRET is empty — central project SSO remains disabled."
+            exit 0
+          fi
+          if [ "${#SSO_SECRET_VALUE}" -lt 32 ]; then
+            echo "::error::BIDBLITZ_SSO_SHARED_SECRET must be at least 32 characters."
+            exit 1
+          fi
+          if [ "${{ steps.ssh_auth.outputs.auth_mode }}" = "key" ]; then
+            SSH="ssh -i ~/.ssh/bidblitz_deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          else
+            export SSHPASS="${{ secrets.VPS_PASSWORD }}"
+            SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          fi
+          printf '%s' "${SSO_SECRET_VALUE}" | $SSH "$VPS_USER@$VPS_HOST" 'read -r SSO_SECRET_VALUE
+            cd /var/www/bidblitz/backend
+            test -f .env
+            umask 077
+            python3 -c '"'"'from pathlib import Path; import os
+p=Path(".env"); s=p.read_text(); values={
+"BIDBLITZ_OWNER_ID":"bidblitz-owner-primary",
+"BIDBLITZ_OWNER_EMAILS":"admin@bidblitz.ae",
+"BIDBLITZ_SSO_SHARED_SECRET":os.environ["SSO_SECRET_VALUE"],
+}
+lines=s.splitlines(); seen=set(); out=[]
+for line in lines:
+    key=line.split("=",1)[0] if "=" in line else ""
+    if key in values:
+        out.append(key+"="+values[key]); seen.add(key)
+    else: out.append(line)
+for key,value in values.items():
+    if key not in seen: out.append(key+"="+value)
+p.write_text("\\n".join(out)+"\\n")'"'"'' SSO_SECRET_VALUE="$SSO_SECRET_VALUE"
+          echo "✓ Central BidBlitz SSO settings synced without printing the secret"
+
       - name: Install backend deps & restart services (password)
         if: steps.run_mode.outputs.should_deploy == 'true' && steps.ssh_auth.outputs.auth_mode == 'password'
         uses: appleboy/ssh-action@v1.0.3
