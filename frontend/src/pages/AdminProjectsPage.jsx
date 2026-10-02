@@ -48,6 +48,10 @@ export default function AdminProjectsPage({ onNavigate }) {
       window.location.assign(project.admin_url);
       return;
     }
+    if (!project.sso_ready) {
+      setError("Eyes SSO ist vorbereitet, aber auf Production noch nicht aktiviert.");
+      return;
+    }
 
     setOpening(project.id);
     setError("");
@@ -134,7 +138,7 @@ export default function AdminProjectsPage({ onNavigate }) {
                   </div>
                   <div className="mt-auto pt-5">
                     <div className="text-[11px] text-gray-500 mb-2">
-                      {project.sso ? "BidBlitz ID verbunden" : enabled ? "SSO-Anbindung folgt" : "Admin-Anbindung folgt"}
+                      {project.sso_ready ? "BidBlitz ID verbunden" : enabled ? "SSO wird eingerichtet" : "Admin-Anbindung folgt"}
                     </div>
                     <button
                       disabled={!enabled || opening === project.id}
