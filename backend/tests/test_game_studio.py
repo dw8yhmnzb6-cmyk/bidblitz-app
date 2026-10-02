@@ -28,6 +28,7 @@ fastapi = types.ModuleType("fastapi")
 fastapi.APIRouter = Router
 fastapi.HTTPException = HTTPException
 fastapi.Request = object
+fastapi.Query = lambda *args, **kwargs: None
 database = types.ModuleType("core.database")
 database.db = types.SimpleNamespace()
 security = types.ModuleType("core.security")
@@ -38,6 +39,19 @@ studio = importlib.util.module_from_spec(spec)
 with patch.dict(sys.modules, {"fastapi": fastapi, "core": types.ModuleType("core"),
                               "core.database": database, "core.security": security}):
     spec.loader.exec_module(studio)
+
+
+def matches(doc, query):
+    for key, value in query.items():
+        if key == "$or":
+            if not any(matches(doc, branch) for branch in value):
+                return False
+        elif isinstance(value, dict) and "$exists" in value:
+            if (key in doc) != value["$exists"]:
+                return False
+        elif doc.get(key) != value:
+            return False
+    return True
 
 
 class Collection:
@@ -51,18 +65,20 @@ class Collection:
         self.docs.append(dict(doc))
 
     async def find_one(self, query, projection=None):
-        result = next((d for d in self.docs if all(d.get(k) == v for k, v in query.items())), None)
+        result = next((d for d in self.docs if matches(d, query)), None)
         return {k: v for k, v in result.items() if k not in {"_id", "owner_id"}} if result else None
 
     async def update_one(self, query, update):
-        target = next((d for d in self.docs if all(d.get(k) == v for k, v in query.items())), None)
+        target = next((d for d in self.docs if matches(d, query)), None)
         if target:
             target.update(update["$set"])
+            for key, value in update.get("$inc", {}).items():
+                target[key] = target.get(key, 0) + value
         return types.SimpleNamespace(matched_count=int(target is not None))
 
     async def delete_one(self, query):
         old = len(self.docs)
-        self.docs[:] = [d for d in self.docs if not all(d.get(k) == v for k, v in query.items())]
+        self.docs[:] = [d for d in self.docs if not matches(d, query)]
         return types.SimpleNamespace(deleted_count=old-len(self.docs))
 
 
@@ -73,6 +89,7 @@ class StudioTest(unittest.TestCase):
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
         self.draft = studio.GameDraftInput(title="  Island Quest  ", description="A puzzle adventure on floating islands with thirty levels.", category="Puzzle", languages=["de", "en"], rights_confirmed=True)
+        self.update = studio.GameDraftUpdate(**self.draft.model_dump(), revision=1)
 
     def test_draft_is_account_bound_and_cannot_be_changed_by_another_user(self):
         created = asyncio.run(studio.create_draft(None, self.draft))
@@ -80,10 +97,10 @@ class StudioTest(unittest.TestCase):
         self.assertNotIn("owner_id", created)
         security.get_current_user.return_value = {"_id": "bob"}
         with self.assertRaises(HTTPException) as context:
-            asyncio.run(studio.update_draft(created["id"], None, self.draft))
+            asyncio.run(studio.update_draft(created["id"], None, self.update))
         self.assertEqual(context.exception.status_code, 404)
         with self.assertRaises(HTTPException):
-            asyncio.run(studio.delete_draft(created["id"], None))
+            asyncio.run(studio.delete_draft(created["id"], None, revision=1))
         self.assertEqual(len(self.collection.docs), 1)
 
     def test_unconfirmed_rights_and_duplicate_language_rejected(self):
@@ -99,7 +116,36 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(created["status"], "draft")
         self.collection.docs[0]["status"] = "published"
         with self.assertRaises(HTTPException):
-            asyncio.run(studio.update_draft(created["id"], None, self.draft))
+            asyncio.run(studio.update_draft(created["id"], None, self.update))
+
+    def test_stale_edit_and_delete_preserve_newer_version(self):
+        created = asyncio.run(studio.create_draft(None, self.draft))
+        first = self.update.model_copy(update={"title": "New island title"})
+        result = asyncio.run(studio.update_draft(created["id"], None, first))
+        self.assertEqual(result["revision"], 2)
+        for call in (studio.update_draft(created["id"], None, self.update),
+                     studio.delete_draft(created["id"], None, revision=1)):
+            with self.assertRaises(HTTPException) as context:
+                asyncio.run(call)
+            self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(self.collection.docs[0]["title"], "New island title")
+        self.assertEqual(self.collection.docs[0]["revision"], 2)
+
+    def test_legacy_draft_is_upgraded_once_and_current_delete_works(self):
+        created = asyncio.run(studio.create_draft(None, self.draft))
+        del self.collection.docs[0]["revision"]
+        self.assertEqual(asyncio.run(studio.get_draft(created["id"], None))["revision"], 0)
+        legacy = self.update.model_copy(update={"revision": 0})
+        asyncio.run(studio.update_draft(created["id"], None, legacy))
+        with self.assertRaises(HTTPException):
+            asyncio.run(studio.update_draft(created["id"], None, legacy))
+        asyncio.run(studio.delete_draft(created["id"], None, revision=1))
+        self.assertEqual(self.collection.docs, [])
+
+    def test_update_requires_nonnegative_integer_revision(self):
+        for revision in (None, -1, True, 1.5, "1"):
+            with self.assertRaises(ValidationError):
+                studio.GameDraftUpdate(**self.draft.model_dump(), revision=revision)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
 from core.database import db
@@ -51,8 +51,30 @@ class GameDraftInput(BaseModel):
         return confirmed
 
 
+class GameDraftUpdate(GameDraftInput):
+    revision: int = Field(ge=0, strict=True)
+
+
 def _public_draft(doc: dict) -> dict:
-    return {key: value for key, value in doc.items() if key not in {"_id", "owner_id"}}
+    public = {key: value for key, value in doc.items() if key not in {"_id", "owner_id"}}
+    public.setdefault("revision", 0)
+    return public
+
+
+def _edit_query(draft_id: str, owner_id: str, revision: int) -> dict:
+    query = {"id": draft_id, "owner_id": owner_id, "status": "draft"}
+    if revision == 0:
+        query["$or"] = [{"revision": 0}, {"revision": {"$exists": False}}]
+    else:
+        query["revision"] = revision
+    return query
+
+
+async def _edit_failed(draft_id: str, owner_id: str):
+    existing = await db.game_studio_drafts.find_one({"id": draft_id, "owner_id": owner_id})
+    if existing is None:
+        raise HTTPException(404, "Entwurf nicht gefunden")
+    raise HTTPException(409, "Entwurf wurde geändert. Bitte den aktuellen Stand neu laden.")
 
 
 async def _owner(request: Request) -> str:
@@ -66,7 +88,7 @@ async def list_drafts(request: Request):
     rows = await db.game_studio_drafts.find(
         {"owner_id": owner_id}, {"_id": 0, "owner_id": 0}
     ).sort("updated_at", -1).limit(100).to_list(100)
-    return {"drafts": rows}
+    return {"drafts": [_public_draft(row) for row in rows]}
 
 
 @router.post("/drafts", status_code=201)
@@ -76,7 +98,7 @@ async def create_draft(request: Request, draft: GameDraftInput):
         raise HTTPException(409, "Maximal 100 Entwürfe pro Konto")
     now = datetime.now(timezone.utc).isoformat()
     doc = {
-        "id": str(uuid4()), "owner_id": owner_id, "status": "draft",
+        "id": str(uuid4()), "owner_id": owner_id, "status": "draft", "revision": 1,
         **draft.model_dump(), "created_at": now, "updated_at": now,
     }
     await db.game_studio_drafts.insert_one(doc)
@@ -91,27 +113,28 @@ async def get_draft(draft_id: str, request: Request):
     )
     if doc is None:
         raise HTTPException(404, "Entwurf nicht gefunden")
-    return doc
+    return _public_draft(doc)
 
 
 @router.put("/drafts/{draft_id}")
-async def update_draft(draft_id: str, request: Request, draft: GameDraftInput):
+async def update_draft(draft_id: str, request: Request, draft: GameDraftUpdate):
     owner_id = await _owner(request)
-    updates = {**draft.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
+    updates = {**draft.model_dump(exclude={"revision"}), "updated_at": datetime.now(timezone.utc).isoformat()}
     result = await db.game_studio_drafts.update_one(
-        {"id": draft_id, "owner_id": owner_id, "status": "draft"}, {"$set": updates}
+        _edit_query(draft_id, owner_id, draft.revision),
+        {"$set": updates, "$inc": {"revision": 1}}
     )
     if not result.matched_count:
-        raise HTTPException(404, "Bearbeitbarer Entwurf nicht gefunden")
-    return await get_draft(draft_id, request)
+        await _edit_failed(draft_id, owner_id)
+    return {"id": draft_id, "revision": draft.revision + 1, "saved": True}
 
 
 @router.delete("/drafts/{draft_id}")
-async def delete_draft(draft_id: str, request: Request):
+async def delete_draft(draft_id: str, request: Request, revision: int = Query(..., ge=0)):
     owner_id = await _owner(request)
     result = await db.game_studio_drafts.delete_one(
-        {"id": draft_id, "owner_id": owner_id, "status": "draft"}
+        _edit_query(draft_id, owner_id, revision)
     )
     if not result.deleted_count:
-        raise HTTPException(404, "Bearbeitbarer Entwurf nicht gefunden")
+        await _edit_failed(draft_id, owner_id)
     return {"deleted": True}
