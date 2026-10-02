@@ -19,8 +19,14 @@ from routes.admin_projects import _is_platform_owner
 router = APIRouter(prefix="/api/admin/sso", tags=["admin-sso"])
 
 SSO_TARGETS = {
-    "eyes": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
-    "trade": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
+    "eyes": {
+        "handoff_url": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
+        "browser_url": "https://eyes.bidblitz.ae",
+    },
+    "trade": {
+        "handoff_url": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
+        "browser_url": "https://trade.bidblitz.ae/auth/bidblitz-sso",
+    },
 }
 
 
@@ -66,7 +72,8 @@ async def create_sso_handoff(project_id: str, request: Request):
     }
     return {
         "project_id": project_id,
-        "handoff_url": target,
+        "handoff_url": target["handoff_url"],
+        "browser_url": target["browser_url"],
         "code": _sign(payload, secret),
         "expires_in": 60,
     }
