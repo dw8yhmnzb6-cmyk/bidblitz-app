@@ -35,3 +35,19 @@ def test_project_registry_never_invents_urls_for_pending_projects():
 def test_confirmed_projects_have_unique_ids():
     ids = [p["id"] for p in PROJECTS]
     assert len(ids) == len(set(ids))
+
+
+def test_customer_identity_cannot_become_platform_owner_by_email_only(monkeypatch):
+    monkeypatch.delenv("BIDBLITZ_OWNER_EMAILS", raising=False)
+    assert not _is_platform_owner({
+        "role": "customer",
+        "email": "admin@bidblitz.ae",
+    })
+
+
+def test_unconfigured_admin_cannot_enter_cross_project_hub(monkeypatch):
+    monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae")
+    assert not _is_platform_owner({
+        "role": "admin",
+        "email": "another-admin@bidblitz.ae",
+    })
