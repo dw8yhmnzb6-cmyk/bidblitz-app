@@ -3,10 +3,31 @@
 This endpoint exposes only non-secret navigation metadata. Project authentication
 remains isolated until each project has been connected to BidBlitz ID/SSO.
 """
+import os
+
 from fastapi import APIRouter, HTTPException, Request
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/admin/projects", tags=["admin-projects"])
+
+def _normalized_email(value: str | None) -> str:
+    return (value or "").strip().lower().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
+
+
+def _is_platform_owner(user: dict) -> bool:
+    configured = {
+        _normalized_email(value)
+        for value in os.getenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae").split(",")
+        if value.strip()
+    }
+    identities = {
+        _normalized_email(user.get("email")),
+        _normalized_email(user.get("canonical_email")),
+        _normalized_email(user.get("login_email")),
+        *[_normalized_email(value) for value in (user.get("email_aliases") or [])],
+    }
+    return user.get("role") == "admin" and bool(configured & identities)
+
 
 PROJECTS = [
     {"id":"bidblitz","name":"BidBlitz","description":"Super App & Haupt-Admin","url":"/admin","admin_url":"/admin","status":"connected","sso":True},
@@ -32,13 +53,19 @@ async def list_admin_projects(request: Request):
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+    if not _is_platform_owner(user):
+        raise HTTPException(status_code=403, detail="Platform owner access required")
 
     return {
         "owner": {
             "email": user.get("canonical_email") or user.get("email"),
-            "role": user.get("role"),
+            "role": "owner",
+            "permissions": ["*"],
         },
-        "projects": PROJECTS,
+        "projects": [
+            {**project, "permissions": ["*"]}
+            for project in PROJECTS
+        ],
         "sso_rollout": {
             "enabled": False,
             "message": "BidBlitz ID SSO wird projektweise aktiviert.",
