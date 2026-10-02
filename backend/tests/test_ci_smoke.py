@@ -331,6 +331,19 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_admin_direct_url_and_taxi_map_fail_closed_ui():
+    app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
+    map_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "RealMap.jsx").read_text(encoding="utf-8")
+
+    assert 'routeBase.startsWith("/admin") && !user.isAuthenticated' in app_source
+    assert 'const requestedAdminPath = currentPath;' in app_source
+    assert 'syncBrowserPath(requestedAdminPath, "replace")' in app_source
+    assert 'const [mapboxFailed, setMapboxFailed] = useState(false);' in map_source
+    assert "status === 401 || status === 403" in map_source
+    assert "message.includes('api key')" in map_source
+    assert 'if (!mapboxgl.accessToken || mapboxFailed)' in map_source
+
+
 def test_quick_topup_verifies_stripe_intent_identity_before_wallet_credit():
     source = _stripe_source()
 
