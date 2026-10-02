@@ -4,6 +4,7 @@ import { useI18n } from "../store/I18nContext";
 import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
+import { prepareCreateAttempt, uncertainCreateError } from "../config/studioCreatePolicy.mjs";
 
 const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/game-studio/drafts`;
 const LANGUAGES = gameLanguages.map(({ code, label }) => [code, label]);
@@ -11,6 +12,11 @@ const EDIT_COPY = {
   de: { conflict: "Dieser Entwurf wurde inzwischen geändert. Deine Eingaben bleiben erhalten. Lade die Liste neu und öffne den aktuellen Entwurf, bevor du erneut speicherst.", discard: "Nicht gespeicherte Änderungen verwerfen?" },
   en: { conflict: "This draft has changed. Your input is preserved. Reload the list and open the current draft before saving again.", discard: "Discard unsaved changes?" },
   sq: { conflict: "Ky projekt është ndryshuar. Shënimet e tua ruhen në formular. Ringarko listën dhe hap projektin aktual para se ta ruash sërish.", discard: "Të hidhen poshtë ndryshimet e paruajtura?" },
+};
+const CREATE_COPY = {
+  de: { pending: "Das Speicherergebnis ist unklar. Deine Eingaben bleiben erhalten. Speichere erneut, um denselben Vorgang sicher zu prüfen.", limit: "Du hast das Limit von 100 Spielentwürfen erreicht.", deleted: "Dieser Entwurf wurde bereits gelöscht und wird nicht erneut angelegt." },
+  en: { pending: "The save result is unclear. Your input is preserved. Save again to safely resolve the same request.", limit: "You have reached the limit of 100 game drafts.", deleted: "This draft was already deleted and will not be recreated." },
+  sq: { pending: "Rezultati i ruajtjes është i paqartë. Shënimet e tua ruhen. Ruaje sërish për të kontrolluar të njëjtën kërkesë.", limit: "Ke arritur kufirin prej 100 projekteve të lojërave.", deleted: "Ky projekt është fshirë dhe nuk do të krijohet sërish." },
 };
 const EMPTY = { title: "", description: "", category: "Puzzle", languages: ["de", "en"], rights_confirmed: false };
 const COPY = {
@@ -33,11 +39,14 @@ export default function GameStudioPage({ onBack }) {
   const locale = resolveLocale(lang, Object.keys(COPY));
   const c = COPY[locale];
   const editCopy = EDIT_COPY[locale];
+  const createCopy = CREATE_COPY[locale];
   const selectedCode = resolveLocale(lang, gameLanguages.map(({ code }) => code));
   const rtl = gameLanguages.find(({ code }) => code === selectedCode)?.rtl;
   const dialogRef = useRef(null);
   const listRequestRef = useRef(null);
   const mutationRef = useRef(false);
+  const createAttemptRef = useRef(null);
+  const [createUncertain, setCreateUncertain] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -72,7 +81,11 @@ export default function GameStudioPage({ onBack }) {
 
   const closeEditor = () => {
     if (mutationRef.current || (dirty && !window.confirm(editCopy.discard))) return false;
+    const hadPendingCreate = Boolean(createAttemptRef.current);
+    createAttemptRef.current = null;
+    setCreateUncertain(false);
     setEditing(null);
+    if (hadPendingCreate) load();
     return true;
   };
 
@@ -99,6 +112,8 @@ export default function GameStudioPage({ onBack }) {
 
   const start = (draft) => {
     if (mutationRef.current) return;
+    createAttemptRef.current = null;
+    setCreateUncertain(false);
     setError(""); setNotice("");
     setEditing(draft?.id || "new");
     const next = draft ? { title: draft.title, description: draft.description, category: draft.category,
@@ -117,13 +132,29 @@ export default function GameStudioPage({ onBack }) {
     setBusy(true); setError(""); setNotice("");
     try {
       const id = editing === "new" ? null : editing;
+      const payload = JSON.stringify(id ? { ...form, revision } : form);
+      const headers = { "Content-Type": "application/json" };
+      if (!id) {
+        createAttemptRef.current = prepareCreateAttempt(createAttemptRef.current, payload);
+        headers["Idempotency-Key"] = createAttemptRef.current.key;
+      }
       await request(id ? `${API}/${encodeURIComponent(id)}` : API, {
-        method: id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(id ? { ...form, revision } : form),
+        method: id ? "PUT" : "POST", headers, body: payload,
       });
+      createAttemptRef.current = null;
+      setCreateUncertain(false);
       setEditing(null);
       setNotice(c.saved);
       await load();
-    } catch (err) { setError(err.status === 401 ? c.loginError : err.status === 409 && editing !== "new" ? editCopy.conflict : c.saveError); }
+    } catch (err) {
+      const uncertain = editing === "new" && Boolean(createAttemptRef.current) && uncertainCreateError(err);
+      setCreateUncertain(uncertain);
+      if (!uncertain) createAttemptRef.current = null;
+      setError(err.status === 401 ? c.loginError : uncertain ? createCopy.pending
+        : err.status === 410 ? createCopy.deleted
+          : err.status === 409 && editing !== "new" ? editCopy.conflict
+            : err.status === 409 ? createCopy.limit : c.saveError);
+    }
     finally { mutationRef.current = false; setBusy(false); }
   };
 
@@ -181,7 +212,7 @@ export default function GameStudioPage({ onBack }) {
         <p className="mt-9 text-xs leading-relaxed text-white/40"><ShieldCheck size={14} className="mr-1 inline" />{c.privacy} {c.noMoney}</p>
       </div>
 
-      {editing && <dialog ref={dialogRef} aria-label={c.formTitle} onCancel={(event) => { event.preventDefault(); closeEditor(); }} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none bg-transparent p-0 text-white backdrop:bg-black/75 backdrop:backdrop-blur-sm"><div className="flex h-full items-end justify-center sm:items-center sm:p-5"><div className="max-h-[93vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-cyan-200/15 bg-[#0c203d] p-6 shadow-2xl sm:rounded-3xl sm:p-8"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-bold">{c.formTitle}</h2><button type="button" onClick={closeEditor} disabled={busy} className="rounded-xl p-2 text-white/60 hover:bg-white/10" aria-label={c.cancel}><X size={20} /></button></div>{error && <div role="alert" className="mb-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-3 text-sm text-rose-100">{error}</div>}<form onSubmit={save}><fieldset disabled={busy} className="min-w-0 space-y-5"><label className="block text-sm font-medium">{c.name}<input required minLength={3} maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${field} mt-2`} /></label><label className="block text-sm font-medium">{c.description}<textarea required minLength={30} maxLength={2000} rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${field} mt-2 resize-y`} /></label><label className="block text-sm font-medium">{c.category}<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-2`}>{["Puzzle", "Arcade", "Strategy", "Sports"].map((item) => <option key={item} value={item}>{c.categories[item]}</option>)}</select></label><fieldset><legend className="mb-2 text-sm font-medium">{c.languages}</legend><div className="max-h-40 overflow-auto rounded-2xl border border-white/10 bg-[#071b36]/80 p-3"><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{LANGUAGES.map(([code, name]) => <label key={code} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl p-2 text-xs text-white/70 hover:bg-white/5"><input type="checkbox" checked={form.languages.includes(code)} onChange={() => toggleLanguage(code)} className="accent-cyan-300" /><bdi className="min-w-0 break-words">{name}</bdi></label>)}</div></div></fieldset><label className="flex items-start gap-3 rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/75"><input required type="checkbox" checked={form.rights_confirmed} onChange={(e) => setForm({ ...form, rights_confirmed: e.target.checked })} className="mt-0.5 accent-cyan-300" />{c.rights}</label><div className="flex gap-3 pt-2"><button type="button" onClick={closeEditor} disabled={busy} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold">{c.cancel}</button><button type="submit" disabled={busy || !form.languages.length || !form.rights_confirmed} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-bold text-[#061329] disabled:opacity-40">{busy ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}{c.save}</button></div></fieldset></form></div></div></dialog>}
+      {editing && <dialog ref={dialogRef} aria-label={c.formTitle} onCancel={(event) => { event.preventDefault(); closeEditor(); }} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none bg-transparent p-0 text-white backdrop:bg-black/75 backdrop:backdrop-blur-sm"><div className="flex h-full items-end justify-center sm:items-center sm:p-5"><div className="max-h-[93vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-cyan-200/15 bg-[#0c203d] p-6 shadow-2xl sm:rounded-3xl sm:p-8"><div className="mb-6 flex items-center justify-between"><h2 className="text-xl font-bold">{c.formTitle}</h2><button type="button" onClick={closeEditor} disabled={busy} className="rounded-xl p-2 text-white/60 hover:bg-white/10" aria-label={c.cancel}><X size={20} /></button></div>{error && <div role="alert" className="mb-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-3 text-sm text-rose-100">{error}</div>}<form onSubmit={save}><fieldset disabled={busy} className="min-w-0 space-y-5"><label className="block text-sm font-medium">{c.name}<input disabled={createUncertain} required minLength={3} maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${field} mt-2`} /></label><label className="block text-sm font-medium">{c.description}<textarea disabled={createUncertain} required minLength={30} maxLength={2000} rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${field} mt-2 resize-y`} /></label><label className="block text-sm font-medium">{c.category}<select disabled={createUncertain} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-2`}>{["Puzzle", "Arcade", "Strategy", "Sports"].map((item) => <option key={item} value={item}>{c.categories[item]}</option>)}</select></label><fieldset><legend className="mb-2 text-sm font-medium">{c.languages}</legend><div className="max-h-40 overflow-auto rounded-2xl border border-white/10 bg-[#071b36]/80 p-3"><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{LANGUAGES.map(([code, name]) => <label key={code} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl p-2 text-xs text-white/70 hover:bg-white/5"><input disabled={createUncertain} type="checkbox" checked={form.languages.includes(code)} onChange={() => toggleLanguage(code)} className="accent-cyan-300" /><bdi className="min-w-0 break-words">{name}</bdi></label>)}</div></div></fieldset><label className="flex items-start gap-3 rounded-xl border border-white/10 p-3 text-xs leading-relaxed text-white/75"><input disabled={createUncertain} required type="checkbox" checked={form.rights_confirmed} onChange={(e) => setForm({ ...form, rights_confirmed: e.target.checked })} className="mt-0.5 accent-cyan-300" />{c.rights}</label><div className="flex gap-3 pt-2"><button type="button" onClick={closeEditor} disabled={busy} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold">{c.cancel}</button><button type="submit" disabled={busy || !form.languages.length || !form.rights_confirmed} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-bold text-[#061329] disabled:opacity-40">{busy ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}{c.save}</button></div></fieldset></form></div></div></dialog>}
     </main>
   );
 }
