@@ -48,10 +48,14 @@ async def create_sso_handoff(project_id: str, request: Request):
         raise HTTPException(status_code=503, detail="Central SSO is not configured")
 
     now = int(time.time())
+    owner_id = os.getenv("BIDBLITZ_OWNER_ID", "bidblitz-owner-primary").strip()
+    if not owner_id:
+        raise HTTPException(status_code=503, detail="Central owner identity is not configured")
+
     payload = {
         "iss": "https://bidblitz.ae",
         "aud": project_id,
-        "sub": str(user.get("_id") or user.get("id") or ""),
+        "sub": owner_id,
         "email": str(user.get("canonical_email") or user.get("email") or "").strip().lower(),
         "role": "owner",
         "permissions": ["*"],
