@@ -581,6 +581,27 @@ function AppContent() {
     );
   }
 
+  // Direct admin URLs must never fail silently to Home. On a new Mac/browser
+  // session show the login screen, then return to the requested admin URL.
+  if (routeBase.startsWith("/admin") && !user.isAuthenticated) {
+    const requestedAdminPath = currentPath;
+    return (
+      <div className="relative">
+        <AuthPage
+          onBack={() => handleNavigate("/")}
+          initialMode="login"
+          onAuthSuccess={() => {
+            setShowFullAuth("");
+            setShowAuthGate(false);
+            setIsDemoMode(false);
+            syncBrowserPath(requestedAdminPath, "replace");
+            setCurrentPath(requestedAdminPath);
+          }}
+        />
+      </div>
+    );
+  }
+
   if ((currentPath === "/login" || currentPath === "/register") && !user.isAuthenticated) {
     return (
       <div className="relative">
