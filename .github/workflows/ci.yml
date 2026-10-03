@@ -64,6 +64,7 @@ jobs:
           backend/tests/test_game_studio.py
           backend/tests/test_game_studio_mongo.py
           backend/tests/test_game_studio_uploads.py
+          backend/tests/test_admin_game_studio.py
           backend/tests/test_games_profile.py
           backend/tests/test_games_profile_mongo.py
           backend/tests/test_games_progress.py
