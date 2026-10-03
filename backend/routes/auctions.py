@@ -1188,7 +1188,13 @@ async def referral_leaderboard(request: Request):
     results = await db.users.aggregate(pipeline).to_list(10)
     leaders = []
     for r in results:
-        referrer = await db.users.find_one({"_id": ObjectId(r["_id"])}, {"_id": 0, "name": 1})
+        referrer_id = str(r.get("_id") or "")
+        if not referrer_id:
+            continue
+        selectors = [{"id": referrer_id}]
+        if ObjectId.is_valid(referrer_id):
+            selectors.insert(0, {"_id": ObjectId(referrer_id)})
+        referrer = await db.users.find_one({"$or": selectors}, {"_id": 0, "name": 1})
         if referrer:
             name = referrer.get("name", "User")
             display = name[:2] + "***" if len(name) > 2 else name
