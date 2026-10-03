@@ -59,6 +59,15 @@ class Collection:
             self.docs.append(row)
         if row is None:
             return types.SimpleNamespace(matched_count=0)
+        if isinstance(update, list):
+            stage = update[0]["$set"]
+            union = stage["favorites"]["$let"]["vars"]["next"]["$setUnion"]
+            game_id = union[1][0]
+            favorites = list(dict.fromkeys([*row.get("favorites", []), game_id]))
+            if len(favorites) <= profile._MAX_FAVORITES:
+                row["favorites"] = favorites
+            row["updated_at"] = stage["updated_at"]
+            return types.SimpleNamespace(matched_count=1)
         for key, value in update.get("$set", {}).items():
             row[key] = value
         for key, value in update.get("$addToSet", {}).items():
