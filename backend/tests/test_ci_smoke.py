@@ -362,7 +362,7 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     assert "if not EMERGENT_LLM_KEY:\n        return _recommendation_fallback()" in ai
     assert 'logger.exception("Recommendations failed; serving deterministic fallback")' in ai
     recommendations_start = ai.index('@router.get("/recommendations", response_model=RecommendResponse)')
-    recommendations_end = ai.index("# ═══════════════════════════════════════════════════════════════════════════════", recommendations_start)
+    recommendations_end = ai.index("class ContentGenRequest", recommendations_start)
     recommendations_source = ai[recommendations_start:recommendations_end]
     assert 'raise HTTPException(502, "KI-Service nicht erreichbar")' not in recommendations_source
 
