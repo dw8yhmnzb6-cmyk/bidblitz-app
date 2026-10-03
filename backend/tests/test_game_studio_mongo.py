@@ -46,7 +46,9 @@ class GameStudioMongoTest(unittest.IsolatedAsyncioTestCase):
             for _ in range(8)
         ], return_exceptions=True)
         successes = [item for item in results if isinstance(item, dict)]
+        pending = [item for item in results if getattr(item, "status_code", None) == 425]
         self.assertTrue(successes)
+        self.assertEqual(len(successes) + len(pending), len(results))
         ids = {item["id"] for item in successes}
         self.assertEqual(len(ids), 1)
         self.assertEqual(await self.database.game_studio_drafts.count_documents({}), 1)
