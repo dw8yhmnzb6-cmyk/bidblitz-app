@@ -331,6 +331,21 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
+    registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
+    chat = (BACKEND_DIR / "routes" / "chat.py").read_text(encoding="utf-8")
+    ai = (BACKEND_DIR / "routes" / "ai_chat.py").read_text(encoding="utf-8")
+
+    assert '("routes.watchlist", "router")' in registry
+    dynamic_get = chat.index('@router.get("/{chat_id}")')
+    assert chat.index('@router.get("/unread-count")') < dynamic_get
+    assert chat.index('@router.get("/poll")') < dynamic_get
+    assert "def _recommendation_fallback() -> RecommendResponse:" in ai
+    assert "if not EMERGENT_LLM_KEY:\n        return _recommendation_fallback()" in ai
+    assert 'logger.exception("Recommendations failed; serving deterministic fallback")' in ai
+    assert 'raise HTTPException(502, "KI-Service nicht erreichbar")' not in ai
+
+
 def test_biopay_missing_facepay_flag_fails_closed():
     source = (BACKEND_DIR / "services" / "biopay.py").read_text(encoding="utf-8")
 
