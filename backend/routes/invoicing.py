@@ -24,6 +24,7 @@ from core.audit import get_client_info, log_audit
 from core.config import STRIPE_API_KEY
 from core.database import db
 from core.email import FRONTEND_URL, get_base_template, send_email_detailed
+from core.payment_engine import credit_wallet, transfer_between_wallets, TransactionType
 from core.security import get_current_user
 from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest, StripeCheckout
 
@@ -299,6 +300,77 @@ async def _get_invoice_and_link_by_token(token: str, origin: str = "") -> tuple[
     return invoice, link_payload
 
 
+async def _claim_invoice_payment(
+    *,
+    invoice_id: str,
+    claim_key: str,
+    method: str,
+    payer_user_id: str = "",
+    payer_email: str = "",
+    session_id: str = "",
+) -> dict:
+    """Claim one invoice payment attempt across every payment surface."""
+    claim_id = f"invoice-payment:{invoice_id}"
+    now_iso = _now_iso()
+    doc = {
+        "_id": claim_id,
+        "invoice_id": invoice_id,
+        "claim_key": claim_key,
+        "method": method,
+        "payer_user_id": payer_user_id,
+        "payer_email": payer_email,
+        "session_id": session_id,
+        "status": "processing",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    try:
+        await db.invoice_payment_claims.insert_one(doc)
+        return doc
+    except Exception:
+        current = await db.invoice_payment_claims.find_one({"_id": claim_id}, {"_id": 0}) or {}
+        if current.get("status") == "paid":
+            raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+        if current.get("claim_key") == claim_key:
+            await db.invoice_payment_claims.update_one(
+                {"_id": claim_id, "claim_key": claim_key},
+                {"$set": {"status": "processing", "updated_at": now_iso}},
+            )
+            return current
+        raise HTTPException(status_code=409, detail="Diese Rechnung wird bereits über einen anderen Zahlungsweg bezahlt")
+
+
+async def _release_invoice_payment_claim(invoice_id: str, claim_key: str, error: str = "") -> None:
+    await db.invoice_payment_claims.delete_one({
+        "_id": f"invoice-payment:{invoice_id}",
+        "claim_key": claim_key,
+        "status": "processing",
+    })
+
+
+async def _mark_invoice_claim_paid(invoice_id: str, claim_key: str, reference: str) -> None:
+    await db.invoice_payment_claims.update_one(
+        {"_id": f"invoice-payment:{invoice_id}", "claim_key": claim_key},
+        {"$set": {
+            "status": "paid",
+            "payment_reference": reference,
+            "paid_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }},
+    )
+
+
+async def _mark_invoice_claim_reconciliation(invoice_id: str, claim_key: str, error: str) -> None:
+    await db.invoice_payment_claims.update_one(
+        {"_id": f"invoice-payment:{invoice_id}", "claim_key": claim_key},
+        {"$set": {
+            "status": "reconciliation_required",
+            "error": error,
+            "updated_at": _now_iso(),
+        }},
+    )
+
+
 async def _mark_invoice_paid(invoice: dict, link: dict, now_iso: str, method: str, payer_email: str = "", payer_user_id: str = "", payment_reference: str = "") -> dict:
     invoice_id = invoice.get("invoice_id")
     updated = await db.invoices.find_one_and_update(
@@ -317,16 +389,18 @@ async def _mark_invoice_paid(invoice: dict, link: dict, now_iso: str, method: st
         projection={"_id": 0},
         return_document=ReturnDocument.AFTER,
     )
+    link_token = (link or {}).get("token")
+    link_query = {"token": link_token} if link_token else {"invoice_id": invoice_id, "status": {"$ne": "replaced"}}
     if updated is None:
         current = await db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
-        await db.payment_links.update_one(
-            {"token": link.get("token")},
+        await db.payment_links.update_many(
+            link_query,
             {"$set": {"status": "paid", "payment_status": "paid", "updated_at": now_iso}},
         )
         return current or invoice
 
-    await db.payment_links.update_one(
-        {"token": link.get("token")},
+    await db.payment_links.update_many(
+        link_query,
         {
             "$set": {
                 "status": "paid",
@@ -1396,9 +1470,15 @@ async def public_invoice(scan_code: str, request: Request):
 
 @router.post("/public/{scan_code}/pay")
 async def pay_invoice(scan_code: str, request: Request):
+    """Pay an invoice from BidBlitz Wallet through the canonical ledger exactly once."""
     user = await get_current_user(request)
+    payer_user_id = str(user["_id"])
     invoice = await db.invoices.find_one(
-        {"$or": [{"scan_code": scan_code.upper()}, {"invoice_id": scan_code}, {"invoice_number": scan_code.upper()}]},
+        {"$or": [
+            {"scan_code": scan_code.upper()},
+            {"invoice_id": scan_code},
+            {"invoice_number": scan_code.upper()},
+        ]},
         {"_id": 0},
     )
     if not invoice:
@@ -1409,67 +1489,102 @@ async def pay_invoice(scan_code: str, request: Request):
     issuer = await db.users.find_one({"email": invoice.get("user_email", "")})
     if not issuer:
         raise HTTPException(status_code=404, detail="Rechnungssteller nicht gefunden")
+    issuer_id = str(issuer["_id"])
+    if issuer_id == payer_user_id:
+        raise HTTPException(status_code=400, detail="Eigene Rechnung kann nicht an sich selbst bezahlt werden")
 
     total = round(float(invoice.get("total", 0) or 0), 2)
-    if float(user.get("balance", 0) or 0) < total:
-        raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{total:.2f})")
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Rechnungsbetrag")
+
+    invoice_id = str(invoice.get("invoice_id") or "")
+    if not invoice_id:
+        raise HTTPException(status_code=500, detail="Rechnung hat keine stabile ID")
+
+    link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
+    claim_key = f"wallet:{invoice_id}:{payer_user_id}"
+    await _claim_invoice_payment(
+        invoice_id=invoice_id,
+        claim_key=claim_key,
+        method="wallet",
+        payer_user_id=payer_user_id,
+        payer_email=user.get("email", ""),
+    )
+
+    reference = f"INV-WALLET-{invoice_id[-12:].upper()}"
+    result = await transfer_between_wallets(
+        from_user_id=payer_user_id,
+        to_user_id=issuer_id,
+        amount=total,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Rechnung bezahlt {invoice.get('invoice_number') or invoice_id}",
+        reference=reference,
+        metadata={
+            "kind": "invoice_payment",
+            "invoice_id": invoice_id,
+            "invoice_number": invoice.get("invoice_number"),
+            "payer_email": user.get("email", ""),
+            "issuer_email": invoice.get("user_email", ""),
+            "payment_link_token": link.get("token"),
+        },
+        idempotency_key=f"invoice:wallet:{invoice_id}:{payer_user_id}",
+    )
+    if not result.success:
+        status = str(getattr(result.status, "value", result.status))
+        if status == "reconciliation_required":
+            await _mark_invoice_claim_reconciliation(invoice_id, claim_key, result.error or "Wallet reconciliation required")
+        elif status not in {"pending"}:
+            await _release_invoice_payment_claim(invoice_id, claim_key, result.error or "Wallet payment failed")
+        raise HTTPException(
+            status_code=409 if status in {"pending", "reconciliation_required"} else 402,
+            detail=result.error or "Rechnungszahlung fehlgeschlagen",
+        )
 
     now_iso = _now_iso()
-    reference = invoice.get("invoice_id") or invoice.get("invoice_number") or scan_code
-
-    await db.users.update_one({"_id": user["_id"], "balance": {"$gte": total}}, {"$inc": {"balance": -total}})
-    await db.users.update_one({"_id": issuer["_id"]}, {"$inc": {"balance": total}})
-
-    await db.transactions.insert_many([
-        {
-            "id": secrets.token_hex(8),
-            "user_id": str(user["_id"]),
-            "type": "invoice_payment",
-            "amount": -total,
-            "description": f"Rechnung bezahlt {reference}",
-            "status": "completed",
-            "reference": reference,
-            "category": "invoice",
-            "counterparty_email": invoice.get("user_email", ""),
-            "created_at": now_iso,
-        },
-        {
-            "id": secrets.token_hex(8),
-            "user_id": str(issuer["_id"]),
-            "type": "invoice_payment_received",
-            "amount": total,
-            "description": f"Rechnung bezahlt {reference}",
-            "status": "completed",
-            "reference": reference,
-            "category": "invoice",
-            "counterparty_email": user.get("email", ""),
-            "created_at": now_iso,
-        },
-    ])
-
-    await db.invoices.update_one(
-        {"invoice_id": invoice.get("invoice_id")},
-        {"$set": {"status": "paid", "paid_at": now_iso, "paid_by_email": user.get("email", ""), "paid_by_user_id": str(user["_id"]), "updated_at": now_iso}},
+    paid_invoice = await _mark_invoice_paid(
+        invoice,
+        link,
+        now_iso,
+        "wallet",
+        user.get("email", ""),
+        payer_user_id,
+        result.reference or reference,
     )
-    paid_invoice = dict(invoice)
-    paid_invoice.update({"status": "paid", "paid_at": now_iso, "updated_at": now_iso})
+    await _mark_invoice_claim_paid(invoice_id, claim_key, result.reference or reference)
+
     ip, ua = get_client_info(request)
-    await log_audit(
-        "invoice_paid",
-        user_id=str(user.get("_id")),
-        email=user.get("email", ""),
-        ip=ip,
-        user_agent=ua,
-        details={
-            "invoice_id": invoice.get("invoice_id"),
-            "target": invoice.get("invoice_number"),
-            "company": invoice.get("client_name"),
-            "status": "paid",
-            "owner_user_email": invoice.get("user_email", ""),
-        },
-    )
-    return {"ok": True, "invoice": _invoice_public_payload(paid_invoice, request.headers.get("origin", "")), "message": "Rechnung erfolgreich bezahlt"}
+    if not result.idempotent_replay:
+        await log_audit(
+            "invoice_paid",
+            user_id=payer_user_id,
+            email=user.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+            details={
+                "invoice_id": invoice_id,
+                "target": invoice.get("invoice_number"),
+                "company": invoice.get("client_name"),
+                "status": "paid",
+                "owner_user_email": invoice.get("user_email", ""),
+                "wallet_transaction_id": result.transaction_id,
+            },
+        )
 
+    return {
+        "ok": True,
+        "invoice": _invoice_public_payload(
+            {
+                **paid_invoice,
+                "payment_link_token": link.get("token"),
+                "payment_link_url": link.get("public_url"),
+                "public_pay_url": link.get("public_url"),
+            },
+            request.headers.get("origin", ""),
+        ),
+        "message": "Rechnung erfolgreich bezahlt",
+        "transaction_id": result.transaction_id,
+        "replayed": bool(result.idempotent_replay),
+    }
 
 @router.post("/{invoice_id}/payment-link")
 async def create_or_refresh_payment_link(invoice_id: str, request: Request):
@@ -1530,78 +1645,138 @@ async def public_payment_link_checkout(token: str, req: PaymentLinkCheckoutReque
     if req.method == "wallet":
         user = await get_current_user(request)
         payer_user_id = str(user.get("_id"))
-        lock = await db.payment_links.find_one_and_update(
-            {"token": token, "status": "active"},
-            {"$set": {"status": "processing", "updated_at": now_iso, "processing_method": "wallet", "processing_by": payer_user_id}},
-            projection={"_id": 0},
-            return_document=ReturnDocument.BEFORE,
+        owner_user_id = str(owner["_id"])
+        if payer_user_id == owner_user_id:
+            raise HTTPException(status_code=400, detail="Eigene Rechnung kann nicht an sich selbst bezahlt werden")
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Ungültiger Rechnungsbetrag")
+
+        invoice_id = str(invoice.get("invoice_id") or "")
+        claim_key = f"wallet-link:{invoice_id}:{payer_user_id}"
+        await _claim_invoice_payment(
+            invoice_id=invoice_id,
+            claim_key=claim_key,
+            method="wallet",
+            payer_user_id=payer_user_id,
+            payer_email=user.get("email", ""),
         )
-        if not lock:
-            current = await db.payment_links.find_one({"token": token}, {"_id": 0})
-            if current and current.get("status") == "paid":
-                raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+
+        current_link = await db.payment_links.find_one({"token": token}, {"_id": 0}) or {}
+        if current_link.get("status") == "paid":
+            raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+        if current_link.get("status") == "processing" and current_link.get("processing_by") not in {None, "", payer_user_id}:
             raise HTTPException(status_code=409, detail="Zahlung wird bereits verarbeitet")
 
-        debit = await db.users.update_one({"_id": user["_id"], "balance": {"$gte": amount}}, {"$inc": {"balance": -amount}})
-        if debit.modified_count == 0:
-            await db.payment_links.update_one({"token": token}, {"$set": {"status": "active", "updated_at": _now_iso()}})
-            raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{amount:.2f})")
+        await db.payment_links.update_one(
+            {
+                "token": token,
+                "status": {"$in": ["active", "processing"]},
+                "$or": [
+                    {"processing_by": {"$exists": False}},
+                    {"processing_by": None},
+                    {"processing_by": ""},
+                    {"processing_by": payer_user_id},
+                ],
+            },
+            {"$set": {
+                "status": "processing",
+                "updated_at": now_iso,
+                "processing_method": "wallet",
+                "processing_by": payer_user_id,
+            }},
+        )
 
-        await db.users.update_one({"_id": owner["_id"]}, {"$inc": {"balance": amount}})
-        tx_reference = f"INV-WALLET-{secrets.token_hex(5).upper()}"
-        payment_tx_id = _make_id("ptx")
-        await db.payment_transactions.insert_one({
-            "payment_id": payment_tx_id,
-            "session_id": None,
-            "invoice_id": invoice.get("invoice_id"),
-            "invoice_number": invoice.get("invoice_number"),
-            "payment_link_token": token,
-            "amount": amount,
-            "currency": "EUR",
-            "type": "invoice_wallet_payment",
-            "status": "completed",
-            "payment_status": "paid",
-            "payer_user_id": payer_user_id,
-            "payer_email": user.get("email", ""),
-            "owner_user_id": invoice.get("owner_user_id", ""),
-            "owner_user_email": invoice.get("user_email", ""),
-            "reference": tx_reference,
-            "created_at": now_iso,
-            "updated_at": now_iso,
-            "metadata": {"method": "wallet", "link_id": link.get("link_id")},
-        })
-        await db.transactions.insert_many([
-            {
-                "id": secrets.token_hex(8),
-                "user_id": payer_user_id,
-                "type": "invoice_payment",
-                "amount": -amount,
-                "description": f"Rechnung bezahlt {invoice.get('invoice_number')}",
-                "status": "completed",
-                "reference": tx_reference,
-                "category": "invoice",
-                "counterparty_email": invoice.get("user_email", ""),
-                "created_at": now_iso,
+        reference = f"INV-WALLET-{invoice_id[-12:].upper()}"
+        payment = await transfer_between_wallets(
+            from_user_id=payer_user_id,
+            to_user_id=owner_user_id,
+            amount=amount,
+            tx_type=TransactionType.PAYMENT,
+            description=f"Rechnung bezahlt {invoice.get('invoice_number') or invoice_id}",
+            reference=reference,
+            metadata={
+                "kind": "invoice_payment",
+                "invoice_id": invoice_id,
+                "invoice_number": invoice.get("invoice_number"),
+                "payment_link_token": token,
+                "link_id": link.get("link_id"),
+                "payer_email": user.get("email", ""),
+                "issuer_email": invoice.get("user_email", ""),
             },
-            {
-                "id": secrets.token_hex(8),
-                "user_id": str(owner["_id"]),
-                "type": "invoice_payment_received",
+            idempotency_key=f"invoice:wallet:{invoice_id}:{payer_user_id}",
+        )
+        if not payment.success:
+            status = str(getattr(payment.status, "value", payment.status))
+            if status == "reconciliation_required":
+                await _mark_invoice_claim_reconciliation(
+                    invoice_id,
+                    claim_key,
+                    payment.error or "Wallet reconciliation required",
+                )
+            elif status not in {"pending"}:
+                await _release_invoice_payment_claim(invoice_id, claim_key, payment.error or "Wallet payment failed")
+                await db.payment_links.update_one(
+                    {"token": token, "processing_by": payer_user_id, "status": "processing"},
+                    {"$set": {"status": "active", "updated_at": _now_iso()}, "$unset": {"processing_by": "", "processing_method": ""}},
+                )
+            raise HTTPException(
+                status_code=409 if status in {"pending", "reconciliation_required"} else 402,
+                detail=payment.error or "Rechnungszahlung fehlgeschlagen",
+            )
+
+        payment_id = f"ptx-invoice-wallet-{invoice_id}-{payer_user_id[-8:]}"
+        await db.payment_transactions.update_one(
+            {"payment_id": payment_id},
+            {"$setOnInsert": {
+                "payment_id": payment_id,
+                "session_id": None,
+                "invoice_id": invoice_id,
+                "invoice_number": invoice.get("invoice_number"),
+                "payment_link_token": token,
                 "amount": amount,
-                "description": f"Rechnung bezahlt {invoice.get('invoice_number')}",
+                "currency": "EUR",
+                "type": "invoice_wallet_payment",
                 "status": "completed",
-                "reference": tx_reference,
-                "category": "invoice",
-                "counterparty_email": user.get("email", ""),
+                "payment_status": "paid",
+                "payer_user_id": payer_user_id,
+                "payer_email": user.get("email", ""),
+                "owner_user_id": owner_user_id,
+                "owner_user_email": invoice.get("user_email", ""),
+                "reference": payment.reference or reference,
+                "wallet_transaction_id": payment.transaction_id,
                 "created_at": now_iso,
-            },
-        ])
-        paid_invoice = await _mark_invoice_paid(invoice, link, now_iso, "wallet", user.get("email", ""), payer_user_id, tx_reference)
+                "updated_at": now_iso,
+                "metadata": {"method": "wallet", "link_id": link.get("link_id")},
+            }},
+            upsert=True,
+        )
+
+        paid_invoice = await _mark_invoice_paid(
+            invoice,
+            link,
+            now_iso,
+            "wallet",
+            user.get("email", ""),
+            payer_user_id,
+            payment.reference or reference,
+        )
+        await _mark_invoice_claim_paid(invoice_id, claim_key, payment.reference or reference)
+
         return {
             "ok": True,
             "method": "wallet",
-            "invoice": _invoice_public_payload({**paid_invoice, "payment_link_token": token, "payment_link_url": link.get("public_url"), "public_pay_url": link.get("public_url")}, request.headers.get("origin", "")),
+            "invoice": _invoice_public_payload(
+                {
+                    **paid_invoice,
+                    "payment_link_token": token,
+                    "payment_link_url": link.get("public_url"),
+                    "public_pay_url": link.get("public_url"),
+                },
+                request.headers.get("origin", ""),
+            ),
             "message": "Rechnung erfolgreich mit Wallet bezahlt",
+            "transaction_id": payment.transaction_id,
+            "replayed": bool(payment.idempotent_replay),
         }
 
     origin = _host_origin(request, req.origin_url)
@@ -1684,41 +1859,115 @@ async def public_payment_checkout_status(token: str, session_id: str, request: R
     )
 
     if checkout_status.payment_status == "paid":
-        tx_lock = await db.payment_transactions.find_one_and_update(
-            {"session_id": session_id, "status": {"$nin": ["credited"]}},
-            {"$set": {"status": "credited", "payment_status": "paid", "updated_at": now_iso}},
-            projection={"_id": 0},
-            return_document=ReturnDocument.BEFORE,
+        invoice_id = str(invoice.get("invoice_id") or "")
+        owner = await db.users.find_one({"email": invoice.get("user_email", "")})
+        if not owner:
+            await db.payment_transactions.update_one(
+                {"session_id": session_id, "payment_link_token": token},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "payment_status": "paid",
+                    "error": "Invoice owner not found after Stripe payment",
+                    "updated_at": now_iso,
+                }},
+            )
+            raise HTTPException(status_code=500, detail="Stripe-Zahlung erfolgt; Rechnungssteller benötigt Abstimmung")
+
+        owner_user_id = str(owner["_id"])
+        claim_key = f"stripe:{invoice_id}:{session_id}"
+        try:
+            await _claim_invoice_payment(
+                invoice_id=invoice_id,
+                claim_key=claim_key,
+                method="stripe",
+                payer_email=tx.get("payer_email", ""),
+                session_id=session_id,
+            )
+        except HTTPException as exc:
+            await db.payment_transactions.update_one(
+                {"session_id": session_id, "payment_link_token": token},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "payment_status": "paid",
+                    "error": str(exc.detail),
+                    "updated_at": now_iso,
+                }},
+            )
+            raise
+
+        amount = round(float(invoice.get("total", 0) or 0), 2)
+        if amount <= 0:
+            await _mark_invoice_claim_reconciliation(invoice_id, claim_key, "Invalid invoice amount")
+            raise HTTPException(status_code=500, detail="Stripe-Zahlung erfolgt; Rechnungsbetrag ist ungültig")
+
+        reference = f"INV-STRIPE-{session_id[:12].upper()}"
+        credit = await credit_wallet(
+            user_id=owner_user_id,
+            amount=amount,
+            tx_type=TransactionType.MERCHANT_CREDIT,
+            description=f"Öffentliche Rechnung bezahlt {invoice.get('invoice_number') or invoice_id}",
+            reference=reference,
+            source="invoice_stripe_payment",
+            metadata={
+                "kind": "invoice_payment",
+                "invoice_id": invoice_id,
+                "invoice_number": invoice.get("invoice_number"),
+                "payment_link_token": token,
+                "stripe_session_id": session_id,
+                "payer_email": tx.get("payer_email", ""),
+                "link_id": link.get("link_id"),
+            },
+            idempotency_key=f"invoice:stripe:{invoice_id}:{session_id}",
         )
-        if tx_lock:
-            owner = await db.users.find_one({"email": invoice.get("user_email", "")})
-            if owner and invoice.get("status") != "paid":
-                link_lock = await db.payment_links.find_one_and_update(
-                    {"token": token, "status": "active"},
-                    {"$set": {"status": "processing", "updated_at": now_iso, "processing_method": "stripe", "processing_session_id": session_id}},
-                    projection={"_id": 0},
-                    return_document=ReturnDocument.BEFORE,
+        if not credit.success:
+            status = str(getattr(credit.status, "value", credit.status))
+            await db.payment_transactions.update_one(
+                {"session_id": session_id, "payment_link_token": token},
+                {"$set": {
+                    "status": "reconciliation_required" if status in {"pending", "reconciliation_required"} else "failed",
+                    "payment_status": "paid",
+                    "error": credit.error,
+                    "updated_at": now_iso,
+                }},
+            )
+            if status in {"pending", "reconciliation_required"}:
+                await _mark_invoice_claim_reconciliation(
+                    invoice_id,
+                    claim_key,
+                    credit.error or "Stripe wallet credit requires reconciliation",
                 )
-                if link_lock:
-                    await db.users.update_one({"_id": owner["_id"]}, {"$inc": {"balance": amount if (amount := round(float(invoice.get('total', 0) or 0), 2)) else 0}})
-                    reference = f"INV-STRIPE-{session_id[:12].upper()}"
-                    await db.transactions.insert_one({
-                        "id": secrets.token_hex(8),
-                        "user_id": str(owner["_id"]),
-                        "type": "invoice_payment_received",
-                        "amount": amount,
-                        "description": f"Öffentliche Rechnung bezahlt {invoice.get('invoice_number')}",
-                        "status": "completed",
-                        "reference": reference,
-                        "category": "invoice",
-                        "counterparty_email": tx_lock.get("payer_email", ""),
-                        "created_at": now_iso,
-                    })
-                    invoice = await _mark_invoice_paid(invoice, link, now_iso, "stripe", tx_lock.get("payer_email", ""), "", reference)
-                    await db.payment_transactions.update_one(
-                        {"session_id": session_id},
-                        {"$set": {"reference": reference, "credited_to_user_id": str(owner["_id"]), "updated_at": now_iso}},
-                    )
+            else:
+                await _release_invoice_payment_claim(
+                    invoice_id,
+                    claim_key,
+                    credit.error or "Stripe wallet credit failed",
+                )
+            raise HTTPException(
+                status_code=409 if status in {"pending", "reconciliation_required"} else 500,
+                detail=credit.error or "Stripe-Zahlung erfolgt; Wallet-Gutschrift fehlgeschlagen",
+            )
+
+        invoice = await _mark_invoice_paid(
+            invoice,
+            link,
+            now_iso,
+            "stripe",
+            tx.get("payer_email", ""),
+            "",
+            credit.reference or reference,
+        )
+        await _mark_invoice_claim_paid(invoice_id, claim_key, credit.reference or reference)
+        await db.payment_transactions.update_one(
+            {"session_id": session_id, "payment_link_token": token},
+            {"$set": {
+                "status": "credited",
+                "payment_status": "paid",
+                "reference": credit.reference or reference,
+                "credited_to_user_id": owner_user_id,
+                "wallet_transaction_id": credit.transaction_id,
+                "updated_at": now_iso,
+            }},
+        )
 
     refreshed_invoice = await db.invoices.find_one({"invoice_id": invoice.get("invoice_id")}, {"_id": 0}) or invoice
     return {
@@ -1734,25 +1983,28 @@ async def invoice_payment_webhook(request: Request):
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{str(request.base_url).rstrip('/')}/api/webhook/stripe")
     try:
         event = await stripe_checkout.handle_webhook(body, request.headers.get("Stripe-Signature"))
-    except Exception:
-        return {"received": True, "processed": False}
-
-    if event.payment_status == "paid" and event.session_id:
-        try:
-            from routes.dating import handle_dating_premium_webhook
-            await handle_dating_premium_webhook(event.session_id)
-        except Exception:
-            pass
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid Stripe webhook") from exc
 
     metadata = dict(event.metadata or {})
     if metadata.get("type") != "invoice_payment_link":
-        return {"received": True, "processed": False}
+        return {"received": True, "processed": False, "ignored": True}
 
-    token = metadata.get("token", "")
-    session_id = event.session_id or ""
-    if token and session_id and event.payment_status == "paid":
+    token = str(metadata.get("token") or "")
+    session_id = str(event.session_id or "")
+    if not token or not session_id:
+        raise HTTPException(status_code=400, detail="Invoice webhook metadata incomplete")
+
+    if event.payment_status == "paid":
         try:
             await public_payment_checkout_status(token, session_id, request)
-        except Exception:
-            pass
-    return {"received": True, "processed": True}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Invoice webhook settlement failed") from exc
+
+    return {
+        "received": True,
+        "processed": event.payment_status == "paid",
+        "payment_status": event.payment_status,
+    }

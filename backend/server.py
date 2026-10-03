@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
-from core.config import APP_ENV, IS_PRODUCTION, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, FRONTEND_URL, BACKEND_URL, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET
+from core.config import APP_ENV, IS_PRODUCTION, TEST_MODE, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, FRONTEND_URL, BACKEND_URL, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET
 from core.database import db, create_indexes, close_connection
 from core.security import hash_password, verify_password
 from core.rate_limit import limiter
@@ -145,6 +145,8 @@ def validate_runtime_safety():
         errors.append("TEST_MODE=true is forbidden in production")
     if os.environ.get("DEMO_MODE", "false").lower() == "true":
         errors.append("DEMO_MODE=true is forbidden in production")
+    if os.environ.get("STAFF_DEMO_ENABLED", "false").lower() == "true":
+        errors.append("STAFF_DEMO_ENABLED=true is forbidden in production")
     if os.environ.get("MOCK_PAYMENTS", "false").lower() == "true":
         errors.append("MOCK_PAYMENTS=true is forbidden in production")
     if os.environ.get("ALLOW_FAKE_TOPUP", "false").lower() == "true":
@@ -564,6 +566,57 @@ async def serve_bidblitz_pay_sdk():
 # STARTUP & SHUTDOWN
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+def _wallet_transfer_recovery_interval_seconds() -> int:
+    try:
+        return max(30, int(os.environ.get("WALLET_TRANSFER_RECOVERY_INTERVAL_SECONDS", "60")))
+    except (TypeError, ValueError):
+        return 60
+
+
+async def _wallet_transfer_recovery_loop():
+    """Continuously recover stale canonical transfers on the startup-lock owner."""
+    from core.canonical_wallet_service import reconcile_pending_wallet_transfers
+
+    interval = _wallet_transfer_recovery_interval_seconds()
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            stats = await reconcile_pending_wallet_transfers(limit=100)
+            if stats.get("recovered") or stats.get("manual_review"):
+                logger.info(f"Wallet transfer recovery: {stats}")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error(f"Wallet transfer recovery cycle failed: {exc}", exc_info=True)
+
+
+def _mining_auto_reward_interval_seconds() -> int:
+    try:
+        return max(300, int(os.environ.get("MINING_AUTO_REWARD_INTERVAL_SECONDS", "3600")))
+    except (TypeError, ValueError):
+        return 3600
+
+
+async def _mining_auto_reward_loop():
+    """Run test-only mining auto rewards on the single post-startup lock owner."""
+    if not TEST_MODE:
+        return
+    from routes.mining import process_auto_rewards
+
+    interval = _mining_auto_reward_interval_seconds()
+    while True:
+        try:
+            rewarded = await process_auto_rewards()
+            if rewarded:
+                logger.info(f"Mining auto-reward cycle: {rewarded} users rewarded")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.error(f"Mining auto-reward cycle failed: {exc}", exc_info=True)
+        await asyncio.sleep(interval)
+
+
 async def _run_post_startup_initialization():
     """Heavy startup work runs after routers are loaded and health is already available."""
     try:
@@ -571,9 +624,36 @@ async def _run_post_startup_initialization():
         validate_runtime_safety()
         await create_indexes()
         logger.info("✓ Database indexes created")
+
+        try:
+            from core.canonical_wallet_service import reconcile_pending_wallet_transfers
+            recovery_stats = await reconcile_pending_wallet_transfers(limit=100)
+            if recovery_stats.get("checked"):
+                logger.info(f"Wallet transfer startup recovery: {recovery_stats}")
+            app.state.wallet_transfer_recovery_task = asyncio.create_task(_wallet_transfer_recovery_loop())
+            logger.info("✓ Wallet transfer recovery loop started")
+        except Exception as exc:
+            app.state.wallet_transfer_recovery_task = None
+            logger.warning(f"Wallet transfer recovery startup failed: {exc}")
+
         await seed_admin()
         await cleanup_legacy_admin_artifacts()
         await ensure_admin_driver_account()
+
+        # Mining auto rewards are test-only until a verified live provider exists.
+        if TEST_MODE:
+            try:
+                from routes.mining import process_auto_rewards
+                initial_mining_rewards = await process_auto_rewards()
+                if initial_mining_rewards:
+                    logger.info(f"Mining startup auto-reward: {initial_mining_rewards} users rewarded")
+                app.state.mining_auto_reward_task = asyncio.create_task(_mining_auto_reward_loop())
+                logger.info("✓ Test-mode mining auto-reward loop started")
+            except Exception as exc:
+                app.state.mining_auto_reward_task = None
+                logger.warning(f"Mining auto-reward startup failed: {exc}")
+        else:
+            app.state.mining_auto_reward_task = None
 
         # Seed demo auctions and start background bot+maintenance loops
         try:
@@ -582,10 +662,11 @@ async def _run_post_startup_initialization():
                 start_auction_maintenance_loop,
                 start_bot_loop,
             )
-            await seed_demo_auctions()
+            if TEST_MODE:
+                await seed_demo_auctions()
             start_auction_maintenance_loop()
             start_bot_loop()
-            logger.info("✓ Auction maintenance + bot loops started")
+            logger.info("✓ Auction maintenance + guarded bot loops started")
         except Exception as e:
             logger.warning(f"Auction loops start failed: {e}")
 
@@ -655,6 +736,8 @@ async def startup_event():
     """Return health immediately; run heavy initialization in the background."""
     app.state.startup_status = "booting"
     app.state.routes_loaded = False
+    app.state.wallet_transfer_recovery_task = None
+    app.state.mining_auto_reward_task = None
     lock_file = _acquire_post_startup_lock()
     app.state.post_startup_lock = lock_file
     if _should_use_sync_startup():
@@ -678,6 +761,20 @@ async def shutdown_event():
     task = getattr(app.state, "post_startup_task", None)
     if task and not task.done():
         task.cancel()
+    wallet_recovery_task = getattr(app.state, "wallet_transfer_recovery_task", None)
+    if wallet_recovery_task and not wallet_recovery_task.done():
+        wallet_recovery_task.cancel()
+        try:
+            await wallet_recovery_task
+        except asyncio.CancelledError:
+            pass
+    mining_reward_task = getattr(app.state, "mining_auto_reward_task", None)
+    if mining_reward_task and not mining_reward_task.done():
+        mining_reward_task.cancel()
+        try:
+            await mining_reward_task
+        except asyncio.CancelledError:
+            pass
     lock_file = getattr(app.state, "post_startup_lock", None)
     if lock_file:
         try:

@@ -111,6 +111,8 @@ class EstimateRequest(BaseModel):
     pickup_address: Optional[str] = Field(None, max_length=500)
     dropoff_address: Optional[str] = Field(None, max_length=500)
     promo_code: Optional[str] = Field(None, max_length=32)
+    scheduled_at: Optional[str] = Field(None, max_length=64)
+    idempotency_key: Optional[str] = Field(None, max_length=200)
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""
@@ -172,6 +174,8 @@ class FlexBookRequest(BaseModel):
     assistance: bool = False
     scheduled_at: Optional[str] = None  # ISO datetime; None => "Jetzt"
     promo_code: Optional[str] = Field(None, max_length=32)
+    quote_id: Optional[str] = Field(None, min_length=16, max_length=80)
+    idempotency_key: Optional[str] = Field(None, min_length=8, max_length=200)
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""
@@ -248,8 +252,9 @@ class SosRequest(BaseModel):
 
 
 class TipRequest(BaseModel):
-    """Add tip after ride completion"""
+    """Add tip after ride completion."""
     ride_id: str
     tip_amount: float = Field(..., gt=0, le=100, description="Tip in EUR")
+    idempotency_key: Optional[str] = Field(None, max_length=200)
     rating: Optional[int] = Field(None, ge=1, le=5)
     feedback: Optional[str] = Field(None, max_length=500)

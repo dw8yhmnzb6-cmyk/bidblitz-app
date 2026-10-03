@@ -2,7 +2,7 @@
  * BidBlitz V2 - Hotel & Unterkunft Buchung
  * Eigener Marktplatz: Unterkünfte suchen, buchen, verwalten
  */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, MapPin, Star, Users, Calendar, Bed, Bath,
@@ -41,6 +41,7 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   const [blockedDates, setBlockedDates] = useState([]);
   const [quote, setQuote] = useState(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const bookingAttemptKeyRef = useRef(null);
 
   const loadProperties = useCallback(async () => {
     try {
@@ -81,6 +82,10 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
       .finally(() => setLoadingQuote(false));
   }, [selectedProp, checkIn, checkOut, guests]);
 
+  useEffect(() => {
+    bookingAttemptKeyRef.current = null;
+  }, [selectedProp?.property_id, checkIn, checkOut, guests, message]);
+
   // Helpers for the date inputs
   const today = new Date().toISOString().slice(0, 10);
   const isBlocked = (d) => blockedDates.includes(d);
@@ -94,16 +99,37 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   };
 
   const book = async () => {
-    if (!checkIn || !checkOut || !selectedProp) return;
+    if (!checkIn || !checkOut || !selectedProp || !quote) return;
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `hotel-booking-${crypto.randomUUID()}`
+        : `hotel-booking-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBooking(true); setError("");
     try {
       const res = await fetch(`${API}/api/hotels/book`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ property_id: selectedProp.property_id, check_in: checkIn, check_out: checkOut, guests, message }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          property_id: selectedProp.property_id,
+          check_in: checkIn,
+          check_out: checkOut,
+          guests,
+          message,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await res.json();
-      if (res.ok && d.ok) { setBookResult(d.booking); loadBookings(); }
-      else setError(d.detail || "Buchung fehlgeschlagen");
+      if (res.ok && d.ok) {
+        bookingAttemptKeyRef.current = null;
+        setBookResult(d.booking);
+        loadBookings();
+      } else {
+        if (res.status < 500 && res.status !== 409) bookingAttemptKeyRef.current = null;
+        setError(typeof d.detail === "string" ? d.detail : d.detail?.message || "Buchung fehlgeschlagen");
+      }
     } catch { setError("Netzwerkfehler"); }
     setBooking(false);
   };
@@ -116,7 +142,8 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
 
   // Calculate nights and total
   const nights = checkIn && checkOut ? Math.max(0, Math.ceil((new Date(checkOut) - new Date(checkIn)) / 86400000)) : 0;
-  const total = selectedProp ? nights * selectedProp.price_per_night : 0;
+  const total = Number(quote?.total ?? (selectedProp ? nights * selectedProp.price_per_night : 0));
+  const cashback = Number(quote?.cashback ?? (total * 0.03));
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24" data-testid="hotel-booking-page">
@@ -317,19 +344,25 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
               </div>
             </div>
             {nights > 0 && (
-              <div className="p-3 rounded-xl bg-[#00C2FF]/5 border border-[#00C2FF]/20">
-                <div className="flex justify-between mb-1">
-                  <span className="text-[10px] text-gray-400">{nights} Nächte x €{selectedProp.price_per_night}</span>
+              <div className="p-3 rounded-xl bg-[#00C2FF]/5 border border-[#00C2FF]/20 space-y-1">
+                {(quote?.breakdown || [{ label: `${nights} Nächte × €${selectedProp.price_per_night}`, amount: nights * selectedProp.price_per_night }]).map((line, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span className="text-[10px] text-gray-400">{line.label}</span>
+                    <span className="text-[10px] text-gray-300">€{Number(line.amount || 0).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-1 border-t border-white/10">
+                  <span className="text-[11px] font-bold">Gesamt</span>
                   <span className="text-sm font-bold text-[#00C2FF]">€{total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[10px] text-[#10B981]">Cashback (3%)</span>
-                  <span className="text-[10px] font-semibold text-[#10B981]">+€{(total * 0.03).toFixed(2)}</span>
+                  <span className="text-[10px] font-semibold text-[#10B981]">+€{cashback.toFixed(2)}</span>
                 </div>
               </div>
             )}
             {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-            <motion.button whileTap={{ scale: 0.97 }} onClick={book} disabled={!checkIn || !checkOut || nights <= 0 || booking}
+            <motion.button whileTap={{ scale: 0.97 }} onClick={book} disabled={!checkIn || !checkOut || nights <= 0 || !quote || loadingQuote || booking}
               className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2"
               data-testid="hotel-book-btn">
               {booking ? <Loader2 size={18} className="animate-spin" /> : <><Calendar size={16} /> €{total.toFixed(2)} buchen</>}

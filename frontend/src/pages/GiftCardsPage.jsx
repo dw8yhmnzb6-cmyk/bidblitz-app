@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Gift, Loader2, ShoppingCart, Send, Copy, Check } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
@@ -24,35 +24,85 @@ const GiftCardsPage = ({ onBack }) => {
   const [myCards, setMyCards] = useState([]);
   const [tab, setTab] = useState("shop"); // shop | my
   const [copied, setCopied] = useState(null);
+  const [capabilities, setCapabilities] = useState({
+    live_provider_connected: false,
+    purchase_available: false,
+    production_message: "",
+  });
+  const purchaseAttemptKeyRef = useRef(null);
 
-  useEffect(() => { loadMyCards(); }, []);
+  useEffect(() => { loadGiftCardState(); }, []);
+
+  const loadGiftCardState = async () => {
+    try {
+      const [capRes, cardsRes] = await Promise.all([
+        fetch(`${API}/api/gift-cards/capabilities`),
+        fetch(`${API}/api/gift-cards/my`, { credentials: "include" }),
+      ]);
+      if (capRes.ok) setCapabilities(await capRes.json());
+      if (cardsRes.ok) {
+        const d = await cardsRes.json();
+        setMyCards(d.cards || []);
+      }
+    } catch {}
+  };
 
   const loadMyCards = async () => {
     try {
       const res = await fetch(`${API}/api/gift-cards/my`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setMyCards(d.cards || []); }
+      if (res.ok) {
+        const d = await res.json();
+        setMyCards(d.cards || []);
+      }
     } catch {}
   };
 
+  useEffect(() => {
+    purchaseAttemptKeyRef.current = null;
+  }, [selected?.id, amount]);
+
   const purchase = async () => {
     if (!selected || !amount) return;
+    if (!capabilities.purchase_available) {
+      alert(capabilities.production_message || "Geschenkkarten-Provider ist noch nicht live verbunden.");
+      return;
+    }
+    if (!purchaseAttemptKeyRef.current) {
+      purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `gift-card-${crypto.randomUUID()}`
+        : `gift-card-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseAttemptKeyRef.current;
     setPurchasing(true);
     try {
       const res = await fetch(`${API}/api/gift-cards/purchase`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: selected.id, amount }),
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          type: selected.id,
+          amount,
+          idempotency_key: idempotencyKey,
+        }),
       });
+      const d = await res.json().catch(() => ({}));
       if (res.ok) {
-        loadMyCards();
+        purchaseAttemptKeyRef.current = null;
+        await loadMyCards();
         setSelected(null);
         setAmount(null);
         setTab("my");
-        alert("Geschenkkarte gekauft!");
+        alert("Test-Geschenkkarte erstellt.");
       } else {
-        const d = await res.json();
-        alert(d.detail || "Fehler beim Kauf");
+        if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
+        alert(typeof d.detail === "string" ? d.detail : "Fehler beim Kauf");
       }
-    } catch {}
+    } catch {
+      alert("Netzwerkfehler");
+    }
     setPurchasing(false);
   };
 
@@ -78,6 +128,14 @@ const GiftCardsPage = ({ onBack }) => {
       </div>
 
       <div className="p-4">
+        {!capabilities.live_provider_connected && (
+          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="giftcard-provider-unavailable">
+            <p className="text-sm font-bold text-amber-300">Gift-Card-Provider noch nicht live</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
+              {capabilities.production_message || "Käufe werden erst aktiviert, wenn ein verifizierter Provider verbunden ist."}
+            </p>
+          </div>
+        )}
         {tab === "shop" ? (
           <div className="space-y-3">
             {selected ? (
@@ -100,10 +158,14 @@ const GiftCardsPage = ({ onBack }) => {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={purchase} disabled={!amount || purchasing}
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={purchase} disabled={!amount || purchasing || !capabilities.purchase_available}
                     className="flex-1 py-4 rounded-xl text-black font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: selected.color }}>
-                    {purchasing ? <Loader2 size={20} className="animate-spin" /> : <><ShoppingCart size={20} /> Kaufen €{amount}</>}
+                    {purchasing
+                      ? <Loader2 size={20} className="animate-spin" />
+                      : capabilities.purchase_available
+                        ? <><ShoppingCart size={20} /> Kaufen €{amount}</>
+                        : <>Noch nicht verfügbar</>}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setSelected(null); setAmount(null); }}
                     className="px-4 py-4 rounded-xl bg-white/5 text-white/50">Zurück</motion.button>
@@ -136,10 +198,12 @@ const GiftCardsPage = ({ onBack }) => {
                   <span className="text-[#FFD166] font-bold">€{c.amount}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs text-[#888] font-mono flex-1">{c.code}</code>
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyCode(c.code)} className="p-1.5 rounded-lg bg-white/5">
-                    {copied === c.code ? <Check size={12} className="text-green-400" /> : <Copy size={12} className="text-white/50" />}
-                  </motion.button>
+                  <code className="text-xs text-[#888] font-mono flex-1">{c.code || c.code_masked || "Nicht verfügbar"}</code>
+                  {c.code ? (
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyCode(c.code)} className="p-1.5 rounded-lg bg-white/5">
+                      {copied === c.code ? <Check size={12} className="text-green-400" /> : <Copy size={12} className="text-white/50" />}
+                    </motion.button>
+                  ) : null}
                 </div>
               </div>
             ))}

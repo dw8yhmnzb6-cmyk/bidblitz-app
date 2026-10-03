@@ -3,7 +3,7 @@
  * Complete child app experience for kids to access their wallet
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, QrCode, Clock, ShoppingBag, ArrowUpRight, ArrowDownLeft,
@@ -41,14 +41,20 @@ const childApi = {
     if (!res.ok) throw new Error(data.detail || 'Fehler');
     return data;
   },
-  pay: async (token, amount, merchantName, description) => {
+  pay: async (token, amount, merchantId, description, idempotencyKey) => {
     const res = await fetch(`${API_URL}/api/kids/child-mode/pay`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'X-Child-Token': token 
+        'X-Child-Token': token,
+        'Idempotency-Key': idempotencyKey,
       },
-      body: JSON.stringify({ amount, merchant_name: merchantName, description })
+      body: JSON.stringify({
+        amount,
+        merchant_id: merchantId,
+        description,
+        idempotency_key: idempotencyKey,
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Zahlung fehlgeschlagen');
@@ -227,8 +233,9 @@ const ChildHomePage = ({ token, childData, onLogout, onRefresh }) => {
   const [paymentCode, setPaymentCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [payAmount, setPayAmount] = useState('');
-  const [payMerchant, setPayMerchant] = useState('');
+  const [payMerchantId, setPayMerchantId] = useState('');
   const [payLoading, setPayLoading] = useState(false);
+  const paymentAttemptKeyRef = useRef(null);
   const [paySuccess, setPaySuccess] = useState(null);
   const [payError, setPayError] = useState('');
 
@@ -245,6 +252,10 @@ const ChildHomePage = ({ token, childData, onLogout, onRefresh }) => {
     loadPaymentCode();
   }, [token]);
 
+  useEffect(() => {
+    paymentAttemptKeyRef.current = null;
+  }, [payAmount, payMerchantId]);
+
   const handlePay = async () => {
     const amount = parseFloat(payAmount);
     if (!amount || amount <= 0) {
@@ -259,15 +270,26 @@ const ChildHomePage = ({ token, childData, onLogout, onRefresh }) => {
       setPayError(`Tageslimit erreicht! Nur noch €${childData.remaining_today.toFixed(2)} heute.`);
       return;
     }
+    if (!payMerchantId.trim()) {
+      setPayError('Bitte Händler-QR scannen oder gültige Händler-ID eingeben.');
+      return;
+    }
 
     setPayLoading(true);
     setPayError('');
 
     try {
-      const result = await childApi.pay(token, amount, payMerchant || 'Shop', 'Zahlung');
+      if (!paymentAttemptKeyRef.current) {
+        paymentAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `kids-pay-${crypto.randomUUID()}`
+          : `kids-pay-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = paymentAttemptKeyRef.current;
+      const result = await childApi.pay(token, amount, payMerchantId.trim(), 'Zahlung', idempotencyKey);
+      paymentAttemptKeyRef.current = null;
       setPaySuccess(result);
       setPayAmount('');
-      setPayMerchant('');
+      setPayMerchantId('');
       onRefresh();
       setTimeout(() => {
         setPaySuccess(null);
@@ -528,23 +550,24 @@ const ChildHomePage = ({ token, childData, onLogout, onRefresh }) => {
                   ))}
                 </div>
 
-                {/* Merchant Name (optional) */}
+                {/* Merchant ID — must come from a real merchant QR/scan */}
                 <div className="mb-6">
-                  <label className="text-xs text-gray-400 mb-2 block">Wo? (optional)</label>
+                  <label className="text-xs text-gray-400 mb-2 block">Händler-ID</label>
                   <input
                     type="text"
-                    placeholder="z.B. Kiosk, Bäcker..."
-                    value={payMerchant}
-                    onChange={(e) => setPayMerchant(e.target.value)}
-                    maxLength={50}
+                    placeholder="Aus Händler-QR / Scanner"
+                    value={payMerchantId}
+                    onChange={(e) => setPayMerchantId(e.target.value)}
+                    maxLength={64}
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 outline-none focus:border-white/20"
                   />
+                  <p className="mt-2 text-[11px] text-gray-500">Freie Shopnamen sind aus Sicherheitsgründen nicht mehr als Zahlung erlaubt.</p>
                 </div>
 
                 {/* Pay Button */}
                 <motion.button
                   onClick={handlePay}
-                  disabled={payLoading || !payAmount || parseFloat(payAmount) <= 0}
+                  disabled={payLoading || !payAmount || parseFloat(payAmount) <= 0 || !payMerchantId.trim()}
                   className="w-full py-4 bg-gradient-to-r from-[#00C2FF] to-[#A855F7] text-white font-bold rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
                   whileTap={{ scale: 0.98 }}
                 >

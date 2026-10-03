@@ -277,7 +277,7 @@ export default function SupportChatPage({ onBack, isAdmin = false }) {
         </div>
 
         {/* Input */}
-        {activeTicket.status !== "resolved" || true ? (
+        {activeTicket.status !== "closed" ? (
           <form onSubmit={sendMessage}
             className="sticky bottom-0 bg-[#0A0A0F]/95 backdrop-blur-xl border-t border-white/5 p-4">
             <div className="flex gap-2">

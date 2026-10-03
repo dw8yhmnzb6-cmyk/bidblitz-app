@@ -7,7 +7,7 @@ import { bookBestMobilityRoute, getFrequentMobilityRoutes, getMobilityCompareSum
 
 const moduleCards = [
   { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, E-Scooter, E-Bike, Carsharing, EV und Car Rental auf einer Karte." },
-  { id: "taxi", label: "Taxi & Ride", route: "/taxi", icon: Car, tone: "#38BDF8", desc: "Sofortfahrten, Fahreransicht und Reservierungen bündeln." },
+  { id: "taxi", label: "Taxi & Ride", route: "/mobility-map?mode=taxi", icon: Car, tone: "#38BDF8", desc: "Taxi direkt auf der gemeinsamen Mobility-Karte auswählen und vergleichen." },
   { id: "scooter", label: "E-Scooter", route: "/mobility-map?mode=scooter", icon: Zap, tone: "#84CC16", desc: "Kurzstrecken, QR-Rides und direkte Micro-Mobility-Buchungen." },
   { id: "ebike", label: "E-Bike", route: "/mobility-map?mode=bike", icon: Bike, tone: "#FACC15", desc: "Leise City-Strecken mit Eco-Fokus und schnellem Rebook." },
   { id: "ev", label: "EV Charging", route: "/ev", icon: Crown, tone: "#F97316", desc: "Laden, Sessions tracken und Stationen verwalten." },
@@ -26,7 +26,12 @@ const compareMeta = {
 };
 
 function formatMoney(value) {
-  return `€${Math.abs(Number(value || 0)).toFixed(2)}`;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(Number(value || 0)));
 }
 
 function buildComparePresets(bookings, savedLocations) {
@@ -147,6 +152,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
   const handleBookBestRoute = async (route) => {
     setBookingBestRouteId(route.route_id);
     const result = await bookBestMobilityRoute({
+      request_id: (globalThis.crypto?.randomUUID?.() || "rebook-" + Date.now() + "-" + Math.random().toString(16).slice(2)),
       route_id: route.route_id,
       transport_type: route.transport_type || compareSummary?.best?.balance?.type || "taxi",
       payment_method: route.payment_method || "wallet",

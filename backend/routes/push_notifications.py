@@ -47,7 +47,6 @@ class PushMessage(BaseModel):
 # SUBSCRIPTION MANAGEMENT
 # ═════════════════════════════════════════════════════════════════
 
-@router.get("/vapid-public-key")
 async def get_vapid_public_key():
     """Return VAPID public key for frontend."""
     if not PUSH_ENABLED:
@@ -55,23 +54,36 @@ async def get_vapid_public_key():
     return {"publicKey": VAPID_PUBLIC_KEY}
 
 
-@router.post("/subscribe")
+async def push_subscription_status(request: Request):
+    """Return whether this account currently has at least one push endpoint."""
+    user = await get_current_user(request)
+    user_id = user.get("id") or str(user["_id"])
+    count = await db.push_subscriptions.count_documents({"user_id": user_id})
+    return {
+        "subscribed": count > 0,
+        "devices": count,
+        "push_configured": PUSH_ENABLED,
+    }
+
+
 async def subscribe_push(subscription: PushSubscription, request: Request):
     """Save push subscription for a user."""
     user = await get_current_user(request)
     user_id = user.get("id") or str(user["_id"])
     
-    # Store subscription in database
+    now = datetime.now(timezone.utc).isoformat()
     await db.push_subscriptions.update_one(
         {"user_id": user_id, "endpoint": subscription.endpoint},
-        {"$set": {
-            "user_id": user_id,
-            "email": user.get("email"),
-            "subscription": subscription.dict(),
-            "created_at": user.get("created_at"),
-            "updated_at": user.get("created_at"),
-        }},
-        upsert=True
+        {
+            "$set": {
+                "user_id": user_id,
+                "email": user.get("email"),
+                "subscription": subscription.model_dump(),
+                "updated_at": now,
+            },
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
     )
     
     logger.info(f"✅ Push subscription saved for user {user_id}")
@@ -216,7 +228,6 @@ async def notify_low_battery(parent_user_id: str, child_name: str, battery_level
 # TEST ENDPOINT (Development)
 # ═════════════════════════════════════════════════════════════════
 
-@router.post("/test")
 async def test_push(request: Request):
     """Send test push notification to current user."""
     user = await get_current_user(request)

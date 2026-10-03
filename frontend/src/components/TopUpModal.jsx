@@ -3,7 +3,7 @@
  * Amount → Redirect to Stripe → Return & verify → Wallet credited
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, CreditCard, Check, Loader2, AlertCircle, ExternalLink, Shield
@@ -13,10 +13,53 @@ import { useI18n } from "../store";
 import { useNetwork } from "../store/NetworkContext";
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
+const QUICK_TOPUP_ATTEMPT_STORAGE_KEY = "bidblitz.quick_topup_attempt.v1";
+const QUICK_TOPUP_ATTEMPT_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
 const safeAmount = (value) => {
   const numeric = Number(value ?? 0);
   return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const createQuickTopupIdempotencyKey = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `qt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+};
+
+const readQuickTopupAttempt = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(QUICK_TOPUP_ATTEMPT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.idempotencyKey || !Number.isFinite(Number(parsed?.amount)) || !parsed?.createdAt) {
+      window.localStorage.removeItem(QUICK_TOPUP_ATTEMPT_STORAGE_KEY);
+      return null;
+    }
+    if (Date.now() - Number(parsed.createdAt) > QUICK_TOPUP_ATTEMPT_MAX_AGE_MS) {
+      window.localStorage.removeItem(QUICK_TOPUP_ATTEMPT_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeQuickTopupAttempt = (attempt) => {
+  if (typeof window === "undefined") return;
+  try {
+    if (attempt) {
+      window.localStorage.setItem(QUICK_TOPUP_ATTEMPT_STORAGE_KEY, JSON.stringify(attempt));
+    } else {
+      window.localStorage.removeItem(QUICK_TOPUP_ATTEMPT_STORAGE_KEY);
+    }
+  } catch {
+    // Storage can be unavailable in private/restricted browser modes; the in-memory
+    // ref still protects retries for the current page lifetime.
+  }
 };
 
 const PRESETS = [
@@ -94,12 +137,23 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const [isCreating, setIsCreating] = useState(false);
   const { t } = useI18n();
   const { online } = useNetwork();
+  const quickTopupAttemptRef = useRef(readQuickTopupAttempt());
 
   // Saved payment method state
   const [savedMethod, setSavedMethod] = useState(null);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [quickPaying, setQuickPaying] = useState(false);
   const [useNewMethod, setUseNewMethod] = useState(false);
+
+  const rememberQuickTopupAttempt = useCallback((attempt) => {
+    quickTopupAttemptRef.current = attempt;
+    writeQuickTopupAttempt(attempt);
+  }, []);
+
+  const clearQuickTopupAttempt = useCallback(() => {
+    quickTopupAttemptRef.current = null;
+    writeQuickTopupAttempt(null);
+  }, []);
 
   // Fetch saved method on open
   useEffect(() => {
@@ -151,6 +205,11 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       return;
     }
 
+    if (quickTopupAttemptRef.current) {
+      setError("A previous 1-click top-up is still being verified. Retry that payment before starting another one.");
+      return;
+    }
+
     setIsCreating(true);
     setError(null);
 
@@ -190,20 +249,43 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     const preset = PRESETS.find((p) => p.id === pkgId);
     if (!preset) return;
 
+    let attempt = quickTopupAttemptRef.current;
+    if (attempt && Number(attempt.amount) !== preset.amount) {
+      setError(`A previous €${Number(attempt.amount).toFixed(2)} top-up is still being verified. Retry that amount first.`);
+      return;
+    }
+    if (!attempt) {
+      attempt = {
+        idempotencyKey: createQuickTopupIdempotencyKey(),
+        amount: preset.amount,
+        createdAt: Date.now(),
+      };
+      rememberQuickTopupAttempt(attempt);
+    }
+
     setQuickPaying(true);
     setError(null);
 
     try {
       const data = await apiCall("/api/stripe/quick-topup", {
         method: "POST",
-        body: JSON.stringify({ amount: preset.amount }),
+        body: JSON.stringify({
+          amount: preset.amount,
+          idempotency_key: attempt.idempotencyKey,
+        }),
       });
+      clearQuickTopupAttempt();
       setCreditedAmount(data.amount);
       setStep("success");
       if (onSuccess) onSuccess({ amount: data.amount, paymentMethod: "saved_card" });
     } catch (err) {
       const msg = err.message || "";
-      if (msg.includes("declined") || msg.includes("No saved")) {
+      const needsNewMethod = msg.includes("declined") || msg.includes("No saved") || msg.includes("requires_action");
+      const terminalAttempt = needsNewMethod || msg.includes("Previous payment attempt failed") || msg.includes("Invalid top-up amount") || msg.includes("Idempotency key already used");
+      if (terminalAttempt) {
+        clearQuickTopupAttempt();
+      }
+      if (needsNewMethod) {
         setSavedMethod(null);
         setUseNewMethod(true);
       }

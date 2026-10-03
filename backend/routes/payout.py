@@ -6,7 +6,7 @@ Handles merchant payout requests, history, and settlement.
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from core.database import db
 from core.security import get_current_user
 from core.config import FEES, calculate_payout_fee
@@ -132,15 +132,9 @@ async def request_payout(req: PayoutRequest, request: Request):
     if not merchant and not merchant_profile:
         raise HTTPException(status_code=404, detail="No merchant profile found")
 
-    payout_summary = await _build_payout_summary(user_id, merchant, merchant_profile)
-    available = payout_summary["available"]
     min_payout = FEES["min_payout"]
-
     if req.amount < min_payout:
         raise HTTPException(status_code=400, detail=f"Minimum payout is EUR {min_payout:.2f}")
-
-    if req.amount > available:
-        raise HTTPException(status_code=400, detail=f"Insufficient available balance. Available: EUR {available:.2f}")
 
     # ── Compliance check ──
     compliance = await run_compliance_check(user_id, "payout", req.amount)
@@ -156,59 +150,94 @@ async def request_payout(req: PayoutRequest, request: Request):
                         details={"txn_type": "payout", "rules": compliance["rules"], "amount": req.amount},
                         severity="warn")
 
-    # Check for existing pending payout (prevent duplicates)
-    existing = await db.payouts.find_one({"user_id": user_id, "status": {"$in": ["pending", "approved"]}})
-    if existing:
-        raise HTTPException(status_code=409, detail="A payout request is already pending. Please wait for it to be processed.")
+    # Serialize request creation per merchant. The previous check-then-insert flow
+    # allowed concurrent requests to observe the same available earnings and both
+    # create a payout. The lock self-expires so a crashed worker cannot block forever.
+    lock_collection = db.merchants if merchant else db.merchant_profiles
+    lock_target = merchant or merchant_profile
+    lock_token = secrets.token_hex(16)
+    lock_now = datetime.now(timezone.utc)
+    lock_until = (lock_now + timedelta(seconds=60)).isoformat()
+    lock_result = await lock_collection.update_one(
+        {
+            "_id": lock_target["_id"],
+            "$or": [
+                {"payout_request_lock_until": {"$exists": False}},
+                {"payout_request_lock_until": {"$lt": lock_now.isoformat()}},
+            ],
+        },
+        {"$set": {
+            "payout_request_lock_token": lock_token,
+            "payout_request_lock_until": lock_until,
+        }},
+    )
+    if lock_result.matched_count != 1:
+        raise HTTPException(status_code=409, detail="A payout request is already being created. Please retry shortly.")
 
-    # Calculate payout fee
-    fee = calculate_payout_fee(req.amount)
-    net_payout = round(req.amount - fee, 2)
+    try:
+        # Re-read all financial state under the lock. Payout documents and completed
+        # merchant earnings are the source of truth; cached merchant fields are only
+        # synchronized after the payout reservation succeeds.
+        merchant, merchant_profile = await _get_merchant_sources(user_id)
+        payout_summary = await _build_payout_summary(user_id, merchant, merchant_profile)
+        available = payout_summary["available"]
+        if req.amount > available:
+            raise HTTPException(status_code=400, detail=f"Insufficient available balance. Available: EUR {available:.2f}")
 
-    now = datetime.now(timezone.utc).isoformat()
-    ref = payout_ref()
+        existing = await db.payouts.find_one({"user_id": user_id, "status": {"$in": ["pending", "approved"]}})
+        if existing:
+            raise HTTPException(status_code=409, detail="A payout request is already pending. Please wait for it to be processed.")
 
-    payout_doc = {
-        "id": ref,
-        "merchant_id": str((merchant or merchant_profile).get("_id")),
-        "user_id": user_id,
-        "merchant_name": (merchant or merchant_profile).get("business_name", user.get("name", "")),
-        "amount": req.amount,
-        "fee": fee,
-        "net_amount": net_payout,
-        "currency": "EUR",
-        "status": "pending",
-        "reference": ref,
-        "notes": req.notes,
-        "created_at": now,
-        "processed_at": None,
-    }
-    await db.payouts.insert_one(payout_doc)
-    payout_doc.pop("_id", None)
+        fee = calculate_payout_fee(req.amount)
+        net_payout = round(req.amount - fee, 2)
+        now = datetime.now(timezone.utc).isoformat()
+        ref = payout_ref()
 
-    # Deduct from available balance immediately to prevent double-spend
-    if merchant:
-        await db.merchants.update_one(
-            {"_id": merchant["_id"]},
-            {"$set": {
-                "gross_earnings": payout_summary["gross_earnings"],
-                "total_earnings": payout_summary["total_earnings"],
-                "total_fees": payout_summary["total_fees"],
-                "available_payout": round(max(payout_summary["available"] - req.amount, 0.0), 2),
-                "pending_payout": round(payout_summary["pending_payout"] + req.amount, 2),
-            }},
+        payout_doc = {
+            "id": ref,
+            "merchant_id": str((merchant or merchant_profile).get("_id")),
+            "user_id": user_id,
+            "merchant_name": (merchant or merchant_profile).get("business_name", user.get("name", "")),
+            "amount": req.amount,
+            "fee": fee,
+            "net_amount": net_payout,
+            "currency": "EUR",
+            "status": "pending",
+            "reference": ref,
+            "notes": req.notes,
+            "created_at": now,
+            "processed_at": None,
+        }
+        await db.payouts.insert_one(payout_doc)
+        payout_doc.pop("_id", None)
+
+        if merchant:
+            await db.merchants.update_one(
+                {"_id": merchant["_id"]},
+                {"$set": {
+                    "gross_earnings": payout_summary["gross_earnings"],
+                    "total_earnings": payout_summary["total_earnings"],
+                    "total_fees": payout_summary["total_fees"],
+                    "available_payout": round(max(payout_summary["available"] - req.amount, 0.0), 2),
+                    "pending_payout": round(payout_summary["pending_payout"] + req.amount, 2),
+                }},
+            )
+
+        await log_audit(AuditEvent.PAYOUT_REQUESTED, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"reference": ref, "amount": req.amount, "fee": fee,
+                                 "net_amount": net_payout, "merchant": (merchant or merchant_profile).get("business_name", "")})
+
+        return {
+            "success": True,
+            "payout": payout_doc,
+            "message": f"Payout of EUR {net_payout:.2f} (after EUR {fee:.2f} fee) has been requested.",
+        }
+    finally:
+        await lock_collection.update_one(
+            {"_id": lock_target["_id"], "payout_request_lock_token": lock_token},
+            {"$unset": {"payout_request_lock_token": "", "payout_request_lock_until": ""}},
         )
-
-    await log_audit(AuditEvent.PAYOUT_REQUESTED, user_id=user_id, email=user.get("email", ""),
-                    ip=ip, user_agent=ua,
-                    details={"reference": ref, "amount": req.amount, "fee": fee,
-                             "net_amount": net_payout, "merchant": (merchant or merchant_profile).get("business_name", "")})
-
-    return {
-        "success": True,
-        "payout": payout_doc,
-        "message": f"Payout of EUR {net_payout:.2f} (after EUR {fee:.2f} fee) has been requested.",
-    }
 
 
 # ── Payout History ──

@@ -57,8 +57,10 @@ export const checkCarAvailability = async (carId, startDate, endDate) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const createBooking = async (data) => {
+  const idempotencyKey = data?.idempotency_key;
   return api("/api/car-rental/bookings", {
     method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
     body: JSON.stringify(data),
   });
 };
@@ -356,10 +358,11 @@ export const getVendorPayouts = async (status = null) => {
   return api(`/api/car-rental/vendor/payouts${params}`);
 };
 
-export const requestPayout = async (amount) => {
+export const requestPayout = async (amount, idempotencyKey) => {
   return api("/api/car-rental/vendor/payouts/request", {
     method: "POST",
-    body: JSON.stringify({ amount }),
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify({ amount, idempotency_key: idempotencyKey }),
   });
 };
 

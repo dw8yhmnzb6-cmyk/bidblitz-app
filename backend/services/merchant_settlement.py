@@ -15,7 +15,7 @@ DEFAULT_PAYMENT_BPS = 150
 DEFAULT_PLATFORM_BPS = 50
 DEFAULT_RESERVE_HOLD_DAYS = 30
 DEFAULT_PAYOUT_SCHEDULE = "weekly"
-PAYOUT_ACTIVE_STATUSES = {"created", "pending_approval", "processing"}
+PAYOUT_ACTIVE_STATUSES = {"created", "pending_approval", "processing", "reconciliation_required"}
 
 
 def now_iso() -> str:
@@ -346,9 +346,11 @@ async def recompute_balance_snapshot(merchant_id: str) -> dict[str, Any]:
             available_minor += signed_minor
         elif status == "reserved":
             reserved_minor += amount_minor if entry.get("type") == "reserve_hold" else signed_minor
-        elif status in {"payout_pending", "processing"}:
+        elif status in {"payout_pending", "processing"} and entry.get("type") == "payout":
+            available_minor -= amount_minor
             payout_in_progress_minor += amount_minor
         elif status == "paid" and entry.get("type") == "payout":
+            available_minor -= amount_minor
             paid_out_total_minor += amount_minor
     reserve_holds = await db.merchant_reserves.find({"merchant_id": merchant_id, "mode": "hold", "status": "active"}, {"_id": 0, "amount_minor": 1}).to_list(1000)
     reserved_minor = sum(int(item.get("amount_minor") or 0) for item in reserve_holds) if reserve_holds else reserved_minor
@@ -648,61 +650,113 @@ async def export_settlement_csv(settlement: dict[str, Any]) -> str:
 
 
 async def create_payout_request(merchant: dict, *, amount_minor: int | None, settlement_ids: list[str], idempotency_key: str, destination_type: str, destination_reference_masked: str, requested_by: str) -> dict[str, Any]:
+    merchant_id = merchant["merchant_id"]
     balance = await get_balance_view(merchant)
     available_minor = int(balance["available_minor"] or 0)
     payout_amount_minor = int(amount_minor or available_minor)
     if payout_amount_minor <= 0 or payout_amount_minor > available_minor:
         raise ValueError("Ungültiger Auszahlungsbetrag")
+
     request_hash = f"{payout_amount_minor}|{'-'.join(sorted(settlement_ids))}|{destination_type}|{destination_reference_masked}"
-    idem = await _upsert_idempotency("payout.create", merchant["merchant_id"], idempotency_key, request_hash)
+    idem = await _upsert_idempotency("payout.create", merchant_id, idempotency_key, request_hash)
     if idem.get("status") == "completed" and idem.get("response"):
         return idem["response"]
-    existing = await db.merchant_payouts.find_one({"merchant_id": merchant["merchant_id"], "status": {"$in": list(PAYOUT_ACTIVE_STATUSES)}}, {"_id": 0})
-    if existing:
-        raise ValueError("Es läuft bereits eine Auszahlung für dieses Händlerkonto")
-    payout = {
-        "payout_id": short_id("PYO", 12),
-        "merchant_id": merchant["merchant_id"],
-        "settlement_ids": settlement_ids,
-        "amount_minor": payout_amount_minor,
-        "currency": "EUR",
-        "destination_type": destination_type,
-        "destination_reference_masked": destination_reference_masked,
-        "provider": "manual_review",
-        "provider_reference": None,
-        "status": "pending_approval",
-        "failure_reason": None,
-        "created_at": now_iso(),
-        "approved_at": None,
-        "processed_at": None,
-        "paid_at": None,
-        "idempotency_key": idempotency_key,
-        "requested_by": requested_by,
-    }
-    await db.merchant_payouts.insert_one(payout)
-    await _create_balance_entry({
-        "entry_id": short_id("MBE", 12),
-        "merchant_id": merchant["merchant_id"],
-        "branch_id": "",
-        "settlement_id": None,
-        "payout_id": payout["payout_id"],
-        "transaction_id": payout["payout_id"],
-        "type": "payout",
-        "direction": "debit",
-        "amount_minor": payout_amount_minor,
-        "currency": "EUR",
-        "status": "payout_pending",
-        "reference": payout["payout_id"],
-        "description": "Merchant payout requested",
-        "posted_at": now_iso(),
-        "reversed_by": None,
-        "metadata": {"destination_type": destination_type, "destination_reference_masked": destination_reference_masked},
-    })
-    if settlement_ids:
-        await db.merchant_settlements.update_many({"settlement_id": {"$in": settlement_ids}, "merchant_id": merchant["merchant_id"]}, {"$set": {"status": "payout_pending", "payout_id": payout["payout_id"]}})
-    await recompute_balance_snapshot(merchant["merchant_id"])
-    await _complete_idempotency("payout.create", merchant["merchant_id"], idempotency_key, payout)
-    return payout
+    if idem.get("request_hash") and idem.get("request_hash") != request_hash:
+        raise ValueError("Idempotency-Key wurde bereits mit anderen Auszahlungsdaten verwendet")
+
+    await ensure_balance_snapshot(merchant_id)
+    lock_token = short_id("PYL", 12)
+    lock = await db.merchant_balance_state.update_one(
+        {
+            "merchant_id": merchant_id,
+            "$or": [
+                {"payout_lock": {"$exists": False}},
+                {"payout_lock": None},
+                {"payout_lock": False},
+            ],
+        },
+        {"$set": {"payout_lock": lock_token, "payout_lock_at": now_iso()}},
+    )
+    if lock.modified_count != 1:
+        raise ValueError("Auszahlungsanfrage wird bereits verarbeitet")
+
+    try:
+        balance = await get_balance_view(merchant)
+        available_minor = int(balance["available_minor"] or 0)
+        payout_amount_minor = int(amount_minor or available_minor)
+        if payout_amount_minor <= 0 or payout_amount_minor > available_minor:
+            raise ValueError("Ungültiger Auszahlungsbetrag")
+
+        existing = await db.merchant_payouts.find_one(
+            {"merchant_id": merchant_id, "status": {"$in": list(PAYOUT_ACTIVE_STATUSES)}},
+            {"_id": 0},
+        )
+        if existing:
+            raise ValueError("Es läuft bereits eine Auszahlung für dieses Händlerkonto")
+
+        payout = {
+            "payout_id": short_id("PYO", 12),
+            "merchant_id": merchant_id,
+            "settlement_ids": settlement_ids,
+            "amount_minor": payout_amount_minor,
+            "currency": "EUR",
+            "destination_type": destination_type,
+            "destination_reference_masked": destination_reference_masked,
+            "provider": "manual_review",
+            "provider_reference": None,
+            "status": "pending_approval",
+            "failure_reason": None,
+            "created_at": now_iso(),
+            "approved_at": None,
+            "processed_at": None,
+            "paid_at": None,
+            "idempotency_key": idempotency_key,
+            "requested_by": requested_by,
+        }
+        await db.merchant_payouts.insert_one(payout)
+        try:
+            await _create_balance_entry({
+                "entry_id": short_id("MBE", 12),
+                "merchant_id": merchant_id,
+                "branch_id": "",
+                "settlement_id": None,
+                "payout_id": payout["payout_id"],
+                "transaction_id": payout["payout_id"],
+                "type": "payout",
+                "direction": "debit",
+                "amount_minor": payout_amount_minor,
+                "currency": "EUR",
+                "status": "payout_pending",
+                "reference": payout["payout_id"],
+                "description": "Merchant payout requested",
+                "posted_at": now_iso(),
+                "reversed_by": None,
+                "metadata": {"destination_type": destination_type, "destination_reference_masked": destination_reference_masked},
+            })
+        except Exception:
+            await db.merchant_payouts.update_one(
+                {"payout_id": payout["payout_id"]},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "failure_reason": "balance_entry_creation_failed",
+                    "processed_at": now_iso(),
+                }},
+            )
+            raise
+
+        if settlement_ids:
+            await db.merchant_settlements.update_many(
+                {"settlement_id": {"$in": settlement_ids}, "merchant_id": merchant_id},
+                {"$set": {"status": "payout_pending", "payout_id": payout["payout_id"]}},
+            )
+        await recompute_balance_snapshot(merchant_id)
+        await _complete_idempotency("payout.create", merchant_id, idempotency_key, payout)
+        return payout
+    finally:
+        await db.merchant_balance_state.update_one(
+            {"merchant_id": merchant_id, "payout_lock": lock_token},
+            {"$set": {"payout_lock": None, "payout_lock_released_at": now_iso()}},
+        )
 
 
 async def list_payouts(merchant_id: str, *, status: str = "", branch_id: str = "") -> list[dict[str, Any]]:
@@ -714,47 +768,93 @@ async def list_payouts(merchant_id: str, *, status: str = "", branch_id: str = "
     return await db.merchant_payouts.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
 
 
-async def update_payout_status(*, payout_id: str, status: str, actor_id: str, failure_reason: str = "") -> dict[str, Any]:
+async def update_payout_status(*, payout_id: str, status: str, actor_id: str, failure_reason: str = "", provider_reference: str | None = None) -> dict[str, Any]:
     payout = await db.merchant_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
     if not payout:
         raise ValueError("Auszahlung nicht gefunden")
-    if status == payout.get("status"):
+
+    current_status = payout.get("status")
+    if status == current_status:
         return payout
-    updates = {"status": status}
+
+    allowed_transitions = {
+        "pending_approval": {"processing", "cancelled"},
+        "processing": {"paid", "failed", "cancelled"},
+        "paid": {"returned"},
+        "failed": set(),
+        "returned": set(),
+        "cancelled": set(),
+        "reconciliation_required": set(),
+    }
+    if status not in allowed_transitions.get(current_status, set()):
+        raise ValueError(f"Ungültiger Payout-Statuswechsel: {current_status} → {status}")
+
+    clean_provider_reference = (provider_reference or "").strip()
+    if status == "paid" and len(clean_provider_reference) < 6:
+        raise ValueError("Provider-/Bankreferenz ist erforderlich, bevor eine Auszahlung als bezahlt markiert werden darf")
+
+    updates = {"status": status, "updated_at": now_iso()}
     if status in {"processing", "failed", "returned", "cancelled"}:
         updates["processed_at"] = now_iso()
     if status == "processing":
         updates["approved_at"] = now_iso()
     if status == "paid":
         updates["paid_at"] = now_iso()
+        updates["provider_reference"] = clean_provider_reference
+        updates["paid_confirmed_by"] = actor_id
     if failure_reason:
         updates["failure_reason"] = failure_reason
-    await db.merchant_payouts.update_one({"payout_id": payout_id}, {"$set": updates})
-    entry = await db.merchant_balance_entries.find_one({"payout_id": payout_id, "type": "payout"}, {"_id": 0})
+
+    transition = await db.merchant_payouts.update_one(
+        {"payout_id": payout_id, "status": current_status},
+        {"$set": updates},
+    )
+    if transition.modified_count != 1:
+        fresh = await db.merchant_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
+        if fresh and fresh.get("status") == status:
+            return fresh
+        raise ValueError("Payout wurde parallel geändert. Bitte Status neu laden.")
+
+    entry = await db.merchant_balance_entries.find_one(
+        {"payout_id": payout_id, "type": "payout"},
+        {"_id": 0},
+    )
     if entry:
         new_entry_status = "processing" if status == "processing" else ("paid" if status == "paid" else "available")
-        await db.merchant_balance_entries.update_one({"entry_id": entry["entry_id"]}, {"$set": {"status": new_entry_status, "posted_at": now_iso()}})
+        await db.merchant_balance_entries.update_one(
+            {"entry_id": entry["entry_id"]},
+            {"$set": {"status": new_entry_status, "posted_at": now_iso()}},
+        )
         if status in {"failed", "returned", "cancelled"}:
-            await _create_balance_entry({
-                "entry_id": short_id("MBE", 12),
-                "merchant_id": payout["merchant_id"],
-                "branch_id": "",
-                "settlement_id": None,
-                "payout_id": payout_id,
-                "transaction_id": payout_id,
-                "type": "payout_return",
-                "direction": "credit",
-                "amount_minor": int(payout.get("amount_minor") or 0),
-                "currency": payout.get("currency", "EUR"),
-                "status": "available",
-                "reference": payout_id,
-                "description": "Payout returned to merchant",
-                "posted_at": now_iso(),
-                "reversed_by": entry["entry_id"],
-                "metadata": {"reason": failure_reason or status, "actor_id": actor_id},
-            })
+            existing_return = await db.merchant_balance_entries.find_one(
+                {"payout_id": payout_id, "type": "payout_return"},
+                {"_id": 0, "entry_id": 1},
+            )
+            if not existing_return:
+                await _create_balance_entry({
+                    "entry_id": short_id("MBE", 12),
+                    "merchant_id": payout["merchant_id"],
+                    "branch_id": "",
+                    "settlement_id": None,
+                    "payout_id": payout_id,
+                    "transaction_id": payout_id,
+                    "type": "payout_return",
+                    "direction": "credit",
+                    "amount_minor": int(payout.get("amount_minor") or 0),
+                    "currency": payout.get("currency", "EUR"),
+                    "status": "available",
+                    "reference": payout_id,
+                    "description": "Payout returned to merchant",
+                    "posted_at": now_iso(),
+                    "reversed_by": entry["entry_id"],
+                    "metadata": {"reason": failure_reason or status, "actor_id": actor_id},
+                })
+
     settlement_status = "paid" if status == "paid" else ("finalised" if status in {"failed", "returned", "cancelled"} else "payout_pending")
-    await db.merchant_settlements.update_many({"payout_id": payout_id}, {"$set": {"status": settlement_status}})
+    await db.merchant_settlements.update_many(
+        {"payout_id": payout_id},
+        {"$set": {"status": settlement_status}},
+    )
     await recompute_balance_snapshot(payout["merchant_id"])
     return await db.merchant_payouts.find_one({"payout_id": payout_id}, {"_id": 0})
 

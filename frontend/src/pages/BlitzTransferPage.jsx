@@ -44,6 +44,7 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
   const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef(null);
+  const transferAttemptKeyRef = useRef(null);
 
   const loadTransfers = useCallback(async () => {
     try {
@@ -70,15 +71,32 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
 
   const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
 
-  const uploadChunked = async (file) => {
+  const getTransferAttemptKey = () => {
+    if (!transferAttemptKeyRef.current) {
+      transferAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `blitz-transfer-${crypto.randomUUID()}`
+        : `blitz-transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    return transferAttemptKeyRef.current;
+  };
+
+  const uploadChunked = async (file, idempotencyKey) => {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     // Init
     const initRes = await fetch(`${API}/api/transfer/chunk/init`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name, total_size: file.size, total_chunks: totalChunks }),
+      headers: {
+        "Content-Type": "application/json",
+        ...(tier === "free" ? {} : { "Idempotency-Key": idempotencyKey }),
+      },
+      body: JSON.stringify({
+        filename: file.name,
+        total_size: file.size,
+        total_chunks: totalChunks,
+        tier,
+      }),
     });
     if (!initRes.ok) { const d = await initRes.json(); throw new Error(d.detail || "Init failed"); }
     const { upload_id } = await initRes.json();
@@ -108,22 +126,37 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
     if (files.length === 0) { toast.error("Keine Dateien ausgewaehlt"); return; }
     setUploading(true);
     setProgress(5);
+    const idempotencyKey = tier === "free" ? "" : getTransferAttemptKey();
 
     try {
       // For large files (>50 MB single file): use chunked upload
       if (files.length === 1 && files[0].size > 50 * 1024 * 1024) {
-        const uploadId = await uploadChunked(files[0]);
+        const uploadId = await uploadChunked(files[0], idempotencyKey);
         setProgress(92);
 
         // Finalize
         const finRes = await fetch(`${API}/api/transfer/chunk/finalize`, {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ upload_id: uploadId, title, message, recipient_email: recipient, expires_days: expDays }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(tier === "free" ? {} : { "Idempotency-Key": idempotencyKey }),
+          },
+          body: JSON.stringify({
+            upload_id: uploadId,
+            title,
+            message,
+            recipient_email: recipient,
+            expires_days: expDays,
+            password,
+          }),
         });
         const d = await finRes.json();
-        if (!finRes.ok) throw new Error(d.detail || "Finalize fehlgeschlagen");
+        if (!finRes.ok) {
+          if (finRes.status === 409 || finRes.status < 500) transferAttemptKeyRef.current = null;
+          throw new Error(typeof d.detail === "string" ? d.detail : (d.detail?.message || "Finalize fehlgeschlagen"));
+        }
+        transferAttemptKeyRef.current = null;
         setProgress(100);
         setResult(d);
         toast.success(d.message);
@@ -142,11 +175,16 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
         const res = await fetch(`${API}/api/transfer/create`, {
           method: "POST",
           credentials: "include",
+          headers: tier === "free" ? {} : { "Idempotency-Key": idempotencyKey },
           body: formData,
         });
         setProgress(90);
         const d = await res.json();
-        if (!res.ok) throw new Error(d.detail || "Upload fehlgeschlagen");
+        if (!res.ok) {
+          if (res.status === 409 || res.status < 500) transferAttemptKeyRef.current = null;
+          throw new Error(typeof d.detail === "string" ? d.detail : (d.detail?.message || "Upload fehlgeschlagen"));
+        }
+        transferAttemptKeyRef.current = null;
         setProgress(100);
         setResult(d);
         toast.success(d.message);
@@ -177,6 +215,7 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
   };
 
   const resetUpload = () => {
+    transferAttemptKeyRef.current = null;
     setFiles([]);
     setTitle("");
     setMessage("");

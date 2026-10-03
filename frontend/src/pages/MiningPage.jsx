@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Cpu, Server, Zap, Flame, Atom, ChevronRight,
@@ -9,22 +9,9 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
+import { request as api } from "../services/api";
 
-const API = process.env.REACT_APP_BACKEND_URL;
 const sl = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
-
-async function api(path, opts = {}) {
-  const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
-  let d = {};
-  try {
-    const cloned = r.clone();
-    d = await cloned.json();
-  } catch {
-    try { const text = await r.text(); d = { detail: text }; } catch { /* body consumed */ }
-  }
-  if (!r.ok) throw new Error(d.detail || d.message || "Request failed");
-  return d;
-}
 
 const TIER_ICONS = { cpu: Cpu, server: Server, zap: Zap, flame: Flame, atom: Atom };
 const TIER_COLORS = { starter: "#00E89D", pro: "#00C2FF", elite: "#A855F7", titan: "#FF6B6B", quantum: "#FFD700" };
@@ -42,6 +29,64 @@ function parseAmountInput(value) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+function miningNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function miningFixed(value, digits = 2, fallback = 0) {
+  return miningNumber(value, fallback).toFixed(digits);
+}
+
+function miningAttemptStorageKey(ownerId, kind) {
+  return `bidblitz:mining-attempt:${ownerId || "unknown"}:${kind}`;
+}
+
+function loadMiningAttemptMap(ownerId, kind) {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(miningAttemptStorageKey(ownerId, kind));
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([scope, key]) => typeof scope === "string" && typeof key === "string" && key.length >= 8)
+    );
+  } catch {
+    return {};
+  }
+}
+
+function persistMiningAttemptMap(ownerId, kind, map) {
+  if (typeof window === "undefined") return;
+  try {
+    const storageKey = miningAttemptStorageKey(ownerId, kind);
+    if (Object.keys(map).length) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(map));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Storage can be unavailable in private/restricted browser contexts.
+  }
+}
+
+function getOrCreateMiningAttemptKey(ref, ownerId, kind, scope, prefix) {
+  if (!ref.current[scope]) {
+    ref.current[scope] = typeof crypto?.randomUUID === "function"
+      ? `${prefix}-${crypto.randomUUID()}`
+      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    persistMiningAttemptMap(ownerId, kind, ref.current);
+  }
+  return ref.current[scope];
+}
+
+function clearMiningAttemptKey(ref, ownerId, kind, scope) {
+  if (ref.current[scope]) {
+    delete ref.current[scope];
+    persistMiningAttemptMap(ownerId, kind, ref.current);
+  }
+}
+
 function subscribeToSecondTick(callback) {
   const id = window.setInterval(callback, 1000);
   return () => window.clearInterval(id);
@@ -52,7 +97,7 @@ function getNowSnapshot() {
 }
 
 // ── Auto-Reward Countdown Component ──
-function AutoRewardCard({ reward, data, t }) {
+function AutoRewardCard({ reward, data, t, valueActionsEnabled, onClaim, claimBusy }) {
   const nowMs = useSyncExternalStore(subscribeToSecondTick, getNowSnapshot, getNowSnapshot);
   let countdown = "";
   if (reward?.claimed && reward?.next_reward_at) {
@@ -84,23 +129,29 @@ function AutoRewardCard({ reward, data, t }) {
             <RefreshCw size={15} className={`text-[#00E89D] ${!isClaimed ? "animate-spin" : ""}`} style={!isClaimed ? { animationDuration: "3s" } : {}} />
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-white/80">{t("mining.auto_reward") || "Auto Mining Reward"}</p>
-            {isClaimed ? (
+            <p className="text-[12px] font-semibold text-white/80">
+              {valueActionsEnabled ? (t("mining.auto_reward") || "Auto Mining Reward") : "Mining Reward Preview"}
+            </p>
+            {!valueActionsEnabled ? (
+              <p className="text-[10px] text-amber-300/70">Keine BLZ-/Ertragsprojektion ohne verifizierten Mining-Provider.</p>
+            ) : isClaimed ? (
               <>
                 <p className="text-[10px] text-[#00E89D] font-medium">
-                  +{reward.amount?.toFixed(4) || 0} BLZ {t("mining.auto_collected") || "collected"}
+                  +{miningFixed(reward?.amount, 4)} BLZ {t("mining.auto_collected") || "collected"}
                 </p>
                 {streak > 1 && (
                   <p className="text-[8px] text-[#FFD700]/60 font-medium mt-0.5">{streak} {t("mining.day_streak") || "day streak"}</p>
                 )}
               </>
             ) : (
-              <p className="text-[10px] text-white/30">{t("mining.auto_pending") || "Calculating reward..."} (+{reward?.amount?.toFixed(4) || 0} BLZ)</p>
+              <p className="text-[10px] text-white/30">{t("mining.auto_pending") || "Calculating reward..."} (+{miningFixed(reward?.amount, 4)} BLZ)</p>
             )}
           </div>
         </div>
         <div className="text-right">
-          {isClaimed && countdown ? (
+          {!valueActionsEnabled ? (
+            <span className="rounded-lg bg-amber-400/10 px-2 py-1 text-[9px] font-semibold text-amber-300">PREVIEW</span>
+          ) : isClaimed && countdown ? (
             <div>
               <p className="text-[8px] text-white/20 uppercase tracking-wider">{t("mining.next_reward") || "Next reward"}</p>
               <p data-testid="reward-countdown" className="text-[14px] font-bold font-mono text-[#00C2FF] tabular-nums">{countdown}</p>
@@ -115,11 +166,40 @@ function AutoRewardCard({ reward, data, t }) {
           )}
         </div>
       </div>
+      {valueActionsEnabled && !isClaimed && miningNumber(reward?.amount) > 0 && (
+        <button
+          type="button"
+          data-testid="mining-claim-daily-btn"
+          onClick={onClaim}
+          disabled={claimBusy}
+          className="mt-3 w-full rounded-xl border border-[#00E89D]/20 bg-[#00E89D]/10 px-3 py-2.5 text-[11px] font-bold text-[#00E89D] disabled:opacity-50"
+        >
+          {claimBusy ? "Claim läuft…" : "Jetzt " + miningFixed(reward?.amount, 4) + " BLZ claimen"}
+        </button>
+      )}
     </motion.div>
   );
 }
 
-const tabs = ["dashboard", "miners", "wallet", "shop", "marketplace", "card", "launchpad", "vip"];
+const MINING_TAB_CONFIG = [
+  { key: "dashboard", label: "Dashboard", icon: BarChart3, color: "#00E89D" },
+  { key: "miners", label: "Miner", icon: Cpu, color: "#B9F2FF" },
+  { key: "wallet", label: "Wallet", icon: Wallet, color: "#00C2FF" },
+  { key: "shop", label: "Shop", icon: ShoppingBag, color: "#FFD700" },
+  { key: "marketplace", label: "Markt", icon: Tag, color: "#A855F7" },
+  { key: "card", label: "Karte", icon: CreditCard, color: "#38BDF8" },
+  { key: "launchpad", label: "Launch", icon: Rocket, color: "#FF7A59" },
+  { key: "vip", label: "VIP", icon: Star, color: "#FFD700" },
+];
+
+const MINING_LEVELS = [
+  { name: "Bronze", label: "Bronze", bonus: 0, color: "#CD7F32" },
+  { name: "Silver", label: "Silber", bonus: 0.02, color: "#C0C0C0" },
+  { name: "Gold", label: "Gold", bonus: 0.05, color: "#FFD700" },
+  { name: "Platinum", label: "Platin", bonus: 0.10, color: "#E5E4E2" },
+  { name: "Diamond", label: "Diamant", bonus: 0.15, color: "#B9F2FF" },
+];
+
 
 export default function MiningPage({ onBack, onNavigate }) {
   const user = useUser();
@@ -127,6 +207,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [tab, setTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState("");
   const [packages, setPackages] = useState([]);
   const [buying, setBuying] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
@@ -149,27 +230,40 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [listPrice, setListPrice] = useState("");
   const [listing, setListing] = useState(false);
   const [buyingListing, setBuyingListing] = useState(null);
+  const attemptOwnerId = user?.id || user?.email || "unknown";
+  const minerPurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "buy-miner"));
+  const minerUpgradeKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "upgrade-miner"));
+  const withdrawAttemptKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "withdraw"));
+  const sendAttemptKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "send"));
+  const marketplacePurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "marketplace-buy"));
+  const launchpadPurchaseKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "launchpad-buy"));
+  const cardUpgradeKeysRef = useRef(loadMiningAttemptMap(attemptOwnerId, "card-upgrade"));
   const [cardData, setCardData] = useState(null);
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
+  const [claimingReward, setClaimingReward] = useState(false);
+  const [showDashboardDetails, setShowDashboardDetails] = useState(false);
 
   const fetchMiningData = useCallback(async () => {
-    const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
-      api("/api/mining/dashboard").catch(() => ({})),
+    // Dashboard is required. Optional Phase-2 panels may fail independently without blanking the whole page.
+    const dash = await api("/api/mining/dashboard");
+    const [pkgs, costs, mkt, crd, lp, hist] = await Promise.all([
       api("/api/mining/packages").catch(() => ({ packages: [] })),
       api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
       api("/api/mining/marketplace").catch(() => ({ listings: [] })),
       api("/api/mining/card").catch(() => null),
       api("/api/mining/launchpad").catch(() => ({ projects: [] })),
+      api("/api/mining/transactions").catch(() => ({ transactions: dash.recent_transactions || [] })),
     ]);
-    return { dash, pkgs, costs, mkt, crd, lp };
+    return { dash, pkgs, costs, mkt, crd, lp, hist };
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
-      const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
-      setData(dash);
+      const { dash, pkgs, costs, mkt, crd, lp, hist } = await fetchMiningData();
+      setData({ ...dash, recent_transactions: hist.transactions || dash.recent_transactions || [] });
       setPackages(pkgs.packages || []);
       setUpgradeCosts(costs.costs || {});
       setMarketplace(mkt.listings || []);
@@ -177,17 +271,21 @@ export default function MiningPage({ onBack, onNavigate }) {
       setLaunchpad(lp.projects || []);
     } catch (e) {
       console.error(e);
+      setData(null);
+      setLoadError(e?.message || "Mining-Daten konnten nicht geladen werden.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [fetchMiningData]);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
+        const { dash, pkgs, costs, mkt, crd, lp, hist } = await fetchMiningData();
         if (!active) return;
-        setData(dash);
+        setLoadError("");
+        setData({ ...dash, recent_transactions: hist.transactions || dash.recent_transactions || [] });
         setPackages(pkgs.packages || []);
         setUpgradeCosts(costs.costs || {});
         setMarketplace(mkt.listings || []);
@@ -195,6 +293,9 @@ export default function MiningPage({ onBack, onNavigate }) {
         setLaunchpad(lp.projects || []);
       } catch (e) {
         console.error(e);
+        if (!active) return;
+        setData(null);
+        setLoadError(e?.message || "Mining-Daten konnten nicht geladen werden.");
       }
       if (active) setLoading(false);
     })();
@@ -203,70 +304,159 @@ export default function MiningPage({ onBack, onNavigate }) {
     };
   }, [fetchMiningData]);
 
-  const buyMiner = async (pkgId) => {
+  const miningValueEnabled = !!data?.capabilities?.value_actions_enabled;
+  const miningOrderEnabled = data?.capabilities?.ordering_enabled === true;
+  const requireMiningValue = () => {
+    if (miningValueEnabled) return true;
+    toast.error(data?.capabilities?.production_message || "Mining-Wertfunktionen sind noch nicht live verbunden.");
+    return false;
+  };
+  const shouldKeepAttemptKey = (error) =>
+    !!error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+
+  const claimDailyReward = async () => {
+    if (!requireMiningValue()) return;
+    setClaimingReward(true);
+    try {
+      const result = await api("/api/mining/claim-daily", { method: "POST" });
+      toast.success("+" + miningFixed(result.claimed, 4) + " BLZ geclaimt");
+      await load();
+    } catch (error) {
+      toast.error(error?.message || "Mining Reward konnte nicht geclaimt werden.");
+    } finally {
+      setClaimingReward(false);
+    }
+  };
+
+  const buyMiner = async (pkgId, billingOverride = billingType) => {
+    const orderingOnly = !miningValueEnabled && miningOrderEnabled;
+    if (!miningValueEnabled && !miningOrderEnabled) {
+      requireMiningValue();
+      return;
+    }
+    const effectiveBilling = orderingOnly ? "onetime" : (billingOverride || "onetime");
+    const attemptScope = `${pkgId}:${effectiveBilling}:${orderingOnly ? "order" : "activate"}`;
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope, orderingOnly ? "mining-order" : "mining-buy"
+    );
     setPurchaseError(null);
     setBuying(pkgId);
     try {
-      const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId, billing: billingType }) });
+      const endpoint = orderingOnly ? "/api/mining/order-miner" : "/api/mining/buy-miner";
+      const r = await api(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ package_id: pkgId, billing: effectiveBilling, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
-      setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
-      setTimeout(() => setPurchaseSuccess(null), 3500);
-      toast.success(t("mining.purchased") || "Miner purchased!");
+      setPurchaseSuccess({
+        ...pkg,
+        new_balance: r.new_balance,
+        activation_pending: Boolean(r.activation_pending),
+        order_id: r.order_id,
+      });
+      setTimeout(() => setPurchaseSuccess(null), 5000);
+      toast.success(r.activation_pending ? "Bestellung bezahlt · Aktivierung folgt" : (t("mining.purchased") || "Miner gekauft!"));
       load();
     } catch (e) {
-      const msg = e.message || "Purchase failed";
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerPurchaseKeysRef, attemptOwnerId, "buy-miner", attemptScope);
+      const msg = e.message || "Bestellung fehlgeschlagen";
       if (msg.toLowerCase().includes("insufficient")) {
-        setPurchaseError(t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.");
+        const balanceMessage = t("mining.err_balance") || "Guthaben reicht nicht. Lade dein Wallet auf.";
+        setPurchaseError(balanceMessage);
+        toast.error(balanceMessage);
       } else {
         setPurchaseError(msg);
+        toast.error(msg);
       }
     }
     setBuying(null);
   };
 
   const upgradeMiner = async (minerId, type) => {
-    setUpgrading(`${minerId}-${type}`);
+    if (!requireMiningValue()) return;
+    const attemptScope = `${minerId}:${type}`;
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope, "mining-upgrade"
+    );
+    setUpgrading(attemptScope);
     try {
-      const r = await api("/api/mining/upgrade", { method: "POST", body: JSON.stringify({ miner_id: minerId, upgrade_type: type }) });
+      const r = await api("/api/mining/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ miner_id: minerId, upgrade_type: type, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope);
       toast.success(`Upgraded to Lv.${r.new_level}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(minerUpgradeKeysRef, attemptOwnerId, "upgrade-miner", attemptScope);
+      toast.error(e.message);
+    }
     setUpgrading(null);
   };
 
   const withdraw = async () => {
+    if (!requireMiningValue()) return;
     const amt = parseAmountInput(withdrawAmt);
     if (!amt || amt <= 0) {
       toast.error("Bitte gültigen Betrag eingeben");
       return;
     }
+    const attemptScope = amt.toFixed(8);
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope, "mining-withdraw"
+    );
     setWithdrawing(true);
     try {
-      const r = await api("/api/mining/withdraw", { method: "POST", body: JSON.stringify({ amount: amt }) });
-      toast.success(`Converted ${amt.toFixed(4)} BLZ → €${r.received_eur.toFixed(2)}`);
+      const r = await api("/api/mining/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ amount: amt, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope);
+      toast.success(`Converted ${amt.toFixed(4)} BLZ → €${miningFixed(r.received_eur, 2)}`);
       setShowWithdraw(false);
       setWithdrawAmt("");
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(withdrawAttemptKeysRef, attemptOwnerId, "withdraw", attemptScope);
+      toast.error(e.message);
+    }
     setWithdrawing(false);
   };
 
   const sendBLZ = async () => {
+    if (!requireMiningValue()) return;
     const amt = parseAmountInput(sendAmt);
-    if (!amt || amt <= 0 || !sendEmail) {
+    const normalizedEmail = sendEmail.trim().toLowerCase();
+    if (!amt || amt <= 0 || !normalizedEmail) {
       toast.error("Bitte gültige Daten eingeben");
       return;
     }
+    const attemptScope = `${normalizedEmail}:${amt.toFixed(8)}`;
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      sendAttemptKeysRef, attemptOwnerId, "send", attemptScope, "mining-send"
+    );
     setSending(true);
     try {
-      await api("/api/mining/send", { method: "POST", body: JSON.stringify({ recipient_email: sendEmail, amount: amt }) });
+      await api("/api/mining/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ recipient_email: normalizedEmail, amount: amt, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(sendAttemptKeysRef, attemptOwnerId, "send", attemptScope);
       toast.success(`Sent ${amt.toFixed(4)} BLZ!`);
       setShowSend(false);
       setSendAmt("");
       setSendEmail("");
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(sendAttemptKeysRef, attemptOwnerId, "send", attemptScope);
+      toast.error(e.message);
+    }
     setSending(false);
   };
 
@@ -282,7 +472,9 @@ export default function MiningPage({ onBack, onNavigate }) {
     const code = data?.referral?.code;
     if (!code) return;
     const url = `${window.location.origin}?ref=${code}`;
-    const text = `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`;
+    const text = miningValueEnabled
+      ? `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`
+      : `Entdecke die BidBlitz Mining Preview. Code: ${code}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "BidBlitz Mining", text, url });
@@ -295,6 +487,7 @@ export default function MiningPage({ onBack, onNavigate }) {
 
   // Marketplace handlers
   const listMinerForSale = async () => {
+    if (!requireMiningValue()) return;
     const price = parseFloat(listPrice);
     if (!listMiner || !price || price <= 0) return;
     setListing(true);
@@ -308,12 +501,24 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const buyFromMarketplace = async (listingId) => {
+    if (!requireMiningValue()) return;
     setBuyingListing(listingId);
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId, "mining-market"
+    );
     try {
-      const r = await api("/api/mining/marketplace/buy", { method: "POST", body: JSON.stringify({ listing_id: listingId }) });
+      const r = await api("/api/mining/marketplace/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ listing_id: listingId, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId);
       toast.success(`Bought ${r.miner_name}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(marketplacePurchaseKeysRef, attemptOwnerId, "marketplace-buy", listingId);
+      toast.error(e.message);
+    }
     setBuyingListing(null);
   };
 
@@ -326,12 +531,22 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const buyLaunchpad = async (projectId) => {
+    if (!requireMiningValue()) return;
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId, "mining-launch"
+    );
     setBuyingLaunch(projectId);
     try {
-      const r = await api("/api/mining/launchpad/buy", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+      const r = await api("/api/mining/launchpad/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ project_id: projectId, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId);
       toast.success(`${r.miner_name} ${t("mining.activated") || "activated"}! (${r.hashrate} TH/s)`);
       load();
     } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(launchpadPurchaseKeysRef, attemptOwnerId, "launchpad-buy", projectId);
       const msg = e.message || "";
       if (msg.includes("Insufficient")) {
         toast.error(t("mining.err_need_more") || "Guthaben reicht nicht. Lade dein Wallet auf.");
@@ -347,19 +562,37 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const toggleCardFreeze = async () => {
+    if (!requireMiningValue()) return;
+    const desiredFrozen = !cardData?.card?.frozen;
     try {
-      const r = await api("/api/mining/card/freeze", { method: "POST" });
+      const r = await api("/api/mining/card/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frozen: desiredFrozen }),
+      });
       toast.success(r.frozen ? (t("mining.card_frozen") || "Card frozen") : (t("mining.card_unfrozen") || "Card unfrozen"));
       load();
     } catch (e) { toast.error(e.message); }
   };
 
   const upgradeCard = async (tier) => {
+    if (!requireMiningValue()) return;
+    const idempotencyKey = getOrCreateMiningAttemptKey(
+      cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier, "mining-card-upgrade"
+    );
     try {
-      const r = await api("/api/mining/card/upgrade", { method: "POST", body: JSON.stringify({ tier }) });
+      const r = await api("/api/mining/card/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ tier, idempotency_key: idempotencyKey }),
+      });
+      clearMiningAttemptKey(cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier);
       toast.success(`Upgraded to ${r.new_tier}!`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      if (!shouldKeepAttemptKey(e)) clearMiningAttemptKey(cardUpgradeKeysRef, attemptOwnerId, "card-upgrade", tier);
+      toast.error(e.message);
+    }
   };
 
   const inputCls = "w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-white/15 font-medium outline-none bg-white/[0.03] border border-white/[0.06] focus:border-[#00E89D]/30";
@@ -372,6 +605,25 @@ export default function MiningPage({ onBack, onNavigate }) {
     );
   }
 
+  if (!data && loadError) {
+    return (
+      <div className="min-h-screen px-5 py-8 flex items-center justify-center" style={{ background: "#030303" }} data-testid="mining-load-error">
+        <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-red-500/10 p-5 text-center">
+          <p className="text-sm font-bold text-red-300">Mining konnte nicht geladen werden</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/50">{loadError}</p>
+          <div className="mt-4 flex gap-2">
+            <button onClick={onBack} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-white/70">
+              Zurück
+            </button>
+            <button onClick={load} data-testid="mining-retry-load" className="flex-1 rounded-xl bg-[#00E89D]/15 px-4 py-3 text-xs font-bold text-[#00E89D]">
+              Erneut laden
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const w = data?.wallet || {};
   const m = data?.mining || {};
   const vip = data?.vip || {};
@@ -380,6 +632,10 @@ export default function MiningPage({ onBack, onNavigate }) {
   const miners = data?.miners || [];
   const txns = data?.recent_transactions || [];
   const parsedWithdrawAmt = parseAmountInput(withdrawAmt);
+  const currentLevelIndex = Math.max(0, MINING_LEVELS.findIndex(level => level.name === (vip.name || "Bronze")));
+  const currentLevel = MINING_LEVELS[currentLevelIndex] || MINING_LEVELS[0];
+  const nextLevel = MINING_LEVELS[Math.min(currentLevelIndex + 1, MINING_LEVELS.length - 1)];
+  const quickPackages = packages.slice(0, 3);
 
   return (
     <motion.div data-testid="mining-page" className="min-h-screen pb-24 relative" style={{ background: "#030303" }}
@@ -397,7 +653,7 @@ export default function MiningPage({ onBack, onNavigate }) {
         </motion.button>
         <div className="flex-1">
           <h1 className="text-[17px] font-bold text-white tracking-tight">{t("mining.title") || "Mining"}</h1>
-          <p className="text-[10px] text-white/30 font-medium tracking-wide">{t("mining.subtitle") || "Mine BLZ tokens with virtual rigs"}</p>
+          <p className="text-[10px] text-white/30 font-medium tracking-wide">{miningValueEnabled ? (t("mining.subtitle") || "Mining") : "Mining Preview · Live-Provider noch nicht verbunden"}</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm" style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}08`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}25` }}>
           <Star size={11} style={{ color: VIP_COLORS[vip.name] }} />
@@ -405,20 +661,43 @@ export default function MiningPage({ onBack, onNavigate }) {
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div className="px-5 mb-4 relative z-10">
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {tabs.map(tb => {
-            const tabLabels = { dashboard: "Dashboard", miners: "Miner", wallet: "Wallet", shop: "Shop", marketplace: "Markt", card: "Karte", launchpad: "Launch", vip: "VIP" };
+      {!miningValueEnabled && (
+        <div className="px-5 mb-3 relative z-10" data-testid="mining-provider-unavailable">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] px-3.5 py-3 flex items-start gap-2.5">
+            <Shield size={15} className="mt-0.5 flex-shrink-0 text-amber-300" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-amber-300">Mining Preview</p>
+              <p className="mt-0.5 text-[9px] leading-relaxed text-amber-100/65">
+                {data?.capabilities?.production_message || "Kauf, Ertrag, Transfer und BLZ→EUR werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mining navigation — all modules visible without horizontal scrolling */}
+      <div className="px-5 mb-3 relative z-10" data-testid="mining-menu-grid">
+        <div className="grid grid-cols-4 gap-2">
+          {MINING_TAB_CONFIG.map(item => {
+            const Icon = item.icon;
+            const active = tab === item.key;
             return (
-              <motion.button key={tb} onClick={() => setTab(tb)} whileTap={{ scale: 0.95 }}
-                data-testid={`mining-tab-${tb}`}
-                className={`flex-shrink-0 px-3.5 py-2.5 rounded-xl text-[11px] font-bold capitalize transition-all ${
-                  tab === tb 
-                    ? "bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/30 shadow-lg shadow-[#00E89D]/5" 
-                    : "bg-white/[0.03] text-white/30 border border-white/[0.06] hover:text-white/50"
-                }`}>
-                {t(`mining.tab_${tb}`) || tabLabels[tb] || tb}
+              <motion.button
+                key={item.key}
+                onClick={() => setTab(item.key)}
+                whileTap={{ scale: 0.94 }}
+                data-testid={`mining-tab-${item.key}`}
+                className="min-w-0 rounded-2xl px-1.5 py-2.5 flex flex-col items-center justify-center gap-1.5 transition-all"
+                style={{
+                  background: active ? `${item.color}12` : "rgba(255,255,255,0.025)",
+                  border: `1px solid ${active ? `${item.color}55` : "rgba(255,255,255,0.06)"}`,
+                  boxShadow: active ? `0 6px 18px ${item.color}10` : "none",
+                }}
+              >
+                <Icon size={16} style={{ color: active ? item.color : "rgba(255,255,255,0.42)" }} />
+                <span className="w-full truncate text-center text-[9px] font-bold" style={{ color: active ? item.color : "rgba(255,255,255,0.42)" }}>
+                  {t(`mining.tab_${item.key}`) || item.label}
+                </span>
               </motion.button>
             );
           })}
@@ -432,153 +711,406 @@ export default function MiningPage({ onBack, onNavigate }) {
           {tab === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
 
-              {/* ── BlitzMine (Pi-Style Tap-to-Earn) Banner ── */}
-              <motion.button
-                data-testid="mining-blitzmine-banner"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate?.("/blitz-mine")}
-                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+              {/* Mining Level — gamified progression using the existing VIP rules */}
+              <motion.div
+                data-testid="mining-level-card"
+                className="rounded-3xl p-4 relative overflow-hidden"
                 style={{
-                  background: "linear-gradient(135deg, rgba(255,215,0,0.10), rgba(0,194,255,0.06))",
-                  border: "1px solid rgba(255,215,0,0.25)",
-                  boxShadow: "0 4px 20px rgba(255,215,0,0.08)",
-                }}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "radial-gradient(circle, #FFD70030, transparent)", border: "1px solid #FFD700" }}>
-                  <Zap size={20} className="text-[#FFD700]" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-[13px] font-bold text-white">BlitzMine <span className="text-[9px] text-[#FFD700] font-semibold">NEU</span></p>
-                  <p className="text-[10px] text-white/60">Tippe täglich – verdiene BLZ passiv (Pi Network Style)</p>
-                </div>
-                <ChevronRight size={16} className="text-white/40" />
-              </motion.button>
-
-              <motion.button
-                data-testid="mining-trust-banner"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate?.("/mining-trust")}
-                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
-                style={{
-                  background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(59,130,246,0.06))",
-                  border: "1px solid rgba(245,158,11,0.28)",
-                  boxShadow: "0 4px 20px rgba(245,158,11,0.08)",
-                }}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent)", border: "1px solid rgba(245,158,11,0.85)" }}>
-                  <Shield size={20} className="text-[#F59E0B]" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-[13px] font-bold text-white">Mining Server & Vertrauen <span className="text-[9px] text-[#F59E0B] font-semibold">NEU</span></p>
-                  <p className="text-[10px] text-white/60">Dubai · Abu Dhabi · ASIC-Fotos · Infrastruktur transparent zeigen</p>
-                </div>
-                <ChevronRight size={16} className="text-white/40" />
-              </motion.button>
-
-              {/* Balance Card — Premium Glassmorphism */}
-              <motion.div className="rounded-3xl p-5 relative overflow-hidden"
-                style={{ 
-                  background: "linear-gradient(160deg, rgba(0,232,157,0.10) 0%, rgba(0,194,255,0.05) 50%, rgba(168,85,247,0.03) 100%)", 
+                  background: "linear-gradient(135deg, rgba(0,232,157,0.07), rgba(0,194,255,0.05) 55%, rgba(185,242,255,0.04))",
                   border: "1px solid rgba(0,232,157,0.18)",
-                  boxShadow: "0 8px 32px rgba(0,232,157,0.06), inset 0 1px 0 rgba(255,255,255,0.04)"
+                  boxShadow: "0 8px 28px rgba(0,232,157,0.05)",
                 }}
-                initial={{ y: 10 }} animate={{ y: 0 }}>
-                {/* Decorative elements */}
-                <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,232,157,0.12) 0%, transparent 70%)" }} />
-                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.08) 0%, transparent 70%)" }} />
-                
-                <div className="flex items-start justify-between mb-5 relative z-10">
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-bold mb-2">BLZ Balance</p>
-                    <p className="text-[32px] font-black text-white tracking-tight leading-none">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
-                    <p className="text-[15px] font-bold text-[#00E89D] mt-1.5">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
+                    <p className="text-[13px] font-black text-white">Dein Mining Level</p>
+                    <p className="text-[9px] text-white/35 mt-0.5">
+                      {miningValueEnabled ? "Mehr Mining-Power bringt dich ins nächste Level." : "Level-System Preview · Bonusregeln noch nicht live."}
+                    </p>
                   </div>
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" 
-                    style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.2)", boxShadow: "0 4px 16px rgba(0,232,157,0.1)" }}>
-                    <Wallet size={24} className="text-[#00E89D]" />
+                  <motion.button
+                    type="button"
+                    onClick={() => setTab("vip")}
+                    whileTap={{ scale: 0.94 }}
+                    className="flex-shrink-0 rounded-xl px-2.5 py-1.5 text-[9px] font-bold"
+                    style={{ color: currentLevel.color, background: `${currentLevel.color}10`, border: `1px solid ${currentLevel.color}25` }}
+                  >
+                    {vip.name || "Bronze"} <ChevronRight size={10} className="inline" />
+                  </motion.button>
+                </div>
+
+                <div className="grid grid-cols-5 gap-1.5">
+                  {MINING_LEVELS.map((level, index) => {
+                    const unlocked = miningValueEnabled && index <= currentLevelIndex;
+                    const isCurrent = miningValueEnabled && index === currentLevelIndex;
+                    return (
+                      <button
+                        key={level.name}
+                        type="button"
+                        onClick={() => setTab("vip")}
+                        className="min-w-0 rounded-xl px-1 py-2 text-center"
+                        style={{
+                          background: isCurrent ? `${level.color}12` : "rgba(255,255,255,0.02)",
+                          border: `1px solid ${isCurrent ? `${level.color}45` : "rgba(255,255,255,0.05)"}`,
+                        }}
+                      >
+                        <div
+                          className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full"
+                          style={{
+                            background: unlocked || isCurrent ? `${level.color}18` : "rgba(255,255,255,0.035)",
+                            border: `1px solid ${unlocked || isCurrent ? `${level.color}45` : "rgba(255,255,255,0.08)"}`,
+                          }}
+                        >
+                          <Star size={12} style={{ color: unlocked || isCurrent ? level.color : "rgba(255,255,255,0.28)" }} />
+                        </div>
+                        <p className="truncate text-[8px] font-black" style={{ color: unlocked || isCurrent ? level.color : "rgba(255,255,255,0.38)" }}>
+                          {level.label}
+                        </p>
+                        <p className="mt-0.5 text-[7px] font-bold text-white/25">
+                          {level.bonus > 0 ? `+${Math.round(level.bonus * 100)}%` : "START"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: `linear-gradient(90deg, ${currentLevel.color}, ${nextLevel.color})` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${miningValueEnabled ? Math.max(4, Math.min(100, miningNumber(vip.progress))) : 4}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <span className="text-[8px] font-semibold text-white/30" data-testid="mining-level-next-threshold">
+                      {miningValueEnabled
+                        ? (vip.next_level
+                          ? `${miningFixed(vip.progress, 0)}% · ${vip.next_level.name} ab ${miningFixed(vip.next_level.min_hashrate, 0)} TH/s`
+                          : "Max-Level erreicht")
+                        : "Preview · Bonus noch deaktiviert"}
+                    </span>
+                    <span className="text-[8px] font-bold" style={{ color: currentLevel.color }}>
+                      {miningValueEnabled ? `Aktiv: +${Math.round(miningNumber(vip.bonus) * 100)}%` : "Noch nicht live"}
+                    </span>
                   </div>
                 </div>
-                <div className="flex gap-2.5 relative z-10">
-                  <motion.button data-testid="mining-withdraw-btn" onClick={() => setShowWithdraw(!showWithdraw)}
-                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
-                    style={{ background: "rgba(0,232,157,0.12)", border: "1px solid rgba(0,232,157,0.25)", color: "#00E89D" }}
-                    whileTap={{ scale: 0.96 }}>
-                    <ArrowUpRight size={15} /> {t("mining.withdraw") || "Auszahlen"}
+
+                <div
+                  className="mt-3 flex items-center gap-2.5 rounded-2xl px-3 py-2.5"
+                  style={{ background: "linear-gradient(90deg, rgba(255,215,0,0.08), rgba(0,232,157,0.05))", border: "1px solid rgba(255,215,0,0.13)" }}
+                >
+                  <Gift size={16} className="flex-shrink-0 text-[#FFD700]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black text-[#FFD700]">Mehr Power → höheres Level → mehr Vorteile</p>
+                    <p className="mt-0.5 text-[8px] text-white/35">Bronze, Silber, Gold, Platin und Diamant machen Fortschritt sofort sichtbar.</p>
+                  </div>
+                  <ChevronRight size={13} className="flex-shrink-0 text-white/25" />
+                </div>
+              </motion.div>
+
+              {/* Fast purchase — no need to open the full shop first */}
+              <motion.div
+                data-testid="mining-quick-buy"
+                className="rounded-3xl p-3.5"
+                style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.06)" }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
+              >
+                <div className="mb-2.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-[12px] font-black text-white">Beliebte Miner</p>
+                    <p className="text-[8px] text-white/30">Direkt auswählen und in wenigen Sekunden kaufen.</p>
+                  </div>
+                  <button type="button" onClick={() => setTab("shop")} className="flex items-center gap-0.5 text-[9px] font-bold text-[#00C2FF]">
+                    Alle <ChevronRight size={10} />
+                  </button>
+                </div>
+
+                {quickPackages.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {quickPackages.map(pkg => {
+                      const Icon = TIER_ICONS[pkg.icon] || Cpu;
+                      const color = TIER_COLORS[pkg.id] || "#00E89D";
+                      return (
+                        <div
+                          key={pkg.id}
+                          className="min-w-0 rounded-2xl p-2.5"
+                          style={{ background: `${color}06`, border: `1px solid ${color}18` }}
+                        >
+                          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: `${color}12` }}>
+                            <Icon size={15} style={{ color }} />
+                          </div>
+                          <p className="truncate text-[9px] font-black text-white">{pkg.name}</p>
+                          <p className="mt-0.5 text-[8px] font-mono text-white/35">{pkg.hashrate} TH/s</p>
+                          <p className="mt-1 text-[7px] font-bold text-white/25">+${pkg.hashrate} TH/s Level-Power</p>
+                          <p className="mt-2 text-[13px] font-black" style={{ color }}>€{miningFixed(pkg.price_eur, 2)}</p>
+                          <motion.button
+                            type="button"
+                            data-testid={`mining-quick-buy-${pkg.id}`}
+                            disabled={Boolean(buying)}
+                            onClick={() => {
+                              if (miningValueEnabled) {
+                                buyMiner(pkg.id, "onetime");
+                              } else {
+                                setBillingType("onetime");
+                                setConfirmPkg(pkg);
+                                setTab("shop");
+                              }
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            className="mt-2 w-full rounded-xl py-2 text-[8px] font-black disabled:opacity-50"
+                            style={{ background: `${color}16`, border: `1px solid ${color}25`, color }}
+                          >
+                            {buying ? (buying === pkg.id ? "Kauft…" : "Warten") : miningValueEnabled ? "Jetzt kaufen" : "Ansehen"}
+                          </motion.button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="mining-dashboard-packages-empty"
+                    onClick={() => setTab("shop")}
+                    className="w-full rounded-2xl border border-white/[0.05] bg-white/[0.02] px-3 py-4 text-[10px] font-bold text-white/40"
+                  >
+                    Miner-Pakete öffnen <ChevronRight size={11} className="ml-1 inline" />
+                  </button>
+                )}
+              </motion.div>
+
+              {/* Secondary mining areas stay visible, but compact */}
+              <div className="grid grid-cols-2 gap-2">
+                <motion.button
+                  data-testid="mining-blitzmine-banner"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => onNavigate?.("/blitz-mine")}
+                  className="min-w-0 rounded-2xl p-3 text-left"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(255,215,0,0.08), rgba(0,194,255,0.04))",
+                    border: "1px solid rgba(255,215,0,0.18)",
+                  }}
+                >
+                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/10">
+                    <Zap size={15} className="text-[#FFD700]" />
+                  </div>
+                  <p className="text-[10px] font-black text-white">BlitzMine <span className="text-[7px] text-[#FFD700]">NEU</span></p>
+                  <p className="mt-0.5 text-[8px] leading-snug text-white/35">
+                    {miningValueEnabled ? "Täglich tippen" : "Preview · keine BLZ-Erzeugung in Production"}
+                  </p>
+                </motion.button>
+
+                <motion.button
+                  data-testid="mining-trust-banner"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => onNavigate?.("/mining-trust")}
+                  className="min-w-0 rounded-2xl p-3 text-left"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(59,130,246,0.04))",
+                    border: "1px solid rgba(245,158,11,0.18)",
+                  }}
+                >
+                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/10">
+                    <Shield size={15} className="text-[#F59E0B]" />
+                  </div>
+                  <p className="text-[10px] font-black text-white">Server & Vertrauen</p>
+                  <p className="mt-0.5 text-[8px] leading-snug text-white/35">Standorte, ASICs und Proof-Status ansehen</p>
+                </motion.button>
+              </div>
+
+              {/* Compact balance summary — designed to keep the first screen short */}
+              <motion.div
+                data-testid="mining-balance-summary"
+                className="rounded-3xl p-3.5 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(150deg, rgba(0,232,157,0.08), rgba(0,194,255,0.04) 55%, rgba(168,85,247,0.03))",
+                  border: "1px solid rgba(0,232,157,0.16)",
+                  boxShadow: "0 6px 24px rgba(0,232,157,0.05)",
+                }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="min-w-0">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Wallet size={11} className="text-[#00E89D]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">BLZ Balance</span>
+                    </div>
+                    <p className="truncate text-[20px] font-black leading-none text-white">{miningFixed(w.blz_balance, 4)}</p>
+                    <p className="mt-1 text-[10px] font-bold text-[#00E89D]">€{miningFixed(w.eur_value, 2)}</p>
+                  </div>
+
+                  <div className="min-w-0 border-l border-white/[0.06] pl-2.5">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Zap size={11} className="text-[#00C2FF]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">Heute</span>
+                    </div>
+                    <p className="truncate text-[14px] font-black text-white">
+                      {miningValueEnabled ? miningFixed(m.daily_earnings_blz, 4) : "—"}
+                    </p>
+                    <p className="mt-1 text-[8px] font-bold text-[#00C2FF]">
+                      {miningValueEnabled ? "BLZ Ertrag" : "Preview"}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0 border-l border-white/[0.06] pl-2.5">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Gift size={11} className="text-[#FFD700]" />
+                      <span className="truncate text-[8px] font-bold uppercase tracking-[0.08em] text-white/35">Bonus</span>
+                    </div>
+                    <p className="truncate text-[14px] font-black" style={{ color: currentLevel.color }}>
+                      {miningValueEnabled ? `+${Math.round(miningNumber(vip.bonus) * 100)}%` : "—"}
+                    </p>
+                    <p className="mt-1 truncate text-[8px] font-bold text-white/30">{vip.name || "Bronze"} Level</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <motion.button
+                    data-testid="mining-withdraw-btn"
+                    onClick={() => miningValueEnabled && setShowWithdraw(!showWithdraw)}
+                    disabled={!miningValueEnabled}
+                    className="rounded-xl py-2.5 text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-35"
+                    style={{ background: "rgba(0,232,157,0.10)", border: "1px solid rgba(0,232,157,0.20)", color: "#00E89D" }}
+                    whileTap={miningValueEnabled ? { scale: 0.96 } : {}}
+                  >
+                    <ArrowUpRight size={12} /> {t("mining.withdraw") || "Auszahlen"}
                   </motion.button>
-                  <motion.button data-testid="mining-send-btn" onClick={() => setShowSend(!showSend)}
-                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
-                    style={{ background: "rgba(0,194,255,0.10)", border: "1px solid rgba(0,194,255,0.22)", color: "#00C2FF" }}
-                    whileTap={{ scale: 0.96 }}>
-                    <Send size={15} /> {t("mining.send") || "Senden"}
+                  <motion.button
+                    data-testid="mining-send-btn"
+                    onClick={() => miningValueEnabled && setShowSend(!showSend)}
+                    disabled={!miningValueEnabled}
+                    className="rounded-xl py-2.5 text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-35"
+                    style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.18)", color: "#00C2FF" }}
+                    whileTap={miningValueEnabled ? { scale: 0.96 } : {}}
+                  >
+                    <Send size={12} /> {t("mining.send") || "Senden"}
                   </motion.button>
                 </div>
               </motion.div>
 
-              {/* Withdraw Panel */}
               <AnimatePresence>
                 {showWithdraw && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)", boxShadow: "0 4px 20px rgba(0,232,157,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)" }}
+                  >
+                    <div className="flex items-center gap-2">
                       <ArrowUpRight size={14} className="text-[#00E89D]" />
                       <p className="text-[12px] font-bold text-white">BLZ in EUR umwandeln</p>
                     </div>
                     <p className="text-[10px] text-white/40">1 BLZ = €0,10 · Direkt auf dein Wallet</p>
-                    <input data-testid="withdraw-amount" type="text" inputMode="decimal" value={withdrawAmt} onChange={e => setWithdrawAmt(sanitizeAmountInput(e.target.value))}
-                      placeholder="Betrag in BLZ" className={inputCls} />
+                    <input
+                      data-testid="withdraw-amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={withdrawAmt}
+                      onChange={e => setWithdrawAmt(sanitizeAmountInput(e.target.value))}
+                      placeholder="Betrag in BLZ"
+                      className={inputCls}
+                    />
                     {parsedWithdrawAmt > 0 && (
-                      <div className="text-center p-2 rounded-xl bg-[#00E89D]/5 border border-[#00E89D]/10">
+                      <div className="rounded-xl border border-[#00E89D]/10 bg-[#00E89D]/5 p-2 text-center">
                         <p className="text-[13px] font-bold text-[#00E89D]">{parsedWithdrawAmt.toFixed(2)} BLZ → €{(parsedWithdrawAmt * 0.10).toFixed(2)}</p>
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <motion.button data-testid="withdraw-confirm" onClick={withdraw} disabled={withdrawing || parsedWithdrawAmt <= 0}
-                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/25 flex items-center justify-center"
-                        whileTap={{ scale: 0.96 }}>{withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}</motion.button>
-                      <motion.button onClick={() => setShowWithdraw(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
-                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
+                      <motion.button
+                        data-testid="withdraw-confirm"
+                        onClick={withdraw}
+                        disabled={withdrawing || parsedWithdrawAmt <= 0}
+                        className="flex-1 rounded-xl border border-[#00E89D]/25 bg-[#00E89D]/15 py-3 text-[12px] font-bold text-[#00E89D] flex items-center justify-center"
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        {withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}
+                      </motion.button>
+                      <motion.button onClick={() => setShowWithdraw(false)} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[12px] font-bold text-white/40" whileTap={{ scale: 0.96 }}>
+                        Abbrechen
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Send Panel */}
               <AnimatePresence>
                 {showSend && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.12)", boxShadow: "0 4px 20px rgba(0,194,255,0.05)" }}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.12)" }}
+                  >
+                    <div className="flex items-center gap-2">
                       <Send size={14} className="text-[#00C2FF]" />
                       <p className="text-[12px] font-bold text-white">BLZ an Nutzer senden</p>
                     </div>
-                    <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
-                      placeholder="E-Mail des Empfängers" className={inputCls} />
-                    <input data-testid="send-amount" type="text" inputMode="decimal" value={sendAmt} onChange={e => setSendAmt(sanitizeAmountInput(e.target.value))}
-                      placeholder="Betrag in BLZ" className={inputCls} />
+                    <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)} placeholder="E-Mail des Empfängers" className={inputCls} />
+                    <input data-testid="send-amount" type="text" inputMode="decimal" value={sendAmt} onChange={e => setSendAmt(sanitizeAmountInput(e.target.value))} placeholder="Betrag in BLZ" className={inputCls} />
                     <div className="flex gap-2">
-                      <motion.button data-testid="send-confirm" onClick={sendBLZ} disabled={sending}
-                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/25 flex items-center justify-center gap-1.5"
-                        whileTap={{ scale: 0.96 }}>{sending ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Senden</>}</motion.button>
-                      <motion.button onClick={() => setShowSend(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
-                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
+                      <motion.button
+                        data-testid="send-confirm"
+                        onClick={sendBLZ}
+                        disabled={sending}
+                        className="flex-1 rounded-xl border border-[#00C2FF]/25 bg-[#00C2FF]/15 py-3 text-[12px] font-bold text-[#00C2FF] flex items-center justify-center gap-1.5"
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        {sending ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Senden</>}
+                      </motion.button>
+                      <motion.button onClick={() => setShowSend(false)} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[12px] font-bold text-white/40" whileTap={{ scale: 0.96 }}>
+                        Abbrechen
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              <motion.button
+                type="button"
+                data-testid="mining-details-toggle"
+                onClick={() => setShowDashboardDetails(value => !value)}
+                whileTap={{ scale: 0.97 }}
+                className="w-full rounded-2xl border border-white/[0.06] bg-white/[0.025] px-3.5 py-3 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <BarChart3 size={15} className="text-[#00C2FF]" />
+                  <div>
+                    <p className="text-[10px] font-black text-white">Mehr Mining-Details</p>
+                    <p className="text-[8px] text-white/30">Hashrate, Ertrag, Miner, Rewards und Referral</p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className={`text-white/30 transition-transform ${showDashboardDetails ? "rotate-90" : ""}`} />
+              </motion.button>
+
+              <AnimatePresence initial={false}>
+                {showDashboardDetails && (
+                  <motion.div
+                    data-testid="mining-dashboard-details"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 overflow-hidden"
+                  >
               {/* Mining Stats — Glass Cards */}
               <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Hashrate", value: `${m.total_hashrate?.toFixed(0) || 0}`, unit: "TH/s", color: "#00E89D", icon: Zap },
-                  { label: t("mining.daily") || "Täglich", value: `${m.daily_earnings_blz?.toFixed(4) || 0}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
+                {(miningValueEnabled ? [
+                  { label: "Hashrate", value: `${miningFixed(m.total_hashrate, 0)}`, unit: "TH/s", color: "#00E89D", icon: Zap },
+                  { label: t("mining.daily") || "Täglich", value: `${miningFixed(m.daily_earnings_blz, 4)}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
                   { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, unit: "aktiv", color: "#A855F7", icon: Server },
-                ].map((s, i) => (
+                ] : [
+                  { label: "Hashrate", value: "—", unit: "nicht verifiziert", color: "#00E89D", icon: Zap },
+                  { label: t("mining.daily") || "Täglich", value: "—", unit: "keine Projektion", color: "#00C2FF", icon: TrendingUp },
+                  { label: t("mining.rigs") || "Rigs", value: "—", unit: "Provider ausstehend", color: "#A855F7", icon: Server },
+                ]).map((s, i) => (
                   <motion.div key={s.label} className="rounded-2xl p-4 text-center relative overflow-hidden"
                     style={{ 
                       background: `linear-gradient(180deg, ${s.color}08 0%, ${s.color}02 100%)`, 
@@ -603,22 +1135,31 @@ export default function MiningPage({ onBack, onNavigate }) {
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
                 <div className="px-4 py-3.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <TrendingUp size={15} className="text-[#00C2FF]" />
-                  <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">{t("mining.earnings_overview") || "Ertragsübersicht"}</p>
+                  <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">
+                    {miningValueEnabled ? (t("mining.earnings_overview") || "Ertragsübersicht") : "Ertragsprojektion deaktiviert"}
+                  </p>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
-                  {[
-                    { label: t("mining.earn_daily") || "Täglich", blz: m.daily_earnings_blz?.toFixed(4) || "0", eur: m.daily_earnings_eur?.toFixed(4) || "0", color: "#00E89D" },
-                    { label: t("mining.earn_monthly") || "Monatlich", blz: m.monthly_earnings_blz?.toFixed(2) || "0", eur: m.monthly_earnings_eur?.toFixed(2) || "0", color: "#00C2FF" },
-                    { label: t("mining.earn_yearly") || "Jährlich", blz: m.yearly_earnings_blz?.toFixed(0) || "0", eur: m.yearly_earnings_eur?.toFixed(0) || "0", color: "#FFD700" },
-                  ].map(s => (
-                    <div key={s.label} className="py-5 px-3 text-center">
-                      <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
-                      <p className="text-[10px] font-bold text-white/35 mt-1">BLZ</p>
-                      <p className="text-[13px] font-bold font-mono text-white/55 mt-1.5">{"\u20AC"}{s.eur}</p>
-                      <p className="text-[9px] text-white/25 uppercase mt-2 tracking-[0.15em] font-bold">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
+                {!miningValueEnabled && (
+                  <div className="px-4 py-2 text-center text-[10px] text-amber-300/70" data-testid="mining-earnings-preview-note">
+                    Keine BLZ-/EUR-Ertragsprojektion ohne verifizierten Mining-/Settlement-Provider.
+                  </div>
+                )}
+                {miningValueEnabled && (
+                  <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                    {[
+                      { label: t("mining.earn_daily") || "Täglich", blz: miningFixed(m.daily_earnings_blz, 4), eur: miningFixed(m.daily_earnings_eur, 4), color: "#00E89D" },
+                      { label: t("mining.earn_monthly") || "Monatlich", blz: miningFixed(m.monthly_earnings_blz, 2), eur: miningFixed(m.monthly_earnings_eur, 2), color: "#00C2FF" },
+                      { label: t("mining.earn_yearly") || "Jährlich", blz: miningFixed(m.yearly_earnings_blz, 0), eur: miningFixed(m.yearly_earnings_eur, 0), color: "#FFD700" },
+                    ].map(s => (
+                      <div key={s.label} className="py-5 px-3 text-center">
+                        <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
+                        <p className="text-[10px] font-bold text-white/35 mt-1">BLZ</p>
+                        <p className="text-[13px] font-bold font-mono text-white/55 mt-1.5">{"\u20AC"}{s.eur}</p>
+                        <p className="text-[9px] text-white/25 uppercase mt-2 tracking-[0.15em] font-bold">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
 
               {/* Meine Miner — per-miner earnings */}
@@ -657,9 +1198,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <p className="text-[10px] font-mono text-white/35">{mn.effective_hashrate || mn.hashrate} TH/s · Eff. {((mn.effective_efficiency || mn.efficiency) * 100).toFixed(0)}%</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-[13px] font-black font-mono text-[#00E89D]">+{mn.daily_blz?.toFixed(4) || "0"}</p>
+                          <p className="text-[13px] font-black font-mono text-[#00E89D]">+{miningFixed(mn.daily_blz, 4)}</p>
                           <p className="text-[9px] text-white/25 font-medium">BLZ/{t("mining.day") || "Tag"}</p>
-                          <p className="text-[9px] text-white/35 font-mono">{"\u20AC"}{mn.daily_eur?.toFixed(3) || "0"}</p>
+                          <p className="text-[9px] text-white/35 font-mono">{"\u20AC"}{miningFixed(mn.daily_eur, 3)}</p>
                         </div>
                       </motion.div>
                     );
@@ -668,10 +1209,17 @@ export default function MiningPage({ onBack, onNavigate }) {
               )}
 
               {/* Auto Daily Reward Status */}
-              <AutoRewardCard reward={reward} data={data} t={t} />
+              <AutoRewardCard
+                reward={reward}
+                data={data}
+                t={t}
+                valueActionsEnabled={miningValueEnabled}
+                onClaim={claimDailyReward}
+                claimBusy={claimingReward}
+              />
 
               {/* Referral Boost Indicator */}
-              {ref.boost_active && (
+              {miningValueEnabled && ref.boost_active && (
                 <motion.div className="rounded-xl px-3.5 py-2.5 flex items-center gap-2"
                   style={{ background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.1)" }}
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
@@ -680,7 +1228,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                     <p className="text-[10px] text-[#A855F7] font-semibold">{t("mining.ref_boost") || "Referral Boost Active"}</p>
                     <p className="text-[8px] text-white/20">+{((ref.bonus_rate || 0.05) * 100).toFixed(0)}% {t("mining.ref_boost_desc") || "bonus on your earnings"}</p>
                   </div>
-                  <span className="text-[11px] font-bold font-mono text-[#A855F7]">+{ref.boost_bonus_blz?.toFixed(4) || "0"} BLZ/d</span>
+                  <span className="text-[11px] font-bold font-mono text-[#A855F7]">+{miningFixed(ref.boost_bonus_blz, 4)} BLZ/d</span>
                 </motion.div>
               )}
 
@@ -708,7 +1256,11 @@ export default function MiningPage({ onBack, onNavigate }) {
                     <Share2 size={14} className="text-[#00C2FF]" />
                   </motion.button>
                 </div>
-                <p className="text-[9px] text-white/15 mt-1.5">{t("mining.referral_desc") || "Share & earn 5% of your referrals' mining rewards"}</p>
+                <p className="text-[9px] text-white/15 mt-1.5">
+                  {miningValueEnabled
+                    ? (t("mining.referral_desc") || "Share & earn 5% of your referrals' mining rewards")
+                    : "Referral Preview · Bonus-Rewards bleiben bis zur verifizierten Mining-/Settlement-Anbindung deaktiviert."}
+                </p>
               </motion.div>
 
               {/* Recent Txns */}
@@ -728,7 +1280,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                             <p className="text-[8px] text-white/15">{tx.created_at?.slice(0, 16)}</p>
                           </div>
                           <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-[#FF4757]"}`}>
-                            {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)} BLZ` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
+                            {miningNumber(tx.amount_blz) !== 0 ? `${miningNumber(tx.amount_blz) > 0 ? "+" : ""}${miningFixed(tx.amount_blz, 4)} BLZ` : `€${miningFixed(Math.abs(miningNumber(tx.amount_eur)), 2)}`}
                           </span>
                         </div>
                       );
@@ -736,6 +1288,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                   </div>
                 </motion.div>
               )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -753,7 +1308,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="text-center py-12">
                   <Cpu size={32} className="mx-auto text-white/10 mb-3" />
                   <p className="text-[13px] text-white/30 mb-1">{t("mining.no_miners") || "No miners yet"}</p>
-                  <p className="text-[10px] text-white/15 mb-4">{t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ"}</p>
+                  <p className="text-[10px] text-white/15 mb-4">{miningValueEnabled
+                    ? (t("mining.no_miners_desc") || "Purchase your first miner to start earning BLZ")
+                    : (data?.capabilities?.production_message || "Mining-Preview: Wertfunktionen werden erst mit verifiziertem Provider aktiviert.")}</p>
                   <motion.button onClick={() => setTab("shop")} className="px-5 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
                     whileTap={{ scale: 0.95 }}>{t("mining.go_shop") || "Browse Miners"}</motion.button>
                 </div>
@@ -762,8 +1319,12 @@ export default function MiningPage({ onBack, onNavigate }) {
               {miners.map((mn, idx) => {
                 const Icon = TIER_ICONS[mn.icon] || Cpu;
                 const color = TIER_COLORS[mn.package_id] || "#00E89D";
-                const effectiveHash = (mn.hashrate * (1 + mn.power_level * 0.1)).toFixed(1);
-                const effectiveEff = ((mn.efficiency + mn.efficiency_level * 0.01) * 100).toFixed(1);
+                const effectiveHash = Number(
+                  mn.effective_hashrate ?? (Number(mn.hashrate || 0) * (1 + Number(mn.power_level || 0) * 0.1))
+                ).toFixed(1);
+                const effectiveEff = (
+                  Number(mn.effective_efficiency ?? (Number(mn.efficiency ?? 0.85) + Number(mn.efficiency_level || 0) * 0.01)) * 100
+                ).toFixed(1);
                 const pCost = upgradeCosts?.power?.[mn.power_level + 1];
                 const eCost = upgradeCosts?.efficiency?.[mn.efficiency_level + 1];
 
@@ -792,7 +1353,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.button
                         data-testid={`upgrade-power-${mn.miner_id}`}
                         onClick={() => upgradeMiner(mn.miner_id, "power")}
-                        disabled={upgrading === `${mn.miner_id}-power` || !pCost}
+                        disabled={upgrading === `${mn.miner_id}-power` || !pCost || !miningValueEnabled}
                         className="flex-1 py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 bg-white/[0.03] border border-white/[0.05] text-white/50 disabled:opacity-30"
                         whileTap={{ scale: 0.95 }}>
                         {upgrading === `${mn.miner_id}-power` ? <Loader2 size={10} className="animate-spin" /> : <>
@@ -802,7 +1363,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.button
                         data-testid={`upgrade-eff-${mn.miner_id}`}
                         onClick={() => upgradeMiner(mn.miner_id, "efficiency")}
-                        disabled={upgrading === `${mn.miner_id}-efficiency` || !eCost}
+                        disabled={upgrading === `${mn.miner_id}-efficiency` || !eCost || !miningValueEnabled}
                         className="flex-1 py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 bg-white/[0.03] border border-white/[0.05] text-white/50 disabled:opacity-30"
                         whileTap={{ scale: 0.95 }}>
                         {upgrading === `${mn.miner_id}-efficiency` ? <Loader2 size={10} className="animate-spin" /> : <>
@@ -822,15 +1383,15 @@ export default function MiningPage({ onBack, onNavigate }) {
               {/* Balances */}
               <div className="rounded-2xl p-4 text-center" style={{ background: "rgba(0,232,157,0.03)", border: "1px solid rgba(0,232,157,0.08)" }}>
                 <p className="text-[10px] text-white/25 uppercase tracking-[0.1em] mb-1">BLZ Balance</p>
-                <p className="text-[28px] font-bold font-outfit text-white">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
-                <p className="text-[13px] text-[#00E89D] font-semibold">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
+                <p className="text-[28px] font-bold font-outfit text-white">{miningFixed(w.blz_balance, 4)}</p>
+                <p className="text-[13px] text-[#00E89D] font-semibold">{"\u20AC"}{miningFixed(w.eur_value, 2)}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: t("mining.total_mined") || "Mined", value: w.total_mined?.toFixed(2) || "0", color: "#00E89D" },
-                  { label: t("mining.withdrawn") || "Withdrawn", value: w.total_withdrawn?.toFixed(2) || "0", color: "#FF6B6B" },
-                  { label: "Rate", value: "€0.10/BLZ", color: "#FFD700" },
+                  { label: t("mining.total_mined") || "Mined", value: miningFixed(w.total_mined, 2), color: "#00E89D" },
+                  { label: t("mining.withdrawn") || "Withdrawn", value: miningFixed(w.total_withdrawn, 2), color: "#FF6B6B" },
+                  { label: "Rate", value: miningValueEnabled ? "€0.10/BLZ" : "Preview", color: "#FFD700" },
                 ].map(s => (
                   <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
                     <p className="text-[12px] font-bold font-outfit" style={{ color: s.color }}>{s.value}</p>
@@ -900,7 +1461,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                               </div>
                             </div>
                             <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-white/40"}`}>
-                              {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)}` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
+                              {miningNumber(tx.amount_blz) !== 0 ? `${miningNumber(tx.amount_blz) > 0 ? "+" : ""}${miningFixed(tx.amount_blz, 4)}` : `€${miningFixed(Math.abs(miningNumber(tx.amount_eur)), 2)}`}
                             </span>
                           </div>
                         );
@@ -918,8 +1479,16 @@ export default function MiningPage({ onBack, onNavigate }) {
 
               {/* Title */}
               <div className="text-center mb-2">
-                <h2 className="text-[18px] font-bold font-outfit text-white">{t("mining.shop_create") || "Miner erstellen"}</h2>
-                <p className="text-[11px] text-white/30 mt-0.5">{t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen"}</p>
+                <h2 className="text-[18px] font-bold font-outfit text-white">
+                  {miningValueEnabled ? (t("mining.shop_create") || "Miner erstellen") : (miningOrderEnabled ? "Miner bestellen" : "Miner-Pakete Preview")}
+                </h2>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  {miningValueEnabled
+                    ? (t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen")
+                    : miningOrderEnabled
+                      ? "Jetzt bestellen und bezahlen. Die Miner-Aktivierung startet erst nach verifizierter Provider-Anbindung."
+                      : "Preise und technische Paketdaten sind Preview. Ertrags-/ROI-Projektionen bleiben bis zur verifizierten Provider-Anbindung deaktiviert."}
+                </p>
               </div>
 
               {/* Billing Toggle: Einmalig / Monatlich / Jährlich */}
@@ -928,7 +1497,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                   { key: "onetime", label: t("mining.bill_once") || "Einmalig" },
                   { key: "monthly", label: t("mining.bill_month") || "Monatlich" },
                   { key: "yearly", label: t("mining.bill_year") || "Jährlich" },
-                ].map(b => (
+                ].filter(b => miningValueEnabled || b.key === "onetime").map(b => (
                   <motion.button key={b.key} data-testid={`billing-${b.key}`}
                     onClick={() => setBillingType(b.key)}
                     className={`flex-1 py-2.5 text-[11px] font-semibold transition-all relative ${
@@ -948,6 +1517,23 @@ export default function MiningPage({ onBack, onNavigate }) {
               </div>
 
               {/* Package Cards */}
+              {packages.length === 0 && (
+                <div
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-8 text-center"
+                  data-testid="mining-shop-empty"
+                >
+                  <Cpu size={28} className="mx-auto mb-2 text-white/10" />
+                  <p className="text-[12px] font-semibold text-white/40">Mining-Pakete konnten nicht geladen werden</p>
+                  <p className="mt-1 text-[10px] text-white/20">Die Mining-Seite bleibt verfügbar. Lade die Pakete erneut.</p>
+                  <button
+                    onClick={load}
+                    className="mt-3 rounded-xl bg-[#00E89D]/10 px-4 py-2 text-[10px] font-bold text-[#00E89D]"
+                    data-testid="mining-shop-retry"
+                  >
+                    Erneut laden
+                  </button>
+                </div>
+              )}
               {packages.map((pkg, idx) => {
                 const Icon = TIER_ICONS[pkg.icon] || Cpu;
                 const color = TIER_COLORS[pkg.id] || "#00E89D";
@@ -958,6 +1544,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 const isBest = pkg.id === "elite";
                 const isSelected = confirmPkg?.id === pkg.id;
                 const billingLabel = billingType === "monthly" ? "/Mo" : billingType === "yearly" ? "/Jahr" : "";
+                const mainBalance = Number(w.main_balance_eur ?? 0);
+                const canAffordCard = mainBalance >= currentPrice;
+                const directOrderCard = !miningValueEnabled && miningOrderEnabled;
 
                 return (
                   <motion.div key={pkg.id} data-testid={`miner-pkg-${pkg.id}`}
@@ -997,11 +1586,20 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <TrendingUp size={11} className="text-[#00E89D]" />
                           <span className="text-[14px] font-bold font-outfit text-white">{pkg.hashrate} TH/s</span>
                         </div>
-                        <p className="text-[10px] font-mono text-white/30 mb-1.5">{pkg.daily_blz} BLZ / {t("mining.day") || "Tag"}</p>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#FFD700]/10 text-[#FFD700] font-bold border border-[#FFD700]/15">ROI {pkg.roi_pct}%</span>
-                          <span className="text-[8px] text-white/15">{pkg.name}</span>
-                        </div>
+                        {pkg.projection_available ? (
+                          <>
+                            <p className="text-[10px] font-mono text-white/30 mb-1.5">{pkg.daily_blz} BLZ / {t("mining.day") || "Tag"}</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#FFD700]/10 text-[#FFD700] font-bold border border-[#FFD700]/15">ROI {pkg.roi_pct}%</span>
+                              <span className="text-[8px] text-white/15">{pkg.name}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-300/10 text-amber-200 font-bold border border-amber-300/15">KEINE ERTRAGSPROJEKTION</span>
+                            <span className="text-[8px] text-white/15">{pkg.name}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Price */}
@@ -1017,6 +1615,48 @@ export default function MiningPage({ onBack, onNavigate }) {
                         )}
                       </div>
                     </div>
+
+                    {directOrderCard && (
+                      <motion.button
+                        type="button"
+                        data-testid={`mining-order-card-${pkg.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setPurchaseError(null);
+                          setConfirmPkg(pkg);
+                          if (!canAffordCard) {
+                            onNavigate?.("/wallet");
+                            return;
+                          }
+                          buyMiner(pkg.id, "onetime");
+                        }}
+                        disabled={Boolean(buying)}
+                        className="mt-3 flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[12px] font-black disabled:cursor-wait disabled:opacity-60"
+                        style={{
+                          background: canAffordCard ? `${color}18` : "rgba(255,255,255,0.04)",
+                          color: canAffordCard ? color : "rgba(255,255,255,0.55)",
+                          border: `1px solid ${canAffordCard ? `${color}35` : "rgba(255,255,255,0.08)"}`,
+                        }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        {buying === pkg.id ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            Wird bestellt…
+                          </>
+                        ) : canAffordCard ? (
+                          <>
+                            Jetzt bestellen · {"\u20AC"}{currentPrice.toFixed(2)}
+                            <ChevronRight size={14} />
+                          </>
+                        ) : (
+                          <>
+                            Wallet aufladen
+                            <ChevronRight size={14} />
+                          </>
+                        )}
+                      </motion.button>
+                    )}
                   </motion.div>
                 );
               })}
@@ -1035,34 +1675,54 @@ export default function MiningPage({ onBack, onNavigate }) {
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
 
                     {/* Earnings Summary */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: t("mining.earn_daily") || "Täglich", value: `${confirmPkg.daily_blz} BLZ`, sub: `€${confirmPkg.daily_eur}`, color: "#00E89D" },
-                        { label: t("mining.earn_monthly") || "Monatlich", value: `${(confirmPkg.daily_blz * 30).toFixed(1)} BLZ`, sub: `€${confirmPkg.monthly_eur}`, color: "#00C2FF" },
-                        { label: t("mining.earn_yearly") || "Jährlich", value: `${(confirmPkg.daily_blz * 365).toFixed(0)} BLZ`, sub: `€${confirmPkg.yearly_eur}`, color: "#FFD700" },
-                      ].map(s => (
-                        <div key={s.label} className="rounded-xl p-2 text-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}10` }}>
-                          <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
-                          <p className="text-[9px] font-mono text-white/25">{s.sub}</p>
-                          <p className="text-[7px] text-white/15 uppercase mt-0.5">{s.label}</p>
-                        </div>
-                      ))}
-                    </div>
+                    {confirmPkg.projection_available ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: t("mining.earn_daily") || "Täglich", value: `${confirmPkg.daily_blz} BLZ`, sub: `€${confirmPkg.daily_eur}`, color: "#00E89D" },
+                          { label: t("mining.earn_monthly") || "Monatlich", value: `${(confirmPkg.daily_blz * 30).toFixed(1)} BLZ`, sub: `€${confirmPkg.monthly_eur}`, color: "#00C2FF" },
+                          { label: t("mining.earn_yearly") || "Jährlich", value: `${(confirmPkg.daily_blz * 365).toFixed(0)} BLZ`, sub: `€${confirmPkg.yearly_eur}`, color: "#FFD700" },
+                        ].map(s => (
+                          <div key={s.label} className="rounded-xl p-2 text-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}10` }}>
+                            <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
+                            <p className="text-[9px] font-mono text-white/25">{s.sub}</p>
+                            <p className="text-[7px] text-white/15 uppercase mt-0.5">{s.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div data-testid="mining-shop-no-projection" className="rounded-xl border border-amber-300/15 bg-amber-300/[0.06] px-3 py-3 text-center text-[10px] leading-relaxed text-amber-100/75">
+                        Keine BLZ-, EUR- oder ROI-Ertragsprojektion ohne verifizierten Mining-/Settlement-Provider.
+                      </div>
+                    )}
 
                     {/* Price + Balance */}
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] text-white/40">{t("mining.today_due") || "Heute fällig"}</span>
+                      <span className="text-[11px] text-white/40">
+                        {miningValueEnabled ? (t("mining.today_due") || "Heute fällig") : "Vorschaupreis"}
+                      </span>
                       <span className="text-[16px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{price.toFixed(2)}</span>
                     </div>
 
-                    <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
-                      <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
-                      <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
-                    </div>
-
-                    {!canAfford && (
-                      <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium px-1">
-                        {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
+                    {(miningValueEnabled || miningOrderEnabled) ? (
+                      <>
+                        <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
+                          <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
+                        </div>
+                        {!canAfford && (
+                          <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium px-1">
+                            {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
+                          </p>
+                        )}
+                        {!miningValueEnabled && miningOrderEnabled && (
+                          <p className="rounded-xl border border-[#00E89D]/10 bg-[#00E89D]/5 px-3 py-2 text-center text-[9px] text-[#00E89D]/75" data-testid="mining-order-note">
+                            Bestellung und Zahlung sind aktiv. Mining/BLZ starten erst nach verifizierter Provider-Anbindung.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="rounded-xl border border-amber-300/10 bg-amber-300/5 px-3 py-2 text-center text-[9px] text-amber-200/70" data-testid="mining-shop-preview-note">
+                        Preview-only · Bestellung derzeit nicht verfügbar.
                       </p>
                     )}
 
@@ -1073,7 +1733,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       </div>
                     )}
 
-                    {billingType !== "onetime" && (
+                    {billingType !== "onetime" && miningValueEnabled && (
                       <p className="text-[8px] text-white/15 text-center">
                         {billingType === "monthly"
                           ? (t("mining.renew_monthly") || `Verlängert sich automatisch für €${price.toFixed(2)} / Monat`)
@@ -1084,13 +1744,29 @@ export default function MiningPage({ onBack, onNavigate }) {
                     {/* Buy Button */}
                     <motion.button
                       data-testid="confirm-buy-btn"
-                      onClick={() => buyMiner(confirmPkg.id)}
-                      disabled={buying || !canAfford}
-                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${!canAfford ? "opacity-40 cursor-not-allowed" : ""}`}
-                      style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}
-                      whileTap={canAfford ? { scale: 0.96 } : {}}>
+                      onClick={() => {
+                        if (!canAfford && (miningValueEnabled || miningOrderEnabled)) {
+                          onNavigate?.("/wallet");
+                          return;
+                        }
+                        buyMiner(confirmPkg.id);
+                      }}
+                      disabled={buying || (!miningValueEnabled && !miningOrderEnabled)}
+                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${(!miningValueEnabled && !miningOrderEnabled) ? "opacity-40 cursor-not-allowed" : ""}`}
+                      style={{
+                        background: (canAfford || miningOrderEnabled) ? `${color}15` : "rgba(255,255,255,0.02)",
+                        color: (canAfford || miningOrderEnabled) ? color : "rgba(255,255,255,0.2)",
+                        border: `1px solid ${(canAfford || miningOrderEnabled) ? `${color}25` : "rgba(255,255,255,0.04)"}`,
+                      }}
+                      whileTap={(miningValueEnabled || miningOrderEnabled) ? { scale: 0.96 } : {}}>
                       {buying ? <Loader2 size={14} className="animate-spin" /> : (
-                        <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                        !canAfford && (miningValueEnabled || miningOrderEnabled)
+                          ? <>Wallet aufladen <ChevronRight size={14} /></>
+                          : miningValueEnabled
+                            ? <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                            : miningOrderEnabled
+                              ? <>Jetzt bestellen <ChevronRight size={14} /></>
+                              : <>Nicht verfügbar <ChevronRight size={14} /></>
                       )}
                     </motion.button>
                   </motion.div>
@@ -1125,8 +1801,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                     </select>
                     <input data-testid="list-price-input" type="number" step="1" min="1" placeholder="BLZ" value={listPrice} onChange={e => setListPrice(e.target.value)}
                       className="w-24 px-3 py-2 rounded-xl text-[11px] bg-white/[0.03] border border-white/[0.06] text-white/70 outline-none font-mono" />
-                    <motion.button data-testid="list-miner-btn" onClick={listMinerForSale} disabled={listing || !listMiner || !listPrice}
-                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/15 disabled:opacity-30"
+                    <motion.button data-testid="list-miner-btn" onClick={listMinerForSale} disabled={listing || !listMiner || !listPrice || !miningValueEnabled}
+                      title={!miningValueEnabled ? "Mining Marketplace ist in Production nur als Preview verfügbar." : undefined}
+                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/15 disabled:opacity-30 disabled:cursor-not-allowed"
                       whileTap={{ scale: 0.95 }}>
                       {listing ? <Loader2 size={10} className="animate-spin" /> : <><Tag size={10} className="inline mr-1" />{t("mining.mkt_list") || "List"}</>}
                     </motion.button>
@@ -1136,10 +1813,14 @@ export default function MiningPage({ onBack, onNavigate }) {
 
               {/* Listings */}
               {marketplace.length === 0 && (
-                <div className="text-center py-10">
+                <div className="text-center py-10" data-testid="mining-marketplace-empty">
                   <ShoppingBag size={28} className="mx-auto text-white/10 mb-2" />
                   <p className="text-[12px] text-white/25">{t("mining.mkt_empty") || "No listings yet"}</p>
-                  <p className="text-[10px] text-white/15">{t("mining.mkt_empty_d") || "Be the first to list a miner for sale"}</p>
+                  <p className="text-[10px] text-white/15">
+                    {miningValueEnabled
+                      ? (t("mining.mkt_empty_d") || "Be the first to list a miner for sale")
+                      : "Marketplace Preview · Handel wird erst mit verifiziertem Mining-/Settlement-Provider aktiviert."}
+                  </p>
                 </div>
               )}
 
@@ -1173,7 +1854,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                         <motion.button onClick={() => cancelListing(ls.listing_id)} className="px-3 py-1.5 rounded-lg text-[9px] font-semibold bg-white/[0.03] text-white/30 border border-white/[0.05]"
                           whileTap={{ scale: 0.95 }}><X size={9} className="inline mr-0.5" /> {t("mining.mkt_cancel") || "Cancel"}</motion.button>
                       ) : (
-                        <motion.button data-testid={`buy-listing-${ls.listing_id}`} onClick={() => buyFromMarketplace(ls.listing_id)} disabled={buyingListing === ls.listing_id}
+                        <motion.button data-testid={`buy-listing-${ls.listing_id}`} onClick={() => buyFromMarketplace(ls.listing_id)} disabled={buyingListing === ls.listing_id || !miningValueEnabled}
                           className="px-4 py-1.5 rounded-lg text-[9px] font-bold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
                           whileTap={{ scale: 0.95 }}>
                           {buyingListing === ls.listing_id ? <Loader2 size={10} className="animate-spin" /> : (t("mining.mkt_buy") || "Buy")}
@@ -1189,6 +1870,18 @@ export default function MiningPage({ onBack, onNavigate }) {
           {/* ════ CARD ════ */}
           {tab === "card" && (
             <motion.div key="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {!cardData?.card && (
+                <div
+                  className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] px-4 py-5 text-center"
+                  data-testid="mining-card-preview-unavailable"
+                >
+                  <CreditCard size={28} className="mx-auto mb-2 text-amber-300/70" />
+                  <p className="text-[13px] font-bold text-amber-200">Mining Card noch nicht live</p>
+                  <p className="mt-2 text-[10px] leading-relaxed text-white/40">
+                    {cardData?.message || data?.capabilities?.production_message || "Die Mining Card wird erst nach Anbindung eines verifizierten Karten-Issuers aktiviert."}
+                  </p>
+                </div>
+              )}
               {cardData?.card && (() => {
                 const c = cardData.card;
                 const cardColor = c.color || "#C0C0C0";
@@ -1206,7 +1899,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <CreditCard size={16} style={{ color: cardColor }} />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: cardColor }}>{c.tier_name} Card</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: cardColor }}>{c.tier_name} {c.is_demo ? "Test Card" : "Card"}</span>
                           </div>
                           <motion.button data-testid="card-freeze-btn" onClick={toggleCardFreeze} whileTap={{ scale: 0.9 }}
                             className={`px-2.5 py-1 rounded-lg text-[9px] font-semibold flex items-center gap-1 ${c.frozen ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15" : "bg-white/[0.04] text-white/30 border border-white/[0.05]"}`}>
@@ -1237,11 +1930,11 @@ export default function MiningPage({ onBack, onNavigate }) {
                     {/* Card Stats */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                        <p className="text-[12px] font-bold font-outfit text-white/60">{"\u20AC"}{c.total_spent?.toFixed(2) || "0.00"}</p>
+                        <p className="text-[12px] font-bold font-outfit text-white/60">{"\u20AC"}{miningFixed(c.total_spent, 2)}</p>
                         <p className="text-[8px] text-white/15 uppercase">{t("mining.card_spent") || "Total Spent"}</p>
                       </div>
                       <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                        <p className="text-[12px] font-bold font-outfit text-[#00E89D]">{c.total_cashback?.toFixed(2) || "0"} BLZ</p>
+                        <p className="text-[12px] font-bold font-outfit text-[#00E89D]">{miningFixed(c.total_cashback, 2)} BLZ</p>
                         <p className="text-[8px] text-white/15 uppercase">{t("mining.card_cashback_total") || "Total Cashback"}</p>
                       </div>
                     </div>
@@ -1268,7 +1961,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                               {isCurrent ? (
                                 <span className="text-[8px] font-bold text-[#00E89D] uppercase">Current</span>
                               ) : !isLocked ? (
-                                <motion.button data-testid={`upgrade-card-${tier.tier}`} onClick={() => upgradeCard(tier.tier)}
+                                <motion.button data-testid={`upgrade-card-${tier.tier}`} onClick={() => upgradeCard(tier.tier)} disabled={!miningValueEnabled}
                                   className="px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: `${tier.color}12`, color: tier.color, border: `1px solid ${tier.color}20` }}
                                   whileTap={{ scale: 0.95 }}>{tier.cost_blz} BLZ</motion.button>
                               ) : (
@@ -1295,7 +1988,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                                 <p className="text-[8px] text-white/15">{tx.created_at?.slice(0, 16)}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[11px] font-bold font-mono text-[#FF4757]">-{"\u20AC"}{tx.amount_eur?.toFixed(2)}</p>
+                                <p className="text-[11px] font-bold font-mono text-[#FF4757]">-{"\u20AC"}{miningFixed(tx.amount_eur, 2)}</p>
                                 {tx.cashback_blz > 0 && <p className="text-[8px] text-[#00E89D] font-mono">+{tx.cashback_blz} BLZ</p>}
                               </div>
                             </div>
@@ -1318,9 +2011,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               </div>
 
               {launchpad.length === 0 && (
-                <div className="text-center py-10">
+                <div className="text-center py-10" data-testid="mining-launchpad-empty">
                   <Rocket size={28} className="mx-auto text-white/10 mb-2" />
                   <p className="text-[12px] text-white/25">{t("mining.lp_empty") || "No active launches"}</p>
+                  {!miningValueEnabled && (
+                    <p className="mt-1 text-[10px] text-white/15">
+                      Launchpad Preview · Käufe werden erst nach Live-Provider-Anbindung freigeschaltet.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1389,7 +2087,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                           <p className="text-[18px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{p.price_eur}</p>
                           <p className="text-[9px] text-white/15">{p.price_blz} BLZ</p>
                         </div>
-                        <motion.button data-testid={`buy-launch-${p.project_id}`} onClick={() => buyLaunchpad(p.project_id)} disabled={buyingLaunch === p.project_id || remaining <= 0}
+                        <motion.button data-testid={`buy-launch-${p.project_id}`} onClick={() => buyLaunchpad(p.project_id)} disabled={buyingLaunch === p.project_id || remaining <= 0 || !miningValueEnabled}
                           className="px-5 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 disabled:opacity-30"
                           style={{ background: `${color}12`, color, border: `1px solid ${color}20` }}
                           whileTap={{ scale: 0.96 }}>
@@ -1407,6 +2105,11 @@ export default function MiningPage({ onBack, onNavigate }) {
           {/* ════ VIP ════ */}
           {tab === "vip" && (
             <motion.div key="vip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {!miningValueEnabled && (
+                <div data-testid="mining-vip-preview-note" className="rounded-xl border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2.5 text-center text-[10px] leading-relaxed text-amber-100/70">
+                  VIP Preview · Hashrate-Stufen und Bonusregeln sind Testwerte und bleiben bis zur verifizierten Mining-/Settlement-Anbindung deaktiviert.
+                </div>
+              )}
               {/* Current VIP */}
               <motion.div className="rounded-2xl p-5 text-center relative overflow-hidden"
                 style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}08`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}15` }}
@@ -1414,7 +2117,9 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 0%, ${VIP_COLORS[vip.name]}08 0%, transparent 60%)` }} />
                 <Star size={32} className="mx-auto mb-2" style={{ color: VIP_COLORS[vip.name] }} />
                 <p className="text-[20px] font-bold font-outfit" style={{ color: VIP_COLORS[vip.name] }}>{vip.name}</p>
-                <p className="text-[11px] text-white/30 mt-1">+{((vip.bonus || 0) * 100).toFixed(0)}% Mining Bonus</p>
+                <p className="text-[11px] text-white/30 mt-1">
+                  {miningValueEnabled ? `+${((vip.bonus || 0) * 100).toFixed(0)}% Mining Bonus` : "Mining Bonus deaktiviert"}
+                </p>
 
                 {vip.next_level && (
                   <div className="mt-4">
@@ -1426,7 +2131,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <motion.div className="h-full rounded-full" style={{ background: VIP_COLORS[vip.name] }}
                         initial={{ width: 0 }} animate={{ width: `${vip.progress || 0}%` }} transition={{ duration: 0.6 }} />
                     </div>
-                    <p className="text-[9px] text-white/15 mt-1">{m.total_hashrate?.toFixed(0) || 0} / {vip.next_level.min_hashrate} TH/s ({vip.progress?.toFixed(0) || 0}%)</p>
+                    <p className="text-[9px] text-white/15 mt-1">{miningFixed(m.total_hashrate, 0)} / {vip.next_level.min_hashrate} TH/s ({miningFixed(vip.progress, 0)}%)</p>
                   </div>
                 )}
               </motion.div>
@@ -1455,8 +2160,10 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <p className="text-[9px] text-white/15">{lv.hash} TH/s required</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[12px] font-bold font-mono" style={{ color: lv.color }}>{lv.bonus}</p>
-                      <p className="text-[8px] text-white/15">bonus</p>
+                      <p className="text-[12px] font-bold font-mono" style={{ color: lv.color }}>
+                        {miningValueEnabled ? lv.bonus : "Preview"}
+                      </p>
+                      <p className="text-[8px] text-white/15">{miningValueEnabled ? "bonus" : "test rule"}</p>
                     </div>
                     {isActive && (
                       <div className="w-2 h-2 rounded-full" style={{ background: lv.color, boxShadow: `0 0 8px ${lv.color}` }} />
@@ -1486,7 +2193,7 @@ export default function MiningPage({ onBack, onNavigate }) {
               </motion.div>
               <motion.h3 className="text-[22px] font-bold font-outfit text-white mb-1"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                {t("mining.success_title") || "Miner Activated!"}
+                {purchaseSuccess.activation_pending ? "Bestellung bezahlt" : (t("mining.success_title") || "Miner aktiviert!")}
               </motion.h3>
               <motion.p className="text-[13px] text-white/40 mb-2"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
@@ -1494,12 +2201,14 @@ export default function MiningPage({ onBack, onNavigate }) {
               </motion.p>
               <motion.p className="text-[11px] text-[#00E89D]/60 mb-1"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
-                {t("mining.success_desc") || "Your miner is now earning BLZ tokens!"}
+                {purchaseSuccess.activation_pending
+                  ? "Zahlung erfolgreich. Miner-Aktivierung folgt nach verifizierter Provider-Anbindung."
+                  : (t("mining.success_desc") || "Dein Miner ist jetzt aktiv.")}
               </motion.p>
               {purchaseSuccess.new_balance != null && (
                 <motion.p className="text-[10px] text-white/20 font-mono"
                   initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
-                  {t("mining.new_balance") || "New balance"}: {"\u20AC"}{purchaseSuccess.new_balance.toFixed(2)}
+                  {t("mining.new_balance") || "New balance"}: {"\u20AC"}{miningFixed(purchaseSuccess.new_balance, 2)}
                 </motion.p>
               )}
             </motion.div>

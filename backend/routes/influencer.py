@@ -4,9 +4,10 @@ Multi-level commission tracking, admin-configurable rates, bonus campaigns.
 """
 import secrets
 import logging
+import hashlib
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 from core.database import db
@@ -86,9 +87,9 @@ async def get_referral_stats(request: Request):
 # ══════════════════════════════════════
 
 class UpdateConfigReq(BaseModel):
-    influencer_rate: Optional[float] = None
-    manager_rate: Optional[float] = None
-    min_payout: Optional[float] = None
+    influencer_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    manager_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    min_payout: Optional[float] = Field(default=None, ge=0, le=100000, allow_inf_nan=False)
 
 
 @router.post("/admin/config")
@@ -123,8 +124,8 @@ async def get_global_config(request: Request):
 # ── Admin: Create/Update Influencer ──
 class CreateInfluencerReq(BaseModel):
     user_email: str
-    type: str = "influencer"  # influencer | manager
-    commission_rate: Optional[float] = None
+    type: str = Field(default="influencer", pattern="^(influencer|manager)$")
+    commission_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     manager_id: Optional[str] = None
 
 
@@ -160,9 +161,9 @@ async def create_influencer(req: CreateInfluencerReq, request: Request):
 # ── Admin: Update commission rate per influencer ──
 class UpdateInfluencerReq(BaseModel):
     user_id: str
-    commission_rate: Optional[float] = None
+    commission_rate: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     manager_id: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = Field(default=None, pattern="^(active|inactive|suspended)$")
 
 
 @router.post("/admin/update")
@@ -217,8 +218,8 @@ async def assign_manager(req: AssignManagerReq, request: Request):
 
 # ── Admin: Create bonus campaign ──
 class BonusCampaignReq(BaseModel):
-    name: str
-    bonus_rate: float
+    name: str = Field(..., min_length=2, max_length=120)
+    bonus_rate: float = Field(..., ge=0, le=100, allow_inf_nan=False)
     start_date: str
     end_date: str
 
@@ -246,63 +247,160 @@ async def create_campaign(req: BonusCampaignReq, request: Request):
 # COMMISSION PROCESSING (called from purchase flow)
 # ══════════════════════════════════════
 
-async def process_commission(buyer_id: str, purchase_amount: float, purchase_ref: str):
-    """Process influencer + manager commission on a purchase.
-    Commissions are paid as bid_credits (Reward Balance) — no real money payouts.
-    Credits are added to the influencer/manager wallet automatically.
-    """
-    buyer = await db.users.find_one({"_id": ObjectId(buyer_id)})
-    if not buyer:
-        return
-    inf_id = buyer.get("referred_by_influencer")
-    if not inf_id:
-        return
-    inf = await db.influencers.find_one({"user_id": inf_id, "status": "active"})
-    if not inf:
-        return
-    cfg = await get_config()
-    now = datetime.now(timezone.utc).isoformat()
-    bonus = 0
-    campaigns = await db.bonus_campaigns.find({"status": "active", "start_date": {"$lte": now}, "end_date": {"$gte": now}}).to_list(5)
-    for c in campaigns:
-        bonus += c.get("bonus_rate", 0)
-    # Influencer commission — paid as credits
-    rate = inf.get("commission_rate") or cfg.get("influencer_rate", 10.0)
-    rate += bonus
-    commission_credits = max(1, round(purchase_amount * (rate / 100)))
-    await db.commissions.insert_one({
-        "influencer_id": inf_id,
+async def _grant_commission_credits_once(
+    *,
+    recipient_id: str,
+    buyer_id: str,
+    purchase_ref: str,
+    credits: int,
+    rate: float,
+    kind: str,
+    now: str,
+) -> dict:
+    """Grant one influencer/manager bid-credit commission exactly once."""
+    scope = f"{buyer_id}:{purchase_ref}:{recipient_id}:{kind}"
+    marker_hash = hashlib.sha256(scope.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"influencer_commission_markers.{marker_hash}"
+    commission_id = f"COMM-{marker_hash.upper()}"
+    payload = {
+        "influencer_id": recipient_id,
         "buyer_id": buyer_id,
         "purchase_ref": purchase_ref,
-        "amount": commission_credits,
-        "rate": rate,
-        "type": "direct",
-        "status": "credited",
-        "created_at": now,
-    })
-    # Auto-add credits to influencer wallet
-    await db.users.update_one(
-        {"_id": ObjectId(inf_id)},
-        {"$inc": {"bid_credits": commission_credits, "total_reward_credits": commission_credits}},
+        "amount": int(credits),
+        "rate": float(rate),
+        "type": kind,
+    }
+
+    await db.commissions.update_one(
+        {"_id": commission_id},
+        {"$setOnInsert": {
+            "_id": commission_id,
+            **payload,
+            "status": "pending",
+            "created_at": now,
+        }},
+        upsert=True,
     )
-    # Manager override commission — paid as credits
-    mgr_id = inf.get("manager_id")
-    if mgr_id:
-        mgr = await db.influencers.find_one({"user_id": mgr_id, "type": "manager", "status": "active"})
-        if mgr:
-            mgr_rate = mgr.get("commission_rate") or cfg.get("manager_rate", 3.0)
-            mgr_credits = max(1, round(purchase_amount * (mgr_rate / 100)))
-            await db.commissions.insert_one({
-                "influencer_id": mgr_id,
-                "buyer_id": buyer_id,
-                "purchase_ref": purchase_ref,
-                "amount": mgr_credits,
-                "rate": mgr_rate,
-                "type": "override",
-                "status": "credited",
-                "created_at": now,
-            })
-            await db.users.update_one(
-                {"_id": ObjectId(mgr_id)},
-                {"$inc": {"bid_credits": mgr_credits, "total_reward_credits": mgr_credits}},
+    saved = await db.commissions.find_one({"_id": commission_id}, {"_id": 0}) or {}
+    for key, value in payload.items():
+        if saved.get(key) != value:
+            logger.error("Commission idempotency payload mismatch: %s", commission_id)
+            return {"ok": False, "status": "reconciliation_required", "commission_id": commission_id}
+    if saved.get("status") == "credited":
+        return {"ok": True, "replayed": True, "commission_id": commission_id}
+
+    recipient_oid = ObjectId(recipient_id) if ObjectId.is_valid(recipient_id) else recipient_id
+    applied = await db.users.update_one(
+        {"_id": recipient_oid, marker_field: {"$exists": False}},
+        {
+            "$inc": {
+                "bid_credits": int(credits),
+                "total_reward_credits": int(credits),
+            },
+            "$set": {
+                marker_field: {
+                    "commission_id": commission_id,
+                    "purchase_ref": purchase_ref,
+                    "credits": int(credits),
+                    "created_at": now,
+                }
+            },
+        },
+    )
+    if applied.modified_count != 1:
+        marker_exists = await db.users.find_one(
+            {"_id": recipient_oid, marker_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not marker_exists:
+            await db.commissions.update_one(
+                {"_id": commission_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
             )
+            return {"ok": False, "status": "reconciliation_required", "commission_id": commission_id}
+
+    await db.commissions.update_one(
+        {"_id": commission_id},
+        {"$set": {
+            "status": "credited",
+            "credited_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {
+        "ok": True,
+        "replayed": applied.modified_count != 1,
+        "commission_id": commission_id,
+    }
+
+
+async def process_commission(buyer_id: str, purchase_amount: float, purchase_ref: str):
+    """Process influencer + manager bid-credit commission exactly once per purchase."""
+    purchase_amount = float(purchase_amount)
+    if purchase_amount <= 0 or purchase_amount > 1_000_000 or not purchase_ref:
+        return {"ok": False, "reason": "invalid_purchase"}
+    buyer_oid = ObjectId(buyer_id) if ObjectId.is_valid(buyer_id) else buyer_id
+    buyer = await db.users.find_one({"_id": buyer_oid})
+    if not buyer:
+        return {"ok": False, "reason": "buyer_not_found"}
+
+    inf_id = str(buyer.get("referred_by_influencer") or "")
+    if not inf_id:
+        return {"ok": False, "reason": "no_influencer"}
+    inf = await db.influencers.find_one({"user_id": inf_id, "status": "active"})
+    if not inf:
+        return {"ok": False, "reason": "influencer_inactive"}
+
+    cfg = await get_config()
+    now = datetime.now(timezone.utc).isoformat()
+    bonus = 0.0
+    campaigns = await db.bonus_campaigns.find({
+        "status": "active",
+        "start_date": {"$lte": now},
+        "end_date": {"$gte": now},
+    }).to_list(5)
+    for campaign in campaigns:
+        bonus += float(campaign.get("bonus_rate", 0) or 0)
+
+    rate = float(inf.get("commission_rate") or cfg.get("influencer_rate", 10.0)) + bonus
+    commission_credits = max(1, round(float(purchase_amount) * (rate / 100)))
+    direct = await _grant_commission_credits_once(
+        recipient_id=inf_id,
+        buyer_id=buyer_id,
+        purchase_ref=purchase_ref,
+        credits=commission_credits,
+        rate=rate,
+        kind="direct",
+        now=now,
+    )
+    if not direct.get("ok"):
+        logger.error("Influencer commission requires reconciliation: %s", direct)
+        return direct
+
+    manager_result = None
+    mgr_id = str(inf.get("manager_id") or "")
+    if mgr_id:
+        mgr = await db.influencers.find_one({
+            "user_id": mgr_id,
+            "type": "manager",
+            "status": "active",
+        })
+        if mgr:
+            mgr_rate = float(mgr.get("commission_rate") or cfg.get("manager_rate", 3.0))
+            mgr_credits = max(1, round(float(purchase_amount) * (mgr_rate / 100)))
+            manager_result = await _grant_commission_credits_once(
+                recipient_id=mgr_id,
+                buyer_id=buyer_id,
+                purchase_ref=purchase_ref,
+                credits=mgr_credits,
+                rate=mgr_rate,
+                kind="override",
+                now=now,
+            )
+            if not manager_result.get("ok"):
+                logger.error("Manager commission requires reconciliation: %s", manager_result)
+
+    return {"ok": True, "direct": direct, "manager": manager_result}
+

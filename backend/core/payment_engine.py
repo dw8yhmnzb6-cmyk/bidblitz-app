@@ -6,6 +6,7 @@ and full audit logging. ALL money flows must go through this module.
 
 import secrets
 import hashlib
+import math
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from enum import Enum
@@ -13,6 +14,7 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.merchant_commission import MIN_MERCHANT_COMMISSION_RATE, effective_merchant_rate
 from core.canonical_wallet_service import (
     credit_canonical_balance,
     debit_canonical_balance,
@@ -29,6 +31,7 @@ class TransactionStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REVERSED = "reversed"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
 
 
 class TransactionType(str, Enum):
@@ -39,6 +42,7 @@ class TransactionType(str, Enum):
     RESALE_PURCHASE = "resale_purchase"
     RESALE_SALE = "resale_sale"
     REWARD = "reward"  # Gaming rewards
+    LOYALTY_CASHBACK = "loyalty_cashback"
     AUCTION_BID = "auction_bid"
     AUCTION_WIN = "auction_win"
     MINING_PURCHASE = "mining_purchase"
@@ -144,6 +148,7 @@ class PaymentResult(BaseModel):
     new_balance: Optional[float] = None
     error: Optional[str] = None
     status: TransactionStatus = TransactionStatus.PENDING
+    idempotent_replay: bool = False
 
 
 def build_wallet_ledger_metadata(
@@ -197,7 +202,9 @@ async def debit_wallet(
     - Full audit logging
     """
     
-    ref = reference or generate_reference()
+    # With an explicit key, canonical recovery owns the persisted reference.
+    # Generating a fresh one here turns a valid retry into a payload conflict.
+    ref = reference if idempotency_key else (reference or generate_reference())
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
     result = await debit_canonical_balance(
@@ -219,6 +226,7 @@ async def debit_wallet(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
@@ -241,7 +249,7 @@ async def credit_wallet(
     - Full audit logging
     """
     
-    ref = reference or generate_reference()
+    ref = reference if idempotency_key else (reference or generate_reference())
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
     result = await credit_canonical_balance(
@@ -261,6 +269,7 @@ async def credit_wallet(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
@@ -272,14 +281,15 @@ async def transfer_between_wallets(
     description: str,
     reference: Optional[str] = None,
     metadata: Optional[Dict] = None,
+    idempotency_key: Optional[str] = None,
 ) -> PaymentResult:
     """
     Transfer between two wallets atomically.
     Either both succeed or both fail.
     """
     
-    ref = reference or generate_reference("TRF")
-    idem = compute_idempotency_key(from_user_id, f"{tx_type.value}_transfer", amount, ref)
+    ref = reference if idempotency_key else (reference or generate_reference("TRF"))
+    idem = idempotency_key or compute_idempotency_key(from_user_id, f"{tx_type.value}_transfer", amount, ref)
     result = await transfer_canonical_balance(
         from_user_id=from_user_id,
         to_user_id=to_user_id,
@@ -297,6 +307,7 @@ async def transfer_between_wallets(
         new_balance=result.new_balance,
         error=result.error,
         status=TransactionStatus(result.status),
+        idempotent_replay=getattr(result, "idempotent_replay", False),
     )
 
 
@@ -424,74 +435,13 @@ async def transfer_to_child(
     parent_id: str,
     child_id: str,
     amount: float,
-    note: Optional[str] = None
+    note: Optional[str] = None,
 ) -> PaymentResult:
-    """
-    Transfer from parent wallet to child wallet.
-    """
-    
-    if amount <= 0:
-        return PaymentResult(success=False, error="Amount must be positive", status=TransactionStatus.FAILED)
-    
-    amount = round(amount, 2)
-    ref = generate_reference("KIDS")
-    
-    # Check parent balance
-    try:
-        parent_balance = await get_user_balance(parent_id)
-    except ValueError:
-        return PaymentResult(success=False, error="Parent not found", status=TransactionStatus.FAILED)
-    
-    if parent_balance < amount:
-        return PaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{parent_balance:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Check child exists
-    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
-    if not child:
-        return PaymentResult(success=False, error="Child not found", status=TransactionStatus.FAILED)
-    
-    # Debit parent
-    debit_result = await debit_wallet(
-        user_id=parent_id,
-        amount=amount,
-        tx_type=TransactionType.KIDS_TRANSFER,
-        description=f"Transfer to {child.get('name', 'child')}",
-        reference=ref,
-        metadata={"child_id": child_id, "note": note}
-    )
-    
-    if not debit_result.success:
-        return debit_result
-    
-    # Credit child balance in kids_children collection
-    await db.kids_children.update_one(
-        {"child_id": child_id},
-        {"$inc": {"balance": amount}}
-    )
-    
-    # Record child transaction
-    await db.kids_transactions.insert_one({
-        "id": generate_transaction_id(),
-        "child_id": child_id,
-        "parent_id": parent_id,
-        "type": "allowance",
-        "amount": amount,
-        "description": note or f"From {(await db.users.find_one({'_id': ObjectId(parent_id)})).get('name', 'Parent')}",
-        "reference": ref,
-        "status": "completed",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
+    """Legacy helper disabled; canonical Kids transfers live in routes.kids."""
     return PaymentResult(
-        success=True,
-        transaction_id=debit_result.transaction_id,
-        reference=ref,
-        new_balance=debit_result.new_balance,
-        status=TransactionStatus.COMPLETED
+        success=False,
+        error="Legacy Kids transfer helper is disabled. Use the canonical Kids transfer route.",
+        status=TransactionStatus.FAILED,
     )
 
 
@@ -499,95 +449,14 @@ async def process_child_payment(
     child_id: str,
     amount: float,
     merchant_name: Optional[str] = None,
-    description: Optional[str] = None
+    description: Optional[str] = None,
 ) -> PaymentResult:
-    """
-    Process payment from child wallet with limit enforcement.
-    """
-    
-    if amount <= 0:
-        return PaymentResult(success=False, error="Amount must be positive", status=TransactionStatus.FAILED)
-    
-    amount = round(amount, 2)
-    
-    # Get child
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        return PaymentResult(success=False, error="Child not found", status=TransactionStatus.FAILED)
-    
-    # Check frozen
-    if child.get("is_frozen"):
-        return PaymentResult(success=False, error="Wallet is frozen", status=TransactionStatus.FAILED)
-    
-    # Check balance
-    balance = child.get("balance", 0)
-    if balance < amount:
-        return PaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{balance:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Check daily limit
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    
-    today_txns = await db.kids_transactions.find({
-        "child_id": child_id,
-        "type": "payment",
-        "created_at": {"$gte": today_start}
-    }).to_list(100)
-    
-    today_spent = sum(abs(tx.get("amount", 0)) for tx in today_txns if tx.get("amount", 0) < 0)
-    daily_limit = child.get("daily_limit", 20)
-    
-    if today_spent + amount > daily_limit:
-        return PaymentResult(
-            success=False,
-            error=f"Daily limit exceeded. Spent: €{today_spent:.2f}, Limit: €{daily_limit:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Process payment
-    ref = generate_reference("KIDPAY")
-    
-    result = await db.kids_children.update_one(
-        {"child_id": child_id, "balance": {"$gte": amount}},
-        {"$inc": {"balance": -amount, "total_spent": amount}}
-    )
-    
-    if result.modified_count == 0:
-        return PaymentResult(
-            success=False,
-            error="Balance changed. Please try again.",
-            status=TransactionStatus.FAILED
-        )
-    
-    # Record transaction
-    tx_id = generate_transaction_id()
-    await db.kids_transactions.insert_one({
-        "id": tx_id,
-        "child_id": child_id,
-        "parent_id": child.get("parent_id"),
-        "type": "payment",
-        "amount": -amount,
-        "description": description or "Payment",
-        "merchant_name": merchant_name or "Shop",
-        "reference": ref,
-        "status": "completed",
-        "created_at": now.isoformat()
-    })
-    
-    updated_child = await db.kids_children.find_one({"child_id": child_id})
-    
+    """Legacy helper disabled; canonical Kids payments live in routes.kids."""
     return PaymentResult(
-        success=True,
-        transaction_id=tx_id,
-        reference=ref,
-        new_balance=updated_child.get("balance", 0),
-        status=TransactionStatus.COMPLETED
+        success=False,
+        error="Legacy Kids payment helper is disabled. Use the canonical Kids payment route.",
+        status=TransactionStatus.FAILED,
     )
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -656,8 +525,12 @@ async def get_commission_rate(payment_type: str) -> float:
     """Get commission rate from admin config or use default."""
     config = await db.platform_config.find_one({"key": "commissions"})
     if config and config.get("rates", {}).get(payment_type) is not None:
-        return config["rates"][payment_type]
-    return DEFAULT_COMMISSIONS.get(payment_type, 0.05)
+        rate = config["rates"][payment_type]
+    else:
+        rate = DEFAULT_COMMISSIONS.get(payment_type, 0.05)
+    if payment_type == "merchant":
+        return effective_merchant_rate(rate, DEFAULT_COMMISSIONS["merchant"])
+    return rate
 
 
 async def get_cashback_rate(user_id: str) -> float:
@@ -693,207 +566,17 @@ async def get_referrer(user_id: str) -> Optional[str]:
 
 
 async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentResult:
+    """Legacy processor retained only as a fail-closed compatibility boundary.
+
+    Active money flows must use debit_wallet, credit_wallet, or
+    transfer_between_wallets so idempotency, recovery, and canonical ledgers
+    remain authoritative.
     """
-    CENTRAL PAYMENT PROCESSOR
-    
-    Handles ALL payment types with:
-    1. Balance validation
-    2. Atomic deduction
-    3. Commission calculation
-    4. Auto-distribution to recipient
-    5. Referral rewards
-    6. Cashback
-    7. Activity tracking
-    8. Notifications
-    """
-    
-    user_id = req.user_id
-    amount = round(req.amount, 2)
-    payment_type = req.payment_type.value
-    
-    if amount <= 0:
-        return CentralPaymentResult(success=False, error="Amount must be positive")
-    
-    # 1. Get user and validate balance
-    try:
-        current_balance = await get_user_balance(user_id)
-    except ValueError as e:
-        return CentralPaymentResult(success=False, error=str(e))
-    
-    if current_balance < amount:
-        return CentralPaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{current_balance:.2f}, Required: €{amount:.2f}"
-        )
-    
-    now = datetime.now(timezone.utc)
-    tx_id = generate_transaction_id()
-    ref = generate_reference(payment_type.upper()[:3])
-    
-    # 2. Calculate commission
-    commission_rate = await get_commission_rate(payment_type)
-    platform_fee = round(amount * commission_rate, 2)
-    recipient_amount = round(amount - platform_fee, 2)
-    
-    # 3. Debit user wallet (atomic)
-    debit_result = await db.users.update_one(
-        {
-            "_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id,
-            "balance": {"$gte": amount}
-        },
-        {"$inc": {"balance": -amount}}
-    )
-    
-    if debit_result.modified_count == 0:
-        return CentralPaymentResult(success=False, error="Balance changed during transaction")
-    
-    # 4. Create transaction record
-    transaction = {
-        "id": tx_id,
-        "user_id": user_id,
-        "type": payment_type,
-        "amount": -amount,
-        "description": req.description or f"{payment_type.title()} Payment",
-        "reference": ref,
-        "reference_id": req.reference_id,
-        "status": "completed",
-        "platform_fee": platform_fee,
-        "recipient_id": req.recipient_id,
-        "recipient_amount": recipient_amount if req.recipient_id else None,
-        "metadata": req.metadata or {},
-        "created_at": now.isoformat(),
-    }
-    await db.transactions.insert_one(transaction)
-    
-    # 5. Credit recipient if exists (driver, seller, merchant)
-    if req.recipient_id:
-        await db.users.update_one(
-            {"_id": ObjectId(req.recipient_id) if ObjectId.is_valid(req.recipient_id) else req.recipient_id},
-            {"$inc": {"balance": recipient_amount}}
-        )
-        
-        # Recipient transaction record
-        await db.transactions.insert_one({
-            "id": generate_transaction_id(),
-            "user_id": req.recipient_id,
-            "type": f"{payment_type}_income",
-            "amount": recipient_amount,
-            "description": f"Einnahme: {req.description or payment_type}",
-            "reference": f"INC-{ref}",
-            "source_user_id": user_id,
-            "status": "completed",
-            "created_at": now.isoformat(),
-        })
-    
-    # 6. Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {
-            "total": platform_fee,
-            f"by_source.{payment_type}": platform_fee,
-            "transaction_count": 1,
-        }},
-        upsert=True
-    )
-    
-    # 7. Process cashback
-    cashback = 0
-    cashback_rate = await get_cashback_rate(user_id)
-    if cashback_rate > 0:
-        cashback = round(amount * cashback_rate, 2)
-        if cashback >= 0.01:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-                {"$inc": {"balance": cashback}}
-            )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": user_id,
-                "type": "cashback",
-                "amount": cashback,
-                "description": f"Cashback ({cashback_rate*100:.0f}%)",
-                "reference": f"CB-{ref}",
-                "source_tx": tx_id,
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
-    
-    # 8. Process referral reward
-    referral_reward = 0
-    referrer_id = await get_referrer(user_id)
-    if referrer_id:
-        referral_reward = round(amount * REFERRAL_REWARD_RATE, 2)
-        if referral_reward >= 0.01:
-            await db.users.update_one(
-                {"_id": ObjectId(referrer_id) if ObjectId.is_valid(referrer_id) else referrer_id},
-                {"$inc": {"balance": referral_reward}}
-            )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": referrer_id,
-                "type": "referral_reward",
-                "amount": referral_reward,
-                "description": f"Empfehlungsbonus ({REFERRAL_REWARD_RATE*100:.0f}%)",
-                "reference": f"REF-{ref}",
-                "referred_user_id": user_id,
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
-    
-    # 9. Track activity
-    await track_user_activity(user_id, payment_type, amount)
-    
-    # 10. Check and apply streaks
-    await process_streaks(user_id, payment_type)
-    
-    # 11. Process loyalty rewards (coins + cashback)
-    loyalty_rewards = {"coins_earned": 0, "cashback_earned": 0}
-    try:
-        from routes.loyalty_system import process_loyalty_rewards
-        loyalty_rewards = await process_loyalty_rewards(
-            user_id=user_id,
-            source_type=payment_type,
-            source_id=req.reference_id,
-            amount=amount,
-            tx_id=tx_id,
-        )
-    except Exception as e:
-        import logging
-        logging.getLogger("bidblitz").warning(f"Loyalty reward error: {e}")
-    
-    # Get new balance (includes cashback if awarded)
-    new_balance = await get_user_balance(user_id)
-    
-    # Log audit
-    await log_audit(
-        action=f"central_payment_{payment_type}",
-        user_id=user_id,
-        details={
-            "tx_id": tx_id,
-            "amount": amount,
-            "platform_fee": platform_fee,
-            "recipient_id": req.recipient_id,
-            "cashback": cashback,
-            "referral_reward": referral_reward,
-        },
-        status="success"
-    )
-    
     return CentralPaymentResult(
-        success=True,
-        transaction_id=tx_id,
-        reference=ref,
-        user_new_balance=new_balance,
-        recipient_earnings=recipient_amount if req.recipient_id else None,
-        platform_fee=platform_fee,
-        cashback_earned=loyalty_rewards.get("cashback_earned") or (cashback if cashback > 0 else None),
-        referral_reward=referral_reward if referral_reward > 0 else None,
+        success=False,
+        error="Legacy central payment processor is disabled. Use canonical wallet operations.",
     )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# ACTIVITY TRACKING
-# ══════════════════════════════════════════════════════════════════════════════
 
 async def track_user_activity(user_id: str, activity_type: str, amount: float):
     """Track user spending and engagement."""
@@ -1012,37 +695,42 @@ async def process_streaks(user_id: str, activity_type: str):
             {"$set": updates}
         )
     
-    # Give rewards
+    # Give rewards through the canonical wallet path exactly once per milestone.
     for reward in rewards_to_give:
-        await db.users.update_one(
-            {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-            {"$inc": {"balance": reward["amount"]}}
+        milestone_key = reward["key"]
+        result = await credit_wallet(
+            user_id=user_id,
+            amount=reward["amount"],
+            tx_type=TransactionType.REWARD,
+            description=f"Streak Bonus: {reward['milestone']} Käufe!",
+            reference=f"PURCHASE-STREAK-{user_id}-{reward['milestone']}",
+            source="purchase_streak",
+            metadata={"milestone": reward["milestone"], "milestone_key": milestone_key},
+            idempotency_key=f"purchase-streak:{user_id}:{milestone_key}",
         )
-        await db.transactions.insert_one({
-            "id": generate_transaction_id(),
-            "user_id": user_id,
-            "type": "streak_reward",
-            "amount": reward["amount"],
-            "description": f"Streak Bonus: {reward['milestone']} Käufe!",
-            "reference": generate_reference("STREAK"),
-            "status": "completed",
-            "created_at": now.isoformat(),
-        })
+        if not result.success:
+            return {"success": False, "status": result.status.value, "error": result.error}
+
         await db.user_streaks.update_one(
-            {"user_id": user_id},
-            {"$push": {"rewarded_milestones": reward["key"]}}
+            {"user_id": user_id, "rewarded_milestones": {"$ne": milestone_key}},
+            {"$addToSet": {"rewarded_milestones": milestone_key}},
         )
         
-        # Notification
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "streak_reward",
-            "title": "Streak Bonus!",
-            "message": f"Du hast {reward['milestone']} Käufe erreicht! €{reward['amount']:.2f} Bonus!",
-            "read": False,
-            "created_at": now.isoformat(),
-        })
+        # Notification is deterministic so a retry cannot duplicate it.
+        await db.notifications.update_one(
+            {"_id": f"purchase-streak:{user_id}:{milestone_key}"},
+            {"$setOnInsert": {
+                "_id": f"purchase-streak:{user_id}:{milestone_key}",
+                "id": f"purchase-streak-{user_id}-{milestone_key}",
+                "user_id": user_id,
+                "type": "streak_reward",
+                "title": "Streak Bonus!",
+                "message": f"Du hast {reward['milestone']} Käufe erreicht! €{reward['amount']:.2f} Bonus!",
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
 
 
 async def process_login_streak(user_id: str):
@@ -1089,23 +777,23 @@ async def process_login_streak(user_id: str):
     for days, reward in STREAK_REWARDS.items():
         key = f"login_{days}"
         if new_streak >= days and key not in rewarded:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-                {"$inc": {"balance": reward}}
+            # Login rewards are real EUR and must use the canonical wallet path.
+            # The milestone key is stable so retries after a process interruption
+            # cannot create a second credit.
+            result = await credit_wallet(
+                user_id=user_id,
+                amount=reward,
+                tx_type=TransactionType.REWARD,
+                description=f"Login Streak: {days} Tage!",
+                reference=f"LOGIN-STREAK-{user_id}-{days}",
+                source="login_streak",
+                idempotency_key=f"login-streak:{user_id}:{days}",
             )
-            await db.transactions.insert_one({
-                "id": generate_transaction_id(),
-                "user_id": user_id,
-                "type": "login_streak_reward",
-                "amount": reward,
-                "description": f"Login Streak: {days} Tage!",
-                "reference": generate_reference("LOGIN"),
-                "status": "completed",
-                "created_at": now.isoformat(),
-            })
+            if not result.success:
+                return {"success": False, "status": result.status.value, "error": result.error}
             await db.user_streaks.update_one(
-                {"user_id": user_id},
-                {"$push": {"rewarded_milestones": key}}
+                {"user_id": user_id, "rewarded_milestones": {"$ne": key}},
+                {"$addToSet": {"rewarded_milestones": key}}
             )
             await db.notifications.insert_one({
                 "id": secrets.token_hex(8),
@@ -1117,6 +805,7 @@ async def process_login_streak(user_id: str):
                 "created_at": now.isoformat(),
             })
             break  # Only one reward per login
+    return {"success": True, "streak": new_streak}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1125,6 +814,14 @@ async def process_login_streak(user_id: str):
 
 async def admin_set_commission_rates(rates: Dict[str, float]):
     """Admin: Set commission rates for all payment types."""
+    if "merchant" in rates:
+        from fastapi import HTTPException
+        try:
+            rate = float(rates["merchant"])
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid merchant commission")
+        if not math.isfinite(rate) or rate < MIN_MERCHANT_COMMISSION_RATE:
+            raise HTTPException(status_code=400, detail="Merchant commission must be at least 1.5%")
     await db.platform_config.update_one(
         {"key": "commissions"},
         {"$set": {
@@ -1138,9 +835,9 @@ async def admin_set_commission_rates(rates: Dict[str, float]):
 async def admin_get_commission_rates() -> Dict[str, float]:
     """Admin: Get current commission rates."""
     config = await db.platform_config.find_one({"key": "commissions"})
-    if config:
-        return config.get("rates", DEFAULT_COMMISSIONS)
-    return DEFAULT_COMMISSIONS
+    rates = {**DEFAULT_COMMISSIONS, **((config or {}).get("rates") or {})}
+    rates["merchant"] = effective_merchant_rate(rates["merchant"], DEFAULT_COMMISSIONS["merchant"])
+    return rates
 
 
 async def admin_get_revenue_stats(days: int = 30) -> Dict:

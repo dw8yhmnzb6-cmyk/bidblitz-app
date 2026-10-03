@@ -18,6 +18,7 @@ from core.email import FRONTEND_URL
 from core.security import get_current_user, get_current_user_from_token
 from routes.pos_inventory import _record_movement
 from routes.pos_hardware import _send_to_network_printer, _send_to_usb_printer
+from routes.pos_system import _require_store_access
 
 router = APIRouter(tags=["restaurant-table-system"])
 restaurant_ws_connections: dict[str, set[WebSocket]] = {}
@@ -98,8 +99,17 @@ async def resolve_store(store_id: Optional[str], user: dict | None = None) -> di
 
 
 async def require_staff(request: Request, store_id: Optional[str] = None) -> tuple[dict, dict]:
+    """Resolve a store only after enforcing POS store membership/role access."""
     user = await get_current_user(request)
-    store = await resolve_store(store_id, user)
+    if store_id:
+        store = await _require_store_access(user, store_id)
+        return user, store
+
+    candidate = await resolve_store(None, user)
+    candidate_store_id = str(candidate.get("store_id") or "")
+    if not candidate_store_id:
+        raise HTTPException(status_code=404, detail="Store nicht gefunden")
+    store = await _require_store_access(user, candidate_store_id)
     return user, store
 
 
@@ -576,15 +586,16 @@ async def list_tables_endpoint(request: Request, store_id: Optional[str] = Query
 
 @router.get("/api/tables/{table_id}")
 async def get_table_endpoint(table_id: str, request: Request):
-    await get_current_user(request)
     table = await get_table_doc(table_id)
+    await require_staff(request, table.get("store_id"))
     return {"table": await serialize_table(table, request.headers.get("origin", ""))}
 
 
 @router.put("/api/tables/{table_id}")
 async def update_table_endpoint(table_id: str, req: TableUpdateRequest, request: Request):
-    await get_current_user(request)
     table = await get_table_doc(table_id)
+    user = await get_current_user(request)
+    await _require_store_access(user, table.get("store_id"), {"merchant_admin", "store_manager"})
     update_doc: dict[str, Any] = {"updated_at": now_iso()}
     if req.table_number is not None:
         update_doc["table_number"] = req.table_number.strip()
@@ -628,16 +639,18 @@ async def update_table_endpoint(table_id: str, req: TableUpdateRequest, request:
 
 @router.delete("/api/tables/{table_id}")
 async def delete_table_endpoint(table_id: str, request: Request):
-    await get_current_user(request)
-    await get_table_doc(table_id)
+    table = await get_table_doc(table_id)
+    user = await get_current_user(request)
+    await _require_store_access(user, table.get("store_id"), {"merchant_admin", "store_manager"})
     await db.pos_tables.update_one({"table_id": table_id}, {"$set": {"active": False, "updated_at": now_iso()}})
     return {"ok": True}
 
 
 @router.post("/api/tables/{table_id}/generate-qr")
 async def generate_qr_endpoint(table_id: str, request: Request):
-    await get_current_user(request)
     table = await get_table_doc(table_id)
+    user = await get_current_user(request)
+    await _require_store_access(user, table.get("store_id"), {"merchant_admin", "store_manager"})
     qr_path = f"/table/{table_id}"
     scan_code = table.get("scan_code") or table_scan_code()
     await db.pos_tables.update_one({"table_id": table_id}, {"$set": {"qr_code_url": qr_path, "scan_code": scan_code, "updated_at": now_iso()}})
@@ -664,8 +677,8 @@ async def public_table_menu(table_id: str, request: Request):
 
 @router.post("/api/tables/{table_id}/bill-link")
 async def build_bill_link(table_id: str, request: Request):
-    user, store = await require_staff(request)
     table = await get_table_doc(table_id)
+    user, store = await require_staff(request, table.get("store_id"))
     payment_link = await create_payment_link(table, store, request.headers.get("origin", ""), user.get("email", ""))
     if not payment_link:
         raise HTTPException(status_code=400, detail="Kein Zahlungslink möglich")
@@ -881,12 +894,12 @@ async def list_orders_endpoint(
 
 @router.put("/api/orders/{order_id}/status")
 async def update_order_status_endpoint(order_id: str, req: OrderStatusRequest, request: Request):
-    await get_current_user(request)
     if req.status not in ORDER_STATUS:
         raise HTTPException(status_code=400, detail="Ungültiger Bestellstatus")
     order = await db.pos_guest_orders.find_one({"order_id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    await require_staff(request, order.get("store_id"))
     update_doc = {
         "status": req.status,
         "updated_at": now_iso(),
@@ -958,12 +971,12 @@ async def list_service_calls_endpoint(
 
 @router.put("/api/service-call/{service_call_id}/status")
 async def update_service_call_status_endpoint(service_call_id: str, req: ServiceCallStatusRequest, request: Request):
-    user = await get_current_user(request)
     if req.status not in SERVICE_STATUS:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     call = await db.pos_service_calls.find_one({"service_call_id": service_call_id}, {"_id": 0})
     if not call:
         raise HTTPException(status_code=404, detail="Service-Call nicht gefunden")
+    user, _ = await require_staff(request, call.get("store_id"))
     update_doc: dict[str, Any] = {"status": req.status, "updated_at": now_iso()}
     if req.status == "accepted":
         update_doc["accepted_by"] = user.get("email") or user.get("name") or str(user.get("_id"))
@@ -991,7 +1004,11 @@ async def update_service_call_status_endpoint(service_call_id: str, req: Service
 
 
 @router.post("/api/button-webhook")
-async def button_webhook_endpoint(req: ButtonWebhookRequest):
+async def button_webhook_endpoint(req: ButtonWebhookRequest, request: Request):
+    expected_secret = os.environ.get("TABLE_BUTTON_WEBHOOK_SECRET", "").strip()
+    provided_secret = request.headers.get("x-table-button-secret", "").strip()
+    if not expected_secret or not secrets.compare_digest(expected_secret, provided_secret):
+        raise HTTPException(status_code=401, detail="Ungültige Button-Webhook-Authentifizierung")
     if req.event != "pressed":
         return {"ok": True, "ignored": True}
     table = await db.pos_tables.find_one({"button_id": req.button_id, "active": {"$ne": False}}, {"_id": 0})

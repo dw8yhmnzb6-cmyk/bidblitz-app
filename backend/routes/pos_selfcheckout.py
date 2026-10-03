@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from bson import ObjectId
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import debit_wallet, TransactionType
+from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from routes.pos_features import is_feature_enabled
 
 router = APIRouter(prefix="/api/pos/selfcheckout", tags=["POS Self-Checkout"])
@@ -262,25 +262,81 @@ async def pay_session(req: SessionPay, request: Request):
         tx_type=TransactionType.MERCHANT_PAYMENT,
         description=f"Self-Checkout — {merchant.get('business_name', '')}",
         reference=req.session_id,
+        merchant_id=merchant.get("merchant_id"),
         merchant_name=merchant.get("business_name", ""),
         metadata={"session_id": req.session_id, "store_id": sess["store_id"], "self_checkout": True},
+        idempotency_key=f"selfcheckout-debit:{req.session_id}",
     )
     if not debit.success:
         raise HTTPException(400, debit.error or "Wallet-Zahlung fehlgeschlagen")
 
-    # Merchant Owner credit
-    if merchant.get("owner_id"):
-        try:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant["owner_id"])},
-                {"$inc": {"balance": net_to_merchant}},
-            )
-        except Exception:
-            pass
-        await db.pos_merchants.update_one(
-            {"merchant_id": merchant["merchant_id"]},
-            {"$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total}},
+    # Merchant owner credit through the canonical wallet ledger.
+    owner_id = str(merchant.get("owner_id") or "")
+    if not owner_id:
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description="Self-Checkout Rückbuchung: Händlerkonto fehlt",
+            reference=f"REF-{req.session_id}",
+            source="pos_selfcheckout.rollback",
+            metadata={"session_id": req.session_id, "reason": "merchant_owner_missing"},
+            idempotency_key=f"selfcheckout-rollback:{req.session_id}",
         )
+        raise HTTPException(
+            status_code=409 if rollback.success else 500,
+            detail="Händlerkonto ist nicht abrechenbar; Kundenbetrag wurde zurückgebucht." if rollback.success else "Zahlung benötigt manuelle Abstimmung.",
+        )
+
+    merchant_credit = await credit_wallet(
+        user_id=owner_id,
+        amount=net_to_merchant,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Self-Checkout Gutschrift — {merchant.get('business_name', '')}",
+        reference=f"MSC-{req.session_id}",
+        source=f"pos_selfcheckout:{customer_id}",
+        metadata={
+            "session_id": req.session_id,
+            "store_id": sess["store_id"],
+            "merchant_id": merchant.get("merchant_id"),
+            "gross_amount": total,
+            "fee_amount": fee,
+            "net_amount": net_to_merchant,
+        },
+        idempotency_key=f"selfcheckout-credit:{req.session_id}",
+    )
+    if not merchant_credit.success:
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description="Self-Checkout Rückbuchung",
+            reference=f"REF-{req.session_id}",
+            source="pos_selfcheckout.rollback",
+            metadata={"session_id": req.session_id, "merchant_credit_error": merchant_credit.error},
+            idempotency_key=f"selfcheckout-rollback:{req.session_id}",
+        )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="Händlergutschrift und Kundenrückbuchung fehlgeschlagen. Manuelle Abstimmung erforderlich.")
+        raise HTTPException(status_code=409, detail="Händlergutschrift fehlgeschlagen; Kundenbetrag wurde zurückgebucht.")
+
+    # Financial merchant stats are updated once, keyed by the session identity.
+    stats_marker = f"selfcheckout_settlements.{req.session_id.replace('.', '_')}"
+    stats = await db.pos_merchants.update_one(
+        {"merchant_id": merchant["merchant_id"], stats_marker: {"$exists": False}},
+        {
+            "$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total},
+            "$set": {
+                stats_marker: {
+                    "gross": total,
+                    "fee": fee,
+                    "net": net_to_merchant,
+                    "credit_transaction_id": merchant_credit.transaction_id,
+                    "created_at": _now(),
+                }
+            },
+        },
+    )
 
     # Sale-Datensatz (für Buchhaltung & Z-Bon)
     receipt_id = "SCO-" + secrets.token_hex(4).upper()
@@ -317,8 +373,15 @@ async def pay_session(req: SessionPay, request: Request):
         "status": "completed",
         "created_at": _now(),
     }
-    await db.pos_sales.insert_one(sale)
-    sale.pop("_id", None)
+    await db.pos_sales.update_one(
+        {"session_id": req.session_id, "type": "self_checkout"},
+        {"$setOnInsert": sale},
+        upsert=True,
+    )
+    sale = await db.pos_sales.find_one(
+        {"session_id": req.session_id, "type": "self_checkout"},
+        {"_id": 0},
+    ) or sale
 
     # Session schließen
     await db.pos_selfcheckout_sessions.update_one(

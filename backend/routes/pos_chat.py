@@ -60,7 +60,7 @@ async def create_refund_request(req: RefundRequestCreate, request: Request):
         "reason": req.reason,
         "items": req.items,
         "restock": req.restock,
-        "status": "approved" if auto_approve else "pending",
+        "status": "processing" if auto_approve else "pending",
         "decided_by": user_id if auto_approve else None,
         "decided_at": now_iso() if auto_approve else None,
         "created_at": now_iso(),
@@ -130,51 +130,48 @@ async def create_refund_request(req: RefundRequestCreate, request: Request):
     await _audit(user_id, "refund.request", {"request_id": rr_id, "auto": auto_approve})
 
     if auto_approve:
-        result = await _execute_approved_refund(doc)
-        return {"ok": True, "request": doc, "auto_approved": True, "refund": result}
+        try:
+            result = await _execute_approved_refund(doc, user, request)
+            await db.pos_refund_requests.update_one(
+                {"request_id": rr_id, "status": "processing"},
+                {"$set": {"status": "approved", "refund_id": result.get("refund_id"), "executed_at": now_iso()}},
+            )
+            doc["status"] = "approved"
+            doc["refund_id"] = result.get("refund_id")
+            return {"ok": True, "request": doc, "auto_approved": True, "refund": result}
+        except Exception:
+            await db.pos_refund_requests.update_one(
+                {"request_id": rr_id, "status": "processing"},
+                {"$set": {"status": "failed_review", "failed_at": now_iso()}},
+            )
+            raise
 
     return {"ok": True, "request": doc, "auto_approved": False, "message": "Manager muss freigeben"}
 
 
-async def _execute_approved_refund(rr: dict):
-    """Run the actual refund via existing pos_system endpoints."""
-    from routes.pos_system import refund_payment, RefundRequest
-    from routes.pos_inventory import refund_with_items, ItemReturnRequest
-
-    # Build a fake Request with the manager's user already verified is unnecessary —
-    # we directly call the engine via core functions.
-    # Simpler: use direct DB writes mirroring refund_payment / refund_with_items.
+async def _execute_approved_refund(rr: dict, user: dict, request: Request):
+    """Execute an approved refund through the canonical POS refund engine."""
     payment = await db.pos_payments.find_one({"payment_id": rr["payment_id"]})
-    if not payment or payment["status"] not in {"paid", "partial_refund"}:
-        return {"ok": False, "error": "Zahlung nicht erstattbar"}
+    if not payment or payment.get("status") not in {"paid", "partial_refund"}:
+        raise HTTPException(status_code=400, detail="Zahlung nicht erstattbar")
 
-    refund_id = short_id("RFD", 10)
-    method = payment["method"]
-    amount = float(rr["amount"])
+    from services.pos_security import get_actor_context, execute_refund_action
+    actor = await get_actor_context(user, payment["store_id"], payment.get("register_id", ""))
+    refund_doc = await execute_refund_action(
+        {
+            "payment_id": rr["payment_id"],
+            "amount": float(rr["amount"]),
+            "reason": rr.get("reason", ""),
+            "idempotency_key": f"refund-request:{rr['request_id']}",
+        },
+        actor,
+        request=request,
+        approval_id=rr["request_id"],
+    )
+    refund_id = refund_doc["refund_id"]
 
-    if method in ("wallet_qr", "barcode") and payment.get("customer_id"):
-        from bson import ObjectId
-        from core.payment_engine import credit_wallet, TransactionType
-        merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
-        if merchant:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": -amount}}
-            )
-            await db.pos_merchants.update_one(
-                {"merchant_id": payment["merchant_id"]},
-                {"$inc": {"settlement_balance": -amount}},
-            )
-        await credit_wallet(
-            user_id=payment["customer_id"],
-            amount=amount,
-            tx_type=TransactionType.REFUND,
-            description=f"POS Refund {payment['payment_id']}",
-            reference=refund_id,
-        )
-
-    # Restock items
     if rr.get("restock") and rr.get("items"):
-        from bson import ObjectId  # noqa
+        refund_marker = refund_id.replace(".", "_")
         for it in rr["items"]:
             pid = it.get("product_id")
             qty = float(it.get("quantity", 0) or 0)
@@ -183,49 +180,45 @@ async def _execute_approved_refund(rr: dict):
             product = await db.pos_products.find_one({"product_id": pid})
             if not product:
                 continue
+            marker_field = f"return_markers.{refund_marker}"
             before = float(product.get("stock", 0))
-            after = round(before + qty, 3)
-            await db.pos_products.update_one(
-                {"product_id": pid}, {"$set": {"stock": after, "updated_at": now_iso()}}
+            stock_update = await db.pos_products.update_one(
+                {"product_id": pid, marker_field: {"$exists": False}},
+                {
+                    "$inc": {"stock": qty},
+                    "$set": {marker_field: {"quantity": qty, "refund_id": refund_id}, "updated_at": now_iso()},
+                },
             )
-            await db.pos_stock_movements.insert_one({
-                "movement_id": short_id("MOV", 10),
-                "product_id": pid,
-                "product_name": product["name"],
-                "merchant_id": payment["merchant_id"],
-                "store_id": payment["store_id"],
-                "type": "return",
-                "quantity": qty,
-                "before_stock": before,
-                "after_stock": after,
-                "reference_id": refund_id,
-                "created_by": rr["decided_by"] or rr["requested_by"],
-                "note": f"Approved refund {rr['request_id']}",
-                "created_at": now_iso(),
-            })
+            if stock_update.modified_count != 1:
+                continue
+            fresh = await db.pos_products.find_one({"product_id": pid}, {"stock": 1, "_id": 0}) or {}
+            after = float(fresh.get("stock", before + qty))
+            movement_id = f"MOV-{refund_id}-{pid}"
+            await db.pos_stock_movements.update_one(
+                {"movement_id": movement_id},
+                {"$setOnInsert": {
+                    "movement_id": movement_id,
+                    "product_id": pid,
+                    "product_name": product["name"],
+                    "merchant_id": payment["merchant_id"],
+                    "store_id": payment["store_id"],
+                    "type": "return",
+                    "quantity": qty,
+                    "before_stock": before,
+                    "after_stock": after,
+                    "reference_id": refund_id,
+                    "created_by": str(user["_id"]),
+                    "note": f"Approved refund {rr['request_id']}",
+                    "created_at": now_iso(),
+                }},
+                upsert=True,
+            )
 
-    await db.pos_refunds.insert_one({
-        "refund_id": refund_id,
-        "payment_id": payment["payment_id"],
-        "store_id": payment["store_id"],
-        "merchant_id": payment["merchant_id"],
-        "amount": amount,
-        "method": method,
-        "reason": rr.get("reason", ""),
-        "request_id": rr["request_id"],
-        "issued_by": rr["decided_by"] or rr["requested_by"],
-        "issued_at": now_iso(),
-    })
-    new_status = "refunded" if amount >= float(payment["amount"]) else "partial_refund"
-    await db.pos_payments.update_one(
-        {"payment_id": payment["payment_id"]},
-        {"$set": {"status": new_status}, "$inc": {"refunded_total": amount}},
+    await db.pos_refunds.update_one(
+        {"refund_id": refund_id},
+        {"$set": {"request_id": rr["request_id"], "items": rr.get("items"), "restocked": bool(rr.get("restock"))}},
     )
-    await db.pos_refund_requests.update_one(
-        {"request_id": rr["request_id"]},
-        {"$set": {"refund_id": refund_id, "executed_at": now_iso()}}
-    )
-    return {"ok": True, "refund_id": refund_id, "status": new_status, "amount": amount}
+    return {"ok": True, "refund_id": refund_id, "status": "completed", "amount": float(refund_doc["amount"])}
 
 
 @router.get("/refund-requests")
@@ -258,39 +251,53 @@ async def approve_refund(req: ApprovalDecision, request: Request):
     rr = await db.pos_refund_requests.find_one({"request_id": req.request_id})
     if not rr:
         raise HTTPException(status_code=404, detail="Anfrage nicht gefunden")
-    if rr["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Bereits {rr['status']}")
     await _require_store_access(user, rr["store_id"], {"merchant_admin", "store_manager", "accountant"})
 
     user_id = str(user["_id"])
-    rr["decided_by"] = user_id
-    rr["decided_at"] = now_iso()
-    rr["status"] = "approved"
-    rr["decision_note"] = req.note
-
-    result = await _execute_approved_refund(rr)
-    await db.pos_refund_requests.update_one(
-        {"request_id": req.request_id},
+    decided_at = now_iso()
+    claim = await db.pos_refund_requests.update_one(
+        {"request_id": req.request_id, "status": "pending"},
         {"$set": {
-            "status": "approved",
+            "status": "processing",
             "decided_by": user_id,
-            "decided_at": rr["decided_at"],
+            "decided_at": decided_at,
             "decision_note": req.note or "",
-            "refund_id": result.get("refund_id"),
         }},
     )
+    if claim.modified_count != 1:
+        fresh = await db.pos_refund_requests.find_one({"request_id": req.request_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "approved" and fresh.get("refund_id"):
+            return {"ok": True, "result": {"refund_id": fresh["refund_id"], "replayed": True}}
+        raise HTTPException(status_code=409, detail=f"Anfrage ist bereits {fresh.get('status', 'in Bearbeitung')}")
 
-    # Notify cashier in chat
-    await db.pos_chat_messages.insert_one({
-        "msg_id": short_id("MSG", 8),
-        "store_id": rr["store_id"],
-        "thread": f"refund:{req.request_id}",
-        "sender_id": user_id,
-        "sender_name": user.get("name", ""),
-        "text": f"✓ Refund €{rr['amount']:.2f} freigegeben",
-        "system": True,
-        "created_at": now_iso(),
-    })
+    rr.update({"decided_by": user_id, "decided_at": decided_at, "status": "processing", "decision_note": req.note or ""})
+    try:
+        result = await _execute_approved_refund(rr, user, request)
+    except Exception:
+        await db.pos_refund_requests.update_one(
+            {"request_id": req.request_id, "status": "processing"},
+            {"$set": {"status": "failed_review", "failed_at": now_iso()}},
+        )
+        raise
+
+    await db.pos_refund_requests.update_one(
+        {"request_id": req.request_id, "status": "processing"},
+        {"$set": {"status": "approved", "refund_id": result.get("refund_id"), "executed_at": now_iso()}},
+    )
+    await db.pos_chat_messages.update_one(
+        {"msg_id": f"MSG-REFUND-{req.request_id}"},
+        {"$setOnInsert": {
+            "msg_id": f"MSG-REFUND-{req.request_id}",
+            "store_id": rr["store_id"],
+            "thread": f"refund:{req.request_id}",
+            "sender_id": user_id,
+            "sender_name": user.get("name", ""),
+            "text": f"✓ Refund €{rr['amount']:.2f} freigegeben",
+            "system": True,
+            "created_at": now_iso(),
+        }},
+        upsert=True,
+    )
     await _audit(user_id, "refund.approve", {"request_id": req.request_id})
     return {"ok": True, "result": result}
 
@@ -301,13 +308,11 @@ async def reject_refund(req: ApprovalDecision, request: Request):
     rr = await db.pos_refund_requests.find_one({"request_id": req.request_id})
     if not rr:
         raise HTTPException(status_code=404, detail="Anfrage nicht gefunden")
-    if rr["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Bereits {rr['status']}")
     await _require_store_access(user, rr["store_id"], {"merchant_admin", "store_manager", "accountant"})
 
     user_id = str(user["_id"])
-    await db.pos_refund_requests.update_one(
-        {"request_id": req.request_id},
+    transition = await db.pos_refund_requests.update_one(
+        {"request_id": req.request_id, "status": "pending"},
         {"$set": {
             "status": "rejected",
             "decided_by": user_id,
@@ -315,18 +320,28 @@ async def reject_refund(req: ApprovalDecision, request: Request):
             "decision_note": req.note or "",
         }},
     )
-    await db.pos_chat_messages.insert_one({
-        "msg_id": short_id("MSG", 8),
-        "store_id": rr["store_id"],
-        "thread": f"refund:{req.request_id}",
-        "sender_id": user_id,
-        "sender_name": user.get("name", ""),
-        "text": f"✗ Refund €{rr['amount']:.2f} abgelehnt: {req.note or ''}",
-        "system": True,
-        "created_at": now_iso(),
-    })
+    if transition.modified_count != 1:
+        fresh = await db.pos_refund_requests.find_one({"request_id": req.request_id}, {"_id": 0}) or {}
+        if fresh.get("status") == "rejected":
+            return {"ok": True, "replayed": True}
+        raise HTTPException(status_code=409, detail=f"Anfrage ist bereits {fresh.get('status', 'bearbeitet')}")
+
+    await db.pos_chat_messages.update_one(
+        {"msg_id": f"MSG-REFUND-REJECT-{req.request_id}"},
+        {"$setOnInsert": {
+            "msg_id": f"MSG-REFUND-REJECT-{req.request_id}",
+            "store_id": rr["store_id"],
+            "thread": f"refund:{req.request_id}",
+            "sender_id": user_id,
+            "sender_name": user.get("name", ""),
+            "text": f"✗ Refund €{rr['amount']:.2f} abgelehnt: {req.note or ''}",
+            "system": True,
+            "created_at": now_iso(),
+        }},
+        upsert=True,
+    )
     await _audit(user_id, "refund.reject", {"request_id": req.request_id})
-    return {"ok": True}
+    return {"ok": True, "replayed": False}
 
 
 # ───────────────────────────────────────────────────────────────────────

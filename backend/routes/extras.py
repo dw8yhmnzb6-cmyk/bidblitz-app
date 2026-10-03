@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 import secrets
 
 router = APIRouter(prefix="/api/extras", tags=["extras"])
@@ -70,59 +71,142 @@ class PromoRedeem(BaseModel):
 class PromoCreate(BaseModel):
     code: str = Field(..., min_length=3, max_length=20)
     type: str = "percent"  # percent, fixed, credit
-    value: float = Field(..., gt=0)
-    max_uses: int = 100
+    value: float = Field(..., gt=0, le=10000, allow_inf_nan=False)
+    max_uses: int = Field(default=100, ge=1, le=100000)
     description: str = ""
 
 @router.post("/promo/redeem")
 async def redeem_promo(req: PromoRedeem, request: Request):
     user = await get_current_user(request)
+    user_id = str(user.get("_id") or user.get("id"))
     email = user.get("email", "")
     code = req.code.strip().upper()
-    
+
     promo = await db.promo_codes.find_one({"code": code, "active": True})
     if not promo:
         raise HTTPException(404, "Code ungültig oder abgelaufen")
-    
-    if promo.get("used_count", 0) >= promo.get("max_uses", 100):
-        raise HTTPException(400, "Code wurde zu oft verwendet")
-    
-    used_by = promo.get("used_by", [])
-    if email in used_by:
-        raise HTTPException(400, "Code bereits eingelöst")
-    
-    # Apply benefit
-    benefit = 0
-    if promo["type"] == "credit":
-        benefit = promo["value"]
-        await db.users.update_one({"email": email}, {"$inc": {"balance": benefit}})
-    elif promo["type"] == "fixed":
-        benefit = promo["value"]
-        await db.users.update_one({"email": email}, {"$inc": {"balance": benefit}})
-    
-    await db.promo_codes.update_one(
-        {"code": code},
-        {"$inc": {"used_count": 1}, "$push": {"used_by": email}}
-    )
-    
+
+    marker = f"promo:{code}:{user_id}"
+    markers = promo.get("redemption_markers", [])
+    claimed = marker in markers
+
+    if not claimed:
+        if email in promo.get("used_by", []):
+            # Legacy redemption without a canonical settlement marker must never
+            # be re-credited during migration.
+            raise HTTPException(400, "Code bereits eingelöst")
+
+        max_uses = int(promo.get("max_uses", 100) or 100)
+        claimed_doc = await db.promo_codes.find_one_and_update(
+            {
+                "_id": promo["_id"],
+                "active": True,
+                "used_count": {"$lt": max_uses},
+                "used_by": {"$ne": email},
+                "redemption_markers": {"$ne": marker},
+            },
+            {
+                "$inc": {"used_count": 1},
+                "$addToSet": {"used_by": email, "redemption_markers": marker},
+            },
+        )
+        if not claimed_doc:
+            latest = await db.promo_codes.find_one({"_id": promo["_id"]}) or {}
+            if marker not in latest.get("redemption_markers", []):
+                if email in latest.get("used_by", []):
+                    raise HTTPException(400, "Code bereits eingelöst")
+                if int(latest.get("used_count", 0) or 0) >= max_uses:
+                    raise HTTPException(400, "Code wurde zu oft verwendet")
+                raise HTTPException(409, "Promo-Einlösung konnte nicht reserviert werden. Bitte erneut versuchen.")
+
+    benefit = 0.0
+    if promo.get("type") in {"credit", "fixed"}:
+        creator_role = str(promo.get("creator_role") or "").lower()
+        creator_email = str(promo.get("creator_email") or "").lower()
+        wallet_credit_approved = bool(
+            promo.get("wallet_credit_approved")
+            or creator_role in {"admin", "super_admin"}
+            or creator_email == "admin@bidblitz.ae"
+        )
+        if not wallet_credit_approved:
+            raise HTTPException(
+                status_code=403,
+                detail="Dieser Legacy-Promo-Code ist nicht für Wallet-Gutschriften freigegeben.",
+            )
+        benefit = float(promo.get("value", 0) or 0)
+        result = await credit_wallet(
+            user_id=user_id,
+            amount=benefit,
+            tx_type=TransactionType.REWARD,
+            description=f"Promo-Code {code}",
+            source="promo_code",
+            reference=f"PROMO-{code}",
+            metadata={
+                "promo_code": code,
+                "promo_type": promo.get("type"),
+                "route": "extras.promo.redeem",
+                "audit_metadata": {"kind": "promo_wallet_credit"},
+            },
+            idempotency_key=marker,
+        )
+        if not result.success:
+            result_state = str(getattr(result.status, "value", result.status))
+            if result_state == "failed":
+                await db.promo_codes.update_one(
+                    {"_id": promo["_id"], "redemption_markers": marker},
+                    {
+                        "$inc": {"used_count": -1},
+                        "$pull": {"used_by": email, "redemption_markers": marker},
+                    },
+                )
+            raise HTTPException(
+                409,
+                result.error
+                or (
+                    "Promo-Gutschrift benötigt Abstimmung. Bitte keinen neuen Code verwenden."
+                    if result_state == "reconciliation_required"
+                    else "Promo-Gutschrift noch nicht abgeschlossen. Bitte erneut versuchen."
+                ),
+            )
+
     return {"ok": True, "message": f"Code eingelöst! +€{benefit:.2f} Guthaben", "benefit": benefit}
 
 @router.post("/promo/create")
 async def create_promo(req: PromoCreate, request: Request):
     user = await get_current_user(request)
-    if user.get("role") not in ["admin", "merchant"]:
+    role = str(user.get("role") or "").lower()
+    if role not in {"admin", "super_admin", "merchant"}:
         raise HTTPException(403, "Nur Admin/Händler")
-    
+
+    promo_type = str(req.type or "").strip().lower()
+    if promo_type not in {"percent", "fixed", "credit"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Promo-Typ")
+    if promo_type == "percent" and req.value > 100:
+        raise HTTPException(status_code=400, detail="Prozent-Rabatt darf 100% nicht überschreiten")
+    if promo_type in {"fixed", "credit"} and role not in {"admin", "super_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Nur Admins dürfen Promo-Codes mit Wallet-Gutschrift erstellen.",
+        )
+
+    code = req.code.strip().upper()
+    existing = await db.promo_codes.find_one({"code": code}, {"_id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Promo-Code existiert bereits")
+
     promo = {
-        "code": req.code.upper(),
-        "type": req.type,
+        "code": code,
+        "type": promo_type,
         "value": req.value,
         "max_uses": req.max_uses,
         "description": req.description,
         "creator_email": user.get("email", ""),
+        "creator_role": role,
+        "wallet_credit_approved": bool(promo_type in {"fixed", "credit"} and role in {"admin", "super_admin"}),
         "active": True,
         "used_count": 0,
         "used_by": [],
+        "redemption_markers": [],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.promo_codes.insert_one(promo)
@@ -166,27 +250,22 @@ async def global_search(q: str = "", limit: int = 10):
     regex = {"$regex": q, "$options": "i"}
     results = []
     
-    # Restaurants
     restaurants = await db.food_restaurants.find({"name": regex, "status": "approved"}, {"_id": 0, "restaurant_id": 1, "name": 1, "category": 1}).limit(3).to_list(3)
     for restaurant in restaurants:
         results.append({"type": "restaurant", "icon": "🍕", "title": restaurant["name"], "subtitle": restaurant.get("category", ""), "route": "/food"})
     
-    # Reselling
     listings = await db.resell_listings.find({"title": regex, "status": "active"}, {"_id": 0, "listing_id": 1, "title": 1, "price": 1}).limit(3).to_list(3)
     for listing in listings:
         results.append({"type": "listing", "icon": "🏷️", "title": listing["title"], "subtitle": f"€{listing['price']:.2f}", "route": "/reselling"})
     
-    # BlitzJobs
     jobs = await db.blitz_jobs.find({"title": regex, "status": "open"}, {"_id": 0, "job_id": 1, "title": 1, "budget": 1}).limit(3).to_list(3)
     for j in jobs:
         results.append({"type": "job", "icon": "💼", "title": j["title"], "subtitle": f"€{j['budget']}", "route": "/blitzjobs"})
     
-    # BlitzLearn
     offers = await db.blitzlearn_offers.find({"title": regex, "status": "active"}, {"_id": 0, "offer_id": 1, "title": 1, "price_per_hour": 1}).limit(3).to_list(3)
     for o in offers:
         results.append({"type": "learn", "icon": "📚", "title": o["title"], "subtitle": f"€{o['price_per_hour']}/h", "route": "/blitzlearn"})
     
-    # Cashback Shops
     from routes.cashback import PARTNER_SHOPS
     shop_results = [s for s in PARTNER_SHOPS if q.lower() in s["name"].lower()][:3]
     for s in shop_results:
@@ -201,16 +280,14 @@ async def abo_calculator(request: Request):
     user = await get_current_user(request)
     email = user.get("email", "")
     
-    # Calculate monthly savings with Premium
     resell_tx = await db.resell_transactions.count_documents({"seller_email": email})
     cashback_claims = await db.cashback_claims.count_documents({"user_email": email})
     cashout_count = await db.cashouts.count_documents({"user_email": email})
     
-    # Estimate savings
-    p2p_savings = resell_tx * 0.50  # No P2P fees
-    cashback_boost = cashback_claims * 1.20  # Higher cashback rate
-    cashout_savings = cashout_count * 0.99  # Free instant cashout
-    scooter_savings = 3.80  # Free minutes
+    p2p_savings = resell_tx * 0.50
+    cashback_boost = cashback_claims * 1.20
+    cashout_savings = cashout_count * 0.99
+    scooter_savings = 3.80
     total_savings = p2p_savings + cashback_boost + cashout_savings + scooter_savings
     
     return {

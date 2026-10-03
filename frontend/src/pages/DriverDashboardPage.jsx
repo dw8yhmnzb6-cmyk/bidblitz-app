@@ -428,8 +428,8 @@ const DriverDashboardPage = ({ onNavigate }) => {
     if (!navigator.geolocation) { setLocation({ lat: 52.52, lng: 13.405 }); return; }
     navigator.geolocation.getCurrentPosition(
       (p) => setLocation({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => setLocation({ lat: 52.52, lng: 13.405 }),
-      { timeout: 5000 }
+      () => setLocation(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
     );
   }, []);
 
@@ -467,7 +467,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
   useEffect(() => {
     loadStatus();
     loadProfile();
-    const i = setInterval(loadStatus, 10000);
+    const i = setInterval(loadStatus, 3000);
     return () => clearInterval(i);
   }, [loadStatus, loadProfile]);
 

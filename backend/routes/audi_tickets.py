@@ -6,11 +6,37 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import transfer_between_wallets, TransactionType
 
 
 router = APIRouter(prefix="/api/audi-tickets", tags=["audi-tickets"])
+
+
+def _require_audi_ticket_test_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Audi-Ticketverkauf ist in Production deaktiviert, bis ein verifizierter "
+                "Event-/Ticketprovider live verbunden ist. Es wird kein Wallet-Geld abgebucht."
+            ),
+        )
+
+
+@router.get("/capabilities")
+async def audi_ticket_capabilities():
+    return {
+        "provider_live": False,
+        "purchase_enabled": bool(TEST_MODE),
+        "checkin_enabled": bool(TEST_MODE),
+        "production_message": (
+            None if TEST_MODE else
+            "Audi Tickets sind derzeit nur Preview; keine echten Tickets oder Wallet-Belastungen in Production."
+        ),
+    }
+
 
 AUDI_EVENT_OWNER_EMAIL = "admin@bidblitz.ae"
 
@@ -140,6 +166,15 @@ async def _ensure_audi_seed():
 
 
 async def _get_event_overview() -> dict:
+    if not TEST_MODE:
+        return {
+            "event": None,
+            "ticket_types": [],
+            "stats": {"ticket_types": 0, "tickets_sold": 0, "tickets_available": 0, "lowest_price": 0.0},
+            "provider_live": False,
+            "purchase_enabled": False,
+            "production_message": "Audi-Ticketprovider ist noch nicht live verbunden.",
+        }
     await _ensure_audi_seed()
     event = await db.audi_ticket_events.find_one({"event_id": AUDI_EVENT_TEMPLATE["event_id"]}, {"_id": 0})
     ticket_types = await db.audi_ticket_types.find({"status": "active"}, {"_id": 0}).sort("price", 1).to_list(20)
@@ -179,6 +214,7 @@ async def get_my_audi_orders(request: Request):
 @router.post("/purchase")
 async def purchase_audi_ticket(req: AudiTicketPurchaseRequest, request: Request):
     user = await get_current_user(request)
+    _require_audi_ticket_test_mode()
     user_id = str(user["_id"])
     await _ensure_audi_seed()
 
@@ -329,6 +365,7 @@ async def get_audi_admin_dashboard(request: Request):
 
 @router.post("/admin/checkin")
 async def audi_admin_checkin(req: AudiCheckInRequest, request: Request):
+    _require_audi_ticket_test_mode()
     admin = await get_current_user(request)
     if (admin.get("role") or "") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Nur Admin")

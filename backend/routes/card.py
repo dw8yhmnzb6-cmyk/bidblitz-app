@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.rate_limit import limiter
 from core.audit import log_audit, get_client_info
@@ -83,8 +84,13 @@ def _gen_masked_virtual() -> str:
 
 @router.get("/tiers")
 async def list_tiers():
-    """Public: return all available card tiers + pricing."""
-    return {"tiers": list(CARD_TIERS.values())}
+    """Public card plans. Issuance remains waitlist-only until a live issuer is connected."""
+    tiers = [{**tier, "issuer_live": False, "instant_issue": bool(TEST_MODE and tier["id"] == "virtual_free")} for tier in CARD_TIERS.values()]
+    return {
+        "tiers": tiers,
+        "issuer_live": False,
+        "production_status": "waitlist_only" if not TEST_MODE else "test_simulation",
+    }
 
 
 @router.get("/status")
@@ -96,6 +102,17 @@ async def my_card_status(request: Request):
     apps = []
     cursor = db.card_applications.find({"user_id": user_id}, {"_id": 0}).sort("applied_at", -1)
     async for a in cursor:
+        if not TEST_MODE and a.get("is_demo") and a.get("status") in {"issued", "active"}:
+            await db.card_applications.update_one(
+                {"application_id": a.get("application_id"), "user_id": user_id},
+                {"$set": {
+                    "status": "waitlist",
+                    "masked_pan": None,
+                    "production_downgraded_at": datetime.now(timezone.utc),
+                }},
+            )
+            a["status"] = "waitlist"
+            a["masked_pan"] = None
         if isinstance(a.get("applied_at"), datetime):
             a["applied_at"] = a["applied_at"].isoformat()
         apps.append(a)
@@ -105,8 +122,10 @@ async def my_card_status(request: Request):
 
     return {
         "applications": apps,
-        "has_virtual": any(a.get("tier") == "virtual_free" and a.get("status") in ("active", "issued") for a in apps),
+        "has_virtual": bool(TEST_MODE and any(a.get("tier") == "virtual_free" and a.get("status") in ("active", "issued") for a in apps)),
         "total_waitlist": total_waitlist,
+        "issuer_live": False,
+        "production_status": "waitlist_only" if not TEST_MODE else "test_simulation",
     }
 
 
@@ -144,8 +163,8 @@ async def apply_card(req: CardApplyRequest, request: Request):
 
     application_id = f"CARD-{int(datetime.now(timezone.utc).timestamp())}-{random.randint(1000, 9999)}"
 
-    # Virtual is instantly "issued" as DEMO
-    if req.tier == "virtual_free":
+    # Production is application/waitlist only until an issuer is actually connected.
+    if req.tier == "virtual_free" and TEST_MODE:
         status = "issued"
         masked_pan = _gen_masked_virtual()
         waitlist_pos = None
@@ -171,7 +190,7 @@ async def apply_card(req: CardApplyRequest, request: Request):
             "country": req.shipping_country,
         } if req.tier != "virtual_free" else None,
         "consent_at": datetime.now(timezone.utc),
-        "is_demo": True,  # FLAG: remove when real issuer wired
+        "is_demo": bool(TEST_MODE),
     }
     await db.card_applications.insert_one(doc)
 

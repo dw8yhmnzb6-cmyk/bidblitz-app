@@ -9,7 +9,9 @@ load_dotenv(ROOT_DIR / '.env')
 APP_ENV = os.environ.get("APP_ENV", "development")
 IS_PRODUCTION = APP_ENV == "production"
 DEBUG = os.environ.get("DEBUG", "true").lower() == "true" and not IS_PRODUCTION
-TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
+# TEST_MODE must never be effective in production, even if the environment is
+# accidentally configured with TEST_MODE=true.
+TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true" and not IS_PRODUCTION
 
 # ── Database ──
 MONGO_URL = os.environ["MONGO_URL"]

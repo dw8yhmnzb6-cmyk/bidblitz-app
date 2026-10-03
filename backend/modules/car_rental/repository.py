@@ -251,12 +251,14 @@ class BookingRepository:
     
     @classmethod
     async def create(cls, data: dict) -> dict:
-        booking_id = generate_booking_id()
+        payload = dict(data)
+        booking_id = payload.pop("booking_id", None) or generate_booking_id()
         now = datetime.now(timezone.utc).isoformat()
         
         booking = {
+            "_id": booking_id,
             "booking_id": booking_id,
-            **data,
+            **payload,
             "status": BookingStatus.PENDING.value,
             "payment_status": PaymentStatus.PENDING.value,
             "handover_record": None,
@@ -265,9 +267,14 @@ class BookingRepository:
             "created_at": now,
             "updated_at": now,
         }
-        
-        await cls.collection.insert_one(booking)
-        return sanitize_doc(booking)
+
+        await cls.collection.update_one(
+            {"_id": booking_id},
+            {"$setOnInsert": booking},
+            upsert=True,
+        )
+        saved = await cls.collection.find_one({"_id": booking_id}) or booking
+        return sanitize_doc(saved)
     
     @classmethod
     async def get_by_id(cls, booking_id: str) -> Optional[dict]:
@@ -312,6 +319,8 @@ class BookingRepository:
                     BookingStatus.READY_FOR_HANDOVER.value,
                     BookingStatus.ACTIVE.value
                 ]},
+                "payment_status": PaymentStatus.PAID.value,
+                "payment_status": PaymentStatus.PAID.value,
                 "$or": [
                     {"start_date": {"$lte": end_date}, "end_date": {"$gte": start_date}},
                 ]
@@ -618,20 +627,27 @@ class PayoutRepository:
     
     @classmethod
     async def create(cls, vendor_id: str, amount: float, data: dict = None) -> dict:
-        payout_id = generate_payout_id()
+        payload = dict(data or {})
+        payout_id = payload.pop("payout_id", None) or generate_payout_id()
         now = datetime.now(timezone.utc).isoformat()
         
         payout = {
+            "_id": payout_id,
             "payout_id": payout_id,
             "vendor_id": vendor_id,
             "amount": amount,
             "status": "pending",
-            **(data or {}),
+            **payload,
             "created_at": now,
         }
         
-        await cls.collection.insert_one(payout)
-        return sanitize_doc(payout)
+        await cls.collection.update_one(
+            {"_id": payout_id},
+            {"$setOnInsert": payout},
+            upsert=True,
+        )
+        saved = await cls.collection.find_one({"_id": payout_id}) or payout
+        return sanitize_doc(saved)
     
     @classmethod
     async def get_by_id(cls, payout_id: str) -> Optional[dict]:

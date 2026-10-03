@@ -4,6 +4,7 @@ Multi-level referrals, daily bonuses, streaks, influencer/manager support.
 """
 
 import secrets
+from pymongo.errors import DuplicateKeyError
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
@@ -83,11 +84,11 @@ class ClaimDailyRequest(BaseModel):
 
 
 class AdminConfigRequest(BaseModel):
-    new_user_bonus: Optional[float] = None
-    inviter_bonus: Optional[float] = None
-    level1_rate: Optional[float] = None
-    level2_rate: Optional[float] = None
-    daily_bonus: Optional[float] = None
+    new_user_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    inviter_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
+    level1_rate: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    level2_rate: Optional[float] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    daily_bonus: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
     daily_bonus_enabled: Optional[bool] = None
 
 
@@ -166,7 +167,7 @@ async def _build_growth_snapshot() -> Dict[str, Any]:
 # GET MY REFERRAL CODE
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/my-code")
+@router.get("/program/my-code")
 async def get_my_referral_code(request: Request):
     """Get or generate user's referral code."""
     user = await get_current_user(request)
@@ -283,62 +284,102 @@ async def apply_referral_on_registration(new_user_id: str, referral_code: str):
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def trigger_referral_rewards(user_id: str, transaction_amount: float):
-    """
-    Called after a user's first qualifying transaction.
-    Awards bonuses to both the new user and the inviter.
-    """
+    """Award all referral legs exactly once after the first qualifying transaction."""
     config = await get_referral_config()
-    min_amount = config.get("min_transaction_for_reward", 5.0)
-    
+    min_amount = float(config.get("min_transaction_for_reward", 5.0) or 0)
     if transaction_amount < min_amount:
-        return  # Transaction too small
-    
-    # Check if user has pending referral
+        return {"rewarded": False, "reason": "below_minimum"}
+
     referral = await db.referrals.find_one({
         "invited_id": user_id,
         "status": "pending",
     })
-    
     if not referral:
-        return  # No pending referral
-    
-    if referral.get("invited_rewarded"):
-        return  # Already rewarded
-    
+        return {"rewarded": False, "reason": "no_pending_referral"}
+
+    inviter_id = str(referral["inviter_id"])
+    inviter = None
+    try:
+        inviter = await db.users.find_one({"_id": ObjectId(inviter_id)})
+    except Exception:
+        inviter = await db.users.find_one({"id": inviter_id})
+    if not inviter:
+        return {"rewarded": False, "reason": "inviter_missing"}
+
+    is_influencer = bool(inviter.get("is_influencer", False))
+    new_user_bonus = round(float(config["new_user_bonus"]), 2)
+    inviter_bonus = round(
+        float(config["influencer_rate"]) * float(transaction_amount)
+        if is_influencer else float(config["inviter_bonus"]),
+        2,
+    )
+    reward_scope = f"refsys:{user_id}"
     now = datetime.now(timezone.utc)
-    inviter_id = referral["inviter_id"]
-    
-    # Get inviter to check if influencer
-    inviter = await db.users.find_one({"_id": ObjectId(inviter_id)})
-    is_influencer = inviter.get("is_influencer", False) if inviter else False
-    
-    # Calculate rewards
-    new_user_bonus = config["new_user_bonus"]
-    inviter_bonus = config["influencer_rate"] * transaction_amount if is_influencer else config["inviter_bonus"]
-    
-    # Award new user bonus
-    await credit_wallet(
+
+    invited_result = await credit_wallet(
         user_id=user_id,
         amount=new_user_bonus,
-        tx_type=TransactionType.REFUND,  # Using REFUND as bonus type
+        tx_type=TransactionType.REWARD,
         description="Willkommensbonus für Empfehlung",
-        reference=f"REF-WELCOME-{secrets.token_hex(4).upper()}",
+        reference=f"REFSYS-{user_id[:8]}-NEW",
         source="referral",
+        metadata={"invited_id": user_id, "inviter_id": inviter_id, "leg": "invited"},
+        idempotency_key=f"{reward_scope}:invited",
     )
-    
-    # Award inviter bonus
-    await credit_wallet(
+    if not invited_result.success:
+        return {"rewarded": False, "reason": invited_result.error or "invited_credit_failed"}
+
+    inviter_result = await credit_wallet(
         user_id=inviter_id,
         amount=inviter_bonus,
-        tx_type=TransactionType.REFUND,
-        description=f"Empfehlungsbonus",
-        reference=f"REF-BONUS-{secrets.token_hex(4).upper()}",
+        tx_type=TransactionType.REWARD,
+        description="Empfehlungsbonus",
+        reference=f"REFSYS-{user_id[:8]}-INV",
         source="referral",
+        metadata={"invited_id": user_id, "inviter_id": inviter_id, "leg": "inviter"},
+        idempotency_key=f"{reward_scope}:inviter",
     )
-    
-    # Update referral record
-    await db.referrals.update_one(
-        {"_id": referral["_id"]},
+    if not inviter_result.success:
+        return {"rewarded": False, "reason": inviter_result.error or "inviter_credit_failed"}
+
+    level2_result = None
+    if inviter.get("referred_by"):
+        level2_id = str(inviter["referred_by"])
+        level2_bonus = round(float(transaction_amount) * float(config["level2_rate"]), 2)
+        if level2_bonus >= 0.01:
+            level2_result = await credit_wallet(
+                user_id=level2_id,
+                amount=level2_bonus,
+                tx_type=TransactionType.REWARD,
+                description="Multi-Level Empfehlungsbonus (L2)",
+                reference=f"REFSYS-{user_id[:8]}-L2",
+                source="referral_multilevel",
+                metadata={"invited_id": user_id, "inviter_id": inviter_id, "leg": "level2"},
+                idempotency_key=f"{reward_scope}:level2",
+            )
+            if not level2_result.success:
+                return {"rewarded": False, "reason": level2_result.error or "level2_credit_failed"}
+
+    manager_result = None
+    if inviter.get("manager_id"):
+        manager_id = str(inviter["manager_id"])
+        manager_bonus = round(inviter_bonus * float(config["manager_rate"]), 2)
+        if manager_bonus >= 0.01:
+            manager_result = await credit_wallet(
+                user_id=manager_id,
+                amount=manager_bonus,
+                tx_type=TransactionType.REWARD,
+                description="Manager-Provision von Influencer",
+                reference=f"REFSYS-{user_id[:8]}-MGR",
+                source="manager_commission",
+                metadata={"invited_id": user_id, "inviter_id": inviter_id, "leg": "manager"},
+                idempotency_key=f"{reward_scope}:manager",
+            )
+            if not manager_result.success:
+                return {"rewarded": False, "reason": manager_result.error or "manager_credit_failed"}
+
+    completed = await db.referrals.update_one(
+        {"_id": referral["_id"], "status": "pending"},
         {"$set": {
             "status": "completed",
             "invited_rewarded": True,
@@ -346,71 +387,63 @@ async def trigger_referral_rewards(user_id: str, transaction_amount: float):
             "invited_reward": new_user_bonus,
             "inviter_reward": inviter_bonus,
             "completed_at": now.isoformat(),
-        }}
+            "invited_transaction_id": invited_result.transaction_id,
+            "inviter_transaction_id": inviter_result.transaction_id,
+            "level2_transaction_id": level2_result.transaction_id if level2_result else None,
+            "manager_transaction_id": manager_result.transaction_id if manager_result else None,
+        }},
     )
-    
-    # Update inviter stats
-    await db.users.update_one(
-        {"_id": ObjectId(inviter_id)},
-        {
-            "$inc": {
-                "pending_referrals": -1,
-                "completed_referrals": 1,
-                "total_referral_earnings": inviter_bonus,
-            }
-        }
-    )
-    
-    # Handle multi-level (level 2)
-    if inviter and inviter.get("referred_by"):
-        level2_id = inviter["referred_by"]
-        level2_bonus = transaction_amount * config["level2_rate"]
-        if level2_bonus >= 0.01:
-            await credit_wallet(
-                user_id=level2_id,
-                amount=level2_bonus,
-                tx_type=TransactionType.REFUND,
-                description="Multi-Level Empfehlungsbonus (L2)",
-                reference=f"REF-L2-{secrets.token_hex(4).upper()}",
-                source="referral_multilevel",
+
+    if completed.modified_count == 1:
+        try:
+            inviter_oid = ObjectId(inviter_id)
+            await db.users.update_one(
+                {"_id": inviter_oid},
+                {
+                    "$inc": {
+                        "pending_referrals": -1,
+                        "completed_referrals": 1,
+                        "total_referral_earnings": inviter_bonus,
+                    }
+                },
             )
-    
-    # If inviter has manager, pay manager commission
-    if inviter and inviter.get("manager_id"):
-        manager_id = inviter["manager_id"]
-        manager_bonus = inviter_bonus * config["manager_rate"]
-        if manager_bonus >= 0.01:
-            await credit_wallet(
-                user_id=manager_id,
-                amount=manager_bonus,
-                tx_type=TransactionType.REFUND,
-                description="Manager-Provision von Influencer",
-                reference=f"MGR-{secrets.token_hex(4).upper()}",
-                source="manager_commission",
-            )
-    
-    # Notifications
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "referral_bonus",
-        "title": f"€{new_user_bonus:.2f} Willkommensbonus!",
-        "message": "Du hast deinen Empfehlungsbonus erhalten!",
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": inviter_id,
-        "type": "referral_bonus",
-        "title": f"€{inviter_bonus:.2f} Empfehlungsbonus!",
-        "message": "Dein eingeladener Freund hat seine erste Zahlung gemacht!",
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    logger.info(f"Referral rewards triggered: {user_id} → {inviter_id}")
+        except Exception:
+            logger.warning("Referral stats update failed for inviter %s", inviter_id)
+
+        await db.notifications.update_one(
+            {"id": f"REFSYS-{user_id}-NEW"},
+            {"$setOnInsert": {
+                "id": f"REFSYS-{user_id}-NEW",
+                "user_id": user_id,
+                "type": "referral_bonus",
+                "title": f"€{new_user_bonus:.2f} Willkommensbonus!",
+                "message": "Du hast deinen Empfehlungsbonus erhalten!",
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+        await db.notifications.update_one(
+            {"id": f"REFSYS-{user_id}-INV"},
+            {"$setOnInsert": {
+                "id": f"REFSYS-{user_id}-INV",
+                "user_id": inviter_id,
+                "type": "referral_bonus",
+                "title": f"€{inviter_bonus:.2f} Empfehlungsbonus!",
+                "message": "Dein eingeladener Freund hat seine erste Zahlung gemacht!",
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+
+    logger.info("Referral rewards processed: %s -> %s", user_id, inviter_id)
+    return {
+        "rewarded": True,
+        "invited_transaction_id": invited_result.transaction_id,
+        "inviter_transaction_id": inviter_result.transaction_id,
+        "replayed": completed.modified_count != 1,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -571,70 +604,118 @@ async def get_franchise_applications(request: Request):
 
 @router.post("/claim-daily")
 async def claim_daily_bonus(request: Request):
-    """Claim daily login bonus."""
+    """Claim the daily login bonus exactly once and resume safely after retries."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
     config = await get_referral_config()
-    
     if not config.get("daily_bonus_enabled", True):
         raise HTTPException(status_code=400, detail="Täglicher Bonus deaktiviert")
-    
+
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
-    
-    # Check if already claimed today
-    existing = await db.daily_claims.find_one({
-        "user_id": user_id,
-        "date": today,
-    })
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Bereits heute abgeholt")
-    
-    bonus_amount = config["daily_bonus"]
-    
-    # Record claim
-    await db.daily_claims.insert_one({
-        "user_id": user_id,
-        "date": today,
-        "amount": bonus_amount,
-        "created_at": now.isoformat(),
-    })
-    
-    # Credit wallet
-    await credit_wallet(
+    bonus_amount = round(float(config["daily_bonus"]), 2)
+    claim_id = f"daily-bonus:{user_id}:{today}"
+
+    claim = await db.daily_claims.find_one({"_id": claim_id}, {"_id": 0})
+    if claim and claim.get("status") == "completed":
+        streak = await db.user_streaks.find_one({"user_id": user_id}, {"_id": 0}) or {}
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "amount": float(claim.get("amount") or bonus_amount),
+            "streak": int(streak.get("login_streak") or 1),
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Tagesbonus bereits gutgeschrieben.",
+            "replayed": True,
+        }
+
+    if not claim:
+        try:
+            await db.daily_claims.insert_one({
+                "_id": claim_id,
+                "user_id": user_id,
+                "date": today,
+                "amount": bonus_amount,
+                "status": "processing",
+                "created_at": now.isoformat(),
+            })
+        except DuplicateKeyError:
+            pass
+
+    result = await credit_wallet(
         user_id=user_id,
         amount=bonus_amount,
-        tx_type=TransactionType.REFUND,
+        tx_type=TransactionType.REWARD,
         description="Täglicher Login-Bonus",
-        reference=f"DAILY-{today}",
+        reference=f"DAILY-{today}-{user_id[:8]}",
         source="daily_bonus",
+        metadata={"claim_id": claim_id, "date": today},
+        idempotency_key=claim_id,
     )
-    
-    # Process login streak (from payment_engine)
-    await process_login_streak(user_id)
-    
-    # Get streak info
-    streak = await db.user_streaks.find_one({"user_id": user_id})
-    current_streak = streak.get("login_streak", 1) if streak else 1
-    
-    # Notify
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "daily_bonus",
-        "title": f"€{bonus_amount:.2f} Tagesbonus!",
-        "message": f"Streak: {current_streak} Tage 🔥",
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
+    if not result.success:
+        await db.daily_claims.update_one(
+            {"_id": claim_id},
+            {"$set": {
+                "status": "reconciliation_required" if str(getattr(result.status, "value", result.status)) == "reconciliation_required" else "processing",
+                "wallet_error": result.error,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=409, detail=result.error or "Bonus konnte nicht sicher gutgeschrieben werden")
+
+    await db.daily_claims.update_one(
+        {"_id": claim_id},
+        {"$set": {
+            "status": "wallet_credited",
+            "wallet_transaction_id": result.transaction_id,
+            "wallet_credited_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
+    streak_result = await process_login_streak(user_id)
+    if streak_result and not streak_result.get("success", True):
+        await db.daily_claims.update_one(
+            {"_id": claim_id},
+            {"$set": {
+                "status": "streak_pending",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=409, detail="Bonus ist gutgeschrieben; Streak wird beim nächsten Versuch fortgesetzt")
+
+    streak = await db.user_streaks.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    current_streak = int(streak.get("login_streak") or 1)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.daily_claims.update_one(
+        {"_id": claim_id},
+        {"$set": {
+            "status": "completed",
+            "completed_at": completed_at,
+            "streak": current_streak,
+        }},
+    )
+
+    await db.notifications.update_one(
+        {"id": f"DAILY-BONUS-{user_id}-{today}"},
+        {"$setOnInsert": {
+            "id": f"DAILY-BONUS-{user_id}-{today}",
+            "user_id": user_id,
+            "type": "daily_bonus",
+            "title": f"€{bonus_amount:.2f} Tagesbonus!",
+            "message": f"Streak: {current_streak} Tage 🔥",
+            "read": False,
+            "created_at": completed_at,
+        }},
+        upsert=True,
+    )
+
     return {
         "ok": True,
         "amount": bonus_amount,
         "streak": current_streak,
+        "new_balance": result.new_balance,
         "message": f"€{bonus_amount:.2f} gutgeschrieben!",
+        "replayed": bool(result.idempotent_replay),
     }
 
 

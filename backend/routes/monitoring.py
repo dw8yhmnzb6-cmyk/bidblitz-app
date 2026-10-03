@@ -33,10 +33,22 @@ _metrics = {
 }
 
 MONITORED_FLOWS = [
-    {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/"},
-    {"key": "auth_login", "label": "Login", "method": "POST", "path": "/api/auth/login", "body": {"email": "reviewer@bidblitz.ae", "password": "BidBlitzReview2026!", "remember_me": True}, "expect_statuses": [200]},
-    {"key": "auth_register_contract", "label": "Registrierung", "method": "POST", "path": "/api/auth/register", "body": {"name": "Monitor Contract", "email": "monitor.invalid", "password": "123"}, "expect_statuses": [400, 409, 422]},
+    # Read-only probes only: monitoring must never create accounts, sessions or money movement.
+    {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/", "expect_statuses": [200]},
+    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/version.json", "expect_statuses": [200]},
+    {"key": "auth_session", "label": "Login / Session", "method": "GET", "path": "/api/auth/me", "expect_statuses": [401]},
+    {"key": "wallet", "label": "Wallet", "method": "GET", "path": "/api/wallet/balance/total", "expect_statuses": [401]},
+    {"key": "payments", "label": "Payments / QR", "method": "GET", "path": "/api/payments/fee-info", "expect_statuses": [200]},
+    {"key": "stripe_topup", "label": "Stripe Top-Up", "method": "GET", "path": "/api/stripe/plans", "expect_statuses": [200]},
     {"key": "auctions_list", "label": "Auktionen", "method": "GET", "path": "/api/auctions/active", "expect_statuses": [200]},
+    {"key": "auction_referrals", "label": "Auktion Empfehlungen", "method": "GET", "path": "/api/auctions/referral-leaderboard", "expect_statuses": [200]},
+    {"key": "taxi", "label": "Taxi / Mobility", "method": "GET", "path": "/api/taxi/pricing", "expect_statuses": [200]},
+    {"key": "mining", "label": "Mining", "method": "GET", "path": "/api/mining/packages", "expect_statuses": [200]},
+    {"key": "watchlist", "label": "Watchlist", "method": "GET", "path": "/api/watchlist/ids", "expect_statuses": [401]},
+    {"key": "chat", "label": "Chat", "method": "GET", "path": "/api/chat/unread-count", "expect_statuses": [401]},
+    {"key": "biopay", "label": "BioPay", "method": "GET", "path": "/api/biopay/me", "expect_statuses": [401]},
+    {"key": "merchant", "label": "Händler", "method": "GET", "path": "/api/merchant/dashboard", "expect_statuses": [401]},
+    {"key": "admin", "label": "Admin", "method": "GET", "path": "/api/admin/overview", "expect_statuses": [401]},
 ]
 
 
@@ -302,23 +314,50 @@ async def _run_probe(flow: dict) -> dict:
 
 async def _store_probe_results(results: list[dict]):
     for result in results:
+        now_iso = datetime.now(timezone.utc).isoformat()
         await db.monitoring_probes.update_one(
             {"key": result["key"]},
             {"$set": result, "$inc": {"run_count": 1}},
             upsert=True,
         )
+        incident_selector = {
+            "type": "probe_failure",
+            "key": result["key"],
+            "resolved": False,
+        }
         if result["status"] != "ok":
-            await db.monitoring_incidents.insert_one({
-                "type": "probe_failure",
-                "key": result["key"],
+            existing = await db.monitoring_incidents.find_one(incident_selector, {"_id": 1})
+            incident_fields = {
                 "label": result["label"],
                 "status": result["status"],
                 "status_code": result.get("status_code"),
                 "latency_ms": result.get("latency_ms"),
                 "error_message": result.get("error_message", ""),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "last_seen_at": now_iso,
                 "resolved": False,
-            })
+            }
+            if existing:
+                await db.monitoring_incidents.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": incident_fields, "$inc": {"failure_count": 1}},
+                )
+            else:
+                await db.monitoring_incidents.insert_one({
+                    "type": "probe_failure",
+                    "key": result["key"],
+                    **incident_fields,
+                    "failure_count": 1,
+                    "created_at": now_iso,
+                })
+        else:
+            await db.monitoring_incidents.update_many(
+                incident_selector,
+                {"$set": {
+                    "resolved": True,
+                    "resolved_at": now_iso,
+                    "resolution": "probe_recovered",
+                }},
+            )
 
 
 def get_system_stats():
@@ -568,6 +607,7 @@ async def error_center(request: Request):
     frontend_errors = await db.frontend_errors.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
     probes = await db.monitoring_probes.find({}, {"_id": 0}).to_list(50)
     incidents = await db.monitoring_incidents.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(80).to_list(80)
+    open_incidents = [item for item in incidents if item.get("resolved") is not True]
 
     api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
     auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
@@ -610,6 +650,7 @@ async def error_center(request: Request):
             "api_errors_1h": len(api_errors_1h),
             "auth_errors_1h": len(auth_errors_1h),
             "incidents_24h": len(incidents),
+            "open_incidents": len(open_incidents),
         },
         "alerts": alerts[:20],
         "probes": sorted(probes, key=lambda p: p.get("label", "")),

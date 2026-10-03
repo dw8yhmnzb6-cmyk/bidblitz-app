@@ -8,9 +8,8 @@ import {
 } from "lucide-react";
 import ExportSection from "./ExportSection";
 import { Skeleton, StatCard, statusColors, slide } from "./admin/adminHelpers";
-import { api as apiService } from "../services/api";
-
-const API = process.env.REACT_APP_BACKEND_URL;
+import { api as apiService, request as apiRequest } from "../services/api";
+import { toast } from "sonner";
 
 const PROMO_TYPES = ["bonus_topup", "reduced_fee", "cashback", "signup_bonus"];
 
@@ -23,9 +22,11 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
     setSaving(true);
     try {
       const body = { ...form, value: Number(form.value), min_amount: Number(form.min_amount), max_uses: Number(form.max_uses), starts_at: `${form.starts_at}T00:00:00Z`, expires_at: `${form.expires_at}T23:59:59Z`, active: true };
-      await fetch(`${API}/api/promotions/admin/create`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      await apiRequest("/api/promotions/admin/create", { method: "POST", body: JSON.stringify(body) });
       onCreated({ ...body, current_uses: 0 });
-    } catch (_error) { void _error; } finally { setSaving(false); }
+    } catch (error) {
+      toast.error(error?.message || "Promotion konnte nicht erstellt werden.");
+    } finally { setSaving(false); }
   };
   const inputCls = "w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]";
   return (
@@ -102,23 +103,23 @@ tab, t, loading,
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2.5 mb-5">
-                    <StatCard icon={Users} label={t("admin.total_users")} value={overview.total_users} sub={`+${overview.today_new_users} ${t("common.today").toLowerCase()}`} color="#00C2FF" delay={0.06} />
-                    <StatCard icon={Store} label={t("admin.total_merchants")} value={overview.total_merchants} color="#A855F7" delay={0.08} />
-                    <StatCard icon={CreditCard} label={t("admin.payment_volume")} value={`\u20AC${overview.payment_volume.toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions} txns`} color="#00D26A" delay={0.10} />
-                    <StatCard icon={CircleDollarSign} label={t("admin.fee_revenue")} value={`\u20AC${overview.platform_fee_revenue.toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
-                    <StatCard icon={Clock} label={t("admin.pending_payouts")} value={overview.pending_payouts_count} sub={`\u20AC${overview.pending_payouts_amount.toFixed(2)}`} color="#FF6B6B" delay={0.14} />
-                    <StatCard icon={Check} label={t("admin.processed_payouts")} value={overview.processed_payouts_count} sub={`\u20AC${overview.processed_payouts_amount.toFixed(2)}`} color="#00D26A" delay={0.16} />
+                    <StatCard icon={Users} label={t("admin.total_users")} value={overview.total_users ?? 0} sub={`+${overview.today_new_users ?? 0} ${t("common.today").toLowerCase()}`} color="#00C2FF" delay={0.06} />
+                    <StatCard icon={Store} label={t("admin.total_merchants")} value={overview.total_merchants ?? 0} color="#A855F7" delay={0.08} />
+                    <StatCard icon={CreditCard} label={t("admin.payment_volume")} value={`\u20AC${Number(overview.payment_volume || 0).toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions ?? 0} txns`} color="#00D26A" delay={0.10} />
+                    <StatCard icon={CircleDollarSign} label={t("admin.fee_revenue")} value={`\u20AC${Number(overview.platform_fee_revenue || 0).toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
+                    <StatCard icon={Clock} label={t("admin.pending_payouts")} value={overview.pending_payouts_count ?? 0} sub={`\u20AC${Number(overview.pending_payouts_amount || 0).toFixed(2)}`} color="#FF6B6B" delay={0.14} />
+                    <StatCard icon={Check} label={t("admin.processed_payouts")} value={overview.processed_payouts_count ?? 0} sub={`\u20AC${Number(overview.processed_payouts_amount || 0).toFixed(2)}`} color="#00D26A" delay={0.16} />
                   </div>
                   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                     <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-2">{t("admin.today_label")}</h3>
                     <div className="flex items-center justify-between py-2 border-b border-white/[0.03]">
                       <span className="text-[12px] text-white/60">{t("admin.txns")}</span>
-                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_transactions}</span>
+                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_transactions ?? 0}</span>
                     </div>
                     <div className="flex items-center justify-between py-2">
                       <span className="text-[12px] text-white/60">{t("admin.new_users")}</span>
-                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users}</span>
+                      <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users ?? 0}</span>
                     </div>
                   </motion.div>
                   {/* ── Admin Exports ── */}
@@ -156,7 +157,11 @@ tab, t, loading,
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-[12px] font-medium text-white/90 truncate">{u.name}</p>
-                          {u.role === "admin" && <span className="text-[7px] px-1.5 py-0.5 bg-[#FF4757]/10 text-[#FF4757] rounded-full font-bold uppercase">Admin</span>}
+                          {["admin", "super_admin"].includes(u.role) && (
+                            <span className="text-[7px] px-1.5 py-0.5 bg-[#FF4757]/10 text-[#FF4757] rounded-full font-bold uppercase">
+                              {u.role === "super_admin" ? "Super Admin" : "Admin"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-[#333] truncate">{u.email}</p>
                       </div>
@@ -312,7 +317,9 @@ tab, t, loading,
                             setSavingFees(true);
                             api("/api/admin/settings", { method: "PUT", body: JSON.stringify({ fees: feeValues }) })
                               .then(d => { setSettings({ ...settings, fees: d.fees || feeValues }); setEditingFees(false); })
-                              .catch(() => {})
+                              .catch((error) => {
+                                toast.error(error?.message || "Gebühren konnten nicht gespeichert werden.");
+                              })
                               .finally(() => setSavingFees(false));
                           } else {
                             setFeeValues({ ...settings.fees });
@@ -376,7 +383,9 @@ tab, t, loading,
                             setSavingMerchantFees(true);
                             api("/api/payments/admin/fees", { method: "POST", body: JSON.stringify({ fees: merchantFeeValues }) })
                               .then(d => { setMerchantFees(d.fees || merchantFeeValues); setEditingMerchantFees(false); })
-                              .catch(() => {})
+                              .catch((error) => {
+                                toast.error(error?.message || "Händlergebühren konnten nicht gespeichert werden.");
+                              })
                               .finally(() => setSavingMerchantFees(false));
                           } else {
                             setMerchantFeeValues({ ...merchantFees });
@@ -480,9 +489,11 @@ tab, t, loading,
                         <motion.button data-testid={`promo-toggle-${p.name}`} whileTap={{ scale: 0.9 }}
                           onClick={async () => {
                             try {
-                              await api(`/api/promotions/admin/toggle/${p.name}`, { method: "PUT" });
+                              await api(`/api/promotions/admin/toggle/${encodeURIComponent(p.name)}`, { method: "PUT" });
                               setPromos(promos.map(x => x.name === p.name ? { ...x, active: !x.active } : x));
-                            } catch (_error) { void _error; }
+                            } catch (error) {
+                              toast.error(error?.message || "Promotion konnte nicht geändert werden.");
+                            }
                           }}>
                           {p.active ? <ToggleRight size={28} className="text-[#00D26A]" /> : <ToggleLeft size={28} className="text-[#333]" />}
                         </motion.button>
@@ -520,7 +531,9 @@ tab, t, loading,
                               method: "PUT", body: JSON.stringify({ enabled: !flag.enabled })
                             });
                             setFeatureFlags(featureFlags.map(f => f.name === flag.name ? { ...f, enabled: !f.enabled } : f));
-                          } catch (_error) { void _error; }
+                          } catch (error) {
+                            toast.error(error?.message || "Feature-Flag konnte nicht geändert werden.");
+                          }
                         }}
                         className="flex items-center"
                         whileTap={{ scale: 0.9 }}>
@@ -612,14 +625,21 @@ tab, t, loading,
                           <p className="text-[9px] text-[#333] mt-1">{t("admin.comp_user")}: {flag.user_id || "-"} · {flag.txn_type || "-"} · €{flag.amount?.toFixed(2) || "0.00"}</p>
                           <p className="text-[8px] text-[#222] mt-0.5">{new Date(flag.created_at).toLocaleString()}</p>
                           {flag.status === "open" && (
-                            <motion.button data-testid={`resolve-flag-${i}`}
+                            <motion.button data-testid={`resolve-flag-${flag.flag_id || i}`}
+                              disabled={!flag.flag_id}
                               onClick={async () => {
+                                if (!flag.flag_id) {
+                                  toast.error("Compliance-Flag hat keine stabile ID. Bitte neu laden.");
+                                  return;
+                                }
                                 try {
-                                  await api(`/api/admin/compliance-flags/${i}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
-                                  setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
-                                } catch (_error) { void _error; }
+                                  await api(`/api/admin/compliance-flags/${encodeURIComponent(flag.flag_id)}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
+                                  setComplianceFlags(complianceFlags.map((item) => item.flag_id === flag.flag_id ? { ...item, status: "resolved" } : item));
+                                } catch (error) {
+                                  toast.error(error?.message || "Compliance-Flag konnte nicht aufgelöst werden.");
+                                }
                               }}
-                              className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
+                              className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:cursor-not-allowed disabled:opacity-40"
                               whileTap={{ scale: 0.95 }}>
                               {t("admin.comp_resolve")}
                             </motion.button>

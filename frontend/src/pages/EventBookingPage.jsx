@@ -1,7 +1,7 @@
 /**
  * BidBlitz V2 - Event-Buchung (Tickets kaufen)
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, Calendar, MapPin, Star, Users, Ticket,
@@ -28,6 +28,7 @@ const EventBookingPage = ({ onBack, onNavigate }) => {
   // Purchase form
   const [ticketType, setTicketType] = useState("standard");
   const [quantity, setQuantity] = useState(1);
+  const purchaseAttemptKeyRef = useRef(null);
   const [buying, setBuying] = useState(false);
   const [buyResult, setBuyResult] = useState(null);
   const [error, setError] = useState("");
@@ -52,18 +53,46 @@ const EventBookingPage = ({ onBack, onNavigate }) => {
 
   useEffect(() => { loadEvents(); loadTickets(); }, [loadEvents, loadTickets]);
 
+  useEffect(() => {
+    purchaseAttemptKeyRef.current = null;
+  }, [selectedEvent?.event_id, ticketType, quantity]);
+
   const buyTicket = async () => {
     if (!selectedEvent) return;
+    if (!purchaseAttemptKeyRef.current) {
+      purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `event-ticket-${crypto.randomUUID()}`
+        : `event-ticket-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseAttemptKeyRef.current;
     setBuying(true); setError("");
     try {
       const res = await fetch(`${API}/api/events/buy`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: selectedEvent.event_id, ticket_type: ticketType, quantity }),
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          event_id: selectedEvent.event_id,
+          ticket_type: ticketType,
+          quantity,
+          idempotency_key: idempotencyKey,
+        }),
       });
-      const d = await res.json();
-      if (res.ok && d.ok) { setBuyResult(d.ticket); loadTickets(); }
-      else setError(d.detail || "Kauf fehlgeschlagen");
-    } catch { setError("Netzwerkfehler"); }
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.ok) {
+        purchaseAttemptKeyRef.current = null;
+        setBuyResult(d.ticket);
+        loadTickets();
+      } else {
+        if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
+        setError(typeof d.detail === "string" ? d.detail : "Kauf fehlgeschlagen");
+      }
+    } catch {
+      setError("Netzwerkfehler");
+    }
     setBuying(false);
   };
 

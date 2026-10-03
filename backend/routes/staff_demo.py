@@ -23,7 +23,10 @@ DEMO_ROLES = ["Kellner", "Koch", "Barkeeper", "Aushilfe", "Schichtleiter"]
 
 
 async def _is_enabled():
-    return os.getenv("STAFF_DEMO_ENABLED", "true").lower() == "true"
+    app_env = os.getenv("APP_ENV", "development").lower().strip()
+    if app_env == "production":
+        return False
+    return os.getenv("STAFF_DEMO_ENABLED", "false").lower() == "true"
 
 
 def _is_demo_request(request: Request) -> bool:

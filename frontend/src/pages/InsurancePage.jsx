@@ -33,6 +33,8 @@ const InsurancePage = ({ onBack }) => {
   const [myPolicies, setMyPolicies] = useState([]);
   const [billing, setBilling] = useState("monthly");
   const [buying, setBuying] = useState(false);
+  const [providerUnavailable, setProviderUnavailable] = useState(false);
+  const purchaseKeyRef = useState(() => ({ current: null }))[0];
   const [buyResult, setBuyResult] = useState(null);
   const [error, setError] = useState("");
 
@@ -107,15 +109,31 @@ const InsurancePage = ({ onBack }) => {
 
   const buy = async () => {
     if (!selected) return;
+    if (!purchaseKeyRef.current) {
+      purchaseKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `insurance-${crypto.randomUUID()}`
+        : `insurance-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseKeyRef.current;
     setBuying(true); setError("");
     try {
       const res = await fetch(`${API}/api/insurance/purchase`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_id: selected.product_id, billing }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ product_id: selected.product_id, billing, idempotency_key: idempotencyKey }),
       });
       const d = await res.json();
-      if (res.ok && d.ok) { setBuyResult(d.policy); loadPolicies(); }
-      else setError(d.detail || "Kauf fehlgeschlagen");
+      if (res.ok && d.ok) {
+        purchaseKeyRef.current = null;
+        setBuyResult(d.policy);
+        loadPolicies();
+      } else {
+        const detail = typeof d.detail === "object" ? d.detail : null;
+        if (detail?.error === "insurance_provider_not_live") setProviderUnavailable(true);
+        if (res.status < 500 && res.status !== 409) purchaseKeyRef.current = null;
+        setError(detail?.message || d.detail || "Kauf fehlgeschlagen");
+      }
     } catch { setError("Netzwerkfehler"); }
     setBuying(false);
   };
@@ -237,7 +255,7 @@ const InsurancePage = ({ onBack }) => {
               <div className="flex justify-between"><span className="text-[10px] text-[#10B981]">Cashback (2%)</span><span className="text-[10px] text-[#10B981]">+€{(price * 0.02).toFixed(2)}</span></div>
             </div>
             {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-            <motion.button whileTap={{ scale: 0.97 }} onClick={buy} disabled={buying}
+            <motion.button whileTap={{ scale: 0.97 }} onClick={buy} disabled={buying || providerUnavailable}
               className="w-full py-3.5 rounded-xl bg-[#EF4444] text-white font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2"
               data-testid="ins-buy-btn">{buying ? <Loader2 size={18} className="animate-spin" /> : <><Shield size={16} /> Jetzt abschließen</>}</motion.button>
           </div>

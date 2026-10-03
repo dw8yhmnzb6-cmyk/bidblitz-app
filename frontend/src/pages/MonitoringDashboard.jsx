@@ -195,8 +195,9 @@ const MonitoringDashboard = ({ onBack }) => {
           </motion.button>
           <div>
             <h1 className="text-[15px] font-bold text-white flex items-center gap-2">
-              <Activity size={14} className="text-emerald-400" /> {t("monitor.title")}
+              <Activity size={14} className="text-emerald-400" /> System & Fehler
             </h1>
+            <p className="text-[10px] text-white/35">Automatische Fehlererkennung für BidBlitz-Module und Seiten</p>
             {lastUpdate && <p className="text-[10px] text-white/30">{t("monitor.updated")}: {lastUpdate.toLocaleTimeString(lang === "de" ? "de-DE" : lang === "sq" ? "sq-AL" : lang === "ar" ? "ar-AE" : "en-GB")}</p>}
           </div>
         </div>
@@ -273,13 +274,14 @@ const MonitoringDashboard = ({ onBack }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-4">
               {[
                 ["Warnungen", errorCenter.summary?.open_alerts || 0, "#EF4444"],
+                ["Offen", errorCenter.summary?.open_incidents || 0, "#EF4444"],
                 ["Frontend", errorCenter.summary?.frontend_errors_24h || 0, "#F59E0B"],
                 ["API", errorCenter.summary?.api_errors_1h || 0, "#8B5CF6"],
                 ["Login/Reg", errorCenter.summary?.auth_errors_1h || 0, "#00C2FF"],
-                ["Incidents", errorCenter.summary?.incidents_24h || 0, "#10B981"],
+                ["24h", errorCenter.summary?.incidents_24h || 0, "#10B981"],
               ].map(([label, value, color]) => (
                 <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid={`monitor-error-summary-${String(label).toLowerCase()}`}>
                   <p className="text-[9px] uppercase tracking-[0.16em] text-white/35">{label}</p>
@@ -315,7 +317,7 @@ const MonitoringDashboard = ({ onBack }) => {
                         <p className="text-[11px] font-bold text-white flex items-center gap-2">
                           {probe.key.includes('auth') ? <LogIn size={12} className="text-[#00C2FF]" /> : probe.key.includes('site') ? <Globe size={12} className="text-emerald-400" /> : <Bug size={12} className="text-amber-400" />} {probe.label}
                         </p>
-                        <p className="text-[10px] text-white/35 mt-1">{probe.path} · {probe.latency_ms || 0}ms</p>
+                        <p className="text-[10px] text-white/35 mt-1">{probe.path} · HTTP {probe.status_code ?? "—"} · {probe.latency_ms || 0}ms</p>
                         {probe.error_message ? <p className="text-[10px] text-red-300 mt-1">{probe.error_message}</p> : null}
                       </div>
                       <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: probe.status === 'ok' ? 'rgba(16,185,129,0.12)' : probe.status === 'warning' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', color: probe.status === 'ok' ? '#10B981' : probe.status === 'warning' ? '#F59E0B' : '#EF4444' }}>{probe.status}</span>
@@ -324,6 +326,30 @@ const MonitoringDashboard = ({ onBack }) => {
                 </div>
               </div>
             </div>
+
+            {(errorCenter.incidents || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-incidents-list">
+                <p className="text-[12px] font-bold text-white mb-2">Letzte Fehler & Wiederherstellungen</p>
+                <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                  {errorCenter.incidents.slice(0, 12).map((incident, idx) => {
+                    const resolved = incident.resolved === true;
+                    return (
+                      <div key={`${incident.key || incident.type || 'incident'}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-start justify-between gap-3" data-testid={`monitor-incident-${idx}`}>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-white truncate">{incident.label || incident.key || incident.type || "Systemfehler"}</p>
+                          <p className="text-[10px] text-white/35 mt-1">
+                            {incident.status_code ? `HTTP ${incident.status_code} · ` : ""}{incident.error_message || incident.status || ""}
+                          </p>
+                        </div>
+                        <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: resolved ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)", color: resolved ? "#10B981" : "#EF4444" }}>
+                          {resolved ? "behoben" : "offen"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {(errorCenter.top_error_pages || []).length > 0 && (
               <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>

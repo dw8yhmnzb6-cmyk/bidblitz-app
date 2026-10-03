@@ -35,6 +35,365 @@ TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay", "
 STRIPE_CHECKOUT_METHODS = {"nfc", "qr", "apple_pay", "google_pay", "credit_card"}
 DIRECT_BOOKING_METHODS = {"wallet", "cash"}
 
+DEFAULT_TRANSPORT_PRICING = {
+    "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "minimum": 3.0, "speed_factor": 1.0, "wallet_only": False},
+    "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "minimum": 1.0, "speed_factor": 1.25, "wallet_only": True},
+    "bike": {"label": "E-Bike", "icon": "bike", "base": 0.55, "per_km": 0.22, "per_min": 0.04, "minimum": 1.0, "speed_factor": 1.32, "wallet_only": True},
+    "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "minimum": 4.2, "speed_factor": 1.08, "wallet_only": False},
+    "car_sharing": {"label": "Carsharing", "icon": "car", "base": 2.8, "per_km": 0.36, "per_min": 0.11, "minimum": 2.8, "speed_factor": 1.02, "wallet_only": False},
+    "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "minimum": 8.5, "speed_factor": 1.05, "wallet_only": False},
+    "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "minimum": 5.0, "speed_factor": 1.12, "wallet_only": False},
+    "vip": {"label": "VIP Chauffeur", "icon": "crown", "base": 12.0, "per_km": 1.6, "per_min": 0.22, "minimum": 12.0, "speed_factor": 0.92, "wallet_only": False},
+}
+
+REGIONAL_PRICING_PROFILES = {
+    "XK": {
+        "region": "Kosovo",
+        "currency": "EUR",
+        "source": "Kosovo local mobility benchmark",
+        "modes": {
+            "taxi": {"base": 2.0, "per_km": 0.60, "per_min": 0.0, "minimum": 2.0, "surge": False, "range_per_km_low": 0.50, "range_per_km_high": 0.65, "basis": "2,00 € Start + ca. 0,50–0,65 €/km"},
+            "scooter": {"base": 0.20, "per_km": 0.0, "per_min": 0.18, "minimum": 0.20, "surge": False, "range_per_min_low": 0.15, "range_per_min_high": 0.20, "basis": "ca. 0,15–0,20 €/min + mögliche Entsperrgebühr"},
+            "bike": {"base": 0.30, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
+            "ev": {"base": 2.0, "per_km": 0.45, "per_min": 0.04, "minimum": 2.5, "surge": False, "basis": "regionaler EV-Schätzwert"},
+            "car_sharing": {"base": 1.5, "per_km": 0.32, "per_min": 0.08, "minimum": 2.0, "surge": False, "basis": "regionaler Carsharing-Schätzwert"},
+        },
+    },
+    "DE": {
+        "region": "Deutschland",
+        "currency": "EUR",
+        "source": "German urban mobility benchmark",
+        "modes": {
+            "taxi": {"base": 4.5, "per_km": 2.20, "per_min": 0.0, "minimum": 6.0, "surge": False, "basis": "regionaler Taxi-Schätzwert"},
+            "scooter": {"base": 0.0, "per_km": 0.0, "per_min": 0.19, "minimum": 1.0, "surge": False, "basis": "Sharing-Benchmark · ca. 0,19 €/min"},
+            "bike": {"base": 1.0, "per_km": 0.0, "per_min": 0.18, "minimum": 1.0, "surge": False, "basis": "Sharing-Benchmark"},
+        },
+    },
+    "BALKANS": {
+        "region": "Balkan",
+        "currency": "EUR",
+        "source": "BidBlitz regional estimate",
+        "modes": {
+            "taxi": {"base": 2.0, "per_km": 0.85, "per_min": 0.03, "minimum": 2.5, "surge": False, "basis": "regionaler Taxi-Schätzwert"},
+            "scooter": {"base": 0.50, "per_km": 0.0, "per_min": 0.18, "minimum": 1.0, "surge": False, "basis": "regionaler Scooter-Schätzwert"},
+            "bike": {"base": 0.50, "per_km": 0.0, "per_min": 0.14, "minimum": 0.80, "surge": False, "basis": "regionaler E-Bike-Schätzwert"},
+        },
+    },
+    "EU": {
+        "region": "Europa",
+        "currency": "EUR",
+        "source": "BidBlitz European benchmark",
+        "modes": {
+            "scooter": {"base": 1.0, "per_km": 0.0, "per_min": 0.22, "minimum": 1.0, "surge": False, "basis": "EU-Sharing-Benchmark"},
+            "bike": {"base": 1.0, "per_km": 0.0, "per_min": 0.20, "minimum": 1.0, "surge": False, "basis": "EU-Bike-Sharing-Benchmark"},
+        },
+    },
+    "AE": {
+        "region": "United Arab Emirates",
+        "currency": "AED",
+        "source": "UAE mobility authority benchmark",
+        "strict_modes": True,
+        "modes": {},
+    },
+    "UNSUPPORTED": {
+        "region": "Nicht konfiguriert",
+        "currency": "EUR",
+        "source": "Kein verifizierter lokaler Mobility-Tarif",
+        "strict_modes": True,
+        "modes": {},
+    },
+}
+
+CITY_PRICING_PROFILES = {
+    "XK": {
+        "prishtina": {
+            "city": "Prishtina",
+            "source": "Prishtina public taxi and scooter benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 2.0,
+                    "per_km": 0.65,
+                    "per_min": 0.0,
+                    "minimum": 2.0,
+                    "surge": False,
+                    "range_per_km_low": 0.53,
+                    "range_per_km_high": 0.75,
+                    "basis": "Prishtina · 2,00 € Start + ca. 0,53–0,75 €/km",
+                },
+                "scooter": {
+                    "base": 0.20,
+                    "per_km": 0.0,
+                    "per_min": 0.18,
+                    "minimum": 0.20,
+                    "surge": False,
+                    "range_per_min_low": 0.15,
+                    "range_per_min_high": 0.20,
+                    "basis": "Prishtina · ca. 0,15–0,20 €/min + mögliche Entsperrgebühr",
+                },
+            },
+        },
+        "prizren": {
+            "city": "Prizren",
+            "source": "Prizren 2026 local taxi benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 2.05,
+                    "per_km": 0.49,
+                    "per_min": 0.0,
+                    "minimum": 2.05,
+                    "surge": False,
+                    "range_per_km_low": 0.49,
+                    "range_per_km_high": 0.98,
+                    "basis": "Prizren · ca. 2,05 € Start + 0,49 €/km",
+                },
+            },
+        },
+    },
+    "DE": {
+        "hamburg": {
+            "city": "Hamburg",
+            "region": "Deutschland",
+            "source": "Freie und Hansestadt Hamburg · Taxenordnung",
+            "modes": {
+                "taxi": {
+                    "base": 4.50,
+                    "per_km": 0.0,
+                    "per_min": 0.0,
+                    "minimum": 4.50,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 9.0, "per_km": 2.70},
+                        {"up_to_km": None, "per_km": 2.00},
+                    ],
+                    "basis": "Hamburg · 4,50 € Grundpreis + 2,70 €/km bis 9 km, danach 2,00 €/km",
+                },
+            },
+        },
+    },
+    "AL": {
+        "tirana": {
+            "city": "Tirana",
+            "region": "Albanien",
+            "currency": "ALL",
+            "source": "Taxi.AL published city tariff",
+            "modes": {
+                "taxi": {
+                    "base": 250.0,
+                    "included_distance_km": 1.5,
+                    "per_km": 0.0,
+                    "per_min": 0.0,
+                    "minimum": 250.0,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 3.5, "per_km": 100.0},
+                        {"up_to_km": 8.5, "per_km": 85.0},
+                        {"up_to_km": 15.0, "per_km": 80.0},
+                        {"up_to_km": None, "per_km": 80.0},
+                    ],
+                    "basis": "Tirana · 250 ALL Start inkl. 1,5 km; danach gestaffelter km-Tarif",
+                },
+            },
+        },
+    },
+    "ME": {
+        "podgorica": {
+            "city": "Podgorica",
+            "region": "Montenegro",
+            "currency": "EUR",
+            "source": "Podgorica 2026 local taxi operator benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 1.0,
+                    "per_km": 0.70,
+                    "per_min": 0.0,
+                    "minimum": 2.50,
+                    "surge": False,
+                    "range_base_low": 0.50,
+                    "range_base_high": 1.00,
+                    "range_per_km_low": 0.60,
+                    "range_per_km_high": 1.00,
+                    "basis": "Podgorica · ca. 0,50–1,00 € Start + ca. 0,60–1,00 €/km",
+                },
+            },
+        },
+    },
+    "FR": {
+        "paris": {
+            "city": "Paris",
+            "region": "Frankreich",
+            "currency": "EUR",
+            "source": "Service Public France · 2026 regulated taxi ceiling",
+            "modes": {
+                "taxi": {
+                    "base": 4.48,
+                    "booking_fee": 4.00,
+                    "per_km": 1.30,
+                    "per_min": 0.0,
+                    "minimum": 8.00,
+                    "surge": False,
+                    "basis": "Paris 2026 · regulierter Richtwert: max. 4,48 € Aufnahme + max. 1,30 €/km + 4,00 € Sofortreservierung",
+                },
+            },
+        },
+    },
+    "AT": {
+        "wien": {
+            "city": "Wien",
+            "region": "Österreich",
+            "source": "Stadt Wien · Wiener Taxitarif",
+            "modes": {
+                "taxi": {
+                    "base": 3.80,
+                    "booking_fee": 2.00,
+                    "per_km": 0.0,
+                    "per_min": 0.58,
+                    "minimum": 3.80,
+                    "surge": False,
+                    "distance_tiers": [
+                        {"up_to_km": 5.0, "per_km": 0.95},
+                        {"up_to_km": None, "per_km": 0.58},
+                    ],
+                    "basis": "Wien · 3,80 € Grundbetrag + Strecke + 0,58 €/min + 2,00 € Bestellzuschlag",
+                },
+            },
+        },
+    },
+    "AE": {
+        "dubai": {
+            "city": "Dubai",
+            "region": "United Arab Emirates",
+            "currency": "AED",
+            "source": "Dubai RTA taxi benchmark",
+            "modes": {
+                "taxi": {
+                    "base": 9.0,
+                    "per_km": 2.19,
+                    "per_min": 0.0,
+                    "minimum": 13.0,
+                    "surge": False,
+                    "range_base_low": 9.0,
+                    "range_base_high": 13.0,
+                    "range_per_km_low": 2.14,
+                    "range_per_km_high": 2.45,
+                    "basis": "Dubai e-hail · Start ca. AED 9–13 + ca. AED 2,14–2,45/km",
+                },
+            },
+        },
+        "abu_dhabi": {
+            "city": "Abu Dhabi",
+            "region": "United Arab Emirates",
+            "currency": "AED",
+            "source": "Abu Dhabi Mobility · Silver Taxi",
+            "modes": {
+                "taxi": {
+                    "base": 5.0,
+                    "booking_fee": 4.0,
+                    "per_km": 1.82,
+                    "per_min": 0.0,
+                    "minimum": 12.0,
+                    "surge": False,
+                    "range_base_low": 5.0,
+                    "range_base_high": 5.5,
+                    "range_booking_fee_low": 4.0,
+                    "range_booking_fee_high": 5.0,
+                    "basis": "Abu Dhabi · AED 5–5,50 Start + AED 1,82/km + AED 4–5 Buchung",
+                },
+            },
+        },
+    },
+}
+
+BALKAN_COUNTRY_CODES = {"AL", "MK", "ME", "RS", "BA"}
+EUROPE_COUNTRY_CODES = {
+    "AD", "AL", "AT", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK",
+    "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI",
+    "LT", "LU", "LV", "MC", "MD", "ME", "MK", "MT", "NL", "NO", "PL", "PT",
+    "RO", "RS", "RU", "SE", "SI", "SK", "SM", "TR", "UA", "VA", "XK",
+}
+
+
+def _regional_profile_key_for_country(country_code: str) -> str:
+    code = str(country_code or "").upper()
+    if code == "XK":
+        return "XK"
+    if code == "DE":
+        return "DE"
+    if code in BALKAN_COUNTRY_CODES:
+        return "BALKANS"
+    if code == "AE":
+        return "AE"
+    if code in EUROPE_COUNTRY_CODES:
+        return "EU"
+    return "UNSUPPORTED"
+
+
+CITY_NAME_ALIASES = {
+    "pristina": "prishtina",
+    "prishtina": "prishtina",
+    "prishtinë": "prishtina",
+    "prishtine": "prishtina",
+    "prizren": "prizren",
+    "peja": "peja",
+    "pec": "peja",
+    "pejë": "peja",
+    "ferizaj": "ferizaj",
+    "urosevac": "ferizaj",
+    "gjilan": "gjilan",
+    "gjilani": "gjilan",
+    "gnjilane": "gjilan",
+    "gjakova": "gjakova",
+    "gjakovë": "gjakova",
+    "djakovica": "gjakova",
+    "mitrovica": "mitrovica",
+    "mitrovicë": "mitrovica",
+    "hamburg": "hamburg",
+    "vienna": "wien",
+    "wien": "wien",
+    "tirana": "tirana",
+    "tiranë": "tirana",
+    "podgorica": "podgorica",
+    "paris": "paris",
+    "dubai": "dubai",
+    "abu dhabi": "abu_dhabi",
+    "abu_dhabi": "abu_dhabi",
+}
+
+
+
+def _normalize_city_key(city: str) -> str:
+    value = str(city or "").strip().lower()
+    return CITY_NAME_ALIASES.get(value, value)
+
+
+def _merge_pricing_profile(base_profile: dict, city_profile: Optional[dict] = None) -> dict:
+    city_currency = str((city_profile or {}).get("currency") or "").upper()
+    base_currency = str(base_profile.get("currency") or "EUR").upper()
+    currency_switch = bool(city_currency and city_currency != base_currency)
+    inherit_modes = not currency_switch and not bool(base_profile.get("strict_modes"))
+    profile = {
+        **base_profile,
+        "modes": {
+            key: dict(value)
+            for key, value in (base_profile.get("modes") or {}).items()
+        } if inherit_modes else {},
+    }
+    if not city_profile:
+        profile["profile_scope"] = "country"
+        profile["strict_modes"] = bool(base_profile.get("strict_modes"))
+        return profile
+
+    for mode, override in (city_profile.get("modes") or {}).items():
+        current = dict(profile["modes"].get(mode) or {})
+        current.update(override)
+        profile["modes"][mode] = current
+    profile["city"] = city_profile.get("city") or profile.get("city") or ""
+    profile["region"] = city_profile.get("region") or profile.get("region")
+    profile["currency"] = city_profile.get("currency") or profile.get("currency", "EUR")
+    profile["source"] = city_profile.get("source") or profile.get("source")
+    profile["profile_scope"] = "city"
+    profile["strict_modes"] = currency_switch or bool(base_profile.get("strict_modes")) or bool(city_profile.get("strict_modes"))
+    return profile
+
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -80,37 +439,107 @@ def build_option(
     duration_min: int,
     demand_multiplier: float,
     eco_score: int,
+    pricing_profile: Optional[dict] = None,
 ) -> dict:
-    base = {
-        "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "speed_factor": 1.0, "wallet_only": False},
-        "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "speed_factor": 1.25, "wallet_only": True},
-        "bike": {"label": "E-Bike", "icon": "bike", "base": 0.55, "per_km": 0.22, "per_min": 0.04, "speed_factor": 1.32, "wallet_only": True},
-        "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "speed_factor": 1.08, "wallet_only": False},
-        "car_sharing": {"label": "Carsharing", "icon": "car", "base": 2.8, "per_km": 0.36, "per_min": 0.11, "speed_factor": 1.02, "wallet_only": False},
-        "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "speed_factor": 1.05, "wallet_only": False},
-        "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "speed_factor": 1.12, "wallet_only": False},
-        "vip": {"label": "VIP Chauffeur", "icon": "crown", "base": 12.0, "per_km": 1.6, "per_min": 0.22, "speed_factor": 0.92, "wallet_only": False},
-    }[option_type]
+    base = {**DEFAULT_TRANSPORT_PRICING[option_type]}
+    profile_mode = ((pricing_profile or {}).get("modes") or {}).get(option_type) or {}
+    base.update({key: value for key, value in profile_mode.items() if key in {"base", "per_km", "per_min", "minimum", "surge", "basis", "booking_fee", "included_distance_km", "distance_tiers", "range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high"}})
+
     adjusted_duration = max(2, round(duration_min * base["speed_factor"]))
-    fare = round((base["base"] + distance_km * base["per_km"] + adjusted_duration * base["per_min"]) * demand_multiplier, 2)
+    applied_multiplier = demand_multiplier if base.get("surge", True) else 1.0
+
+    included_distance_km = max(0.0, float(base.get("included_distance_km") or 0))
+    billable_distance_km = max(0.0, float(distance_km) - included_distance_km)
+    distance_charge = billable_distance_km * base["per_km"]
+    if base.get("distance_tiers"):
+        distance_charge = 0.0
+        previous_limit = 0.0
+        remaining = billable_distance_km
+        for tier in base["distance_tiers"]:
+            upper = tier.get("up_to_km")
+            if upper is None:
+                tier_distance = remaining
+            else:
+                tier_capacity = max(0.0, float(upper) - previous_limit)
+                tier_distance = min(remaining, tier_capacity)
+            distance_charge += tier_distance * float(tier.get("per_km") or 0)
+            remaining -= tier_distance
+            if upper is not None:
+                previous_limit = float(upper)
+            if remaining <= 0:
+                break
+
+    booking_fee = float(base.get("booking_fee") or 0)
+    raw_fare = base["base"] + booking_fee + distance_charge + adjusted_duration * base["per_min"]
+    fare = round(max(float(base.get("minimum") or 0), raw_fare) * applied_multiplier, 2)
+
+    range_low = None
+    range_high = None
+    if any(key in base for key in ("range_base_low", "range_base_high", "range_booking_fee_low", "range_booking_fee_high", "range_per_km_low", "range_per_km_high", "range_per_min_low", "range_per_min_high")):
+        low_base = float(base.get("range_base_low", base["base"]))
+        high_base = float(base.get("range_base_high", base["base"]))
+        low_booking_fee = float(base.get("range_booking_fee_low", booking_fee))
+        high_booking_fee = float(base.get("range_booking_fee_high", booking_fee))
+        low_per_km = float(base.get("range_per_km_low", base["per_km"]))
+        high_per_km = float(base.get("range_per_km_high", base["per_km"]))
+        low_per_min = float(base.get("range_per_min_low", base["per_min"]))
+        high_per_min = float(base.get("range_per_min_high", base["per_min"]))
+        low_raw = low_base + low_booking_fee + billable_distance_km * low_per_km + adjusted_duration * low_per_min
+        high_raw = high_base + high_booking_fee + billable_distance_km * high_per_km + adjusted_duration * high_per_min
+        range_low = round(max(float(base.get("minimum") or 0), low_raw) * applied_multiplier, 2)
+        range_high = round(max(float(base.get("minimum") or 0), high_raw) * applied_multiplier, 2)
+
+    pricing_region = (pricing_profile or {}).get("region") or "Europa"
+    pricing_source = (pricing_profile or {}).get("source") or "BidBlitz estimate"
+    pricing_basis = base.get("basis") or "BidBlitz Routenschätzung"
+    currency = str((pricing_profile or {}).get("currency") or "EUR").upper()
+    eur_settlement = currency == "EUR"
+    local_range = {"low": range_low, "high": range_high} if range_low is not None and range_high is not None else None
     return {
         "type": option_type,
         "label": base["label"],
         "icon": base["icon"],
-        "price_eur": fare,
+        "price_local": fare,
+        "currency": currency,
+        "price_eur": fare if eur_settlement else None,
         "duration_min": adjusted_duration,
         "distance_km": round(distance_km, 2),
         "wallet_only": base["wallet_only"],
         "eco_score": eco_score,
         "payment_methods": ["wallet", "nfc", "qr", "apple_pay", "google_pay"],
+        "pricing_region": pricing_region,
+        "pricing_source": pricing_source,
+        "pricing_basis": pricing_basis,
+        "pricing_scope": ((pricing_profile or {}).get("mode_scopes") or {}).get(option_type, (pricing_profile or {}).get("profile_scope") or "country"),
+        "estimated": True,
+        "price_range_local": local_range,
+        "price_range_eur": local_range if eur_settlement else None,
+        "booking_supported": eur_settlement,
+        "settlement_reason": None if eur_settlement else "FX-/Settlement-Verbindung für lokale Währung fehlt",
     }
 
 
+def _option_price(option: dict) -> float:
+    value = option.get("price_local")
+    if value is None:
+        value = option.get("price_eur")
+    return float(value or 0)
+
+
+def _require_supported_settlement(option: dict):
+    if option.get("booking_supported") is False or option.get("price_eur") is None:
+        currency = option.get("currency") or "lokale Währung"
+        raise HTTPException(
+            503,
+            f"Lokaler {currency}-Tarif ist verfügbar, aber FX-/Settlement ist noch nicht verbunden.",
+        )
+
+
 def build_recommendations(options: List[dict]) -> dict:
-    cheapest = min(options, key=lambda x: x["price_eur"])
+    cheapest = min(options, key=_option_price)
     fastest = min(options, key=lambda x: x["duration_min"])
     eco = max(options, key=lambda x: x["eco_score"])
-    balance = min(options, key=lambda x: x["price_eur"] * 0.45 + x["duration_min"] * 0.55)
+    balance = min(options, key=lambda x: _option_price(x) * 0.45 + x["duration_min"] * 0.55)
     return {
         "cheapest": {"type": cheapest["type"], "label": cheapest["label"], "reason": "Günstigste Option"},
         "fastest": {"type": fastest["type"], "label": fastest["label"], "reason": "Schnellste Ankunft"},
@@ -164,6 +593,7 @@ class MobilityBookingRequest(BaseModel):
     dropoff: MobilityBookingLocation
     preferences: Optional[dict] = None
     ai_recommendation: Optional[dict] = None
+    request_id: Optional[str] = Field(default=None, min_length=8, max_length=120)
 
 
 class MobilityCheckoutSessionRequest(BaseModel):
@@ -192,6 +622,7 @@ class BestRouteBookRequest(BaseModel):
     route_id: str
     transport_type: str
     payment_method: str = Field(default="wallet")
+    request_id: Optional[str] = Field(default=None, min_length=8, max_length=120)
 
 
 class FrequentRouteSaveRequest(BaseModel):
@@ -200,6 +631,148 @@ class FrequentRouteSaveRequest(BaseModel):
     dropoff: MobilityBookingLocation
     preferred_transport_type: str = Field(default="taxi")
     payment_method: str = Field(default="wallet")
+
+
+class MobilityPricingProfilePayload(BaseModel):
+    country_code: str = Field(..., min_length=2, max_length=2)
+    city: Optional[str] = Field(default=None, max_length=100)
+    region: Optional[str] = Field(default=None, max_length=100)
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    source: str = Field(..., min_length=2, max_length=240)
+    modes: dict[str, dict] = Field(default_factory=dict)
+    enabled: bool = True
+
+
+PRICING_NUMERIC_FIELDS = {
+    "base",
+    "per_km",
+    "per_min",
+    "minimum",
+    "booking_fee",
+    "daily_cap",
+    "min_balance",
+    "premium_multiplier",
+    "van_multiplier",
+    "range_base_low",
+    "range_base_high",
+    "range_booking_fee_low",
+    "range_booking_fee_high",
+    "range_per_km_low",
+    "range_per_km_high",
+    "range_per_min_low",
+    "range_per_min_high",
+}
+
+
+def _normalize_country_code(value: str) -> str:
+    code = str(value or "").strip().upper()
+    if len(code) != 2 or not code.isalpha():
+        raise HTTPException(400, "Ländercode muss aus zwei Buchstaben bestehen.")
+    return code
+
+
+def _sanitize_pricing_modes(modes: dict) -> dict:
+    cleaned = {}
+    for mode, raw in (modes or {}).items():
+        if mode not in DEFAULT_TRANSPORT_PRICING:
+            raise HTTPException(400, f"Unbekannte Transportart: {mode}")
+        if not isinstance(raw, dict):
+            raise HTTPException(400, f"Tarif für {mode} muss ein Objekt sein.")
+
+        entry = {}
+        for key, value in raw.items():
+            if key in PRICING_NUMERIC_FIELDS:
+                try:
+                    number = float(value)
+                except (TypeError, ValueError) as exc:
+                    raise HTTPException(400, f"{mode}.{key} muss numerisch sein.") from exc
+                if number < 0:
+                    raise HTTPException(400, f"{mode}.{key} darf nicht negativ sein.")
+                if key in {"premium_multiplier", "van_multiplier"} and not 0.1 <= number <= 10:
+                    raise HTTPException(400, f"{mode}.{key} muss zwischen 0,1 und 10 liegen.")
+                entry[key] = number
+            elif key == "surge":
+                entry[key] = bool(value)
+            elif key == "basis":
+                entry[key] = str(value or "")[:280]
+            elif key == "distance_tiers":
+                if not isinstance(value, list) or len(value) > 12:
+                    raise HTTPException(400, f"{mode}.distance_tiers ist ungültig.")
+                tiers = []
+                previous_limit = 0.0
+                for tier in value:
+                    if not isinstance(tier, dict):
+                        raise HTTPException(400, f"{mode}.distance_tiers enthält einen ungültigen Eintrag.")
+                    upper = tier.get("up_to_km")
+                    per_km = tier.get("per_km")
+                    if upper is not None:
+                        upper = float(upper)
+                        if upper <= previous_limit:
+                            raise HTTPException(400, f"{mode}.distance_tiers muss aufsteigend sein.")
+                        previous_limit = upper
+                    per_km = float(per_km)
+                    if per_km < 0:
+                        raise HTTPException(400, f"{mode}.distance_tiers.per_km darf nicht negativ sein.")
+                    tiers.append({"up_to_km": upper, "per_km": per_km})
+                entry[key] = tiers
+        cleaned[mode] = entry
+
+    if not cleaned:
+        raise HTTPException(400, "Mindestens eine Transportart ist erforderlich.")
+    return cleaned
+
+
+def _merge_pricing_override(base_profile: dict, override: Optional[dict], scope: str) -> dict:
+    profile = {
+        **base_profile,
+        "modes": {key: dict(value) for key, value in (base_profile.get("modes") or {}).items()},
+    }
+    if not override:
+        return profile
+
+    for mode, mode_override in (override.get("modes") or {}).items():
+        current = dict(profile["modes"].get(mode) or {})
+        current.update(mode_override or {})
+        profile["modes"][mode] = current
+
+    for key in ("region", "currency", "source", "city"):
+        if override.get(key):
+            profile[key] = override[key]
+    profile["profile_scope"] = scope
+    profile["profile_source"] = "database"
+    return profile
+
+
+async def _load_dynamic_pricing_overrides(country_code: str, city_key: str) -> tuple[Optional[dict], Optional[dict]]:
+    if not country_code:
+        return None, None
+
+    country_doc = await db.mobility_pricing_profiles.find_one(
+        {
+            "country_code": country_code,
+            "city_key": "*",
+            "enabled": {"$ne": False},
+        },
+        {"_id": 0},
+    )
+    city_doc = None
+    if city_key:
+        city_doc = await db.mobility_pricing_profiles.find_one(
+            {
+                "country_code": country_code,
+                "city_key": city_key,
+                "enabled": {"$ne": False},
+            },
+            {"_id": 0},
+        )
+    return country_doc, city_doc
+
+
+async def _require_mobility_pricing_admin(request: Request):
+    user = await get_current_user(request)
+    if (user.get("role") or "") not in {"admin", "super_admin"}:
+        raise HTTPException(403, "Admin-Rechte erforderlich.")
+    return user
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -483,6 +1056,8 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
             "type": item.get("type"),
             "label": item.get("label"),
             "price_eur": item.get("price_eur"),
+            "price_local": item.get("price_local"),
+            "currency": item.get("currency") or "EUR",
             "duration_min": item.get("duration_min"),
             "distance_km": item.get("distance_km"),
             "eco_score": item.get("eco_score"),
@@ -565,6 +1140,100 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
     }
 
 
+async def _resolve_pricing_context(lat: float, lng: float, address: str = "") -> dict:
+    country_code = ""
+    city = ""
+    country = ""
+    try:
+        item = await _nominatim_get("/reverse", {
+            "lat": lat,
+            "lon": lng,
+            "format": "jsonv2",
+            "addressdetails": 1,
+            "zoom": 10,
+            "accept-language": "en",
+        })
+        addr = item.get("address", {}) if isinstance(item, dict) else {}
+        country_code = str(addr.get("country_code") or "").upper()
+        city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or ""
+        country = addr.get("country") or ""
+    except Exception:
+        text = (address or "").lower()
+        if "kosovo" in text or any(alias in text for alias in ("prisht", "pristin", "prizren", "peja", "pejë", "ferizaj", "gjilan", "gjakov", "mitrovic")):
+            country_code = "XK"
+            for alias, canonical in CITY_NAME_ALIASES.items():
+                if alias in text:
+                    city = canonical
+                    break
+        elif "hamburg" in text or "germany" in text or "deutschland" in text:
+            country_code = "DE"
+            city = "Hamburg" if "hamburg" in text else ""
+            country = "Deutschland"
+        elif "wien" in text or "vienna" in text or "austria" in text or "österreich" in text:
+            country_code = "AT"
+            city = "Wien" if "wien" in text or "vienna" in text else ""
+            country = "Österreich"
+        elif "tirana" in text or "tiranë" in text or "albania" in text or "albanien" in text:
+            country_code = "AL"
+            city = "Tirana" if "tirana" in text or "tiranë" in text else ""
+            country = "Albania"
+        elif "podgorica" in text or "montenegro" in text:
+            country_code = "ME"
+            city = "Podgorica" if "podgorica" in text else ""
+            country = "Montenegro"
+        elif "paris" in text or "france" in text or "frankreich" in text:
+            country_code = "FR"
+            city = "Paris" if "paris" in text else ""
+            country = "France"
+        elif "dubai" in text or "abu dhabi" in text or "uae" in text or "united arab emirates" in text:
+            country_code = "AE"
+            if "abu dhabi" in text:
+                city = "Abu Dhabi"
+            elif "dubai" in text:
+                city = "Dubai"
+            country = "United Arab Emirates"
+
+    if not country_code and 41.80 <= lat <= 43.35 and 20.00 <= lng <= 21.95:
+        country_code = "XK"
+        city = city or "Kosovo"
+    profile_key = _regional_profile_key_for_country(country_code)
+
+    base_profile = REGIONAL_PRICING_PROFILES[profile_key]
+    city_key = _normalize_city_key(city)
+    static_city_profile = (CITY_PRICING_PROFILES.get(country_code or "") or {}).get(city_key)
+    country_override, city_override = await _load_dynamic_pricing_overrides(country_code, city_key)
+
+    profile = _merge_pricing_override(base_profile, country_override, "country")
+    if static_city_profile:
+        profile = _merge_pricing_profile(profile, static_city_profile)
+        profile["profile_source"] = profile.get("profile_source") or "static"
+    if city_override:
+        profile = _merge_pricing_override(profile, city_override, "city")
+
+    if city_override:
+        resolved_profile_key = f"db:{country_code}:{city_key}"
+    elif static_city_profile:
+        resolved_profile_key = f"{country_code}:{city_key}"
+    elif country_override:
+        resolved_profile_key = f"db:{country_code}"
+    else:
+        resolved_profile_key = profile_key
+
+    profile["profile_key"] = resolved_profile_key
+    profile["profile_scope"] = "city" if (city_override or static_city_profile) else "country"
+    city_mode_keys = set(((static_city_profile or {}).get("modes") or {}).keys())
+    city_mode_keys.update(((city_override or {}).get("modes") or {}).keys())
+    profile["mode_scopes"] = {
+        mode_key: ("city" if mode_key in city_mode_keys else "country")
+        for mode_key in (profile.get("modes") or {}).keys()
+    }
+    profile["country_code"] = country_code or ""
+    profile["country"] = country or profile.get("region")
+    profile["city"] = (city_override or static_city_profile or {}).get("city") or city or ""
+    profile["city_key"] = city_key
+    profile["dynamic_override"] = bool(country_override or city_override)
+    return profile
+
 async def _compute_route_payload(
     pickup_lat: float,
     pickup_lng: float,
@@ -587,22 +1256,48 @@ async def _compute_route_payload(
         raise HTTPException(404, "Keine Route gefunden")
     duration_min = max(2, round(route["duration"] / 60))
     demand_multiplier = 1.0 + min(0.22, distance_km / 90)
+    pricing_context = await _resolve_pricing_context(pickup_lat, pickup_lng, pickup_address)
     options = [
-        build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
-        build_option("scooter", distance_km, duration_min, 1.0, 86),
-        build_option("bike", distance_km, duration_min, 1.0, 94),
-        build_option("ev", distance_km, duration_min, 1.0, 92),
-        build_option("car_sharing", distance_km, duration_min, 1.0, 64),
-        build_option("car_rental", distance_km, duration_min, 1.0, 48),
-        build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
-        build_option("vip", distance_km, duration_min, 1.08, 28),
+        build_option("taxi", distance_km, duration_min, demand_multiplier, 55, pricing_context),
+        build_option("scooter", distance_km, duration_min, 1.0, 86, pricing_context),
+        build_option("bike", distance_km, duration_min, 1.0, 94, pricing_context),
+        build_option("ev", distance_km, duration_min, 1.0, 92, pricing_context),
+        build_option("car_sharing", distance_km, duration_min, 1.0, 64, pricing_context),
+        build_option("car_rental", distance_km, duration_min, 1.0, 48, pricing_context),
+        build_option("airport_shuttle", distance_km, duration_min, 1.0, 63, pricing_context),
+        build_option("vip", distance_km, duration_min, 1.08, 28, pricing_context),
     ]
+    if pricing_context.get("strict_modes"):
+        locally_priced_modes = set((pricing_context.get("modes") or {}).keys())
+        options = [item for item in options if item.get("type") in locally_priced_modes]
+    if not options:
+        raise HTTPException(503, "Für diesen Standort sind noch keine verifizierten lokalen Mobility-Tarife hinterlegt.")
     return {
         "distance_km": round(distance_km, 2),
         "duration_min": duration_min,
         "geometry": route.get("geometry", {}).get("coordinates", []),
-        "pickup": {"address": pickup_address, "lat": pickup_lat, "lng": pickup_lng},
+        "pickup": {
+            "address": pickup_address,
+            "lat": pickup_lat,
+            "lng": pickup_lng,
+            "city": pricing_context.get("city") or "",
+            "country": pricing_context.get("country") or "",
+            "country_code": pricing_context.get("country_code") or "",
+        },
         "dropoff": {"address": dropoff_address, "lat": dropoff_lat, "lng": dropoff_lng},
+        "pricing_context": {
+            "profile_key": pricing_context.get("profile_key"),
+            "region": pricing_context.get("region"),
+            "city": pricing_context.get("city") or "",
+            "country": pricing_context.get("country") or "",
+            "country_code": pricing_context.get("country_code") or "",
+            "source": pricing_context.get("source"),
+            "currency": pricing_context.get("currency", "EUR"),
+            "profile_scope": pricing_context.get("profile_scope", "country"),
+            "mode_scopes": pricing_context.get("mode_scopes") or {},
+            "city_key": pricing_context.get("city_key") or "",
+            "strict_modes": bool(pricing_context.get("strict_modes")),
+        },
         "options": options,
         "recommendations": build_recommendations(options),
     }
@@ -619,10 +1314,10 @@ def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = No
     if not cards:
         return []
 
-    cheapest = min(cards, key=lambda item: item.get("price_eur") or 0)
+    cheapest = min(cards, key=_option_price)
     fastest = min(cards, key=lambda item: item.get("duration_min") or 0)
     eco = max(cards, key=lambda item: item.get("eco_score") or 0)
-    balance = min(cards, key=lambda item: (item.get("price_eur") or 0) * 0.45 + (item.get("duration_min") or 0) * 0.55)
+    balance = min(cards, key=lambda item: _option_price(item) * 0.45 + (item.get("duration_min") or 0) * 0.55)
     taxi_option = _find_option(cards, "taxi") or cheapest
 
     summary_cards = []
@@ -639,11 +1334,13 @@ def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = No
         summary_cards.append({
             "type": item.get("type"),
             "label": item.get("label"),
-            "price_eur": _round_money(item.get("price_eur") or 0),
+            "price_eur": _round_money(item.get("price_eur")) if item.get("price_eur") is not None else None,
+            "price_local": _round_money(_option_price(item)),
+            "currency": item.get("currency") or "EUR",
             "duration_min": int(item.get("duration_min") or 0),
             "distance_km": round(float(item.get("distance_km") or 0), 2),
             "eco_score": int(item.get("eco_score") or 0),
-            "price_delta_vs_taxi": _round_money((item.get("price_eur") or 0) - (taxi_option.get("price_eur") or 0)),
+            "price_delta_vs_taxi": _round_money(_option_price(item) - _option_price(taxi_option)),
             "time_delta_vs_taxi": int((item.get("duration_min") or 0) - (taxi_option.get("duration_min") or 0)),
             "tags": tags,
         })
@@ -665,10 +1362,10 @@ def _build_compare_summary(route_payload: dict, focus_modes: Optional[list[str]]
             },
         }
 
-    cheapest = min(cards, key=lambda item: item["price_eur"])
+    cheapest = min(cards, key=lambda item: item["price_local"])
     fastest = min(cards, key=lambda item: item["duration_min"])
     eco = max(cards, key=lambda item: item["eco_score"])
-    balance = min(cards, key=lambda item: item["price_eur"] * 0.45 + item["duration_min"] * 0.55)
+    balance = min(cards, key=lambda item: item["price_local"] * 0.45 + item["duration_min"] * 0.55)
     return {
         "route": {
             "pickup": route_payload.get("pickup") or {},
@@ -978,8 +1675,189 @@ async def _nominatim_get(path: str, params: dict):
         return payload
 
 
+def _built_in_pricing_admin_rows() -> list[dict]:
+    rows = []
+
+    admin_country_codes = {"XK", "DE", "AE", *BALKAN_COUNTRY_CODES, *CITY_PRICING_PROFILES.keys()}
+    for country_code in sorted(admin_country_codes):
+        profile_key = _regional_profile_key_for_country(country_code)
+        profile = REGIONAL_PRICING_PROFILES[profile_key]
+        rows.append({
+            "country_code": country_code,
+            "city_key": "*",
+            "scope": "country",
+            "city": "",
+            "region": profile.get("region") or country_code,
+            "currency": profile.get("currency") or "EUR",
+            "source": profile.get("source") or "Built-in benchmark",
+            "modes": profile.get("modes") or {},
+            "enabled": True,
+            "source_type": "built_in",
+            "can_disable": False,
+        })
+
+    for country_code, cities in CITY_PRICING_PROFILES.items():
+        for city_key, profile in (cities or {}).items():
+            rows.append({
+                "country_code": country_code,
+                "city_key": city_key,
+                "scope": "city",
+                "city": profile.get("city") or city_key,
+                "region": profile.get("region") or (REGIONAL_PRICING_PROFILES.get(country_code) or {}).get("region") or country_code,
+                "currency": profile.get("currency") or (REGIONAL_PRICING_PROFILES.get(country_code) or {}).get("currency") or "EUR",
+                "source": profile.get("source") or "Built-in benchmark",
+                "modes": profile.get("modes") or {},
+                "enabled": True,
+                "source_type": "built_in",
+                "can_disable": False,
+            })
+
+    return rows
+
+
+@router.get("/admin/pricing/profiles")
+async def admin_list_mobility_pricing_profiles(
+    request: Request,
+    country_code: Optional[str] = None,
+    city: Optional[str] = None,
+):
+    await _require_mobility_pricing_admin(request)
+
+    country_filter = _normalize_country_code(country_code) if country_code else None
+    city_filter = _normalize_city_key(city) if city else None
+
+    merged = {}
+    for row in _built_in_pricing_admin_rows():
+        if country_filter and row.get("country_code") != country_filter:
+            continue
+        if city_filter and row.get("city_key") != city_filter:
+            continue
+        merged[(row["country_code"], row["city_key"])] = row
+
+    query = {"enabled": {"$ne": False}}
+    if country_filter:
+        query["country_code"] = country_filter
+    if city_filter:
+        query["city_key"] = city_filter
+
+    database_rows = await db.mobility_pricing_profiles.find(query, {"_id": 0}).sort([
+        ("country_code", 1),
+        ("city_key", 1),
+    ]).limit(500).to_list(500)
+
+    for row in database_rows:
+        key = (row.get("country_code"), row.get("city_key"))
+        built_in = merged.get(key)
+        merged[key] = {
+            **row,
+            "source_type": "database",
+            "can_disable": True,
+            "built_in_fallback": built_in,
+        }
+
+    rows = sorted(
+        merged.values(),
+        key=lambda item: (str(item.get("country_code") or ""), str(item.get("city_key") or "")),
+    )
+    return {
+        "profiles": rows,
+        "database_override_count": len(database_rows),
+        "built_in_count": sum(1 for row in rows if row.get("source_type") == "built_in"),
+    }
+
+
+@router.put("/admin/pricing/profile")
+async def admin_upsert_mobility_pricing_profile(
+    payload: MobilityPricingProfilePayload,
+    request: Request,
+):
+    admin = await _require_mobility_pricing_admin(request)
+    country_code = _normalize_country_code(payload.country_code)
+    city = str(payload.city or "").strip()
+    city_key = _normalize_city_key(city) if city else "*"
+    scope = "city" if city else "country"
+    now = datetime.now(timezone.utc).isoformat()
+
+    modes = _sanitize_pricing_modes(payload.modes)
+    doc = {
+        "country_code": country_code,
+        "city_key": city_key,
+        "scope": scope,
+        "city": city,
+        "region": str(payload.region or "").strip(),
+        "currency": str(payload.currency or "EUR").upper(),
+        "source": str(payload.source or "").strip(),
+        "modes": modes,
+        "enabled": bool(payload.enabled),
+        "updated_at": now,
+        "updated_by": str(admin.get("_id") or ""),
+        "updated_by_email": admin.get("email") or "",
+    }
+
+    await db.mobility_pricing_profiles.update_one(
+        {"country_code": country_code, "city_key": city_key},
+        {
+            "$set": doc,
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
+    )
+    await db.mobility_pricing_audit.insert_one({
+        "action": "upsert",
+        "country_code": country_code,
+        "city_key": city_key,
+        "scope": scope,
+        "profile": doc,
+        "admin_id": str(admin.get("_id") or ""),
+        "admin_email": admin.get("email") or "",
+        "created_at": now,
+    })
+    saved = await db.mobility_pricing_profiles.find_one(
+        {"country_code": country_code, "city_key": city_key},
+        {"_id": 0},
+    )
+    return {"ok": True, "profile": saved}
+
+
+@router.delete("/admin/pricing/profile/{country_code}")
+async def admin_disable_mobility_pricing_profile(
+    country_code: str,
+    request: Request,
+    city: Optional[str] = None,
+):
+    admin = await _require_mobility_pricing_admin(request)
+    normalized_country = _normalize_country_code(country_code)
+    city_key = _normalize_city_key(city) if city else "*"
+    now = datetime.now(timezone.utc).isoformat()
+
+    result = await db.mobility_pricing_profiles.update_one(
+        {"country_code": normalized_country, "city_key": city_key},
+        {
+            "$set": {
+                "enabled": False,
+                "disabled_at": now,
+                "updated_at": now,
+                "updated_by": str(admin.get("_id") or ""),
+                "updated_by_email": admin.get("email") or "",
+            }
+        },
+    )
+    if result.matched_count != 1:
+        raise HTTPException(404, "Tarifprofil nicht gefunden.")
+
+    await db.mobility_pricing_audit.insert_one({
+        "action": "disable",
+        "country_code": normalized_country,
+        "city_key": city_key,
+        "admin_id": str(admin.get("_id") or ""),
+        "admin_email": admin.get("email") or "",
+        "created_at": now,
+    })
+    return {"ok": True, "country_code": normalized_country, "city_key": city_key}
+
+
 @router.get("/search")
-async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[float] = None, lng: Optional[float] = None):
+async def search_places(q: str, lang: str = "de", limit: int = 10, lat: Optional[float] = None, lng: Optional[float] = None, country_code: Optional[str] = None):
     query = (q or "").strip()
     if len(query) < 2:
         return {"results": []}
@@ -989,9 +1867,10 @@ async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[
         "addressdetails": 1,
         "limit": max(1, min(limit, 10)),
         "accept-language": SEARCH_LANGS.get(lang, "de"),
-        "countrycodes": "xk,al,de,ch,at,mk,me",
         "dedupe": 1,
     }
+    if country_code:
+        params["countrycodes"] = str(country_code).lower()[:2]
     if lat is not None and lng is not None:
         params["viewbox"] = f"{lng-0.4},{lat+0.3},{lng+0.4},{lat-0.3}"
         params["bounded"] = 0
@@ -1002,18 +1881,31 @@ async def search_places(q: str, lang: str = "de", limit: int = 8, lat: Optional[
 
     ranked = sorted(data, key=lambda item: score_place(item, query), reverse=True)
     results = []
+    seen = set()
     for item in ranked:
         addr = item.get("address", {})
+        display_name = item.get("display_name", "")
+        dedupe_key = display_name.strip().lower()
+        if not dedupe_key or dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or ""
+        country = addr.get("country") or ""
         results.append({
             "id": str(item.get("osm_id") or item.get("place_id")),
-            "name": item.get("name") or format_location_label(addr) or item.get("display_name", ""),
-            "address": item.get("display_name", ""),
+            "name": item.get("name") or format_location_label(addr) or display_name,
+            "address": display_name,
             "lat": float(item.get("lat")),
             "lng": float(item.get("lon")),
-            "city": addr.get("city") or addr.get("town") or addr.get("village") or "",
+            "city": city,
+            "country": country,
+            "country_code": str(addr.get("country_code") or "").upper(),
+            "postcode": addr.get("postcode") or "",
             "type": item.get("type", "address"),
             "class": item.get("class", ""),
         })
+        if len(results) >= max(1, min(limit, 10)):
+            break
     return {"results": results}
 
 
@@ -1033,8 +1925,10 @@ async def reverse_place(lat: float, lng: float, lang: str = "de"):
     return {
         "address": item.get("display_name", ""),
         "street": addr.get("road") or addr.get("pedestrian") or "",
-        "city": addr.get("city") or addr.get("town") or addr.get("village") or "",
+        "city": addr.get("city") or addr.get("town") or addr.get("village") or addr.get("municipality") or "",
         "country": addr.get("country") or "",
+        "country_code": str(addr.get("country_code") or "").upper(),
+        "postcode": addr.get("postcode") or "",
         "lat": lat,
         "lng": lng,
     }
@@ -1109,6 +2003,11 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
 
     if req.payment_method not in DIRECT_BOOKING_METHODS:
         raise HTTPException(400, "Direktbuchung ist nur mit Wallet oder Cash verfügbar")
+    request_id = req.request_id or uuid4().hex
+    booking_id = f"mob-{request_id[:24]}"
+    existing_booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": user_id}, {"_id": 0})
+    if existing_booking:
+        return {"ok": True, "reused": True, "booking": existing_booking, "new_balance": None}
 
     route_payload = await _compute_route_payload(
         req.pickup.lat,
@@ -1121,11 +2020,11 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
+    _require_supported_settlement(option)
     route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
 
     from routes.mobility_payments import process_payment
 
-    booking_id = f"mob-{uuid4().hex[:12]}"
     assignment = await _assign_booking_resource(req.transport_type, req.pickup.model_dump())
     payment_result = None
     payment_status = "cash_due" if req.payment_method == "cash" else "paid"
@@ -1139,6 +2038,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
             reference_type="mobility_booking",
             description=f"{option['label']} · {req.pickup.address} → {req.dropoff.address}",
             commission_category=req.transport_type,
+            idempotency_key=f"mobility:booking:{user_id}:{request_id}",
         )
         payment_id = ((payment_result or {}).get("payment") or {}).get("payment_id")
     else:
@@ -1165,6 +2065,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
         })
 
     booking = {
+        "_id": f"mobility:{user_id}:{request_id}",
         "booking_id": booking_id,
         "user_id": user_id,
         "user_email": user.get("email"),
@@ -1249,6 +2150,11 @@ async def save_frequent_route(req: FrequentRouteSaveRequest, request: Request):
 async def book_best_route(req: BestRouteBookRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    request_id = req.request_id or uuid4().hex
+    booking_id = f"mob-{request_id[:24]}"
+    existing_booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": user_id}, {"_id": 0})
+    if existing_booking:
+        return {"ok": True, "reused": True, "booking": existing_booking, "new_balance": None}
     frequent = await db.mobility_frequent_routes.find_one({"route_id": req.route_id, "user_id": user_id}, {"_id": 0})
     source = frequent
     if not source:
@@ -1268,6 +2174,7 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
     option = _find_option(route_payload["options"], req.transport_type or source.get("transport_type") or "taxi")
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
+    _require_supported_settlement(option)
     route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
     ai_recommendation = await _generate_ai_route_recommendation(MobilityAiRecommendationRequest(
         pickup_address=source["pickup"]["address"],
@@ -1286,15 +2193,16 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
             amount=float(option["price_eur"]),
             tx_type=TransactionType.PAYMENT,
             description=f"Mobility Rebook: {option['label']}",
-            reference=f"MOB-FREQ-{uuid4().hex[:8].upper()}",
+            reference=f"MOB-FREQ-{request_id[:16].upper()}",
+            idempotency_key=f"mobility:rebook:{user_id}:{request_id}",
             metadata={"type": "mobility_rebook", "route_id": req.route_id, "transport_type": option["type"]},
         )
         if not payment_result.success:
             raise HTTPException(400, payment_result.error or "Wallet-Zahlung fehlgeschlagen")
 
-    booking_id = f"mob-{uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
     booking = {
+        "_id": f"mobility:{user_id}:{request_id}",
         "booking_id": booking_id,
         "user_id": user_id,
         "transport_type": option["type"],
@@ -1358,6 +2266,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
+    _require_supported_settlement(option)
     route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
 
     booking_id = f"mob-{uuid4().hex[:12]}"
@@ -1534,7 +2443,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         loc = driver_loc_map.get(driver.get("driver_id")) or driver.get("location") or {}
         dlat = loc.get("lat")
         dlng = loc.get("lng")
-        if not dlat or not dlng:
+        if dlat is None or dlng is None:
             continue
         distance_km = haversine_distance(lat, lng, dlat, dlng)
         if distance_km > radius_km:
@@ -1555,9 +2464,9 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
 
     for scooter in scooter_rows:
         loc = scooter.get("location") or {}
-        slat = loc.get("lat") or scooter.get("lat")
-        slng = loc.get("lng") or scooter.get("lng")
-        if not slat or not slng:
+        slat = loc.get("lat") if loc.get("lat") is not None else scooter.get("lat")
+        slng = loc.get("lng") if loc.get("lng") is not None else scooter.get("lng")
+        if slat is None or slng is None:
             continue
         distance_km = haversine_distance(lat, lng, slat, slng)
         if distance_km > radius_km:
@@ -1598,7 +2507,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for car in car_rows:
         clat = car.get("lat")
         clng = car.get("lng")
-        if not clat or not clng:
+        if clat is None or clng is None:
             continue
         distance_km = haversine_distance(lat, lng, clat, clng)
         if distance_km > radius_km:
@@ -1620,7 +2529,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for index, car in enumerate(car_rows[:3]):
         clat = car.get("lat")
         clng = car.get("lng")
-        if not clat or not clng:
+        if clat is None or clng is None:
             continue
         counts["car_sharing"] += 1
         markers.append(_service_marker(
@@ -1639,7 +2548,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     for station in ev_rows:
         elat = station.get("lat")
         elng = station.get("lng")
-        if not elat or not elng:
+        if elat is None or elng is None:
             continue
         distance_km = haversine_distance(lat, lng, elat, elng)
         if distance_km > radius_km:

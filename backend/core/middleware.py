@@ -3,6 +3,7 @@ Middleware Configuration
 CORS, Request Logging, Error Handling
 """
 
+import json
 import logging
 import time
 import traceback
@@ -16,6 +17,24 @@ logger = logging.getLogger("bidblitz")
 access_logger = logging.getLogger("bidblitz.access")
 
 
+def _is_unbacked_legacy_payout_process(path: str, method: str, body: bytes, *, is_production: bool = IS_PRODUCTION) -> bool:
+    """Block the legacy admin 'process' action from claiming a real payout in production.
+
+    The legacy payout route only changes MongoDB status/balance fields; it does not
+    execute or verify a bank/provider transfer. Until a provider-backed processor is
+    wired in, production must fail closed instead of recording a payout as processed.
+    """
+    if not is_production or method.upper() != "POST":
+        return False
+    if not (path.startswith("/api/admin/payouts/") and path.endswith("/action")):
+        return False
+    try:
+        payload = json.loads(body or b"{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return False
+    return payload.get("action") == "process"
+
+
 def setup_middleware(app):
     """Configure all middleware for the FastAPI app"""
 
@@ -27,6 +46,39 @@ def setup_middleware(app):
         if CORS_ORIGINS and CORS_ORIGINS[0] != "*":
             return CORS_ORIGINS[0]
         return ""
+
+    @app.middleware("http")
+    async def legacy_payout_process_guard(request: Request, call_next):
+        path = request.url.path
+        if IS_PRODUCTION and request.method == "POST" and path.startswith("/api/admin/payouts/") and path.endswith("/action"):
+            body = await request.body()
+            if _is_unbacked_legacy_payout_process(path, request.method, body, is_production=True):
+                logger.error(
+                    "Blocked legacy payout processing without provider proof: %s",
+                    path,
+                )
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": "Payout processing is unavailable until a provider-backed transfer is configured. The payout remains approved.",
+                        "code": "payout_provider_not_configured",
+                    },
+                )
+
+            # Reading the body in middleware consumes the ASGI receive channel. Replay
+            # it so safe actions such as approve/fail/cancel keep their existing body.
+            replayed = False
+
+            async def receive():
+                nonlocal replayed
+                if replayed:
+                    return {"type": "http.request", "body": b"", "more_body": False}
+                replayed = True
+                return {"type": "http.request", "body": body, "more_body": False}
+
+            request._receive = receive
+
+        return await call_next(request)
 
     @app.middleware("http")
     async def credentialed_options_guard(request: Request, call_next):

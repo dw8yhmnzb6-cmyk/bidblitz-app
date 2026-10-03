@@ -10,6 +10,7 @@ from bson import ObjectId
 import bcrypt
 
 from core.database import db
+from core.config import TEST_MODE
 from core.payment_engine import credit_wallet, TransactionType
 from core.security import get_current_user
 from core.audit import log_audit, AuditEvent, get_client_info
@@ -23,6 +24,11 @@ async def _require_admin(request: Request):
     if (user.get("role") or "") not in ("admin", "super_admin"):
         raise HTTPException(403, "Admin-Rechte erforderlich.")
     return user
+
+
+def _can_manage_privileged_roles(admin: dict) -> bool:
+    email = str(admin.get("canonical_email") or admin.get("email") or "").strip().lower()
+    return admin.get("role") == "super_admin" or email == "admin@bidblitz.ae"
 
 
 def _oid(s):
@@ -95,11 +101,17 @@ async def list_customers(
     skip: int = 0,
 ):
     """Alle Kunden mit Filter und Suche."""
-    await _require_admin(request)
+    admin = await _require_admin(request)
     query = {
         "$and": [
-            {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
-            {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
+            {"account_closure_status": {"$ne": "admin_closed"}},
+            {
+                "$or": [
+                    {"is_disabled": {"$ne": True}},
+                    {"is_disabled": {"$exists": False}},
+                    {"banned": True},
+                ]
+            },
         ]
     }
     if q:
@@ -119,7 +131,11 @@ async def list_customers(
     if status == "banned":
         query["$and"].append({"banned": True})
     elif status == "active":
-        query["$and"].append({"banned": {"$ne": True}})
+        query["$and"].extend([
+            {"banned": {"$ne": True}},
+            {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
+            {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
+        ])
 
     canonical_balance, canonical_blz = await _canonical_admin_balances()
     if role == "admin":
@@ -155,7 +171,15 @@ async def list_customers(
         # Also drop V1 legacy fields
         u.pop("id", None)
         customers.append(u)
-    return {"customers": customers, "total": total, "skip": skip, "limit": limit}
+    return {
+        "customers": customers,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "permissions": {
+            "can_manage_privileged_roles": _can_manage_privileged_roles(admin),
+        },
+    }
 
 
 @router.get("/customers/{user_id}")
@@ -191,19 +215,58 @@ class BanRequest(BaseModel):
 
 @router.post("/customers/{user_id}/ban")
 async def ban_customer(user_id: str, req: BanRequest, request: Request):
-    """Kunde sperren oder entsperren."""
+    """Suspend/restore a customer and invalidate active authorization when suspending."""
     admin = await _require_admin(request)
-    result = await db.users.update_one(
-        {"_id": _oid(user_id)},
-        {"$set": {
-            "banned": req.banned,
-            "ban_reason": req.reason if req.banned else None,
-            "banned_at": datetime.now(timezone.utc).isoformat() if req.banned else None,
-            "banned_by": str(admin.get("_id") or admin.get("id")) if req.banned else None,
-        }},
-    )
-    if result.matched_count == 0:
+    target = await db.users.find_one({"_id": _oid(user_id)})
+    if not target:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    target_role = str(target.get("role") or "user")
+    if target_email == "admin@bidblitz.ae":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann nicht gesperrt werden")
+    if target_role in {"admin", "super_admin"} and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Konten sperren")
+
+    now = datetime.now(timezone.utc).isoformat()
+    update_doc = {
+        "banned": req.banned,
+        "ban_reason": req.reason if req.banned else None,
+        "banned_at": now if req.banned else None,
+        "banned_by": str(admin.get("_id") or admin.get("id")) if req.banned else None,
+        "login_disabled": bool(req.banned),
+    }
+    mutation = {"$set": update_doc}
+    if req.banned:
+        mutation["$inc"] = {"auth_version": 1}
+
+    result = await db.users.update_one(
+        {"_id": target["_id"], "banned": {"$ne": req.banned}},
+        mutation,
+    )
+    if result.modified_count == 0 and bool(target.get("banned")) != req.banned:
+        raise HTTPException(status_code=409, detail="Kontostatus wurde parallel geändert")
+
+    if req.banned:
+        from routes.sessions import revoke_all_sessions
+        await revoke_all_sessions(str(target["_id"]))
+        await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+        await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={
+            "action": "customer_ban" if req.banned else "customer_unban",
+            "target_user_id": user_id,
+            "reason": req.reason,
+        },
+        severity="warn" if req.banned else "info",
+    )
     return {"ok": True, "banned": req.banned}
 
 
@@ -218,14 +281,47 @@ class KYCDecisionRequest(BaseModel):
 
 @router.post("/customers/{user_id}/role")
 async def change_role(user_id: str, req: RoleRequest, request: Request):
-    """Rolle eines Kunden ändern."""
-    await _require_admin(request)
-    result = await db.users.update_one(
-        {"_id": _oid(user_id)},
-        {"$set": {"role": req.role}},
-    )
-    if result.matched_count == 0:
+    """Change a role and immediately revoke stale authorization sessions."""
+    admin = await _require_admin(request)
+    target = await db.users.find_one({"_id": _oid(user_id)})
+    if not target:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    current_role = str(target.get("role") or "user")
+    privileged_change = req.role in {"admin", "super_admin"} or current_role in {"admin", "super_admin"}
+
+    if target_email == "admin@bidblitz.ae" and req.role != "admin":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann über diese Route nicht herabgestuft werden")
+    if privileged_change and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Rollen vergeben oder entziehen")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.users.update_one(
+        {"_id": target["_id"], "role": current_role},
+        {
+            "$set": {
+                "role": req.role,
+                "role_changed_at": now,
+                "role_changed_by": str(admin.get("_id") or admin.get("id") or ""),
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    if result.modified_count != 1 and current_role != req.role:
+        raise HTTPException(status_code=409, detail="Rolle wurde parallel geändert")
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(target["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        details={"action": "role_change", "target_user_id": user_id, "old_role": current_role, "new_role": req.role},
+    )
     return {"ok": True, "role": req.role}
 
 
@@ -233,6 +329,18 @@ async def change_role(user_id: str, req: RoleRequest, request: Request):
 async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, request: Request):
     """KYC für Kunden manuell freischalten oder ablehnen."""
     admin = await _require_admin(request)
+    target = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1},
+    )
+    if not target:
+        raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    target_role = str(target.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf KYC privilegierter Konten ändern")
+
     now = datetime.now(timezone.utc).isoformat()
     approved = req.decision == "approve"
     reupload = req.decision == "reupload"
@@ -312,7 +420,7 @@ async def auth_health_report(request: Request):
     await _require_admin(request)
 
     users = await db.users.find(
-        {},
+        {"role": {"$nin": ["admin", "super_admin"]}},
         {"_id": 1, "email": 1, "role": 1, "password_hash": 1, "password": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1, "force_password_change": 1, "login_disabled": 1, "is_disabled": 1},
     ).to_list(length=5000)
 
@@ -372,7 +480,10 @@ async def auth_health_report(request: Request):
 @router.post("/auth-health/cleanup")
 async def cleanup_legacy_passwords(req: CleanupLegacyPasswordsRequest, request: Request):
     admin = await _require_admin(request)
-    cursor = db.users.find({}, {"_id": 1, "email": 1, "password_hash": 1, "password": 1, "role": 1})
+    cursor = db.users.find(
+        {"role": {"$nin": ["admin", "super_admin"]}},
+        {"_id": 1, "email": 1, "password_hash": 1, "password": 1, "role": 1},
+    )
     cleaned_legacy = 0
     promoted_legacy = 0
     flagged_reset = 0
@@ -423,9 +534,17 @@ async def cleanup_legacy_passwords(req: CleanupLegacyPasswordsRequest, request: 
 @router.post("/customers/{user_id}/auth-fix")
 async def cleanup_single_customer_auth(user_id: str, req: CleanupSingleCustomerRequest, request: Request):
     admin = await _require_admin(request)
-    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1, "password_hash": 1, "password": 1, "force_password_change": 1})
+    user = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1, "password_hash": 1, "password": 1, "force_password_change": 1},
+    )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(user.get("canonical_email") or user.get("email") or "").strip().lower()
+    target_role = str(user.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf privilegierte Auth-Daten verändern")
 
     pwd_hash = (user.get("password_hash") or "").strip()
     legacy_pwd = (user.get("password") or "").strip()
@@ -468,9 +587,18 @@ async def cleanup_single_customer_auth(user_id: str, req: CleanupSingleCustomerR
 async def reset_password(user_id: str, req: ResetPasswordRequest, request: Request):
     """Sicheren Reset-Link per E-Mail senden (Admin-only)."""
     admin = await _require_admin(request)
-    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1})
+    user = await db.users.find_one(
+        {"_id": _oid(user_id)},
+        {"email": 1, "canonical_email": 1, "role": 1},
+    )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
+
+    target_email = str(user.get("canonical_email") or user.get("email") or "").strip().lower()
+    target_role = str(user.get("role") or "user")
+    if (target_email == "admin@bidblitz.ae" or target_role in {"admin", "super_admin"}) and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Passwort-Resets für privilegierte Konten auslösen")
+
     issued = await _issue_password_reset(user.get("email", ""), request=request, issued_by=str(admin.get("_id") or admin.get("id") or "admin"), reason=req.reason or "admin_security_reset", force_password_change=True)
     if not issued:
         raise HTTPException(404, "Kunde nicht gefunden")
@@ -513,17 +641,62 @@ async def legacy_password_report(request: Request, role: Optional[str] = None):
 
 @router.delete("/customers/{user_id}")
 async def delete_customer(user_id: str, request: Request):
-    """Kunde dauerhaft löschen."""
+    """Close an account without deleting financial/audit identity."""
     admin = await _require_admin(request)
     admin_id = str(admin.get("_id") or admin.get("id"))
     if admin_id == user_id:
         raise HTTPException(400, "Du kannst dich nicht selbst löschen")
-    result = await db.users.delete_one({"_id": _oid(user_id)})
-    if result.deleted_count == 0:
+
+    target = await db.users.find_one({"_id": _oid(user_id)})
+    if not target:
         raise HTTPException(404, "Kunde nicht gefunden")
-    # Soft-clean related data
-    await db.transactions.update_many({"user_id": user_id}, {"$set": {"user_deleted": True}})
-    return {"ok": True}
+
+    target_email = str(target.get("canonical_email") or target.get("email") or "").strip().lower()
+    target_role = str(target.get("role") or "user")
+    if target_email == "admin@bidblitz.ae":
+        raise HTTPException(status_code=403, detail="Der kanonische Hauptadmin kann nicht geschlossen werden")
+    if target_role in {"admin", "super_admin"} and not _can_manage_privileged_roles(admin):
+        raise HTTPException(status_code=403, detail="Nur Hauptadmin/Super-Admin darf Admin-Konten schließen")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.users.update_one(
+        {"_id": target["_id"], "account_closure_status": {"$ne": "admin_closed"}},
+        {
+            "$set": {
+                "account_closure_status": "admin_closed",
+                "account_closed_at": now,
+                "account_closed_by": admin_id,
+                "login_disabled": True,
+                "is_disabled": True,
+                "banned": True,
+                "ban_reason": "admin_account_closure",
+                "retention_review_required": True,
+                "retention_review_reason": "financial_and_audit_records",
+            },
+            "$inc": {"auth_version": 1},
+        },
+    )
+    if result.modified_count == 0 and target.get("account_closure_status") != "admin_closed":
+        raise HTTPException(status_code=409, detail="Konto wurde parallel geändert")
+
+    from routes.sessions import revoke_all_sessions
+    await revoke_all_sessions(str(target["_id"]))
+    await db.pending_2fa.delete_many({"user_id": str(target["_id"])})
+    await db.otp_codes.delete_many({"user_id": str(target["_id"])})
+    await db.kids_sessions.delete_many({"parent_id": user_id})
+    await db.transactions.update_many({"user_id": user_id}, {"$set": {"user_closed": True}})
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=admin_id,
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "admin_account_closure", "target_user_id": user_id},
+        severity="warn",
+    )
+    return {"ok": True, "closed": True, "hard_deleted": False}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -534,8 +707,10 @@ async def delete_customer(user_id: str, request: Request):
 async def list_transactions(
     request: Request,
     q: str = "",
+    search: str = "",
     user_id: Optional[str] = None,
     type: Optional[str] = None,
+    txn_type: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
@@ -543,16 +718,18 @@ async def list_transactions(
     """Alle Transaktionen mit Filter."""
     await _require_admin(request)
     query = {}
-    if q:
+    search_term = (q or search or "").strip()
+    if search_term:
         query["$or"] = [
-            {"reference": {"$regex": q, "$options": "i"}},
-            {"description": {"$regex": q, "$options": "i"}},
-            {"merchant_name": {"$regex": q, "$options": "i"}},
+            {"reference": {"$regex": search_term, "$options": "i"}},
+            {"description": {"$regex": search_term, "$options": "i"}},
+            {"merchant_name": {"$regex": search_term, "$options": "i"}},
         ]
     if user_id:
         query["user_id"] = user_id
-    if type:
-        query["type"] = type
+    effective_type = type or txn_type
+    if effective_type:
+        query["type"] = effective_type
     if status:
         query["status"] = status
 
@@ -579,7 +756,7 @@ class RefundRequest(BaseModel):
 
 @router.post("/transactions/{reference}/refund")
 async def refund_transaction(reference: str, req: RefundRequest, request: Request):
-    """Transaktion zurückerstatten — fügt EUR-Betrag wieder auf Wallet zurück."""
+    """Admin refund for eligible platform debit transactions, exactly once."""
     admin = await _require_admin(request)
     admin_id = str(admin.get("_id") or admin.get("id"))
 
@@ -587,21 +764,51 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
     if not tx:
         tx = await db.transactions.find_one({"tx_id": reference})
     if not tx:
+        tx = await db.transactions.find_one({"id": reference})
+    if not tx:
         raise HTTPException(404, "Transaktion nicht gefunden")
-    if tx.get("refunded"):
-        raise HTTPException(400, "Bereits refundiert")
     if tx.get("status") != "completed":
         raise HTTPException(400, "Nur erfolgreiche Transaktionen können refundiert werden")
 
-    user_id = tx.get("user_id")
-    amount = float(tx.get("amount", 0))
+    # Generic refunds must never mint money against a transfer/counterparty payment.
+    tx_type = str(tx.get("type") or "")
+    direction = str(tx.get("direction") or "")
+    metadata = tx.get("metadata") or {}
+    counterparty = metadata.get("counterparty_user_id") or metadata.get("recipient_id") or metadata.get("merchant_id")
+    blocked_types = {
+        "refund",
+        "transfer",
+        "merchant_payment",
+        "merchant_payment_received",
+        "p2p_send",
+        "p2p_receive",
+        "kids_transfer",
+        "payout",
+        "stripe_topup",
+        "topup",
+    }
+    if tx_type in blocked_types or counterparty:
+        raise HTTPException(
+            status_code=409,
+            detail="Diese Transaktion hat eine Gegenpartei oder eigenen Settlement-Flow. Bitte den modulspezifischen Refund verwenden.",
+        )
+    if direction and direction != "debit":
+        raise HTTPException(status_code=400, detail="Nur ausgehende Debit-Transaktionen können erstattet werden")
+
+    user_id = str(tx.get("user_id") or "")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Transaktion hat keinen Nutzer")
+    raw_amount = float(tx.get("amount", 0) or 0)
+    amount = round(abs(raw_amount), 2)
     currency = tx.get("currency", "EUR")
     if amount <= 0:
         raise HTTPException(400, "Ungültiger Betrag")
-
-    refund_ref = f"REF-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     if currency != "EUR":
         raise HTTPException(400, "Aktuell werden nur EUR-Refunds zentral unterstützt")
+
+    original_identity = str(tx.get("id") or tx.get("tx_id") or tx.get("reference") or reference)
+    refund_key = f"admin-refund:{original_identity}"
+    refund_ref = "REF-" + hashlib.sha256(refund_key.encode("utf-8")).hexdigest()[:16].upper()
 
     result = await credit_wallet(
         user_id=user_id,
@@ -611,21 +818,60 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
         reference=refund_ref,
         source="admin_refund",
         metadata={
-            "refund_of": tx.get("reference") or tx.get("tx_id"),
+            "refund_of": original_identity,
             "admin_id": admin_id,
+            "original_type": tx_type,
             "audit_metadata": {"route": "admin_management.refund_transaction"},
         },
+        idempotency_key=refund_key,
     )
     if not result.success:
-        raise HTTPException(400, result.error or "Refund fehlgeschlagen")
+        status_code = 409 if result.status.value in {"pending", "reconciliation_required"} else 400
+        raise HTTPException(status_code, result.error or "Refund fehlgeschlagen")
 
-    # Mark original as refunded
-    await db.transactions.update_one(
-        {"reference": tx.get("reference") or tx.get("tx_id")},
-        {"$set": {"refunded": True, "refund_ref": refund_ref, "refunded_at": datetime.now(timezone.utc).isoformat()}},
+    await db.transactions.update_many(
+        {
+            "$or": [
+                {"id": original_identity},
+                {"tx_id": original_identity},
+                {"reference": tx.get("reference") or original_identity},
+            ]
+        },
+        {"$set": {
+            "refunded": True,
+            "refund_ref": refund_ref,
+            "refunded_at": datetime.now(timezone.utc).isoformat(),
+            "refund_transaction_id": result.transaction_id,
+        }},
     )
-    return {"ok": True, "refund_ref": refund_ref, "amount": amount, "currency": currency}
 
+    ip, ua = get_client_info(request)
+    if not result.idempotent_replay:
+        await log_audit(
+            AuditEvent.ADMIN_ACTION,
+            user_id=admin_id,
+            email=admin.get("email", ""),
+            ip=ip,
+            user_agent=ua,
+            details={
+                "action": "transaction_refund",
+                "target_user_id": user_id,
+                "original_transaction": original_identity,
+                "refund_transaction_id": result.transaction_id,
+                "amount": amount,
+                "reason": req.reason,
+            },
+            severity="warn",
+        )
+
+    return {
+        "ok": True,
+        "refund_ref": refund_ref,
+        "amount": amount,
+        "currency": currency,
+        "transaction_id": result.transaction_id,
+        "replayed": result.idempotent_replay,
+    }
 
 # ═══════════════════════════════════════════════════════════════
 # GENERIC CRUD für Service-Module
@@ -633,18 +879,39 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
 
 # Map admin module keys → MongoDB collection + primary key strategy
 MODULE_COLLECTIONS = {
+    "immobilien": ("real_estate", "title"),
+    "freelancer": ("freelancers", "name"),
+    "elearning": ("elearning_courses", "title"),
     "handwerker": ("handwerker", "name"),
     "gebrauchtwagen": ("gebrauchtwagen", "title"),
-    "reinigung": ("cleaning_services", "name"),
-    "umzug": ("moving_companies", "name"),
+    "reinigung": ("reinigung_services", "name"),
+    "umzug": ("umzug_companies", "name"),
     "tierbetreuung": ("pet_sitters", "name"),
     "streaming": ("streaming_content", "title"),
-    "telemedizin": ("telemedicine_doctors", "name"),
+    "telemedizin": ("doctors", "name"),
     "dating": ("dating_profiles", "name"),
-    "fitness": ("fitness_gyms", "name"),
+    "fitness": ("gyms", "name"),
     "reisen": ("travel_trips", "title"),
-    "ladesaeulen": ("ev_charging_stations", "name"),
+    "ladesaeulen": ("ev_stations", "name"),
     "scooter-abos": ("scooter_plans", "name"),
+}
+
+MODULE_ID_FIELDS = {
+    "immobilien": "listing_id",
+    "freelancer": "freelancer_id",
+    "elearning": "course_id",
+    "handwerker": "hw_id",
+    "gebrauchtwagen": "car_id",
+    "reinigung": "service_id",
+    "umzug": "company_id",
+    "tierbetreuung": "sitter_id",
+    "streaming": "content_id",
+    "telemedizin": "doctor_id",
+    "dating": "profile_id",
+    "fitness": "gym_id",
+    "reisen": "trip_id",
+    "ladesaeulen": "station_id",
+    "scooter-abos": "plan_id",
 }
 
 
@@ -652,11 +919,53 @@ MODULE_COLLECTIONS = {
 async def module_create(module_key: str, data: dict, request: Request):
     """Neuen Eintrag in Service-Modul anlegen."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen werden über die verifizierte EV-Geräteverwaltung provisioniert; generisches CRUD ist read-only.")
+    if module_key == "dating":
+        raise HTTPException(
+            409,
+            "Dating-Profile werden nur aus echten Nutzerkonten erstellt. Im Admin können bestehende Profile moderiert werden.",
+        )
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        from routes.scooter import _coerce_scooter_plan
+        now = datetime.now(timezone.utc).isoformat()
+        candidate = _coerce_scooter_plan({**data, "enabled": True})
+        if not candidate:
+            raise HTTPException(400, "Scooter-Abo benötigt gültige EUR-Preise, Laufzeit und Minutenwerte.")
+        plan_id = candidate["plan_id"]
+        candidate.update({"id": plan_id, "plan_id": plan_id, "enabled": True, "updated_at": now})
+        await db.scooter_plans.update_one(
+            {"plan_id": plan_id},
+            {"$set": candidate, "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "item": candidate}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["id"] = data.get("id") or f"{module_key[:3].upper()}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')[:14]}"
+    canonical_id_field = MODULE_ID_FIELDS.get(module_key)
+    if canonical_id_field:
+        data[canonical_id_field] = data.get(canonical_id_field) or data["id"]
+    if module_key == "immobilien":
+        data["listing_id"] = data.get("listing_id") or data["id"]
+        data["status"] = data.get("status") or "active"
+    elif module_key == "freelancer":
+        data["freelancer_id"] = data.get("freelancer_id") or data["id"]
+        data["available"] = True if data.get("available") is None else bool(data.get("available"))
+    elif module_key == "elearning":
+        data["course_id"] = data.get("course_id") or data["id"]
+        data["status"] = data.get("status") or "published"
+    elif module_key in {"handwerker", "tierbetreuung", "telemedizin"}:
+        data["available"] = True if data.get("available") is None else bool(data.get("available"))
+    elif module_key == "gebrauchtwagen":
+        data["status"] = data.get("status") or "active"
+    elif module_key == "ladesaeulen":
+        data["station_id"] = data.get("station_id") or data["id"]
+        data["slots_total"] = int(data.get("slots_total") or 1)
+        data["slots_available"] = int(data.get("slots_available") if data.get("slots_available") is not None else data["slots_total"])
+        data["type"] = data.get("type") or "AC"
     await db[coll_name].insert_one(data)
     data.pop("_id", None)
     return {"ok": True, "item": data}
@@ -666,20 +975,96 @@ async def module_create(module_key: str, data: dict, request: Request):
 async def module_list(module_key: str, request: Request, limit: int = 100):
     """Liste alle Einträge eines Service-Moduls."""
     await _require_admin(request)
+    if module_key == "scooter-abos":
+        from routes.scooter import _get_scooter_plans
+        plans = await _get_scooter_plans()
+        items = [{**plan, "id": plan["plan_id"]} for plan in plans]
+        return {"items": items, "count": len(items), "collection": "scooter_plans"}
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        charge_points = await db.ev_charge_points.find(
+            {"active": {"$ne": False}},
+            {"_id": 0, "ocpp_auth_hash": 0},
+        ).limit(limit).to_list(limit)
+        items = []
+        for cp in charge_points:
+            location = cp.get("location") or {}
+            items.append({
+                "id": cp.get("charge_point_id"),
+                "charge_point_id": cp.get("charge_point_id"),
+                "name": cp.get("name") or cp.get("charge_point_id"),
+                "operator": cp.get("operator_name") or cp.get("operator") or "BidBlitz EV",
+                "city": location.get("city") or cp.get("city") or "",
+                "power_kw": cp.get("max_power_kw") or cp.get("power_kw") or 0,
+                "tariff_id": cp.get("tariff_id"),
+                "active": cp.get("active", True),
+            })
+        return {
+            "items": items,
+            "count": len(items),
+            "collection": "ev_charge_points",
+            "read_only": True,
+            "read_only_reason": "Live-OCPP-Geräte werden nicht über generisches CRUD verändert.",
+        }
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
     coll_name, _ = MODULE_COLLECTIONS[module_key]
-    cursor = db[coll_name].find({}, {"_id": 0}).limit(limit)
-    items = await cursor.to_list(length=limit)
-    return {"items": items, "count": len(items), "collection": coll_name}
+    cursor = db[coll_name].find({}).limit(limit)
+    raw_items = await cursor.to_list(length=limit)
+    items = []
+    for raw in raw_items:
+        item = dict(raw)
+        mongo_id = item.pop("_id", None)
+        if not item.get("id") and mongo_id is not None:
+            item["id"] = str(mongo_id)
+        items.append(item)
+    response = {"items": items, "count": len(items), "collection": coll_name}
+    if module_key == "dating":
+        response.update({
+            "create_disabled": True,
+            "create_disabled_reason": "Dating-Profile entstehen ausschließlich aus echten Nutzerkonten. Bestehende Profile können hier moderiert werden.",
+        })
+    return response
 
 
 @router.put("/module/{module_key}/{item_id}")
 async def module_update(module_key: str, item_id: str, data: dict, request: Request):
     """Eintrag im Service-Modul aktualisieren."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
+    if module_key == "dating":
+        now = datetime.now(timezone.utc).isoformat()
+        result = await db.dating_profiles.update_one(
+            {"$or": [{"profile_id": item_id}, {"id": item_id}]},
+            {"$set": {"active": False, "moderated_disabled_at": now}},
+        )
+        if result.matched_count == 0:
+            try:
+                result = await db.dating_profiles.update_one(
+                    {"_id": _oid(item_id)},
+                    {"$set": {"active": False, "moderated_disabled_at": now}},
+                )
+            except Exception:
+                pass
+        if result.matched_count == 0:
+            raise HTTPException(404, "Dating-Profil nicht gefunden")
+        return {"ok": True, "disabled": True}
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        from routes.scooter import _coerce_scooter_plan
+        now = datetime.now(timezone.utc).isoformat()
+        payload = {**data, "id": item_id, "plan_id": item_id, "enabled": True}
+        candidate = _coerce_scooter_plan(payload)
+        if not candidate:
+            raise HTTPException(400, "Ungültige Scooter-Abo-Daten.")
+        candidate.update({"id": item_id, "plan_id": item_id, "enabled": True, "updated_at": now})
+        await db.scooter_plans.update_one(
+            {"plan_id": item_id},
+            {"$set": candidate, "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "item": candidate}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     data.pop("_id", None)
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -701,8 +1086,36 @@ async def module_update(module_key: str, item_id: str, data: dict, request: Requ
 async def module_delete(module_key: str, item_id: str, request: Request):
     """Eintrag aus Service-Modul löschen."""
     await _require_admin(request)
+    if module_key == "ladesaeulen" and not TEST_MODE:
+        raise HTTPException(409, "Live-OCPP-Ladesäulen sind in diesem generischen Editor read-only.")
+    if module_key == "dating":
+        now = datetime.now(timezone.utc).isoformat()
+        result = await db.dating_profiles.update_one(
+            {"$or": [{"profile_id": item_id}, {"id": item_id}]},
+            {"$set": {"active": False, "moderated_disabled_at": now}},
+        )
+        if result.matched_count == 0:
+            try:
+                result = await db.dating_profiles.update_one(
+                    {"_id": _oid(item_id)},
+                    {"$set": {"active": False, "moderated_disabled_at": now}},
+                )
+            except Exception:
+                pass
+        if result.matched_count == 0:
+            raise HTTPException(404, "Dating-Profil nicht gefunden")
+        return {"ok": True, "disabled": True, "hard_deleted": False}
     if module_key not in MODULE_COLLECTIONS:
         raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    if module_key == "scooter-abos":
+        now = datetime.now(timezone.utc).isoformat()
+        await db.scooter_plans.update_one(
+            {"plan_id": item_id},
+            {"$set": {"id": item_id, "plan_id": item_id, "enabled": False, "updated_at": now},
+             "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return {"ok": True, "disabled": True}
     coll_name, _ = MODULE_COLLECTIONS[module_key]
     result = await db[coll_name].delete_one({"id": item_id})
     if result.deleted_count == 0:

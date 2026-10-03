@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -314,9 +315,26 @@ async def _update_session_meters(session_id: str, latest_wh: float, latest_w: Op
         return
     kwh = max(0.0, (latest_wh - float(sess.get("meter_start_wh", 0))) / 1000.0)
     tariff = sess.get("tariff") or {}
-    price_per_kwh = float(tariff.get("price_per_kwh", 0))
-    session_fee = float(tariff.get("session_fee", 0))
-    current_cost = round(kwh * price_per_kwh + session_fee, 2)
+    price_per_kwh = float(tariff.get("price_per_kwh", 0) or 0)
+    price_per_minute = float(tariff.get("price_per_minute", 0) or 0)
+    session_fee = float(tariff.get("session_fee", 0) or 0)
+    minimum_fee = float(tariff.get("minimum_fee", 0) or 0)
+    duration_min = 0.0
+    if sess.get("started_at"):
+        try:
+            start = datetime.fromisoformat(str(sess["started_at"]).replace("Z", "+00:00"))
+            end = datetime.fromisoformat(str(ts or _utcnow_iso()).replace("Z", "+00:00"))
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+            duration_min = max(0.0, (end - start).total_seconds() / 60.0)
+        except Exception:
+            duration_min = 0.0
+    current_cost = round(max(
+        kwh * price_per_kwh + duration_min * price_per_minute + session_fee,
+        minimum_fee,
+    ), 2)
     update = {
         "kwh_charged": round(kwh, 3),
         "current_cost": current_cost,
@@ -325,6 +343,49 @@ async def _update_session_meters(session_id: str, latest_wh: float, latest_w: Op
     if latest_w is not None:
         update["current_power_w"] = latest_w
     await db.ev_charging_sessions.update_one({"session_id": session_id}, {"$set": update})
+
+    reserved = round(float(sess.get("reserved_amount") or 0), 2)
+    transaction_id = sess.get("ocpp_transaction_id")
+    if (
+        sess.get("preauth_status") == "held"
+        and reserved > 0
+        and current_cost >= reserved
+        and sess.get("status") == "active"
+        and transaction_id
+    ):
+        stop_claim = await db.ev_charging_sessions.update_one(
+            {
+                "session_id": session_id,
+                "status": "active",
+                "auto_stop_requested_at": {"$exists": False},
+            },
+            {"$set": {
+                "auto_stop_requested_at": _utcnow_iso(),
+                "auto_stop_reason": "preauthorization_limit",
+                "auto_stop_limit": reserved,
+            }},
+        )
+        if stop_claim.modified_count == 1:
+            try:
+                result = await request_stop_transaction(sess["charge_point_id"], str(transaction_id))
+                if (result or {}).get("status") not in {None, "Accepted"}:
+                    raise RuntimeError(f"RequestStopTransaction rejected: {result}")
+                await db.ev_charging_sessions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"auto_stop_command_status": "accepted"}},
+                )
+            except Exception as exc:
+                await db.ev_charging_sessions.update_one(
+                    {"session_id": session_id},
+                    {
+                        "$set": {
+                            "auto_stop_command_status": "failed",
+                            "auto_stop_error": str(exc)[:300],
+                            "auto_stop_failed_at": _utcnow_iso(),
+                        },
+                        "$unset": {"auto_stop_requested_at": ""},
+                    },
+                )
 
 
 async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -362,7 +423,7 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
     if id_token:
         response["idTokenInfo"] = {"status": "Accepted"}
 
-    # ── Started: bind to a pre-existing authorized session or create one
+    # ── Started: only bind to a pre-existing BidBlitz-authorized session.
     if event_type == "Started":
         session = await db.ev_charging_sessions.find_one({
             "charge_point_id": charge_point_id,
@@ -371,40 +432,45 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "status": {"$in": ["authorized", "starting"]},
         }, sort=[("created_at", -1)])
 
-        meter_start = latest_wh if latest_wh is not None else 0.0
-        if session:
-            await db.ev_charging_sessions.update_one(
-                {"session_id": session["session_id"]},
-                {"$set": {
-                    "status": "active",
-                    "ocpp_transaction_id": transaction_id,
-                    "ocpp_protocol": "ocpp2.0.1",
-                    "meter_start_wh": meter_start,
-                    "started_at": timestamp,
-                    "evse_id": evse_id,
-                }},
+        if not session:
+            log.warning(
+                "Rejected unmatched OCPP2 Started cp=%s connector=%s token=%s",
+                charge_point_id, connector_id, str(id_token or "")[:8],
             )
-        else:
-            session_id = f"evs_{secrets.token_hex(6)}"
-            await db.ev_charging_sessions.insert_one({
-                "session_id": session_id,
-                "charge_point_id": charge_point_id,
-                "evse_id": evse_id,
-                "connector_id": connector_id,
+            if id_token:
+                response["idTokenInfo"] = {"status": "Invalid"}
+            return response
+
+        meter_start = latest_wh if latest_wh is not None else 0.0
+        claim = await db.ev_charging_sessions.update_one(
+            {
+                "session_id": session["session_id"],
+                "status": {"$in": ["authorized", "starting"]},
                 "id_tag": id_token,
-                "user_id": None,
-                "tariff": None,
-                "reserved_amount": 0.0,
-                "currency": "EUR",
-                "kwh_charged": 0.0,
-                "current_cost": 0.0,
+            },
+            {"$set": {
                 "status": "active",
                 "ocpp_transaction_id": transaction_id,
                 "ocpp_protocol": "ocpp2.0.1",
                 "meter_start_wh": meter_start,
                 "started_at": timestamp,
-                "created_at": _utcnow_iso(),
-            })
+                "evse_id": evse_id,
+            }},
+        )
+        if claim.modified_count != 1:
+            if id_token:
+                response["idTokenInfo"] = {"status": "Invalid"}
+            return response
+
+        await db.ev_authorizations.update_one(
+            {"id_tag": id_token, "active": True},
+            {"$set": {
+                "active": False,
+                "consumed_at": _utcnow_iso(),
+                "session_id": session["session_id"],
+                "charge_point_id": charge_point_id,
+            }},
+        )
         return response
 
     # ── Updated: live meter sample
@@ -423,7 +489,7 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             "charge_point_id": charge_point_id,
             "ocpp_transaction_id": transaction_id,
         })
-        if sess:
+        if sess and sess.get("status") != "completed" and sess.get("settlement_status") != "completed":
             update: Dict[str, Any] = {
                 "status": "stopping",
                 "stop_reason": txn_info.get("stoppedReason", "Local"),
@@ -432,12 +498,16 @@ async def handle_TransactionEvent(charge_point_id: str, payload: Dict[str, Any])
             if latest_wh is not None:
                 update["meter_stop_wh"] = latest_wh
                 # Recompute final kwh delta so finalize_session uses fresh value.
-                kwh = max(0.0, (latest_wh - float(sess.get("meter_start_wh", 0))) / 1000.0)
+                meter_start = float(sess.get("meter_start_wh", 0))
+                if not math.isfinite(latest_wh) or not math.isfinite(meter_start) or latest_wh < meter_start:
+                    raise ValueError("Invalid final meter reading")
+                kwh = (latest_wh - meter_start) / 1000.0
                 update["kwh_charged"] = round(kwh, 3)
             else:
                 update["meter_stop_wh"] = sess.get("meter_start_wh", 0)
             await db.ev_charging_sessions.update_one(
-                {"session_id": sess["session_id"]}, {"$set": update}
+                {"session_id": sess["session_id"], "settlement": {"$exists": False},
+                 "status": {"$ne": "completed"}}, {"$set": update}
             )
             await finalize_session(sess["session_id"])
         return response

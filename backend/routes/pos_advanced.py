@@ -6,6 +6,7 @@ Reservierung + Marketing + Gutscheine + Alterskontrolle.
 """
 import secrets
 import io
+import os
 import csv
 import logging
 from datetime import datetime, timezone, timedelta
@@ -15,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from services.pos_auto_order import get_auto_order_settings, list_auto_order_items, save_auto_order_items, run_auto_order_for_store
 from routes.pos_system import (
@@ -802,9 +804,9 @@ async def log_age_check(req: AgeCheckLog, request: Request):
 # ── 20. DEMO-MODUS — One-click sample data ────────────────────────────
 @router.post("/demo/seed")
 async def seed_demo_data(request: Request, store_id: str):
-    """Erzeugt mit einem Klick: Test-Lieferant, 3 Demo-Produkte, Test-Gutschein,
-    Test-Inventur, Test-Rezept, Test-Reservierung, Test-Schicht.
-    Alle mit dem Präfix DEMO- damit Händler sie leicht löschen können."""
+    """Create POS demo data only in explicitly enabled non-production demo mode."""
+    if not TEST_MODE and os.environ.get("DEMO_MODE", "").lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=404, detail="Demo endpoint not available")
     user = await get_current_user(request)
     store = await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
     merchant_id = store["merchant_id"]
@@ -895,7 +897,9 @@ async def seed_demo_data(request: Request, store_id: str):
 
 @router.delete("/demo/clear")
 async def clear_demo_data(request: Request, store_id: str):
-    """Löscht ALLE Demo-Daten (Präfix DEMO) für diese Filiale."""
+    """Delete POS demo data only in explicitly enabled demo/test mode."""
+    if not TEST_MODE and os.environ.get("DEMO_MODE", "").lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=404, detail="Demo endpoint not available")
     user = await get_current_user(request)
     await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
     deleted = {

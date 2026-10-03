@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
+from core.rate_limit import limiter
 import secrets
 
 router = APIRouter(prefix="/api/support", tags=["support"])
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/api/support", tags=["support"])
 class CreateTicketRequest(BaseModel):
     subject: str = Field(..., min_length=1, max_length=200)
     message: str = Field(..., min_length=1, max_length=2000)
-    category: str = Field("general", max_length=50)
+    category: str = Field("general", pattern="^(general|payments|account|security|merchant)$")
     reference: str = Field("", max_length=100)
 
 
@@ -26,18 +27,31 @@ class TicketMessageRequest(BaseModel):
 
 
 @router.post("/tickets")
+@limiter.limit("10/hour")
 async def create_ticket(req: CreateTicketRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    subject = req.subject.strip()
+    message = req.message.strip()
+    if not subject or not message:
+        raise HTTPException(status_code=400, detail="Betreff und Nachricht dürfen nicht leer sein")
+
+    open_count = await db.support_tickets.count_documents({
+        "user_id": user_id,
+        "status": {"$in": ["open", "in_progress"]},
+    })
+    if open_count >= 10:
+        raise HTTPException(status_code=429, detail="Zu viele offene Support-Tickets. Bitte bestehende Anfrage weiterführen.")
+
     now = datetime.now(timezone.utc).isoformat()
-    ticket_id = f"TK-{secrets.token_hex(4).upper()}"
+    ticket_id = f"TK-{secrets.token_hex(8).upper()}"
 
     ticket = {
         "ticket_id": ticket_id,
         "user_id": user_id,
         "user_email": user.get("email", ""),
         "user_name": user.get("name", ""),
-        "subject": req.subject,
+        "subject": subject,
         "category": req.category,
         "reference": req.reference or "",
         "status": "open",
@@ -53,7 +67,7 @@ async def create_ticket(req: CreateTicketRequest, request: Request):
         "sender_id": user_id,
         "sender_name": user.get("name", ""),
         "sender_role": "user",
-        "message": req.message,
+        "message": message,
         "created_at": now,
     }
     await db.support_messages.insert_one(msg)
@@ -104,6 +118,7 @@ async def get_ticket_detail(ticket_id: str, request: Request):
 
 
 @router.post("/tickets/{ticket_id}/messages")
+@limiter.limit("60/minute")
 async def send_ticket_message(ticket_id: str, req: TicketMessageRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -115,7 +130,12 @@ async def send_ticket_message(ticket_id: str, req: TicketMessageRequest, request
 
     if ticket["user_id"] != user_id and not is_admin:
         raise HTTPException(status_code=403, detail="Kein Zugriff")
+    if ticket.get("status") == "closed":
+        raise HTTPException(status_code=409, detail="Ticket ist geschlossen. Bitte erstelle bei Bedarf eine neue Anfrage.")
 
+    message = req.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Nachricht darf nicht leer sein")
     now = datetime.now(timezone.utc).isoformat()
 
     msg = {
@@ -123,13 +143,13 @@ async def send_ticket_message(ticket_id: str, req: TicketMessageRequest, request
         "sender_id": user_id,
         "sender_name": user.get("name", ""),
         "sender_role": "admin" if is_admin else "user",
-        "message": req.message,
+        "message": message,
         "created_at": now,
     }
     await db.support_messages.insert_one(msg)
     msg.pop("_id", None)
 
-    # Reopen if closed and user sends message
+    # A user reply to a resolved ticket reopens it; a fully closed ticket is immutable.
     if ticket["status"] == "resolved" and not is_admin:
         await db.support_tickets.update_one(
             {"ticket_id": ticket_id},
@@ -156,12 +176,20 @@ async def close_ticket(ticket_id: str, request: Request):
     if ticket["user_id"] != user_id and not is_admin:
         raise HTTPException(status_code=403, detail="Kein Zugriff")
 
+    if ticket.get("status") == "closed":
+        return {"ok": True, "status": "closed", "replayed": True}
+
     now = datetime.now(timezone.utc).isoformat()
     await db.support_tickets.update_one(
-        {"ticket_id": ticket_id},
-        {"$set": {"status": "resolved", "updated_at": now, "resolved_at": now}}
+        {"ticket_id": ticket_id, "status": {"$ne": "closed"}},
+        {"$set": {
+            "status": "closed",
+            "updated_at": now,
+            "closed_at": now,
+            "closed_by": user_id,
+        }}
     )
-    return {"ok": True}
+    return {"ok": True, "status": "closed", "replayed": False}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -181,6 +209,8 @@ async def admin_get_tickets(
 
     query = {}
     if status:
+        if status not in {"open", "in_progress", "resolved", "closed"}:
+            raise HTTPException(status_code=400, detail="Ungültiger Ticket-Status")
         query["status"] = status
 
     tickets = await db.support_tickets.find(query, {"_id": 0}).sort("updated_at", -1).skip(skip).limit(limit).to_list(limit)

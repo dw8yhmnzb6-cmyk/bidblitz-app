@@ -3,7 +3,7 @@
  * Casino-style games with points rewards
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Gamepad2, Star, Trophy, Gift, Zap, Target,
@@ -33,6 +33,8 @@ const GamingPage = ({ onNavigate, onBack }) => {
   const [leaderboardTab, setLeaderboardTab] = useState("season");
   const [claimingMilestone, setClaimingMilestone] = useState(null);
   const [claimingPerk, setClaimingPerk] = useState(null);
+  const buyAttemptKeyRef = useRef(null);
+  const redeemAttemptKeyRef = useRef(null);
 
   useEffect(() => {
     loadUserData();
@@ -70,13 +72,20 @@ const GamingPage = ({ onNavigate, onBack }) => {
   const handleBuyCoins = async () => {
     setBuying(true);
     try {
+      if (!buyAttemptKeyRef.current) {
+        buyAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `gaming-buy-${crypto.randomUUID()}`
+          : `gaming-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = buyAttemptKeyRef.current;
       const res = await fetch(`${API_URL}/api/gaming/buy-coins`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: parseFloat(buyAmount) }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ amount: parseFloat(buyAmount), idempotency_key: idempotencyKey }),
       });
       if (res.ok) {
         const data = await res.json();
+        buyAttemptKeyRef.current = null;
         setUserCoins(data.new_balance);
         setShowBuyCoins(false);
       } else {
@@ -96,13 +105,20 @@ const GamingPage = ({ onNavigate, onBack }) => {
     const amount = prompt(t("gaming.redeem_prompt"));
     if (!amount || parseInt(amount) < 500) return;
     try {
+      if (!redeemAttemptKeyRef.current) {
+        redeemAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `gaming-redeem-${crypto.randomUUID()}`
+          : `gaming-redeem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = redeemAttemptKeyRef.current;
       const res = await fetch(`${API_URL}/api/gaming/redeem`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coins: parseInt(amount) }),
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ coins: parseInt(amount), idempotency_key: idempotencyKey }),
       });
       const data = await res.json();
       if (res.ok) {
+        redeemAttemptKeyRef.current = null;
         setUserCoins(data.remaining_coins);
         alert(data.message);
       } else { alert(data.detail || t("gaming.error")); }

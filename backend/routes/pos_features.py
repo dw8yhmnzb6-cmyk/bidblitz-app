@@ -994,7 +994,7 @@ async def create_feature_checkout(req: FeatureCheckoutRequest, request: Request)
     cancel_url = f"{origin}/pos?feature_purchase=cancelled"
 
     host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
+    webhook_url = f"{host_url}/api/stripe/webhook"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
     checkout_request = CheckoutSessionRequest(
@@ -1038,27 +1038,73 @@ async def create_feature_checkout(req: FeatureCheckoutRequest, request: Request)
 
 
 async def activate_feature_after_payment(session_id: str) -> bool:
-    """Wird vom Stripe-Webhook aufgerufen, sobald Payment 'paid' ist."""
+    """Activate one paid feature purchase exactly once across webhook/poll races."""
     purchase = await db.pos_feature_purchases.find_one({"session_id": session_id})
     if not purchase:
         return False
-    if purchase["status"] == "completed":
-        return True  # Already activated (idempotent)
+    if purchase.get("status") == "completed":
+        return True
 
     feat = next((f for f in FEATURE_CATALOG if f["key"] == purchase["feature_key"]), None)
     if not feat:
         return False
 
-    # Bestehende Feature-Eintrag oder neu
+    activation_token = secrets.token_hex(12)
+    now = datetime.now(timezone.utc)
+    stale_before = (now - timedelta(minutes=5)).isoformat()
+    claimed = await db.pos_feature_purchases.update_one(
+        {
+            "session_id": session_id,
+            "$or": [
+                {"status": "pending"},
+                {
+                    "status": "activating",
+                    "activation_started_at": {"$lte": stale_before},
+                },
+            ],
+        },
+        {"$set": {
+            "status": "activating",
+            "activation_lock": activation_token,
+            "activation_started_at": now.isoformat(),
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.pos_feature_purchases.find_one({"session_id": session_id}, {"_id": 0}) or {}
+        if current.get("status") == "completed":
+            return True
+        if current.get("status") == "activating":
+            return False
+        return False
+
+    purchase = await db.pos_feature_purchases.find_one(
+        {"session_id": session_id, "activation_lock": activation_token},
+        {"_id": 0},
+    ) or purchase
+
     existing = await db.pos_merchant_features.find_one({
         "merchant_id": purchase["merchant_id"],
         "feature_key": purchase["feature_key"],
     })
-    # Verlängern statt überschreiben falls noch gültig
+
+    # Recovery: feature was already extended, but purchase finalization crashed.
+    if existing and existing.get("last_purchase_session") == session_id:
+        finalized = await db.pos_feature_purchases.update_one(
+            {"session_id": session_id, "activation_lock": activation_token, "status": "activating"},
+            {"$set": {
+                "status": "completed",
+                "completed_at": _now(),
+                "valid_until": existing.get("valid_until"),
+            }, "$unset": {"activation_lock": "", "activation_started_at": ""}},
+        )
+        return finalized.modified_count == 1
+
     base_dt = datetime.now(timezone.utc)
     if existing and existing.get("valid_until"):
         try:
             cur_end = datetime.fromisoformat(existing["valid_until"])
+            if cur_end.tzinfo is None:
+                cur_end = cur_end.replace(tzinfo=timezone.utc)
             if cur_end > base_dt:
                 base_dt = cur_end
         except ValueError:
@@ -1077,32 +1123,80 @@ async def activate_feature_after_payment(session_id: str) -> bool:
         "last_purchase_session": session_id,
     }
     if existing:
-        await db.pos_merchant_features.update_one(
-            {"merchant_id": purchase["merchant_id"], "feature_key": purchase["feature_key"]},
-            {"$set": payload},
-        )
-    else:
-        await db.pos_merchant_features.insert_one(payload)
-
-    await db.pos_feature_purchases.update_one(
-        {"session_id": session_id},
-        {"$set": {"status": "completed", "completed_at": _now(), "valid_until": new_valid_until}},
-    )
-
-    try:
-        await db.pos_audit_log.insert_one({
-            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
-            "actor_id": purchase["user_id"],
-            "action": "feature.purchase",
-            "ref": {
+        applied = await db.pos_merchant_features.update_one(
+            {
                 "merchant_id": purchase["merchant_id"],
                 "feature_key": purchase["feature_key"],
-                "months": purchase["months"],
-                "amount": purchase["amount"],
-                "session_id": session_id,
+                "last_purchase_session": {"$ne": session_id},
             },
-            "ts": _now(),
-        })
+            {"$set": payload},
+        )
+        if applied.modified_count != 1:
+            current_feature = await db.pos_merchant_features.find_one({
+                "merchant_id": purchase["merchant_id"],
+                "feature_key": purchase["feature_key"],
+            }, {"_id": 0}) or {}
+            if current_feature.get("last_purchase_session") != session_id:
+                await db.pos_feature_purchases.update_one(
+                    {"session_id": session_id, "activation_lock": activation_token},
+                    {"$set": {"status": "reconciliation_required", "activation_error": "feature_update_failed"}},
+                )
+                return False
+            new_valid_until = current_feature.get("valid_until") or new_valid_until
+    else:
+        try:
+            await db.pos_merchant_features.insert_one(payload)
+        except Exception:
+            current_feature = await db.pos_merchant_features.find_one({
+                "merchant_id": purchase["merchant_id"],
+                "feature_key": purchase["feature_key"],
+            }, {"_id": 0}) or {}
+            if current_feature.get("last_purchase_session") != session_id:
+                await db.pos_feature_purchases.update_one(
+                    {"session_id": session_id, "activation_lock": activation_token},
+                    {"$set": {"status": "reconciliation_required", "activation_error": "feature_insert_failed"}},
+                )
+                return False
+            new_valid_until = current_feature.get("valid_until") or new_valid_until
+
+    finalized = await db.pos_feature_purchases.update_one(
+        {"session_id": session_id, "activation_lock": activation_token, "status": "activating"},
+        {"$set": {
+            "status": "completed",
+            "completed_at": _now(),
+            "valid_until": new_valid_until,
+        }, "$unset": {"activation_lock": "", "activation_started_at": "", "activation_error": ""}},
+    )
+    if finalized.modified_count != 1:
+        current = await db.pos_feature_purchases.find_one({"session_id": session_id}, {"_id": 0}) or {}
+        if current.get("status") != "completed":
+            await db.pos_feature_purchases.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "reconciliation_required",
+                    "activation_error": "purchase_finalize_failed",
+                }},
+            )
+            return False
+
+    try:
+        await db.pos_audit_log.update_one(
+            {"audit_id": f"feature-purchase:{session_id}"},
+            {"$setOnInsert": {
+                "audit_id": f"feature-purchase:{session_id}",
+                "actor_id": purchase["user_id"],
+                "action": "feature.purchase",
+                "ref": {
+                    "merchant_id": purchase["merchant_id"],
+                    "feature_key": purchase["feature_key"],
+                    "months": purchase["months"],
+                    "amount": purchase["amount"],
+                    "session_id": session_id,
+                },
+                "ts": _now(),
+            }},
+            upsert=True,
+        )
     except Exception:
         pass
 
@@ -1123,7 +1217,7 @@ async def get_checkout_status(session_id: str, request: Request):
     if purchase["status"] != "completed":
         try:
             host_url = str(request.base_url).rstrip("/")
-            webhook_url = f"{host_url}/api/webhook/stripe"
+            webhook_url = f"{host_url}/api/stripe/webhook"
             sc = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
             status = await sc.get_checkout_status(session_id)
             if status.payment_status == "paid":

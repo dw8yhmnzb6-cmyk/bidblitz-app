@@ -16,8 +16,9 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
-from routes.pos_system import short_id, now_iso
+from routes.pos_system import short_id, now_iso, _require_store_access
 
 router = APIRouter(prefix="/api/pos/hardware", tags=["POS Hardware"])
 log = logging.getLogger("bidblitz.pos.hardware")
@@ -43,11 +44,17 @@ async def print_receipt(req: PrintRequest, request: Request):
     if not sale:
         raise HTTPException(status_code=404, detail="Beleg nicht gefunden")
     
-    # Printer config
-    printer = await db.pos_printers.find_one({"printer_id": req.printer_id or "default"})
+    await _require_store_access(user, sale["store_id"])
+
+    # Printer config must belong to the same store.
+    printer = await db.pos_printers.find_one({
+        "printer_id": req.printer_id or "default",
+        "store_id": sale["store_id"],
+    })
     if not printer:
-        # Fallback: File output for testing (no actual printer hardware)
-        printer = {"type": "file"}
+        if not TEST_MODE:
+            raise HTTPException(status_code=503, detail="Kein echter Bondrucker für diese Filiale konfiguriert")
+        printer = {"type": "file", "simulated": True}
     
     # Generate ESC/POS commands
     escpos_data = _generate_escpos(sale)
@@ -59,12 +66,17 @@ async def print_receipt(req: PrintRequest, request: Request):
         elif printer["type"] == "usb":
             await _send_to_usb_printer(printer["device"], escpos_data)
         elif printer["type"] == "file":
-            # Dev mode: Save to file
+            if not TEST_MODE:
+                raise HTTPException(status_code=503, detail="Datei-Druck ist nur im Testmodus erlaubt")
             with open(f"/tmp/receipt_{req.receipt_id}.txt", "wb") as f:
                 f.write(escpos_data)
+        else:
+            raise HTTPException(status_code=503, detail="Nicht unterstützter Drucker-Typ")
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Print error: {e}")
-        raise HTTPException(status_code=500, detail=f"Druckfehler: {str(e)}")
+        raise HTTPException(status_code=502, detail="Bondrucker konnte nicht angesprochen werden")
     
     await db.pos_sales.update_one(
         {"receipt_id": req.receipt_id},
@@ -145,17 +157,20 @@ async def _send_to_usb_printer(device: str, data: bytes):
 
 class ScannerRegisterRequest(BaseModel):
     scanner_id: str
+    store_id: str
     type: str = "usb"
 
 @router.post("/scanner/register")
 async def register_scanner(req: ScannerRegisterRequest, request: Request):
     """Registriert Barcode-Scanner (Honeywell, Zebra, Datalogic)."""
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
 
     await db.pos_scanners.update_one(
-        {"scanner_id": req.scanner_id},
+        {"scanner_id": req.scanner_id, "store_id": req.store_id},
         {"$set": {
             "scanner_id": req.scanner_id,
+            "store_id": req.store_id,
             "type": req.type,
             "status": "active",
             "registered_at": now_iso(),
@@ -168,17 +183,18 @@ class ScannerTestRequest(BaseModel):
     barcode: Optional[str] = None
 
 @router.get("/scanner/test")
-async def test_scanner(request: Request, barcode: Optional[str] = None):
+async def test_scanner(request: Request, store_id: str, barcode: Optional[str] = None):
     """Test-Endpoint: Scanner sendet Barcode an Backend.
     Wenn kein Barcode: liefert ok:true zurück (Heartbeat).
     Wenn Barcode: schlägt Produkt in pos_products nach.
     """
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
 
     if not barcode:
         return {"ok": True, "scanner_status": "ready", "message": "Scanner heartbeat OK"}
 
-    product = await db.pos_products.find_one({"barcode": barcode, "active": True}, {"_id": 0})
+    product = await db.pos_products.find_one({"store_id": store_id, "barcode": barcode, "active": True}, {"_id": 0})
     if not product:
         return {"ok": False, "error": "Produkt nicht gefunden", "barcode": barcode}
 
@@ -196,32 +212,65 @@ class CashDrawerOpenRequest(BaseModel):
 
 @router.post("/cash-drawer/open")
 async def open_cash_drawer(req: CashDrawerOpenRequest, request: Request):
-    """Öffnet Kassen-Schublade via ESC/POS-Befehl (angeschlossen an Bondrucker)."""
+    """Öffnet eine konfigurierte Kassenschublade nur für berechtigte Store-Nutzer."""
     user = await get_current_user(request)
+    store_id = (req.store_id or "").strip()
+    register = None
+    if req.register_id:
+        register = await db.pos_registers.find_one({"register_id": req.register_id}, {"_id": 0})
+        if not register:
+            raise HTTPException(status_code=404, detail="Kasse nicht gefunden")
+        if store_id and register.get("store_id") != store_id:
+            raise HTTPException(status_code=409, detail="Kasse gehört nicht zur angegebenen Filiale")
+        store_id = str(register.get("store_id") or "")
+    if not store_id:
+        raise HTTPException(status_code=400, detail="store_id oder register_id erforderlich")
 
-    register_id = req.register_id or req.store_id or "default"
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager", "cashier"})
+    register_id = req.register_id or (register or {}).get("register_id") or store_id
     open_cmd = b'\x10\x14\x01\x00\x05'
 
-    printer = await db.pos_printers.find_one({"register_id": register_id})
-    if printer:
+    query = {"store_id": store_id}
+    if req.register_id:
+        query["register_id"] = req.register_id
+    printer = await db.pos_printers.find_one(query)
+    simulated = False
+    if not printer:
+        if not TEST_MODE:
+            raise HTTPException(status_code=503, detail="Keine echte Kassenschubladen-/Drucker-Hardware konfiguriert")
+        simulated = True
+    else:
         try:
-            if printer["type"] == "network":
+            if printer.get("type") == "network":
                 await _send_to_network_printer(printer["ip"], printer["port"], open_cmd)
-            elif printer["type"] == "usb":
+            elif printer.get("type") == "usb":
                 await _send_to_usb_printer(printer["device"], open_cmd)
+            elif TEST_MODE:
+                simulated = True
+            else:
+                raise HTTPException(status_code=503, detail="Konfigurierte Hardware unterstützt keine Kassenschublade")
+        except HTTPException:
+            raise
         except Exception as e:
-            log.error(f"Cash drawer error: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            log.error("Cash drawer error: %s", e)
+            raise HTTPException(status_code=502, detail="Kassenschublade konnte nicht geöffnet werden")
 
     await db.pos_cash_drawer_events.insert_one({
         "event_id": short_id("DRW", 10),
         "register_id": register_id,
+        "store_id": store_id,
         "reason": req.reason,
         "opened_by": str(user["_id"]),
+        "simulated": simulated,
         "created_at": now_iso(),
     })
-
-    return {"ok": True, "drawer_opened": True, "register_id": register_id}
+    return {
+        "ok": True,
+        "drawer_opened": True,
+        "register_id": register_id,
+        "store_id": store_id,
+        "simulated": simulated,
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -246,12 +295,14 @@ async def tse_sign_receipt(req: TSESignRequest, request: Request):
     sale = await db.pos_sales.find_one({"receipt_id": req.receipt_id}, {"_id": 0})
     if not sale:
         raise HTTPException(status_code=404, detail="Beleg nicht gefunden")
+    await _require_store_access(user, sale["store_id"])
     
     # TSE Provider config
     tse_config = await db.pos_tse_config.find_one({"store_id": sale["store_id"]})
     if not tse_config:
-        # Fallback: Cloud-TSE (already implemented in pos_pro.py via Fiskaly)
-        return {"ok": True, "tse_type": "cloud", "message": "Using cloud TSE (Fiskaly)"}
+        if TEST_MODE:
+            return {"ok": True, "tse_type": "test", "simulated": True, "message": "TSE Testmodus"}
+        raise HTTPException(status_code=503, detail="Kein verifizierter TSE-Provider für diese Filiale konfiguriert")
     
     # Hardware TSE signing
     if tse_config["type"] == "fiskaltrust":
@@ -274,15 +325,20 @@ async def tse_sign_receipt(req: TSESignRequest, request: Request):
                     ],
                 }
             )
+            response.raise_for_status()
             tse_data = response.json()
+            if not tse_data.get("signature"):
+                raise HTTPException(status_code=502, detail="TSE-Provider lieferte keine Signatur")
     
     elif tse_config["type"] == "epson":
-        # Epson TSE via USB (requires native library)
-        tse_data = {"signature": "EPSON_TSE_PLACEHOLDER", "transaction_number": 12345}
+        if not TEST_MODE:
+            raise HTTPException(status_code=503, detail="Epson-TSE SDK noch nicht live verbunden")
+        tse_data = {"signature": "TEST-EPSON-TSE", "transaction_number": 12345, "simulated": True}
     
     elif tse_config["type"] == "swissbit":
-        # Swissbit TSE via USB SDK
-        tse_data = {"signature": "SWISSBIT_TSE_PLACEHOLDER", "transaction_number": 67890}
+        if not TEST_MODE:
+            raise HTTPException(status_code=503, detail="Swissbit-TSE SDK noch nicht live verbunden")
+        tse_data = {"signature": "TEST-SWISSBIT-TSE", "transaction_number": 67890, "simulated": True}
     
     else:
         raise HTTPException(status_code=400, detail="Unbekannter TSE-Typ")
@@ -314,11 +370,16 @@ async def read_scale_weight(request: Request, scale_id: str = "default"):
     - Mettler Toledo (Protokoll: MT-SICS)
     - Kern (Protokoll: Kern-ASCII)
     """
-    await get_current_user(request)
+    user = await get_current_user(request)
     
     scale = await db.pos_scales.find_one({"scale_id": scale_id})
     if not scale:
         raise HTTPException(status_code=404, detail="Waage nicht konfiguriert")
+    if not scale.get("store_id"):
+        if not TEST_MODE:
+            raise HTTPException(status_code=409, detail="Waage ist keiner Filiale zugeordnet")
+    else:
+        await _require_store_access(user, scale["store_id"])
     
     # Read weight from scale (serial port)
     try:
@@ -369,7 +430,8 @@ async def _read_mettler_toledo_scale(port: str) -> float:
 @router.get("/health")
 async def hardware_health(request: Request, store_id: str):
     """Prüft Status aller Hardware-Geräte."""
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     
     printers = await db.pos_printers.find({"store_id": store_id}, {"_id": 0}).to_list(10)
     scanners = await db.pos_scanners.find({"store_id": store_id}, {"_id": 0}).to_list(10)
