@@ -225,6 +225,7 @@ async def upload_version(draft_id: str, request: Request, file: UploadFile = Fil
 
     UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
     temp_path = None
+    stored_path = None
     slot = None
     version_id = str(uuid4())
     try:
@@ -252,6 +253,7 @@ async def upload_version(draft_id: str, request: Request, file: UploadFile = Fil
         destination = destination_dir / f"{version_id}.zip"
         os.replace(temp_path, destination)
         temp_path = None
+        stored_path = destination
 
         now = datetime.now(timezone.utc).isoformat()
         doc = {
@@ -295,6 +297,8 @@ async def upload_version(draft_id: str, request: Request, file: UploadFile = Fil
     except Exception:
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
+        if stored_path is not None:
+            stored_path.unlink(missing_ok=True)
         if slot is not None:
             await db.game_studio_version_slots.delete_one({
                 "owner_id": owner_id, "draft_id": draft_id, "version_id": version_id
