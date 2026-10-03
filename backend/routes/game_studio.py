@@ -109,7 +109,7 @@ async def _existing_create(owner_id: str, create_key: str):
         doc = await db.game_studio_drafts.find_one({"id": draft_id, "owner_id": owner_id})
         if doc:
             return _public_draft(doc)
-    raise HTTPException(409, "Speichervorgang läuft. Bitte dieselbe Anfrage erneut senden.")
+    raise HTTPException(425, "Speichervorgang läuft. Bitte dieselbe Anfrage erneut senden.")
 
 
 async def _reserve_slot(owner_id: str, draft_id: str, create_key: str, now: str) -> int:
