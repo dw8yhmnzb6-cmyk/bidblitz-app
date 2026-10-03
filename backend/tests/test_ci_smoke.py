@@ -331,6 +331,15 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_taxi_geocoding_has_provider_independent_fallback():
+    source = (BACKEND_DIR / "routes" / "taxi.py").read_text(encoding="utf-8")
+
+    assert "https://nominatim.openstreetmap.org/search" in source
+    assert "https://nominatim.openstreetmap.org/reverse" in source
+    assert '"provider": "osm"' in source
+    assert 'raise HTTPException(503, "Geocoding not configured (MAPBOX_TOKEN missing on server).")' not in source
+
+
 def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     registry = (BACKEND_DIR / "core" / "router_registry.py").read_text(encoding="utf-8")
     chat = (BACKEND_DIR / "routes" / "chat.py").read_text(encoding="utf-8")
