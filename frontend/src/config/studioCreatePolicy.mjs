@@ -12,5 +12,5 @@ export function prepareCreateAttempt(previous, payload) {
 }
 
 export function uncertainCreateError(error) {
-  return !error?.status || error.status >= 500 || error.name === "AbortError";
+  return !error?.status || error.status === 425 || error.status >= 500 || error.name === "AbortError";
 }
