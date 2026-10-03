@@ -63,6 +63,7 @@ jobs:
           backend/tests/test_ci_smoke.py
           backend/tests/test_game_studio.py
           backend/tests/test_game_studio_mongo.py
+          backend/tests/test_games_profile.py
           backend/tests/test_quick_topup_idempotency.py
           backend/tests/test_stripe_wallet_settlement.py
           backend/tests/test_stripe_bid_credit_settlement.py
@@ -97,12 +98,12 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}" src/config/languagePolicy.mjs src/config/studioCreatePolicy.mjs
+        run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}" src/config/languagePolicy.mjs src/config/studioCreatePolicy.mjs src/config/gamesFavoritesPolicy.mjs
 
       - name: Verify Games language registry and preference rules
         run: |
           node frontend/scripts/sync-games-languages.cjs --check
-          node --test frontend/scripts/test-games-languages.mjs frontend/scripts/test-studio-create.mjs
+          node --test frontend/scripts/test-games-languages.mjs frontend/scripts/test-studio-create.mjs frontend/scripts/test-games-favorites.mjs
 
       - name: Build frontend
         env:
