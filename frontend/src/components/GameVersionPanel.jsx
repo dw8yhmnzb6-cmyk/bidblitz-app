@@ -14,7 +14,7 @@ const COPY = {
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", duplicate: "Diese Datei war bereits vorhanden.",
     submit: "Zur Prüfung einreichen", submitted: "Zur Prüfung eingereicht", submitError: "Version konnte nicht eingereicht werden.",
     remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.", withdraw: "Prüfung zurückziehen", withdrawError: "Prüfung konnte nicht zurückgezogen werden.",
-    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt",
+    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.",
     noPreview: "Fremder Spielcode wird noch nicht ausgeführt. Eine private Vorschau folgt erst auf einer getrennten, cookie-freien Games-Origin.",
   },
   en: {
@@ -26,7 +26,7 @@ const COPY = {
     files: "Files", packed: "ZIP", unpacked: "unpacked", duplicate: "This exact file already exists.",
     submit: "Submit for review", submitted: "Submitted for review", submitError: "Could not submit version.",
     remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.", withdraw: "Withdraw review", withdrawError: "Could not withdraw review.",
-    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked",
+    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.",
     noPreview: "Third-party game code is not executed yet. Private preview follows only on a separate cookie-free Games origin.",
   },
   sq: {
@@ -38,7 +38,7 @@ const COPY = {
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", duplicate: "Ky skedar ekziston tashmë.",
     submit: "Dërgo për kontroll", submitted: "U dërgua për kontroll", submitError: "Versioni nuk u dërgua për kontroll.",
     remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.", withdraw: "Tërhiq kontrollin", withdrawError: "Kontrolli nuk u tërhoq.",
-    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar",
+    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.",
     noPreview: "Kodi i lojës së palës së tretë ende nuk ekzekutohet. Prova private vjen vetëm në një Games-origin të ndarë pa cookie.",
   },
 };
@@ -180,17 +180,24 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
         : versions.length === 0 ? <p className="mt-4 text-xs text-white/45">{c.empty}</p>
           : <div className="mt-4 space-y-3">{versions.map((version) => {
             const submitted = version.review_status === "submitted";
+            const approved = version.review_status === "archive_approved";
+            const changesRequested = version.review_status === "changes_requested";
+            const rejected = version.review_status === "rejected";
+            const canSubmit = version.review_status === "not_submitted";
+            const canDelete = !submitted && !approved && version.preview_status !== "prepared";
+            const statusLabel = submitted ? c.submitted : approved ? c.approved : changesRequested ? c.changes : rejected ? c.rejected : c.quarantined;
             return <article key={version.id} className="rounded-xl border border-white/10 bg-white/[.03] p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0"><p className="truncate text-xs font-semibold text-white/85">{version.original_filename || `Version ${version.version_number || ""}`}</p><p className="mt-1 text-[11px] text-white/45">{version.file_count} {c.files} · {formatBytes(version.archive_bytes)} {c.packed} · {formatBytes(version.unpacked_bytes)} {c.unpacked}</p></div>
-                <span className="shrink-0 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] text-cyan-100">{submitted ? c.submitted : c.quarantined}</span>
+                <span className="shrink-0 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[10px] text-cyan-100">{statusLabel}</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/45"><span className="inline-flex items-center gap-1"><CheckCircle2 size={12} />{c.validated}</span><span>·</span><span>{c.blocked}</span></div>
+              {version.review_note && <p className="mt-3 rounded-lg border border-white/10 bg-white/[.03] p-2 text-[11px] leading-relaxed text-white/60">{version.review_note}</p>}
+              {(changesRequested || rejected) && <p className="mt-2 text-[11px] text-amber-100/75">{c.uploadNew}</p>}
               <div className="mt-3 flex gap-2">
-                {submitted
-                  ? <button type="button" onClick={() => withdraw(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-100 disabled:opacity-45"><Send size={13} />{c.withdraw}</button>
-                  : <button type="button" onClick={() => submit(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 disabled:opacity-45"><Send size={13} />{c.submit}</button>}
-                {!submitted && <button type="button" onClick={() => remove(version.id)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/60 disabled:opacity-45"><Trash2 size={13} />{c.remove}</button>}
+                {submitted && <button type="button" onClick={() => withdraw(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-100 disabled:opacity-45"><Send size={13} />{c.withdraw}</button>}
+                {canSubmit && <button type="button" onClick={() => submit(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 disabled:opacity-45"><Send size={13} />{c.submit}</button>}
+                {canDelete && <button type="button" onClick={() => remove(version.id)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/60 disabled:opacity-45"><Trash2 size={13} />{c.remove}</button>}
               </div>
             </article>;
           })}</div>}
