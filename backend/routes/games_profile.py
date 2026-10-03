@@ -78,8 +78,8 @@ async def add_favorite(game_id: str, request: Request):
                             },
                             "in": {
                                 "$cond": [
-                                    {"$lte": [{"$size": "$next"}, _MAX_FAVORITES]},
-                                    "$next",
+                                    {"$lte": [{"$size": "$$next"}, _MAX_FAVORITES]},
+                                    "$$next",
                                     {"$ifNull": ["$favorites", []]},
                                 ]
                             },
