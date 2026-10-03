@@ -5,7 +5,7 @@ lives, RNG and the active board remain device-local and are never accepted here.
 """
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -18,11 +18,15 @@ router = APIRouter(prefix="/api/games/progress", tags=["games-progress"])
 _LEVELS = 30
 
 
+Score = Annotated[int, Field(strict=True, ge=0, le=1_000_000_000)]
+Star = Annotated[int, Field(strict=True, ge=0, le=3)]
+
+
 class MatchProgressInput(BaseModel):
     version: Literal[1] = 1
     unlocked: int = Field(ge=1, le=_LEVELS, strict=True)
-    best: list[int] = Field(min_length=_LEVELS, max_length=_LEVELS)
-    stars: list[int] = Field(min_length=_LEVELS, max_length=_LEVELS)
+    best: list[Score] = Field(min_length=_LEVELS, max_length=_LEVELS)
+    stars: list[Star] = Field(min_length=_LEVELS, max_length=_LEVELS)
 
     @field_validator("best")
     @classmethod
