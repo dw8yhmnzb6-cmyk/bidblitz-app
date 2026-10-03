@@ -13,7 +13,7 @@ const COPY = {
     invalid: "Bitte eine ZIP-Datei bis maximal 50 MB auswählen.", uploaded: "Version sicher in Quarantäne gespeichert.",
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", duplicate: "Diese Datei war bereits vorhanden.",
     submit: "Zur Prüfung einreichen", submitted: "Zur Prüfung eingereicht", submitError: "Version konnte nicht eingereicht werden.",
-    remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.",
+    remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.", withdraw: "Prüfung zurückziehen", withdrawError: "Prüfung konnte nicht zurückgezogen werden.",
     quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt",
     noPreview: "Fremder Spielcode wird noch nicht ausgeführt. Eine private Vorschau folgt erst auf einer getrennten, cookie-freien Games-Origin.",
   },
@@ -25,7 +25,7 @@ const COPY = {
     invalid: "Choose a ZIP file up to 50 MB.", uploaded: "Version stored safely in quarantine.",
     files: "Files", packed: "ZIP", unpacked: "unpacked", duplicate: "This exact file already exists.",
     submit: "Submit for review", submitted: "Submitted for review", submitError: "Could not submit version.",
-    remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.",
+    remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.", withdraw: "Withdraw review", withdrawError: "Could not withdraw review.",
     quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked",
     noPreview: "Third-party game code is not executed yet. Private preview follows only on a separate cookie-free Games origin.",
   },
@@ -37,7 +37,7 @@ const COPY = {
     invalid: "Zgjidh një skedar ZIP deri në 50 MB.", uploaded: "Versioni u ruajt në karantinë.",
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", duplicate: "Ky skedar ekziston tashmë.",
     submit: "Dërgo për kontroll", submitted: "U dërgua për kontroll", submitError: "Versioni nuk u dërgua për kontroll.",
-    remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.",
+    remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.", withdraw: "Tërhiq kontrollin", withdrawError: "Kontrolli nuk u tërhoq.",
     quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar",
     noPreview: "Kodi i lojës së palës së tretë ende nuk ekzekutohet. Prova private vjen vetëm në një Games-origin të ndarë pa cookie.",
   },
@@ -123,6 +123,21 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
     }
   };
 
+  const withdraw = async (versionId) => {
+    setBusy(versionId); setError(""); setNotice("");
+    try {
+      const response = await fetch(`${API_ROOT}/${encodeURIComponent(draftId)}/versions/${encodeURIComponent(versionId)}/withdraw-review`, {
+        method: "POST", credentials: "include",
+      });
+      await readResponse(response);
+      await load();
+    } catch (withdrawError) {
+      setError(withdrawError?.message || c.withdrawError);
+    } finally {
+      setBusy("");
+    }
+  };
+
   const remove = async (versionId) => {
     if (!window.confirm(c.removeConfirm)) return;
     setBusy(versionId); setError(""); setNotice("");
@@ -172,7 +187,9 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/45"><span className="inline-flex items-center gap-1"><CheckCircle2 size={12} />{c.validated}</span><span>·</span><span>{c.blocked}</span></div>
               <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => submit(version.id)} disabled={Boolean(busy) || submitted} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 disabled:opacity-45"><Send size={13} />{submitted ? c.submitted : c.submit}</button>
+                {submitted
+                  ? <button type="button" onClick={() => withdraw(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-100 disabled:opacity-45"><Send size={13} />{c.withdraw}</button>
+                  : <button type="button" onClick={() => submit(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 disabled:opacity-45"><Send size={13} />{c.submit}</button>}
                 {!submitted && <button type="button" onClick={() => remove(version.id)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/60 disabled:opacity-45"><Trash2 size={13} />{c.remove}</button>}
               </div>
             </article>;
