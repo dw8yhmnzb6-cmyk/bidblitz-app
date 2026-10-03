@@ -152,6 +152,7 @@ const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
 const GameStudioPage = lazy(() => import("./pages/GameStudioPage"));
+const AdminGamesReviewPage = lazy(() => import("./pages/AdminGamesReviewPage"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
@@ -1202,6 +1203,10 @@ function AppContent() {
         return <GamesPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/games/match":
         return <GamesPage preview onBack={() => handleNavigate("/games")} onNavigate={handleNavigate} />;
+      case "/admin/game-studio":
+        return isAdminRole
+          ? <AdminGamesReviewPage onBack={() => handleNavigate("/games")} />
+          : <HomePage {...homeProps} />;
       case "/game-studio":
         return user.isAuthenticated
           ? <GameStudioPage onBack={() => handleNavigate("/games")} />
