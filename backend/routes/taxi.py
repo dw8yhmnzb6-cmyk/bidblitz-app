@@ -4723,10 +4723,64 @@ async def taxi_geocode(
         return {"features": []}
 
     token = _server_mapbox_token()
-    if not token:
-        raise HTTPException(503, "Geocoding not configured (MAPBOX_TOKEN missing on server).")
 
     import httpx
+    if not token:
+        # Provider-independent fallback: keep Taxi address search functional
+        # when the optional Mapbox server token is absent.
+        params = {
+            "q": q,
+            "format": "jsonv2",
+            "addressdetails": 1,
+            "limit": str(max(1, min(limit, 10))),
+            "accept-language": lang,
+        }
+        if country:
+            first_country = str(country).split(",")[0].strip().lower()
+            if first_country:
+                params["countrycodes"] = first_country
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                r = await client.get(
+                    "https://nominatim.openstreetmap.org/search",
+                    params=params,
+                    headers={"User-Agent": "BidBlitzTaxi/1.0 (support@bidblitz.ae)"},
+                )
+                if r.status_code != 200:
+                    return {"features": [], "provider": "osm", "upstream_status": r.status_code}
+                rows = r.json()
+        except Exception as e:
+            logger.warning(f"osm geocode fallback error: {e}")
+            return {"features": [], "provider": "osm", "error": "upstream_timeout"}
+
+        features = []
+        for item in rows:
+            try:
+                lat_value = float(item.get("lat"))
+                lng_value = float(item.get("lon"))
+            except (TypeError, ValueError):
+                continue
+            address = item.get("address") or {}
+            context = []
+            city = address.get("city") or address.get("town") or address.get("village") or address.get("municipality")
+            postcode = address.get("postcode")
+            country_code = str(address.get("country_code") or "").upper()
+            if postcode:
+                context.append({"id": "postcode.osm", "text": postcode})
+            if city:
+                context.append({"id": "place.osm", "text": city})
+            if country_code:
+                context.append({"id": "country.osm", "short_code": country_code})
+            features.append({
+                "id": f"osm.{item.get('osm_type', 'place')}.{item.get('osm_id', item.get('place_id', ''))}",
+                "text": item.get("name") or str(item.get("display_name") or "").split(",")[0],
+                "place_name": item.get("display_name") or "",
+                "center": [lng_value, lat_value],
+                "place_type": [item.get("type") or "place"],
+                "context": context,
+            })
+        return {"features": features, "provider": "osm"}
+
     params = {
         "access_token": token,
         "language": lang,
@@ -4762,9 +4816,34 @@ async def taxi_geocode(
 async def taxi_reverse_geocode(lng: float, lat: float, lang: str = "de"):
     """Reverse-geocode (coords → human address). For pickup-pin labels."""
     token = _server_mapbox_token()
-    if not token:
-        raise HTTPException(503, "Geocoding not configured (MAPBOX_TOKEN missing on server).")
     import httpx
+    if not token:
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                r = await client.get(
+                    "https://nominatim.openstreetmap.org/reverse",
+                    params={
+                        "lat": lat,
+                        "lon": lng,
+                        "format": "jsonv2",
+                        "addressdetails": 1,
+                        "accept-language": lang,
+                    },
+                    headers={"User-Agent": "BidBlitzTaxi/1.0 (support@bidblitz.ae)"},
+                )
+                if r.status_code != 200:
+                    return {"address": "", "provider": "osm", "upstream_status": r.status_code}
+                item = r.json()
+        except Exception as e:
+            logger.warning(f"osm reverse geocode fallback error: {e}")
+            return {"address": "", "provider": "osm", "error": "upstream_timeout"}
+        return {
+            "address": item.get("display_name", ""),
+            "name": item.get("name") or str(item.get("display_name") or "").split(",")[0],
+            "lat": lat,
+            "lng": lng,
+            "provider": "osm",
+        }
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:
             r = await client.get(
