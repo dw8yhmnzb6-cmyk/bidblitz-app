@@ -63,6 +63,7 @@ def register_all_routers(app):
         ("routes.promotions", "router"),
         ("routes.analytics", "router"),
         ("routes.recommendations", "router"),
+        ("routes.watchlist", "router"),
         ("routes.kids", "router"),
         ("routes.kids_controls", "router"),
         ("routes.kids_app", "router"),
