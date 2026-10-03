@@ -2,6 +2,9 @@
 import asyncio
 import types
 import unittest
+import tempfile
+import zipfile
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 from fastapi import HTTPException
@@ -119,6 +122,32 @@ class AdminGameStudioReviewTest(unittest.TestCase):
                 None,
             ))
         self.assertEqual(context.exception.status_code, 409)
+
+
+    def test_private_preview_extracts_validated_files_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "game.zip"
+            target = Path(tmp) / "preview"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                bundle.writestr("index.html", "<!doctype html><script src='game.js'></script>")
+                bundle.writestr("game.js", "console.log('ok')")
+                bundle.writestr("assets/style.css", "body{margin:0}")
+            result = review._safe_extract_preview(archive, target)
+            self.assertEqual(result["entrypoint"], "index.html")
+            self.assertEqual(result["extracted_files"], 3)
+            self.assertTrue((target / "index.html").is_file())
+            self.assertTrue((target / "assets" / "style.css").is_file())
+
+    def test_private_server_paths_are_never_returned(self):
+        public = review._public_version({
+            "id": "v1",
+            "owner_id": "owner",
+            "storage_path": "/private/archive.zip",
+            "preview_path": "/private/preview/v1",
+            "create_key": "secret",
+            "review_status": "archive_approved",
+        })
+        self.assertEqual(public, {"id": "v1", "review_status": "archive_approved"})
 
 
 if __name__ == "__main__":
