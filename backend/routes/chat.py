@@ -266,6 +266,41 @@ async def get_unread_count(request: Request):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# POLLING ENDPOINT (Light real-time)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/poll")
+async def poll_new_messages(request: Request, since: Optional[str] = None):
+    """
+    Poll for new messages since a timestamp.
+    Frontend calls this every 3-5 seconds.
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Get unread messages
+    query = {"recipient_id": user_id, "read": False}
+    if since:
+        query["created_at"] = {"$gt": since}
+    
+    new_messages = await db.chat_messages.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    
+    # Get total unread count
+    unread_count = await db.chat_messages.count_documents({
+        "recipient_id": user_id,
+        "read": False,
+    })
+    
+    return {
+        "new_messages": new_messages,
+        "unread_count": unread_count,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # GET MESSAGES
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -352,41 +387,6 @@ async def mark_chat_read(req: MarkReadRequest, request: Request):
     return {
         "ok": True,
         "marked_read": result.modified_count,
-    }
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# POLLING ENDPOINT (Light real-time)
-# ══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/poll")
-async def poll_new_messages(request: Request, since: Optional[str] = None):
-    """
-    Poll for new messages since a timestamp.
-    Frontend calls this every 3-5 seconds.
-    """
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Get unread messages
-    query = {"recipient_id": user_id, "read": False}
-    if since:
-        query["created_at"] = {"$gt": since}
-    
-    new_messages = await db.chat_messages.find(
-        query, {"_id": 0}
-    ).sort("created_at", -1).limit(50).to_list(50)
-    
-    # Get total unread count
-    unread_count = await db.chat_messages.count_documents({
-        "recipient_id": user_id,
-        "read": False,
-    })
-    
-    return {
-        "new_messages": new_messages,
-        "unread_count": unread_count,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
