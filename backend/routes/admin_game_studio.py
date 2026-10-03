@@ -88,7 +88,7 @@ async def _admin(request: Request) -> dict:
 def _public_version(doc: dict) -> dict:
     return {
         key: value for key, value in doc.items()
-        if key not in {"_id", "owner_id", "storage_path", "create_key"}
+        if key not in {"_id", "owner_id", "storage_path", "preview_path", "create_key"}
     }
 
 
@@ -205,7 +205,8 @@ async def prepare_private_preview(version_id: str, request: Request):
         raise HTTPException(409, "Quarantäne-Datei wurde verändert")
 
     PREVIEW_ROOT.mkdir(parents=True, mode=0o700, exist_ok=True)
-    target = PREVIEW_ROOT / version_id
+    preview_dir = hashlib.sha256(version_id.encode("utf-8")).hexdigest()[:32]
+    target = PREVIEW_ROOT / preview_dir
     if target.exists():
         shutil.rmtree(target)
     inspection = _safe_extract_preview(archive_path, target)
