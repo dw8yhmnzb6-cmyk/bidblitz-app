@@ -65,6 +65,8 @@ jobs:
           backend/tests/test_game_studio_mongo.py
           backend/tests/test_games_profile.py
           backend/tests/test_games_profile_mongo.py
+          backend/tests/test_games_progress.py
+          backend/tests/test_games_progress_mongo.py
           backend/tests/test_quick_topup_idempotency.py
           backend/tests/test_stripe_wallet_settlement.py
           backend/tests/test_stripe_bid_credit_settlement.py
@@ -104,7 +106,7 @@ jobs:
       - name: Verify Games language registry and preference rules
         run: |
           node frontend/scripts/sync-games-languages.cjs --check
-          node --test frontend/scripts/test-games-languages.mjs frontend/scripts/test-studio-create.mjs frontend/scripts/test-games-favorites.mjs
+          node --test frontend/scripts/test-games-languages.mjs frontend/scripts/test-studio-create.mjs frontend/scripts/test-games-favorites.mjs frontend/scripts/test-match-account-progress.cjs
 
       - name: Build frontend
         env:
