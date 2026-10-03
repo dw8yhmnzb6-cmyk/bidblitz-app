@@ -168,22 +168,20 @@ async def create_preview_link(draft_id: str, version_id: str, request: Request):
     preview_url = _configured_preview_url(token)
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=TOKEN_TTL_MINUTES)
-    await db.game_studio_preview_tokens.update_many(
-        {
-            "owner_id": owner_id,
-            "version_id": version_id,
-            "revoked_at": {"$exists": False},
-        },
-        {"$set": {"revoked_at": now}},
-    )
-    await db.game_studio_preview_tokens.insert_one({
+    token_doc = {
+        "_id": f"{owner_id}:{version_id}",
         "token_hash": _hash_token(token),
         "owner_id": owner_id,
         "draft_id": draft_id,
         "version_id": version_id,
         "created_at": now,
         "expires_at": expires,
-    })
+    }
+    await db.game_studio_preview_tokens.replace_one(
+        {"_id": token_doc["_id"]},
+        token_doc,
+        upsert=True,
+    )
     return {
         "url": preview_url,
         "expires_at": expires.isoformat(),
@@ -203,12 +201,8 @@ async def revoke_preview_links(draft_id: str, version_id: str, request: Request)
     if not version:
         raise HTTPException(404, "Spielversion nicht gefunden")
     now = datetime.now(timezone.utc)
-    result = await db.game_studio_preview_tokens.update_many(
-        {
-            "owner_id": owner_id,
-            "version_id": version_id,
-            "revoked_at": {"$exists": False},
-        },
+    result = await db.game_studio_preview_tokens.update_one(
+        {"_id": f"{owner_id}:{version_id}", "revoked_at": {"$exists": False}},
         {"$set": {"revoked_at": now}},
     )
     return {"revoked": int(getattr(result, "modified_count", 0) or 0)}
