@@ -331,6 +331,14 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_biopay_missing_facepay_flag_fails_closed():
+    source = (BACKEND_DIR / "services" / "biopay.py").read_text(encoding="utf-8")
+
+    assert "async def is_facepay_enabled() -> bool:" in source
+    assert 'return bool((flag or {}).get("enabled", False))' in source
+    assert 'return bool(flag.get("enabled", False))' not in source
+
+
 def test_admin_direct_url_and_taxi_map_fail_closed_ui():
     app_source = (BACKEND_DIR.parent / "frontend" / "src" / "App.js").read_text(encoding="utf-8")
     map_source = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "RealMap.jsx").read_text(encoding="utf-8")
