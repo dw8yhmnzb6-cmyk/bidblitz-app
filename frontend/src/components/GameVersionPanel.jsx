@@ -14,7 +14,7 @@ const COPY = {
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", duplicate: "Diese Datei war bereits vorhanden.",
     submit: "Zur Prüfung einreichen", submitted: "Zur Prüfung eingereicht", submitError: "Version konnte nicht eingereicht werden.",
     remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.", withdraw: "Prüfung zurückziehen", withdrawError: "Prüfung konnte nicht zurückgezogen werden.",
-    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.", previewLink: "Preview-Link erzeugen", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.",
+    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.", previewLink: "Preview-Link erzeugen", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", revokePreview: "Link widerrufen", revokePreviewError: "Preview-Link konnte nicht widerrufen werden.",
     noPreview: "Fremder Spielcode wird noch nicht ausgeführt. Eine private Vorschau folgt erst auf einer getrennten, cookie-freien Games-Origin.",
   },
   en: {
@@ -26,7 +26,7 @@ const COPY = {
     files: "Files", packed: "ZIP", unpacked: "unpacked", duplicate: "This exact file already exists.",
     submit: "Submit for review", submitted: "Submitted for review", submitError: "Could not submit version.",
     remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.", withdraw: "Withdraw review", withdrawError: "Could not withdraw review.",
-    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.", previewLink: "Create preview link", openPreview: "Open private preview", previewError: "Could not create preview link.",
+    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.", previewLink: "Create preview link", openPreview: "Open private preview", previewError: "Could not create preview link.", revokePreview: "Revoke link", revokePreviewError: "Could not revoke preview link.",
     noPreview: "Third-party game code is not executed yet. Private preview follows only on a separate cookie-free Games origin.",
   },
   sq: {
@@ -38,7 +38,7 @@ const COPY = {
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", duplicate: "Ky skedar ekziston tashmë.",
     submit: "Dërgo për kontroll", submitted: "U dërgua për kontroll", submitError: "Versioni nuk u dërgua për kontroll.",
     remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.", withdraw: "Tërhiq kontrollin", withdrawError: "Kontrolli nuk u tërhoq.",
-    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.", previewLink: "Krijo linkun e provës", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.",
+    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.", previewLink: "Krijo linkun e provës", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", revokePreview: "Çaktivizo linkun", revokePreviewError: "Linku i provës nuk u çaktivizua.",
     noPreview: "Kodi i lojës së palës së tretë ende nuk ekzekutohet. Prova private vjen vetëm në një Games-origin të ndarë pa cookie.",
   },
 };
@@ -140,6 +140,25 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
     }
   };
 
+  const revokePreviewLink = async (versionId) => {
+    setBusy(versionId); setError(""); setNotice("");
+    try {
+      const response = await fetch(`${API_ROOT}/${encodeURIComponent(draftId)}/versions/${encodeURIComponent(versionId)}/preview-links`, {
+        method: "DELETE", credentials: "include",
+      });
+      await readResponse(response);
+      setPreviewLinks((current) => {
+        const next = { ...current };
+        delete next[versionId];
+        return next;
+      });
+    } catch (revokeError) {
+      setError(revokeError?.message || c.revokePreviewError);
+    } finally {
+      setBusy("");
+    }
+  };
+
   const withdraw = async (versionId) => {
     setBusy(versionId); setError(""); setNotice("");
     try {
@@ -213,7 +232,7 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
               {(changesRequested || rejected) && <p className="mt-2 text-[11px] text-amber-100/75">{c.uploadNew}</p>}
               {approved && version.preview_status === "prepared" && <div className="mt-3">
                 {previewLinks[version.id]
-                  ? <a href={previewLinks[version.id]} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100">{c.openPreview}</a>
+                  ? <div className="grid grid-cols-[1fr_auto] gap-2"><a href={previewLinks[version.id]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100">{c.openPreview}</a><button type="button" onClick={() => revokePreviewLink(version.id)} disabled={Boolean(busy)} className="rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/55 disabled:opacity-45">{c.revokePreview}</button></div>
                   : <button type="button" onClick={() => createPreviewLink(version.id)} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 disabled:opacity-45">{c.previewLink}</button>}
               </div>}
               <div className="mt-3 flex gap-2">
