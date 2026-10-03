@@ -14,7 +14,7 @@ const COPY = {
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", duplicate: "Diese Datei war bereits vorhanden.",
     submit: "Zur Prüfung einreichen", submitted: "Zur Prüfung eingereicht", submitError: "Version konnte nicht eingereicht werden.",
     remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.", withdraw: "Prüfung zurückziehen", withdrawError: "Prüfung konnte nicht zurückgezogen werden.",
-    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.",
+    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.", previewLink: "Preview-Link erzeugen", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.",
     noPreview: "Fremder Spielcode wird noch nicht ausgeführt. Eine private Vorschau folgt erst auf einer getrennten, cookie-freien Games-Origin.",
   },
   en: {
@@ -26,7 +26,7 @@ const COPY = {
     files: "Files", packed: "ZIP", unpacked: "unpacked", duplicate: "This exact file already exists.",
     submit: "Submit for review", submitted: "Submitted for review", submitError: "Could not submit version.",
     remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.", withdraw: "Withdraw review", withdrawError: "Could not withdraw review.",
-    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.",
+    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.", previewLink: "Create preview link", openPreview: "Open private preview", previewError: "Could not create preview link.",
     noPreview: "Third-party game code is not executed yet. Private preview follows only on a separate cookie-free Games origin.",
   },
   sq: {
@@ -38,7 +38,7 @@ const COPY = {
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", duplicate: "Ky skedar ekziston tashmë.",
     submit: "Dërgo për kontroll", submitted: "U dërgua për kontroll", submitError: "Versioni nuk u dërgua për kontroll.",
     remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.", withdraw: "Tërhiq kontrollin", withdrawError: "Kontrolli nuk u tërhoq.",
-    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.",
+    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.", previewLink: "Krijo linkun e provës", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.",
     noPreview: "Kodi i lojës së palës së tretë ende nuk ekzekutohet. Prova private vjen vetëm në një Games-origin të ndarë pa cookie.",
   },
 };
@@ -65,6 +65,7 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [previewLinks, setPreviewLinks] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -118,6 +119,22 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
       await load();
     } catch (submitError) {
       setError(submitError?.message || c.submitError);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const createPreviewLink = async (versionId) => {
+    setBusy(versionId); setError(""); setNotice("");
+    try {
+      const response = await fetch(`${API_ROOT}/${encodeURIComponent(draftId)}/versions/${encodeURIComponent(versionId)}/preview-link`, {
+        method: "POST", credentials: "include",
+      });
+      const body = await readResponse(response);
+      if (!body.url) throw new Error(c.previewError);
+      setPreviewLinks((current) => ({ ...current, [versionId]: body.url }));
+    } catch (previewError) {
+      setError(previewError?.message || c.previewError);
     } finally {
       setBusy("");
     }
@@ -194,6 +211,11 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
               <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/45"><span className="inline-flex items-center gap-1"><CheckCircle2 size={12} />{c.validated}</span><span>·</span><span>{c.blocked}</span></div>
               {version.review_note && <p className="mt-3 rounded-lg border border-white/10 bg-white/[.03] p-2 text-[11px] leading-relaxed text-white/60">{version.review_note}</p>}
               {(changesRequested || rejected) && <p className="mt-2 text-[11px] text-amber-100/75">{c.uploadNew}</p>}
+              {approved && version.preview_status === "prepared" && <div className="mt-3">
+                {previewLinks[version.id]
+                  ? <a href={previewLinks[version.id]} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100">{c.openPreview}</a>
+                  : <button type="button" onClick={() => createPreviewLink(version.id)} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 disabled:opacity-45">{c.previewLink}</button>}
+              </div>}
               <div className="mt-3 flex gap-2">
                 {submitted && <button type="button" onClick={() => withdraw(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-100 disabled:opacity-45"><Send size={13} />{c.withdraw}</button>}
                 {canSubmit && <button type="button" onClick={() => submit(version.id)} disabled={Boolean(busy)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 disabled:opacity-45"><Send size={13} />{c.submit}</button>}
