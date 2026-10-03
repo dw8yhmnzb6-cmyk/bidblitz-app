@@ -339,6 +339,37 @@ async def submit_version_for_review(draft_id: str, version_id: str, request: Req
     return _public_version(doc)
 
 
+@router.post("/drafts/{draft_id}/versions/{version_id}/withdraw-review")
+async def withdraw_version_review(draft_id: str, version_id: str, request: Request):
+    owner_id = await _owner(request)
+    await _owned_draft(draft_id, owner_id)
+    now = datetime.now(timezone.utc).isoformat()
+    result = await db.game_studio_versions.update_one(
+        {
+            "id": version_id,
+            "draft_id": draft_id,
+            "owner_id": owner_id,
+            "status": "quarantined",
+            "review_status": "submitted",
+        },
+        {
+            "$set": {"review_status": "not_submitted", "updated_at": now},
+            "$unset": {"submitted_at": ""},
+        },
+    )
+    if not result.matched_count:
+        existing = await db.game_studio_versions.find_one({
+            "id": version_id, "draft_id": draft_id, "owner_id": owner_id,
+        })
+        if not existing:
+            raise HTTPException(404, "Spielversion nicht gefunden")
+        raise HTTPException(409, "Diese Version kann nicht zurückgezogen werden")
+    doc = await db.game_studio_versions.find_one({
+        "id": version_id, "draft_id": draft_id, "owner_id": owner_id,
+    })
+    return _public_version(doc)
+
+
 @router.delete("/drafts/{draft_id}/versions/{version_id}")
 async def delete_version(draft_id: str, version_id: str, request: Request):
     owner_id = await _owner(request)
