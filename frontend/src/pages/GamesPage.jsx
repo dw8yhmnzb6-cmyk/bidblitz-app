@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, Gamepad2, Layers3, Search, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Gamepad2, Heart, Layers3, Search, Sparkles } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import { useUser } from "../store";
 import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
+import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
 
 const ART = "/games/match-preview/assets";
+const PROFILE_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/profile`;
 const COPY = {
   de: {
     back: "Zurück", title: "Dein nächstes Abenteuer.", subtitle: "Entdecke die ersten Spielwelten von BidBlitz.",
@@ -15,7 +18,7 @@ const COPY = {
     runnerText: "Ein Laufabenteuer auf leuchtenden Wegen.", empty: "Keine Spiele gefunden.", clear: "Filter zurücksetzen",
     studio: "Dein Spiel auf BidBlitz", studioText: "Bereite dein eigenes Spiel im Entwicklerstudio vor.", openStudio: "Entwicklerstudio öffnen",
     local: "Match ist eine lokale Vorschau auf Deutsch. Fortschritt bleibt auf diesem Gerät. Testmünzen haben keinen Geldwert.",
-    plannedText: "Weitere Spiele sind in Vorbereitung. Ein Veröffentlichungstermin steht noch nicht fest.",
+    plannedText: "Weitere Spiele sind in Vorbereitung. Ein Veröffentlichungstermin steht noch nicht fest.", favorite: "Merken", unfavorite: "Nicht mehr merken", favoriteAccount: "Merkliste wird in deinem BidBlitz-Konto gespeichert.", favoriteDevice: "Merkliste wird nur auf diesem Gerät gespeichert.", favoriteError: "Merkliste konnte nicht synchronisiert werden.",
   },
   en: {
     back: "Back", title: "Your next adventure.", subtitle: "Discover BidBlitz's first game worlds.",
@@ -25,7 +28,7 @@ const COPY = {
     runnerText: "A running adventure on glowing paths.", empty: "No games found.", clear: "Reset filters",
     studio: "Your game on BidBlitz", studioText: "Prepare your own game in the developer studio.", openStudio: "Open developer studio",
     local: "Match is a local preview in German. Progress stays on this device. Test coins have no monetary value.",
-    plannedText: "More games are being prepared. A release date has not been set.",
+    plannedText: "More games are being prepared. A release date has not been set.", favorite: "Save", unfavorite: "Remove saved game", favoriteAccount: "Saved games are stored in your BidBlitz account.", favoriteDevice: "Saved games are stored only on this device.", favoriteError: "Could not sync saved games.",
   },
   sq: {
     back: "Kthehu", title: "Aventura jote e radhës.", subtitle: "Zbulo botët e para të lojërave BidBlitz.",
@@ -35,7 +38,7 @@ const COPY = {
     runnerText: "Një aventurë vrapimi në rrugë të ndriçuara.", empty: "Nuk u gjetën lojëra.", clear: "Hiq filtrat",
     studio: "Loja jote në BidBlitz", studioText: "Përgatit lojën tënde në studion e zhvilluesit.", openStudio: "Hap studion e zhvilluesit",
     local: "Match është një provë lokale në gjermanisht. Progresi ruhet në këtë pajisje. Monedhat e provës nuk kanë vlerë monetare.",
-    plannedText: "Lojëra të tjera po përgatiten. Data e publikimit ende nuk është caktuar.",
+    plannedText: "Lojëra të tjera po përgatiten. Data e publikimit ende nuk është caktuar.", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat", favoriteAccount: "Lojërat e ruajtura ruhen në llogarinë tënde BidBlitz.", favoriteDevice: "Lojërat e ruajtura ruhen vetëm në këtë pajisje.", favoriteError: "Lista e lojërave nuk u sinkronizua.",
   },
 };
 
@@ -47,12 +50,67 @@ const GAMES = [
 
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
   const { lang } = useI18n();
+  const user = useUser();
   const locale = resolveLocale(lang, Object.keys(COPY));
   const c = COPY[locale];
   const selectedCode = resolveLocale(lang, gameLanguages.map(({ code }) => code));
   const rtl = gameLanguages.find(({ code }) => code === selectedCode)?.rtl;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [favorites, setFavorites] = useState([]);
+  const [favoriteBusy, setFavoriteBusy] = useState("");
+  const [favoriteError, setFavoriteError] = useState("");
+  const [favoritesMode, setFavoritesMode] = useState("device");
+
+  useEffect(() => {
+    if (!user.sessionReady) return undefined;
+    const controller = new AbortController();
+    setFavoriteError("");
+    if (!user.isAuthenticated) {
+      setFavorites(loadLocalFavorites(globalThis.localStorage));
+      setFavoritesMode("device");
+      return () => controller.abort();
+    }
+    setFavoritesMode("account");
+    fetch(PROFILE_API, { credentials: "include", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw Object.assign(new Error("favorites"), { status: response.status });
+        return response.json();
+      })
+      .then((data) => { if (!controller.signal.aborted) setFavorites(Array.isArray(data.favorites) ? data.favorites : []); })
+      .catch((error) => {
+        if (!controller.signal.aborted && error.name !== "AbortError") setFavoriteError(c.favoriteError);
+      });
+    return () => controller.abort();
+  }, [user.isAuthenticated, user.sessionReady, c.favoriteError]);
+
+  const changeFavorite = async (gameId) => {
+    if (favoriteBusy) return;
+    const next = toggleFavorite(favorites, gameId);
+    const shouldAdd = next.includes(gameId);
+    setFavoriteError("");
+    if (!user.isAuthenticated) {
+      const result = saveLocalFavorites(globalThis.localStorage, next);
+      setFavorites(result.favorites);
+      if (!result.ok) setFavoriteError(c.favoriteError);
+      return;
+    }
+    setFavoriteBusy(gameId);
+    try {
+      const response = await fetch(`${PROFILE_API}/favorites/${encodeURIComponent(gameId)}`, {
+        method: shouldAdd ? "POST" : "DELETE",
+        credentials: "include",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "favorite");
+      setFavorites(Array.isArray(data.favorites) ? data.favorites : next);
+    } catch {
+      setFavoriteError(c.favoriteError);
+    } finally {
+      setFavoriteBusy("");
+    }
+  };
+
   const games = useMemo(() => {
     const search = query.trim().toLocaleLowerCase();
     return GAMES.filter((game) => (category === "all" || game.category === category) &&
@@ -98,7 +156,10 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
             {games.length ? <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{games.map((game) => <article key={game.id} className="overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-b from-[#17355a] to-[#0b1e37] shadow-xl">
               <img src={`${ART}/${game.id}.webp`} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
               <div className="p-5"><p className="text-sm text-cyan-200">{game.category === "Puzzle" ? c.puzzle : c.arcade}</p><h2 className="mt-2 text-2xl font-bold">{game.title}</h2><p className="mt-3 min-h-12 text-sm leading-relaxed text-sky-100/70">{c[game.text]}</p>
-                {game.available ? <button onClick={() => onNavigate("/games/match")} className="mt-5 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="mt-5 inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  {game.available ? <button onClick={() => onNavigate("/games/match")} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
+                  <button onClick={() => changeFavorite(game.id)} disabled={favoriteBusy === game.id} aria-pressed={favorites.includes(game.id)} aria-label={favorites.includes(game.id) ? c.unfavorite : c.favorite} className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition disabled:opacity-50 ${favorites.includes(game.id) ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"}`}><Heart size={18} fill={favorites.includes(game.id) ? "currentColor" : "none"} /></button>
+                </div>
               </div>
             </article>)}</div> : <div className="mt-4 rounded-3xl border border-dashed border-white/20 px-5 py-10 text-center"><p className="text-lg">{c.empty}</p><button onClick={() => { setQuery(""); setCategory("all"); }} className="mt-4 rounded-full bg-cyan-300 px-5 py-3 font-semibold text-[#061329]">{c.clear}</button></div>}
           </section>
@@ -107,7 +168,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
             <div><h2 className="flex items-center gap-3 text-xl font-bold"><Layers3 size={22} className="text-cyan-300" />{c.studio}</h2><p className="mt-2 text-base text-sky-100/70">{c.studioText}</p></div>
             <button onClick={() => onNavigate("/game-studio")} className="shrink-0 rounded-full border border-cyan-200/40 bg-cyan-300/10 px-5 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20">{c.openStudio}</button>
           </section>
-          <footer className="mt-7 space-y-2 text-sm leading-relaxed text-sky-100/60"><p className="flex items-start gap-2"><Sparkles size={18} className="mt-0.5 shrink-0 text-cyan-300" />{c.local}</p><p>{c.plannedText}</p></footer>
+          <footer className="mt-7 space-y-2 text-sm leading-relaxed text-sky-100/60"><p className="flex items-start gap-2"><Sparkles size={18} className="mt-0.5 shrink-0 text-cyan-300" />{c.local}</p><p>{c.plannedText}</p><p>{favoritesMode === "account" ? c.favoriteAccount : c.favoriteDevice}</p>{favoriteError && <p role="alert" className="text-rose-200">{favoriteError}</p>}</footer>
         </>}
       </div>
     </main>
