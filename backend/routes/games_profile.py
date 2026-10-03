@@ -39,25 +39,61 @@ async def get_profile(request: Request):
     return await _profile(await _owner(request))
 
 
+def _duplicate_key(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "DuplicateKeyError" or getattr(exc, "code", None) == 11000
+
+
+async def _ensure_profile(owner_id: str, now: str):
+    try:
+        await db.games_profiles.update_one(
+            {"owner_id": owner_id},
+            {"$setOnInsert": {"favorites": [], "created_at": now, "updated_at": now}},
+            upsert=True,
+        )
+    except Exception as exc:
+        if not _duplicate_key(exc):
+            raise
+
+
 @router.post("/favorites/{game_id}")
 async def add_favorite(game_id: str, request: Request):
     owner_id = await _owner(request)
     game_id = _game_id(game_id)
-    existing = await db.games_profiles.find_one({"owner_id": owner_id}, {"favorites": 1}) or {}
-    favorites = existing.get("favorites") or []
-    if game_id not in favorites and len(favorites) >= _MAX_FAVORITES:
-        raise HTTPException(409, "Maximal 100 gemerkte Spiele pro Konto")
     now = datetime.now(timezone.utc).isoformat()
+    await _ensure_profile(owner_id, now)
     await db.games_profiles.update_one(
         {"owner_id": owner_id},
-        {
-            "$addToSet": {"favorites": game_id},
-            "$set": {"updated_at": now},
-            "$setOnInsert": {"created_at": now},
-        },
-        upsert=True,
+        [
+            {
+                "$set": {
+                    "favorites": {
+                        "$let": {
+                            "vars": {
+                                "next": {
+                                    "$setUnion": [
+                                        {"$ifNull": ["$favorites", []]},
+                                        [game_id],
+                                    ]
+                                }
+                            },
+                            "in": {
+                                "$cond": [
+                                    {"$lte": [{"$size": "$next"}, _MAX_FAVORITES]},
+                                    "$next",
+                                    {"$ifNull": ["$favorites", []]},
+                                ]
+                            },
+                        }
+                    },
+                    "updated_at": now,
+                }
+            }
+        ],
     )
-    return await _profile(owner_id)
+    profile = await _profile(owner_id)
+    if game_id not in profile["favorites"]:
+        raise HTTPException(409, "Maximal 100 gemerkte Spiele pro Konto")
+    return profile
 
 
 @router.delete("/favorites/{game_id}")
