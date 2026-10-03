@@ -17,6 +17,7 @@ test("changed payload receives a new idempotency key", () => {
 
 test("only uncertain failures keep the same create attempt", () => {
   assert.equal(uncertainCreateError(new TypeError("network")), true);
+  assert.equal(uncertainCreateError({ status: 425 }), true);
   assert.equal(uncertainCreateError({ status: 503 }), true);
   assert.equal(uncertainCreateError({ name: "AbortError" }), true);
   assert.equal(uncertainCreateError({ status: 400 }), false);
