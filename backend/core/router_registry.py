@@ -210,6 +210,7 @@ def register_all_routers(app):
         # Entertainment
         ("routes.gaming", "router"),
         ("routes.game_studio", "router"),
+        ("routes.game_studio_uploads", "router"),
         ("routes.games_profile", "router"),
         ("routes.games_progress", "router"),
         ("routes.casino", "router"),
