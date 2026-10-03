@@ -105,6 +105,7 @@ jobs:
           backend/tests/test_games_profile_mongo.py
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
+          backend/tests/test_games_preview.py
 
   games-frontend:
     runs-on: ubuntu-latest
