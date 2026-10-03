@@ -331,6 +331,15 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_referral_leaderboard_tolerates_legacy_user_ids():
+    source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
+
+    assert 'referrer_id = str(r.get("_id") or "")' in source
+    assert "if ObjectId.is_valid(referrer_id):" in source
+    assert '{"$or": selectors}' in source
+    assert 'ObjectId(r["_id"])' not in source
+
+
 def test_taxi_geocoding_has_provider_independent_fallback():
     source = (BACKEND_DIR / "routes" / "taxi.py").read_text(encoding="utf-8")
 
