@@ -93,6 +93,9 @@ async def create_indexes():
     await safe_create_index(db.game_studio_version_slots, [("owner_id", 1), ("draft_id", 1), ("version_id", 1)], unique=True, critical=True)
     await safe_create_index(db.game_studio_versions, [("review_status", 1), ("submitted_at", 1)])
     await safe_create_index(db.game_studio_review_events, [("version_id", 1), ("created_at", -1)])
+    await safe_create_index(db.game_studio_preview_tokens, "token_hash", unique=True, critical=True)
+    await safe_create_index(db.game_studio_preview_tokens, "expires_at", expireAfterSeconds=0)
+    await safe_create_index(db.game_studio_preview_tokens, [("version_id", 1), ("created_at", -1)])
 
 
     # Card applications (Revolut-style debit card waitlist)
