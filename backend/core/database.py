@@ -80,6 +80,14 @@ async def create_indexes():
     # P2P handle - unique, sparse (not all users claim one)
     await safe_create_index(db.users, "handle", unique=True, sparse=True)
 
+    # BidBlitz Games
+    await safe_create_index(db.games_profiles, "owner_id", unique=True, critical=True)
+    await safe_create_index(db.game_studio_drafts, "id", unique=True, critical=True)
+    await safe_create_index(db.game_studio_drafts, [("owner_id", 1), ("updated_at", -1)])
+    await safe_create_index(db.game_studio_draft_slots, [("owner_id", 1), ("draft_id", 1)], unique=True, critical=True)
+    await safe_create_index(db.game_studio_draft_requests, [("owner_id", 1), ("draft_id", 1)])
+
+
     # Card applications (Revolut-style debit card waitlist)
     await safe_create_index(db.card_applications, "application_id", unique=True)
     await safe_create_index(db.card_applications, [("user_id", 1), ("status", 1)])
