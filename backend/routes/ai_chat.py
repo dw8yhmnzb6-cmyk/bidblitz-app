@@ -60,7 +60,7 @@ async def ai_chat(req: ChatRequest, request: Request):
     user_email = user.get("email", "guest")
 
     if not EMERGENT_LLM_KEY:
-        raise HTTPException(503, "AI service nicht konfiguriert")
+        return _recommendation_fallback()
 
     session_id = req.session_id or f"chat_{secrets.token_hex(8)}"
 
@@ -230,6 +230,19 @@ class RecommendResponse(BaseModel):
     generated_at: str
 
 
+def _recommendation_fallback() -> RecommendResponse:
+    return RecommendResponse(
+        items=[RecommendItem(
+            title="BidBlitz entdecken",
+            description="Entdecke verfügbare Services und Angebote direkt in der BidBlitz App.",
+            category="general",
+            reason="Die persönliche KI-Empfehlung ist gerade nicht verfügbar.",
+            cta="Services ansehen",
+        )],
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
 @router.get("/recommendations", response_model=RecommendResponse)
 async def smart_recommendations(request: Request, limit: int = 5):
     """Generate personalized recommendations based on user activity."""
@@ -287,8 +300,8 @@ async def smart_recommendations(request: Request, limit: int = 5):
     try:
         reply = await chat.send_message(UserMessage(text=prompt))
     except Exception:
-        logger.exception("Recommendations failed")
-        raise HTTPException(502, "KI-Service nicht erreichbar")
+        logger.exception("Recommendations failed; serving deterministic fallback")
+        return _recommendation_fallback()
 
     # Parse JSON safely
     import json
