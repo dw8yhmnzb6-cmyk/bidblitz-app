@@ -13,7 +13,7 @@ const COPY = {
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", hash: "SHA-256", note: "Prüfnotiz",
     notePlaceholder: "Begründung für Änderungen oder Ablehnung…", approve: "Archiv akzeptieren",
     requestChanges: "Änderungen verlangen", reject: "Ablehnen", saveError: "Prüfentscheidung konnte nicht gespeichert werden.",
-    blocked: "Ausführung bleibt gesperrt", game: "Spiel", languages: "Sprachen", category: "Kategorie",
+    blocked: "Ausführung bleibt gesperrt", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.",
   },
   en: {
     back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
@@ -23,7 +23,7 @@ const COPY = {
     files: "Files", packed: "ZIP", unpacked: "unpacked", hash: "SHA-256", note: "Review note",
     notePlaceholder: "Reason for changes or rejection…", approve: "Approve archive",
     requestChanges: "Request changes", reject: "Reject", saveError: "Could not save review decision.",
-    blocked: "Execution remains blocked", game: "Game", languages: "Languages", category: "Category",
+    blocked: "Execution remains blocked", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.",
   },
   sq: {
     back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
@@ -33,7 +33,7 @@ const COPY = {
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", hash: "SHA-256", note: "Shënimi i kontrollit",
     notePlaceholder: "Arsyeja për ndryshime ose refuzim…", approve: "Prano arkivin",
     requestChanges: "Kërko ndryshime", reject: "Refuzo", saveError: "Vendimi nuk u ruajt.",
-    blocked: "Ekzekutimi mbetet i bllokuar", game: "Loja", languages: "Gjuhët", category: "Kategoria",
+    blocked: "Ekzekutimi mbetet i bllokuar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.",
   },
 };
 
@@ -82,6 +82,21 @@ export default function AdminGamesReviewPage({ onBack }) {
   }, [status, c.loadError]);
 
   useEffect(() => { load(); }, [load]);
+
+  const prepare = async (versionId) => {
+    setBusy(versionId); setError("");
+    try {
+      const response = await fetch(`${API}/${encodeURIComponent(versionId)}/prepare-preview`, {
+        method: "POST", credentials: "include",
+      });
+      await read(response);
+      await load();
+    } catch (prepareError) {
+      setError(prepareError?.message || c.prepareError);
+    } finally {
+      setBusy("");
+    }
+  };
 
   const decide = async (versionId, action) => {
     const note = (notes[versionId] || "").trim();
@@ -138,6 +153,7 @@ export default function AdminGamesReviewPage({ onBack }) {
                 <div className="mt-5 grid grid-cols-2 gap-3 text-xs text-white/55 sm:grid-cols-4"><div><b className="block text-white/85">{version.file_count || 0}</b>{c.files}</div><div><b className="block text-white/85">{bytes(version.archive_bytes)}</b>{c.packed}</div><div><b className="block text-white/85">{bytes(version.unpacked_bytes)}</b>{c.unpacked}</div><div><b className="block truncate text-white/85">{String(version.sha256 || "").slice(0, 10)}…</b>{c.hash}</div></div>
                 {pending && <><label className="mt-5 block text-xs font-semibold text-white/70">{c.note}<textarea value={notes[version.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [version.id]: event.target.value }))} maxLength={1000} rows={3} placeholder={c.notePlaceholder} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-[#06182d] p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300/60" /></label><div className="mt-4 grid gap-2 sm:grid-cols-3"><button onClick={() => decide(version.id, "approve_archive")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-300 px-3 py-2 text-xs font-bold text-[#06231c] disabled:opacity-50"><CheckCircle2 size={15} />{c.approve}</button><button onClick={() => decide(version.id, "request_changes")} disabled={Boolean(busy)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50">{c.requestChanges}</button><button onClick={() => decide(version.id, "reject")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.reject}</button></div></>}
                 {!pending && version.review_note && <p className="mt-5 rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-relaxed text-white/60">{version.review_note}</p>}
+                {status === "archive_approved" && <button onClick={() => prepare(version.id)} disabled={Boolean(busy) || version.preview_status === "prepared"} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-xs font-semibold text-cyan-100 disabled:opacity-50"><ShieldCheck size={15} />{version.preview_status === "prepared" ? c.prepared : c.prepare}</button>}
               </article>;
             })}</div>}
       </div>
