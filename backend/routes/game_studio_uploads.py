@@ -56,7 +56,7 @@ ALLOWED_MIME = {
 UPLOAD_ROOT = Path(
     os.environ.get(
         "GAME_STUDIO_UPLOAD_ROOT",
-        str(Path(__file__).resolve().parents[1] / "uploads" / "games" / "quarantine"),
+        str(Path(__file__).resolve().parents[1] / "private" / "game-studio" / "quarantine"),
     )
 )
 
