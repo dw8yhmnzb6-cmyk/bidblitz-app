@@ -11,6 +11,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -100,6 +101,10 @@ def _preview_headers() -> dict[str, str]:
 def _configured_preview_url(token: str) -> str:
     if not PREVIEW_HOST or not PREVIEW_BASE_URL:
         raise HTTPException(503, "Private Games-Vorschau ist noch nicht konfiguriert")
+    parsed = urlparse(PREVIEW_BASE_URL)
+    local = PREVIEW_HOST in {"localhost", "127.0.0.1"}
+    if parsed.hostname != PREVIEW_HOST or parsed.scheme not in ({"http", "https"} if local else {"https"}):
+        raise HTTPException(503, "Games-Preview-Konfiguration ist unsicher")
     return f"{PREVIEW_BASE_URL}/game-preview/{token}/index.html"
 
 
@@ -160,6 +165,7 @@ async def create_preview_link(draft_id: str, version_id: str, request: Request):
         raise HTTPException(409, "Vorschau-Dateien sind nicht verfügbar")
 
     token = secrets.token_urlsafe(32)
+    preview_url = _configured_preview_url(token)
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=TOKEN_TTL_MINUTES)
     await db.game_studio_preview_tokens.insert_one({
@@ -171,7 +177,7 @@ async def create_preview_link(draft_id: str, version_id: str, request: Request):
         "expires_at": expires,
     })
     return {
-        "url": _configured_preview_url(token),
+        "url": preview_url,
         "expires_at": expires.isoformat(),
         "ttl_minutes": TOKEN_TTL_MINUTES,
     }
