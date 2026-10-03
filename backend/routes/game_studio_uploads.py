@@ -320,7 +320,7 @@ async def submit_version_for_review(draft_id: str, version_id: str, request: Req
             "owner_id": owner_id,
             "status": "quarantined",
             "validation_status": "archive_validated",
-            "review_status": {"$in": ["not_submitted", "changes_requested"]},
+            "review_status": "not_submitted",
         },
         {"$set": {"review_status": "submitted", "submitted_at": now, "updated_at": now}},
     )
@@ -382,8 +382,8 @@ async def delete_version(draft_id: str, version_id: str, request: Request):
     })
     if not doc:
         raise HTTPException(404, "Spielversion nicht gefunden")
-    if doc.get("review_status") == "submitted":
-        raise HTTPException(409, "Eingereichte Version zuerst aus der Prüfung zurückziehen")
+    if doc.get("review_status") in {"submitted", "archive_approved"} or doc.get("preview_status") == "prepared":
+        raise HTTPException(409, "Diese Version ist Teil des Prüf-/Vorschauverlaufs und kann nicht gelöscht werden")
 
     path = Path(doc.get("storage_path") or "")
     if path:
