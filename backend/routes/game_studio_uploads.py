@@ -363,7 +363,7 @@ async def delete_version(draft_id: str, version_id: str, request: Request):
     now = datetime.now(timezone.utc).isoformat()
     await db.game_studio_versions.update_one(
         {"id": version_id, "owner_id": owner_id},
-        {"$set": {"status": "deleted", "deleted_at": now, "updated_at": now}},
+        {"$set": {"status": "deleted", "deleted_at": now, "updated_at": now}, "$unset": {"sha256": ""}},
     )
     await db.game_studio_version_slots.delete_one({
         "owner_id": owner_id, "draft_id": draft_id, "version_id": version_id
