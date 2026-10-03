@@ -104,8 +104,10 @@ def public_session_view(session: dict) -> dict:
 
 
 async def is_facepay_enabled() -> bool:
+    # Missing feature-flag rows are a normal production state. Fail closed
+    # instead of crashing /api/biopay/me with None.get(...).
     flag = await get_flag(BIOPAY_FACE_FLAG)
-    return bool(flag.get("enabled", False))
+    return bool((flag or {}).get("enabled", False))
 
 
 async def validate_modality(modality: str):
