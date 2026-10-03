@@ -367,6 +367,30 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     assert 'raise HTTPException(502, "KI-Service nicht erreichbar")' not in recommendations_source
 
 
+def test_admin_system_error_center_covers_core_modules_and_recovery():
+    monitoring = (BACKEND_DIR / "routes" / "monitoring.py").read_text(encoding="utf-8")
+    admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPage.jsx").read_text(encoding="utf-8")
+    dashboard = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MonitoringDashboard.jsx").read_text(encoding="utf-8")
+
+    for key in [
+        '"payments"', '"stripe_topup"', '"auctions_list"', '"taxi"', '"mining"',
+        '"watchlist"', '"chat"', '"biopay"', '"merchant"', '"admin"',
+    ]:
+        assert key in monitoring
+    assert "reviewer@bidblitz.ae" not in monitoring
+    assert '"resolved": True' in monitoring
+    assert '"resolution": "probe_recovered"' in monitoring
+    assert '"open_incidents": len(open_incidents)' in monitoring
+
+    assert 'label: "System & Fehler"' in admin_page
+    assert 'nav: "/admin/monitoring"' in admin_page
+    assert "System & Fehler" in dashboard
+    assert "open_incidents" in dashboard
+    assert 'probe.status_code ?? "—"' in dashboard
+    assert '"behoben"' in dashboard
+    assert '"offen"' in dashboard
+
+
 def test_biopay_missing_facepay_flag_fails_closed():
     source = (BACKEND_DIR / "services" / "biopay.py").read_text(encoding="utf-8")
 
