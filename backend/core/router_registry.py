@@ -211,6 +211,7 @@ def register_all_routers(app):
         ("routes.gaming", "router"),
         ("routes.game_studio", "router"),
         ("routes.game_studio_uploads", "router"),
+        ("routes.admin_game_studio", "router"),
         ("routes.games_profile", "router"),
         ("routes.games_progress", "router"),
         ("routes.casino", "router"),
