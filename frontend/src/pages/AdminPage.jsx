@@ -207,6 +207,7 @@ const ADMIN_SECTIONS = [
       { id: "sustainability", icon: Leaf, label: "Nachhaltigkeit", tab: "flags" },
       { id: "passwords", icon: Lock, label: "Passwörter", tab: "settings" },
       { id: "logs", icon: ScrollText, label: "Systemlogs", tab: "audit" },
+      { id: "system-errors", icon: Activity, label: "System & Fehler", nav: "/admin/monitoring", highlight: true },
       { id: "biopay-audit-center", icon: Shield, label: "BioPay Audit", tab: "biopay-audit", highlight: true },
       { id: "debug", icon: Bug, label: "Debug Reports", tab: "audit" },
       { id: "rtk-proxy", icon: Cpu, label: "RTK Proxy", tab: "rtk", highlight: true },
