@@ -251,6 +251,20 @@ async def get_chat_list(request: Request):
     }
 
 
+# Static GET routes must be declared before /{chat_id}, otherwise FastAPI
+# interprets names such as "unread-count" and "poll" as chat IDs.
+@router.get("/unread-count")
+async def get_unread_count(request: Request):
+    """Get total unread message count for badge display."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    count = await db.chat_messages.count_documents({
+        "recipient_id": user_id,
+        "read": False,
+    })
+    return {"unread_count": count}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # GET MESSAGES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -400,19 +414,3 @@ async def delete_chat(chat_id: str, request: Request):
     return {"ok": True, "deleted": chat_id}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# UNREAD COUNT
-# ══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/unread-count")
-async def get_unread_count(request: Request):
-    """Get total unread message count for badge display."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    count = await db.chat_messages.count_documents({
-        "recipient_id": user_id,
-        "read": False,
-    })
-    
-    return {"unread_count": count}
