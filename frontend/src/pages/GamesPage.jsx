@@ -7,7 +7,7 @@ import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
 
-const ART = "/games/match-preview/assets";
+const ART = "/game-assets/match-preview/assets";
 const CATALOG_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/catalog`;
 const PROFILE_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/profile`;
 const COPY = {
@@ -167,7 +167,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
         {preview ? <section className="mt-6" aria-labelledby="match-preview-title">
           <h1 id="match-preview-title" className="text-2xl font-black">BidBlitz Match</h1>
           <p className="mb-4 mt-2 text-sm leading-relaxed text-sky-100/70">{c.local}</p>
-          <iframe title="BidBlitz Match — lokale Spielvorschau auf Deutsch" src="/games/match-preview/match.html" className="h-[80vh] min-h-[640px] w-full rounded-3xl border border-cyan-200/20 bg-[#061329]" />
+          <iframe title="BidBlitz Match — lokale Spielvorschau auf Deutsch" src="/game-assets/match-preview/match.html" className="h-[80vh] min-h-[640px] w-full rounded-3xl border border-cyan-200/20 bg-[#061329]" />
         </section> : <>
           <section className="mt-8" aria-labelledby="games-title">
             <h1 id="games-title" className="text-3xl font-black sm:text-5xl">{c.title}</h1>
