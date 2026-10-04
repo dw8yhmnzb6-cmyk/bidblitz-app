@@ -22,3 +22,9 @@ test('valid HTTPS links permit an explicitly separate login without issuing code
   expect(separateProjectUrl({ url: 'https://eyes.bidblitz.ae', status: 'coming_soon' })).toBe('https://eyes.bidblitz.ae/');
   expect(separateProjectUrl({ url: 'https://eyes.bidblitz.ae', status: 'hidden' })).toBeNull();
 });
+
+test('observed public project sites are separate from central account capabilities', () => {
+  expect(separateProjectUrl({ id: 'aion', status: 'coming_soon', admin_url: null, url: null })).toBe('https://aion.bidblitz.ae/');
+  expect(projectCustomerControls({ id: 'aion', open_mode: 'unavailable' }).available).toBe(false);
+  expect(separateProjectUrl({ id: 'passport', admin_url: null, url: null })).toBeNull();
+});

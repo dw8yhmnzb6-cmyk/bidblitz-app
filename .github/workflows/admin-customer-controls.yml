@@ -1,4 +1,4 @@
-name: Verified customer navigation and project logins
+name: Verify customer navigation and unambiguous WebKit handoffs
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
