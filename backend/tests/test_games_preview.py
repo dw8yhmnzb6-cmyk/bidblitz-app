@@ -4,6 +4,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 from fastapi import HTTPException
 
@@ -37,11 +38,18 @@ class GamesPreviewSecurityTest(unittest.TestCase):
         self.old_host = preview.PREVIEW_HOST
         self.old_base = preview.PREVIEW_BASE_URL
         self.old_ancestors = preview.FRAME_ANCESTORS
+        self.old_get_current_user = preview.get_current_user
+        preview.get_current_user = AsyncMock(return_value={"_id": "root1", "role": "super_admin"})
 
     def tearDown(self):
         preview.PREVIEW_HOST = self.old_host
         preview.PREVIEW_BASE_URL = self.old_base
         preview.FRAME_ANCESTORS = self.old_ancestors
+        preview.get_current_user = self.old_get_current_user
+
+    def test_super_admin_can_issue_admin_preview_actions(self):
+        user = asyncio.run(preview._admin(None))
+        self.assertEqual(user["role"], "super_admin")
 
     def test_preview_headers_sandbox_untrusted_code(self):
         headers = preview._preview_headers()
