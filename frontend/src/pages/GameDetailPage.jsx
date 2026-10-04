@@ -12,6 +12,7 @@ import { recordLocalRecent } from "../config/gamesRecentPolicy.mjs";
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const ART = "/game-assets/match-preview/assets";
 const RECENT_API = `${BACKEND}/api/games/recent`;
+const ANALYTICS_API = `${BACKEND}/api/games/analytics`;
 
 const COPY = {
   de: {
@@ -189,6 +190,12 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
 
   const recordRecent = () => {
     if (!game?.id) return;
+    fetch(`${ANALYTICS_API}/${encodeURIComponent(game.id)}/launch`, {
+      method: "POST",
+      credentials: "omit",
+      keepalive: true,
+    }).catch(() => {});
+
     const now = new Date().toISOString();
     if (!user.isAuthenticated) {
       recordLocalRecent(globalThis.localStorage, game.id, now);
