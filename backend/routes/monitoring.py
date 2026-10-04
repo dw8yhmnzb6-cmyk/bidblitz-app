@@ -611,6 +611,28 @@ async def error_center(request: Request):
     api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
     auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
 
+    api_error_counts = defaultdict(int)
+    for item in api_errors_1h:
+        key = (
+            str(item.get("method") or ""),
+            str(item.get("path") or ""),
+            int(item.get("status") or 0),
+        )
+        api_error_counts[key] += 1
+    api_error_endpoints = [
+        {
+            "method": method,
+            "path": path,
+            "status_code": status,
+            "count": count,
+            "severity": "critical" if status >= 500 else "warning",
+        }
+        for (method, path, status), count in sorted(
+            api_error_counts.items(),
+            key=lambda pair: (-pair[1], -pair[0][2], pair[0][1]),
+        )[:20]
+    ]
+
     page_counts = defaultdict(int)
     for item in frontend_errors:
         page_counts[item.get("page") or "unknown"] += 1
@@ -654,6 +676,7 @@ async def error_center(request: Request):
         "alerts": alerts[:20],
         "probes": sorted(probes, key=lambda p: p.get("label", "")),
         "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
+        "api_error_endpoints": api_error_endpoints,
         "frontend_errors": frontend_errors,
         "incidents": incidents,
         "daily_report": daily_report,
