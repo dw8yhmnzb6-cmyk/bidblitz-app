@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-04",
+  "published_at": "2026-10-04T23:01:46Z",
+  "frontend_commit": "33859ed59b3025b17be7d3c72b14e79251ee040d",
+  "verification_commit": "817aab81b785d74bdbd74ca8b1603c656bcbfb44",
+  "workflow_run": 37242114053,
+  "job": 111552749122,
+  "targeted_tests": {
+    "passed": 33,
+    "suites": 3
+  },
+  "central_ui": [
+    {
+      "browser": "chromium",
+      "width": 1440,
+      "owner_contrast": true,
+      "customer_navigation": true,
+      "customer_list": true,
+      "credit_navigation": true,
+      "missing_connections_explained": true,
+      "no_account_mutations": true,
+      "no_page_errors": true,
+      "no_overflow": true
+    },
+    {
+      "browser": "chromium-mobile",
+      "width": 390,
+      "owner_contrast": true,
+      "customer_navigation": true,
+      "customer_list": true,
+      "credit_navigation": true,
+      "missing_connections_explained": true,
+      "no_account_mutations": true,
+      "no_page_errors": true,
+      "no_overflow": true
+    },
+    {
+      "browser": "webkit-mobile",
+      "width": 390,
+      "owner_contrast": true,
+      "customer_navigation": true,
+      "customer_list": true,
+      "credit_navigation": true,
+      "missing_connections_explained": true,
+      "no_account_mutations": true,
+      "no_page_errors": true,
+      "no_overflow": true
+    }
+  ],
+  "external_project_tests": {
+    "status": "not_run_in_this_frontend_release",
+    "trade_customer_source_commit": "ae1ccdcdca85362d25636440686b8be515433ea3",
+    "trade_live_additions": "overwritten_by_independent_frontend_rollout_requires_coordination"
+  },
+  "no_customer_bans_or_credits_executed": true
+}
