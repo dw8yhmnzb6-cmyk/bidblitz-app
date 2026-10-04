@@ -1,0 +1,75 @@
+name: Central admin live baseline (read only)
+on:
+  push:
+    branches: [work/central-admin-live-preflight-20261004]
+    paths: [.github/workflows/central-admin-live-preflight.yml]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure verified host and existing deployment authentication
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [ -n "$DEPLOY_KEY" ]; then
+            printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/bidblitz_deploy_key
+            chmod 600 ~/.ssh/bidblitz_deploy_key
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Inspect live code without changing the application
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/bidblitz_deploy_key ]; then
+            SSH+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          "${SSH[@]}" root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /var/www/bidblitz
+          test -f backend/server.py
+          test -f frontend/src/App.js
+          test -x backend/venv/bin/python
+          echo 'BIDBLITZ_LIVE_SOURCE_CONFIRMED'
+          git rev-parse HEAD 2>/dev/null || true
+          pm2 jlist | python3 -c 'import json,sys; print(json.dumps([{k:p.get("pm2_env",{}).get(k) for k in ("name","status","pm_cwd","pm_exec_path")} for p in json.load(sys.stdin) if p.get("name")=="api"]))'
+          python3 - <<'PY'
+          import hashlib,json,tarfile
+          from pathlib import Path
+          root=Path('/var/www/bidblitz')
+          entries=['frontend/src','frontend/public','package.json','package-lock.json','scripts/generate_build_info.py','backend/server.py','backend/core/security.py','backend/core/config.py','backend/core/database.py','backend/core/router_registry.py']
+          entries += [str(p.relative_to(root)) for p in (root/'frontend').iterdir() if p.is_file() and not p.name.startswith('.env') and p.name not in ('.DS_Store',)]
+          selected=[p for p in entries if (root/p).exists()]
+          def safe(info):
+              if info.issym() or info.islnk() or any(s.startswith('.env') or s in ('node_modules','.git','__pycache__') for s in Path(info.name).parts): return None
+              return info
+          with tarfile.open('/tmp/bidblitz-admin-baseline-20261004.tgz','w:gz') as archive:
+              for name in selected: archive.add(root/name,arcname=name,filter=safe)
+          print('BASELINE_ARCHIVE_BYTES',Path('/tmp/bidblitz-admin-baseline-20261004.tgz').stat().st_size)
+          for name in ('frontend/src/App.js','frontend/src/pages/AdminPanelFullPage.jsx','backend/core/security.py','backend/core/router_registry.py'):
+              p=root/name
+              print('BASELINE_SHA256',name,hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else 'missing')
+          PY
+          REMOTE
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-baseline-20261004.tgz ./bidblitz-admin-baseline-20261004.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: central-admin-live-source-baseline
+          path: bidblitz-admin-baseline-20261004.tgz
+          retention-days: 3
