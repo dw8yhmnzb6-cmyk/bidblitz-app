@@ -62,9 +62,10 @@ async def create_sso_handoff(project_id: str, request: Request):
     if enabled_flag not in {"1", "true", "yes", "on"}:
         raise HTTPException(status_code=503, detail="Project SSO is not enabled")
 
-    secret = os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()
+    secret_name = f"BIDBLITZ_SSO_{project_id.upper()}_SECRET"
+    secret = os.getenv(secret_name, "").strip()
     if len(secret) < 32:
-        raise HTTPException(status_code=503, detail="Central SSO is not configured")
+        raise HTTPException(status_code=503, detail="Project SSO secret is not configured")
 
     now = int(time.time())
     owner_id = os.getenv("BIDBLITZ_OWNER_ID", "bidblitz-owner-primary").strip()
