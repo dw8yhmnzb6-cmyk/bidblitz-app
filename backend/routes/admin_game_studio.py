@@ -88,7 +88,7 @@ async def _admin(request: Request) -> dict:
 def _public_version(doc: dict) -> dict:
     return {
         key: value for key, value in doc.items()
-        if key not in {"_id", "owner_id", "storage_path", "preview_path", "create_key"}
+        if key not in {"_id", "owner_id", "storage_path", "preview_path", "release_path", "release_path", "create_key"}
     }
 
 
