@@ -47,13 +47,15 @@ jobs:
           test -f frontend/src/App.js
           test -x backend/venv/bin/python
           echo 'BIDBLITZ_LIVE_SOURCE_CONFIRMED'
+          find /var/www/bidblitz -maxdepth 2 -type d -name '*front*'
+          nginx -T 2>/dev/null | grep -E 'server_name|^[[:space:]]*root |^[[:space:]]*alias |proxy_pass' | head -60
           git rev-parse HEAD 2>/dev/null || true
           pm2 jlist | python3 -c 'import json,sys; print(json.dumps([{k:p.get("pm2_env",{}).get(k) for k in ("name","status","pm_cwd","pm_exec_path")} for p in json.load(sys.stdin) if p.get("name")=="api"]))'
           python3 - <<'PY'
           import hashlib,json,tarfile
           from pathlib import Path
           root=Path('/var/www/bidblitz')
-          entries=['frontend/src','frontend/public','package.json','package-lock.json','scripts/generate_build_info.py','backend/server.py','backend/core/security.py','backend/core/config.py','backend/core/database.py','backend/core/router_registry.py']
+          entries=['frontend-v2/src','frontend-v2/public','frontend-v2/package.json','frontend-v2/package-lock.json','frontend-v2/craco.config.js','frontend-v2/tailwind.config.js','frontend-v2/postcss.config.js','frontend-v2/jsconfig.json','frontend/src','frontend/public','package.json','package-lock.json','scripts/generate_build_info.py','backend/server.py','backend/core/security.py','backend/core/config.py','backend/core/database.py','backend/core/router_registry.py']
           entries += [str(p.relative_to(root)) for p in (root/'frontend').iterdir() if p.is_file() and not p.name.startswith('.env') and p.name not in ('.DS_Store',)]
           selected=[p for p in entries if (root/p).exists()]
           def safe(info):
