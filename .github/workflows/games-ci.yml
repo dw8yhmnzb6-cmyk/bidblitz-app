@@ -1,0 +1,144 @@
+name: BidBlitz Games CI
+
+on:
+  push:
+    paths:
+      - "backend/routes/game_studio*.py"
+      - "backend/routes/games_*.py"
+      - "backend/routes/admin_game_studio.py"
+      - "backend/routes/game_preview.py"
+      - "backend/routes/games_catalog.py"
+      - "backend/tests/test_game_studio*.py"
+      - "backend/tests/test_games_*.py"
+      - "backend/tests/test_admin_game_studio.py"
+      - "backend/core/database.py"
+      - "backend/core/router_registry.py"
+      - "frontend/src/pages/GamesPage.jsx"
+      - "frontend/src/pages/GameStudioPage.jsx"
+      - "frontend/src/pages/AdminGamesReviewPage.jsx"
+      - "frontend/src/components/GameVersionPanel.jsx"
+      - "frontend/src/components/GamesLanguageSelect.jsx"
+      - "frontend/src/config/games*.mjs"
+      - "frontend/src/config/games*.json"
+      - "frontend/src/config/studioCreatePolicy.mjs"
+      - "frontend/public/games/**"
+      - "frontend/scripts/test-games-*.mjs"
+      - "frontend/scripts/test-studio-create.mjs"
+      - "frontend/scripts/test-match-*.cjs"
+      - ".github/workflows/games-ci.yml"
+  pull_request:
+    paths:
+      - "backend/routes/game_studio*.py"
+      - "backend/routes/games_*.py"
+      - "backend/routes/admin_game_studio.py"
+      - "backend/routes/game_preview.py"
+      - "backend/routes/games_catalog.py"
+      - "backend/tests/test_game_studio*.py"
+      - "backend/tests/test_games_*.py"
+      - "backend/tests/test_admin_game_studio.py"
+      - "backend/core/database.py"
+      - "backend/core/router_registry.py"
+      - "frontend/src/pages/GamesPage.jsx"
+      - "frontend/src/pages/GameStudioPage.jsx"
+      - "frontend/src/pages/AdminGamesReviewPage.jsx"
+      - "frontend/src/components/GameVersionPanel.jsx"
+      - "frontend/src/components/GamesLanguageSelect.jsx"
+      - "frontend/src/config/games*.mjs"
+      - "frontend/src/config/games*.json"
+      - "frontend/src/config/studioCreatePolicy.mjs"
+      - "frontend/public/games/**"
+      - "frontend/scripts/test-games-*.mjs"
+      - "frontend/scripts/test-studio-create.mjs"
+      - "frontend/scripts/test-match-*.cjs"
+      - ".github/workflows/games-ci.yml"
+
+concurrency:
+  group: games-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  games-backend:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Create test environment
+        run: |
+          cat > backend/.env <<'EOF'
+          MONGO_URL=mongodb://localhost:27017
+          DB_NAME=bidblitz_games_ci
+          JWT_SECRET=bidblitz-games-ci-secret-1234567890
+          APP_ENV=development
+          COOKIE_SECURE=false
+          COOKIE_SAMESITE=lax
+          ADMIN_EMAIL=admin@bidblitz.com
+          ADMIN_PASSWORD=BidBlitz2026!
+          EOF
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("backend/requirements.txt")
+          target = Path("/tmp/games-backend-requirements.txt")
+          target.write_text("\n".join(
+              line for line in source.read_text().splitlines()
+              if not line.strip().startswith("emergentintegrations==")
+          ) + "\n")
+          PY
+          pip install -r /tmp/games-backend-requirements.txt
+      - name: Run Games backend tests
+        env:
+          PYTHONPATH: backend
+          DEMO_SEED: "false"
+          GAME_STUDIO_TEST_MONGO_URL: "mongodb://localhost:27017"
+        run: >-
+          pytest
+          backend/tests/test_game_studio.py
+          backend/tests/test_game_studio_mongo.py
+          backend/tests/test_game_studio_uploads.py
+          backend/tests/test_admin_game_studio.py
+          backend/tests/test_games_profile.py
+          backend/tests/test_games_profile_mongo.py
+          backend/tests/test_games_progress.py
+          backend/tests/test_games_progress_mongo.py
+          backend/tests/test_games_preview.py
+          backend/tests/test_games_catalog.py
+
+  games-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Lint Games frontend
+        run: >-
+          npm --workspace frontend exec -- eslint
+          src/pages/GamesPage.jsx
+          src/pages/GameStudioPage.jsx
+          src/pages/AdminGamesReviewPage.jsx
+          src/components/GameVersionPanel.jsx
+          src/components/GamesLanguageSelect.jsx
+          src/config/languagePolicy.mjs
+          src/config/studioCreatePolicy.mjs
+          src/config/gamesFavoritesPolicy.mjs
+      - name: Run Games JavaScript tests
+        run: |
+          node frontend/scripts/sync-games-languages.cjs --check
+          node --test             frontend/scripts/test-games-languages.mjs             frontend/scripts/test-studio-create.mjs             frontend/scripts/test-games-favorites.mjs             frontend/scripts/test-match-account-progress.cjs             frontend/scripts/test-match-preview.cjs
+      - name: Build frontend
+        env:
+          CI: "false"
+        run: npm run build
