@@ -80,6 +80,13 @@ async function mockGamesApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/games/analytics/*/launch', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ recorded: true, measurement: 'approximate_launches', monetary: false }),
+    });
+  });
   await page.route('**/api/games/reviews/match', async (route) => {
     await route.fulfill({
       status: 200,
@@ -474,7 +481,11 @@ test('Published community game detail deep link keeps external play isolated', a
 test('Games Match preview opens from catalog and remains usable on 320px', async ({ page }) => {
   await openGames(page, 320, 568);
 
+  const launchRequest = page.waitForRequest((request) =>
+    request.method() === 'POST' && request.url().includes('/api/games/analytics/match/launch')
+  );
   await page.getByRole('button', { name: 'Spielvorschau öffnen' }).first().click();
+  await launchRequest;
   await expect(page).toHaveURL(/\/games\/match$/);
   await expect(page.locator('#match-preview-title')).toHaveText('BidBlitz Match');
   const frame = page.locator('iframe[title*="BidBlitz Match"]');
