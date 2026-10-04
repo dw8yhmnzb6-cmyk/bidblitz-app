@@ -85,13 +85,15 @@ for (const viewport of GAMES_VIEWPORTS) {
     await expectNoHorizontalOverflow(page);
 
     if (viewport.width <= 390) {
-      const selectors = [
+      const languageTouchTarget = page.getByTestId('games-language-select').locator('label');
+      const searchTouchTarget = page.locator('label').filter({ has: search });
+      const touchTargets = [
         page.getByRole('button', { name: 'Alle Spiele' }),
         page.getByRole('button', { name: 'Puzzle' }),
-        language,
-        search,
+        languageTouchTarget,
+        searchTouchTarget,
       ];
-      for (const locator of selectors) {
+      for (const locator of touchTargets) {
         const box = await locator.boundingBox();
         expect(box).not.toBeNull();
         expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -132,7 +134,7 @@ test('Games RTL language switch persists and keeps fallback readable', async ({ 
 test('Games Match preview opens from catalog and remains usable on 320px', async ({ page }) => {
   await openGames(page, 320, 568);
 
-  await page.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await page.getByRole('button', { name: 'Spielvorschau öffnen' }).first().click();
   await expect(page).toHaveURL(/\/games\/match$/);
   await expect(page.getByRole('heading', { name: 'BidBlitz Match' })).toBeVisible();
   const frame = page.locator('iframe[title*="BidBlitz Match"]');
