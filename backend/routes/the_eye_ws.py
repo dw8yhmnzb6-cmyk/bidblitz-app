@@ -42,17 +42,24 @@ async def the_eye_websocket(websocket: WebSocket):
 
     access = TheEyeAccess(user=user, role=role)
     await the_eye_live_hub.connect(websocket, access)
-    await websocket.send_json({
-        "type": "connected",
-        "payload": {"service": "the-eye", "role": role},
-    })
-
     try:
+        # The acknowledgement can fail if the browser disconnects immediately.
+        # Keep it inside the cleanup guard so no stale subscriber remains.
+        await websocket.send_json({
+            "type": "connected",
+            "payload": {"service": "the-eye", "role": role},
+        })
         while True:
             try:
                 message = await asyncio.wait_for(websocket.receive_json(), timeout=30)
+                if not isinstance(message, dict):
+                    await websocket.close(code=1003)
+                    return
                 if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
+            except ValueError:
+                await websocket.close(code=1003)
+                return
             except asyncio.TimeoutError:
                 await websocket.send_json({"type": "keepalive"})
     except WebSocketDisconnect:

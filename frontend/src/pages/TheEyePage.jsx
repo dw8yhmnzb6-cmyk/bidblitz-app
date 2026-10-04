@@ -3,7 +3,6 @@ import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Activity,
-  AlertTriangle,
   Bell,
   Bot,
   Camera,
@@ -661,11 +660,20 @@ export default function TheEyePage({ onNavigate }) {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${protocol}//${window.location.host}/api/the-eye/ws`);
 
-      socket.onopen = () => setLiveConnected(true);
+      socket.onopen = () => setLiveConnected(false);
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           const payload = message?.payload || {};
+
+          if (message.type === "connected" && payload.service === "the-eye") {
+            setLiveConnected(true);
+            return;
+          }
+          if (message.type === "error") {
+            setLiveConnected(false);
+            return;
+          }
 
           if (message.type === "device.registered" && payload.device_id) {
             setDeviceDataState("live");
@@ -852,9 +860,11 @@ export default function TheEyePage({ onNavigate }) {
           // Ignore malformed realtime messages; REST data remains authoritative.
         }
       };
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         setLiveConnected(false);
-        if (!stopped) retryTimer = window.setTimeout(connect, 2000);
+        if (!stopped && event.code !== 4401 && event.code !== 4403) {
+          retryTimer = window.setTimeout(connect, 2000);
+        }
       };
       socket.onerror = () => socket?.close();
     };
