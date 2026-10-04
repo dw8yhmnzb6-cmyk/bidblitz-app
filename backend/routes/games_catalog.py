@@ -226,6 +226,31 @@ def _roots_are_distinct(*roots: Path) -> bool:
     return len(set(resolved)) == len(resolved)
 
 
+@admin_router.get("/diagnostics")
+async def games_diagnostics(request: Request):
+    """Read-only operational snapshot for the Games admin dashboard."""
+    await _admin(request)
+    counts = {
+        "drafts": await db.game_studio_drafts.count_documents({"status": "draft"}),
+        "versions": await db.game_studio_versions.count_documents({}),
+        "submitted": await db.game_studio_versions.count_documents({"review_status": "submitted"}),
+        "archive_approved": await db.game_studio_versions.count_documents({"review_status": "archive_approved"}),
+        "preview_approved": await db.game_studio_versions.count_documents({"review_status": "preview_approved"}),
+        "published": await db.games_catalog.count_documents({"status": "published"}),
+        "unpublished": await db.games_catalog.count_documents({"status": "unpublished"}),
+        "publication_events": await db.game_studio_publication_events.count_documents({}),
+        "publication_locks": await db.games_publication_locks.count_documents({}),
+    }
+    preflight = await games_preflight(request)
+    return {
+        "status": "ok" if preflight["ready"] else "attention",
+        "counts": counts,
+        "preflight_ready": preflight["ready"],
+        "billing_fail_closed": preflight["billing"]["fail_closed"],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @admin_router.get("/preflight")
 async def games_preflight(request: Request):
     """Read-only Games readiness check. It never enables hosts, billing or production."""
