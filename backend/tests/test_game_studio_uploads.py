@@ -89,6 +89,7 @@ class GameStudioUploadSecurityTest(unittest.TestCase):
             "_id": "mongo",
             "owner_id": "alice",
             "storage_path": "/private/secret.zip",
+            "preview_path": "/private/preview/v1",
             "id": "v1",
             "status": "quarantined",
         })
