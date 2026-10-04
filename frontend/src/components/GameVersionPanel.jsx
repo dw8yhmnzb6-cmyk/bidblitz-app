@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Archive, CheckCircle2, FileArchive, Loader2, Send, Trash2, Upload, XCircle } from "lucide-react";
+import GamePublicationHistory from "./GamePublicationHistory";
 
 const API_ROOT = `${process.env.REACT_APP_BACKEND_URL || ""}/api/game-studio/drafts`;
 const MAX_ZIP_BYTES = 50 * 1024 * 1024;
@@ -244,6 +245,7 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
               </div>
             </article>;
           })}</div>}
+      <GamePublicationHistory draftId={draftId} locale={locale} />
     </section>
   );
 }
