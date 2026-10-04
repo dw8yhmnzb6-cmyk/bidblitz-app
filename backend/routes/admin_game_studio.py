@@ -69,7 +69,7 @@ def _safe_extract_preview(archive_path: Path, target_dir: Path) -> dict:
 
 
 class VersionReviewInput(BaseModel):
-    action: Literal["approve_archive", "request_changes", "reject"]
+    action: Literal["approve_archive", "approve_preview", "request_changes", "reject"]
     note: str = Field(default="", max_length=1000)
 
     @field_validator("note", mode="before")
@@ -134,14 +134,22 @@ async def review_version(version_id: str, payload: VersionReviewInput, request: 
 
     target = {
         "approve_archive": "archive_approved",
+        "approve_preview": "preview_approved",
         "request_changes": "changes_requested",
         "reject": "rejected",
     }[payload.action]
 
     if current.get("review_status") == target:
         return _public_version(current)
-    if current.get("review_status") != "submitted":
-        raise HTTPException(409, "Nur eingereichte Versionen können geprüft werden")
+
+    current_status = current.get("review_status")
+    if payload.action == "approve_archive" and current_status != "submitted":
+        raise HTTPException(409, "Archivfreigabe erfordert eine eingereichte Version")
+    if payload.action == "approve_preview":
+        if current_status != "archive_approved" or current.get("preview_status") != "prepared":
+            raise HTTPException(409, "Preview-Freigabe erfordert eine vorbereitete private Vorschau")
+    if payload.action in {"request_changes", "reject"} and current_status not in {"submitted", "archive_approved"}:
+        raise HTTPException(409, "Diese Version kann in diesem Status nicht zurückgewiesen werden")
     if payload.action in {"request_changes", "reject"} and len(payload.note) < 5:
         raise HTTPException(400, "Bitte einen nachvollziehbaren Hinweis angeben")
 
@@ -153,11 +161,11 @@ async def review_version(version_id: str, payload: VersionReviewInput, request: 
         "reviewed_at": now,
         "reviewed_by": reviewer_id,
         "updated_at": now,
-        # Third-party code remains blocked until a separate isolated preview origin exists.
-        "execution_status": "blocked_pending_isolated_preview",
+        # Review approval never grants BidBlitz API/cookie access to third-party code.
+        "execution_status": "isolated_preview_only" if target == "preview_approved" else "blocked_pending_isolated_preview",
     }
     result = await db.game_studio_versions.update_one(
-        {"id": version_id, "review_status": "submitted", "status": {"$ne": "deleted"}},
+        {"id": version_id, "review_status": current_status, "status": {"$ne": "deleted"}},
         {"$set": update},
     )
     if not result.matched_count:
