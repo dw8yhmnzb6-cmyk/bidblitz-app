@@ -173,6 +173,8 @@ def register_all_routers(app):
         
         # Communication
         ("routes.chat", "router"),
+        ("routes.groupchat", "router"),
+        ("routes.group_orders", "router"),
         ("routes.dating", "router"),
         ("routes.applications", "router"),
         
