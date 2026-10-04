@@ -56,7 +56,9 @@ async function openGames(page: Page, width: number, height: number, language = '
   await page.setViewportSize({ width, height });
   await mockGamesApis(page);
   await page.addInitScript((lang) => {
-    localStorage.setItem('bidblitz_lang', lang);
+    if (!localStorage.getItem('bidblitz_lang')) {
+      localStorage.setItem('bidblitz_lang', lang);
+    }
     localStorage.setItem('bidblitz_onboarded', '1');
     localStorage.setItem('bb_hint_dismissed', '1');
   }, language);
@@ -94,8 +96,9 @@ for (const viewport of GAMES_VIEWPORTS) {
 
     const search = page.getByRole('searchbox', { name: 'Spiel suchen' });
     await search.fill('Community');
-    await expect(page.getByText('Community Puzzle', { exact: true })).toBeVisible();
-    await expect(page.getByText('BidBlitz Match', { exact: true })).toHaveCount(0);
+    const results = page.locator('section[aria-label="Alle Spiele"]');
+    await expect(results.getByText('Community Puzzle', { exact: true })).toBeVisible();
+    await expect(results.getByText('BidBlitz Match', { exact: true })).toHaveCount(0);
     await search.fill('');
 
     const communityLink = page.getByRole('link', { name: 'Spiel öffnen' });
@@ -156,7 +159,7 @@ test('Games Match preview opens from catalog and remains usable on 320px', async
 
   await page.getByRole('button', { name: 'Spielvorschau öffnen' }).first().click();
   await expect(page).toHaveURL(/\/games\/match$/);
-  await expect(page.getByRole('heading', { name: 'BidBlitz Match' })).toBeVisible();
+  await expect(page.locator('#match-preview-title')).toHaveText('BidBlitz Match');
   const frame = page.locator('iframe[title*="BidBlitz Match"]');
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', '/game-assets/match-preview/match.html');
