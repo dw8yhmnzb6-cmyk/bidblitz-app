@@ -153,6 +153,7 @@ async def developer_analytics(request: Request):
 
     review_visible = 0
     review_hidden = 0
+    approximate_launches = 0
     if game_ids:
         review_visible = await db.games_reviews.count_documents({
             "game_id": {"$in": game_ids},
@@ -162,6 +163,15 @@ async def developer_analytics(request: Request):
             "game_id": {"$in": game_ids},
             "status": "hidden",
         })
+        launch_rows = await db.games_launch_totals.find(
+            {"game_id": {"$in": game_ids}},
+            {"_id": 0, "launches": 1},
+        ).limit(100).to_list(100)
+        approximate_launches = sum(
+            max(0, int(row.get("launches") or 0))
+            for row in launch_rows
+            if isinstance(row.get("launches"), int)
+        )
 
     return {
         "drafts": await db.game_studio_drafts.count_documents({
@@ -185,6 +195,8 @@ async def developer_analytics(request: Request):
         "unpublished": sum(1 for row in published_rows if row.get("status") == "unpublished"),
         "reviews_visible": review_visible,
         "reviews_hidden": review_hidden,
+        "approximate_launches": approximate_launches,
+        "launch_measurement": "approximate_non_monetary",
         "billing_ready": BILLING_READY,
     }
 
