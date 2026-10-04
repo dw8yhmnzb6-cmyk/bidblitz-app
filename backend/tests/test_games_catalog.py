@@ -231,6 +231,25 @@ class GamesCatalogTest(unittest.TestCase):
             f"https://play.games.example.test/game/{slug}/index.html",
         )
 
+    def test_public_catalog_detail_returns_only_published_public_fields(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        result = asyncio.run(catalog.public_catalog_game("draft-1"))
+        self.assertEqual(result["id"], "draft-1")
+        self.assertEqual(result["title"], "Island Quest")
+        self.assertEqual(result["source"], "third_party")
+        self.assertNotIn("owner_id", result)
+        self.assertNotIn("release_path", result)
+        self.assertNotIn("preview_path", result)
+
+        self.db.games_catalog.docs[0]["status"] = "unpublished"
+        with self.assertRaises(HTTPException) as missing:
+            asyncio.run(catalog.public_catalog_game("draft-1"))
+        self.assertEqual(missing.exception.status_code, 404)
+
+        with self.assertRaises(HTTPException) as invalid:
+            asyncio.run(catalog.public_catalog_game("../bad"))
+        self.assertEqual(invalid.exception.status_code, 400)
+
     def test_publish_creates_catalog_and_marks_version_active(self):
         result = asyncio.run(catalog.publish_version("v1", None))
         self.assertEqual(result["id"], "draft-1")
