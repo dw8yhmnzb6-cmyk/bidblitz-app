@@ -240,6 +240,9 @@ async def games_diagnostics(request: Request):
         "unpublished": await db.games_catalog.count_documents({"status": "unpublished"}),
         "publication_events": await db.game_studio_publication_events.count_documents({}),
         "publication_locks": await db.games_publication_locks.count_documents({}),
+        "reviews_visible": await db.games_reviews.count_documents({"status": "visible"}),
+        "reviews_hidden": await db.games_reviews.count_documents({"status": "hidden"}),
+        "review_moderation_events": await db.games_review_moderation_events.count_documents({}),
     }
     preflight = await games_preflight(request)
     return {
