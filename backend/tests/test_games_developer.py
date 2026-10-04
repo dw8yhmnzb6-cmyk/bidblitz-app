@@ -54,6 +54,7 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
             games_developer_entitlements=self.entitlements,
             games_developer_entitlement_events=Collection(),
             games_catalog=self.catalog,
+            game_studio_drafts=Collection([{"id": "draft-1", "owner_id": "alice", "status": "draft"}]),
         )
 
     def tearDown(self):
@@ -136,6 +137,30 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         with self.assertRaises(HTTPException) as context:
             asyncio.run(developer.grant_entitlement("alice", grant, None))
         self.assertEqual(context.exception.status_code, 403)
+
+
+    def test_admin_can_grant_and_read_plan_by_draft_without_owner_id_response(self):
+        developer.get_current_user.return_value = {"_id": "admin-1", "role": "admin"}
+        grant = developer.EntitlementGrant(
+            plan="starter",
+            payment_reference="invoice-000321",
+        )
+        result = asyncio.run(developer.grant_entitlement_by_draft("draft-1", grant, None))
+        self.assertEqual(result["entitlement"]["plan"], "starter")
+        status = asyncio.run(developer.entitlement_by_draft("draft-1", None))
+        self.assertTrue(status["active"])
+        self.assertNotIn("owner_id", status)
+        self.assertNotIn("payment_reference", status.get("entitlement") or {})
+
+    def test_unknown_draft_cannot_be_used_to_grant_plan(self):
+        developer.get_current_user.return_value = {"_id": "admin-1", "role": "admin"}
+        grant = developer.EntitlementGrant(
+            plan="starter",
+            payment_reference="invoice-000321",
+        )
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(developer.grant_entitlement_by_draft("missing", grant, None))
+        self.assertEqual(context.exception.status_code, 404)
 
 
 if __name__ == "__main__":
