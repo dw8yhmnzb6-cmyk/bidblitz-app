@@ -20,7 +20,7 @@ Rollen oder Katalogeinträge und stellt keine Zugangscodes aus.
 | Anzeige | Tatsächliche Aussage |
 | --- | --- |
 | Interner Einstieg | Feste Route im bestehenden BidBlitz-Admin; Aktionen prüfen weiterhin eigene Rechte. |
-| Empfänger-Code lokal erfüllt | Einer der neun bereits vorbereiteten Adapter ist bekannt; nicht live bestätigt. |
+| Empfänger-Code lokal erfüllt | Einer der zehn bereits vorbereiteten Adapter ist bekannt; nicht live bestätigt. |
 | Aussteller konfiguriert | Erlaubtes Ziel, Freischaltungsflag, ausreichend langer Schlüssel und nichtleeres Owner-Subject. |
 | Lokales Admin-Konto / Bereitstellung / Anmeldung noch prüfen | Zielkonto, Rechte, tatsächliche Version, Nonce-Speicher und MFA sind extern nicht bestätigt. |
 | Ohne SSO-Empfänger | Kein geprüfter gemeinsamer Login; eine Katalogadresse aktiviert nichts. |
@@ -37,7 +37,7 @@ Legacy-Schlüssel verwendet wird, weist die Diagnose auf einen separaten
 Projektschlüssel hin, ohne den vorhandenen Übergabevertrag zu ändern.
 Ungültige Origins werden nicht in der Antwort wiederholt.
 
-Nur feste Konfigurationsnamen und Migrationshinweise der bekannten neun
+Nur feste Konfigurationsnamen und Migrationshinweise der bekannten zehn
 Empfänger werden angezeigt, niemals echte IDs, E-Mail-Zuordnungen, Subjects,
 Schlüssel oder Codes. Verify erhält einen ausdrücklichen Sandbox-Hinweis;
 damit ist keine echte Identitätsprüfung freigegeben.
@@ -91,3 +91,7 @@ Conformexa ist als achter Adapter vorbereitet. Der Empfänger basiert auf dem ve
 ## Ergänzung Spy BidBlitz
 
 Spy BidBlitz ist als neunter Adapter vorbereitet. Der Empfänger erzeugt eine eigene kurzlebige serverseitige DEV-Admin-Sitzung in der bestehenden SQLite-Datenbank; der bisherige DEV-Admin-Key bleibt als Fallback erhalten. Keine Kundenkonten oder Geräteberechtigungen werden durch SSO erzeugt. Katalogstatus bleibt `pending` bis zu separater Zielbereitstellung und Konfiguration.
+
+## Ergänzung Remote
+
+Remote ist als zehnter externer Adapter vorbereitet. Der Empfänger mappt ausschließlich auf eine explizit konfigurierte vorhandene Remote-Owner-ID und Organisation. Der zentrale Admin-Token gilt eine Stunde und liegt im Browser nur im `sessionStorage`; normale Remote-Logins bleiben unverändert. `/v1/admin/overview` prüft die aktuelle Datenbankmitgliedschaft erneut, sodass Rollenentzug unmittelbar greift. Katalogstatus bleibt bis zur separaten Bereitstellung und Live-Konfiguration unverändert.

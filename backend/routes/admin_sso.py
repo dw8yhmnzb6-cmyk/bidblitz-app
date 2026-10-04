@@ -21,12 +21,12 @@ SSO_TARGETS = {
            "browser_url": f"https://{name}.bidblitz.ae/auth/bidblitz-sso", "mode": "redirect"}
     for name in ("eyes", "trade", "nex", "stack")
 }
-SSO_ADAPTERS = frozenset((*SSO_TARGETS, "aion", "verify", "bidtax", "conformexa", "spy"))
+SSO_ADAPTERS = frozenset((*SSO_TARGETS, "aion", "verify", "bidtax", "conformexa", "spy", "remote"))
 
 
 def sso_targets():
     targets = dict(SSO_TARGETS)
-    for name, endpoint in (("aion", "/api/auth/bidblitz-sso"), ("verify", "/v1/auth/bidblitz-sso"), ("bidtax", "/api/auth/bidblitz-sso"), ("conformexa", "/v1/platform/admin/bidblitz-sso"), ("spy", "/api/v1/dev/admin/bidblitz-sso")):
+    for name, endpoint in (("aion", "/api/auth/bidblitz-sso"), ("verify", "/v1/auth/bidblitz-sso"), ("bidtax", "/api/auth/bidblitz-sso"), ("conformexa", "/v1/platform/admin/bidblitz-sso"), ("spy", "/api/v1/dev/admin/bidblitz-sso"), ("remote", "/v1/auth/bidblitz-sso")):
         base = os.getenv(f"BIDBLITZ_{name.upper()}_BASE_URL", "").strip().rstrip("/")
         if not base:
             continue

@@ -54,3 +54,14 @@ def test_spy_target_uses_only_validated_bidblitz_https_origin(monkeypatch):
     for base in ("http://spy.bidblitz.ae", "https://evil.example", "https://spy.bidblitz.ae/path", "https://u:p@spy.bidblitz.ae", "https://spy.bidblitz.ae:444"):
         monkeypatch.setenv("BIDBLITZ_SPY_BASE_URL", base)
         assert "spy" not in admin_sso.sso_targets()
+
+
+def test_remote_target_uses_only_validated_bidblitz_https_origin(monkeypatch):
+    from routes import admin_sso
+    monkeypatch.setenv("BIDBLITZ_REMOTE_BASE_URL", "https://remote.bidblitz.ae")
+    target = admin_sso.sso_targets()["remote"]
+    assert target["handoff_url"] == "https://remote.bidblitz.ae/v1/auth/bidblitz-sso"
+    assert target["browser_url"] == "https://remote.bidblitz.ae/auth/bidblitz-sso"
+    for base in ("http://remote.bidblitz.ae", "https://evil.example", "https://remote.bidblitz.ae/path", "https://u:p@remote.bidblitz.ae", "https://remote.bidblitz.ae:444"):
+        monkeypatch.setenv("BIDBLITZ_REMOTE_BASE_URL", base)
+        assert "remote" not in admin_sso.sso_targets()

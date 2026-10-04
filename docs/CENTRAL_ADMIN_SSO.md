@@ -6,7 +6,7 @@ Stand: 4. Oktober 2026. Implementierter Code, keine Produktionsfreischaltung.
 
 `/admin/projects` verwaltet 35 Standard-Katalogeinträge sowie eigene zusätzliche Einträge in der bestehenden BidBlitz-Datenbank. Änderungen verwenden Revisionen und ein begrenztes Audit-Protokoll. Suche, Statusfilter und Bearbeitung sind vorhanden. Nur ein ausdrücklich konfigurierter Owner mit aktueller Datenbankrolle `admin` oder `super_admin` darf den Katalog ändern oder Zugangscodes ausstellen. Login-Aliase allein verleihen keine Owner-Rechte.
 
-BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION, Verify, BIDTAX und Conformexa und Spy BidBlitz bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
+BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION, Verify, BIDTAX und Conformexa und Spy BidBlitz und Remote bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
 
 Die zusätzliche Ansicht „Anbindungen & offene Schritte“ zeigt pro Projekt
 die lokale Katalogfreigabe, erlaubte Ziele, explizite Freischaltung,
@@ -86,3 +86,5 @@ Die Produktionsaktivierung benötigt die tatsächlichen Live-Versionen, Owner-Zu
 Conformexa verwendet keine Tenant-Admin-Hochstufung. Der Empfänger verbraucht den Einmalcode atomar in Migration `0015_bidblitz_central_sso.sql` und erzeugt ausschließlich die bestehende serverseitige Operator-Sitzung. Der Plattform-Schlüssel bleibt serverseitig. Erlaubte explizite Zielorigins sind `.bidblitz.ae`, `conformexa.com`/Subdomains und `conformexa.de`/Subdomains; Katalog-URLs beeinflussen das Ziel nicht.
 
 | Spy BidBlitz | `/api/v1/dev/admin/bidblitz-sso` | `SPY_BIDBLITZ_SSO_SHARED_SECRET` | `SPY_BIDBLITZ_OWNER_ID` | serverseitige `DEV_ADMIN`-Sitzung; alter DEV-Key bleibt Fallback |
+
+| Remote | `/v1/auth/bidblitz-sso` | `REMOTE_BIDBLITZ_SSO_SHARED_SECRET` | `REMOTE_BIDBLITZ_OWNER_ID` | vorhandener Remote-`owner` + Organisation; kein neues Konto |
