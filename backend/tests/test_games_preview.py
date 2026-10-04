@@ -1,4 +1,5 @@
 """Security tests for cookie-free third-party game preview delivery."""
+import asyncio
 import tempfile
 import types
 import unittest
@@ -13,6 +14,22 @@ class RequestStub:
     def __init__(self, host="", cookies=None):
         self.headers = {"host": host}
         self.cookies = cookies or {}
+
+
+class TokenCollection:
+    def __init__(self):
+        self.docs = {}
+
+    async def replace_one(self, query, doc, upsert=False):
+        self.docs[query["_id"]] = dict(doc)
+        return types.SimpleNamespace(matched_count=1, upserted_id=None)
+
+    async def update_one(self, query, update):
+        doc = self.docs.get(query.get("_id"))
+        if not doc:
+            return types.SimpleNamespace(modified_count=0)
+        doc.update(update.get("$set", {}))
+        return types.SimpleNamespace(modified_count=1)
 
 
 class GamesPreviewSecurityTest(unittest.TestCase):
@@ -84,6 +101,26 @@ class GamesPreviewSecurityTest(unittest.TestCase):
         hashed = preview._hash_token(token)
         self.assertNotEqual(hashed, token)
         self.assertEqual(len(hashed), 64)
+
+
+    def test_preview_token_rotation_keeps_one_hashed_record_per_version(self):
+        preview.PREVIEW_HOST = "preview-games.example.test"
+        preview.PREVIEW_BASE_URL = "https://preview-games.example.test"
+        collection = TokenCollection()
+        old_db = preview.db
+        preview.db = types.SimpleNamespace(game_studio_preview_tokens=collection)
+        try:
+            first = asyncio.run(preview._issue_preview_token("owner-1", "draft-1", "version-1"))
+            second = asyncio.run(preview._issue_preview_token("owner-1", "draft-1", "version-1"))
+        finally:
+            preview.db = old_db
+        self.assertEqual(len(collection.docs), 1)
+        doc = collection.docs["owner-1:version-1"]
+        self.assertEqual(doc["owner_id"], "owner-1")
+        self.assertEqual(doc["version_id"], "version-1")
+        self.assertEqual(len(doc["token_hash"]), 64)
+        self.assertNotIn(doc["token_hash"], first["url"])
+        self.assertNotEqual(first["url"], second["url"])
 
 
 if __name__ == "__main__":
