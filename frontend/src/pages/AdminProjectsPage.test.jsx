@@ -81,6 +81,34 @@ test("save conflict retains the draft for correction", async () => {
   expect(button("Speichern").disabled).toBe(false);
 });
 
+test("native customer and credit entries navigate without mutating accounts", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, id: "pay", name: "BidBlitz Pay", open_mode: "internal", native_path: "/admin/payments" }] }));
+  await render();
+  await click(button("Kunden · Sperren / Entsperren"));
+  expect(navigate).toHaveBeenLastCalledWith("/admin/manage");
+  await click(button("Gutschriften & Buchungen"));
+  expect(navigate).toHaveBeenLastCalledWith("/admin/wallet");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("customer tab retains project separation and does not claim cash credit for Trade", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, id: "trade", name: "Trade BidBlitz" }] }));
+  await render();
+  await click(button("Kunden · Sperren · Gutschriften"));
+  expect(container.textContent).toContain("Kunden nach Projekt verwalten");
+  expect(container.textContent).toContain("keine Broker- oder Wallet-Gutschriften");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("unconnected projects expose diagnostics rather than fake customer actions", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, id: "passport", name: "Passport", open_mode: "unavailable" }] }));
+  await render();
+  expect(button("Noch nicht verfügbar").disabled).toBe(true);
+  expect(button("Anbindung prüfen").disabled).toBe(false);
+  expect(container.textContent).not.toContain("Wallet-Gutschriften");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 test("hidden projects cannot be opened", async () => {
   fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, status: "hidden", open_mode: "unavailable" }] }));
   await render();

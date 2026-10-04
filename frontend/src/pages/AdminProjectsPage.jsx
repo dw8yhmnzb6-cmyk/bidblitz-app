@@ -3,6 +3,9 @@ import { ArrowLeft, ExternalLink, Grid3X3, Loader2, Pencil, Plus, RefreshCw, Sea
 import AdminProjectRights from "../components/admin/AdminProjectRights";
 import AdminProjectConnections from "../components/admin/AdminProjectConnections";
 import { NATIVE_ADMIN_PATHS } from "../components/admin/projectAccessAreas";
+import AdminProjectCustomerControls from "../components/admin/AdminProjectCustomerControls";
+import { separateProjectUrl } from "../components/admin/projectCustomerControls";
+import "./admin-projects.css";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 const STATUS = { active: "Aktiv", dev: "Entwicklung", coming_soon: "Demnächst", hidden: "Ausgeblendet" };
@@ -156,7 +159,7 @@ export default function AdminProjectsPage({ onNavigate }) {
   const edit = (project) => { setSaveError(""); setNotice(""); setEditor({ project }); };
 
   return (
-    <div className="min-h-screen bg-[#F0F4FA] text-[#111] pb-24" data-testid="admin-projects-page">
+    <div className="admin-projects-page min-h-screen bg-[#F0F4FA] text-[#111] pb-24" data-testid="admin-projects-page">
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <button onClick={() => onNavigate("/admin")} className="p-2 rounded-xl bg-gray-100" aria-label="Zurück zum Admin"><ArrowLeft size={18} /></button>
@@ -165,10 +168,11 @@ export default function AdminProjectsPage({ onNavigate }) {
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-4 py-5">
-        {owner && <section className="mb-4 rounded-2xl bg-white border p-4"><div className="text-xs text-gray-500">Haupt-Admin</div><p className="font-bold break-all">{owner.email}</p><p className="text-xs text-gray-500 mt-1">Projekte verwalten und öffnen. Zugriffsrechte werden im jeweiligen Projekt geprüft.</p></section>}
+        {owner && <section className="project-owner mb-4 rounded-2xl p-4"><div className="text-xs">Haupt-Admin · BidBlitz</div><p className="owner-identity mt-1">{owner.email}</p><p className="text-xs mt-2">Projekt-Admins und Kundenverwaltung. Jede Kundenaktion wird im jeweiligen Projekt geprüft.</p></section>}
         {owner && <p className="text-sm mb-4" role="status">{internal} interne Einstiege · {configured} SSO-Aussteller konfiguriert · {prepared} vorbereitet · {pending} ohne SSO-Empfänger</p>}
         {owner && <nav className="flex flex-wrap gap-2 mb-4" aria-label="Projektverwaltung Ansichten">
           <button aria-pressed={view === "projects"} onClick={() => setView("projects")} className="bg-white border rounded-xl px-4 py-2">Projekte ({projects.length})</button>
+          <button aria-pressed={view === "customers"} onClick={() => setView("customers")} className="bg-white border rounded-xl px-4 py-2">Kunden · Sperren · Gutschriften</button>
           <button aria-pressed={view === "rights"} onClick={() => setView("rights")} className="bg-white border rounded-xl px-4 py-2">Alle Rechte & Admin-Bereiche</button>
           <button aria-pressed={view === "connections"} onClick={() => setView("connections")} className="bg-white border rounded-xl px-4 py-2">Anbindungen & offene Schritte</button>
         </nav>}
@@ -180,7 +184,7 @@ export default function AdminProjectsPage({ onNavigate }) {
         {notice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-xl p-3 mb-4">{notice}</p>}
         {actionError && <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-700 mb-4">{actionError}<button onClick={() => setActionError("")} className="ml-3 underline">Schließen</button></div>}
         {loadError && <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-700">{loadError}<button onClick={load} className="ml-3 underline">Erneut versuchen</button></div>}
-        {!loadError && owner && view === "projects" && <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {!loadError && owner && ["projects", "customers"].includes(view) && <div className="flex flex-col sm:flex-row gap-3 mb-5">
           <label className="relative flex-1"><span className="sr-only">Projekt suchen</span><Search size={17} className="absolute left-3 top-3.5 text-gray-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Projekt suchen…" className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border text-sm" /></label>
           <label><span className="sr-only">Nach Status filtern</span><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full p-3 rounded-xl bg-white border text-sm"><option value="all">Alle Status</option>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label><span className="sr-only">Nach Projektart filtern</span><select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)} className="w-full p-3 rounded-xl bg-white border text-sm"><option value="all">Projekte und Module</option><option value="project">Eigenständige Projekte</option><option value="module">BidBlitz-Module</option></select></label>
@@ -188,11 +192,12 @@ export default function AdminProjectsPage({ onNavigate }) {
         {loading && <div role="status" className="py-10 flex justify-center gap-2"><Loader2 className="animate-spin" />Projekte werden geladen…</div>}
         {!loading && !loadError && owner && view === "rights" && <AdminProjectRights owner={owner} projects={projects} onNavigate={onNavigate} />}
         {!loading && !loadError && owner && view === "connections" && <AdminProjectConnections projects={projects} onOpen={openProject} onEdit={edit} opening={opening} editing={Boolean(editor)} />}
-        {!loading && !loadError && owner && view === "projects" && <>
+        {!loading && !loadError && owner && view === "customers" && <section className="rounded-2xl bg-white border p-4 mb-4"><h2>Kunden nach Projekt verwalten</h2><p className="text-sm text-gray-600 mt-2">Wähle das richtige Projekt und öffne dessen Kundenverwaltung. Sperren und Gutschriften gelten für das ausgewählte Projekt. Die BidBlitz-Module verwenden gemeinsame BidBlitz-Konten.</p></section>}
+        {!loading && !loadError && owner && ["projects", "customers"].includes(view) && <>
           <p className="text-xs text-gray-500 mb-3">{visible.length} von {projects.length} Projekten · „Aktiv“ ist der eingestellte Projektstatus, keine Erreichbarkeitsprüfung.</p>
           {!visible.length && <p className="p-8 bg-white border rounded-xl text-center">Keine Projekte für diesen Filter gefunden.</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {visible.map((project) => <article key={project.id} className="bg-white rounded-2xl border shadow-sm p-4 flex flex-col min-h-[240px]">
+            {visible.map((project) => <article key={project.id} className="project-card bg-white rounded-2xl border shadow-sm p-4 flex flex-col min-h-[240px]">
               <div className="flex items-start gap-3">
                 <span className="rounded-xl px-2 py-2 text-white text-xs max-w-[5rem] break-words" style={{ backgroundColor: project.color }}>{project.icon}</span>
                 <div className="flex-1 min-w-0"><h2 className="font-bold break-words">{project.name}</h2><p className="text-xs text-gray-500">{project.category}</p></div>
@@ -201,13 +206,16 @@ export default function AdminProjectsPage({ onNavigate }) {
               <p className="text-sm text-gray-600 mt-3 break-words">{project.description}</p>
               <p className="text-xs text-violet-700 mt-2">{project.kind === "module" ? "Modul der BidBlitz-App" : "Eigenständiges Projekt"}</p>
               {project.access_profile && <details className="text-xs mt-3"><summary className="cursor-pointer font-semibold">Rechte & Zuordnung</summary><p className="mt-2 text-gray-600">{project.access_profile.role ? `BidBlitz-Rolle: ${project.access_profile.role}` : project.access_profile.required_role ? `Erforderliche lokale Rolle: ${project.access_profile.required_role}` : "Lokales Rechtepaket noch nicht geprüft"}</p><p className="text-gray-500 mt-1">{project.access_profile.note}</p>{project.aliases?.length > 0 && <p className="text-gray-500 mt-1">Auch bekannt als: {project.aliases.join(", ")}</p>}</details>}
-              <span className="text-xs mt-3 font-semibold">{STATUS[project.status] || "Unbekannt"}</span>
+              <span className="project-status">Projektstatus: {STATUS[project.status] || "Unbekannt"}</span>
+              <p className="project-access-state">{project.open_mode === "internal" ? "Admin-Einstieg in BidBlitz verfügbar" : project.open_mode === "sso" ? "Zentrale Anmeldung konfiguriert" : "Zentrale Anmeldung fehlt"}</p>
               <div className="mt-auto pt-4">
                 <p className="text-xs text-gray-500 mb-3">{project.sso_message}</p>
                 <button disabled={project.open_mode === "unavailable" || Boolean(opening)} onClick={() => openProject(project)} className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 bg-gray-900 text-white disabled:bg-gray-100 disabled:text-gray-400">
                   {opening === project.id ? <><Loader2 size={14} className="animate-spin" />Wird angemeldet…</> : project.open_mode === "unavailable" ? "Noch nicht verfügbar" : <>{project.open_mode === "sso" ? "Mit BidBlitz anmelden" : project.open_mode === "internal" ? "Admin öffnen" : "Projekt öffnen"}<ExternalLink size={14} /></>}
                 </button>
+                {project.open_mode === "unavailable" && separateProjectUrl(project) && <a className="separate-project-link" href={separateProjectUrl(project)} target="_blank" rel="noopener noreferrer">Projektseite öffnen · separater Login<ExternalLink size={14} /></a>}
               </div>
+              <AdminProjectCustomerControls project={project} onNavigate={onNavigate} onOpen={openProject} opening={opening} onConnections={() => { setView("connections"); window.scrollTo?.({ top: 0, behavior: "smooth" }); }} />
             </article>)}
           </div>
         </>}

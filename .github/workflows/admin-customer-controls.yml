@@ -1,4 +1,4 @@
-name: Inspect current admin repair baseline
+name: Verified admin customer navigation repair
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
@@ -9,36 +9,99 @@ concurrency:
   group: production-deploy
   cancel-in-progress: false
 jobs:
-  inspect:
+  repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Existing authenticated read-only deployment connection
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install matching frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify navigation, access separation and link validation
+        working-directory: frontend
+        env:
+          CI: 'true'
+        run: |
+          npm test -- --watchAll=false --runInBand --runTestsByPath src/pages/AdminProjectsPage.test.jsx src/components/admin/projectAccessAreas.test.js src/components/admin/projectCustomerControls.test.js
+          npx eslint src/pages/AdminProjectsPage.jsx src/components/admin/AdminProjectCustomerControls.jsx src/components/admin/projectCustomerControls.js
+          python -m py_compile ../scripts/deploy_admin_customer_ui.py ../scripts/rollback_admin_customer_ui.py
+      - name: Build the verified current frontend baseline with customer entries
+        working-directory: frontend
+        env:
+          CI: 'false'
+          GENERATE_SOURCEMAP: 'false'
+          NODE_OPTIONS: --max-old-space-size=4096
+          REACT_APP_BACKEND_URL: https://bidblitz.ae
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_STRIPE_PUBLISHABLE_KEY || secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: 'false'
+        run: |
+          export BUILD_ID="admin-customers-${GITHUB_SHA:0:8}-$(date -u +%Y%m%d%H%M%S)"
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=false
+          REACT_APP_BUILD_ID=${BUILD_ID}
+          EOF
+          npm run build
+          test -s build/version.json
+      - name: Prepare Chromium, mobile WebKit and verified SSH host
         env:
           DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
           set -euo pipefail
+          npx playwright install --with-deps chromium webkit
           mkdir -p ~/.ssh
           echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq sshpass
-          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
           if [ -n "$DEPLOY_KEY" ]; then
             printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/admin_key
             chmod 600 ~/.ssh/admin_key
-            SSH+=(-i ~/.ssh/admin_key -o BatchMode=yes)
-          else
-            SSH=(sshpass -e "${SSH[@]}")
           fi
-          "${SSH[@]}" root@212.227.20.190 'python3 - << "PY"
-          import json,hashlib,pathlib,subprocess
-          root=pathlib.Path("/var/www/bidblitz")
-          print("CURRENT_FRONTEND_VERSION", (root/"frontend/build/version.json").read_text())
-          for path in ["backend/core/admin_project_access.py","backend/routes/admin_projects.py","backend/routes/admin_management.py","backend/routes/admin_wallet.py"]:
-              p=root/path
-              print("SOURCE_DIGEST",path,hashlib.sha256(p.read_bytes()).hexdigest())
-          print("CURRENT_SOURCE_HEAD",subprocess.check_output(["git","-C",str(root),"rev-parse","HEAD"],text=True).strip())
-          print("CURRENT_UI_DIGEST", hashlib.sha256((root/"frontend/build/index.html").read_bytes()).hexdigest())
-          PY'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Publish frontend only and verify existing customer tools without mutations
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/admin_key ]; then
+            SSH+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          mkdir -p /tmp/customer-ui
+          cp scripts/deploy_admin_customer_ui.py scripts/rollback_admin_customer_ui.py /tmp/customer-ui/
+          tar -C frontend/build -czf /tmp/customer-ui/frontend.tgz .
+          python - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('/tmp/customer-ui/manifest.json').write_text(json.dumps({'git_commit':os.environ['GITHUB_SHA']}))
+          PY
+          tar -C /tmp/customer-ui -czf /tmp/customer-ui.tgz .
+          STAGE="/tmp/bidblitz-customer-ui-${GITHUB_SHA}"
+          "${SCP[@]}" /tmp/customer-ui.tgz root@212.227.20.190:"${STAGE}.tgz"
+          "${SSH[@]}" root@212.227.20.190 "mkdir -p '$STAGE'; tar -xzf '${STAGE}.tgz' -C '$STAGE'; cd /var/www/bidblitz/backend; venv/bin/python '$STAGE/deploy_admin_customer_ui.py' '$STAGE'"
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-browser-cookie.txt /tmp/bidblitz-admin-browser-cookie.txt
+          "${SSH[@]}" root@212.227.20.190 'rm -f /tmp/bidblitz-admin-browser-cookie.txt'
+          chmod 600 /tmp/bidblitz-admin-browser-cookie.txt
+          if ! node scripts/verify_admin_customer_ui.cjs; then
+            "${SSH[@]}" root@212.227.20.190 "/var/www/bidblitz/backend/venv/bin/python '$STAGE/rollback_admin_customer_ui.py' '$STAGE'"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-customer-ui-live-evidence
+          path: /tmp/admin-customer-ui-evidence.json
+          retention-days: 7
+      - name: Remove private verification material
+        if: always()
+        run: rm -f /tmp/bidblitz-admin-browser-cookie.txt
