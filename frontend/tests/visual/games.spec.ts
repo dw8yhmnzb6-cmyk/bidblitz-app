@@ -60,7 +60,10 @@ async function openGames(page: Page, width: number, height: number, language = '
     localStorage.setItem('bidblitz_onboarded', '1');
     localStorage.setItem('bb_hint_dismissed', '1');
   }, language);
-  await page.goto('/games', { waitUntil: 'networkidle' });
+  // /games is also a real static asset directory in the build. Static hosts
+  // may canonicalize it to /games/, so acceptance deliberately exercises the
+  // trailing-slash deep link that the SPA must normalize.
+  await page.goto('/games/', { waitUntil: 'networkidle' });
   await expect(page.getByTestId('games-platform-page')).toBeVisible({ timeout: 20000 });
 }
 
