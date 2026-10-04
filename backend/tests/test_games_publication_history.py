@@ -61,6 +61,12 @@ class GamesPublicationHistoryTest(unittest.TestCase):
         self.assertEqual(len(result["events"]), 1)
         self.assertEqual(result["events"][0]["version_id"], "x1")
 
+    def test_super_admin_can_read_any_draft_history(self):
+        history.get_current_user.return_value = {"_id": "root", "role": "super_admin"}
+        result = asyncio.run(history.admin_publication_history("d2", None))
+        self.assertEqual(len(result["events"]), 1)
+        self.assertEqual(result["events"][0]["version_id"], "x1")
+
     def test_non_admin_cannot_read_admin_history(self):
         with self.assertRaises(HTTPException) as context:
             asyncio.run(history.admin_publication_history("d1", None))
