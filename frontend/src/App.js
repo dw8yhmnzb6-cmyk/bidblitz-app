@@ -154,6 +154,7 @@ const GamingPage = lazy(() => import("./pages/GamingPage"));
 const GameStudioPage = lazy(() => import("./pages/GameStudioPage"));
 const AdminGamesReviewPage = lazy(() => import("./pages/AdminGamesReviewPage"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
+const GameDetailPage = lazy(() => import("./pages/GameDetailPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
 const VirtualCardsPage = lazy(() => import("./pages/VirtualCardsPage"));
@@ -1412,6 +1413,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TwoFactorSettingsPage onBack={() => handleNavigate("/settings")} />;
       
       default:
+        if (basePath.startsWith("/games/title/")) {
+          const gameId = decodeURIComponent(basePath.split("/games/title/")[1] || "");
+          return <GameDetailPage gameId={gameId} onBack={() => handleNavigate("/games")} onNavigate={handleNavigate} />;
+        }
         // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
         if (currentPath.startsWith("/admin/")) {
           if (!isAdminRole) return <HomePage {...homeProps} />;
