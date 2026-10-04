@@ -115,3 +115,7 @@ BidBlitz TV ist als zwölfter externer Adapter vorbereitet. Der Empfänger v0.4 
 ## Korrektur iCharging
 
 iCharging verwendet im geprüften BidBlitz-App-Quellstand die vorhandene EV-Verwaltung `/admin/ev` inklusive Betreiber, Hardware, Tarife und Auszahlungen. Es ist deshalb ein natives Modul mit bestehender BidBlitz-Sitzung. `BidBlitz Charge` bleibt ein separater Katalogeintrag für Ladezubehör/Handel und wird dadurch nicht verbunden.
+
+## Korrektur BidBlitz Charge
+
+Der geprüfte zentrale BidBlitz-Stand enthält bereits `/admin/charge-offer-rules` und die zugehörigen `/api/charge-app/admin/offer-rules`-Endpunkte mit bestehender Admin-Prüfung. BidBlitz Charge wird deshalb als natives Modul auf diesen vorhandenen Adminbereich gemappt. Die zusätzlichen Charge-Katalog-/Claims-Seiten liegen auf `work/bidblitz-charge-hardening` und werden hier ausdrücklich noch nicht als integriert behauptet. iCharging bleibt separat auf `/admin/ev`.

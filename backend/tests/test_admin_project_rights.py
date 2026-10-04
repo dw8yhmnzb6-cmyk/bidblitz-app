@@ -117,5 +117,16 @@ def test_icharging_uses_existing_ev_admin_and_keeps_charge_separate():
     assert charging["open_mode"] == "internal"
     assert charging["sso_state"] == "native"
     assert charging["access_profile"]["scope"] == "bidblitz"
-    assert projects["charge"]["status"] == "coming_soon"
-    assert projects["charge"]["admin_url"] is None
+    assert projects["charge"]["status"] == "active"
+    assert projects["charge"]["admin_url"] == "/admin/charge-offer-rules"
+    assert projects["charge"]["admin_url"] != projects["charging"]["admin_url"]
+
+
+def test_charge_uses_existing_offer_rules_admin_without_claiming_hardening_pages():
+    projects = admin_projects._defaults()
+    charge = admin_projects.project_view(projects["charge"], {"role": "admin"})
+    assert charge["native_path"] == "/admin/charge-offer-rules"
+    assert charge["open_mode"] == "internal"
+    assert charge["sso_state"] == "native"
+    assert charge["access_profile"]["scope"] == "bidblitz"
+    assert projects["charging"]["admin_url"] == "/admin/ev"

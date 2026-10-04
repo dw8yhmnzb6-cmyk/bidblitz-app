@@ -19,7 +19,7 @@ PROJECTS = [
     {"id":"remote","name":"Remote","description":"Eigenständige Remote-AI-Plattform; Geräte, Freigaben und AI-Sitzungen","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"spy","name":"Spy BidBlitz","description":"Geräte- und Familiensicherheit; früher BidBlitz Device, inklusive Kids Control","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"tv","name":"BidBlitz TV","description":"Android-TV-Player für eigene berechtigte Playlists; früher AK Stream TV","url":None,"admin_url":None,"status":"pending","sso":False},
-    {"id":"charge","name":"BidBlitz Charge","description":"Ladezubehör, Handel & Franchise; getrennt von iCharging","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"charge","name":"BidBlitz Charge","description":"Ladezubehör, Handel & Franchise; vorhandene Angebotsregeln, getrennt von iCharging","url":"/admin/charge-offer-rules","admin_url":"/admin/charge-offer-rules","status":"connected","sso":True},
     {"id":"bidtax","name":"BIDTAX","description":"Steuer- und Buchhaltungssoftware; eigenes Super-Admin-System","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"match","name":"BidBlitz Match","description":"Match-Spielmodul innerhalb von Game.BidBlitz; gemeinsame Spiel-Einstellungen","url":"/admin/game-settings","admin_url":"/admin/game-settings","status":"connected","sso":True},
     {"id":"pay","name":"BidBlitz Pay","description":"Zahlungen, Wallet und Pay-Anträge in der BidBlitz-App","url":"/admin/payments","admin_url":"/admin/payments","status":"connected","sso":True},
