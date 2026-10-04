@@ -50,15 +50,21 @@ def _flag(name: str) -> bool:
 def _project_sso_ready(project_id: str) -> bool:
     if project_id == "bidblitz":
         return True
-    if len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) < 32:
-        return False
     flags = {
         "eyes": "BIDBLITZ_SSO_EYES_ENABLED",
         "trade": "BIDBLITZ_SSO_TRADE_ENABLED",
         "aion": "BIDBLITZ_SSO_AION_ENABLED",
     }
+    secrets = {
+        "eyes": "BIDBLITZ_SSO_EYES_SECRET",
+        "trade": "BIDBLITZ_SSO_TRADE_SECRET",
+        "aion": "BIDBLITZ_SSO_AION_SECRET",
+    }
     flag = flags.get(project_id)
-    if not flag or not _flag(flag):
+    secret_name = secrets.get(project_id)
+    if not flag or not secret_name or not _flag(flag):
+        return False
+    if len(os.getenv(secret_name, "").strip()) < 32:
         return False
     if project_id == "aion" and not os.getenv("BIDBLITZ_AION_BASE_URL", "").strip():
         return False
