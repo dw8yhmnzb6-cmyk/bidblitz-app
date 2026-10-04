@@ -185,6 +185,11 @@ class GamesCatalogTest(unittest.TestCase):
         self.assertTrue(result["billing"]["enabled"])
         self.assertFalse(result["checks"]["billing_fail_closed"])
 
+    def test_super_admin_can_read_games_preflight(self):
+        catalog.get_current_user.return_value = {"_id": "root-1", "role": "super_admin"}
+        result = asyncio.run(catalog.games_preflight(None))
+        self.assertEqual(result["scope"], "games_non_monetary_preflight")
+
     def test_non_admin_cannot_read_games_preflight(self):
         catalog.get_current_user.return_value = {"_id": "user-1", "role": "user"}
         with self.assertRaises(HTTPException) as context:
