@@ -1,4 +1,4 @@
-name: Verified admin customer navigation repair
+name: Verified customer navigation and project logins
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
@@ -100,7 +100,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: admin-customer-ui-live-evidence
-          path: /tmp/admin-customer-ui-evidence.json
+          path: |
+            /tmp/admin-customer-ui-evidence.json
+            /tmp/admin-customer-sso-evidence.json
           retention-days: 7
       - name: Remove private verification material
         if: always()

@@ -26,8 +26,8 @@ const cookieFile='/tmp/bidblitz-admin-browser-cookie.txt';
    await page.goto('https://bidblitz.ae/admin/projects',{waitUntil:'domcontentloaded'});
    const creditCard=page.locator('article').filter({has:page.getByRole('heading',{name:'BidBlitz',exact:true})});
    await creditCard.getByRole('button',{name:'Gutschriften & Buchungen',exact:true}).click();
-   await page.getByTestId('wallet-header').waitFor();
-   await page.getByTestId('user-search').waitFor();
+   await page.getByTestId('admin-wallet-page').waitFor();
+   await page.getByTestId('user-search-input').waitFor();
    await page.goto('https://bidblitz.ae/admin/projects',{waitUntil:'domcontentloaded'});await identity.waitFor();
    const missing=page.locator('article').filter({has:page.getByRole('heading',{name:'BidBlitz Passport',exact:true})});
    assert(await missing.getByRole('button',{name:'Noch nicht verfügbar',exact:true}).isDisabled());
@@ -37,6 +37,14 @@ const cookieFile='/tmp/bidblitz-admin-browser-cookie.txt';
    results.push({browser:name,width,owner_contrast:true,customer_navigation:true,customer_list:true,credit_navigation:true,missing_connections_explained:true,no_account_mutations:true,no_page_errors:true,no_overflow:true});
    console.log('ADMIN_CUSTOMER_UI_VERIFIED',JSON.stringify(results.at(-1)));
   } finally {await browser.close()}
- }} finally {fs.rmSync(cookieFile,{force:true})}
+ }
+ const targetResults=[];
+ for(const engine of ['chromium','webkit']) {
+  fs.writeFileSync(cookieFile,token,{mode:0o600});
+  require('node:child_process').execFileSync(process.execPath,['scripts/verify_central_sso_live.cjs'],{stdio:'inherit',env:{...process.env,ADMIN_PLAYWRIGHT_PATH:require.resolve('playwright'),ADMIN_SSO_BROWSER:engine}});
+  targetResults.push(...JSON.parse(fs.readFileSync('/tmp/admin-sso-browser-results.json','utf8')).map(row=>({...row,browser:engine})));
+ }
+ fs.writeFileSync('/tmp/admin-customer-sso-evidence.json',JSON.stringify(targetResults,null,2));
+ } finally {fs.rmSync(cookieFile,{force:true})}
  fs.writeFileSync('/tmp/admin-customer-ui-evidence.json',JSON.stringify(results,null,2));
 })().catch(e=>{console.error(e.message);process.exitCode=1});
