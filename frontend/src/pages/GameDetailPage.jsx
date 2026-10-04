@@ -7,9 +7,11 @@ import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
+import { recordLocalRecent } from "../config/gamesRecentPolicy.mjs";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const ART = "/game-assets/match-preview/assets";
+const RECENT_API = `${BACKEND}/api/games/recent`;
 
 const COPY = {
   de: {
@@ -185,6 +187,20 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
     }
   };
 
+  const recordRecent = () => {
+    if (!game?.id) return;
+    const now = new Date().toISOString();
+    if (!user.isAuthenticated) {
+      recordLocalRecent(globalThis.localStorage, game.id, now);
+      return;
+    }
+    fetch(`${RECENT_API}/${encodeURIComponent(game.id)}`, {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => {});
+  };
+
   const isFavorite = Boolean(game?.id && favorites.includes(game.id));
   const isMatch = game?.id === "match";
   const description = isMatch ? c.matchDescription : game?.description || "";
@@ -233,8 +249,8 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                      {isMatch ? <button onClick={() => onNavigate("/games/match")} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
-                        : <a href={game.public_url} target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><ExternalLink size={18} />{c.openGame}</a>}
+                      {isMatch ? <button onClick={() => { recordRecent(); onNavigate("/games/match"); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
+                        : <a href={game.public_url} target="_blank" rel="noopener noreferrer" onClick={recordRecent} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><ExternalLink size={18} />{c.openGame}</a>}
                       <button onClick={changeFavorite} disabled={favoriteBusy} aria-pressed={isFavorite} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:opacity-50 ${isFavorite ? "border-cyan-300 bg-cyan-300/15 text-cyan-100" : "border-white/20 bg-white/5 text-white/80"}`}><Heart size={18} fill={isFavorite ? "currentColor" : "none"} />{isFavorite ? c.unfavorite : c.favorite}</button>
                     </div>
                     <p className="mt-3 text-[11px] text-white/40">{favoriteMode === "account" ? c.accountFavorite : c.deviceFavorite}</p>
