@@ -137,6 +137,7 @@ async def get_notifications(
 
 
 @router.get("/unread-count")
+@router.get("/unread")
 async def get_unread_count(request: Request):
     user = await get_current_user(request)
     identity = _notification_identity_query(user)
