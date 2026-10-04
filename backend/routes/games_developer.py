@@ -25,6 +25,10 @@ STARTER_PRICE_CENTS = max(0, int(os.environ.get("GAMES_STARTER_PRICE_EUR_CENTS",
 STUDIO_PRICE_CENTS = max(0, int(os.environ.get("GAMES_STUDIO_PRICE_EUR_CENTS", "0")))
 BILLING_READY = os.environ.get("GAMES_BILLING_READY", "false").lower() == "true"
 
+def _duplicate_key(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "DuplicateKeyError" or getattr(exc, "code", None) == 11000
+
+
 PLANS = {
     "starter": {
         "id": "starter",
@@ -140,25 +144,51 @@ async def assert_publication_entitlement(owner_id: str, draft_id: str) -> dict:
     entitlement = await db.games_developer_entitlements.find_one({"owner_id": owner_id})
     if not _active_entitlement(entitlement):
         raise HTTPException(402, "Aktiver Entwicklerplan erforderlich")
+    if entitlement.get("plan") not in PLANS:
+        raise HTTPException(402, "Ungültiger Entwicklerplan")
+    return entitlement
+
+
+async def reserve_publication_slot(owner_id: str, draft_id: str, entitlement: dict) -> bool:
+    existing = await db.games_publication_slots.find_one({
+        "owner_id": owner_id,
+        "draft_id": draft_id,
+    })
+    if existing:
+        return False
+
     plan = PLANS.get(entitlement.get("plan"))
     if not plan:
         raise HTTPException(402, "Ungültiger Entwicklerplan")
 
-    already_public = await db.games_catalog.find_one({
-        "id": draft_id,
-        "owner_id": owner_id,
-        "status": "published",
-    })
-    if already_public:
-        return entitlement
+    for slot in range(plan["max_published_games"]):
+        try:
+            await db.games_publication_slots.insert_one({
+                "_id": f"{owner_id}:{slot}",
+                "owner_id": owner_id,
+                "draft_id": draft_id,
+                "slot": slot,
+                "plan": entitlement.get("plan"),
+                "created_at": datetime.now(timezone.utc),
+            })
+            return True
+        except Exception as exc:
+            if not _duplicate_key(exc):
+                raise
+            existing = await db.games_publication_slots.find_one({
+                "owner_id": owner_id,
+                "draft_id": draft_id,
+            })
+            if existing:
+                return False
+    raise HTTPException(409, "Veröffentlichungslimit des Entwicklerplans erreicht")
 
-    count = await db.games_catalog.count_documents({
+
+async def release_publication_slot(owner_id: str, draft_id: str) -> None:
+    await db.games_publication_slots.delete_one({
         "owner_id": owner_id,
-        "status": "published",
+        "draft_id": draft_id,
     })
-    if count >= plan["max_published_games"]:
-        raise HTTPException(409, "Veröffentlichungslimit des Entwicklerplans erreicht")
-    return entitlement
 
 
 @admin_router.get("/by-draft/{draft_id}")
