@@ -1877,7 +1877,12 @@ async def search_places(q: str, lang: str = "de", limit: int = 10, lat: Optional
     try:
         data = await _nominatim_get("/search", params)
     except Exception as exc:
-        raise HTTPException(502, f"Adresssuche nicht erreichbar: {exc}")
+        logger.warning("Mobility address search unavailable: %s", exc)
+        return {
+            "results": [],
+            "provider_status": "unavailable",
+            "provider": "openstreetmap",
+        }
 
     ranked = sorted(data, key=lambda item: score_place(item, query), reverse=True)
     results = []
@@ -1920,7 +1925,19 @@ async def reverse_place(lat: float, lng: float, lang: str = "de"):
             "accept-language": SEARCH_LANGS.get(lang, "de"),
         })
     except Exception as exc:
-        raise HTTPException(502, f"Reverse Geocoding nicht erreichbar: {exc}")
+        logger.warning("Mobility reverse geocoding unavailable: %s", exc)
+        return {
+            "address": "",
+            "street": "",
+            "city": "",
+            "country": "",
+            "country_code": "",
+            "postcode": "",
+            "lat": lat,
+            "lng": lng,
+            "provider_status": "unavailable",
+            "provider": "openstreetmap",
+        }
     addr = item.get("address", {})
     return {
         "address": item.get("display_name", ""),
