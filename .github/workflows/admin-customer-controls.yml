@@ -1,4 +1,4 @@
-name: Verify completed wallet load before mobile navigation
+name: Verify customer selection and completed wallet read operations
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
