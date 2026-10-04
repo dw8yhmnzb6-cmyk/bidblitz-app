@@ -428,6 +428,20 @@ async def public_catalog():
     return {"games": [_public_catalog_item(row) for row in rows], "count": len(rows)}
 
 
+@api_router.get("/api/games/catalog/{game_id}")
+async def public_catalog_game(game_id: str):
+    game_id = str(game_id or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,79}", game_id):
+        raise HTTPException(400, "Ungültige Spiel-ID")
+    row = await db.games_catalog.find_one(
+        {"id": game_id, "status": "published"},
+        {"_id": 0},
+    )
+    if not row:
+        raise HTTPException(404, "Spiel nicht gefunden")
+    return _public_catalog_item(row)
+
+
 @admin_router.post("/versions/{version_id}/approve-preview")
 async def approve_preview(version_id: str, request: Request):
     """Convenience endpoint for the explicit second-stage preview approval."""
