@@ -18,6 +18,8 @@ on:
       - "frontend/src/pages/GameStudioPage.jsx"
       - "frontend/src/pages/AdminGamesReviewPage.jsx"
       - "frontend/src/components/GameVersionPanel.jsx"
+      - "frontend/src/components/GameReviewsPanel.jsx"
+      - "frontend/src/components/AdminGameReviewsPanel.jsx"
       - "frontend/src/components/GamePublicationHistory.jsx"
       - "frontend/src/components/GamesDeveloperPlanCard.jsx"
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
@@ -50,6 +52,8 @@ on:
       - "frontend/src/pages/GameStudioPage.jsx"
       - "frontend/src/pages/AdminGamesReviewPage.jsx"
       - "frontend/src/components/GameVersionPanel.jsx"
+      - "frontend/src/components/GameReviewsPanel.jsx"
+      - "frontend/src/components/AdminGameReviewsPanel.jsx"
       - "frontend/src/components/GamePublicationHistory.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/config/games*.mjs"
@@ -121,6 +125,7 @@ jobs:
           backend/tests/test_games_profile_mongo.py
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
+          backend/tests/test_games_reviews.py
           backend/tests/test_games_preview.py
           backend/tests/test_games_catalog.py
           backend/tests/test_games_catalog_mongo.py
@@ -146,6 +151,8 @@ jobs:
           src/pages/GameStudioPage.jsx
           src/pages/AdminGamesReviewPage.jsx
           src/components/GameVersionPanel.jsx
+          src/components/GameReviewsPanel.jsx
+          src/components/AdminGameReviewsPanel.jsx
           src/components/GamePublicationHistory.jsx
           src/components/GamesDeveloperPlanCard.jsx
           src/components/AdminGameDeveloperPlanCard.jsx
