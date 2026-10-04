@@ -99,3 +99,7 @@ Remote ist als zehnter externer Adapter vorbereitet. Der Empfänger mappt aussch
 ## Korrektur Game.BidBlitz
 
 Game.BidBlitz ist kein zusätzlicher externer SSO-Empfänger im derzeitigen Quellstand. Games, Game Studio und `/admin/game-settings` liegen im vorhandenen `bidblitz-app` und verwenden die bestehende BidBlitz-Sitzung. Der Katalog führt Games deshalb als internen, festen Admin-Einstieg. Dadurch sind 15 der 35 Katalogeinträge intern; die übrigen 20 bleiben separate Projekte/Integrationen.
+
+## Korrektur BidBlitz Match
+
+Für BidBlitz Match ist kein eigenständiger App-/Admin-Quellstand nachweisbar. Der vorhandene Match-Code liegt als Modul von Game.BidBlitz (`/games/match` und Match-Preview). Der Admin-Katalog hält die Match-Kachel sichtbar, öffnet aber denselben vorhandenen `/admin/game-settings`-Bereich und erzeugt keinen zweiten Login oder externen SSO-Vertrag.

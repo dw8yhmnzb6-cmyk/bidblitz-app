@@ -99,3 +99,12 @@ def test_games_uses_existing_bidblitz_admin_session():
     assert row["integration"]["state"] == "native_ready"
     assert row["access_profile"]["scope"] == "bidblitz"
     assert row["access_profile"]["effective_permissions"] == ["admin:navigate"]
+
+
+def test_match_uses_games_admin_module_and_not_external_sso():
+    match = admin_projects._defaults()["match"]
+    row = admin_projects.project_view(match, {"role": "super_admin"})
+    assert row["open_mode"] == "internal"
+    assert row["native_path"] == "/admin/game-settings"
+    assert row["sso_state"] == "native"
+    assert row["access_profile"]["scope"] == "bidblitz"

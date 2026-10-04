@@ -21,7 +21,7 @@ PROJECTS = [
     {"id":"tv","name":"BidBlitz TV","description":"Android-TV-Player für eigene berechtigte Playlists; früher AK Stream TV","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"charge","name":"BidBlitz Charge","description":"Ladezubehör, Handel & Franchise; getrennt von iCharging","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"bidtax","name":"BIDTAX","description":"Steuer- und Buchhaltungssoftware; eigenes Super-Admin-System","url":None,"admin_url":None,"status":"pending","sso":False},
-    {"id":"match","name":"BidBlitz Match","description":"Separates gespeichertes Quellcode-Projekt; zentrale Anmeldung noch nicht geprüft","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"match","name":"BidBlitz Match","description":"Match-Spielmodul innerhalb von Game.BidBlitz; gemeinsame Spiel-Einstellungen","url":"/admin/game-settings","admin_url":"/admin/game-settings","status":"connected","sso":True},
     {"id":"pay","name":"BidBlitz Pay","description":"Zahlungen, Wallet und Pay-Anträge in der BidBlitz-App","url":"/admin/payments","admin_url":"/admin/payments","status":"connected","sso":True},
     {"id":"staff","name":"BidBlitz Staff","description":"Personal, Manager und Enterprise in der BidBlitz-App","url":"/admin/employees","admin_url":"/admin/employees","status":"connected","sso":True},
     {"id":"identity","name":"BidBlitz ID","description":"Konten, Rollen und Anmeldung in der BidBlitz-App","url":"/admin/manage","admin_url":"/admin/manage","status":"connected","sso":True},
