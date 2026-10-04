@@ -280,6 +280,7 @@ const MonitoringDashboard = ({ onBack }) => {
                 ["Offen", errorCenter.summary?.open_incidents || 0, "#EF4444"],
                 ["Frontend", errorCenter.summary?.frontend_errors_24h || 0, "#F59E0B"],
                 ["API", errorCenter.summary?.api_errors_1h || 0, "#8B5CF6"],
+                ["Router", errorCenter.summary?.failed_routers || 0, "#EF4444"],
                 ["Login/Reg", errorCenter.summary?.auth_errors_1h || 0, "#00C2FF"],
                 ["24h", errorCenter.summary?.incidents_24h || 0, "#10B981"],
               ].map(([label, value, color]) => (
@@ -359,6 +360,21 @@ const MonitoringDashboard = ({ onBack }) => {
                     <div key={`${row.page}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-center justify-between" data-testid={`monitor-top-page-${idx}`}>
                       <span className="text-[11px] text-white/70 truncate">{row.page}</span>
                       <span className="text-[11px] font-bold text-amber-400">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(errorCenter.failed_routers || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }} data-testid="monitor-router-errors-list">
+                <p className="text-[12px] font-bold text-white mb-2">Nicht geladene Backend-Module</p>
+                <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                  {errorCenter.failed_routers.slice(0, 12).map((item, idx) => (
+                    <div key={`${item.module || 'router'}-${item.attr || 'router'}-${idx}`} className="rounded-xl px-3 py-2 border border-red-500/10 bg-black/20" data-testid={`monitor-router-error-${idx}`}>
+                      <p className="text-[11px] font-bold text-red-300">{item.module || "Unbekanntes Modul"}</p>
+                      <p className="text-[10px] text-white/35 mt-1">{item.attr || "router"} · {item.error_type || "Fehler"}</p>
+                      {item.error ? <p className="text-[10px] text-white/45 mt-1 break-words">{item.error}</p> : null}
                     </div>
                   ))}
                 </div>
