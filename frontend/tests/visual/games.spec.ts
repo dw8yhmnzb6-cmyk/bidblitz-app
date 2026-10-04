@@ -50,6 +50,18 @@ async function mockGamesApis(page: Page) {
       body: JSON.stringify({ favorites: [] }),
     });
   });
+  await page.route('**/api/games/reviews/summaries**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        summaries: {
+          match: { count: 2, average: 4.5 },
+          'community-puzzle': { count: 3, average: 4.33 },
+        },
+      }),
+    });
+  });
   await page.route('**/api/games/reviews/match', async (route) => {
     await route.fulfill({
       status: 200,
@@ -261,6 +273,8 @@ for (const viewport of GAMES_VIEWPORTS) {
     await expect(page.getByRole('heading', { name: 'Dein nächstes Abenteuer.' })).toBeVisible();
     await expect(page.getByText('BidBlitz Match', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Community Puzzle', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('game-rating-match')).toContainText('4.5');
+    await expect(page.getByTestId('game-rating-community-puzzle')).toContainText('4.3');
 
     const language = page.getByTestId('games-language-select').locator('select');
     await expect(language.locator('option')).toHaveCount(51);
