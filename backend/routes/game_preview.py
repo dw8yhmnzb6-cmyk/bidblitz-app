@@ -149,7 +149,29 @@ async def _admin(request: Request) -> dict:
 
 
 async def _issue_preview_token(owner_id: str, draft_id: str, version_id: str) -> dict:
-    return await _issue_preview_token(owner_id, draft_id, version_id)
+    token = secrets.token_urlsafe(32)
+    preview_url = _configured_preview_url(token)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=TOKEN_TTL_MINUTES)
+    token_doc = {
+        "_id": f"{owner_id}:{version_id}",
+        "token_hash": _hash_token(token),
+        "owner_id": owner_id,
+        "draft_id": draft_id,
+        "version_id": version_id,
+        "created_at": now,
+        "expires_at": expires,
+    }
+    await db.game_studio_preview_tokens.replace_one(
+        {"_id": token_doc["_id"]},
+        token_doc,
+        upsert=True,
+    )
+    return {
+        "url": preview_url,
+        "expires_at": expires.isoformat(),
+        "ttl_minutes": TOKEN_TTL_MINUTES,
+    }
 
 
 @api_router.post("/drafts/{draft_id}/versions/{version_id}/preview-link")
@@ -176,29 +198,7 @@ async def create_preview_link(draft_id: str, version_id: str, request: Request):
     if not resolved.is_relative_to(root) or not (resolved / "index.html").is_file():
         raise HTTPException(409, "Vorschau-Dateien sind nicht verfügbar")
 
-    token = secrets.token_urlsafe(32)
-    preview_url = _configured_preview_url(token)
-    now = datetime.now(timezone.utc)
-    expires = now + timedelta(minutes=TOKEN_TTL_MINUTES)
-    token_doc = {
-        "_id": f"{owner_id}:{version_id}",
-        "token_hash": _hash_token(token),
-        "owner_id": owner_id,
-        "draft_id": draft_id,
-        "version_id": version_id,
-        "created_at": now,
-        "expires_at": expires,
-    }
-    await db.game_studio_preview_tokens.replace_one(
-        {"_id": token_doc["_id"]},
-        token_doc,
-        upsert=True,
-    )
-    return {
-        "url": preview_url,
-        "expires_at": expires.isoformat(),
-        "ttl_minutes": TOKEN_TTL_MINUTES,
-    }
+    return await _issue_preview_token(owner_id, draft_id, version_id)
 
 
 @api_router.delete("/drafts/{draft_id}/versions/{version_id}/preview-links")
