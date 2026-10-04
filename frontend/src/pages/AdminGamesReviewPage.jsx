@@ -4,7 +4,9 @@ import { useI18n } from "../store/I18nContext";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/versions`;
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+const API = `${BACKEND}/api/admin/game-studio/versions`;
+const PREFLIGHT_API = `${BACKEND}/api/admin/game-studio/preflight`;
 const COPY = {
   de: {
     back: "Zurück", eyebrow: "BIDBLITZ GAMES · ADMIN-PRÜFUNG", title: "Spielversionen prüfen.",
@@ -15,6 +17,7 @@ const COPY = {
     notePlaceholder: "Begründung für Änderungen oder Ablehnung…", approve: "Archiv akzeptieren",
     requestChanges: "Änderungen verlangen", reject: "Ablehnen", saveError: "Prüfentscheidung konnte nicht gespeichert werden.",
     blocked: "Ausführung bleibt isoliert", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", approvePreview: "Preview freigeben", publish: "Im Katalog veröffentlichen", rollback: "Diese Version aktivieren", unpublish: "Veröffentlichung stoppen", publishError: "Veröffentlichungsstatus konnte nicht geändert werden.", published: "Veröffentlicht",
+    preflightTitle: "Games Launch-Preflight", preflightReady: "Sicher für nicht-monetäre Staging-Tests", preflightBlocked: "Konfiguration noch nicht bereit", preflightLoadError: "Preflight konnte nicht geladen werden.", publicOrigin: "Public-Origin", previewOrigin: "Preview-Origin", storageSafety: "Private Speicher", billingGuard: "Billing-Sperre", safe: "Sicher", unsafe: "Prüfen", billingOff: "Gesperrt", billingOn: "Aktiv",
   },
   en: {
     back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
@@ -25,6 +28,7 @@ const COPY = {
     notePlaceholder: "Reason for changes or rejection…", approve: "Approve archive",
     requestChanges: "Request changes", reject: "Reject", saveError: "Could not save review decision.",
     blocked: "Execution remains isolated", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.", openPreview: "Open private preview", previewError: "Could not create preview link.", approvePreview: "Approve preview", publish: "Publish to catalog", rollback: "Make this version active", unpublish: "Stop publication", publishError: "Could not change publication status.", published: "Published",
+    preflightTitle: "Games launch preflight", preflightReady: "Safe for non-monetary staging tests", preflightBlocked: "Configuration not ready yet", preflightLoadError: "Could not load preflight.", publicOrigin: "Public origin", previewOrigin: "Preview origin", storageSafety: "Private storage", billingGuard: "Billing guard", safe: "Safe", unsafe: "Check", billingOff: "Locked", billingOn: "Enabled",
   },
   sq: {
     back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
@@ -35,6 +39,7 @@ const COPY = {
     notePlaceholder: "Arsyeja për ndryshime ose refuzim…", approve: "Prano arkivin",
     requestChanges: "Kërko ndryshime", reject: "Refuzo", saveError: "Vendimi nuk u ruajt.",
     blocked: "Ekzekutimi mbetet i izoluar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", approvePreview: "Prano provën", publish: "Publiko në katalog", rollback: "Aktivizo këtë version", unpublish: "Ndalo publikimin", publishError: "Statusi i publikimit nuk u ndryshua.", published: "Publikuar",
+    preflightTitle: "Kontrolli para publikimit", preflightReady: "I sigurt për testim pa pagesa", preflightBlocked: "Konfigurimi ende nuk është gati", preflightLoadError: "Kontrolli nuk u ngarkua.", publicOrigin: "Origjina publike", previewOrigin: "Origjina e provës", storageSafety: "Ruajtja private", billingGuard: "Bllokimi i pagesave", safe: "Sigurt", unsafe: "Kontrollo", billingOff: "Bllokuar", billingOn: "Aktiv",
   },
 };
 
@@ -69,6 +74,24 @@ export default function AdminGamesReviewPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [preflight, setPreflight] = useState(null);
+  const [preflightLoading, setPreflightLoading] = useState(true);
+  const [preflightError, setPreflightError] = useState("");
+
+  const loadPreflight = useCallback(async () => {
+    setPreflightLoading(true);
+    setPreflightError("");
+    try {
+      const response = await fetch(PREFLIGHT_API, { credentials: "include" });
+      const body = await read(response);
+      setPreflight(body);
+    } catch (loadError) {
+      setPreflight(null);
+      setPreflightError(loadError?.message || c.preflightLoadError);
+    } finally {
+      setPreflightLoading(false);
+    }
+  }, [c.preflightLoadError]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -84,6 +107,7 @@ export default function AdminGamesReviewPage({ onBack }) {
   }, [status, c.loadError]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadPreflight(); }, [loadPreflight]);
 
   const prepare = async (versionId) => {
     setBusy(versionId); setError("");
@@ -170,6 +194,36 @@ export default function AdminGamesReviewPage({ onBack }) {
           <h1 className="mt-4 text-3xl font-black sm:text-5xl">{c.title}</h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-sky-100/70 sm:text-base">{c.subtitle}</p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-200/5 px-4 py-2 text-xs text-amber-100"><ShieldCheck size={15} />{c.blocked}</div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.preflightTitle}</h2>
+              <p className="mt-1 text-xs text-white/50">
+                {preflightLoading ? "…" : preflight?.ready ? c.preflightReady : c.preflightBlocked}
+              </p>
+            </div>
+            <button onClick={loadPreflight} disabled={preflightLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+              <RefreshCw size={14} className={preflightLoading ? "animate-spin" : ""} />{c.retry}
+            </button>
+          </div>
+          {preflightError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{preflightError}</p>}
+          {preflight && <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              [c.publicOrigin, preflight.checks?.public_origin_safe, preflight.public_origin?.host || "—"],
+              [c.previewOrigin, preflight.checks?.preview_origin_safe && preflight.checks?.origins_isolated, preflight.preview_origin?.host || "—"],
+              [c.storageSafety, preflight.checks?.upload_storage_safe && preflight.checks?.preview_storage_safe && preflight.checks?.release_storage_safe && preflight.checks?.storage_roots_distinct, c.safe],
+              [c.billingGuard, preflight.billing?.fail_closed, preflight.billing?.enabled ? c.billingOn : c.billingOff],
+            ].map(([label, ok, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-white/50">{label}</p>
+                {ok ? <CheckCircle2 size={16} className="text-emerald-300" /> : <XCircle size={16} className="text-amber-300" />}
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold text-white/85" title={String(value)}>{value}</p>
+              <p className={`mt-1 text-[11px] ${ok ? "text-emerald-200/70" : "text-amber-200/70"}`}>{ok ? c.safe : c.unsafe}</p>
+            </div>)}
+          </div>}
         </section>
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
