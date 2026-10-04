@@ -11,7 +11,27 @@ from routes import games_developer as developer
 
 
 def matches(doc, query):
-    return all(doc.get(key) == value for key, value in query.items())
+    for key, value in query.items():
+        current = doc.get(key)
+        if isinstance(value, dict) and "$in" in value:
+            if current not in value["$in"]:
+                return False
+            continue
+        if current != value:
+            return False
+    return True
+
+
+class Cursor:
+    def __init__(self, rows):
+        self.rows = [dict(row) for row in rows]
+
+    def limit(self, value):
+        self.rows = self.rows[:value]
+        return self
+
+    async def to_list(self, value):
+        return self.rows[:value]
 
 
 class Collection:
@@ -24,6 +44,9 @@ class Collection:
 
     async def count_documents(self, query):
         return sum(1 for doc in self.docs if matches(doc, query))
+
+    def find(self, query, projection=None):
+        return Cursor([doc for doc in self.docs if matches(doc, query)])
 
     async def update_one(self, query, update, upsert=False):
         row = next((doc for doc in self.docs if matches(doc, query)), None)
@@ -77,7 +100,12 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
             games_developer_entitlements=self.entitlements,
             games_developer_entitlement_events=Collection(),
             games_catalog=self.catalog,
-            game_studio_drafts=Collection([{"id": "draft-1", "owner_id": "alice", "status": "draft"}]),
+            game_studio_drafts=Collection([
+                {"id": "draft-1", "owner_id": "alice", "status": "draft"},
+                {"id": "draft-bob", "owner_id": "bob", "status": "draft"},
+            ]),
+            game_studio_versions=Collection(),
+            games_reviews=Collection(),
             games_publication_slots=SlotCollection(),
         )
 
@@ -88,6 +116,37 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         developer.get_current_user.return_value = {"_id": "root1", "role": "super_admin"}
         user = asyncio.run(developer._admin(None))
         self.assertEqual(user["role"], "super_admin")
+
+    def test_developer_analytics_are_owner_scoped_and_non_monetary(self):
+        developer.db.game_studio_versions.docs.extend([
+            {"id": "v1", "owner_id": "alice", "review_status": "submitted"},
+            {"id": "v2", "owner_id": "alice", "review_status": "preview_approved"},
+            {"id": "v3", "owner_id": "bob", "review_status": "preview_approved"},
+        ])
+        self.catalog.docs.extend([
+            {"id": "draft-1", "owner_id": "alice", "status": "published"},
+            {"id": "old-game", "owner_id": "alice", "status": "unpublished"},
+            {"id": "draft-bob", "owner_id": "bob", "status": "published"},
+        ])
+        developer.db.games_reviews.docs.extend([
+            {"game_id": "draft-1", "status": "visible"},
+            {"game_id": "draft-1", "status": "hidden"},
+            {"game_id": "draft-bob", "status": "visible"},
+        ])
+
+        result = asyncio.run(developer.developer_analytics(None))
+        self.assertEqual(result["drafts"], 1)
+        self.assertEqual(result["versions"], 2)
+        self.assertEqual(result["submitted"], 1)
+        self.assertEqual(result["preview_approved"], 1)
+        self.assertEqual(result["published"], 1)
+        self.assertEqual(result["unpublished"], 1)
+        self.assertEqual(result["reviews_visible"], 1)
+        self.assertEqual(result["reviews_hidden"], 1)
+        self.assertFalse(result["billing_ready"])
+        self.assertNotIn("owner_id", result)
+        self.assertNotIn("revenue", result)
+        self.assertNotIn("payout", result)
 
     def test_checkout_fails_closed_until_billing_is_explicitly_ready(self):
         with self.assertRaises(HTTPException) as context:
