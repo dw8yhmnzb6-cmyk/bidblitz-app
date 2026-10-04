@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from core.database import db
 from core.security import get_current_user
 from routes.game_preview import PREVIEW_ROOT, _safe_asset_path
+from routes.games_developer import assert_publication_entitlement
 
 
 api_router = APIRouter(tags=["games-catalog"])
@@ -172,6 +173,7 @@ async def _catalog_doc(draft: dict, version: dict, *, existing: dict | None = No
     now = datetime.now(timezone.utc).isoformat()
     return {
         "id": draft["id"],
+        "owner_id": draft["owner_id"],
         "slug": slug,
         "title": draft["title"],
         "description": draft["description"],
@@ -248,6 +250,7 @@ async def publish_version(version_id: str, request: Request):
     draft_id = str(version.get("draft_id") or "")
     draft = await _draft(draft_id)
     version = await _approved_version(version_id, draft_id)
+    await assert_publication_entitlement(str(draft.get("owner_id") or ""), draft_id)
 
     existing = await db.games_catalog.find_one({"id": draft_id}) or {}
     catalog = await _catalog_doc(draft, version, existing=existing)
@@ -294,6 +297,7 @@ async def rollback_game(draft_id: str, version_id: str, request: Request):
         raise HTTPException(404, "Veröffentlichtes Spiel nicht gefunden")
     draft = await _draft(draft_id)
     target = await _approved_version(version_id, draft_id)
+    await assert_publication_entitlement(str(draft.get("owner_id") or ""), draft_id)
     if existing.get("active_version_id") == version_id:
         return _public_catalog_item(existing)
 
