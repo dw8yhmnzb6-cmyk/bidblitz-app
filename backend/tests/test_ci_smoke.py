@@ -393,6 +393,10 @@ def test_admin_system_error_center_covers_core_modules_and_recovery():
     assert "API-Fehler der letzten Stunde" in dashboard
     assert "monitor-api-errors-list" in dashboard
     assert '"api_error_endpoints": api_error_endpoints' in monitoring
+    assert '"failed_routers": len(failed_routers)' in monitoring
+    assert '"failed_routers": failed_routers[:25]' in monitoring
+    assert "Nicht geladene Backend-Module" in dashboard
+    assert "monitor-router-errors-list" in dashboard
 
     error_boundary = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "ErrorBoundary.jsx").read_text(encoding="utf-8")
     assert "const sanitizeResourceUrl" in error_boundary
