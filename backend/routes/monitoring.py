@@ -616,7 +616,12 @@ async def error_center(request: Request):
     open_incidents = [item for item in incidents if item.get("resolved") is not True]
 
     api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
-    auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
+    auth_errors_1h = [
+        e for e in _metrics["requests"]
+        if e["ts"] >= since_1h_ts
+        and e.get("status", 0) >= 400
+        and ("/api/auth/login" in e.get("path", "") or "/api/auth/register" in e.get("path", ""))
+    ]
 
     api_error_counts = defaultdict(int)
     for item in api_errors_1h:
@@ -768,15 +773,27 @@ async def send_test_telegram(req: MonitoringTestTelegramRequest, request: Reques
 
 def record_request(path, method, status, duration_ms):
     now = time.time()
-    _metrics["requests"].append({
+    event = {
         "path": path, "method": method, "status": status,
         "duration_ms": duration_ms, "ts": now,
-    })
-    if status >= 400:
-        _metrics["errors"].append({
-            "path": path, "method": method, "status": status,
-            "duration_ms": duration_ms, "ts": now,
-        })
+    }
+    _metrics["requests"].append(event)
+
+    # Error Center is for actionable platform failures, not normal authorization
+    # denials or bad user input. Missing/wrong API routes and all 5xx remain visible.
+    ignored_scanner_paths = {
+        "/api/.env",
+        "/.env",
+        "/wp-admin",
+        "/wp-login.php",
+    }
+    actionable_http_error = (
+        status >= 500
+        or status in {404, 405}
+    ) and path not in ignored_scanner_paths
+    if actionable_http_error:
+        _metrics["errors"].append(event)
+
     if duration_ms > 500:
         _metrics["slow_endpoints"].append({
             "path": path, "method": method, "duration_ms": duration_ms, "ts": now,
