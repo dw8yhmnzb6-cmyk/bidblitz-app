@@ -9,6 +9,7 @@ import hashlib
 import mimetypes
 import os
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -29,6 +30,13 @@ public_router = APIRouter(tags=["games-public-play"])
 PUBLIC_HOST = os.environ.get("GAME_PUBLIC_HOST", "").strip().lower().split(":")[0]
 PUBLIC_BASE_URL = os.environ.get("GAME_PUBLIC_BASE_URL", "").strip().rstrip("/")
 PUBLIC_FRAME_ANCESTORS = os.environ.get("GAME_PUBLIC_FRAME_ANCESTORS", "'none'").strip() or "'none'"
+
+RELEASE_ROOT = Path(
+    os.environ.get(
+        "GAME_STUDIO_RELEASE_ROOT",
+        str(Path(__file__).resolve().parents[1] / "private" / "game-studio" / "releases"),
+    )
+)
 
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -125,6 +133,42 @@ def _require_public_host(request: Request) -> None:
         raise HTTPException(404, "Nicht gefunden")
     if request.cookies.get("access_token") or request.cookies.get("refresh_token"):
         raise HTTPException(400, "Öffentlicher Game-Host darf keine BidBlitz-Login-Cookies erhalten")
+
+
+def _release_dir(version_id: str) -> Path:
+    return RELEASE_ROOT / hashlib.sha256(str(version_id).encode("utf-8")).hexdigest()[:32]
+
+
+def _freeze_release(version: dict) -> Path:
+    preview_path = Path(version.get("preview_path") or "")
+    try:
+        preview_root = PREVIEW_ROOT.resolve()
+        source = preview_path.resolve()
+    except OSError:
+        raise HTTPException(409, "Vorbereitete Spielversion ist nicht verfügbar")
+    if not source.is_relative_to(preview_root) or not (source / "index.html").is_file():
+        raise HTTPException(409, "Vorbereitete Spielversion ist nicht verfügbar")
+
+    RELEASE_ROOT.mkdir(parents=True, mode=0o700, exist_ok=True)
+    target = _release_dir(str(version.get("id") or ""))
+    if target.exists():
+        resolved_target = target.resolve()
+        if not resolved_target.is_relative_to(RELEASE_ROOT.resolve()) or not (resolved_target / "index.html").is_file():
+            raise HTTPException(409, "Release-Snapshot ist inkonsistent")
+        return resolved_target
+
+    temporary = RELEASE_ROOT / f".{target.name}.tmp"
+    shutil.rmtree(temporary, ignore_errors=True)
+    try:
+        shutil.copytree(source, temporary, symlinks=False)
+        for path in sorted(temporary.rglob("*"), reverse=True):
+            path.chmod(0o555 if path.is_dir() else 0o444)
+        temporary.chmod(0o555)
+        os.replace(temporary, target)
+    except Exception:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
+    return target.resolve()
 
 
 def _public_catalog_item(doc: dict) -> dict:
@@ -252,6 +296,7 @@ async def publish_version(version_id: str, request: Request):
     version = await _approved_version(version_id, draft_id)
     await assert_publication_entitlement(str(draft.get("owner_id") or ""), draft_id)
 
+    release_path = _freeze_release(version)
     existing = await db.games_catalog.find_one({"id": draft_id}) or {}
     catalog = await _catalog_doc(draft, version, existing=existing)
 
@@ -273,6 +318,8 @@ async def publish_version(version_id: str, request: Request):
             "publication_status": "published",
             "published_at": catalog["updated_at"],
             "public_slug": catalog["slug"],
+            "release_path": str(release_path),
+            "release_status": "frozen",
             "updated_at": catalog["updated_at"],
         }},
     )
@@ -301,6 +348,7 @@ async def rollback_game(draft_id: str, version_id: str, request: Request):
     if existing.get("active_version_id") == version_id:
         return _public_catalog_item(existing)
 
+    release_path = _freeze_release(target)
     catalog = await _catalog_doc(draft, target, existing=existing)
     old_version_id = existing.get("active_version_id")
     await db.game_studio_versions.update_one(
@@ -313,6 +361,8 @@ async def rollback_game(draft_id: str, version_id: str, request: Request):
             "publication_status": "published",
             "published_at": catalog["updated_at"],
             "public_slug": catalog["slug"],
+            "release_path": str(release_path),
+            "release_status": "frozen",
             "updated_at": catalog["updated_at"],
         }},
     )
@@ -374,17 +424,18 @@ async def serve_published_game(slug: str, asset_path: str, request: Request):
         "review_status": "preview_approved",
         "preview_status": "prepared",
         "publication_status": "published",
+        "release_status": "frozen",
     })
     if not version:
         raise HTTPException(404, "Spielversion nicht verfügbar")
 
-    preview_path = Path(version.get("preview_path") or "")
+    release_path = Path(version.get("release_path") or "")
     try:
-        root = PREVIEW_ROOT.resolve()
-        resolved = preview_path.resolve()
+        root = RELEASE_ROOT.resolve()
+        resolved = release_path.resolve()
     except OSError:
         raise HTTPException(404, "Spielversion nicht verfügbar")
-    if not resolved.is_relative_to(root):
+    if not resolved.is_relative_to(root) or not (resolved / "index.html").is_file():
         raise HTTPException(404, "Spielversion nicht verfügbar")
 
     target = _safe_asset_path(resolved, asset_path or "index.html")
