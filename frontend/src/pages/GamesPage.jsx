@@ -21,7 +21,7 @@ const COPY = {
     runnerText: "Ein Laufabenteuer auf leuchtenden Wegen.", empty: "Keine Spiele gefunden.", clear: "Filter zurücksetzen",
     studio: "Dein Spiel auf BidBlitz", studioText: "Bereite dein eigenes Spiel im Entwicklerstudio vor.", openStudio: "Entwicklerstudio öffnen",
     local: "Match ist eine lokale Vorschau auf Deutsch. Fortschritt bleibt auf diesem Gerät. Testmünzen haben keinen Geldwert.",
-    plannedText: "Weitere Spiele sind in Vorbereitung. Ein Veröffentlichungstermin steht noch nicht fest.", strategy: "Strategie", sports: "Sport", community: "Von Entwicklern", openPublished: "Spiel öffnen", catalogError: "Veröffentlichte Community-Spiele konnten nicht geladen werden.", favorite: "Merken", unfavorite: "Nicht mehr merken", favoriteAccount: "Merkliste wird in deinem BidBlitz-Konto gespeichert.", favoriteDevice: "Merkliste wird nur auf diesem Gerät gespeichert.", favoriteError: "Merkliste konnte nicht synchronisiert werden.",
+    plannedText: "Weitere Spiele sind in Vorbereitung. Ein Veröffentlichungstermin steht noch nicht fest.", strategy: "Strategie", sports: "Sport", community: "Von Entwicklern", openPublished: "Spiel öffnen", details: "Details", catalogError: "Veröffentlichte Community-Spiele konnten nicht geladen werden.", favorite: "Merken", unfavorite: "Nicht mehr merken", favoriteAccount: "Merkliste wird in deinem BidBlitz-Konto gespeichert.", favoriteDevice: "Merkliste wird nur auf diesem Gerät gespeichert.", favoriteError: "Merkliste konnte nicht synchronisiert werden.",
   },
   en: {
     back: "Back", title: "Your next adventure.", subtitle: "Discover BidBlitz's first game worlds.",
@@ -31,7 +31,7 @@ const COPY = {
     runnerText: "A running adventure on glowing paths.", empty: "No games found.", clear: "Reset filters",
     studio: "Your game on BidBlitz", studioText: "Prepare your own game in the developer studio.", openStudio: "Open developer studio",
     local: "Match is a local preview in German. Progress stays on this device. Test coins have no monetary value.",
-    plannedText: "More games are being prepared. A release date has not been set.", strategy: "Strategy", sports: "Sports", community: "From developers", openPublished: "Open game", catalogError: "Published community games could not be loaded.", favorite: "Save", unfavorite: "Remove saved game", favoriteAccount: "Saved games are stored in your BidBlitz account.", favoriteDevice: "Saved games are stored only on this device.", favoriteError: "Could not sync saved games.",
+    plannedText: "More games are being prepared. A release date has not been set.", strategy: "Strategy", sports: "Sports", community: "From developers", openPublished: "Open game", details: "Details", catalogError: "Published community games could not be loaded.", favorite: "Save", unfavorite: "Remove saved game", favoriteAccount: "Saved games are stored in your BidBlitz account.", favoriteDevice: "Saved games are stored only on this device.", favoriteError: "Could not sync saved games.",
   },
   sq: {
     back: "Kthehu", title: "Aventura jote e radhës.", subtitle: "Zbulo botët e para të lojërave BidBlitz.",
@@ -41,7 +41,7 @@ const COPY = {
     runnerText: "Një aventurë vrapimi në rrugë të ndriçuara.", empty: "Nuk u gjetën lojëra.", clear: "Hiq filtrat",
     studio: "Loja jote në BidBlitz", studioText: "Përgatit lojën tënde në studion e zhvilluesit.", openStudio: "Hap studion e zhvilluesit",
     local: "Match është një provë lokale në gjermanisht. Progresi ruhet në këtë pajisje. Monedhat e provës nuk kanë vlerë monetare.",
-    plannedText: "Lojëra të tjera po përgatiten. Data e publikimit ende nuk është caktuar.", strategy: "Strategji", sports: "Sport", community: "Nga zhvilluesit", openPublished: "Hap lojën", catalogError: "Lojërat e publikuara të komunitetit nuk u ngarkuan.", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat", favoriteAccount: "Lojërat e ruajtura ruhen në llogarinë tënde BidBlitz.", favoriteDevice: "Lojërat e ruajtura ruhen vetëm në këtë pajisje.", favoriteError: "Lista e lojërave nuk u sinkronizua.",
+    plannedText: "Lojëra të tjera po përgatiten. Data e publikimit ende nuk është caktuar.", strategy: "Strategji", sports: "Sport", community: "Nga zhvilluesit", openPublished: "Hap lojën", details: "Detaje", catalogError: "Lojërat e publikuara të komunitetit nuk u ngarkuan.", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat", favoriteAccount: "Lojërat e ruajtura ruhen në llogarinë tënde BidBlitz.", favoriteDevice: "Lojërat e ruajtura ruhen vetëm në këtë pajisje.", favoriteError: "Lista e lojërave nuk u sinkronizua.",
   },
 };
 
@@ -237,6 +237,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
                 </div>}
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   {game.external && game.publicUrl ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.openPublished}</a> : game.available ? <button onClick={() => onNavigate("/games/match")} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
+                  {game.available && <button onClick={() => onNavigate(`/games/title/${encodeURIComponent(game.id)}`)} className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">{c.details}</button>}
                   <button onClick={() => changeFavorite(game.id)} disabled={favoriteBusy === game.id} aria-pressed={favorites.includes(game.id)} aria-label={favorites.includes(game.id) ? c.unfavorite : c.favorite} className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition disabled:opacity-50 ${favorites.includes(game.id) ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"}`}><Heart size={18} fill={favorites.includes(game.id) ? "currentColor" : "none"} /></button>
                 </div>
                 {game.available && <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />}
