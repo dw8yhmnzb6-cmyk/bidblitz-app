@@ -280,6 +280,7 @@ const MonitoringDashboard = ({ onBack }) => {
                 ["Offen", errorCenter.summary?.open_incidents || 0, "#EF4444"],
                 ["Frontend", errorCenter.summary?.frontend_errors_24h || 0, "#F59E0B"],
                 ["API", errorCenter.summary?.api_errors_1h || 0, "#8B5CF6"],
+                ["Router", errorCenter.summary?.failed_routers || 0, "#EF4444"],
                 ["Login/Reg", errorCenter.summary?.auth_errors_1h || 0, "#00C2FF"],
                 ["24h", errorCenter.summary?.incidents_24h || 0, "#10B981"],
               ].map(([label, value, color]) => (
@@ -359,6 +360,64 @@ const MonitoringDashboard = ({ onBack }) => {
                     <div key={`${row.page}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-center justify-between" data-testid={`monitor-top-page-${idx}`}>
                       <span className="text-[11px] text-white/70 truncate">{row.page}</span>
                       <span className="text-[11px] font-bold text-amber-400">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(errorCenter.failed_routers || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }} data-testid="monitor-router-errors-list">
+                <p className="text-[12px] font-bold text-white mb-2">Nicht geladene Backend-Module</p>
+                <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                  {errorCenter.failed_routers.slice(0, 12).map((item, idx) => (
+                    <div key={`${item.module || 'router'}-${item.attr || 'router'}-${idx}`} className="rounded-xl px-3 py-2 border border-red-500/10 bg-black/20" data-testid={`monitor-router-error-${idx}`}>
+                      <p className="text-[11px] font-bold text-red-300">{item.module || "Unbekanntes Modul"}</p>
+                      <p className="text-[10px] text-white/35 mt-1">{item.attr || "router"} · {item.error_type || "Fehler"}</p>
+                      {item.error ? <p className="text-[10px] text-white/45 mt-1 break-words">{item.error}</p> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(errorCenter.api_error_endpoints || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-api-errors-list">
+                <p className="text-[12px] font-bold text-white mb-2">API-Fehler der letzten Stunde</p>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {errorCenter.api_error_endpoints.slice(0, 15).map((item, idx) => (
+                    <div key={`${item.method}-${item.path}-${item.status_code}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-start justify-between gap-3" data-testid={`monitor-api-error-${idx}`}>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-white truncate">{item.method} {item.path}</p>
+                        <p className="text-[10px] text-white/35 mt-1">HTTP {item.status_code} · {item.count}× in 1h</p>
+                      </div>
+                      <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: item.severity === "critical" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)", color: item.severity === "critical" ? "#EF4444" : "#F59E0B" }}>
+                        {item.severity === "critical" ? "kritisch" : "warnung"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(errorCenter.frontend_errors || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-frontend-errors-list">
+                <p className="text-[12px] font-bold text-white mb-2">Letzte Seiten- & Asset-Fehler</p>
+                <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                  {errorCenter.frontend_errors.slice(0, 15).map((item, idx) => (
+                    <div key={`${item.created_at || 'frontend'}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6" data-testid={`monitor-frontend-error-${idx}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-white truncate">{item.page || "Unbekannte Seite"}</p>
+                          <p className="text-[10px] text-red-300 mt-1 break-words">{item.message || "Frontend-Fehler"}</p>
+                          {item.meta?.resource_url ? (
+                            <p className="text-[9px] text-white/30 mt-1 break-all">{item.meta.resource_url}</p>
+                          ) : null}
+                        </div>
+                        <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: item.level === "warning" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)", color: item.level === "warning" ? "#F59E0B" : "#EF4444" }}>
+                          {item.level || "error"}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

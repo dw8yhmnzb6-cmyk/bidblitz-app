@@ -362,8 +362,7 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     assert "if not EMERGENT_LLM_KEY:\n        return _recommendation_fallback()" in ai
     assert 'logger.exception("Recommendations failed; serving deterministic fallback")' in ai
     recommendations_start = ai.index('@router.get("/recommendations", response_model=RecommendResponse)')
-    recommendations_end = ai.index("class ContentGenRequest", recommendations_start)
-    recommendations_source = ai[recommendations_start:recommendations_end]
+    recommendations_source = ai[recommendations_start:]
     assert 'raise HTTPException(502, "KI-Service nicht erreichbar")' not in recommendations_source
 
 
@@ -389,6 +388,23 @@ def test_admin_system_error_center_covers_core_modules_and_recovery():
     assert 'probe.status_code ?? "—"' in dashboard
     assert '"behoben"' in dashboard
     assert '"offen"' in dashboard
+    assert "Letzte Seiten- & Asset-Fehler" in dashboard
+    assert "monitor-frontend-errors-list" in dashboard
+    assert "API-Fehler der letzten Stunde" in dashboard
+    assert "monitor-api-errors-list" in dashboard
+    assert '"api_error_endpoints": api_error_endpoints' in monitoring
+    assert '"failed_routers": len(failed_routers)' in monitoring
+    assert '"failed_routers": failed_routers[:25]' in monitoring
+    assert "Nicht geladene Backend-Module" in dashboard
+    assert "monitor-router-errors-list" in dashboard
+
+    error_boundary = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "ErrorBoundary.jsx").read_text(encoding="utf-8")
+    assert "const sanitizeResourceUrl" in error_boundary
+    assert 'boundary: "resource-error"' in error_boundary
+    assert 'source: "window.resource-error"' in error_boundary
+    assert 'resource_url: resourceUrl' in error_boundary
+    assert "const reportedResourceErrors = new Set();" in error_boundary
+    assert "reportedResourceErrors.has(resourceKey)" in error_boundary
 
 
 def test_biopay_missing_facepay_flag_fails_closed():

@@ -171,7 +171,7 @@ async def generate_content(req: ContentGenRequest, request: Request):
     await get_current_user(request)
 
     if not EMERGENT_LLM_KEY:
-        raise HTTPException(503, "AI service nicht konfiguriert")
+        return _recommendation_fallback()
 
     description = CONTENT_PROMPTS.get(req.content_type, "einen Marketing-Text")
     lang = LANGUAGE_NAMES.get(req.language or "de", "Deutsch")

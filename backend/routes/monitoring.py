@@ -35,7 +35,7 @@ _metrics = {
 MONITORED_FLOWS = [
     # Read-only probes only: monitoring must never create accounts, sessions or money movement.
     {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/", "expect_statuses": [200]},
-    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/version.json", "expect_statuses": [200]},
+    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/api/system/version", "expect_statuses": [200]},
     {"key": "auth_session", "label": "Login / Session", "method": "GET", "path": "/api/auth/me", "expect_statuses": [401]},
     {"key": "wallet", "label": "Wallet", "method": "GET", "path": "/api/wallet/balance/total", "expect_statuses": [401]},
     {"key": "payments", "label": "Payments / QR", "method": "GET", "path": "/api/payments/fee-info", "expect_statuses": [200]},
@@ -252,8 +252,7 @@ async def _ensure_critical_alert_notifications(alerts: list[dict]):
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
-        from fastapi import HTTPException
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
@@ -612,12 +611,47 @@ async def error_center(request: Request):
     api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
     auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
 
+    api_error_counts = defaultdict(int)
+    for item in api_errors_1h:
+        key = (
+            str(item.get("method") or ""),
+            str(item.get("path") or ""),
+            int(item.get("status") or 0),
+        )
+        api_error_counts[key] += 1
+    api_error_endpoints = [
+        {
+            "method": method,
+            "path": path,
+            "status_code": status,
+            "count": count,
+            "severity": "critical" if status >= 500 else "warning",
+        }
+        for (method, path, status), count in sorted(
+            api_error_counts.items(),
+            key=lambda pair: (-pair[1], -pair[0][2], pair[0][1]),
+        )[:20]
+    ]
+
     page_counts = defaultdict(int)
     for item in frontend_errors:
         page_counts[item.get("page") or "unknown"] += 1
     top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:8]
 
+    from core.router_registry import get_registration_state
+    router_state = get_registration_state()
+    failed_routers = list(router_state.get("failed") or [])
+
     alerts = []
+    for failed in failed_routers[:10]:
+        alerts.append({
+            "type": "router",
+            "label": f"Router nicht geladen: {failed.get('module') or 'unknown'}",
+            "key": f"router:{failed.get('module') or 'unknown'}:{failed.get('attr') or 'router'}",
+            "severity": "critical",
+            "message": failed.get("error") or failed.get("error_type") or "Router-Registrierung fehlgeschlagen",
+            "updated_at": now.isoformat(),
+        })
     for probe in probes:
       if probe.get("status") != "ok":
         alerts.append({
@@ -651,10 +685,13 @@ async def error_center(request: Request):
             "auth_errors_1h": len(auth_errors_1h),
             "incidents_24h": len(incidents),
             "open_incidents": len(open_incidents),
+            "failed_routers": len(failed_routers),
         },
         "alerts": alerts[:20],
         "probes": sorted(probes, key=lambda p: p.get("label", "")),
         "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
+        "api_error_endpoints": api_error_endpoints,
+        "failed_routers": failed_routers[:25],
         "frontend_errors": frontend_errors,
         "incidents": incidents,
         "daily_report": daily_report,
