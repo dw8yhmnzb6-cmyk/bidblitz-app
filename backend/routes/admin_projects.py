@@ -92,29 +92,37 @@ async def list_admin_projects(request: Request):
     if not _is_platform_owner(user):
         raise HTTPException(status_code=403, detail="Platform owner access required")
 
+    rendered_projects = [
+        {
+            **project,
+            **(
+                {
+                    "url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
+                    "admin_url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
+                    "status": "online" if os.getenv("BIDBLITZ_AION_BASE_URL", "").strip() else "pending",
+                }
+                if project["id"] == "aion"
+                else {}
+            ),
+            "permissions": ["*"],
+            "sso_ready": _project_sso_ready(project["id"]),
+        }
+        for project in PROJECTS
+    ]
+
     return {
         "owner": {
             "email": user.get("canonical_email") or user.get("email"),
             "role": "owner",
             "permissions": ["*"],
         },
-        "projects": [
-            {
-                **project,
-                **(
-                    {
-                        "url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
-                        "admin_url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
-                        "status": "online" if os.getenv("BIDBLITZ_AION_BASE_URL", "").strip() else "pending",
-                    }
-                    if project["id"] == "aion"
-                    else {}
-                ),
-                "permissions": ["*"],
-                "sso_ready": _project_sso_ready(project["id"]),
-            }
-            for project in PROJECTS
-        ],
+        "projects": rendered_projects,
+        "summary": {
+            "total": len(rendered_projects),
+            "connected": sum(1 for project in rendered_projects if project["sso_ready"]),
+            "prepared": sum(1 for project in rendered_projects if project.get("adapter") and not project["sso_ready"]),
+            "pending": sum(1 for project in rendered_projects if not project["sso_ready"] and not project.get("adapter")),
+        },
         "sso_rollout": {
             "enabled": any(_project_sso_ready(project_id) for project_id in ("eyes", "trade", "aion")),
             "message": "BidBlitz ID SSO wird projektweise aktiviert.",
