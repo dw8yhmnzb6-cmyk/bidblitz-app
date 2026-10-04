@@ -45,6 +45,11 @@ const cookieFile='/tmp/bidblitz-admin-browser-cookie.txt';
    console.log('ADMIN_CUSTOMER_UI_VERIFIED',JSON.stringify(results.at(-1)));
   } finally {await browser.close()}
  }
+ fs.writeFileSync('/tmp/admin-customer-ui-evidence.json',JSON.stringify(results,null,2));
+ if(process.env.ADMIN_VERIFY_EXTERNAL_SSO==='false') {
+  fs.writeFileSync('/tmp/admin-customer-sso-evidence.json',JSON.stringify({status:'not_run_in_this_frontend_release',reason:'External project receivers and flags are unchanged. A concurrent Trade frontend deployment replaced the separately verified customer-entry additions; external UI publication requires coordination.'},null,2));
+  return;
+ }
  const targetResults=[];
  for(const engine of ['chromium','webkit']) {
   fs.writeFileSync(cookieFile,token,{mode:0o600});
