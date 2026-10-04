@@ -131,7 +131,8 @@ export default function AdminProjectsPage({ onNavigate }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {visible.map((project) => {
               const status = STATUS[project.status] || STATUS.pending;
-              const enabled = Boolean(project.admin_url);
+              const enabled = project.id === "bidblitz" || Boolean(project.sso_ready);
+              const prepared = Boolean(project.adapter);
               return (
                 <article key={project.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col min-h-[180px]">
                   <div className="flex items-start justify-between gap-3">
@@ -143,7 +144,7 @@ export default function AdminProjectsPage({ onNavigate }) {
                   </div>
                   <div className="mt-auto pt-5">
                     <div className="text-[11px] text-gray-500 mb-2">
-                      {project.sso_ready ? "BidBlitz ID verbunden" : enabled ? "SSO wird eingerichtet" : "Admin-Anbindung folgt"}
+                      {project.sso_ready ? "BidBlitz ID verbunden" : prepared ? "SSO-Adapter vorbereitet" : project.admin_url ? "SSO-Anbindung folgt" : "Admin-Anbindung folgt"}
                     </div>
                     <button
                       disabled={!enabled || opening === project.id}
@@ -152,7 +153,7 @@ export default function AdminProjectsPage({ onNavigate }) {
                         enabled ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-100 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      {opening === project.id ? "Wird angemeldet…" : enabled ? "Admin öffnen" : "Noch nicht verbunden"}
+                      {opening === project.id ? "Wird angemeldet…" : enabled ? "Admin öffnen" : prepared ? "Vorbereitet" : "Noch nicht verbunden"}
                       {opening === project.id ? <Loader2 size={14} className="animate-spin" /> : enabled && <ExternalLink size={14} />}
                     </button>
                   </div>
