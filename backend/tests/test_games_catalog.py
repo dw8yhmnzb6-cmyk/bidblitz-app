@@ -118,6 +118,8 @@ class GamesCatalogTest(unittest.TestCase):
         catalog.db = self.db
         catalog.get_current_user = AsyncMock(return_value={"_id": "admin-1", "role": "admin"})
         catalog.assert_publication_entitlement = AsyncMock(return_value={"plan": "starter", "status": "active"})
+        catalog.reserve_publication_slot = AsyncMock(return_value=True)
+        catalog.release_publication_slot = AsyncMock(return_value=None)
 
     def tearDown(self):
         catalog.PREVIEW_ROOT = self.old_root
