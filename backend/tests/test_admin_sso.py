@@ -43,3 +43,14 @@ def test_conformexa_target_allows_only_explicit_trusted_https_origins(monkeypatc
     for base in ("http://conformexa.com", "https://evil.example", "https://conformexa.com/path", "https://user:secret@conformexa.com", "https://conformexa.com:444"):
         monkeypatch.setenv("BIDBLITZ_CONFORMEXA_BASE_URL", base)
         assert "conformexa" not in admin_sso.sso_targets()
+
+
+def test_spy_target_uses_only_validated_bidblitz_https_origin(monkeypatch):
+    from routes import admin_sso
+    monkeypatch.setenv("BIDBLITZ_SPY_BASE_URL", "https://spy.bidblitz.ae")
+    target = admin_sso.sso_targets()["spy"]
+    assert target["handoff_url"] == "https://spy.bidblitz.ae/api/v1/dev/admin/bidblitz-sso"
+    assert target["browser_url"] == "https://spy.bidblitz.ae/auth/bidblitz-sso"
+    for base in ("http://spy.bidblitz.ae", "https://evil.example", "https://spy.bidblitz.ae/path", "https://u:p@spy.bidblitz.ae", "https://spy.bidblitz.ae:444"):
+        monkeypatch.setenv("BIDBLITZ_SPY_BASE_URL", base)
+        assert "spy" not in admin_sso.sso_targets()

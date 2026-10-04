@@ -10,7 +10,7 @@ from core.config import TEST_MODE
 NATIVE_PROJECT_PATHS = {p["id"]: p["admin_url"] for p in PROJECTS if p["status"] == "connected"}
 REMOTE_REQUIRED_ROLES = {
     "eyes": "admin", "trade": "SUPER_ADMIN", "nex": "OWNER",
-    "stack": "OWNER", "aion": "PLATFORM_ADMIN", "verify": "ADMIN", "bidtax": "super_admin", "conformexa": "platform_operator",
+    "stack": "OWNER", "aion": "PLATFORM_ADMIN", "verify": "ADMIN", "bidtax": "super_admin", "conformexa": "platform_operator", "spy": "DEV_ADMIN",
 }
 PROJECT_ALIASES = {
     "os": ["BidBlitz Builder"], "spy": ["BidBlitz Device", "Kids Control", "Kids Basic", "Kids Plus"],
