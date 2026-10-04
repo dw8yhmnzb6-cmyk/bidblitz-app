@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, BarChart3, ArrowLeft, X, Menu,
-  Search, Settings, LayoutGrid, MapPin,
+  Search, Settings, LayoutGrid, MapPin, Boxes,
 } from "lucide-react";
 
 import { ADMIN_SECTIONS } from "../components/admin/sections";
@@ -160,6 +160,18 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
       {/* Grid Menu */}
       {menuOpen && !activeItem && (
         <div className="px-4 pb-24 space-y-4">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate("/admin/projects")}
+            data-testid="admin-all-projects"
+            className="w-full rounded-2xl bg-violet-600 text-white p-4 flex items-center justify-between text-left shadow-sm"
+          >
+            <span>
+              <span className="block text-sm font-bold">Alle Projekte</span>
+              <span className="block text-[10px] text-violet-100 mt-0.5">Zentrale Admin-Zentrale · alle BidBlitz-Projekte</span>
+            </span>
+            <Boxes size={22} />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => onNavigate("/admin/customer-intelligence")}

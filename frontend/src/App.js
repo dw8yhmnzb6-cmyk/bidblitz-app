@@ -162,6 +162,7 @@ const CryptoWalletPage = lazy(() => import("./pages/CryptoWalletPage"));
 const BudgetPlannerPage = lazy(() => import("./pages/BudgetPlannerPage"));
 const AdminCreditPage = lazy(() => import("./pages/AdminCreditPage"));
 const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
+const AdminProjectsPage = lazy(() => import("./pages/AdminProjectsPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const AdminQrManagementPage = lazy(() => import("./pages/AdminQrManagementPage"));
@@ -581,6 +582,27 @@ function AppContent() {
     );
   }
 
+  // Direct admin URLs must never fail silently to Home. On a new Mac/browser
+  // session show the login screen, then return to the requested admin URL.
+  if (routeBase.startsWith("/admin") && !user.isAuthenticated) {
+    const requestedAdminPath = currentPath;
+    return (
+      <div className="relative">
+        <AuthPage
+          onBack={() => handleNavigate("/")}
+          initialMode="login"
+          onAuthSuccess={() => {
+            setShowFullAuth("");
+            setShowAuthGate(false);
+            setIsDemoMode(false);
+            syncBrowserPath(requestedAdminPath, "replace");
+            setCurrentPath(requestedAdminPath);
+          }}
+        />
+      </div>
+    );
+  }
+
   if ((currentPath === "/login" || currentPath === "/register") && !user.isAuthenticated) {
     return (
       <div className="relative">
@@ -757,6 +779,10 @@ function AppContent() {
       case "/admin":
         return isAdminRole
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/projects":
+        return isAdminRole
+          ? <AdminProjectsPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/admin/monitoring":
         return isAdminRole
@@ -1055,7 +1081,7 @@ function AppContent() {
       case "/admin/payments":
         return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
       case "/admin/modules":
-        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin/projects")} initialTab="modules" initialModule={navState.module || null} /> : <HomePage {...homeProps} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
@@ -1505,7 +1531,7 @@ function AppContent() {
             {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
             {showTestBuildDebugLine && <TestBuildDebugLine />}
             {showActiveAccountBanner && (
-              <ActiveAccountBanner />
+              <ActiveAccountBanner inline={routeBase === "/admin/projects"} />
             )}
             {renderPage()}
           </Suspense>

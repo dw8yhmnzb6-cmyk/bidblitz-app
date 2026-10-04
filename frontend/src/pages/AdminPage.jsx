@@ -6,7 +6,7 @@ import {
   Clock, AlertCircle, CircleDollarSign, Activity, Settings,
   Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
   ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap, Cpu,
-  LayoutGrid, Menu,
+  LayoutGrid, Menu, Boxes,
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
   UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode, Sparkles,
@@ -79,6 +79,7 @@ const ADMIN_SECTIONS = [
     items: [
       { id: "dashboard", icon: LayoutGrid, label: "Übersicht", tab: "overview" },
       { id: "analytics", icon: BarChart3, label: "Analytics", tab: "analytics" },
+      { id: "all-projects", icon: Boxes, label: "Alle Projekte", nav: "/admin/projects", highlight: true },
     ]
   },
   {

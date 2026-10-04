@@ -1,0 +1,136 @@
+name: Approved central admin live release
+on:
+  push:
+    branches: [work/central-admin-live-20261004]
+    paths: [.github/workflows/central-admin-live-release.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SSHPASS: ${{ secrets.VPS_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Load verified live auth baseline for tests only
+        uses: actions/download-artifact@v4
+        with:
+          name: central-admin-live-source-baseline
+          run-id: 37215072318
+          github-token: ${{ github.token }}
+          path: /tmp/admin-baseline
+      - name: Test the additional owner API on live authentication
+        env:
+          MONGO_URL: mongodb://127.0.0.1:27017
+          DB_NAME: admin_hub_test
+          JWT_SECRET: local-admin-test-only-000000000000000000000000
+          ADMIN_EMAIL: admin@example.test
+          ADMIN_PASSWORD: local-test-only
+          PYTHONPATH: backend
+        run: |
+          set -euo pipefail
+          tar -xzf /tmp/admin-baseline/bidblitz-admin-baseline-20261004.tgz backend/core/security.py backend/core/config.py backend/core/database.py backend/server.py
+          python -m pip install -q fastapi==0.110.1 motor==3.3.1 pymongo==4.5.0 PyJWT bcrypt python-dotenv pytest httpx mongomock-motor==0.0.36 python-multipart email-validator
+          python -m pytest -q backend/tests/test_admin_projects_hub.py backend/tests/test_admin_project_rights.py backend/tests/test_admin_projects_api.py backend/tests/test_admin_sso.py backend/tests/test_admin_navigation_contract.py backend/tests/test_admin_project_readiness.py
+          python -m py_compile scripts/deploy_central_admin_live.py scripts/rollback_central_admin_live.py
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test the project overview and rights navigation
+        working-directory: frontend
+        env:
+          CI: 'true'
+        run: npm test -- --watchAll=false --runInBand --runTestsByPath src/pages/AdminProjectsPage.test.jsx src/components/admin/projectAccessAreas.test.js
+      - name: Build approved frontend based on deployed beec9e81
+        working-directory: frontend
+        env:
+          CI: 'false'
+          GENERATE_SOURCEMAP: 'false'
+          NODE_OPTIONS: --max-old-space-size=4096
+          REACT_APP_BACKEND_URL: https://bidblitz.ae
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_STRIPE_PUBLISHABLE_KEY || secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: 'false'
+        run: |
+          set -euo pipefail
+          export BUILD_ID="admin-${GITHUB_SHA:0:8}-$(date -u +%Y%m%d%H%M%S)"
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=false
+          REACT_APP_BUILD_ID=${BUILD_ID}
+          EOF
+          npm run build
+          test -s build/index.html
+          test -s build/service-worker.js
+          test -s build/version.json
+      - name: Install verification browser and pinned SSH host
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [ -n "$DEPLOY_KEY" ]; then
+            printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/bidblitz_deploy_key
+            chmod 600 ~/.ssh/bidblitz_deploy_key
+          fi
+          sudo apt-get install -y -qq sshpass
+      - name: Package only the seven approved backend files and built frontend
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/admin-release/backend/core /tmp/admin-release/backend/routes
+          cp backend/core/admin_access.py backend/core/admin_project_access.py backend/core/admin_project_defaults.py backend/core/admin_project_readiness.py backend/core/router_registry.py /tmp/admin-release/backend/core/
+          cp backend/routes/admin_projects.py backend/routes/admin_sso.py /tmp/admin-release/backend/routes/
+          cp scripts/deploy_central_admin_live.py scripts/rollback_central_admin_live.py /tmp/admin-release/
+          cp scripts/admin-live-baseline.json /tmp/admin-release/baseline.json
+          tar -C frontend/build -czf /tmp/admin-release/frontend.tgz .
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          paths=sorted(str(p.relative_to('/tmp/admin-release')) for p in Path('/tmp/admin-release/backend').rglob('*.py'))
+          Path('/tmp/admin-release/admin-release-manifest.json').write_text(json.dumps({'backend_paths':paths,'git_commit':os.environ['GITHUB_SHA']}))
+          PY
+          tar -C /tmp/admin-release -czf /tmp/admin-release-payload.tgz .
+      - name: Deploy with source checks, backups, ordinary owner verification and rollback
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/bidblitz_deploy_key ]; then
+            SSH+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          STAGE="/tmp/bidblitz-admin-release-${GITHUB_SHA}"
+          "${SCP[@]}" /tmp/admin-release-payload.tgz root@212.227.20.190:"${STAGE}.tgz"
+          "${SSH[@]}" root@212.227.20.190 "mkdir -p '$STAGE'; tar -xzf '${STAGE}.tgz' -C '$STAGE'; /var/www/bidblitz/backend/venv/bin/python '$STAGE/deploy_central_admin_live.py' '$STAGE'"
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-browser-cookie.txt /tmp/bidblitz-admin-browser-cookie.txt
+          "${SSH[@]}" root@212.227.20.190 'rm -f /tmp/bidblitz-admin-browser-cookie.txt'
+          chmod 600 /tmp/bidblitz-admin-browser-cookie.txt
+          if ! node scripts/verify_central_admin_live.cjs; then
+            "${SSH[@]}" root@212.227.20.190 "/var/www/bidblitz/backend/venv/bin/python '$STAGE/rollback_central_admin_live.py' '$STAGE'"
+            exit 1
+          fi
+      - name: Remove temporary verification cookie
+        if: always()
+        run: rm -f /tmp/bidblitz-admin-browser-cookie.txt
