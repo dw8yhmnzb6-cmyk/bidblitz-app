@@ -134,7 +134,6 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
-}
   await page.route('**/api/admin/games/reviews**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -152,6 +151,7 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
+}
 
 async function openGames(page: Page, width: number, height: number, language = 'de') {
   await page.setViewportSize({ width, height });
