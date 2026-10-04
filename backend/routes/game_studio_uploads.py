@@ -196,7 +196,7 @@ async def _reserve_version_slot(owner_id: str, draft_id: str, version_id: str) -
 def _public_version(doc: dict) -> dict:
     return {
         key: value for key, value in doc.items()
-        if key not in {"_id", "owner_id", "storage_path", "preview_path"}
+        if key not in {"_id", "owner_id", "storage_path", "preview_path", "release_path"}
     }
 
 
