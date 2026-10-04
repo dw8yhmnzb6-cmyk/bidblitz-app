@@ -224,6 +224,8 @@ def register_all_routers(app):
         ("routes.games_publication_history", "admin_router"),
         ("routes.games_profile", "router"),
         ("routes.games_progress", "router"),
+        ("routes.games_reviews", "router"),
+        ("routes.games_reviews", "admin_router"),
         ("routes.casino", "router"),
         ("routes.arcade", "router"),
         ("routes.nft_generator", "router"),
