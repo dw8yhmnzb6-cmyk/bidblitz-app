@@ -390,6 +390,23 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     assert 'raise HTTPException(502, "KI-Service nicht erreichbar")' not in recommendations_source
 
 
+def test_monitoring_filters_expected_auth_noise_and_cors_preflight_is_safe():
+    monitoring = (BACKEND_DIR / "routes" / "monitoring.py").read_text(encoding="utf-8")
+    middleware = (BACKEND_DIR / "core" / "middleware.py").read_text(encoding="utf-8")
+
+    assert "actionable_http_error = (" in monitoring
+    assert "status >= 500" in monitoring
+    assert "status in {404, 405}" in monitoring
+    assert '"/api/.env"' in monitoring
+    assert 'e for e in _metrics["requests"]' in monitoring
+    assert '"/api/auth/login" in e.get("path", "")' in monitoring
+
+    assert "async def credentialed_options_guard" in middleware
+    assert 'request.method == "OPTIONS"' in middleware
+    assert "return Response(status_code=204, headers=headers)" in middleware
+    assert '"Access-Control-Allow-Credentials": "true"' in middleware
+
+
 def test_admin_system_error_center_covers_core_modules_and_recovery():
     monitoring = (BACKEND_DIR / "routes" / "monitoring.py").read_text(encoding="utf-8")
     admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPage.jsx").read_text(encoding="utf-8")
