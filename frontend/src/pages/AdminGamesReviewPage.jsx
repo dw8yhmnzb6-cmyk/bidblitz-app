@@ -68,7 +68,6 @@ export default function AdminGamesReviewPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [previewLinks, setPreviewLinks] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -108,7 +107,6 @@ export default function AdminGamesReviewPage({ onBack }) {
       });
       const body = await read(response);
       if (!body.url) throw new Error(c.previewError);
-      setPreviewLinks((current) => ({ ...current, [versionId]: body.url }));
       const opened = window.open(body.url, "_blank", "noopener,noreferrer");
       if (opened) opened.opener = null;
     } catch (previewError) {
