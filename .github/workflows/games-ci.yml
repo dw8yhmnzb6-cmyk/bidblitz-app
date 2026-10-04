@@ -29,6 +29,9 @@ on:
       - "frontend/scripts/test-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
+      - "frontend/tests/visual/games.spec.ts"
+      - "frontend/playwright.config.cjs"
+      - "frontend/scripts/visual-qa/serve-build.py"
       - ".github/workflows/games-ci.yml"
   pull_request:
     paths:
@@ -56,6 +59,9 @@ on:
       - "frontend/scripts/test-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
+      - "frontend/tests/visual/games.spec.ts"
+      - "frontend/playwright.config.cjs"
+      - "frontend/scripts/visual-qa/serve-build.py"
       - ".github/workflows/games-ci.yml"
 
 concurrency:
@@ -155,3 +161,27 @@ jobs:
         env:
           CI: "false"
         run: npm run build
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Games browser acceptance
+        working-directory: frontend
+        env:
+          QA_BASE_URL: http://127.0.0.1:3000
+        run: |
+          python3 scripts/visual-qa/serve-build.py --directory build --port 3000 > /tmp/bidblitz-games-browser.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/games >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/bidblitz-games-browser.log
+              exit 1
+            fi
+            sleep 1
+          done
+          npx playwright test tests/visual/games.spec.ts
