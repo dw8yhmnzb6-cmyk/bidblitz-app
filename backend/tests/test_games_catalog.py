@@ -1,5 +1,6 @@
 """Tests for publishing reviewed third-party games into the public catalog."""
 import asyncio
+import json
 import tempfile
 import types
 import unittest
@@ -92,11 +93,19 @@ class GamesCatalogTest(unittest.TestCase):
         self.old_release_root = catalog.RELEASE_ROOT
         self.old_host = catalog.PUBLIC_HOST
         self.old_base = catalog.PUBLIC_BASE_URL
+        self.old_preview_host = catalog.PREVIEW_HOST
+        self.old_preview_base = catalog.PREVIEW_BASE_URL
+        self.old_upload_root = catalog.UPLOAD_ROOT
+        self.old_billing_ready = catalog.BILLING_READY
         root = Path(self.tmp.name)
         catalog.PREVIEW_ROOT = root
         catalog.RELEASE_ROOT = root / "releases"
+        catalog.UPLOAD_ROOT = root / "quarantine"
         catalog.PUBLIC_HOST = "play.games.example.test"
         catalog.PUBLIC_BASE_URL = "https://play.games.example.test"
+        catalog.PREVIEW_HOST = "preview.games.example.test"
+        catalog.PREVIEW_BASE_URL = "https://preview.games.example.test"
+        catalog.BILLING_READY = False
 
         preview = root / "version-v1"
         preview.mkdir()
@@ -140,7 +149,47 @@ class GamesCatalogTest(unittest.TestCase):
         catalog.RELEASE_ROOT = self.old_release_root
         catalog.PUBLIC_HOST = self.old_host
         catalog.PUBLIC_BASE_URL = self.old_base
+        catalog.PREVIEW_HOST = self.old_preview_host
+        catalog.PREVIEW_BASE_URL = self.old_preview_base
+        catalog.UPLOAD_ROOT = self.old_upload_root
+        catalog.BILLING_READY = self.old_billing_ready
         self.tmp.cleanup()
+
+    def test_preflight_reports_safe_non_monetary_configuration_without_private_paths(self):
+        result = asyncio.run(catalog.games_preflight(None))
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["scope"], "games_non_monetary_preflight")
+        self.assertEqual(result["side_effects"], "none")
+        self.assertTrue(result["checks"]["origins_isolated"])
+        self.assertTrue(result["checks"]["storage_roots_distinct"])
+        self.assertTrue(result["billing"]["fail_closed"])
+        self.assertFalse(result["billing"]["enabled"])
+        self.assertEqual(result["public_origin"]["host"], "play.games.example.test")
+        self.assertEqual(result["preview_origin"]["host"], "preview.games.example.test")
+        serialized = json.dumps(result)
+        self.assertNotIn(str(Path(self.tmp.name)), serialized)
+        self.assertNotIn("storage_path", serialized)
+        self.assertNotIn("release_path", serialized)
+
+    def test_preflight_fails_when_public_and_preview_origins_are_not_isolated(self):
+        catalog.PREVIEW_HOST = catalog.PUBLIC_HOST
+        catalog.PREVIEW_BASE_URL = catalog.PUBLIC_BASE_URL
+        result = asyncio.run(catalog.games_preflight(None))
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["checks"]["origins_isolated"])
+
+    def test_preflight_fails_closed_when_games_billing_is_enabled(self):
+        catalog.BILLING_READY = True
+        result = asyncio.run(catalog.games_preflight(None))
+        self.assertFalse(result["ready"])
+        self.assertTrue(result["billing"]["enabled"])
+        self.assertFalse(result["checks"]["billing_fail_closed"])
+
+    def test_non_admin_cannot_read_games_preflight(self):
+        catalog.get_current_user.return_value = {"_id": "user-1", "role": "user"}
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(catalog.games_preflight(None))
+        self.assertEqual(context.exception.status_code, 403)
 
     def test_slug_and_public_url_are_stable_and_safe(self):
         slug = catalog._slugify("Island Quest! 2027", "draft-1")
