@@ -14,8 +14,8 @@ const COPY = {
     files: "Dateien", packed: "ZIP", unpacked: "entpackt", duplicate: "Diese Datei war bereits vorhanden.",
     submit: "Zur Prüfung einreichen", submitted: "Zur Prüfung eingereicht", submitError: "Version konnte nicht eingereicht werden.",
     remove: "Löschen", removeConfirm: "Diese hochgeladene Version löschen?", removeError: "Version konnte nicht gelöscht werden.", withdraw: "Prüfung zurückziehen", withdrawError: "Prüfung konnte nicht zurückgezogen werden.",
-    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.", previewLink: "Preview-Link erzeugen", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", revokePreview: "Link widerrufen", revokePreviewError: "Preview-Link konnte nicht widerrufen werden.",
-    noPreview: "Fremder Spielcode wird noch nicht ausgeführt. Eine private Vorschau folgt erst auf einer getrennten, cookie-freien Games-Origin.",
+    quarantined: "Quarantäne", validated: "Archiv geprüft", blocked: "Ausführung gesperrt", approved: "Archiv akzeptiert", previewApproved: "Preview akzeptiert", published: "Veröffentlicht", changes: "Änderungen erforderlich", rejected: "Abgelehnt", uploadNew: "Bitte eine neue Version hochladen.", previewLink: "Preview-Link erzeugen", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", revokePreview: "Link widerrufen", revokePreviewError: "Preview-Link konnte nicht widerrufen werden.",
+    noPreview: "Fremder Spielcode läuft nur auf der getrennten, cookie-freien Games-Origin. BidBlitz-Login und Wallet bleiben isoliert.",
   },
   en: {
     open: "Versions & upload", title: "HTML5 versions", close: "Close",
@@ -26,8 +26,8 @@ const COPY = {
     files: "Files", packed: "ZIP", unpacked: "unpacked", duplicate: "This exact file already exists.",
     submit: "Submit for review", submitted: "Submitted for review", submitError: "Could not submit version.",
     remove: "Delete", removeConfirm: "Delete this uploaded version?", removeError: "Could not delete version.", withdraw: "Withdraw review", withdrawError: "Could not withdraw review.",
-    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.", previewLink: "Create preview link", openPreview: "Open private preview", previewError: "Could not create preview link.", revokePreview: "Revoke link", revokePreviewError: "Could not revoke preview link.",
-    noPreview: "Third-party game code is not executed yet. Private preview follows only on a separate cookie-free Games origin.",
+    quarantined: "Quarantine", validated: "Archive validated", blocked: "Execution blocked", approved: "Archive approved", previewApproved: "Preview approved", published: "Published", changes: "Changes requested", rejected: "Rejected", uploadNew: "Please upload a new version.", previewLink: "Create preview link", openPreview: "Open private preview", previewError: "Could not create preview link.", revokePreview: "Revoke link", revokePreviewError: "Could not revoke preview link.",
+    noPreview: "Third-party game code runs only on the separate cookie-free Games origin. BidBlitz login and wallet stay isolated.",
   },
   sq: {
     open: "Versionet & ngarkimi", title: "Versionet HTML5", close: "Mbyll",
@@ -38,8 +38,8 @@ const COPY = {
     files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", duplicate: "Ky skedar ekziston tashmë.",
     submit: "Dërgo për kontroll", submitted: "U dërgua për kontroll", submitError: "Versioni nuk u dërgua për kontroll.",
     remove: "Fshi", removeConfirm: "Ta fshij këtë version?", removeError: "Versioni nuk u fshi.", withdraw: "Tërhiq kontrollin", withdrawError: "Kontrolli nuk u tërhoq.",
-    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.", previewLink: "Krijo linkun e provës", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", revokePreview: "Çaktivizo linkun", revokePreviewError: "Linku i provës nuk u çaktivizua.",
-    noPreview: "Kodi i lojës së palës së tretë ende nuk ekzekutohet. Prova private vjen vetëm në një Games-origin të ndarë pa cookie.",
+    quarantined: "Karantinë", validated: "Arkivi u kontrollua", blocked: "Ekzekutimi i bllokuar", approved: "Arkivi u pranua", previewApproved: "Prova u pranua", published: "Publikuar", changes: "Kërkohen ndryshime", rejected: "Refuzuar", uploadNew: "Ngarko një version të ri.", previewLink: "Krijo linkun e provës", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", revokePreview: "Çaktivizo linkun", revokePreviewError: "Linku i provës nuk u çaktivizua.",
+    noPreview: "Kodi i lojës së palës së tretë ekzekutohet vetëm në Games-origin të ndarë pa cookie. Hyrja dhe wallet-i BidBlitz mbeten të izoluar.",
   },
 };
 
@@ -217,11 +217,13 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
           : <div className="mt-4 space-y-3">{versions.map((version) => {
             const submitted = version.review_status === "submitted";
             const approved = version.review_status === "archive_approved";
+            const previewApproved = version.review_status === "preview_approved";
+            const published = version.publication_status === "published";
             const changesRequested = version.review_status === "changes_requested";
             const rejected = version.review_status === "rejected";
             const canSubmit = version.review_status === "not_submitted";
-            const canDelete = !submitted && !approved && version.preview_status !== "prepared";
-            const statusLabel = submitted ? c.submitted : approved ? c.approved : changesRequested ? c.changes : rejected ? c.rejected : c.quarantined;
+            const canDelete = !submitted && !approved && !previewApproved && !published && version.preview_status !== "prepared";
+            const statusLabel = published ? c.published : previewApproved ? c.previewApproved : submitted ? c.submitted : approved ? c.approved : changesRequested ? c.changes : rejected ? c.rejected : c.quarantined;
             return <article key={version.id} className="rounded-xl border border-white/10 bg-white/[.03] p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0"><p className="truncate text-xs font-semibold text-white/85">{version.original_filename || `Version ${version.version_number || ""}`}</p><p className="mt-1 text-[11px] text-white/45">{version.file_count} {c.files} · {formatBytes(version.archive_bytes)} {c.packed} · {formatBytes(version.unpacked_bytes)} {c.unpacked}</p></div>
@@ -230,7 +232,7 @@ export default function GameVersionPanel({ draftId, locale = "en" }) {
               <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/45"><span className="inline-flex items-center gap-1"><CheckCircle2 size={12} />{c.validated}</span><span>·</span><span>{c.blocked}</span></div>
               {version.review_note && <p className="mt-3 rounded-lg border border-white/10 bg-white/[.03] p-2 text-[11px] leading-relaxed text-white/60">{version.review_note}</p>}
               {(changesRequested || rejected) && <p className="mt-2 text-[11px] text-amber-100/75">{c.uploadNew}</p>}
-              {approved && version.preview_status === "prepared" && <div className="mt-3">
+              {(approved || previewApproved) && version.preview_status === "prepared" && <div className="mt-3">
                 {previewLinks[version.id]
                   ? <div className="grid grid-cols-[1fr_auto] gap-2"><a href={previewLinks[version.id]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100">{c.openPreview}</a><button type="button" onClick={() => revokePreviewLink(version.id)} disabled={Boolean(busy)} className="rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/55 disabled:opacity-45">{c.revokePreview}</button></div>
                   : <button type="button" onClick={() => createPreviewLink(version.id)} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 disabled:opacity-45">{c.previewLink}</button>}
