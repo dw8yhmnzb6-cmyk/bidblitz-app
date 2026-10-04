@@ -6,21 +6,21 @@ const COPY = {
   de: {
     title: "Dein Games-Portfolio", subtitle: "Nur deine eigenen Entwicklungs- und Veröffentlichungszahlen. Keine Geldwerte.",
     drafts: "Entwürfe", versions: "Versionen", submitted: "In Prüfung", approved: "Preview freigegeben",
-    published: "Veröffentlicht", unpublished: "Offline", reviewsVisible: "Öffentliche Reviews", reviewsHidden: "Moderiert",
+    published: "Veröffentlicht", unpublished: "Offline", reviewsVisible: "Öffentliche Reviews", reviewsHidden: "Moderiert", launches: "Starts (ca.)",
     loadError: "Portfolio-Zahlen konnten nicht geladen werden.", reload: "Neu laden", billingOff: "Games-Billing bleibt gesperrt.",
     billingOn: "Billing-Konfiguration aktiv – Zahlungen sind separat zu prüfen.",
   },
   en: {
     title: "Your Games portfolio", subtitle: "Your own development and publication metrics only. No monetary values.",
     drafts: "Drafts", versions: "Versions", submitted: "In review", approved: "Preview approved",
-    published: "Published", unpublished: "Offline", reviewsVisible: "Public reviews", reviewsHidden: "Moderated",
+    published: "Published", unpublished: "Offline", reviewsVisible: "Public reviews", reviewsHidden: "Moderated", launches: "Launches (approx.)",
     loadError: "Could not load portfolio metrics.", reload: "Reload", billingOff: "Games billing remains locked.",
     billingOn: "Billing configuration is enabled — payments require separate verification.",
   },
   sq: {
     title: "Portofoli yt Games", subtitle: "Vetëm statistikat e tua të zhvillimit dhe publikimit. Pa vlera monetare.",
     drafts: "Drafte", versions: "Versione", submitted: "Në kontroll", approved: "Prova e miratuar",
-    published: "Publikuar", unpublished: "Offline", reviewsVisible: "Vlerësime publike", reviewsHidden: "Moderuar",
+    published: "Publikuar", unpublished: "Offline", reviewsVisible: "Vlerësime publike", reviewsHidden: "Moderuar", launches: "Hapje (afërsisht)",
     loadError: "Statistikat e portofolit nuk u ngarkuan.", reload: "Ringarko", billingOff: "Pagesat Games mbeten të bllokuara.",
     billingOn: "Konfigurimi i pagesave është aktiv – pagesat duhen kontrolluar veçmas.",
   },
@@ -81,6 +81,7 @@ export default function GamesDeveloperAnalyticsCard({ locale = "en" }) {
               [c.unpublished, data.unpublished],
               [c.reviewsVisible, data.reviews_visible],
               [c.reviewsHidden, data.reviews_hidden],
+              [c.launches, data.approximate_launches],
             ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
               <p className="text-[10px] text-white/45">{label}</p>
               <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
