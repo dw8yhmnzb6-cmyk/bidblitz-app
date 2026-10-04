@@ -3,6 +3,7 @@ import { ArrowLeft, Gamepad2, Heart, Layers3, Search, Sparkles } from "lucide-re
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store";
 import GamesLanguageSelect from "../components/GamesLanguageSelect";
+import GameReviewsPanel from "../components/GameReviewsPanel";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
@@ -201,6 +202,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
                   {game.external && game.publicUrl ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.openPublished}</a> : game.available ? <button onClick={() => onNavigate("/games/match")} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
                   <button onClick={() => changeFavorite(game.id)} disabled={favoriteBusy === game.id} aria-pressed={favorites.includes(game.id)} aria-label={favorites.includes(game.id) ? c.unfavorite : c.favorite} className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition disabled:opacity-50 ${favorites.includes(game.id) ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"}`}><Heart size={18} fill={favorites.includes(game.id) ? "currentColor" : "none"} /></button>
                 </div>
+                {game.available && <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />}
               </div>
             </article>;})}</div> : <div className="mt-4 rounded-3xl border border-dashed border-white/20 px-5 py-10 text-center"><p className="text-lg">{c.empty}</p><button onClick={() => { setQuery(""); setCategory("all"); }} className="mt-4 rounded-full bg-cyan-300 px-5 py-3 font-semibold text-[#061329]">{c.clear}</button></div>}
           </section>
