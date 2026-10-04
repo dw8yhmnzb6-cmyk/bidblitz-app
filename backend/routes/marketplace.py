@@ -419,13 +419,20 @@ async def get_listing(listing_id: str):
         {"$inc": {"views": 1}}
     )
     
-    # Get seller info
-    seller = await db.users.find_one(
-        {"_id": ObjectId(listing["seller_id"])},
-        {"_id": 0, "name": 1, "created_at": 1}
-    )
+    # Get seller info. Legacy marketplace rows may not have seller_id or may
+    # contain a non-ObjectId identifier; public catalog must not crash for them.
+    seller = None
+    seller_id = str(listing.get("seller_id") or "")
+    if seller_id:
+        selectors = [{"id": seller_id}]
+        if ObjectId.is_valid(seller_id):
+            selectors.insert(0, {"_id": ObjectId(seller_id)})
+        seller = await db.users.find_one(
+            {"$or": selectors},
+            {"_id": 0, "name": 1, "created_at": 1},
+        )
     
-    listing["views"] += 1
+    listing["views"] = int(listing.get("views", 0) or 0) + 1
     listing["seller"] = {
         "name": seller.get("name", "") if seller else listing.get("seller_name", ""),
         "member_since": seller.get("created_at", "") if seller else "",
