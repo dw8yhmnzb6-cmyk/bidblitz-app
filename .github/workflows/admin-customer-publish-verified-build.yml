@@ -1,0 +1,85 @@
+name: Publish tested customer frontend with completed Safari verification
+on:
+  push:
+    branches: [work/admin-customer-controls-20261004]
+    paths: [.github/workflows/admin-customer-publish-verified-build.yml]
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install matching frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify navigation, access separation and link validation
+        working-directory: frontend
+        env:
+          CI: 'true'
+        run: |
+          npm test -- --watchAll=false --runInBand --runTestsByPath src/pages/AdminProjectsPage.test.jsx src/components/admin/projectAccessAreas.test.js src/components/admin/projectCustomerControls.test.js
+          npx eslint src/pages/AdminProjectsPage.jsx src/components/admin/AdminProjectCustomerControls.jsx src/components/admin/projectCustomerControls.js
+          python -m py_compile ../scripts/deploy_admin_customer_ui.py ../scripts/rollback_admin_customer_ui.py
+      - name: Verify that application source matches the already tested build
+        run: |
+          git fetch origin 33859ed59b3025b17be7d3c72b14e79251ee040d
+          test "$(git rev-parse HEAD:frontend)" = "$(git rev-parse FETCH_HEAD:frontend)"
+          echo 'REUSING_TESTED_FRONTEND_33859ed59b3025b17be7d3c72b14e79251ee040d'
+      - name: Prepare Chromium, mobile WebKit and verified SSH host
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium webkit
+          mkdir -p ~/.ssh
+          echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
+          if [ -n "$DEPLOY_KEY" ]; then
+            printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/admin_key
+            chmod 600 ~/.ssh/admin_key
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Publish frontend only and verify existing customer tools without mutations
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/admin_key ]; then
+            SSH+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          STAGE='/tmp/bidblitz-customer-ui-33859ed59b3025b17be7d3c72b14e79251ee040d'
+          "${SCP[@]}" scripts/rollback_admin_customer_ui.py root@212.227.20.190:"$STAGE/rollback_admin_customer_ui.py"
+          "${SSH[@]}" root@212.227.20.190 "test -s '$STAGE/frontend.tgz'; cd /var/www/bidblitz/backend; venv/bin/python '$STAGE/deploy_admin_customer_ui.py' '$STAGE'"
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-browser-cookie.txt /tmp/bidblitz-admin-browser-cookie.txt
+          "${SSH[@]}" root@212.227.20.190 'rm -f /tmp/bidblitz-admin-browser-cookie.txt'
+          chmod 600 /tmp/bidblitz-admin-browser-cookie.txt
+          if ! node scripts/verify_admin_customer_ui.cjs; then
+            "${SSH[@]}" root@212.227.20.190 "/var/www/bidblitz/backend/venv/bin/python '$STAGE/rollback_admin_customer_ui.py' '$STAGE'"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-customer-ui-live-evidence
+          path: |
+            /tmp/admin-customer-ui-evidence.json
+            /tmp/admin-customer-sso-evidence.json
+          retention-days: 7
+      - name: Remove private verification material
+        if: always()
+        run: rm -f /tmp/bidblitz-admin-browser-cookie.txt
