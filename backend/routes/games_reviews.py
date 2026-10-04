@@ -22,6 +22,7 @@ admin_router = APIRouter(prefix="/api/admin/games/reviews", tags=["admin-games-r
 
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _MAX_PUBLIC_REVIEWS = 50
+_MAX_SUMMARY_GAMES = 50
 
 
 class ReviewInput(BaseModel):
@@ -124,6 +125,66 @@ async def _summary(game_id: str) -> dict:
         "count": count,
         "average": round(float(average), 2) if average is not None else None,
     }
+
+
+async def _reviewable_game_ids(game_ids: list[str]) -> list[str]:
+    unique = []
+    seen = set()
+    for value in game_ids:
+        game_id = _game_id(value)
+        if game_id not in seen:
+            seen.add(game_id)
+            unique.append(game_id)
+        if len(unique) > _MAX_SUMMARY_GAMES:
+            raise HTTPException(400, "Zu viele Spiele angefragt")
+
+    allowed = []
+    if "match" in seen:
+        allowed.append("match")
+
+    community_ids = [game_id for game_id in unique if game_id != "match"]
+    if community_ids:
+        rows = await db.games_catalog.find(
+            {"id": {"$in": community_ids}, "status": "published"},
+            {"_id": 0, "id": 1},
+        ).limit(_MAX_SUMMARY_GAMES).to_list(_MAX_SUMMARY_GAMES)
+        published = {row.get("id") for row in rows if row.get("id")}
+        allowed.extend(game_id for game_id in unique if game_id in published)
+
+    return allowed
+
+
+@router.get("/summaries")
+async def review_summaries(game_ids: str = ""):
+    requested = [part.strip() for part in str(game_ids or "").split(",") if part.strip()]
+    if not requested:
+        return {"summaries": {}}
+
+    allowed = await _reviewable_game_ids(requested)
+    summaries = {game_id: {"count": 0, "average": None} for game_id in allowed}
+    if not allowed:
+        return {"summaries": summaries}
+
+    pipeline = [
+        {"$match": {"game_id": {"$in": allowed}, "status": "visible"}},
+        {"$group": {
+            "_id": "$game_id",
+            "count": {"$sum": 1},
+            "average": {"$avg": "$rating"},
+        }},
+    ]
+    rows = await db.games_reviews.aggregate(pipeline).to_list(_MAX_SUMMARY_GAMES)
+    for row in rows:
+        game_id = row.get("_id")
+        if game_id not in summaries:
+            continue
+        count = int(row.get("count") or 0)
+        average = row.get("average")
+        summaries[game_id] = {
+            "count": count,
+            "average": round(float(average), 2) if average is not None else None,
+        }
+    return {"summaries": summaries}
 
 
 @router.get("/{game_id}")
