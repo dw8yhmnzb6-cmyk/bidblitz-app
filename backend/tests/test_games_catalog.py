@@ -140,6 +140,13 @@ class GamesCatalogTest(unittest.TestCase):
             games_catalog=Collection(),
             game_studio_publication_events=Collection(),
             games_publication_locks=Collection(),
+            games_reviews=Collection([
+                {"id": "review-visible", "status": "visible"},
+                {"id": "review-hidden", "status": "hidden"},
+            ]),
+            games_review_moderation_events=Collection([
+                {"review_id": "review-hidden", "action": "hide"},
+            ]),
         )
         catalog.db = self.db
         catalog.get_current_user = AsyncMock(return_value={"_id": "admin-1", "role": "admin"})
@@ -168,6 +175,9 @@ class GamesCatalogTest(unittest.TestCase):
         self.assertEqual(result["counts"]["preview_approved"], 1)
         self.assertEqual(result["counts"]["published"], 0)
         self.assertEqual(result["counts"]["publication_locks"], 0)
+        self.assertEqual(result["counts"]["reviews_visible"], 1)
+        self.assertEqual(result["counts"]["reviews_hidden"], 1)
+        self.assertEqual(result["counts"]["review_moderation_events"], 1)
         self.assertNotIn("owner_id", result)
         self.assertNotIn("release_path", result)
         self.assertNotIn("preview_path", result)
