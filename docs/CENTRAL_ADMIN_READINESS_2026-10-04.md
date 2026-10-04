@@ -20,7 +20,7 @@ Rollen oder Katalogeinträge und stellt keine Zugangscodes aus.
 | Anzeige | Tatsächliche Aussage |
 | --- | --- |
 | Interner Einstieg | Feste Route im bestehenden BidBlitz-Admin; Aktionen prüfen weiterhin eigene Rechte. |
-| Empfänger-Code lokal erfüllt | Einer der sieben bereits vorbereiteten Adapter ist bekannt; nicht live bestätigt. |
+| Empfänger-Code lokal erfüllt | Einer der acht bereits vorbereiteten Adapter ist bekannt; nicht live bestätigt. |
 | Aussteller konfiguriert | Erlaubtes Ziel, Freischaltungsflag, ausreichend langer Schlüssel und nichtleeres Owner-Subject. |
 | Lokales Admin-Konto / Bereitstellung / Anmeldung noch prüfen | Zielkonto, Rechte, tatsächliche Version, Nonce-Speicher und MFA sind extern nicht bestätigt. |
 | Ohne SSO-Empfänger | Kein geprüfter gemeinsamer Login; eine Katalogadresse aktiviert nichts. |
@@ -37,7 +37,7 @@ Legacy-Schlüssel verwendet wird, weist die Diagnose auf einen separaten
 Projektschlüssel hin, ohne den vorhandenen Übergabevertrag zu ändern.
 Ungültige Origins werden nicht in der Antwort wiederholt.
 
-Nur feste Konfigurationsnamen und Migrationshinweise der bekannten sieben
+Nur feste Konfigurationsnamen und Migrationshinweise der bekannten acht
 Empfänger werden angezeigt, niemals echte IDs, E-Mail-Zuordnungen, Subjects,
 Schlüssel oder Codes. Verify erhält einen ausdrücklichen Sandbox-Hinweis;
 damit ist keine echte Identitätsprüfung freigegeben.
@@ -83,3 +83,7 @@ Ihre isolierte Testumgebung hat nicht alle Abhängigkeiten von `test_ci_smoke.py
 ## Ergänzung BIDTAX
 
 BIDTAX ist als siebter Adapter vorbereitet. 118 zentrale Backend-Tests bestehen auf diesem Stand. Die bisherige Frontend-Verifikation oben betrifft den unveränderten zentralen Frontend-Code. Zielkonto und Bereitstellung bleiben unbestätigt. Details: [BIDTAX](CENTRAL_ADMIN_BIDTAX_2026-10-04.md).
+
+## Ergänzung Conformexa
+
+Conformexa ist als achter Adapter vorbereitet. Der Empfänger basiert auf dem verifizierten Conformexa-v0.34.0-Quellstand und erzeugt nur die bestehende Plattform-Operator-Sitzung; Tenant-Rollen bleiben unverändert. Empfängerpaket v0.34.1: 166/166 Backendtests, Release-/Web-/i18n-Verträge und TS/TSX-Syntaxprüfung bestanden. Ein echter Produktions-Zielzugriff bleibt bis zur separaten Bereitstellung und Konfiguration unbestätigt.

@@ -31,3 +31,15 @@ def test_sso_signature_round_trip():
     ).decode().rstrip("=")
     assert hmac.compare_digest(signature, expected)
     assert _decode(body) == payload
+
+
+def test_conformexa_target_allows_only_explicit_trusted_https_origins(monkeypatch):
+    from routes import admin_sso
+    for base in ("https://conformexa.com", "https://admin.conformexa.com", "https://conformexa.de", "https://admin.conformexa.de", "https://conformexa.bidblitz.ae"):
+        monkeypatch.setenv("BIDBLITZ_CONFORMEXA_BASE_URL", base)
+        target = admin_sso.sso_targets().get("conformexa")
+        assert target and target["handoff_url"] == base + "/v1/platform/admin/bidblitz-sso"
+        assert target["browser_url"] == base + "/auth/bidblitz-sso"
+    for base in ("http://conformexa.com", "https://evil.example", "https://conformexa.com/path", "https://user:secret@conformexa.com", "https://conformexa.com:444"):
+        monkeypatch.setenv("BIDBLITZ_CONFORMEXA_BASE_URL", base)
+        assert "conformexa" not in admin_sso.sso_targets()

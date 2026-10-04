@@ -6,7 +6,7 @@ Stand: 4. Oktober 2026. Implementierter Code, keine Produktionsfreischaltung.
 
 `/admin/projects` verwaltet 35 Standard-Katalogeinträge sowie eigene zusätzliche Einträge in der bestehenden BidBlitz-Datenbank. Änderungen verwenden Revisionen und ein begrenztes Audit-Protokoll. Suche, Statusfilter und Bearbeitung sind vorhanden. Nur ein ausdrücklich konfigurierter Owner mit aktueller Datenbankrolle `admin` oder `super_admin` darf den Katalog ändern oder Zugangscodes ausstellen. Login-Aliase allein verleihen keine Owner-Rechte.
 
-BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION, Verify und BIDTAX bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
+BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION, Verify, BIDTAX und Conformexa bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
 
 Die zusätzliche Ansicht „Anbindungen & offene Schritte“ zeigt pro Projekt
 die lokale Katalogfreigabe, erlaubte Ziele, explizite Freischaltung,
@@ -47,6 +47,7 @@ Trade verwendet seinen vorhandenen TOTP-/Recovery-Login, wenn ein Faktor aktiv i
 | AION | `/api/auth/bidblitz-sso` | `AION_BIDBLITZ_SSO_SHARED_SECRET` | `AION_BIDBLITZ_OWNER_ID` | `AION_BIDBLITZ_LOCAL_ADMIN_ID`, aktiver Plattformadministrator im Plattform-Tenant |
 | Verify | `/v1/auth/bidblitz-sso` | `BBV_BIDBLITZ_SSO_SHARED_SECRET` | `BBV_BIDBLITZ_OWNER_ID` | `BBV_BIDBLITZ_LOCAL_ADMIN_EMAIL`, bestehender `ADMIN`; ausschließlich Sandbox |
 | BIDTAX | `/api/auth/bidblitz-sso` | `BIDTAX_BIDBLITZ_SSO_SHARED_SECRET` | `BIDTAX_BIDBLITZ_OWNER_ID` | `BIDTAX_BIDBLITZ_LOCAL_ADMIN_ID`, vorhandener aktiver `super_admin` |
+| Conformexa | `/v1/platform/admin/bidblitz-sso` | `CONFORMEXA_BIDBLITZ_SSO_SHARED_SECRET` | `CONFORMEXA_BIDBLITZ_OWNER_ID` | vorhandener `platform_operator`-Kontext; keine Tenant-Rollenänderung |
 
 BIDTAX benötigt zusätzlich `BIDTAX_BIDBLITZ_SSO_ENABLED=true` und `BIDTAX_BIDBLITZ_SSO_BROWSER_ORIGIN`. Bei Hinweisen auf einen zweiten Faktor sperrt der neue Einstieg, da im geprüften Quellstand kein MFA-Abschluss montiert ist. Das lokale Konto, seine Rolle und `auth_version` werden bei jeder SSO-Sitzungsanfrage erneut geprüft. Details: [BIDTAX-Anbindung](CENTRAL_ADMIN_BIDTAX_2026-10-04.md).
 
@@ -81,3 +82,5 @@ Haupt-Admin verwenden dagegen die bestehende BidBlitz-Sitzung; sie ersetzen
 keine separate Owner-Anmeldung eines anderen Projekts.
 
 Die Produktionsaktivierung benötigt die tatsächlichen Live-Versionen, Owner-Zuordnungen und Schlüssel. Der zuletzt geprüfte BidBlitz-Produktionszugang unter der vorhandenen Deployment-Konfiguration verweigerte SSH-Authentifizierung. Neue Arbeitsbranches wurden nicht nach `main` gemergt und keine Produktionsbereitstellung wurde ausgelöst.
+
+Conformexa verwendet keine Tenant-Admin-Hochstufung. Der Empfänger verbraucht den Einmalcode atomar in Migration `0015_bidblitz_central_sso.sql` und erzeugt ausschließlich die bestehende serverseitige Operator-Sitzung. Der Plattform-Schlüssel bleibt serverseitig. Erlaubte explizite Zielorigins sind `.bidblitz.ae`, `conformexa.com`/Subdomains und `conformexa.de`/Subdomains; Katalog-URLs beeinflussen das Ziel nicht.
