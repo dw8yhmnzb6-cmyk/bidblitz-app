@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, ExternalLink, FileArchive, Loader2, RefreshCw,
 import { useI18n } from "../store/I18nContext";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard";
+import AdminGameReviewsPanel from "../components/AdminGameReviewsPanel";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND}/api/admin/game-studio/versions`;
@@ -280,6 +281,8 @@ export default function AdminGamesReviewPage({ onBack }) {
             </div>)}
           </div>}
         </section>
+
+        <AdminGameReviewsPanel locale={locale} />
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
           {FILTERS.map(([value, key]) => <button key={value} onClick={() => setStatus(value)} aria-pressed={status === value} className={`rounded-full border px-4 py-2 text-sm font-semibold ${status === value ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/15 bg-white/5 text-white/70"}`}>{c[key]}</button>)}
