@@ -22,6 +22,7 @@ from core.security import get_current_user
 
 router = APIRouter(tags=["game-preview"])
 api_router = APIRouter(prefix="/api/game-studio", tags=["game-preview-access"])
+admin_router = APIRouter(prefix="/api/admin/game-studio", tags=["admin-game-preview-access"])
 
 PREVIEW_ROOT = Path(
     os.environ.get(
@@ -140,6 +141,17 @@ async def _owner(request: Request) -> str:
     return str(user["_id"])
 
 
+async def _admin(request: Request) -> dict:
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    return user
+
+
+async def _issue_preview_token(owner_id: str, draft_id: str, version_id: str) -> dict:
+    return await _issue_preview_token(owner_id, draft_id, version_id)
+
+
 @api_router.post("/drafts/{draft_id}/versions/{version_id}/preview-link")
 async def create_preview_link(draft_id: str, version_id: str, request: Request):
     owner_id = await _owner(request)
@@ -206,6 +218,33 @@ async def revoke_preview_links(draft_id: str, version_id: str, request: Request)
         {"$set": {"revoked_at": now}},
     )
     return {"revoked": int(getattr(result, "modified_count", 0) or 0)}
+
+
+@admin_router.post("/versions/{version_id}/preview-link")
+async def create_admin_preview_link(version_id: str, request: Request):
+    await _admin(request)
+    version = await db.game_studio_versions.find_one({
+        "id": version_id,
+        "status": "quarantined",
+        "review_status": {"$in": ["archive_approved", "preview_approved"]},
+        "preview_status": "prepared",
+        "execution_status": {"$in": ["blocked_pending_isolated_preview", "isolated_preview_only"]},
+    })
+    if not version:
+        raise HTTPException(404, "Vorbereitete Spielversion nicht gefunden")
+    preview_path = Path(version.get("preview_path") or "")
+    try:
+        root = PREVIEW_ROOT.resolve()
+        resolved = preview_path.resolve()
+    except OSError:
+        raise HTTPException(409, "Vorschau-Dateien sind nicht verfügbar")
+    if not resolved.is_relative_to(root) or not (resolved / "index.html").is_file():
+        raise HTTPException(409, "Vorschau-Dateien sind nicht verfügbar")
+    return await _issue_preview_token(
+        str(version.get("owner_id") or ""),
+        str(version.get("draft_id") or ""),
+        version_id,
+    )
 
 
 @router.get("/game-preview/{token}/{asset_path:path}")
