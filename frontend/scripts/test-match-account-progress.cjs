@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const S = require("../public/games/match-preview/account-progress.js");
+const S = require("../public/game-assets/match-preview/account-progress.js");
 
 function profile(completed = 0, scoreBase = 1000) {
   const best = Array(30).fill(0);
