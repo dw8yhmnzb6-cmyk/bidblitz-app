@@ -1,4 +1,4 @@
-name: Verified customer tools and real public project links
+name: Verify completed wallet load before mobile navigation
 on:
   push:
     branches: [work/admin-customer-controls-20261004]

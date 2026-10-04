@@ -25,9 +25,14 @@ const cookieFile='/tmp/bidblitz-admin-browser-cookie.txt';
    if(await customer.count()){await customer.click();await page.getByTestId('customer-action-ban').waitFor()}
    await page.goto('https://bidblitz.ae/admin/projects',{waitUntil:'domcontentloaded'});
    const creditCard=page.locator('article').filter({has:page.getByRole('heading',{name:'BidBlitz',exact:true})});
+   const walletLoaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/admin/wallet/users'&&r.request().method()==='GET');
    await creditCard.getByRole('button',{name:'Gutschriften & Buchungen',exact:true}).click();
    await page.getByTestId('admin-wallet-page').waitFor();
    await page.getByTestId('user-search-input').waitFor();
+   const walletResponse=await walletLoaded;assert.equal(walletResponse.status(),200);await walletResponse.finished();
+   const walletUser=page.locator('button[data-testid^="user-row-"]').first();await walletUser.waitFor();await walletUser.click();
+   await page.getByTestId('amount-eur').waitFor();await page.getByTestId('reason-input').waitFor();
+   assert(await page.getByTestId('submit-btn').isDisabled());
    await page.goto('https://bidblitz.ae/admin/projects',{waitUntil:'domcontentloaded'});await identity.waitFor();
    const missing=page.locator('article').filter({has:page.getByRole('heading',{name:'BidBlitz Passport',exact:true})});
    assert(await missing.getByRole('button',{name:'Noch nicht verfügbar',exact:true}).isDisabled());
