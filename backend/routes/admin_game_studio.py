@@ -99,7 +99,7 @@ async def review_queue(
     limit: int = Query(50, ge=1, le=100),
 ):
     await _admin(request)
-    allowed = {"submitted", "archive_approved", "changes_requested", "rejected"}
+    allowed = {"submitted", "archive_approved", "preview_approved", "changes_requested", "rejected"}
     if review_status not in allowed:
         raise HTTPException(400, "Ungültiger Prüfstatus")
 
