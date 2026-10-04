@@ -43,6 +43,29 @@ class Collection:
         return types.SimpleNamespace(inserted_id=len(self.docs))
 
 
+class DuplicateKeyError(Exception):
+    code = 11000
+
+
+class SlotCollection(Collection):
+    async def insert_one(self, doc):
+        if any(
+            row.get("_id") == doc.get("_id")
+            or (row.get("owner_id") == doc.get("owner_id") and row.get("draft_id") == doc.get("draft_id"))
+            for row in self.docs
+        ):
+            raise DuplicateKeyError()
+        self.docs.append(dict(doc))
+        return types.SimpleNamespace(inserted_id=doc.get("_id"))
+
+    async def delete_one(self, query):
+        for index, row in enumerate(self.docs):
+            if matches(row, query):
+                self.docs.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
+
+
 class GamesDeveloperEntitlementTest(unittest.TestCase):
     def setUp(self):
         self.old_billing = developer.BILLING_READY
@@ -55,6 +78,7 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
             games_developer_entitlement_events=Collection(),
             games_catalog=self.catalog,
             game_studio_drafts=Collection([{"id": "draft-1", "owner_id": "alice", "status": "draft"}]),
+            games_publication_slots=SlotCollection(),
         )
 
     def tearDown(self):
@@ -87,32 +111,39 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         expired["valid_until"] = None
         self.assertFalse(developer._active_entitlement(expired))
 
-    def test_starter_limit_blocks_second_published_game(self):
-        self.entitlements.docs.append({
+    def test_starter_limit_blocks_second_publication_slot(self):
+        entitlement = {
             "owner_id": "alice", "plan": "starter", "status": "active",
             "payment_reference": "paid-123456",
-        })
-        self.catalog.docs.append({
-            "id": "draft-1", "owner_id": "alice", "status": "published"
-        })
+        }
+        self.entitlements.docs.append(entitlement)
+        first = asyncio.run(developer.reserve_publication_slot("alice", "draft-1", entitlement))
+        self.assertTrue(first)
         if developer.PLANS["starter"]["max_published_games"] == 1:
             with self.assertRaises(HTTPException) as context:
-                asyncio.run(developer.assert_publication_entitlement("alice", "draft-2"))
+                asyncio.run(developer.reserve_publication_slot("alice", "draft-2", entitlement))
             self.assertEqual(context.exception.status_code, 409)
-        else:
-            result = asyncio.run(developer.assert_publication_entitlement("alice", "draft-2"))
-            self.assertEqual(result["plan"], "starter")
 
-    def test_existing_published_game_can_receive_new_version_without_using_new_slot(self):
-        self.entitlements.docs.append({
+    def test_same_game_reuses_existing_publication_slot(self):
+        entitlement = {
             "owner_id": "alice", "plan": "starter", "status": "active",
             "payment_reference": "paid-123456",
-        })
-        self.catalog.docs.append({
-            "id": "draft-1", "owner_id": "alice", "status": "published"
-        })
-        result = asyncio.run(developer.assert_publication_entitlement("alice", "draft-1"))
-        self.assertEqual(result["plan"], "starter")
+        }
+        self.entitlements.docs.append(entitlement)
+        first = asyncio.run(developer.reserve_publication_slot("alice", "draft-1", entitlement))
+        second = asyncio.run(developer.reserve_publication_slot("alice", "draft-1", entitlement))
+        self.assertTrue(first)
+        self.assertFalse(second)
+        self.assertEqual(len(developer.db.games_publication_slots.docs), 1)
+
+    def test_unpublish_releases_publication_slot(self):
+        entitlement = {
+            "owner_id": "alice", "plan": "starter", "status": "active",
+            "payment_reference": "paid-123456",
+        }
+        asyncio.run(developer.reserve_publication_slot("alice", "draft-1", entitlement))
+        asyncio.run(developer.release_publication_slot("alice", "draft-1"))
+        self.assertEqual(developer.db.games_publication_slots.docs, [])
 
     def test_admin_grant_requires_real_reference_and_is_audited(self):
         developer.get_current_user.return_value = {"_id": "admin-1", "role": "admin"}
