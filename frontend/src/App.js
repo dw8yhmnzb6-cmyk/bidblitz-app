@@ -438,7 +438,9 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handlePopState = () => {
-      const nextPath = `${window.location.pathname}${window.location.search || ""}` || "/";
+      const nextPath = resolveBrowserPath(
+        `${window.location.pathname}${window.location.search || ""}` || "/",
+      );
       setCurrentPath(nextPath);
     };
     window.addEventListener("popstate", handlePopState);
