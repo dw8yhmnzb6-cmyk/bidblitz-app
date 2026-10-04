@@ -70,3 +70,13 @@ def test_aion_sso_requires_configured_base_url(monkeypatch):
     assert not _project_sso_ready("aion")
     monkeypatch.setenv("BIDBLITZ_AION_BASE_URL", "https://aion.example")
     assert _project_sso_ready("aion")
+
+
+def test_unknown_project_is_never_sso_ready(monkeypatch):
+    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
+    assert not _project_sso_ready("unknown-project")
+
+
+def test_bidblitz_control_plane_is_always_ready(monkeypatch):
+    monkeypatch.delenv("BIDBLITZ_SSO_SHARED_SECRET", raising=False)
+    assert _project_sso_ready("bidblitz")
