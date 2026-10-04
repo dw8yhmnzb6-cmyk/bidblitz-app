@@ -1,0 +1,58 @@
+name: Central admin activation inventory (read only)
+on:
+  push:
+    branches: [work/central-admin-activation-20261004]
+    paths: [.github/workflows/central-admin-activation.yml]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure verified host and existing deployment authentication
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [ -n "$DEPLOY_KEY" ]; then
+            printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/bidblitz_deploy_key
+            chmod 600 ~/.ssh/bidblitz_deploy_key
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Inspect existing issuer configuration without emitting secrets
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/bidblitz_deploy_key ]; then
+            SSH+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+          fi
+          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend && venv/bin/python -' <<'PY'
+          import asyncio,os,json,sys
+          from urllib.request import Request,urlopen
+          from core import security
+          from core.database import db
+          from routes.admin_sso import sso_configuration,sso_targets
+          async def main():
+              emails=[s.strip().lower() for s in os.getenv('BIDBLITZ_OWNER_EMAILS',os.getenv('BIDBLITZ_CANONICAL_OWNER_EMAIL','admin@bidblitz.ae')).split(',') if s.strip()]
+              owner=await db.users.find_one({'email':{'$in':emails},'role':{'$in':['admin','super_admin']}})
+              assert owner and not owner.get('is_disabled') and not owner.get('login_disabled')
+              assert not any(owner.get(k) for k in ('mfa_enabled','two_factor_enabled','totp_enabled','totp_secret','two_factor_secret'))
+              token=security.create_access_token(str(owner.get('_id') or owner['id']),owner['email'])
+              with urlopen(Request('http://127.0.0.1:8001/api/admin/projects',headers={'Authorization':'Bearer '+token}),timeout=15) as r:
+                  projects=json.load(r)['projects']
+              print('ISSUER_INVENTORY',json.dumps([{'id':p['id'],'status':p['status'],'access':p.get('access'),'integration':p.get('integration')} for p in projects]))
+              print('ISSUER_CONFIG',json.dumps({name:{k:v for k,v in sso_configuration(name).items() if k not in ('secret','owner_id')} for name in ('eyes','trade','nex','stack','aion','verify','bidtax')}))
+              print('ISSUER_TARGETS',json.dumps(sso_targets()))
+          asyncio.run(main())
+          PY
