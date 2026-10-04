@@ -1,0 +1,54 @@
+name: Diagnose Live Errors Final Once
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/diagnose-live-errors-final-once.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Summarize current production HTTP errors
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          from collections import Counter
+
+          paths=[
+              Path("/root/.pm2/logs/api-out.log"),
+              Path("/root/.pm2/logs/api-error.log"),
+          ]
+          for p in paths:
+              print(f"=== {p.name} ===")
+              if not p.exists():
+                  print("MISSING")
+                  continue
+              text=p.read_bytes()[-12_000_000:].decode("utf-8","ignore").replace("\x00","")
+              lines=text.splitlines()
+
+              http=[]
+              for line in lines:
+                  m=re.search(r'"(GET|POST|PUT|PATCH|DELETE|OPTIONS) ([^ ]+) HTTP/[^"]+" (\d{3})', line)
+                  if m and int(m.group(3)) >= 400:
+                      http.append((m.group(1),m.group(2).split("?")[0],int(m.group(3))))
+              counts=Counter(http)
+              for (method,path,status),count in counts.most_common(35):
+                  print(f"HTTPERR {count:4d} {status} {method} {path}")
+
+              errors=[]
+              for line in lines:
+                  if ("[ERROR]" in line or "Traceback" in line or "AttributeError" in line) and "2026-" in line:
+                      errors.append(line)
+              for line in errors[-80:]:
+                  print("ERRLINE", line[:1000])
+          PY
+          REMOTE
