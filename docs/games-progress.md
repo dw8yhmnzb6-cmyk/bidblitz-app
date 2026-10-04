@@ -25,6 +25,10 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Read-only Games launch preflight checks public/preview origin safety, origin isolation, private/distinct storage roots and the fail-closed billing guard without exposing internal paths or secrets.
 - Games admin review displays the launch-preflight status.
 - Games admin APIs consistently allow both `admin` and `super_admin`; ordinary users remain denied.
+- Read-only Games admin diagnostics expose operational counts for drafts, versions, review stages, publication state, locks and review moderation without private paths or customer identifiers.
+- Account-backed player reviews are implemented for playable/published Games: strict 1–5 star ratings, optional text, one review per account/game, public rating summaries and owner-ID redaction.
+- Games review moderation supports admin/super-admin hide/restore actions with audit events; the Games admin UI includes the moderation queue and review health metrics.
+- The public Games catalog exposes reviews on demand; guests can read reviews and signed-in users can create, edit and delete their own review.
 - Existing financial production guards remain in place.
 
 ## Verification
@@ -39,6 +43,8 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Games frontend production build is green.
 - Playwright Games browser acceptance is green for 320x568, 390x844, 768x1024 and 1440x900.
 - Browser acceptance covers catalog/search/filter behavior, persisted RTL language switching and the Match preview on 320 px width.
+- Review backend tests cover account isolation, one-review-per-game behavior, public redaction, averages, deletion, published-game gating and admin/super-admin moderation audit.
+- Browser acceptance covers the public review panel, guest-safe behavior, Games admin operations diagnostics and the review moderation list.
 - Local Match game copy is not yet human-reviewed in all 50 languages.
 - Native physical-device acceptance remains separate from browser viewport automation.
 
@@ -48,10 +54,10 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 2. Physical-device acceptance where needed beyond automated browser/mobile viewport coverage.
 3. Developer billing provider integration; keep checkout disabled until explicitly approved.
 4. Games purchases, refunds, developer revenue share and payouts, with separate financial/admin controls.
-5. Additional first-party games and broader player features such as rankings/reviews where approved.
+5. Additional first-party games and broader player features such as trusted rankings where approved.
 6. Production host/DNS/environment configuration for Games.BidBlitz.ae plus isolated public-game and preview origins.
 7. Deployment, monitoring and final launch acceptance.
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 46%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 55%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
