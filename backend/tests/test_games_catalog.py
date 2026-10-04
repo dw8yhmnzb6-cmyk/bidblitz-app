@@ -53,6 +53,9 @@ class Collection:
     def find(self, query, projection=None):
         return Cursor([doc for doc in self.docs if match(doc, query)])
 
+    async def count_documents(self, query):
+        return sum(1 for doc in self.docs if match(doc, query))
+
     async def insert_one(self, doc):
         if "_id" in doc and any(row.get("_id") == doc["_id"] for row in self.docs):
             raise DuplicateKeyError("duplicate _id")
@@ -154,6 +157,20 @@ class GamesCatalogTest(unittest.TestCase):
         catalog.UPLOAD_ROOT = self.old_upload_root
         catalog.BILLING_READY = self.old_billing_ready
         self.tmp.cleanup()
+
+    def test_diagnostics_reports_operational_counts_without_private_records(self):
+        result = asyncio.run(catalog.games_diagnostics(None))
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["preflight_ready"])
+        self.assertTrue(result["billing_fail_closed"])
+        self.assertEqual(result["counts"]["drafts"], 1)
+        self.assertEqual(result["counts"]["versions"], 1)
+        self.assertEqual(result["counts"]["preview_approved"], 1)
+        self.assertEqual(result["counts"]["published"], 0)
+        self.assertEqual(result["counts"]["publication_locks"], 0)
+        self.assertNotIn("owner_id", result)
+        self.assertNotIn("release_path", result)
+        self.assertNotIn("preview_path", result)
 
     def test_preflight_reports_safe_non_monetary_configuration_without_private_paths(self):
         result = asyncio.run(catalog.games_preflight(None))
