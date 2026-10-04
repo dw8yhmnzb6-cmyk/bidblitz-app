@@ -396,6 +396,8 @@ def test_admin_system_error_center_covers_core_modules_and_recovery():
     assert 'boundary: "resource-error"' in error_boundary
     assert 'source: "window.resource-error"' in error_boundary
     assert 'resource_url: resourceUrl' in error_boundary
+    assert "const reportedResourceErrors = new Set();" in error_boundary
+    assert "reportedResourceErrors.has(resourceKey)" in error_boundary
 
 
 def test_biopay_missing_facepay_flag_fails_closed():
