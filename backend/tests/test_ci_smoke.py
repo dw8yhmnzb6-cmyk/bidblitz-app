@@ -355,6 +355,8 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     ai = (BACKEND_DIR / "routes" / "ai_chat.py").read_text(encoding="utf-8")
 
     assert '("routes.watchlist", "router")' in registry
+    assert '("routes.groupchat", "router")' in registry
+    assert '("routes.group_orders", "router")' in registry
     dynamic_get = chat.index('@router.get("/{chat_id}")')
     assert chat.index('@router.get("/unread-count")') < dynamic_get
     assert chat.index('@router.get("/poll")') < dynamic_get
