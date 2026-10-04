@@ -130,6 +130,9 @@ async function mockGamesAdminApis(page: Page) {
           unpublished: 2,
           publication_events: 11,
           publication_locks: 0,
+          reviews_visible: 6,
+          reviews_hidden: 2,
+          review_moderation_events: 3,
         },
       }),
     });
@@ -274,6 +277,9 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(diagnostics.getByText('8', { exact: true })).toBeVisible();
   await expect(diagnostics.getByText('Aktive Locks')).toBeVisible();
   await expect(diagnostics.getByText('0', { exact: true })).toBeVisible();
+  await expect(diagnostics.getByText('Reviews sichtbar')).toBeVisible();
+  await expect(diagnostics.getByText('Reviews ausgeblendet')).toBeVisible();
+  await expect(diagnostics.getByText('Review-Moderationen')).toBeVisible();
 
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
