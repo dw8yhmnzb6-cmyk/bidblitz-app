@@ -1,7 +1,7 @@
 import { CheckCircle2, Shield, User2 } from "lucide-react";
 import { useUser } from "../store";
 
-export const ActiveAccountBanner = () => {
+export const ActiveAccountBanner = ({ inline = false }) => {
   const user = useUser();
 
   if (!user?.isAuthenticated) return null;
@@ -18,7 +18,7 @@ export const ActiveAccountBanner = () => {
         : "Verifizierung ausstehend";
 
   return (
-    <div className="sticky top-[64px] z-30 mx-auto mb-2.5 w-full max-w-6xl px-4 sm:top-[72px] sm:mb-3" data-testid="active-account-banner">
+    <div className={`${inline ? "relative" : "sticky top-[64px] sm:top-[72px]"} z-30 mx-auto mb-2.5 w-full max-w-6xl px-4 sm:mb-3`} data-testid="active-account-banner">
       <div className="rounded-[18px] border border-[#00C2FF]/20 bg-[linear-gradient(135deg,rgba(0,194,255,0.12),rgba(7,19,29,0.92))] px-3 py-2.5 shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur sm:rounded-[22px] sm:px-4 sm:py-3">
         <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
           <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">

@@ -11,6 +11,7 @@ from pymongo.errors import DuplicateKeyError
 from core.database import db
 from core.security import get_current_user
 from core.admin_project_defaults import PROJECTS
+from core.admin_project_access import NATIVE_PROJECT_PATHS, owner_access, project_access
 
 router = APIRouter(prefix="/api/admin/projects", tags=["admin-projects"])
 
@@ -64,7 +65,7 @@ class ProjectFields(BaseModel):
     def safe_url(cls, value):
         if not value:
             return None
-        if value == "/admin":
+        if value in NATIVE_PROJECT_PATHS.values():
             return value
         parsed = urlsplit(value)
         if (parsed.scheme != "https" or not parsed.hostname or parsed.username
@@ -90,6 +91,7 @@ def _defaults():
         **ProjectFields(name=p["name"], description=p["description"],
                         url=p["url"], admin_url=p["admin_url"],
                         status={"pending": "coming_soon", "dev": "dev"}.get(p["status"], "active"),
+                        category="BidBlitz-Module" if p["id"] in NATIVE_PROJECT_PATHS and p["id"] != "bidblitz" else "Eigenständige Projekte",
                         position=i * 10).model_dump(),
         "id": p["id"], "revision": 0,
     } for i, p in enumerate(PROJECTS)}
@@ -100,18 +102,20 @@ async def get_project(project_id):
     return stored or _defaults().get(project_id)
 
 
-def project_view(project):
+def project_view(project, user=None):
     from routes.admin_sso import sso_configuration, sso_targets, SSO_ADAPTERS
     project = {k: v for k, v in project.items() if k not in {"_id", "audit"}}
-    native = project["id"] == "bidblitz"
+    native_path = NATIVE_PROJECT_PATHS.get(project["id"])
+    native = bool(native_path)
     target = sso_targets().get(project["id"])
     adapter = project["id"] in SSO_ADAPTERS
     configured = bool(target and sso_configuration(project["id"])["configured"])
     available = project["status"] in {"active", "dev"}
-    return {**project, "permissions": ["catalogue:manage"],
-            "sso": native or adapter, "sso_ready": native or (configured and available),
+    return {**project, **project_access(project["id"], user), "permissions": ["catalogue:manage"],
+            "native_path": native_path,
+            "sso": native or adapter, "sso_ready": available and (native or configured),
             "sso_state": "native" if native else "configured" if configured else "not_configured" if adapter else "not_integrated",
-            "open_mode": "internal" if native else "sso" if configured and available else "unavailable",
+            "open_mode": "internal" if native and available else "sso" if configured and available else "unavailable",
             "sso_message": "Mit deiner BidBlitz-Sitzung geöffnet." if native else
             "SSO konfiguriert; das Zielprojekt prüft Anmeldung und Rechte." if configured else
             "Gemeinsame Anmeldung vorbereitet; noch nicht aktiviert." if adapter else
@@ -125,8 +129,8 @@ async def list_admin_projects(request: Request, response: Response):
     projects = _defaults()
     async for row in db.admin_projects.find({}, {"_id": 0, "audit": 0}):
         projects[row["id"]] = row
-    return {"owner": {"email": user.get("email"), "role": "owner", "permissions": ["catalogue:manage", "sso:issue"]},
-            "projects": [project_view(p) for p in sorted(projects.values(), key=lambda p: (p["position"], p["name"].casefold(), p["id"]))]}
+    return {"owner": {"email": user.get("email"), "role": "owner", "permissions": ["catalogue:manage", "sso:issue"], **owner_access(user)},
+            "projects": [project_view(p, user) for p in sorted(projects.values(), key=lambda p: (p["position"], p["name"].casefold(), p["id"]))]}
 
 
 def _event(user, action):
@@ -145,7 +149,7 @@ async def create_project(body: ProjectCreate, request: Request):
         await db.admin_projects.insert_one({"_id": body.id, **project, "audit": [_event(user, "create")]})
     except DuplicateKeyError:
         raise HTTPException(409, "Diese Projekt-ID existiert bereits.")
-    return {"project": project_view(project)}
+    return {"project": project_view(project, user)}
 
 
 @router.put("/{project_id}")
@@ -171,4 +175,4 @@ async def update_project(project_id: str, body: ProjectUpdate, request: Request)
             {"$set": project, "$push": {"audit": {"$each": [event], "$slice": -50}}})
         if result.matched_count != 1:
             raise HTTPException(409, "Das Projekt wurde inzwischen geändert. Bitte neu laden.")
-    return {"project": project_view(project)}
+    return {"project": project_view(project, user)}

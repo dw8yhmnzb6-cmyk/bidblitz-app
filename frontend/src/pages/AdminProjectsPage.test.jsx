@@ -5,17 +5,18 @@ import AdminProjectsPage from "./AdminProjectsPage";
 const project = { id: "eyes", name: "Eyes.BidBlitz", description: "Face Search", category: "Weitere", icon: "BB", color: "#7c3aed", url: "https://eyes.bidblitz.ae", admin_url: "https://eyes.bidblitz.ae", status: "active", position: 10, revision: 0, sso: true, sso_ready: true, open_mode: "sso", sso_message: "SSO konfiguriert; das Zielprojekt prüft Anmeldung und Rechte." };
 const data = { owner: { email: "admin@bidblitz.ae" }, projects: [project] };
 const response = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
-let container, root;
+let container, root, navigate;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   global.fetch = jest.fn().mockResolvedValue(response(data));
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
+  navigate = jest.fn();
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); jest.restoreAllMocks(); });
 // eslint-disable-next-line testing-library/no-unnecessary-act -- Raw ReactDOM createRoot requires act; Testing Library is not used here.
-const render = async () => { await act(async () => root.render(<AdminProjectsPage onNavigate={jest.fn()} />)); };
+const render = async () => { await act(async () => root.render(<AdminProjectsPage onNavigate={navigate} />)); };
 const button = (text) => [...container.querySelectorAll("button")].find((b) => b.textContent === text);
 const click = async (element) => { await act(async () => element.click()); };
 const change = async (input, value) => {
@@ -105,4 +106,44 @@ test("prepared access stays disabled and summary shows connection state", async 
   await render();
   expect(button("Noch nicht verfügbar").disabled).toBe(true);
   expect(container.textContent).toContain("0 Zugänge eingerichtet · 1 vorbereitet · 0 noch nicht angebunden");
+});
+
+test("native modules open their own fixed admin entry without SSO", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, id: "pay", name: "BidBlitz Pay", kind: "module", open_mode: "internal", native_path: "/admin/payments", admin_url: "https://evil.example" }] }));
+  await render();
+  await click(button("Admin öffnen"));
+  expect(navigate).toHaveBeenCalledWith("/admin/payments");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("malformed native entry cannot redirect out of the admin", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, open_mode: "internal", native_path: "https://evil.example" }] }));
+  await render();
+  await click(button("Admin öffnen"));
+  expect(navigate).not.toHaveBeenCalled();
+  expect(container.querySelector("[role=alert]").textContent).toContain("nicht freigegeben");
+});
+
+test("rights view shows exact safe operations and opens the requested service module", async () => {
+  fetch.mockResolvedValueOnce(response({ owner: { email: "admin@bidblitz.ae", database_role: "admin", can_manage_privileged_roles: true, can_cleanup_demo_data: false, service_modules: [{ id: "dating", name: "Dating", operations: ["read", "moderate"], note: "Keine harte Löschung" }] }, projects: [{ ...project, access_profile: { scope: "separate_project", required_role: "admin" } }] }));
+  await render();
+  await click(button("Alle Rechte & Admin-Bereiche"));
+  expect(container.textContent).toContain("Aktuelle BidBlitz-Rolle: admin");
+  expect(container.textContent).toContain("Ansehen · Moderieren");
+  expect(container.textContent).toContain("Erforderliche lokale Rolle: admin");
+  await click(button("Dating verwalten"));
+  expect(navigate).toHaveBeenCalledWith("/admin/modules", { module: "dating" });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("project aliases are searchable and modules can be filtered independently", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, id: "spy", name: "Spy BidBlitz", aliases: ["BidBlitz Device"], kind: "project" }, { ...project, id: "staff", name: "BidBlitz Staff", kind: "module" }] }));
+  await render();
+  await change(container.querySelector('input[placeholder="Projekt suchen…"]'), "Device");
+  expect(container.querySelectorAll("article").length).toBe(1);
+  expect(container.textContent).toContain("Spy BidBlitz");
+  await change(container.querySelector('input[placeholder="Projekt suchen…"]'), "");
+  await change(container.querySelectorAll("select")[1], "module");
+  expect(container.querySelectorAll("article").length).toBe(1);
+  expect(container.textContent).toContain("BidBlitz Staff");
 });

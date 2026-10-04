@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ExternalLink, Grid3X3, Loader2, Pencil, Plus, RefreshCw, Search } from "lucide-react";
+import AdminProjectRights from "../components/admin/AdminProjectRights";
+import { NATIVE_ADMIN_PATHS } from "../components/admin/projectAccessAreas";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 const STATUS = { active: "Aktiv", dev: "Entwicklung", coming_soon: "Demnächst", hidden: "Ausgeblendet" };
@@ -75,6 +77,8 @@ export default function AdminProjectsPage({ onNavigate }) {
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [kindFilter, setKindFilter] = useState("all");
+  const [view, setView] = useState("projects");
   const [opening, setOpening] = useState("");
   const [editor, setEditor] = useState(null);
   const [saveError, setSaveError] = useState("");
@@ -119,7 +123,11 @@ export default function AdminProjectsPage({ onNavigate }) {
 
   const openProject = async (project) => {
     if (openLock.current || project.open_mode === "unavailable") return;
-    if (project.open_mode === "internal") { onNavigate("/admin"); return; }
+    if (project.open_mode === "internal") {
+      const path = project.native_path || (project.id === "bidblitz" ? "/admin" : null);
+      if (!NATIVE_ADMIN_PATHS.has(path)) { setActionError("Dieser Admin-Einstieg ist nicht freigegeben."); return; }
+      onNavigate(path); return;
+    }
     openLock.current = true;
     setOpening(project.id);
     setActionError("");
@@ -138,7 +146,8 @@ export default function AdminProjectsPage({ onNavigate }) {
   };
 
   const visible = projects.filter((p) => (statusFilter === "all" || p.status === statusFilter)
-    && `${p.name} ${p.description} ${p.category}`.toLowerCase().includes(query.trim().toLowerCase()));
+    && (kindFilter === "all" || p.kind === kindFilter)
+    && `${p.name} ${p.description} ${p.category} ${(p.aliases || []).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
   const connected = projects.filter((p) => p.sso_ready).length;
   const prepared = projects.filter((p) => p.sso && !p.sso_ready).length;
   const pending = projects.filter((p) => !p.sso).length;
@@ -156,6 +165,10 @@ export default function AdminProjectsPage({ onNavigate }) {
       <main className="max-w-6xl mx-auto px-4 py-5">
         {owner && <section className="mb-4 rounded-2xl bg-white border p-4"><div className="text-xs text-gray-500">Haupt-Admin</div><p className="font-bold break-all">{owner.email}</p><p className="text-xs text-gray-500 mt-1">Projekte verwalten und öffnen. Zugriffsrechte werden im jeweiligen Projekt geprüft.</p></section>}
         {owner && <p className="text-sm mb-4" role="status">{connected} Zugänge eingerichtet · {prepared} vorbereitet · {pending} noch nicht angebunden</p>}
+        {owner && <nav className="flex gap-2 mb-4" aria-label="Projektverwaltung Ansichten">
+          <button aria-pressed={view === "projects"} onClick={() => setView("projects")} className="bg-white border rounded-xl px-4 py-2">Projekte ({projects.length})</button>
+          <button aria-pressed={view === "rights"} onClick={() => setView("rights")} className="bg-white border rounded-xl px-4 py-2">Alle Rechte & Admin-Bereiche</button>
+        </nav>}
         {owner && <div className="flex flex-wrap gap-2 mb-4">
           <button disabled={Boolean(editor)} onClick={() => edit(null)} className="bg-violet-700 text-white rounded-xl px-4 py-2 flex items-center gap-2 disabled:opacity-50"><Plus size={16} />Neues Projekt hinzufügen</button>
           <button disabled={loading || Boolean(editor)} onClick={load} className="border bg-white rounded-xl px-4 py-2 flex items-center gap-2 disabled:opacity-50"><RefreshCw size={16} />Aktualisieren</button>
@@ -164,12 +177,14 @@ export default function AdminProjectsPage({ onNavigate }) {
         {notice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-xl p-3 mb-4">{notice}</p>}
         {actionError && <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-700 mb-4">{actionError}<button onClick={() => setActionError("")} className="ml-3 underline">Schließen</button></div>}
         {loadError && <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-700">{loadError}<button onClick={load} className="ml-3 underline">Erneut versuchen</button></div>}
-        {!loadError && owner && <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {!loadError && owner && view === "projects" && <div className="flex flex-col sm:flex-row gap-3 mb-5">
           <label className="relative flex-1"><span className="sr-only">Projekt suchen</span><Search size={17} className="absolute left-3 top-3.5 text-gray-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Projekt suchen…" className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border text-sm" /></label>
           <label><span className="sr-only">Nach Status filtern</span><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full p-3 rounded-xl bg-white border text-sm"><option value="all">Alle Status</option>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span className="sr-only">Nach Projektart filtern</span><select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)} className="w-full p-3 rounded-xl bg-white border text-sm"><option value="all">Projekte und Module</option><option value="project">Eigenständige Projekte</option><option value="module">BidBlitz-Module</option></select></label>
         </div>}
         {loading && <div role="status" className="py-10 flex justify-center gap-2"><Loader2 className="animate-spin" />Projekte werden geladen…</div>}
-        {!loading && !loadError && owner && <>
+        {!loading && !loadError && owner && view === "rights" && <AdminProjectRights owner={owner} projects={projects} onNavigate={onNavigate} />}
+        {!loading && !loadError && owner && view === "projects" && <>
           <p className="text-xs text-gray-500 mb-3">{visible.length} von {projects.length} Projekten · „Aktiv“ ist der eingestellte Projektstatus, keine Erreichbarkeitsprüfung.</p>
           {!visible.length && <p className="p-8 bg-white border rounded-xl text-center">Keine Projekte für diesen Filter gefunden.</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -180,6 +195,8 @@ export default function AdminProjectsPage({ onNavigate }) {
                 <button disabled={Boolean(editor)} aria-label={`${project.name} bearbeiten`} onClick={() => edit(project)} className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50"><Pencil size={16} /></button>
               </div>
               <p className="text-sm text-gray-600 mt-3 break-words">{project.description}</p>
+              <p className="text-xs text-violet-700 mt-2">{project.kind === "module" ? "Modul der BidBlitz-App" : "Eigenständiges Projekt"}</p>
+              {project.access_profile && <details className="text-xs mt-3"><summary className="cursor-pointer font-semibold">Rechte & Zuordnung</summary><p className="mt-2 text-gray-600">{project.access_profile.role ? `BidBlitz-Rolle: ${project.access_profile.role}` : project.access_profile.required_role ? `Erforderliche lokale Rolle: ${project.access_profile.required_role}` : "Lokales Rechtepaket noch nicht geprüft"}</p><p className="text-gray-500 mt-1">{project.access_profile.note}</p>{project.aliases?.length > 0 && <p className="text-gray-500 mt-1">Auch bekannt als: {project.aliases.join(", ")}</p>}</details>}
               <span className="text-xs mt-3 font-semibold">{STATUS[project.status] || "Unbekannt"}</span>
               <div className="mt-auto pt-4">
                 <p className="text-xs text-gray-500 mb-3">{project.sso_message}</p>

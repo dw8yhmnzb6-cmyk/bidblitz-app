@@ -14,6 +14,7 @@ from core.config import TEST_MODE
 from core.payment_engine import credit_wallet, TransactionType
 from core.security import get_current_user
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.admin_access import can_manage_privileged_roles
 from routes.auth import _issue_password_reset
 
 router = APIRouter(prefix="/api/admin", tags=["admin-management"])
@@ -27,8 +28,7 @@ async def _require_admin(request: Request):
 
 
 def _can_manage_privileged_roles(admin: dict) -> bool:
-    email = str(admin.get("canonical_email") or admin.get("email") or "").strip().lower()
-    return admin.get("role") == "super_admin" or email == "admin@bidblitz.ae"
+    return can_manage_privileged_roles(admin)
 
 
 def _oid(s):

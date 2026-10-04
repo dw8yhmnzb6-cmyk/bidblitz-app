@@ -1081,7 +1081,7 @@ function AppContent() {
       case "/admin/payments":
         return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="transactions" /> : <HomePage {...homeProps} />;
       case "/admin/modules":
-        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="modules" /> : <HomePage {...homeProps} />;;
+        return isAdminRole ? <AdminManagementPage onBack={() => handleNavigate("/admin/projects")} initialTab="modules" initialModule={navState.module || null} /> : <HomePage {...homeProps} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
@@ -1531,7 +1531,7 @@ function AppContent() {
             {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
             {showTestBuildDebugLine && <TestBuildDebugLine />}
             {showActiveAccountBanner && (
-              <ActiveAccountBanner />
+              <ActiveAccountBanner inline={routeBase === "/admin/projects"} />
             )}
             {renderPage()}
           </Suspense>

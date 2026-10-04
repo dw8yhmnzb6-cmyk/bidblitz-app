@@ -241,3 +241,34 @@ def test_canonical_owner_config_uses_current_database_identity(context, monkeypa
     assert client.get("/api/admin/projects").status_code == 200
     asyncio.run(database.users.update_one({"_id": user_id}, {"$set": {"email": "other@example.com"}}))
     assert client.get("/api/admin/projects").status_code == 403
+
+
+def test_inventory_rights_do_not_modify_accounts_or_imply_remote_grants(context):
+    client, database, user_id = context
+    response = client.get("/api/admin/projects")
+    data = response.json()
+    assert len(data["projects"]) == 35
+    assert data["owner"]["database_role"] == "admin"
+    assert len(data["owner"]["service_modules"]) == 15
+    assert data["owner"]["can_manage_privileged_roles"]
+    assert not data["owner"]["can_cleanup_demo_data"]
+    row = next(p for p in data["projects"] if p["id"] == "trade")
+    assert row["access_profile"]["required_role"] == "SUPER_ADMIN"
+    assert row["access_profile"]["effective_permissions"] == []
+    assert asyncio.run(database.users.find_one({"_id": user_id}))["role"] == "admin"
+
+
+def test_saved_owner_edits_survive_additional_default_projects(context):
+    client, _, _ = context
+    edited = update_body(admin_projects._defaults()["charging"], name="Mein vorhandenes Charging", position=4)
+    assert client.put("/api/admin/projects/charging", json=edited, headers=HEADERS).status_code == 200
+    rows = {p["id"]: p for p in client.get("/api/admin/projects").json()["projects"]}
+    assert rows["charging"]["name"] == "Mein vorhandenes Charging"
+    assert rows["charge"]["name"] == "BidBlitz Charge"
+    assert rows["spy"]["open_mode"] == "unavailable"
+
+
+def test_writable_catalogue_cannot_forge_access_profiles(context):
+    client, _, _ = context
+    for field, value in {"native_path": "/admin", "access_profile": {"effective_permissions": ["*"]}, "permissions": ["*"], "kind": "module"}.items():
+        assert client.post("/api/admin/projects", json=draft(**{field: value}), headers=HEADERS).status_code == 422
