@@ -382,8 +382,8 @@ async def delete_version(draft_id: str, version_id: str, request: Request):
     })
     if not doc:
         raise HTTPException(404, "Spielversion nicht gefunden")
-    if doc.get("review_status") in {"submitted", "archive_approved"} or doc.get("preview_status") == "prepared":
-        raise HTTPException(409, "Diese Version ist Teil des Prüf-/Vorschauverlaufs und kann nicht gelöscht werden")
+    if doc.get("review_status") in {"submitted", "archive_approved", "preview_approved"} or doc.get("preview_status") == "prepared" or doc.get("publication_status") in {"published", "inactive"}:
+        raise HTTPException(409, "Diese Version ist Teil des Prüf-/Vorschau-/Veröffentlichungsverlaufs und kann nicht gelöscht werden")
 
     path = Path(doc.get("storage_path") or "")
     if path:
