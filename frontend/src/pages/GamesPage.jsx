@@ -14,6 +14,7 @@ const CATALOG_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/catalo
 const PROFILE_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/profile`;
 const REVIEW_SUMMARIES_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/reviews/summaries`;
 const RECENT_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/recent`;
+const ANALYTICS_API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/games/analytics`;
 const COPY = {
   de: {
     back: "Zurück", title: "Dein nächstes Abenteuer.", subtitle: "Entdecke die ersten Spielwelten von BidBlitz.",
@@ -202,6 +203,12 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
   };
 
   const recordRecent = (gameId) => {
+    fetch(`${ANALYTICS_API}/${encodeURIComponent(gameId)}/launch`, {
+      method: "POST",
+      credentials: "omit",
+      keepalive: true,
+    }).catch(() => {});
+
     const now = new Date().toISOString();
     if (!user.isAuthenticated) {
       const result = recordLocalRecent(globalThis.localStorage, gameId, now);
