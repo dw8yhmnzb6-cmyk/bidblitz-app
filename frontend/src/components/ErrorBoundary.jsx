@@ -6,6 +6,7 @@ import { Component } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const reportedResourceErrors = new Set();
 
 const getBrowserContext = () => {
   if (typeof window === "undefined") {
@@ -273,6 +274,10 @@ export function setupGlobalErrorHandler() {
       target.currentSrc || target.src || target.href || "",
     );
     if (!resourceUrl) return;
+
+    const resourceKey = `${window.location.pathname}|${tag}|${resourceUrl}`;
+    if (reportedResourceErrors.has(resourceKey)) return;
+    reportedResourceErrors.add(resourceKey);
 
     logErrorToBackend(buildFrontendErrorPayload({
       error: `Ressource konnte nicht geladen werden: ${tag}`,
