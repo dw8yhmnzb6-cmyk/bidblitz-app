@@ -148,9 +148,9 @@ async def create_preview_link(draft_id: str, version_id: str, request: Request):
         "draft_id": draft_id,
         "owner_id": owner_id,
         "status": "quarantined",
-        "review_status": "archive_approved",
+        "review_status": {"$in": ["archive_approved", "preview_approved"]},
         "preview_status": "prepared",
-        "execution_status": "blocked_pending_isolated_preview",
+        "execution_status": {"$in": ["blocked_pending_isolated_preview", "isolated_preview_only"]},
     })
     if not version:
         raise HTTPException(404, "Vorbereitete Spielversion nicht gefunden")
@@ -227,7 +227,7 @@ async def serve_private_preview(token: str, asset_path: str, request: Request):
         "id": access.get("version_id"),
         "owner_id": access.get("owner_id"),
         "status": "quarantined",
-        "review_status": "archive_approved",
+        "review_status": {"$in": ["archive_approved", "preview_approved"]},
         "preview_status": "prepared",
     })
     if not version:
