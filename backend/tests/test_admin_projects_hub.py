@@ -56,7 +56,7 @@ def test_unconfigured_admin_cannot_enter_cross_project_hub(monkeypatch):
 
 
 def test_project_sso_requires_explicit_activation(monkeypatch):
-    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_SECRET", "s" * 48)
     monkeypatch.delenv("BIDBLITZ_SSO_EYES_ENABLED", raising=False)
     assert not _project_sso_ready("eyes")
     monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
@@ -64,7 +64,7 @@ def test_project_sso_requires_explicit_activation(monkeypatch):
 
 
 def test_aion_sso_requires_configured_base_url(monkeypatch):
-    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_AION_SECRET", "s" * 48)
     monkeypatch.setenv("BIDBLITZ_SSO_AION_ENABLED", "true")
     monkeypatch.delenv("BIDBLITZ_AION_BASE_URL", raising=False)
     assert not _project_sso_ready("aion")
@@ -73,10 +73,8 @@ def test_aion_sso_requires_configured_base_url(monkeypatch):
 
 
 def test_unknown_project_is_never_sso_ready(monkeypatch):
-    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
     assert not _project_sso_ready("unknown-project")
 
 
 def test_bidblitz_control_plane_is_always_ready(monkeypatch):
-    monkeypatch.delenv("BIDBLITZ_SSO_SHARED_SECRET", raising=False)
     assert _project_sso_ready("bidblitz")
