@@ -18,16 +18,24 @@ from routes.admin_projects import _is_platform_owner
 
 router = APIRouter(prefix="/api/admin/sso", tags=["admin-sso"])
 
-SSO_TARGETS = {
-    "eyes": {
-        "handoff_url": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
-        "browser_url": "https://eyes.bidblitz.ae",
-    },
-    "trade": {
-        "handoff_url": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
-        "browser_url": "https://trade.bidblitz.ae/auth/bidblitz-sso",
-    },
-}
+def _sso_targets() -> dict[str, dict[str, str]]:
+    targets = {
+        "eyes": {
+            "handoff_url": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
+            "browser_url": "https://eyes.bidblitz.ae",
+        },
+        "trade": {
+            "handoff_url": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
+            "browser_url": "https://trade.bidblitz.ae/auth/bidblitz-sso",
+        },
+    }
+    aion_base = os.getenv("BIDBLITZ_AION_BASE_URL", "").strip().rstrip("/")
+    if aion_base:
+        targets["aion"] = {
+            "handoff_url": f"{aion_base}/api/auth/bidblitz-sso",
+            "browser_url": aion_base,
+        }
+    return targets
 
 
 def _b64url(data: bytes) -> str:
@@ -46,7 +54,7 @@ async def create_sso_handoff(project_id: str, request: Request):
     if not _is_platform_owner(user):
         raise HTTPException(status_code=403, detail="Platform owner access required")
 
-    target = SSO_TARGETS.get(project_id)
+    target = _sso_targets().get(project_id)
     if not target:
         raise HTTPException(status_code=404, detail="Project SSO is not connected")
 
