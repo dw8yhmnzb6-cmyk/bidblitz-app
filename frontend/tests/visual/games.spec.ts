@@ -159,6 +159,7 @@ test('Games Match preview opens from catalog and remains usable on 320px', async
   await expect(page.getByRole('heading', { name: 'BidBlitz Match' })).toBeVisible();
   const frame = page.locator('iframe[title*="BidBlitz Match"]');
   await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('src', '/game-assets/match-preview/match.html');
   const box = await frame.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
