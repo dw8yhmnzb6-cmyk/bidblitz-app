@@ -135,7 +135,7 @@ async function mockGamesAdminApis(page: Page) {
     });
   });
 }
-  await page.route('**/api/admin/games/reviews?**', async (route) => {
+  await page.route('**/api/admin/games/reviews**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
