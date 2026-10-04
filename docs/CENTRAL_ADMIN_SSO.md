@@ -6,7 +6,7 @@ Stand: 4. Oktober 2026. Implementierter Code, keine Produktionsfreischaltung.
 
 `/admin/projects` verwaltet 35 Standard-Katalogeinträge sowie eigene zusätzliche Einträge in der bestehenden BidBlitz-Datenbank. Änderungen verwenden Revisionen und ein begrenztes Audit-Protokoll. Suche, Statusfilter und Bearbeitung sind vorhanden. Nur ein ausdrücklich konfigurierter Owner mit aktueller Datenbankrolle `admin` oder `super_admin` darf den Katalog ändern oder Zugangscodes ausstellen. Login-Aliase allein verleihen keine Owner-Rechte.
 
-BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION und Verify bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
+BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION, Verify und BIDTAX bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
 
 Die zusätzliche Ansicht „Anbindungen & offene Schritte“ zeigt pro Projekt
 die lokale Katalogfreigabe, erlaubte Ziele, explizite Freischaltung,
@@ -33,6 +33,7 @@ Trade verwendet seinen vorhandenen TOTP-/Recovery-Login, wenn ein Faktor aktiv i
 - Je Projekt `BIDBLITZ_SSO_<PROJEKT>_SECRET`: eigener Schlüssel mit mindestens 32 Zeichen. `BIDBLITZ_SSO_SHARED_SECRET` bleibt ein Legacy-Fallback; ein ausdrücklich leerer projektspezifischer Schlüssel deaktiviert diesen Fallback.
 - Je Projekt `BIDBLITZ_SSO_<PROJEKT>_ENABLED=true`: explizite Freischaltung. Ein Schlüssel allein aktiviert keinen Zugang.
 - AION und Verify benötigen zusätzlich `BIDBLITZ_AION_BASE_URL` bzw. `BIDBLITZ_VERIFY_BASE_URL`. Nur eine HTTPS-Origin unter `.bidblitz.ae`, ohne Zugangsdaten, Pfad, Query, Fragment oder fremden Port, wird akzeptiert. Katalog-Adressen beeinflussen diese Übergabeziele nicht.
+- BIDTAX benötigt `BIDBLITZ_BIDTAX_BASE_URL`: HTTPS unter `.bidblitz.ae` oder `bid-tax.com`/dessen Subdomains. Nur dieser Adapter akzeptiert die zusätzliche Domain; sonst gelten dieselben Origin-Grenzen.
 - Der Projektstatus muss `active` oder `dev` sein. `hidden` und `coming_soon` stellen keine Codes aus.
 
 ## Empfänger
@@ -45,6 +46,9 @@ Trade verwendet seinen vorhandenen TOTP-/Recovery-Login, wenn ein Faktor aktiv i
 | Stack | `/api/auth/bidblitz-sso` | `STACK_BIDBLITZ_SSO_SHARED_SECRET` | `STACK_BIDBLITZ_OWNER_ID` | `STACK_BIDBLITZ_LOCAL_OWNER_ID`, `OWNER` der Plattformorganisation |
 | AION | `/api/auth/bidblitz-sso` | `AION_BIDBLITZ_SSO_SHARED_SECRET` | `AION_BIDBLITZ_OWNER_ID` | `AION_BIDBLITZ_LOCAL_ADMIN_ID`, aktiver Plattformadministrator im Plattform-Tenant |
 | Verify | `/v1/auth/bidblitz-sso` | `BBV_BIDBLITZ_SSO_SHARED_SECRET` | `BBV_BIDBLITZ_OWNER_ID` | `BBV_BIDBLITZ_LOCAL_ADMIN_EMAIL`, bestehender `ADMIN`; ausschließlich Sandbox |
+| BIDTAX | `/api/auth/bidblitz-sso` | `BIDTAX_BIDBLITZ_SSO_SHARED_SECRET` | `BIDTAX_BIDBLITZ_OWNER_ID` | `BIDTAX_BIDBLITZ_LOCAL_ADMIN_ID`, vorhandener aktiver `super_admin` |
+
+BIDTAX benötigt zusätzlich `BIDTAX_BIDBLITZ_SSO_ENABLED=true` und `BIDTAX_BIDBLITZ_SSO_BROWSER_ORIGIN`. Bei Hinweisen auf einen zweiten Faktor sperrt der neue Einstieg, da im geprüften Quellstand kein MFA-Abschluss montiert ist. Das lokale Konto, seine Rolle und `auth_version` werden bei jeder SSO-Sitzungsanfrage erneut geprüft. Details: [BIDTAX-Anbindung](CENTRAL_ADMIN_BIDTAX_2026-10-04.md).
 
 Trade nutzt die vorhandenen `CORS_ORIGINS`, NEX `NEX_ALLOWED_ORIGINS`, Stack `STACK_ALLOWED_ORIGINS`. Die tatsächliche Origin des eigenen Projektbrowsers muss zugelassen sein. AION benötigt `AION_BIDBLITZ_SSO_BROWSER_ORIGIN`. Eyes tauscht jetzt aus dem eigenen Browserprojekt aus, wodurch kein BidBlitz-Cross-Origin-Cookie-Austausch erforderlich ist.
 

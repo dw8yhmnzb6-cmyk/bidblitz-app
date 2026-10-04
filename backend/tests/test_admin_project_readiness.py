@@ -32,7 +32,7 @@ def test_adapter_reports_actual_missing_issuer_configuration(name):
     state = checks(row)
     assert state["receiver"]["state"] == "passed"
     assert state["key"]["state"] == state["release"]["state"] == "blocked"
-    assert state["destination"]["state"] == ("blocked" if name in {"aion", "verify"} else "passed")
+    assert state["destination"]["state"] == ("blocked" if name in {"aion", "verify", "bidtax"} else "passed")
     assert row["integration"]["state"] == "issuer_incomplete"
     assert not row["integration"]["can_attempt"]
     assert row["integration"]["receiver_setup"] == RECEIVER_SETUP[name]

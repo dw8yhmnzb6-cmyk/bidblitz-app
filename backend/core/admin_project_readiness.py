@@ -6,6 +6,7 @@ issued, and no catalogue field can attest to deployment or account verification.
 from core.admin_project_access import REMOTE_REQUIRED_ROLES
 
 RECEIVER_SETUP = {
+    "bidtax": {"identity_setting": "BIDTAX_BIDBLITZ_LOCAL_ADMIN_ID", "owner_setting": "BIDTAX_BIDBLITZ_OWNER_ID", "secret_setting": "BIDTAX_BIDBLITZ_SSO_SHARED_SECRET", "migration": "MongoDB central_sso_nonces: Unique-_id und TTL-Index; keine zweite Datenbank"},
     "eyes": {"identity_setting": "EYES_BIDBLITZ_LOCAL_ADMIN_EMAIL", "owner_setting": "EYES_BIDBLITZ_OWNER_ID", "secret_setting": "EYES_BIDBLITZ_SSO_SHARED_SECRET", "migration": "Vorhandene SQLite-Nonce-Tabelle"},
     "trade": {"identity_setting": "TRADE_BIDBLITZ_LOCAL_ADMIN_ID", "owner_setting": "TRADE_BIDBLITZ_OWNER_ID", "secret_setting": "TRADE_BIDBLITZ_SSO_SHARED_SECRET", "migration": "Alembic 0212_central_sso_nonces"},
     "nex": {"identity_setting": "NEX_BIDBLITZ_LOCAL_OWNER_ID", "owner_setting": "NEX_BIDBLITZ_OWNER_ID", "secret_setting": "NEX_BIDBLITZ_SSO_SHARED_SECRET", "migration": "002_central_sso.sql"},
@@ -41,7 +42,7 @@ def project_readiness(project, *, native, adapter, config):
     if adapter:
         prefix = f"BIDBLITZ_SSO_{project_id.upper()}"
         settings = [f"{prefix}_ENABLED", f"{prefix}_SECRET", "BIDBLITZ_OWNER_ID"]
-        if project_id in {"aion", "verify"}:
+        if project_id in {"aion", "verify", "bidtax"}:
             settings.append(f"BIDBLITZ_{project_id.upper()}_BASE_URL")
         checks.extend([
             _check("destination", "Erlaubtes Übergabeziel", config["target_configured"],

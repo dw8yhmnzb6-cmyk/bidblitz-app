@@ -45,7 +45,7 @@ def context(monkeypatch):
     monkeypatch.setattr(security, "db", database)
     monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae")
     monkeypatch.setenv("BIDBLITZ_OWNER_ID", "test-owner")
-    for name in ("EYES", "TRADE", "NEX", "STACK", "AION", "VERIFY"):
+    for name in ("EYES", "TRADE", "NEX", "STACK", "AION", "VERIFY", "BIDTAX"):
         monkeypatch.delenv(f"BIDBLITZ_SSO_{name}_ENABLED", raising=False)
     monkeypatch.delenv("BIDBLITZ_SSO_SHARED_SECRET", raising=False)
     monkeypatch.delenv("BIDBLITZ_SSO_EYES_SECRET", raising=False)
@@ -218,7 +218,7 @@ def test_each_receiver_requires_explicit_release_flag(context, monkeypatch, name
     monkeypatch.setenv(f"BIDBLITZ_SSO_{name.upper()}_ENABLED", "true")
     assert client.post(f"/api/admin/sso/{name}", headers=HEADERS).status_code == 200
 
-@pytest.mark.parametrize("name", ["aion", "verify"])
+@pytest.mark.parametrize("name", ["aion", "verify", "bidtax"])
 def test_optional_base_only_accepts_trusted_https_origin(context, monkeypatch, name):
     client, _, _ = context
     monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "x" * 48)
@@ -232,6 +232,23 @@ def test_optional_base_only_accepts_trusted_https_origin(context, monkeypatch, n
     result = client.post(f"/api/admin/sso/{name}", headers=HEADERS)
     assert result.status_code == 200
     assert result.json()["browser_url"] == f"https://{name}.bidblitz.ae/auth/bidblitz-sso"
+
+
+def test_bidtax_target_allows_its_existing_domain_without_widening_other_receivers(context, monkeypatch):
+    client, _, _ = context
+    monkeypatch.setenv("BIDBLITZ_SSO_BIDTAX_SECRET", "b" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_BIDTAX_ENABLED", "true")
+    body = update_body(admin_projects._defaults()["bidtax"], status="dev", admin_url="https://evil.example")
+    assert client.put("/api/admin/projects/bidtax", json=body, headers=HEADERS).status_code == 200
+    for invalid in ["https://bid-tax.com.evil.example", "https://bid-tax.com@evil.example", "https://bid-tax.com/path", "http://bid-tax.com"]:
+        monkeypatch.setenv("BIDBLITZ_BIDTAX_BASE_URL", invalid)
+        assert client.post("/api/admin/sso/bidtax", headers=HEADERS).status_code == 404
+    monkeypatch.setenv("BIDBLITZ_BIDTAX_BASE_URL", "https://bid-tax.com")
+    response = client.post("/api/admin/sso/bidtax", headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["browser_url"] == "https://bid-tax.com/auth/bidblitz-sso"
+    monkeypatch.setenv("BIDBLITZ_AION_BASE_URL", "https://bid-tax.com")
+    assert "aion" not in admin_sso.sso_targets()
 
 
 def test_canonical_owner_config_uses_current_database_identity(context, monkeypatch):
