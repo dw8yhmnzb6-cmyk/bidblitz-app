@@ -84,6 +84,11 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
     def tearDown(self):
         developer.BILLING_READY = self.old_billing
 
+    def test_super_admin_can_manage_developer_entitlements(self):
+        developer.get_current_user.return_value = {"_id": "root1", "role": "super_admin"}
+        user = asyncio.run(developer._admin(None))
+        self.assertEqual(user["role"], "super_admin")
+
     def test_checkout_fails_closed_until_billing_is_explicitly_ready(self):
         with self.assertRaises(HTTPException) as context:
             asyncio.run(developer.developer_checkout(None))
