@@ -6,6 +6,7 @@ issued, and no catalogue field can attest to deployment or account verification.
 from core.admin_project_access import REMOTE_REQUIRED_ROLES
 
 RECEIVER_SETUP = {
+    "veysca": {"identity_setting": "VEYSCA_BIDBLITZ_OWNER_EMAIL", "owner_setting": "VEYSCA_BIDBLITZ_OWNER_ID", "secret_setting": "VEYSCA_BIDBLITZ_SSO_SHARED_SECRET", "migration": "Bestehende VEYSCA SQLite: central_sso_nonces + central_admin_sessions; keine zweite Datenbank"},
     "remote": {"identity_setting": "REMOTE_BIDBLITZ_LOCAL_OWNER_USER_ID + REMOTE_BIDBLITZ_LOCAL_OWNER_ORG_ID", "owner_setting": "REMOTE_BIDBLITZ_OWNER_ID + REMOTE_BIDBLITZ_OWNER_EMAIL", "secret_setting": "REMOTE_BIDBLITZ_SSO_SHARED_SECRET", "migration": "PostgreSQL 007_central_sso_nonces.sql; keine zweite Datenbank"},
     "spy": {"identity_setting": "SPY_BIDBLITZ_OWNER_EMAIL", "owner_setting": "SPY_BIDBLITZ_OWNER_ID", "secret_setting": "SPY_BIDBLITZ_SSO_SHARED_SECRET", "migration": "Bestehende SQLite-DB: central_sso_nonces + admin_sessions; keine zweite Datenbank"},
     "conformexa": {"identity_setting": "CONFORMEXA_OPERATOR_UI_ENABLED", "owner_setting": "CONFORMEXA_BIDBLITZ_OWNER_ID", "secret_setting": "CONFORMEXA_BIDBLITZ_SSO_SHARED_SECRET", "migration": "PostgreSQL/SQLite 0015_bidblitz_central_sso.sql; bestehende Conformexa-Datenbank"},
@@ -45,7 +46,7 @@ def project_readiness(project, *, native, adapter, config):
     if adapter:
         prefix = f"BIDBLITZ_SSO_{project_id.upper()}"
         settings = [f"{prefix}_ENABLED", f"{prefix}_SECRET", "BIDBLITZ_OWNER_ID"]
-        if project_id in {"aion", "verify", "bidtax", "conformexa", "spy", "remote"}:
+        if project_id in {"aion", "verify", "bidtax", "conformexa", "spy", "remote", "veysca"}:
             settings.append(f"BIDBLITZ_{project_id.upper()}_BASE_URL")
         checks.extend([
             _check("destination", "Erlaubtes Übergabeziel", config["target_configured"],

@@ -21,12 +21,20 @@ SSO_TARGETS = {
            "browser_url": f"https://{name}.bidblitz.ae/auth/bidblitz-sso", "mode": "redirect"}
     for name in ("eyes", "trade", "nex", "stack")
 }
-SSO_ADAPTERS = frozenset((*SSO_TARGETS, "aion", "verify", "bidtax", "conformexa", "spy", "remote"))
+SSO_ADAPTERS = frozenset((*SSO_TARGETS, "aion", "verify", "bidtax", "conformexa", "spy", "remote", "veysca"))
 
 
 def sso_targets():
     targets = dict(SSO_TARGETS)
-    for name, endpoint in (("aion", "/api/auth/bidblitz-sso"), ("verify", "/v1/auth/bidblitz-sso"), ("bidtax", "/api/auth/bidblitz-sso"), ("conformexa", "/v1/platform/admin/bidblitz-sso"), ("spy", "/api/v1/dev/admin/bidblitz-sso"), ("remote", "/v1/auth/bidblitz-sso")):
+    for name, endpoint, browser_path in (
+        ("aion", "/api/auth/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("verify", "/v1/auth/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("bidtax", "/api/auth/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("conformexa", "/v1/platform/admin/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("spy", "/api/v1/dev/admin/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("remote", "/v1/auth/bidblitz-sso", "/auth/bidblitz-sso"),
+        ("veysca", "/api/v1/admin/bidblitz-sso", "/admin.html"),
+    ):
         base = os.getenv(f"BIDBLITZ_{name.upper()}_BASE_URL", "").strip().rstrip("/")
         if not base:
             continue
@@ -48,7 +56,7 @@ def sso_targets():
             valid = False
         if valid:
             targets[name] = {"handoff_url": base + endpoint,
-                             "browser_url": base + "/auth/bidblitz-sso", "mode": "redirect"}
+                             "browser_url": base + browser_path, "mode": "redirect"}
     return targets
 
 

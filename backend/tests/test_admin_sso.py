@@ -65,3 +65,14 @@ def test_remote_target_uses_only_validated_bidblitz_https_origin(monkeypatch):
     for base in ("http://remote.bidblitz.ae", "https://evil.example", "https://remote.bidblitz.ae/path", "https://u:p@remote.bidblitz.ae", "https://remote.bidblitz.ae:444"):
         monkeypatch.setenv("BIDBLITZ_REMOTE_BASE_URL", base)
         assert "remote" not in admin_sso.sso_targets()
+
+
+def test_veysca_target_uses_static_admin_landing_and_trusted_https(monkeypatch):
+    from routes import admin_sso
+    monkeypatch.setenv("BIDBLITZ_VEYSCA_BASE_URL", "https://veysca.bidblitz.ae")
+    target = admin_sso.sso_targets()["veysca"]
+    assert target["handoff_url"] == "https://veysca.bidblitz.ae/api/v1/admin/bidblitz-sso"
+    assert target["browser_url"] == "https://veysca.bidblitz.ae/admin.html"
+    for base in ("http://veysca.bidblitz.ae", "https://evil.example", "https://veysca.bidblitz.ae/path", "https://u:p@veysca.bidblitz.ae", "https://veysca.bidblitz.ae:444"):
+        monkeypatch.setenv("BIDBLITZ_VEYSCA_BASE_URL", base)
+        assert "veysca" not in admin_sso.sso_targets()

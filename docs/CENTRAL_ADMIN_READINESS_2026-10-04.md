@@ -103,3 +103,7 @@ Game.BidBlitz ist kein zusätzlicher externer SSO-Empfänger im derzeitigen Quel
 ## Korrektur BidBlitz Match
 
 Für BidBlitz Match ist kein eigenständiger App-/Admin-Quellstand nachweisbar. Der vorhandene Match-Code liegt als Modul von Game.BidBlitz (`/games/match` und Match-Preview). Der Admin-Katalog hält die Match-Kachel sichtbar, öffnet aber denselben vorhandenen `/admin/game-settings`-Bereich und erzeugt keinen zweiten Login oder externen SSO-Vertrag.
+
+## Ergänzung VEYSCA
+
+VEYSCA ist als elfter externer Adapter vorbereitet. Der Empfänger v0.8 erzeugt keine Benutzerkonten, verbraucht den BidBlitz-Einmalcode atomar in der bestehenden SQLite-Datenbank und stellt eine 30-Minuten-Admin-Sitzung aus. Der manuelle `VEYSCA_ADMIN_TOKEN` bleibt Fallback. Empfänger: 49/49 Backendtests plus JavaScript-/30-Sprachen-/Risk-Engine-Gates bestanden. Katalogstatus bleibt `pending` bis zu separater Bereitstellung, HTTPS-Origin und Schlüsselkonfiguration. Nach der Game-/Match-Korrektur sind 16 der 35 Katalogeinträge native BidBlitz-Module und 19 separate Projekte/Integrationen; davon haben 11 einen vorbereiteten externen Adapter.
