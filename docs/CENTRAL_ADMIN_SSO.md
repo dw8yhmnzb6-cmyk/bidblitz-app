@@ -16,7 +16,7 @@ copied between projects.
 
 ## Handoff claims
 
-Every handoff is HMAC-SHA256 signed with the deployment secret and contains:
+Every handoff is HMAC-SHA256 signed with an independent per-project deployment secret and contains:
 
 - `iss = https://bidblitz.ae`
 - `aud = <project id>`
@@ -42,7 +42,13 @@ A child project MUST:
 
 ## Activation
 
-SSO is fail-closed. The central secret alone is insufficient. Each project also
+SSO is fail-closed. Each project requires its own independent secret and an
+explicit activation flag. Central environment names are:
+- `BIDBLITZ_SSO_EYES_SECRET`
+- `BIDBLITZ_SSO_TRADE_SECRET`
+- `BIDBLITZ_SSO_AION_SECRET`
+
+Each receiver stores only its corresponding project secret. Each project also
 requires an explicit activation flag:
 
 - `BIDBLITZ_SSO_EYES_ENABLED`
