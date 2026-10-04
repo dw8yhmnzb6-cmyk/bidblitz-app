@@ -101,6 +101,9 @@ async def create_indexes():
     await safe_create_index(db.games_catalog, [("status", 1), ("updated_at", -1)])
     await safe_create_index(db.games_catalog, [("category", 1), ("status", 1)])
     await safe_create_index(db.game_studio_publication_events, [("draft_id", 1), ("created_at", -1)])
+    await safe_create_index(db.games_developer_entitlements, "owner_id", unique=True, critical=True)
+    await safe_create_index(db.games_developer_entitlements, [("status", 1), ("plan", 1)])
+    await safe_create_index(db.games_developer_entitlement_events, [("owner_id", 1), ("created_at", -1)])
 
 
     # Card applications (Revolut-style debit card waitlist)
