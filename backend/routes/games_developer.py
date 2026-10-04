@@ -93,6 +93,16 @@ def _public_entitlement(doc: dict | None) -> dict | None:
     }
 
 
+async def _draft_owner(draft_id: str) -> str:
+    draft = await db.game_studio_drafts.find_one(
+        {"id": draft_id, "status": "draft"},
+        {"_id": 0, "owner_id": 1},
+    )
+    if not draft or not draft.get("owner_id"):
+        raise HTTPException(404, "Spielentwurf nicht gefunden")
+    return str(draft["owner_id"])
+
+
 @router.get("/plans")
 async def list_plans():
     return {
@@ -149,6 +159,34 @@ async def assert_publication_entitlement(owner_id: str, draft_id: str) -> dict:
     if count >= plan["max_published_games"]:
         raise HTTPException(409, "Veröffentlichungslimit des Entwicklerplans erreicht")
     return entitlement
+
+
+@admin_router.get("/by-draft/{draft_id}")
+async def entitlement_by_draft(draft_id: str, request: Request):
+    await _admin(request)
+    owner_id = await _draft_owner(draft_id)
+    entitlement = await db.games_developer_entitlements.find_one(
+        {"owner_id": owner_id},
+        {"_id": 0, "payment_reference": 0, "note": 0, "granted_by": 0, "revoked_by": 0},
+    )
+    plan = PLANS.get((entitlement or {}).get("plan"))
+    return {
+        "entitlement": _public_entitlement(entitlement),
+        "active": _active_entitlement(entitlement),
+        "max_published_games": plan["max_published_games"] if plan else 0,
+    }
+
+
+@admin_router.post("/by-draft/{draft_id}")
+async def grant_entitlement_by_draft(draft_id: str, grant: EntitlementGrant, request: Request):
+    owner_id = await _draft_owner(draft_id)
+    return await grant_entitlement(owner_id, grant, request)
+
+
+@admin_router.delete("/by-draft/{draft_id}")
+async def revoke_entitlement_by_draft(draft_id: str, request: Request):
+    owner_id = await _draft_owner(draft_id)
+    return await revoke_entitlement(owner_id, request)
 
 
 @admin_router.post("/{owner_id}")
