@@ -140,6 +140,55 @@ async def developer_status(request: Request):
     }
 
 
+@router.get("/analytics")
+async def developer_analytics(request: Request):
+    """Read-only portfolio metrics scoped to the signed-in developer."""
+    owner_id = await _owner(request)
+
+    published_rows = await db.games_catalog.find(
+        {"owner_id": owner_id},
+        {"_id": 0, "id": 1, "status": 1},
+    ).limit(100).to_list(100)
+    game_ids = [row.get("id") for row in published_rows if row.get("id")]
+
+    review_visible = 0
+    review_hidden = 0
+    if game_ids:
+        review_visible = await db.games_reviews.count_documents({
+            "game_id": {"$in": game_ids},
+            "status": "visible",
+        })
+        review_hidden = await db.games_reviews.count_documents({
+            "game_id": {"$in": game_ids},
+            "status": "hidden",
+        })
+
+    return {
+        "drafts": await db.game_studio_drafts.count_documents({
+            "owner_id": owner_id,
+            "status": "draft",
+        }),
+        "versions": await db.game_studio_versions.count_documents({"owner_id": owner_id}),
+        "submitted": await db.game_studio_versions.count_documents({
+            "owner_id": owner_id,
+            "review_status": "submitted",
+        }),
+        "archive_approved": await db.game_studio_versions.count_documents({
+            "owner_id": owner_id,
+            "review_status": "archive_approved",
+        }),
+        "preview_approved": await db.game_studio_versions.count_documents({
+            "owner_id": owner_id,
+            "review_status": "preview_approved",
+        }),
+        "published": sum(1 for row in published_rows if row.get("status") == "published"),
+        "unpublished": sum(1 for row in published_rows if row.get("status") == "unpublished"),
+        "reviews_visible": review_visible,
+        "reviews_hidden": review_hidden,
+        "billing_ready": BILLING_READY,
+    }
+
+
 async def assert_publication_entitlement(owner_id: str, draft_id: str) -> dict:
     entitlement = await db.games_developer_entitlements.find_one({"owner_id": owner_id})
     if not _active_entitlement(entitlement):
