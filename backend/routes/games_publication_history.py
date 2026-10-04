@@ -17,7 +17,7 @@ async def _owner(request: Request) -> str:
 
 async def _admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(403, "Admin only")
     return user
 
