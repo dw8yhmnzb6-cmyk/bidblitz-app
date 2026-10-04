@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, ExternalLink, FileArchive, Loader2, RefreshCw, Rocket, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { resolveLocale } from "../config/languagePolicy.mjs";
+import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard";
 
 const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/versions`;
 const COPY = {
@@ -195,10 +196,10 @@ export default function AdminGamesReviewPage({ onBack }) {
                   {version.preview_status === "prepared" && <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <button onClick={() => openPrivatePreview(version.id)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs font-semibold text-white/80 disabled:opacity-50"><ExternalLink size={15} />{c.openPreview}</button>
                     <button onClick={() => decide(version.id, "approve_preview")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 py-3 text-xs font-bold text-[#06231c] disabled:opacity-50"><CheckCircle2 size={15} />{c.approvePreview}</button>
-                  </div>}
+                  </div></>}
                   {version.preview_status === "prepared" && <><label className="mt-3 block text-xs font-semibold text-white/70">{c.note}<textarea value={notes[version.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [version.id]: event.target.value }))} maxLength={1000} rows={2} placeholder={c.notePlaceholder} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-[#06182d] p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300/60" /></label><div className="mt-2 grid gap-2 sm:grid-cols-2"><button onClick={() => decide(version.id, "request_changes")} disabled={Boolean(busy)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50">{c.requestChanges}</button><button onClick={() => decide(version.id, "reject")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.reject}</button></div></>}
                 </>}
-                {previewApproved && <div className="mt-4 space-y-2">
+                {previewApproved && <><AdminGameDeveloperPlanCard draftId={version.draft_id} locale={locale} /><div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-xs text-emerald-100"><CheckCircle2 size={14} />{version.publication_status === "published" ? c.published : c.previewApproved}</div>
                   {version.publication_status === "published"
                     ? <button onClick={() => changePublication(version, "unpublish")} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/25 bg-rose-300/10 px-4 py-3 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.unpublish}</button>
