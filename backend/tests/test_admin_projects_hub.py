@@ -1,4 +1,4 @@
-from routes.admin_projects import PROJECTS, _is_platform_owner
+from routes.admin_projects import PROJECTS, _is_platform_owner, _project_sso_ready
 
 
 def test_platform_owner_default_identity(monkeypatch):
@@ -53,3 +53,20 @@ def test_unconfigured_admin_cannot_enter_cross_project_hub(monkeypatch):
         "role": "admin",
         "email": "another-admin@bidblitz.ae",
     })
+
+
+def test_project_sso_requires_explicit_activation(monkeypatch):
+    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
+    monkeypatch.delenv("BIDBLITZ_SSO_EYES_ENABLED", raising=False)
+    assert not _project_sso_ready("eyes")
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
+    assert _project_sso_ready("eyes")
+
+
+def test_aion_sso_requires_configured_base_url(monkeypatch):
+    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_AION_ENABLED", "true")
+    monkeypatch.delenv("BIDBLITZ_AION_BASE_URL", raising=False)
+    assert not _project_sso_ready("aion")
+    monkeypatch.setenv("BIDBLITZ_AION_BASE_URL", "https://aion.example")
+    assert _project_sso_ready("aion")
