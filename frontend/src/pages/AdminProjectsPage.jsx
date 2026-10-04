@@ -13,6 +13,7 @@ const STATUS = {
 export default function AdminProjectsPage({ onNavigate }) {
   const [projects, setProjects] = useState([]);
   const [owner, setOwner] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -27,6 +28,7 @@ export default function AdminProjectsPage({ onNavigate }) {
       .then((data) => {
         setProjects(data.projects || []);
         setOwner(data.owner || null);
+        setSummary(data.summary || null);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -111,6 +113,23 @@ export default function AdminProjectsPage({ onNavigate }) {
             <div className="text-xs text-gray-500">Angemeldeter Haupt-Admin</div>
             <div className="font-bold mt-1">{owner.email}</div>
             <div className="text-xs text-gray-500 mt-1">Zentrale Anmeldung · projektbezogene Rechte werden serverseitig geprüft</div>
+          </section>
+        )}
+
+        {summary && (
+          <section className="grid grid-cols-3 gap-2 mb-4">
+            <div className="rounded-2xl bg-white border border-gray-100 p-3 text-center">
+              <div className="text-xl font-bold text-emerald-600">{summary.connected}</div>
+              <div className="text-[10px] text-gray-500">Verbunden</div>
+            </div>
+            <div className="rounded-2xl bg-white border border-gray-100 p-3 text-center">
+              <div className="text-xl font-bold text-amber-600">{summary.prepared}</div>
+              <div className="text-[10px] text-gray-500">Vorbereitet</div>
+            </div>
+            <div className="rounded-2xl bg-white border border-gray-100 p-3 text-center">
+              <div className="text-xl font-bold text-gray-500">{summary.pending}</div>
+              <div className="text-[10px] text-gray-500">Offen</div>
+            </div>
           </section>
         )}
 
