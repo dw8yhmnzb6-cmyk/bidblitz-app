@@ -17,9 +17,9 @@ def test_non_owner_admin_is_not_platform_owner(monkeypatch):
     })
 
 
-def test_owner_alias_is_accepted(monkeypatch):
+def test_owner_alias_does_not_override_database_identity(monkeypatch):
     monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "owner@bidblitz.ae")
-    assert _is_platform_owner({
+    assert not _is_platform_owner({
         "role": "admin",
         "email": "login@example.com",
         "email_aliases": ["owner@bidblitz.ae"],
