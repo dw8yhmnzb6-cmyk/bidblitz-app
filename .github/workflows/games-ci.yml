@@ -18,6 +18,7 @@ on:
       - "frontend/src/pages/GameStudioPage.jsx"
       - "frontend/src/pages/AdminGamesReviewPage.jsx"
       - "frontend/src/components/GameVersionPanel.jsx"
+      - "frontend/src/components/GamesDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
@@ -133,6 +134,7 @@ jobs:
           src/pages/GameStudioPage.jsx
           src/pages/AdminGamesReviewPage.jsx
           src/components/GameVersionPanel.jsx
+          src/components/GamesDeveloperPlanCard.jsx
           src/components/GamesLanguageSelect.jsx
           src/config/languagePolicy.mjs
           src/config/studioCreatePolicy.mjs
