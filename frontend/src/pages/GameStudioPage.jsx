@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, ChevronRight, Gamepad2, Globe2, Layers3, Loade
 import { useI18n } from "../store/I18nContext";
 import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import GameVersionPanel from "../components/GameVersionPanel";
+import GamesDeveloperPlanCard from "../components/GamesDeveloperPlanCard";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { prepareCreateAttempt, uncertainCreateError } from "../config/studioCreatePolicy.mjs";
@@ -202,6 +203,8 @@ export default function GameStudioPage({ onBack }) {
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {[[Layers3, c.draft, drafts.length], [Globe2, c.languages, LANGUAGES.length], [ShieldCheck, c.phase, "01"]].map(([Icon, label, value]) => <div key={label} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#10213a]/80 p-4"><div className="rounded-xl bg-cyan-300/10 p-3 text-cyan-300"><Icon size={20} /></div><div><p className="text-xl font-bold">{value}</p><p className="text-xs text-white/50">{label}</p></div></div>)}
         </div>
+
+        <GamesDeveloperPlanCard locale={locale} />
 
         <div className="mt-9 flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-bold"><Sparkles size={20} className="text-cyan-300" />{c.draft}</h2><span className="text-xs text-white/40">{drafts.length} / 100</span></div>
         {error && <div role="alert" className="mt-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-4 text-sm text-rose-100">{error} <button onClick={load} disabled={busy} className="ml-3 underline disabled:opacity-50">{c.retry}</button></div>}
