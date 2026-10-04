@@ -15,9 +15,23 @@ def _normalized_email(value: str | None) -> str:
 
 
 def _is_platform_owner(user: dict) -> bool:
-    configured = {
+    # Authority belongs to the canonical admin record. Login aliases may identify
+    # that same record, but an alias never grants admin authority to another user.
+    if user.get("role") != "admin":
+        return False
+
+    canonical_owner = _normalized_email(
+        os.getenv("BIDBLITZ_CANONICAL_OWNER_EMAIL", "admin@bidblitz.ae")
+    )
+    canonical_identity = _normalized_email(
+        user.get("canonical_email") or user.get("email")
+    )
+    if canonical_identity != canonical_owner:
+        return False
+
+    configured_aliases = {
         _normalized_email(value)
-        for value in os.getenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae").split(",")
+        for value in os.getenv("BIDBLITZ_OWNER_EMAILS", canonical_owner).split(",")
         if value.strip()
     }
     identities = {
@@ -26,7 +40,7 @@ def _is_platform_owner(user: dict) -> bool:
         _normalized_email(user.get("login_email")),
         *[_normalized_email(value) for value in (user.get("email_aliases") or [])],
     }
-    return user.get("role") == "admin" and bool(configured & identities)
+    return canonical_owner in configured_aliases and canonical_owner in identities
 
 
 PROJECTS = [
