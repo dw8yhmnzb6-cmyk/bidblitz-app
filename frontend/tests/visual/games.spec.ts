@@ -485,4 +485,13 @@ test('Games Match preview opens from catalog and remains usable on 320px', async
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(321);
   await expectNoHorizontalOverflow(page);
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  await expect(page.getByTestId('games-platform-page')).toBeVisible();
+  const recent = page.getByTestId('games-recent');
+  await expect(recent).toBeVisible();
+  await expect(recent.getByText('Weiterspielen')).toBeVisible();
+  await expect(recent.getByText('BidBlitz Match')).toBeVisible();
+  await expect(recent.getByRole('button', { name: 'Weiter' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
