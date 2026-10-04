@@ -109,10 +109,16 @@ class AdminGameStudioReviewTest(unittest.TestCase):
         self.assertEqual(second["review_status"], "rejected")
         self.assertEqual(len(review.db.game_studio_review_events.docs), 1)
 
-    def test_conflicting_second_review_is_rejected(self):
+    def test_conflicting_second_review_is_rejected_after_preview_approval(self):
         asyncio.run(review.review_version(
             "v1",
             review.VersionReviewInput(action="approve_archive"),
+            None,
+        ))
+        review.db.game_studio_versions.docs[0]["preview_status"] = "prepared"
+        asyncio.run(review.review_version(
+            "v1",
+            review.VersionReviewInput(action="approve_preview"),
             None,
         ))
         with self.assertRaises(HTTPException) as context:
