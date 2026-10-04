@@ -10,7 +10,7 @@ PROJECTS = [
     {"id":"charging","name":"iCharging","description":"Ladeinfrastruktur & Elektromobilität; getrennt von BidBlitz Charge","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"verify","name":"BidBlitz Verify","description":"Identitätsprüfung","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"passport","name":"BidBlitz Passport","description":"Digital Product Passport","url":None,"admin_url":None,"status":"pending","sso":False},
-    {"id":"games","name":"Game.BidBlitz","description":"Games Plattform","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"games","name":"Game.BidBlitz","description":"Games Plattform; bestehender BidBlitz-Adminbereich","url":None,"admin_url":"/admin/game-settings","status":"connected","sso":True},
     {"id":"iptv","name":"BidBlitz IPTV","description":"TV & Streaming Plattform","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"the-eye","name":"The Eye","description":"Global Intelligence Dashboard","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"veysca","name":"VEYSCA","description":"Security & Web Risk","url":None,"admin_url":None,"status":"pending","sso":False},

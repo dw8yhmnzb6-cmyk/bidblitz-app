@@ -15,7 +15,7 @@ REMOTE_REQUIRED_ROLES = {
 PROJECT_ALIASES = {
     "os": ["BidBlitz Builder"], "spy": ["BidBlitz Device", "Kids Control", "Kids Basic", "Kids Plus"],
     "tv": ["AK Stream TV"], "charging": ["Charging.BidBlitz", "iCharging"],
-    "trade": ["Trades.BidBlitz.ae"], "bidtax": ["Tax", "TaxPilot"],
+    "trade": ["Trades.BidBlitz.ae"], "bidtax": ["Tax", "TaxPilot"], "games": ["BidBlitz Games", "Games Studio", "Game Studio"],
 }
 SERVICE_MODULES = {
     "immobilien": "Immobilien", "freelancer": "Freelancer", "elearning": "E-Learning",

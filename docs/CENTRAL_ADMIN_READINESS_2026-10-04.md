@@ -95,3 +95,7 @@ Spy BidBlitz ist als neunter Adapter vorbereitet. Der Empfänger erzeugt eine ei
 ## Ergänzung Remote
 
 Remote ist als zehnter externer Adapter vorbereitet. Der Empfänger mappt ausschließlich auf eine explizit konfigurierte vorhandene Remote-Owner-ID und Organisation. Der zentrale Admin-Token gilt eine Stunde und liegt im Browser nur im `sessionStorage`; normale Remote-Logins bleiben unverändert. `/v1/admin/overview` prüft die aktuelle Datenbankmitgliedschaft erneut, sodass Rollenentzug unmittelbar greift. Katalogstatus bleibt bis zur separaten Bereitstellung und Live-Konfiguration unverändert.
+
+## Korrektur Game.BidBlitz
+
+Game.BidBlitz ist kein zusätzlicher externer SSO-Empfänger im derzeitigen Quellstand. Games, Game Studio und `/admin/game-settings` liegen im vorhandenen `bidblitz-app` und verwenden die bestehende BidBlitz-Sitzung. Der Katalog führt Games deshalb als internen, festen Admin-Einstieg. Dadurch sind 15 der 35 Katalogeinträge intern; die übrigen 20 bleiben separate Projekte/Integrationen.

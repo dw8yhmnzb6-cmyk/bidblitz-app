@@ -89,3 +89,13 @@ def test_only_known_native_paths_pass_relative_url_validation():
     for path in ["/admin/not-real", "//evil.example", "/admin/payments?token=secret", "/admin/../wallet"]:
         with pytest.raises(ValueError):
             admin_projects.ProjectFields(name="Test", url=path)
+
+
+def test_games_uses_existing_bidblitz_admin_session():
+    games = next(project for project in admin_projects._defaults().values() if project["id"] == "games")
+    row = admin_projects.project_view(games, {"role": "admin"})
+    assert row["open_mode"] == "internal"
+    assert row["native_path"] == "/admin/game-settings"
+    assert row["integration"]["state"] == "native_ready"
+    assert row["access_profile"]["scope"] == "bidblitz"
+    assert row["access_profile"]["effective_permissions"] == ["admin:navigate"]
