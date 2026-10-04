@@ -78,3 +78,12 @@ def test_unknown_project_is_never_sso_ready(monkeypatch):
 
 def test_bidblitz_control_plane_is_always_ready(monkeypatch):
     assert _project_sso_ready("bidblitz")
+
+
+def test_project_sso_secrets_are_isolated(monkeypatch):
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_SECRET", "e" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
+    monkeypatch.setenv("BIDBLITZ_SSO_TRADE_ENABLED", "true")
+    monkeypatch.delenv("BIDBLITZ_SSO_TRADE_SECRET", raising=False)
+    assert _project_sso_ready("eyes")
+    assert not _project_sso_ready("trade")
