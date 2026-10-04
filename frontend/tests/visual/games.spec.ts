@@ -258,6 +258,8 @@ async function mockDeveloperStudioApis(page: Page) {
         unpublished: 1,
         reviews_visible: 5,
         reviews_hidden: 1,
+        approximate_launches: 42,
+        launch_measurement: 'approximate_non_monetary',
         billing_ready: false,
       }),
     });
@@ -384,6 +386,8 @@ test('Games developer studio shows owner-scoped non-monetary portfolio metrics',
   await expect(analytics).toBeVisible();
   await expect(analytics.getByText('Dein Games-Portfolio')).toBeVisible();
   await expect(analytics.getByText('Öffentliche Reviews')).toBeVisible();
+  await expect(analytics.getByText('Starts (ca.)')).toBeVisible();
+  await expect(analytics.getByText('42', { exact: true })).toBeVisible();
   await expect(analytics.getByText('Games-Billing bleibt gesperrt.')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
