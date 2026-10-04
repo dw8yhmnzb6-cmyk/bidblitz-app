@@ -44,7 +44,7 @@ export default function AdminProjectsPage({ onNavigate }) {
       onNavigate(project.admin_url);
       return;
     }
-    if (!["eyes", "trade"].includes(project.id)) {
+    if (!["eyes", "trade", "aion"].includes(project.id)) {
       window.location.assign(project.admin_url);
       return;
     }
@@ -75,7 +75,7 @@ export default function AdminProjectsPage({ onNavigate }) {
         body: JSON.stringify({ code: data.code }),
       });
       const handoffData = await handoff.json().catch(() => ({}));
-      if (!handoff.ok) throw new Error(handoffData.detail || "Eyes-Anmeldung konnte nicht übernommen werden.");
+      if (!handoff.ok) throw new Error(handoffData.detail || "Projekt-Anmeldung konnte nicht übernommen werden.");
       window.location.assign(project.admin_url);
     } catch (err) {
       setError(err.message || "Projekt konnte nicht geöffnet werden.");
