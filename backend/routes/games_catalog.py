@@ -9,8 +9,9 @@ import hashlib
 import mimetypes
 import os
 import re
+import secrets
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -30,6 +31,10 @@ public_router = APIRouter(tags=["games-public-play"])
 PUBLIC_HOST = os.environ.get("GAME_PUBLIC_HOST", "").strip().lower().split(":")[0]
 PUBLIC_BASE_URL = os.environ.get("GAME_PUBLIC_BASE_URL", "").strip().rstrip("/")
 PUBLIC_FRAME_ANCESTORS = os.environ.get("GAME_PUBLIC_FRAME_ANCESTORS", "'none'").strip() or "'none'"
+PUBLICATION_LOCK_TTL_SECONDS = max(
+    30,
+    int(os.environ.get("GAME_PUBLICATION_LOCK_TTL_SECONDS", "300")),
+)
 
 RELEASE_ROOT = Path(
     os.environ.get(
@@ -75,6 +80,41 @@ async def _admin(request: Request) -> dict:
     if user.get("role") != "admin":
         raise HTTPException(403, "Admin only")
     return user
+
+
+def _duplicate_key(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "DuplicateKeyError" or getattr(exc, "code", None) == 11000
+
+
+async def _acquire_publication_lock(draft_id: str) -> str:
+    """Serialize publication changes for one game across all API instances."""
+    token = secrets.token_hex(16)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(seconds=PUBLICATION_LOCK_TTL_SECONDS)
+    try:
+        await db.games_publication_locks.insert_one({
+            "_id": draft_id,
+            "token": token,
+            "created_at": now,
+            "expires_at": expires_at,
+        })
+    except Exception as exc:
+        if _duplicate_key(exc):
+            raise HTTPException(409, "Veröffentlichung dieses Spiels wird bereits bearbeitet")
+        raise
+    return token
+
+
+async def _release_publication_lock(draft_id: str, token: str) -> bool:
+    """Best-effort release; TTL cleanup prevents a crashed worker from blocking forever."""
+    try:
+        result = await db.games_publication_locks.delete_one({
+            "_id": draft_id,
+            "token": token,
+        })
+    except Exception:
+        return False
+    return bool(getattr(result, "deleted_count", 0))
 
 
 def _slugify(title: str, draft_id: str) -> str:
@@ -292,15 +332,27 @@ async def publish_version(version_id: str, request: Request):
     if not version:
         raise HTTPException(404, "Spielversion nicht gefunden")
     draft_id = str(version.get("draft_id") or "")
-    draft = await _draft(draft_id)
-    version = await _approved_version(version_id, draft_id)
-    owner_id = str(draft.get("owner_id") or "")
-    entitlement = await assert_publication_entitlement(owner_id, draft_id)
-
-    release_path = _freeze_release(version)
-    slot_reserved = await reserve_publication_slot(owner_id, draft_id, entitlement)
+    lock_token = await _acquire_publication_lock(draft_id)
+    owner_id = ""
+    slot_reserved = False
     try:
+        draft = await _draft(draft_id)
+        version = await _approved_version(version_id, draft_id)
+        owner_id = str(draft.get("owner_id") or "")
+        entitlement = await assert_publication_entitlement(owner_id, draft_id)
         existing = await db.games_catalog.find_one({"id": draft_id}) or {}
+
+        # A retry of the already-active version is a no-op. This prevents
+        # duplicate publication events and avoids consuming/releasing slots.
+        if (
+            existing.get("status") == "published"
+            and existing.get("active_version_id") == version_id
+            and version.get("publication_status") == "published"
+        ):
+            return _public_catalog_item(existing)
+
+        release_path = _freeze_release(version)
+        slot_reserved = await reserve_publication_slot(owner_id, draft_id, entitlement)
         catalog = await _catalog_doc(draft, version, existing=existing)
 
         old_version_id = existing.get("active_version_id")
@@ -338,89 +390,99 @@ async def publish_version(version_id: str, request: Request):
         })
         return _public_catalog_item(catalog)
     except Exception:
-        if slot_reserved:
+        if slot_reserved and owner_id:
             await release_publication_slot(owner_id, draft_id)
         raise
+    finally:
+        await _release_publication_lock(draft_id, lock_token)
 
 
 @admin_router.post("/games/{draft_id}/rollback/{version_id}")
 async def rollback_game(draft_id: str, version_id: str, request: Request):
     admin = await _admin(request)
-    existing = await db.games_catalog.find_one({"id": draft_id, "status": "published"})
-    if not existing:
-        raise HTTPException(404, "Veröffentlichtes Spiel nicht gefunden")
-    draft = await _draft(draft_id)
-    target = await _approved_version(version_id, draft_id)
-    await assert_publication_entitlement(str(draft.get("owner_id") or ""), draft_id)
-    if existing.get("active_version_id") == version_id:
-        return _public_catalog_item(existing)
+    lock_token = await _acquire_publication_lock(draft_id)
+    try:
+        existing = await db.games_catalog.find_one({"id": draft_id, "status": "published"})
+        if not existing:
+            raise HTTPException(404, "Veröffentlichtes Spiel nicht gefunden")
+        draft = await _draft(draft_id)
+        target = await _approved_version(version_id, draft_id)
+        await assert_publication_entitlement(str(draft.get("owner_id") or ""), draft_id)
+        if existing.get("active_version_id") == version_id:
+            return _public_catalog_item(existing)
 
-    release_path = _freeze_release(target)
-    catalog = await _catalog_doc(draft, target, existing=existing)
-    old_version_id = existing.get("active_version_id")
-    await db.game_studio_versions.update_one(
-        {"id": old_version_id, "draft_id": draft_id},
-        {"$set": {"publication_status": "inactive", "updated_at": catalog["updated_at"]}},
-    )
-    await db.game_studio_versions.update_one(
-        {"id": version_id, "draft_id": draft_id},
-        {"$set": {
-            "publication_status": "published",
-            "published_at": catalog["updated_at"],
-            "public_slug": catalog["slug"],
-            "release_path": str(release_path),
-            "release_status": "frozen",
-            "updated_at": catalog["updated_at"],
-        }},
-    )
-    await db.games_catalog.update_one({"id": draft_id}, {"$set": catalog})
-    admin_id = str(admin.get("_id") or admin.get("id") or "")
-    await db.game_studio_publication_events.insert_one({
-        "id": f"rollback:{draft_id}:{version_id}:{catalog['updated_at']}",
-        "draft_id": draft_id,
-        "version_id": version_id,
-        "previous_version_id": old_version_id,
-        "action": "rollback",
-        "admin_id": admin_id,
-        "created_at": catalog["updated_at"],
-    })
-    return _public_catalog_item(catalog)
+        release_path = _freeze_release(target)
+        catalog = await _catalog_doc(draft, target, existing=existing)
+        old_version_id = existing.get("active_version_id")
+        await db.game_studio_versions.update_one(
+            {"id": old_version_id, "draft_id": draft_id},
+            {"$set": {"publication_status": "inactive", "updated_at": catalog["updated_at"]}},
+        )
+        await db.game_studio_versions.update_one(
+            {"id": version_id, "draft_id": draft_id},
+            {"$set": {
+                "publication_status": "published",
+                "published_at": catalog["updated_at"],
+                "public_slug": catalog["slug"],
+                "release_path": str(release_path),
+                "release_status": "frozen",
+                "updated_at": catalog["updated_at"],
+            }},
+        )
+        await db.games_catalog.update_one({"id": draft_id}, {"$set": catalog})
+        admin_id = str(admin.get("_id") or admin.get("id") or "")
+        await db.game_studio_publication_events.insert_one({
+            "id": f"rollback:{draft_id}:{version_id}:{catalog['updated_at']}",
+            "draft_id": draft_id,
+            "version_id": version_id,
+            "previous_version_id": old_version_id,
+            "action": "rollback",
+            "admin_id": admin_id,
+            "created_at": catalog["updated_at"],
+        })
+        return _public_catalog_item(catalog)
+    finally:
+        await _release_publication_lock(draft_id, lock_token)
 
 
 @admin_router.post("/games/{draft_id}/unpublish")
 async def unpublish_game(draft_id: str, request: Request):
     admin = await _admin(request)
-    existing = await db.games_catalog.find_one({"id": draft_id})
-    if not existing:
-        raise HTTPException(404, "Veröffentlichtes Spiel nicht gefunden")
-    owner_id = str(existing.get("owner_id") or "")
-    if existing.get("status") != "published":
+    lock_token = await _acquire_publication_lock(draft_id)
+    try:
+        existing = await db.games_catalog.find_one({"id": draft_id})
+        if not existing:
+            raise HTTPException(404, "Veröffentlichtes Spiel nicht gefunden")
+        owner_id = str(existing.get("owner_id") or "")
+        if existing.get("status") != "published":
+            if owner_id:
+                await release_publication_slot(owner_id, draft_id)
+            return {"unpublished": True, "draft_id": draft_id, "already_unpublished": True}
+        now = datetime.now(timezone.utc).isoformat()
+        version_id = existing.get("active_version_id")
+        await db.games_catalog.update_one(
+            {"id": draft_id},
+            {"$set": {"status": "unpublished", "updated_at": now}},
+        )
+        if version_id:
+            await db.game_studio_versions.update_one(
+                {"id": version_id, "draft_id": draft_id},
+                {"$set": {"publication_status": "inactive", "updated_at": now}},
+            )
+        admin_id = str(admin.get("_id") or admin.get("id") or "")
+        await db.game_studio_publication_events.insert_one({
+            "id": f"unpublish:{draft_id}:{now}",
+            "draft_id": draft_id,
+            "version_id": version_id,
+            "action": "unpublish",
+            "admin_id": admin_id,
+            "created_at": now,
+        })
         if owner_id:
             await release_publication_slot(owner_id, draft_id)
-        return {"unpublished": True, "draft_id": draft_id, "already_unpublished": True}
-    now = datetime.now(timezone.utc).isoformat()
-    version_id = existing.get("active_version_id")
-    await db.games_catalog.update_one(
-        {"id": draft_id},
-        {"$set": {"status": "unpublished", "updated_at": now}},
-    )
-    if version_id:
-        await db.game_studio_versions.update_one(
-            {"id": version_id, "draft_id": draft_id},
-            {"$set": {"publication_status": "inactive", "updated_at": now}},
-        )
-    admin_id = str(admin.get("_id") or admin.get("id") or "")
-    await db.game_studio_publication_events.insert_one({
-        "id": f"unpublish:{draft_id}:{now}",
-        "draft_id": draft_id,
-        "version_id": version_id,
-        "action": "unpublish",
-        "admin_id": admin_id,
-        "created_at": now,
-    })
-    if owner_id:
-        await release_publication_slot(owner_id, draft_id)
-    return {"unpublished": True, "draft_id": draft_id}
+        return {"unpublished": True, "draft_id": draft_id}
+    finally:
+        await _release_publication_lock(draft_id, lock_token)
 
 
 @public_router.get("/game/{slug}/{asset_path:path}")
