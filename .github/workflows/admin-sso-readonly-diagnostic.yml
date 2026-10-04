@@ -1,4 +1,4 @@
-name: Read-only Trade Safari handoff diagnosis
+name: Read-only Trade Safari render error diagnosis
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
