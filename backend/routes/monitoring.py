@@ -638,7 +638,20 @@ async def error_center(request: Request):
         page_counts[item.get("page") or "unknown"] += 1
     top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:8]
 
+    from core.router_registry import get_registration_state
+    router_state = get_registration_state()
+    failed_routers = list(router_state.get("failed") or [])
+
     alerts = []
+    for failed in failed_routers[:10]:
+        alerts.append({
+            "type": "router",
+            "label": f"Router nicht geladen: {failed.get('module') or 'unknown'}",
+            "key": f"router:{failed.get('module') or 'unknown'}:{failed.get('attr') or 'router'}",
+            "severity": "critical",
+            "message": failed.get("error") or failed.get("error_type") or "Router-Registrierung fehlgeschlagen",
+            "updated_at": now.isoformat(),
+        })
     for probe in probes:
       if probe.get("status") != "ok":
         alerts.append({
@@ -672,11 +685,13 @@ async def error_center(request: Request):
             "auth_errors_1h": len(auth_errors_1h),
             "incidents_24h": len(incidents),
             "open_incidents": len(open_incidents),
+            "failed_routers": len(failed_routers),
         },
         "alerts": alerts[:20],
         "probes": sorted(probes, key=lambda p: p.get("label", "")),
         "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
         "api_error_endpoints": api_error_endpoints,
+        "failed_routers": failed_routers[:25],
         "frontend_errors": frontend_errors,
         "incidents": incidents,
         "daily_report": daily_report,
