@@ -90,3 +90,5 @@ Conformexa verwendet keine Tenant-Admin-Hochstufung. Der Empfänger verbraucht d
 | Remote | `/v1/auth/bidblitz-sso` | `REMOTE_BIDBLITZ_SSO_SHARED_SECRET` | `REMOTE_BIDBLITZ_OWNER_ID` | vorhandener Remote-`owner` + Organisation; kein neues Konto |
 
 | VEYSCA | `/api/v1/admin/bidblitz-sso` | `VEYSCA_BIDBLITZ_SSO_SHARED_SECRET` | `VEYSCA_BIDBLITZ_OWNER_ID` | 30-Minuten-`VEYSCA_ADMIN`-Sitzung; manueller Admin-Token bleibt Fallback |
+
+| BidBlitz TV | `/api/v1/admin/bidblitz-sso` | `BIDBLITZ_TV_SSO_SHARED_SECRET` | `BIDBLITZ_TV_OWNER_ID` | read-only `TV_ADMIN`; keine Playlist-/Kundenrechte |

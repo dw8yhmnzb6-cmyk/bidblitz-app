@@ -76,3 +76,14 @@ def test_veysca_target_uses_static_admin_landing_and_trusted_https(monkeypatch):
     for base in ("http://veysca.bidblitz.ae", "https://evil.example", "https://veysca.bidblitz.ae/path", "https://u:p@veysca.bidblitz.ae", "https://veysca.bidblitz.ae:444"):
         monkeypatch.setenv("BIDBLITZ_VEYSCA_BASE_URL", base)
         assert "veysca" not in admin_sso.sso_targets()
+
+
+def test_tv_target_uses_read_only_admin_landing(monkeypatch):
+    from routes import admin_sso
+    monkeypatch.setenv("BIDBLITZ_TV_BASE_URL", "https://tv.bidblitz.ae")
+    target = admin_sso.sso_targets()["tv"]
+    assert target["handoff_url"] == "https://tv.bidblitz.ae/api/v1/admin/bidblitz-sso"
+    assert target["browser_url"] == "https://tv.bidblitz.ae/admin"
+    for base in ("http://tv.bidblitz.ae", "https://evil.example", "https://tv.bidblitz.ae/path", "https://u:p@tv.bidblitz.ae", "https://tv.bidblitz.ae:444"):
+        monkeypatch.setenv("BIDBLITZ_TV_BASE_URL", base)
+        assert "tv" not in admin_sso.sso_targets()

@@ -107,3 +107,7 @@ Für BidBlitz Match ist kein eigenständiger App-/Admin-Quellstand nachweisbar. 
 ## Ergänzung VEYSCA
 
 VEYSCA ist als elfter externer Adapter vorbereitet. Der Empfänger v0.8 erzeugt keine Benutzerkonten, verbraucht den BidBlitz-Einmalcode atomar in der bestehenden SQLite-Datenbank und stellt eine 30-Minuten-Admin-Sitzung aus. Der manuelle `VEYSCA_ADMIN_TOKEN` bleibt Fallback. Empfänger: 49/49 Backendtests plus JavaScript-/30-Sprachen-/Risk-Engine-Gates bestanden. Katalogstatus bleibt `pending` bis zu separater Bereitstellung, HTTPS-Origin und Schlüsselkonfiguration. Nach der Game-/Match-Korrektur sind 16 der 35 Katalogeinträge native BidBlitz-Module und 19 separate Projekte/Integrationen; davon haben 11 einen vorbereiteten externen Adapter.
+
+## Ergänzung BidBlitz TV
+
+BidBlitz TV ist als zwölfter externer Adapter vorbereitet. Der Empfänger v0.4 ergänzt den bestehenden Aktivierungsserver um einen read-only `TV_ADMIN`, verbraucht Einmalcodes atomar in derselben SQLite-Datenbank und speichert Admin-Token nur gehasht. Die Übersicht gibt keine Playlist-URLs oder Playlist-Namen aus. Empfänger: 13/13 Tests und Browser-Sicherheitsvertrag bestanden. Katalogstatus bleibt `pending` bis zu separater Bereitstellung, HTTPS-Origin und Schlüsselkonfiguration.

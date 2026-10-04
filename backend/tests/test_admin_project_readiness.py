@@ -13,7 +13,7 @@ def clean_sso_environment(monkeypatch):
     for name in admin_sso.SSO_ADAPTERS:
         monkeypatch.delenv(f"BIDBLITZ_SSO_{name.upper()}_SECRET", raising=False)
         monkeypatch.delenv(f"BIDBLITZ_SSO_{name.upper()}_ENABLED", raising=False)
-    for key in ("BIDBLITZ_SSO_SHARED_SECRET", "BIDBLITZ_AION_BASE_URL", "BIDBLITZ_VERIFY_BASE_URL", "BIDBLITZ_BIDTAX_BASE_URL", "BIDBLITZ_CONFORMEXA_BASE_URL", "BIDBLITZ_SPY_BASE_URL", "BIDBLITZ_REMOTE_BASE_URL", "BIDBLITZ_VEYSCA_BASE_URL"):
+    for key in ("BIDBLITZ_SSO_SHARED_SECRET", "BIDBLITZ_AION_BASE_URL", "BIDBLITZ_VERIFY_BASE_URL", "BIDBLITZ_BIDTAX_BASE_URL", "BIDBLITZ_CONFORMEXA_BASE_URL", "BIDBLITZ_SPY_BASE_URL", "BIDBLITZ_REMOTE_BASE_URL", "BIDBLITZ_VEYSCA_BASE_URL", "BIDBLITZ_TV_BASE_URL"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("BIDBLITZ_OWNER_ID", "private-owner-subject-not-for-browser")
 
@@ -32,7 +32,7 @@ def test_adapter_reports_actual_missing_issuer_configuration(name):
     state = checks(row)
     assert state["receiver"]["state"] == "passed"
     assert state["key"]["state"] == state["release"]["state"] == "blocked"
-    assert state["destination"]["state"] == ("blocked" if name in {"aion", "verify", "bidtax", "conformexa", "spy", "remote", "veysca"} else "passed")
+    assert state["destination"]["state"] == ("blocked" if name in {"aion", "verify", "bidtax", "conformexa", "spy", "remote", "veysca", "tv"} else "passed")
     assert row["integration"]["state"] == "issuer_incomplete"
     assert not row["integration"]["can_attempt"]
     assert row["integration"]["receiver_setup"] == RECEIVER_SETUP[name]
