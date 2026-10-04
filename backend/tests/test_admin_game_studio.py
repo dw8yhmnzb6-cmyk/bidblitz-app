@@ -64,6 +64,11 @@ class AdminGameStudioReviewTest(unittest.TestCase):
         )
         review.get_current_user = AsyncMock(return_value={"_id": "admin1", "role": "admin"})
 
+    def test_super_admin_can_review(self):
+        review.get_current_user.return_value = {"_id": "root1", "role": "super_admin"}
+        user = asyncio.run(review._admin(None))
+        self.assertEqual(user["role"], "super_admin")
+
     def test_non_admin_cannot_review(self):
         review.get_current_user.return_value = {"_id": "user1", "role": "user"}
         with self.assertRaises(HTTPException) as context:
