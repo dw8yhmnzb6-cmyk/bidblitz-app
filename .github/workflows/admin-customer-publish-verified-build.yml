@@ -1,4 +1,4 @@
-name: Publish tested customer frontend with completed Safari verification
+name: Verify live customer access independently of financial overview
 on:
   push:
     branches: [work/admin-customer-controls-20261004]

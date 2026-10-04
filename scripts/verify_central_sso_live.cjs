@@ -13,11 +13,19 @@ try{for(const width of (process.env.ADMIN_SSO_DIAGNOSTIC==='trade-webkit'?[390]:
  try {await page.waitForURL(u=>u.hostname===project.id+'.bidblitz.ae'&&u.pathname==='/'&&!u.hash,{timeout:30000,waitUntil:'domcontentloaded'});}catch(error){console.log('SSO_URL_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({hostname:location.hostname,pathname:location.pathname,has_fragment:Boolean(location.hash),root_children:document.getElementById('root')?.childElementCount,text_length:document.body.innerText.length,invalid_response:document.body.innerText.includes('Invalid server response')}))));throw error;}
  const profilePath=project.id==='trade'?'/api/customer/me':'/api/auth/me';const headers={Origin:'https://'+project.id+'.bidblitz.ae'};if(data.access_token)headers.Authorization='Bearer '+data.access_token;if(data.csrf_token)headers['X-CSRF-Token']=data.csrf_token;
  const me=await context.request.get('https://'+project.id+'.bidblitz.ae'+profilePath,{headers});assert.equal(me.status(),200);const profile=await me.json();assert.equal(profile.role||(profile.user||{}).role,project.role);
+ if(project.id==='trade') {
+  await page.locator('.appShell[data-app-role="admin"]').waitFor({state:'visible'});
+  const customerButton=page.getByTestId('trade-admin-open-customers');await customerButton.waitFor();assert(await customerButton.isEnabled());
+  const customersLoaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/admin/customers'&&r.request().method()==='GET');
+  await customerButton.click();const customersResponse=await customersLoaded;assert.equal(customersResponse.status(),200);await customersResponse.finished();
+  await page.locator('.adminCustomerListPanel').waitFor({state:'visible'});
+ } else {
  try {await page.waitForFunction(()=>document.body.innerText.length>150,null,{timeout:15000});}catch(error){console.log('SSO_PAGE_ERRORS',JSON.stringify(errors));console.log('SSO_RENDER_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({hostname:location.hostname,pathname:location.pathname,has_fragment:Boolean(location.hash),root_children:document.getElementById('root')?.childElementCount,text_length:document.body.innerText.length,invalid_response:document.body.innerText.includes('Invalid server response'),loading:document.body.innerText.includes('Loading')}))));throw error;}
+ }
  assert(await page.evaluate(code=>![localStorage,sessionStorage].some(storage=>Object.values(storage).some(v=>String(v).includes(code))),handoff.code));
  assert.deepEqual(errors,[]);const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert(!overflow,'Horizontal overflow in '+project.id+' at '+width);
  const logout=await context.request.post('https://'+project.id+'.bidblitz.ae/api/auth/logout',{headers});assert([200,204].includes(logout.status()));
- results.push({project:project.id,viewport:width,issuer:200,receiver:200,role:project.role,session:200,code_removed:true,code_not_stored:true,no_page_errors:true,no_overflow:true,logout:logout.status()});console.log('LIVE_SSO_BROWSER_PASSED',JSON.stringify(results.at(-1)));await context.close();
+ results.push({project:project.id,viewport:width,issuer:200,receiver:200,role:project.role,session:200,trade_customer_entry_verified:project.id==='trade',code_removed:true,code_not_stored:true,no_page_errors:true,no_overflow:true,logout:logout.status()});console.log('LIVE_SSO_BROWSER_PASSED',JSON.stringify(results.at(-1)));await context.close();
  }}fs.writeFileSync('/tmp/admin-sso-browser-results.json',JSON.stringify(results,null,2));
 }finally{await browser.close();fs.rmSync('/tmp/bidblitz-admin-browser-cookie.txt',{force:true});}
 })().catch(e=>{console.error(String(e.message).replace(/#code=[^\s"'<>]+/g,'#code=[redacted]'));process.exitCode=1;});
