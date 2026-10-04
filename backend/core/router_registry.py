@@ -213,6 +213,7 @@ def register_all_routers(app):
         ("routes.game_studio_uploads", "router"),
         ("routes.admin_game_studio", "router"),
         ("routes.game_preview", "api_router"),
+        ("routes.game_preview", "admin_router"),
         ("routes.game_preview", "router"),
         ("routes.games_catalog", "api_router"),
         ("routes.games_catalog", "admin_router"),
