@@ -20,8 +20,9 @@ from fastapi.responses import FileResponse
 
 from core.database import db
 from core.security import get_current_user
-from routes.game_preview import PREVIEW_ROOT, _safe_asset_path
-from routes.games_developer import assert_publication_entitlement, reserve_publication_slot, release_publication_slot
+from routes.game_preview import PREVIEW_BASE_URL, PREVIEW_HOST, PREVIEW_ROOT, _safe_asset_path
+from routes.game_studio_uploads import UPLOAD_ROOT
+from routes.games_developer import BILLING_READY, assert_publication_entitlement, reserve_publication_slot, release_publication_slot
 
 
 api_router = APIRouter(tags=["games-catalog"])
@@ -152,6 +153,123 @@ def _public_headers() -> dict[str, str]:
         "Referrer-Policy": "no-referrer",
         "X-Content-Type-Options": "nosniff",
         "Cross-Origin-Resource-Policy": "same-origin",
+    }
+
+
+def _origin_preflight(host: str, base_url: str) -> dict:
+    host = str(host or "").strip().lower().split(":")[0]
+    base_url = str(base_url or "").strip().rstrip("/")
+    configured = bool(host and base_url)
+    if not configured:
+        return {
+            "configured": False,
+            "host": host or None,
+            "https": False,
+            "host_matches": False,
+            "safe": False,
+        }
+
+    parsed = urlparse(base_url)
+    local = host in {"localhost", "127.0.0.1"}
+    https = parsed.scheme == "https"
+    host_matches = parsed.hostname == host
+    scheme_safe = https or (local and parsed.scheme == "http")
+    return {
+        "configured": True,
+        "host": host,
+        "https": https,
+        "host_matches": host_matches,
+        "safe": bool(host_matches and scheme_safe),
+    }
+
+
+def _nearest_existing_parent(path: Path) -> Path | None:
+    candidate = path
+    for _ in range(32):
+        if candidate.exists():
+            return candidate
+        parent = candidate.parent
+        if parent == candidate:
+            return None
+        candidate = parent
+    return None
+
+
+def _storage_preflight(root: Path) -> dict:
+    try:
+        resolved = Path(root).expanduser().resolve()
+        frontend_public = (Path(__file__).resolve().parents[2] / "frontend" / "public").resolve()
+        private_location = not resolved.is_relative_to(frontend_public)
+        exists = resolved.is_dir()
+        probe = resolved if exists else _nearest_existing_parent(resolved)
+        writable = bool(probe and probe.is_dir() and os.access(probe, os.W_OK))
+        return {
+            "exists": exists,
+            "writable": writable,
+            "private_location": private_location,
+            "safe": bool(writable and private_location),
+        }
+    except (OSError, RuntimeError):
+        return {
+            "exists": False,
+            "writable": False,
+            "private_location": False,
+            "safe": False,
+        }
+
+
+def _roots_are_distinct(*roots: Path) -> bool:
+    try:
+        resolved = [str(Path(root).expanduser().resolve()) for root in roots]
+    except (OSError, RuntimeError):
+        return False
+    return len(set(resolved)) == len(resolved)
+
+
+@admin_router.get("/preflight")
+async def games_preflight(request: Request):
+    """Read-only Games readiness check. It never enables hosts, billing or production."""
+    await _admin(request)
+
+    public_origin = _origin_preflight(PUBLIC_HOST, PUBLIC_BASE_URL)
+    preview_origin = _origin_preflight(PREVIEW_HOST, PREVIEW_BASE_URL)
+    upload_storage = _storage_preflight(UPLOAD_ROOT)
+    preview_storage = _storage_preflight(PREVIEW_ROOT)
+    release_storage = _storage_preflight(RELEASE_ROOT)
+    isolated_origins = bool(
+        public_origin["safe"]
+        and preview_origin["safe"]
+        and public_origin["host"] != preview_origin["host"]
+    )
+    distinct_storage_roots = _roots_are_distinct(UPLOAD_ROOT, PREVIEW_ROOT, RELEASE_ROOT)
+    billing_fail_closed = not BILLING_READY
+
+    required = {
+        "public_origin_safe": public_origin["safe"],
+        "preview_origin_safe": preview_origin["safe"],
+        "origins_isolated": isolated_origins,
+        "upload_storage_safe": upload_storage["safe"],
+        "preview_storage_safe": preview_storage["safe"],
+        "release_storage_safe": release_storage["safe"],
+        "storage_roots_distinct": distinct_storage_roots,
+        "billing_fail_closed": billing_fail_closed,
+    }
+    return {
+        "scope": "games_non_monetary_preflight",
+        "ready": all(required.values()),
+        "checks": required,
+        "public_origin": public_origin,
+        "preview_origin": preview_origin,
+        "storage": {
+            "upload": upload_storage,
+            "preview": preview_storage,
+            "release": release_storage,
+        },
+        "billing": {
+            "enabled": BILLING_READY,
+            "fail_closed": billing_fail_closed,
+        },
+        "side_effects": "none",
     }
 
 
