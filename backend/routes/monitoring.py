@@ -35,7 +35,7 @@ _metrics = {
 MONITORED_FLOWS = [
     # Read-only probes only: monitoring must never create accounts, sessions or money movement.
     {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/", "expect_statuses": [200]},
-    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/version.json", "expect_statuses": [200]},
+    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/api/system/version", "expect_statuses": [200]},
     {"key": "auth_session", "label": "Login / Session", "method": "GET", "path": "/api/auth/me", "expect_statuses": [401]},
     {"key": "wallet", "label": "Wallet", "method": "GET", "path": "/api/wallet/balance/total", "expect_statuses": [401]},
     {"key": "payments", "label": "Payments / QR", "method": "GET", "path": "/api/payments/fee-info", "expect_statuses": [200]},
@@ -252,8 +252,7 @@ async def _ensure_critical_alert_notifications(alerts: list[dict]):
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
-        from fastapi import HTTPException
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
