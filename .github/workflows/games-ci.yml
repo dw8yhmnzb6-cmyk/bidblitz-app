@@ -118,6 +118,7 @@ jobs:
           backend/tests/test_games_preview.py
           backend/tests/test_games_catalog.py
           backend/tests/test_games_developer.py
+          backend/tests/test_games_developer_mongo.py
           backend/tests/test_games_publication_history.py
 
   games-frontend:
