@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const E = require('../public/games/match-preview/engine.js');
+const E = require('../public/game-assets/match-preview/engine.js');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
