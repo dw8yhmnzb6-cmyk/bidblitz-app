@@ -1,0 +1,58 @@
+name: Read-only Trade Safari handoff diagnosis
+on:
+  push:
+    branches: [work/admin-customer-controls-20261004]
+    paths: [.github/workflows/admin-sso-readonly-diagnostic.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci --no-audit --no-fund
+      - name: Prepare Chromium, mobile WebKit and verified SSH host
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium webkit
+          mkdir -p ~/.ssh
+          echo '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > ~/.ssh/known_hosts
+          if [ -n "$DEPLOY_KEY" ]; then
+            printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/admin_key
+            chmod 600 ~/.ssh/admin_key
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Verify real handoff without changing the application
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          ADMIN_SSO_BROWSER: webkit
+          ADMIN_SSO_DIAGNOSTIC: trade-webkit
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/admin_key ]; then
+            SSH+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/admin_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          "${SCP[@]}" scripts/mint_admin_browser_verification.py root@212.227.20.190:/tmp/mint_admin_browser_verification.py
+          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend; venv/bin/python /tmp/mint_admin_browser_verification.py'
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-browser-cookie.txt /tmp/bidblitz-admin-browser-cookie.txt
+          "${SSH[@]}" root@212.227.20.190 'rm -f /tmp/bidblitz-admin-browser-cookie.txt /tmp/mint_admin_browser_verification.py'
+          chmod 600 /tmp/bidblitz-admin-browser-cookie.txt
+          export ADMIN_PLAYWRIGHT_PATH="$(node -p 'require.resolve("playwright")')"
+          node scripts/verify_central_sso_live.cjs
+      - name: Remove private verification material
+        if: always()
+        run: rm -f /tmp/bidblitz-admin-browser-cookie.txt
