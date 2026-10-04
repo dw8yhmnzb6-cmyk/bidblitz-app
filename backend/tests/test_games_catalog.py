@@ -76,10 +76,12 @@ class GamesCatalogTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_root = catalog.PREVIEW_ROOT
+        self.old_release_root = catalog.RELEASE_ROOT
         self.old_host = catalog.PUBLIC_HOST
         self.old_base = catalog.PUBLIC_BASE_URL
         root = Path(self.tmp.name)
         catalog.PREVIEW_ROOT = root
+        catalog.RELEASE_ROOT = root / "releases"
         catalog.PUBLIC_HOST = "play.games.example.test"
         catalog.PUBLIC_BASE_URL = "https://play.games.example.test"
 
@@ -119,6 +121,7 @@ class GamesCatalogTest(unittest.TestCase):
 
     def tearDown(self):
         catalog.PREVIEW_ROOT = self.old_root
+        catalog.RELEASE_ROOT = self.old_release_root
         catalog.PUBLIC_HOST = self.old_host
         catalog.PUBLIC_BASE_URL = self.old_base
         self.tmp.cleanup()
@@ -144,6 +147,22 @@ class GamesCatalogTest(unittest.TestCase):
         version = self.db.game_studio_versions.docs[0]
         self.assertEqual(version["publication_status"], "published")
         self.assertEqual(self.db.game_studio_publication_events.docs[0]["action"], "publish")
+
+
+    def test_published_release_is_frozen_separately_from_preview(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        version = self.db.game_studio_versions.docs[0]
+        release = Path(version["release_path"])
+        self.assertTrue((release / "index.html").is_file())
+        self.assertEqual(version["release_status"], "frozen")
+        original = (release / "index.html").read_text()
+
+        preview = Path(version["preview_path"])
+        (preview / "index.html").chmod(0o600)
+        (preview / "index.html").write_text("<!doctype html><title>Changed preview</title>")
+        self.assertEqual((release / "index.html").read_text(), original)
+        self.assertNotEqual((preview / "index.html").read_text(), original)
+
 
     def test_publish_rejects_non_preview_approved_version(self):
         self.db.game_studio_versions.docs[0]["review_status"] = "archive_approved"
