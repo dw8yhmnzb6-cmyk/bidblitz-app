@@ -331,6 +331,16 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_mobility_geocoding_degrades_without_5xx():
+    source = (BACKEND_DIR / "routes" / "mobility_platform.py").read_text(encoding="utf-8")
+
+    assert '"provider_status": "unavailable"' in source
+    assert 'logger.warning("Mobility address search unavailable: %s", exc)' in source
+    assert 'logger.warning("Mobility reverse geocoding unavailable: %s", exc)' in source
+    assert 'raise HTTPException(502, f"Adresssuche nicht erreichbar: {exc}")' not in source
+    assert 'raise HTTPException(502, f"Reverse Geocoding nicht erreichbar: {exc}")' not in source
+
+
 def test_marketplace_catalog_tolerates_legacy_seller_ids():
     source = (BACKEND_DIR / "routes" / "marketplace.py").read_text(encoding="utf-8")
 
@@ -367,6 +377,8 @@ def test_watchlist_chat_and_ai_fallback_routes_are_reachable_by_design():
     assert '("routes.watchlist", "router")' in registry
     assert '("routes.groupchat", "router")' in registry
     assert '("routes.group_orders", "router")' in registry
+    notifications = (BACKEND_DIR / "routes" / "notifications.py").read_text(encoding="utf-8")
+    assert '@router.get("/unread")' in notifications
     dynamic_get = chat.index('@router.get("/{chat_id}")')
     assert chat.index('@router.get("/unread-count")') < dynamic_get
     assert chat.index('@router.get("/poll")') < dynamic_get
@@ -384,8 +396,9 @@ def test_admin_system_error_center_covers_core_modules_and_recovery():
     dashboard = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "MonitoringDashboard.jsx").read_text(encoding="utf-8")
 
     for key in [
+        '"features"', '"recommendations"', '"pro_ads"', '"extras"', '"marketplace"',
         '"payments"', '"stripe_topup"', '"auctions_list"', '"taxi"', '"mining"',
-        '"watchlist"', '"chat"', '"biopay"', '"merchant"', '"admin"',
+        '"watchlist"', '"notifications"', '"groups"', '"chat"', '"biopay"', '"merchant"', '"admin"',
     ]:
         assert key in monitoring
     assert "reviewer@bidblitz.ae" not in monitoring
