@@ -156,6 +156,77 @@ async function mockGamesAdminApis(page: Page) {
   });
 }
 
+async function mockDeveloperStudioApis(page: Page) {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'developer-1',
+        name: 'Game Developer',
+        email: 'developer@example.test',
+        role: 'user',
+        modes: ['personal'],
+        kyc_status: 'approved',
+        kyc_verified: true,
+        language: 'de',
+      }),
+    });
+  });
+  await page.route('**/api/game-studio/drafts', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ drafts: [] }),
+    });
+  });
+  await page.route('**/api/games/developer/plans', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        plans: [
+          { id: 'starter', max_published_games: 1, price_eur_cents: null, checkout_ready: false },
+          { id: 'studio', max_published_games: 10, price_eur_cents: null, checkout_ready: false },
+        ],
+        billing_ready: false,
+        currency: 'EUR',
+      }),
+    });
+  });
+  await page.route('**/api/games/developer/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        entitlement: null,
+        active: false,
+        published_games: 1,
+        max_published_games: 0,
+        billing_ready: false,
+      }),
+    });
+  });
+  await page.route('**/api/games/developer/analytics', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        drafts: 3,
+        versions: 7,
+        submitted: 2,
+        archive_approved: 1,
+        preview_approved: 1,
+        published: 1,
+        unpublished: 1,
+        reviews_visible: 5,
+        reviews_hidden: 1,
+        billing_ready: false,
+      }),
+    });
+  });
+}
+
 async function openGames(page: Page, width: number, height: number, language = 'de') {
   await page.setViewportSize({ width, height });
   await mockGamesApis(page);
@@ -256,6 +327,26 @@ test('Games RTL language switch persists and keeps fallback readable', async ({ 
   await page.reload({ waitUntil: 'networkidle' });
   await expect(page.getByTestId('games-platform-page')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByTestId('games-language-select').locator('select')).toHaveValue('ar');
+});
+
+test('Games developer studio shows owner-scoped non-monetary portfolio metrics', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockDeveloperStudioApis(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('bb_hint_dismissed', '1');
+  });
+
+  await page.goto('/game-studio', { waitUntil: 'networkidle' });
+
+  await expect(page.getByTestId('game-studio-page')).toBeVisible({ timeout: 20000 });
+  const analytics = page.getByTestId('games-developer-analytics');
+  await expect(analytics).toBeVisible();
+  await expect(analytics.getByText('Dein Games-Portfolio')).toBeVisible();
+  await expect(analytics.getByText('Öffentliche Reviews')).toBeVisible();
+  await expect(analytics.getByText('Games-Billing bleibt gesperrt.')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
 
 test('Games admin operations diagnostics render without private data', async ({ page }) => {
