@@ -1,0 +1,212 @@
+"""Tests for publishing reviewed third-party games into the public catalog."""
+import asyncio
+import tempfile
+import types
+import unittest
+from pathlib import Path
+from unittest.mock import AsyncMock
+
+from fastapi import HTTPException
+
+from routes import games_catalog as catalog
+
+
+class Cursor:
+    def __init__(self, rows):
+        self.rows = [dict(row) for row in rows]
+    def sort(self, *_args, **_kwargs):
+        return self
+    def limit(self, n):
+        self.rows = self.rows[:n]
+        return self
+    async def to_list(self, n):
+        return self.rows[:n]
+
+
+def match(doc, query):
+    for key, value in query.items():
+        current = doc.get(key)
+        if isinstance(value, dict):
+            if "$ne" in value and current == value["$ne"]:
+                return False
+            if "$in" in value and current not in value["$in"]:
+                return False
+            continue
+        if current != value:
+            return False
+    return True
+
+
+class Collection:
+    def __init__(self, docs=None):
+        self.docs = [dict(row) for row in (docs or [])]
+
+    async def find_one(self, query, projection=None):
+        row = next((doc for doc in self.docs if match(doc, query)), None)
+        return dict(row) if row else None
+
+    def find(self, query, projection=None):
+        return Cursor([doc for doc in self.docs if match(doc, query)])
+
+    async def insert_one(self, doc):
+        self.docs.append(dict(doc))
+        return types.SimpleNamespace(inserted_id=doc.get("id"))
+
+    async def update_one(self, query, update, upsert=False):
+        row = next((doc for doc in self.docs if match(doc, query)), None)
+        if row is None and upsert:
+            row = dict(query)
+            self.docs.append(row)
+        if row is None:
+            return types.SimpleNamespace(matched_count=0)
+        for key, value in update.get("$set", {}).items():
+            row[key] = value
+        for key, value in update.get("$setOnInsert", {}).items():
+            row.setdefault(key, value)
+        return types.SimpleNamespace(matched_count=1)
+
+
+class RequestStub:
+    def __init__(self, host="", cookies=None):
+        self.headers = {"host": host}
+        self.cookies = cookies or {}
+
+
+class GamesCatalogTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_root = catalog.PREVIEW_ROOT
+        self.old_host = catalog.PUBLIC_HOST
+        self.old_base = catalog.PUBLIC_BASE_URL
+        root = Path(self.tmp.name)
+        catalog.PREVIEW_ROOT = root
+        catalog.PUBLIC_HOST = "play.games.example.test"
+        catalog.PUBLIC_BASE_URL = "https://play.games.example.test"
+
+        preview = root / "version-v1"
+        preview.mkdir()
+        (preview / "index.html").write_text("<!doctype html><title>Game</title>")
+
+        draft = {
+            "id": "draft-1",
+            "owner_id": "developer-1",
+            "status": "draft",
+            "title": "Island Quest",
+            "description": "A polished puzzle adventure with many levels and islands.",
+            "category": "Puzzle",
+            "languages": ["en", "de"],
+        }
+        v1 = {
+            "id": "v1",
+            "draft_id": "draft-1",
+            "owner_id": "developer-1",
+            "status": "quarantined",
+            "review_status": "preview_approved",
+            "preview_status": "prepared",
+            "execution_status": "isolated_preview_only",
+            "preview_path": str(preview),
+            "version_number": 1,
+        }
+        self.db = types.SimpleNamespace(
+            game_studio_versions=Collection([v1]),
+            game_studio_drafts=Collection([draft]),
+            games_catalog=Collection(),
+            game_studio_publication_events=Collection(),
+        )
+        catalog.db = self.db
+        catalog.get_current_user = AsyncMock(return_value={"_id": "admin-1", "role": "admin"})
+
+    def tearDown(self):
+        catalog.PREVIEW_ROOT = self.old_root
+        catalog.PUBLIC_HOST = self.old_host
+        catalog.PUBLIC_BASE_URL = self.old_base
+        self.tmp.cleanup()
+
+    def test_slug_and_public_url_are_stable_and_safe(self):
+        slug = catalog._slugify("Island Quest! 2027", "draft-1")
+        self.assertRegex(slug, r"^island-quest-2027-[a-f0-9]{10}$")
+        self.assertEqual(
+            catalog._configured_public_url(slug),
+            f"https://play.games.example.test/game/{slug}/index.html",
+        )
+
+    def test_publish_creates_catalog_and_marks_version_active(self):
+        result = asyncio.run(catalog.publish_version("v1", None))
+        self.assertEqual(result["id"], "draft-1")
+        self.assertEqual(result["title"], "Island Quest")
+        self.assertEqual(result["active_version_id"], "v1")
+        self.assertTrue(result["public_url"].startswith("https://play.games.example.test/game/"))
+        self.assertNotIn("owner_id", result)
+        self.assertNotIn("preview_path", result)
+        saved = self.db.games_catalog.docs[0]
+        self.assertEqual(saved["status"], "published")
+        version = self.db.game_studio_versions.docs[0]
+        self.assertEqual(version["publication_status"], "published")
+        self.assertEqual(self.db.game_studio_publication_events.docs[0]["action"], "publish")
+
+    def test_publish_rejects_non_preview_approved_version(self):
+        self.db.game_studio_versions.docs[0]["review_status"] = "archive_approved"
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(catalog.publish_version("v1", None))
+        self.assertEqual(context.exception.status_code, 409)
+
+    def test_rollback_switches_active_version_and_keeps_slug(self):
+        first = asyncio.run(catalog.publish_version("v1", None))
+        root = Path(self.tmp.name)
+        v2_dir = root / "version-v2"
+        v2_dir.mkdir()
+        (v2_dir / "index.html").write_text("<!doctype html><title>V2</title>")
+        self.db.game_studio_versions.docs.append({
+            "id": "v2", "draft_id": "draft-1", "owner_id": "developer-1",
+            "status": "quarantined", "review_status": "preview_approved",
+            "preview_status": "prepared", "execution_status": "isolated_preview_only",
+            "preview_path": str(v2_dir), "version_number": 2,
+        })
+        second = asyncio.run(catalog.publish_version("v2", None))
+        self.assertEqual(second["slug"], first["slug"])
+        self.assertEqual(second["active_version_id"], "v2")
+        rolled = asyncio.run(catalog.rollback_game("draft-1", "v1", None))
+        self.assertEqual(rolled["slug"], first["slug"])
+        self.assertEqual(rolled["active_version_id"], "v1")
+        versions = {row["id"]: row for row in self.db.game_studio_versions.docs}
+        self.assertEqual(versions["v1"]["publication_status"], "published")
+        self.assertEqual(versions["v2"]["publication_status"], "inactive")
+        self.assertEqual(self.db.game_studio_publication_events.docs[-1]["action"], "rollback")
+
+    def test_unpublish_removes_game_from_public_catalog(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        result = asyncio.run(catalog.unpublish_game("draft-1", None))
+        self.assertTrue(result["unpublished"])
+        public = asyncio.run(catalog.public_catalog())
+        self.assertEqual(public["games"], [])
+        self.assertEqual(self.db.game_studio_versions.docs[0]["publication_status"], "inactive")
+
+    def test_non_admin_cannot_publish(self):
+        catalog.get_current_user.return_value = {"_id": "user-1", "role": "user"}
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(catalog.publish_version("v1", None))
+        self.assertEqual(context.exception.status_code, 403)
+
+    def test_public_host_rejects_wrong_host_and_auth_cookies(self):
+        catalog._require_public_host(RequestStub("play.games.example.test"))
+        with self.assertRaises(HTTPException) as host_error:
+            catalog._require_public_host(RequestStub("games.example.test"))
+        self.assertEqual(host_error.exception.status_code, 404)
+        with self.assertRaises(HTTPException) as cookie_error:
+            catalog._require_public_host(RequestStub(
+                "play.games.example.test",
+                {"access_token": "must-never-arrive"},
+            ))
+        self.assertEqual(cookie_error.exception.status_code, 400)
+
+    def test_public_headers_keep_third_party_code_sandboxed(self):
+        headers = catalog._public_headers()
+        csp = headers["Content-Security-Policy"]
+        self.assertIn("sandbox allow-scripts", csp)
+        self.assertNotIn("allow-same-origin", csp)
+        self.assertIn("connect-src 'none'", csp)
+        self.assertIn("payment=()", headers["Permissions-Policy"])
+
+
+if __name__ == "__main__":
+    unittest.main()
