@@ -365,6 +365,25 @@ const MonitoringDashboard = ({ onBack }) => {
               </div>
             )}
 
+            {(errorCenter.api_error_endpoints || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-api-errors-list">
+                <p className="text-[12px] font-bold text-white mb-2">API-Fehler der letzten Stunde</p>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {errorCenter.api_error_endpoints.slice(0, 15).map((item, idx) => (
+                    <div key={`${item.method}-${item.path}-${item.status_code}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-start justify-between gap-3" data-testid={`monitor-api-error-${idx}`}>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-white truncate">{item.method} {item.path}</p>
+                        <p className="text-[10px] text-white/35 mt-1">HTTP {item.status_code} · {item.count}× in 1h</p>
+                      </div>
+                      <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: item.severity === "critical" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)", color: item.severity === "critical" ? "#EF4444" : "#F59E0B" }}>
+                        {item.severity === "critical" ? "kritisch" : "warnung"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {(errorCenter.frontend_errors || []).length > 0 && (
               <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-frontend-errors-list">
                 <p className="text-[12px] font-bold text-white mb-2">Letzte Seiten- & Asset-Fehler</p>
