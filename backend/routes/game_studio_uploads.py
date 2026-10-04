@@ -196,7 +196,7 @@ async def _reserve_version_slot(owner_id: str, draft_id: str, version_id: str) -
 def _public_version(doc: dict) -> dict:
     return {
         key: value for key, value in doc.items()
-        if key not in {"_id", "owner_id", "storage_path"}
+        if key not in {"_id", "owner_id", "storage_path", "preview_path"}
     }
 
 
@@ -206,7 +206,7 @@ async def list_versions(draft_id: str, request: Request):
     await _owned_draft(draft_id, owner_id)
     rows = await db.game_studio_versions.find(
         {"draft_id": draft_id, "owner_id": owner_id, "status": {"$ne": "deleted"}},
-        {"_id": 0, "owner_id": 0, "storage_path": 0},
+        {"_id": 0, "owner_id": 0, "storage_path": 0, "preview_path": 0},
     ).sort("created_at", -1).limit(MAX_VERSIONS_PER_DRAFT).to_list(MAX_VERSIONS_PER_DRAFT)
     return {"versions": rows}
 
