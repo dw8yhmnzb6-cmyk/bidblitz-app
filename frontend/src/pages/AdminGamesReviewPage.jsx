@@ -7,6 +7,7 @@ import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND}/api/admin/game-studio/versions`;
 const PREFLIGHT_API = `${BACKEND}/api/admin/game-studio/preflight`;
+const DIAGNOSTICS_API = `${BACKEND}/api/admin/game-studio/diagnostics`;
 const COPY = {
   de: {
     back: "Zurück", eyebrow: "BIDBLITZ GAMES · ADMIN-PRÜFUNG", title: "Spielversionen prüfen.",
@@ -18,6 +19,7 @@ const COPY = {
     requestChanges: "Änderungen verlangen", reject: "Ablehnen", saveError: "Prüfentscheidung konnte nicht gespeichert werden.",
     blocked: "Ausführung bleibt isoliert", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", approvePreview: "Preview freigeben", publish: "Im Katalog veröffentlichen", rollback: "Diese Version aktivieren", unpublish: "Veröffentlichung stoppen", publishError: "Veröffentlichungsstatus konnte nicht geändert werden.", published: "Veröffentlicht",
     preflightTitle: "Games Launch-Preflight", preflightReady: "Sicher für nicht-monetäre Staging-Tests", preflightBlocked: "Konfiguration noch nicht bereit", preflightLoadError: "Preflight konnte nicht geladen werden.", publicOrigin: "Public-Origin", previewOrigin: "Preview-Origin", storageSafety: "Private Speicher", billingGuard: "Billing-Sperre", safe: "Sicher", unsafe: "Prüfen", billingOff: "Gesperrt", billingOn: "Aktiv",
+    diagnosticsTitle: "Games Betrieb", diagnosticsSubtitle: "Live-Snapshot der Games-Pipeline ohne private Pfade oder Kundendaten.", diagnosticsLoadError: "Games-Diagnose konnte nicht geladen werden.", drafts: "Entwürfe", versions: "Versionen", publicationEvents: "Publikationsereignisse", publicationLocks: "Aktive Locks", unpublished: "Offline", operational: "Betrieb OK", attention: "Prüfung erforderlich",
   },
   en: {
     back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
@@ -29,6 +31,7 @@ const COPY = {
     requestChanges: "Request changes", reject: "Reject", saveError: "Could not save review decision.",
     blocked: "Execution remains isolated", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.", openPreview: "Open private preview", previewError: "Could not create preview link.", approvePreview: "Approve preview", publish: "Publish to catalog", rollback: "Make this version active", unpublish: "Stop publication", publishError: "Could not change publication status.", published: "Published",
     preflightTitle: "Games launch preflight", preflightReady: "Safe for non-monetary staging tests", preflightBlocked: "Configuration not ready yet", preflightLoadError: "Could not load preflight.", publicOrigin: "Public origin", previewOrigin: "Preview origin", storageSafety: "Private storage", billingGuard: "Billing guard", safe: "Safe", unsafe: "Check", billingOff: "Locked", billingOn: "Enabled",
+    diagnosticsTitle: "Games operations", diagnosticsSubtitle: "Live Games pipeline snapshot without private paths or customer data.", diagnosticsLoadError: "Could not load Games diagnostics.", drafts: "Drafts", versions: "Versions", publicationEvents: "Publication events", publicationLocks: "Active locks", unpublished: "Offline", operational: "Operations OK", attention: "Needs attention",
   },
   sq: {
     back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
@@ -40,6 +43,7 @@ const COPY = {
     requestChanges: "Kërko ndryshime", reject: "Refuzo", saveError: "Vendimi nuk u ruajt.",
     blocked: "Ekzekutimi mbetet i izoluar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", approvePreview: "Prano provën", publish: "Publiko në katalog", rollback: "Aktivizo këtë version", unpublish: "Ndalo publikimin", publishError: "Statusi i publikimit nuk u ndryshua.", published: "Publikuar",
     preflightTitle: "Kontrolli para publikimit", preflightReady: "I sigurt për testim pa pagesa", preflightBlocked: "Konfigurimi ende nuk është gati", preflightLoadError: "Kontrolli nuk u ngarkua.", publicOrigin: "Origjina publike", previewOrigin: "Origjina e provës", storageSafety: "Ruajtja private", billingGuard: "Bllokimi i pagesave", safe: "Sigurt", unsafe: "Kontrollo", billingOff: "Bllokuar", billingOn: "Aktiv",
+    diagnosticsTitle: "Operimi i Games", diagnosticsSubtitle: "Pamje e pipeline-it të Games pa shtigje private ose të dhëna klientësh.", diagnosticsLoadError: "Diagnostika e Games nuk u ngarkua.", drafts: "Drafte", versions: "Versione", publicationEvents: "Ngjarje publikimi", publicationLocks: "Bllokime aktive", unpublished: "Offline", operational: "Operimi OK", attention: "Kërkon kontroll",
   },
 };
 
@@ -77,6 +81,24 @@ export default function AdminGamesReviewPage({ onBack }) {
   const [preflight, setPreflight] = useState(null);
   const [preflightLoading, setPreflightLoading] = useState(true);
   const [preflightError, setPreflightError] = useState("");
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
+  const [diagnosticsError, setDiagnosticsError] = useState("");
+
+  const loadDiagnostics = useCallback(async () => {
+    setDiagnosticsLoading(true);
+    setDiagnosticsError("");
+    try {
+      const response = await fetch(DIAGNOSTICS_API, { credentials: "include" });
+      const body = await read(response);
+      setDiagnostics(body);
+    } catch (loadError) {
+      setDiagnostics(null);
+      setDiagnosticsError(loadError?.message || c.diagnosticsLoadError);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  }, [c.diagnosticsLoadError]);
 
   const loadPreflight = useCallback(async () => {
     setPreflightLoading(true);
@@ -108,6 +130,7 @@ export default function AdminGamesReviewPage({ onBack }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadPreflight(); }, [loadPreflight]);
+  useEffect(() => { loadDiagnostics(); }, [loadDiagnostics]);
 
   const prepare = async (versionId) => {
     setBusy(versionId); setError("");
@@ -116,7 +139,7 @@ export default function AdminGamesReviewPage({ onBack }) {
         method: "POST", credentials: "include",
       });
       await read(response);
-      await load();
+      await Promise.all([load(), loadDiagnostics()]);
     } catch (prepareError) {
       setError(prepareError?.message || c.prepareError);
     } finally {
@@ -150,7 +173,7 @@ export default function AdminGamesReviewPage({ onBack }) {
       else url = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/games/${encodeURIComponent(version.draft_id)}/unpublish`;
       const response = await fetch(url, { method: "POST", credentials: "include" });
       await read(response);
-      await load();
+      await Promise.all([load(), loadDiagnostics()]);
     } catch (publishError) {
       setError(publishError?.message || c.publishError);
     } finally {
@@ -173,7 +196,7 @@ export default function AdminGamesReviewPage({ onBack }) {
       });
       await read(response);
       setNotes((current) => ({ ...current, [versionId]: "" }));
-      await load();
+      await Promise.all([load(), loadDiagnostics()]);
     } catch (saveError) {
       setError(saveError?.message || c.saveError);
     } finally {
@@ -194,6 +217,38 @@ export default function AdminGamesReviewPage({ onBack }) {
           <h1 className="mt-4 text-3xl font-black sm:text-5xl">{c.title}</h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-sky-100/70 sm:text-base">{c.subtitle}</p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-200/5 px-4 py-2 text-xs text-amber-100"><ShieldCheck size={15} />{c.blocked}</div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-diagnostics-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.diagnosticsTitle}</h2>
+              <p className="mt-1 text-xs text-white/50">{c.diagnosticsSubtitle}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {diagnostics && <span className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${diagnostics.status === "ok" ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100" : "border-amber-300/25 bg-amber-300/10 text-amber-100"}`}>{diagnostics.status === "ok" ? c.operational : c.attention}</span>}
+              <button onClick={loadDiagnostics} disabled={diagnosticsLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+                <RefreshCw size={14} className={diagnosticsLoading ? "animate-spin" : ""} />{c.retry}
+              </button>
+            </div>
+          </div>
+          {diagnosticsError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{diagnosticsError}</p>}
+          {diagnostics && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              [c.drafts, diagnostics.counts?.drafts],
+              [c.versions, diagnostics.counts?.versions],
+              [c.submitted, diagnostics.counts?.submitted],
+              [c.approved, diagnostics.counts?.archive_approved],
+              [c.previewApproved, diagnostics.counts?.preview_approved],
+              [c.published, diagnostics.counts?.published],
+              [c.unpublished, diagnostics.counts?.unpublished],
+              [c.publicationEvents, diagnostics.counts?.publication_events],
+              [c.publicationLocks, diagnostics.counts?.publication_locks],
+            ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+              <p className="text-[11px] text-white/45">{label}</p>
+              <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
+            </div>)}
+          </div>}
         </section>
 
         <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
