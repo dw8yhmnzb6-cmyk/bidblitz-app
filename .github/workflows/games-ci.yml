@@ -7,6 +7,7 @@ on:
       - "backend/routes/games_*.py"
       - "backend/routes/admin_game_studio.py"
       - "backend/routes/game_preview.py"
+      - "backend/routes/games_catalog.py"
       - "backend/tests/test_game_studio*.py"
       - "backend/tests/test_games_*.py"
       - "backend/tests/test_admin_game_studio.py"
@@ -31,6 +32,7 @@ on:
       - "backend/routes/games_*.py"
       - "backend/routes/admin_game_studio.py"
       - "backend/routes/game_preview.py"
+      - "backend/routes/games_catalog.py"
       - "backend/tests/test_game_studio*.py"
       - "backend/tests/test_games_*.py"
       - "backend/tests/test_admin_game_studio.py"
@@ -108,6 +110,7 @@ jobs:
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
           backend/tests/test_games_preview.py
+          backend/tests/test_games_catalog.py
 
   games-frontend:
     runs-on: ubuntu-latest
