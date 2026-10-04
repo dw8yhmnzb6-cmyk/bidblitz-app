@@ -13,6 +13,9 @@ copied between projects.
 - Authority is granted only by the canonical BidBlitz admin record.
 - Login aliases may identify that same record but must never promote another
   customer or admin record.
+- `BIDBLITZ_OWNER_LOGIN_ALIASES` may contain explicit login addresses such as
+  `afrimk@me.com`. Those aliases resolve only to the canonical admin record and
+  use its existing password/authentication policy; they are not separate users.
 
 ## Handoff claims
 
