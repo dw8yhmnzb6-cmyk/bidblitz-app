@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 from fastapi import HTTPException
 
-from routes import games_developer as developer
+from routes import games_developer as developer, games_analytics as analytics
 
 
 def matches(doc, query):
@@ -55,6 +55,8 @@ class Collection:
             self.docs.append(row)
         if row is None:
             return types.SimpleNamespace(matched_count=0)
+        for key, value in update.get("$inc", {}).items():
+            row[key] = int(row.get(key) or 0) + int(value)
         for key, value in update.get("$set", {}).items():
             row[key] = value
         for key, value in update.get("$setOnInsert", {}).items():
@@ -266,6 +268,47 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         with self.assertRaises(HTTPException) as context:
             asyncio.run(developer.grant_entitlement_by_draft("missing", grant, None))
         self.assertEqual(context.exception.status_code, 404)
+
+
+class GamesAnalyticsCounterTest(unittest.TestCase):
+    def setUp(self):
+        self.catalog = Collection()
+        self.launches = Collection()
+        analytics.db = types.SimpleNamespace(
+            games_catalog=self.catalog,
+            games_launch_totals=self.launches,
+        )
+
+    def test_anonymous_match_launch_counter_is_non_monetary(self):
+        first = asyncio.run(analytics.record_game_launch("match"))
+        asyncio.run(analytics.record_game_launch("match"))
+        self.assertTrue(first["recorded"])
+        self.assertFalse(first["monetary"])
+        self.assertEqual(first["measurement"], "approximate_launches")
+        self.assertEqual(self.launches.docs[0]["launches"], 2)
+        serialized = str(self.launches.docs[0])
+        self.assertNotIn("owner_id", serialized)
+        self.assertNotIn("user_id", serialized)
+        self.assertNotIn("wallet", serialized)
+
+    def test_launch_counter_requires_published_community_game(self):
+        with self.assertRaises(HTTPException) as missing:
+            asyncio.run(analytics.record_game_launch("community-game"))
+        self.assertEqual(missing.exception.status_code, 404)
+
+        self.catalog.docs.append({"id": "community-game", "status": "published"})
+        result = asyncio.run(analytics.record_game_launch("community-game"))
+        self.assertTrue(result["recorded"])
+
+        self.catalog.docs[0]["status"] = "unpublished"
+        with self.assertRaises(HTTPException) as offline:
+            asyncio.run(analytics.record_game_launch("community-game"))
+        self.assertEqual(offline.exception.status_code, 404)
+
+    def test_launch_counter_rejects_invalid_game_id(self):
+        with self.assertRaises(HTTPException) as invalid:
+            asyncio.run(analytics.record_game_launch("../bad"))
+        self.assertEqual(invalid.exception.status_code, 400)
 
 
 if __name__ == "__main__":
