@@ -9,8 +9,11 @@ from core.config import JWT_SECRET,JWT_ALGORITHM
 import jwt
 projects=('eyes','trade','nex','stack')
 env=Path('/var/www/bidblitz/backend/.env')
-backup=Path('/var/www/bidblitz/admin-sso-env-backup-20261004');backup.mkdir(mode=0o700,exist_ok=False)
-original=env.read_bytes();(backup/'backend.env').write_bytes(original);(backup/'backend.env').chmod(0o600)
+backup=Path('/var/www/bidblitz/admin-sso-env-backup-20261004');backup.mkdir(mode=0o700,exist_ok=True)
+original=env.read_bytes()
+if (backup/'backend.env').exists():assert (backup/'backend.env').read_bytes()==original,'Environment changed after verified rollback'
+else:(backup/'backend.env').write_bytes(original)
+(backup/'backend.env').chmod(0o600)
 async def authenticated():
  emails=[s.strip().lower() for s in os.getenv('BIDBLITZ_OWNER_EMAILS',os.getenv('BIDBLITZ_CANONICAL_OWNER_EMAIL','admin@bidblitz.ae')).split(',') if s.strip()]
  owner=await db.users.find_one({'email':{'$in':emails},'role':{'$in':['admin','super_admin']}})

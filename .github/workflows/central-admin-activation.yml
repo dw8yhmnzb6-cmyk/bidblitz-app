@@ -1,4 +1,4 @@
-name: Approved central project SSO activation
+name: Approved central project SSO activation (diagnostic retry)
 on:
   push:
     branches: [work/central-admin-activation-20261004]
