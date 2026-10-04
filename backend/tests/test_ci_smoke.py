@@ -331,6 +331,16 @@ def test_apple_google_pay_frontend_reports_final_eur_status():
     assert "Unerwarteter Zahlungsstatus" in source
 
 
+def test_marketplace_catalog_tolerates_legacy_seller_ids():
+    source = (BACKEND_DIR / "routes" / "marketplace.py").read_text(encoding="utf-8")
+
+    assert 'seller_id = str(listing.get("seller_id") or "")' in source
+    assert "if ObjectId.is_valid(seller_id):" in source
+    assert '{"$or": selectors}' in source
+    assert 'ObjectId(listing["seller_id"])' not in source
+    assert 'listing["views"] = int(listing.get("views", 0) or 0) + 1' in source
+
+
 def test_referral_leaderboard_tolerates_legacy_user_ids():
     source = (BACKEND_DIR / "routes" / "auctions.py").read_text(encoding="utf-8")
 
