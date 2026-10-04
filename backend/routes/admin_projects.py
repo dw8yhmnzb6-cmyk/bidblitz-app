@@ -74,7 +74,7 @@ PROJECTS = [
     {"id":"aion","name":"AION","description":"KI-Assistent & Brain","url":None,"admin_url":None,"status":"pending","sso":False,"adapter":"prepared"},
     {"id":"power","name":"Power BidBlitz","description":"Powerbank Sharing","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"charging","name":"Charging.BidBlitz","description":"Charging Zubehör","url":None,"admin_url":None,"status":"pending","sso":False},
-    {"id":"verify","name":"BidBlitz Verify","description":"Identitätsprüfung","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"verify","name":"BidBlitz Verify","description":"Identitätsprüfung","url":None,"admin_url":None,"status":"pending","sso":False,"adapter":"sandbox-prepared"},
     {"id":"passport","name":"BidBlitz Passport","description":"Digital Product Passport","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"games","name":"Game.BidBlitz","description":"Games Plattform","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"iptv","name":"BidBlitz IPTV","description":"TV & Streaming Plattform","url":None,"admin_url":None,"status":"pending","sso":False},
