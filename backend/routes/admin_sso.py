@@ -51,8 +51,14 @@ def sso_configuration(project_id):
     secret = (specific if specific is not None else os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "")).strip()
     owner_id = os.getenv("BIDBLITZ_OWNER_ID", "bidblitz-owner-primary").strip()
     enabled = os.getenv(f"BIDBLITZ_SSO_{project_id.upper()}_ENABLED", "false").strip().lower() in {"true", "1", "yes"}
-    return {"configured": enabled and project_id in sso_targets() and len(secret) >= 32 and bool(owner_id),
-            "secret": secret, "owner_id": owner_id}
+    target_configured = project_id in sso_targets()
+    secret_configured = len(secret) >= 32
+    owner_configured = bool(owner_id)
+    return {"configured": enabled and target_configured and secret_configured and owner_configured,
+            "secret": secret, "owner_id": owner_id, "enabled": enabled,
+            "target_configured": target_configured, "secret_configured": secret_configured,
+            "owner_configured": owner_configured,
+            "secret_source": "project" if specific is not None else "legacy" if secret else "missing"}
 
 
 def _b64url(data):

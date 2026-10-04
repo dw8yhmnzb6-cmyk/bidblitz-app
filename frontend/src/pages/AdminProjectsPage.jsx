@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ExternalLink, Grid3X3, Loader2, Pencil, Plus, RefreshCw, Search } from "lucide-react";
 import AdminProjectRights from "../components/admin/AdminProjectRights";
+import AdminProjectConnections from "../components/admin/AdminProjectConnections";
 import { NATIVE_ADMIN_PATHS } from "../components/admin/projectAccessAreas";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
@@ -148,8 +149,9 @@ export default function AdminProjectsPage({ onNavigate }) {
   const visible = projects.filter((p) => (statusFilter === "all" || p.status === statusFilter)
     && (kindFilter === "all" || p.kind === kindFilter)
     && `${p.name} ${p.description} ${p.category} ${(p.aliases || []).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const connected = projects.filter((p) => p.sso_ready).length;
-  const prepared = projects.filter((p) => p.sso && !p.sso_ready).length;
+  const internal = projects.filter((p) => p.open_mode === "internal").length;
+  const configured = projects.filter((p) => p.open_mode === "sso").length;
+  const prepared = projects.filter((p) => p.sso && !p.native_path && p.open_mode !== "internal" && !p.sso_ready).length;
   const pending = projects.filter((p) => !p.sso).length;
   const edit = (project) => { setSaveError(""); setNotice(""); setEditor({ project }); };
 
@@ -164,10 +166,11 @@ export default function AdminProjectsPage({ onNavigate }) {
       </header>
       <main className="max-w-6xl mx-auto px-4 py-5">
         {owner && <section className="mb-4 rounded-2xl bg-white border p-4"><div className="text-xs text-gray-500">Haupt-Admin</div><p className="font-bold break-all">{owner.email}</p><p className="text-xs text-gray-500 mt-1">Projekte verwalten und öffnen. Zugriffsrechte werden im jeweiligen Projekt geprüft.</p></section>}
-        {owner && <p className="text-sm mb-4" role="status">{connected} Zugänge eingerichtet · {prepared} vorbereitet · {pending} noch nicht angebunden</p>}
-        {owner && <nav className="flex gap-2 mb-4" aria-label="Projektverwaltung Ansichten">
+        {owner && <p className="text-sm mb-4" role="status">{internal} interne Einstiege · {configured} SSO-Aussteller konfiguriert · {prepared} vorbereitet · {pending} ohne SSO-Empfänger</p>}
+        {owner && <nav className="flex flex-wrap gap-2 mb-4" aria-label="Projektverwaltung Ansichten">
           <button aria-pressed={view === "projects"} onClick={() => setView("projects")} className="bg-white border rounded-xl px-4 py-2">Projekte ({projects.length})</button>
           <button aria-pressed={view === "rights"} onClick={() => setView("rights")} className="bg-white border rounded-xl px-4 py-2">Alle Rechte & Admin-Bereiche</button>
+          <button aria-pressed={view === "connections"} onClick={() => setView("connections")} className="bg-white border rounded-xl px-4 py-2">Anbindungen & offene Schritte</button>
         </nav>}
         {owner && <div className="flex flex-wrap gap-2 mb-4">
           <button disabled={Boolean(editor)} onClick={() => edit(null)} className="bg-violet-700 text-white rounded-xl px-4 py-2 flex items-center gap-2 disabled:opacity-50"><Plus size={16} />Neues Projekt hinzufügen</button>
@@ -184,6 +187,7 @@ export default function AdminProjectsPage({ onNavigate }) {
         </div>}
         {loading && <div role="status" className="py-10 flex justify-center gap-2"><Loader2 className="animate-spin" />Projekte werden geladen…</div>}
         {!loading && !loadError && owner && view === "rights" && <AdminProjectRights owner={owner} projects={projects} onNavigate={onNavigate} />}
+        {!loading && !loadError && owner && view === "connections" && <AdminProjectConnections projects={projects} onOpen={openProject} onEdit={edit} opening={opening} editing={Boolean(editor)} />}
         {!loading && !loadError && owner && view === "projects" && <>
           <p className="text-xs text-gray-500 mb-3">{visible.length} von {projects.length} Projekten · „Aktiv“ ist der eingestellte Projektstatus, keine Erreichbarkeitsprüfung.</p>
           {!visible.length && <p className="p-8 bg-white border rounded-xl text-center">Keine Projekte für diesen Filter gefunden.</p>}

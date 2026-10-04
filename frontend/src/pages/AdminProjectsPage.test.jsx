@@ -105,7 +105,7 @@ test("prepared access stays disabled and summary shows connection state", async 
   fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, sso_ready: false, open_mode: "unavailable" }] }));
   await render();
   expect(button("Noch nicht verfügbar").disabled).toBe(true);
-  expect(container.textContent).toContain("0 Zugänge eingerichtet · 1 vorbereitet · 0 noch nicht angebunden");
+  expect(container.textContent).toContain("0 interne Einstiege · 0 SSO-Aussteller konfiguriert · 1 vorbereitet · 0 ohne SSO-Empfänger");
 });
 
 test("native modules open their own fixed admin entry without SSO", async () => {
@@ -146,4 +146,58 @@ test("project aliases are searchable and modules can be filtered independently",
   await change(container.querySelectorAll("select")[1], "module");
   expect(container.querySelectorAll("article").length).toBe(1);
   expect(container.textContent).toContain("BidBlitz Staff");
+});
+
+const diagnostic = { state: "issuer_ready", can_attempt: true, remote_access_verified: false,
+  summary: "Aussteller konfiguriert; Zielzugriff bleibt unbestätigt.",
+  issuer_settings: ["BIDBLITZ_SSO_EYES_SECRET"], checks: [
+    { id: "key", label: "Aussteller-Schlüssel", state: "passed", detail: "Schlüsselwert bleibt verborgen." },
+    { id: "local_account", label: "Lokales Admin-Konto", state: "pending", detail: "Bestehendes aktives Konto mit Rolle admin prüfen." },
+  ] };
+
+test("connection view uses loaded diagnostics without issuing codes or extra requests", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, integration: diagnostic }] }));
+  await render();
+  await click(button("Anbindungen & offene Schritte"));
+  expect(container.textContent).toContain("Zielzugriff bleibt unbestätigt");
+  expect(container.textContent).toContain("1 offene Prüfungen");
+  expect(container.textContent).toContain("BIDBLITZ_SSO_EYES_SECRET");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  fetch.mockResolvedValueOnce(response({ detail: "Empfänger noch nicht erreichbar" }, 503));
+  await click(button("Mit BidBlitz anmelden"));
+  expect(fetch.mock.calls[1][0]).toContain("/api/admin/sso/eyes");
+  expect(container.querySelector("[role=alert]").textContent).toContain("Empfänger noch nicht erreichbar");
+});
+
+test("connection checks filter and search missing setup while keeping blocked access disabled", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, integration: diagnostic },
+    { ...project, id: "verify", name: "BidBlitz Verify", open_mode: "unavailable", integration: { ...diagnostic, state: "issuer_incomplete", can_attempt: false, checks: [{ id: "destination", label: "Erlaubtes Übergabeziel", state: "blocked", detail: "Vertrauenswürdige HTTPS-Origin fehlt." }], receiver_setup: { sandbox_only: true, identity_setting: "BBV_BIDBLITZ_LOCAL_ADMIN_EMAIL", owner_setting: "BBV_BIDBLITZ_OWNER_ID", secret_setting: "BBV_BIDBLITZ_SSO_SHARED_SECRET", migration: "SQLite" } } }] }));
+  await render();
+  await click(button("Anbindungen & offene Schritte"));
+  await change(container.querySelector('[aria-labelledby="project-connections-title"] select'), "blocked");
+  expect(container.querySelectorAll("article").length).toBe(1);
+  expect(container.textContent).toContain("ausschließlich Sandbox");
+  expect(button("Mit BidBlitz anmelden").disabled).toBe(true);
+  await change(container.querySelector('input[placeholder="Projekt, Rolle oder Prüfschritt suchen…"]'), "gibtesnicht");
+  expect(container.textContent).toContain("Keine Anbindungen für diesen Filter");
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test("connection view edits catalogue but never submits derived diagnostics", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, integration: diagnostic }] }));
+  await render();
+  await click(button("Anbindungen & offene Schritte"));
+  await click(button("Katalog bearbeiten"));
+  fetch.mockResolvedValueOnce(response({ project: { ...project, integration: diagnostic, revision: 1 } }));
+  await act(async () => container.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(JSON.parse(fetch.mock.calls[1][1].body).integration).toBeUndefined();
+  expect(container.textContent).toContain("Projekt gespeichert.");
+});
+
+test("old API without diagnostics never offers an unverified connection action", async () => {
+  await render();
+  await click(button("Anbindungen & offene Schritte"));
+  expect(container.textContent).toContain("Anbindungsdiagnose noch nicht verfügbar");
+  expect(button("Mit BidBlitz anmelden").disabled).toBe(true);
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

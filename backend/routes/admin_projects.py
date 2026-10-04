@@ -12,6 +12,7 @@ from core.database import db
 from core.security import get_current_user
 from core.admin_project_defaults import PROJECTS
 from core.admin_project_access import NATIVE_PROJECT_PATHS, owner_access, project_access
+from core.admin_project_readiness import project_readiness
 
 router = APIRouter(prefix="/api/admin/projects", tags=["admin-projects"])
 
@@ -109,10 +110,12 @@ def project_view(project, user=None):
     native = bool(native_path)
     target = sso_targets().get(project["id"])
     adapter = project["id"] in SSO_ADAPTERS
-    configured = bool(target and sso_configuration(project["id"])["configured"])
+    config = sso_configuration(project["id"]) if adapter else None
+    configured = bool(target and config and config["configured"])
     available = project["status"] in {"active", "dev"}
     return {**project, **project_access(project["id"], user), "permissions": ["catalogue:manage"],
             "native_path": native_path,
+            "integration": project_readiness(project, native=native, adapter=adapter, config=config),
             "sso": native or adapter, "sso_ready": available and (native or configured),
             "sso_state": "native" if native else "configured" if configured else "not_configured" if adapter else "not_integrated",
             "open_mode": "internal" if native and available else "sso" if configured and available else "unavailable",

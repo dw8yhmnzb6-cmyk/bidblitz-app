@@ -270,5 +270,31 @@ def test_saved_owner_edits_survive_additional_default_projects(context):
 
 def test_writable_catalogue_cannot_forge_access_profiles(context):
     client, _, _ = context
-    for field, value in {"native_path": "/admin", "access_profile": {"effective_permissions": ["*"]}, "permissions": ["*"], "kind": "module"}.items():
+    for field, value in {"native_path": "/admin", "access_profile": {"effective_permissions": ["*"]}, "permissions": ["*"], "kind": "module", "integration": {"remote_access_verified": True}}.items():
         assert client.post("/api/admin/projects", json=draft(**{field: value}), headers=HEADERS).status_code == 422
+        forged_update = {**update_body(admin_projects._defaults()["eyes"]), field: value}
+        assert client.put("/api/admin/projects/eyes", json=forged_update, headers=HEADERS).status_code == 422
+
+
+def test_diagnostics_are_owner_only_read_only_and_secret_free(context, monkeypatch):
+    client, database, user_id = context
+    secret = "api-private-project-key-never-for-browser-000000"
+    subject = "api-private-owner-subject-never-for-browser"
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_SECRET", secret)
+    monkeypatch.setenv("BIDBLITZ_OWNER_ID", subject)
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
+    before = asyncio.run(database.users.find_one({"_id": user_id}))
+    for _ in range(2):
+        response = client.get("/api/admin/projects")
+        assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+        assert secret not in response.text and subject not in response.text
+        rows = {p["id"]: p for p in response.json()["projects"]}
+        assert rows["eyes"]["integration"]["state"] == "issuer_ready"
+        assert not rows["eyes"]["integration"]["remote_access_verified"]
+    # Existing JWT authentication updates last_seen; diagnostics must not alter
+    # identity, roles, auth versions, disabled flags, or any other account data.
+    after = asyncio.run(database.users.find_one({"_id": user_id}))
+    assert {k: v for k, v in after.items() if k != "last_seen"} == before
+    assert asyncio.run(database.admin_projects.count_documents({})) == 0
+    client.cookies.clear()
+    assert client.get("/api/admin/projects").status_code == 401

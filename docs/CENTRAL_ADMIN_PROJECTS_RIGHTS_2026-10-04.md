@@ -84,3 +84,7 @@ Check erfolgte mit demselben lokal installierten Chromium direkt über Playwrigh
 
 Für die spätere Bereitstellung gelten weiterhin [CENTRAL_ADMIN_SSO.md](CENTRAL_ADMIN_SSO.md)
 und die dort dokumentierten offenen Produktionszugänge und Kontenzuordnungen.
+
+Fortsetzung: [Zentrale Anbindungsdiagnose](CENTRAL_ADMIN_READINESS_2026-10-04.md)
+zeigt lokale Konfigurationssperren und offene Zielkonten-/Rechteprüfungen im
+Dashboard, ohne Geheimnisse auszugeben oder Rechte zu vergeben.

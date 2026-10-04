@@ -4,9 +4,17 @@ Stand: 4. Oktober 2026. Implementierter Code, keine Produktionsfreischaltung.
 
 ## Verhalten
 
-`/admin/projects` verwaltet alle 15 Katalogeinträge in der bestehenden BidBlitz-Datenbank. Änderungen verwenden Revisionen und ein begrenztes Audit-Protokoll. Suche, Statusfilter und Bearbeitung sind vorhanden. Nur ein ausdrücklich konfigurierter Owner mit aktueller Datenbankrolle `admin` oder `super_admin` darf den Katalog ändern oder Zugangscodes ausstellen. Login-Aliase allein verleihen keine Owner-Rechte.
+`/admin/projects` verwaltet 35 Standard-Katalogeinträge sowie eigene zusätzliche Einträge in der bestehenden BidBlitz-Datenbank. Änderungen verwenden Revisionen und ein begrenztes Audit-Protokoll. Suche, Statusfilter und Bearbeitung sind vorhanden. Nur ein ausdrücklich konfigurierter Owner mit aktueller Datenbankrolle `admin` oder `super_admin` darf den Katalog ändern oder Zugangscodes ausstellen. Login-Aliase allein verleihen keine Owner-Rechte.
 
 BidBlitz öffnet seinen eigenen Admin mit der bestehenden Sitzung. Für Eyes, Trade, NEX, Stack, AION und Verify bestehen Empfänger und Browser-Übergaben. Andere Projekte bleiben sichtbar und bearbeitbar, ihr gemeinsamer Admin-Zugang bleibt deaktiviert. Ein normaler Projektlink wird nicht als gemeinsame Anmeldung angezeigt.
+
+Die zusätzliche Ansicht „Anbindungen & offene Schritte“ zeigt pro Projekt
+die lokale Katalogfreigabe, erlaubte Ziele, explizite Freischaltung,
+Schlüssel-Verfügbarkeit und Owner-Subject-Verfügbarkeit. Sie liefert nur
+Konfigurationsnamen, niemals Schlüsselwerte oder konkrete Kontenzuordnungen.
+Alle externen Konten-, Bereitstellungs-, Rechte- und MFA-Prüfungen bleiben
+ausdrücklich offen. Die Ansicht führt keine Empfänger-Anfragen aus und stellt
+keine Codes aus. Details: [Anbindungsdiagnose](CENTRAL_ADMIN_READINESS_2026-10-04.md).
 
 Der Browser öffnet einen fest erlaubten Empfänger unter `/auth/bidblitz-sso#code=...`. Das Ziel entfernt den Code vor dem ersten Austausch aus der Adresszeile und erstellt mit einem POST eine eigene lokale Sitzung. Der Code erscheint nicht in Abfrageparametern, Cookies oder Browser-Speicher. Doppelte React-Mounts teilen genau einen Austausch. Anfragen haben ein Zeitlimit.
 
@@ -59,6 +67,13 @@ Diese Prüfungen betreffen den entwickelten Stand, keine bereits laufende Produk
 
 ## Noch nicht angebundene Projekte
 
-Power, Charging, Passport, Games, IPTV, The Eye, VEYSCA und Conformexa besitzen in diesem zentralen Arbeitsstand keinen freigeschalteten Empfänger. Die Verwaltung ihrer Katalogeinträge ist vorhanden. Das geprüfte Power-Repository enthält lediglich ein README; IPTV hat einen Benutzerlogin, aber keinen geprüften lokalen Admin-Rollenvertrag für diese Übergabe. Produktmodule innerhalb des Haupt-BidBlitz-Admins ersetzen keine separate Owner-Anmeldung eines anderen Projekts.
+Power, iCharging, Passport, Games, IPTV, The Eye, VEYSCA, Conformexa, OS,
+Remote, Spy, TV, Charge, BIDTAX und Match besitzen in diesem zentralen
+Arbeitsstand keinen freigeschalteten Empfänger. Die Verwaltung ihrer
+Katalogeinträge ist vorhanden. Das geprüfte Power-Repository enthält lediglich
+ein README; IPTV hat einen Benutzerlogin, aber keinen geprüften lokalen
+Admin-Rollenvertrag für diese Übergabe. 13 native Produktmodule und der
+Haupt-Admin verwenden dagegen die bestehende BidBlitz-Sitzung; sie ersetzen
+keine separate Owner-Anmeldung eines anderen Projekts.
 
 Die Produktionsaktivierung benötigt die tatsächlichen Live-Versionen, Owner-Zuordnungen und Schlüssel. Der zuletzt geprüfte BidBlitz-Produktionszugang unter der vorhandenen Deployment-Konfiguration verweigerte SSH-Authentifizierung. Neue Arbeitsbranches wurden nicht nach `main` gemergt und keine Produktionsbereitstellung wurde ausgelöst.
