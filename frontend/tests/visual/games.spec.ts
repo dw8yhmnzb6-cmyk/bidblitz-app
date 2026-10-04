@@ -43,6 +43,24 @@ async function mockGamesApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/games/catalog/community-puzzle', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'community-puzzle',
+        slug: 'community-puzzle',
+        title: 'Community Puzzle',
+        description: 'A reviewed community puzzle game.',
+        category: 'Puzzle',
+        languages: ['de', 'en'],
+        public_url: 'https://play.games.example.test/game/community-puzzle/index.html',
+        active_version_id: 'community-v2',
+        version_number: 2,
+        source: 'third_party',
+      }),
+    });
+  });
   await page.route('**/api/games/profile**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -406,6 +424,50 @@ test('Games review panel exposes public ratings without requiring login', async 
   await expect(panel.getByText('4.5', { exact: false })).toBeVisible();
   await expect(panel.getByText('Great puzzle game.')).toBeVisible();
   await expect(panel.getByText('Melde dich an, um selbst zu bewerten.')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Games Match detail page exposes rating, languages and safe preview navigation', async ({ page }) => {
+  await openGames(page, 390, 844);
+
+  await page.getByRole('button', { name: 'Details' }).first().click();
+  await expect(page).toHaveURL(/\/games\/title\/match$/);
+  const detail = page.getByTestId('game-detail-page');
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole('heading', { name: 'BidBlitz Match' })).toBeVisible();
+  await expect(detail.getByText('BIDBLITZ ORIGINAL')).toBeVisible();
+  await expect(detail.getByText('4.5', { exact: false }).first()).toBeVisible();
+  await expect(detail.getByText('Deutsch')).toBeVisible();
+  await expect(detail.getByText('v1', { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  await detail.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await expect(page).toHaveURL(/\/games\/match$/);
+});
+
+test('Published community game detail deep link keeps external play isolated', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockGamesApis(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('bb_hint_dismissed', '1');
+  });
+
+  await page.goto('/games/title/community-puzzle', { waitUntil: 'networkidle' });
+
+  const detail = page.getByTestId('game-detail-page');
+  await expect(detail).toBeVisible({ timeout: 20000 });
+  await expect(detail.getByRole('heading', { name: 'Community Puzzle' })).toBeVisible();
+  await expect(detail.getByText('COMMUNITY-SPIEL')).toBeVisible();
+  await expect(detail.getByText('Deutsch')).toBeVisible();
+  await expect(detail.getByText('English')).toBeVisible();
+  await expect(detail.getByText('v2', { exact: true })).toBeVisible();
+  const play = detail.getByRole('link', { name: 'Spiel sicher öffnen' });
+  await expect(play).toHaveAttribute('href', 'https://play.games.example.test/game/community-puzzle/index.html');
+  await expect(play).toHaveAttribute('target', '_blank');
+  await expect(play).toHaveAttribute('rel', /noopener/);
+  await expect(detail.getByText(/cookie-freien Games-Origin/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
