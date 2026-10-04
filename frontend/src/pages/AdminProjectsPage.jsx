@@ -120,7 +120,6 @@ export default function AdminProjectsPage({ onNavigate }) {
   const openProject = async (project) => {
     if (openLock.current || project.open_mode === "unavailable") return;
     if (project.open_mode === "internal") { onNavigate("/admin"); return; }
-    if (project.open_mode === "link") { window.location.assign(project.admin_url); return; }
     openLock.current = true;
     setOpening(project.id);
     setActionError("");
@@ -140,6 +139,9 @@ export default function AdminProjectsPage({ onNavigate }) {
 
   const visible = projects.filter((p) => (statusFilter === "all" || p.status === statusFilter)
     && `${p.name} ${p.description} ${p.category}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const connected = projects.filter((p) => p.sso_ready).length;
+  const prepared = projects.filter((p) => p.sso && !p.sso_ready).length;
+  const pending = projects.filter((p) => !p.sso).length;
   const edit = (project) => { setSaveError(""); setNotice(""); setEditor({ project }); };
 
   return (
@@ -153,6 +155,7 @@ export default function AdminProjectsPage({ onNavigate }) {
       </header>
       <main className="max-w-6xl mx-auto px-4 py-5">
         {owner && <section className="mb-4 rounded-2xl bg-white border p-4"><div className="text-xs text-gray-500">Haupt-Admin</div><p className="font-bold break-all">{owner.email}</p><p className="text-xs text-gray-500 mt-1">Projekte verwalten und öffnen. Zugriffsrechte werden im jeweiligen Projekt geprüft.</p></section>}
+        {owner && <p className="text-sm mb-4" role="status">{connected} Zugänge eingerichtet · {prepared} vorbereitet · {pending} noch nicht angebunden</p>}
         {owner && <div className="flex flex-wrap gap-2 mb-4">
           <button disabled={Boolean(editor)} onClick={() => edit(null)} className="bg-violet-700 text-white rounded-xl px-4 py-2 flex items-center gap-2 disabled:opacity-50"><Plus size={16} />Neues Projekt hinzufügen</button>
           <button disabled={loading || Boolean(editor)} onClick={load} className="border bg-white rounded-xl px-4 py-2 flex items-center gap-2 disabled:opacity-50"><RefreshCw size={16} />Aktualisieren</button>

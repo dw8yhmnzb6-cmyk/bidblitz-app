@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import AdminProjectsPage from "./AdminProjectsPage";
 
-const project = { id: "eyes", name: "Eyes.BidBlitz", description: "Face Search", category: "Weitere", icon: "BB", color: "#7c3aed", url: "https://eyes.bidblitz.ae", admin_url: "https://eyes.bidblitz.ae", status: "active", position: 10, revision: 0, open_mode: "sso", sso_message: "SSO konfiguriert; das Zielprojekt prüft Anmeldung und Rechte." };
+const project = { id: "eyes", name: "Eyes.BidBlitz", description: "Face Search", category: "Weitere", icon: "BB", color: "#7c3aed", url: "https://eyes.bidblitz.ae", admin_url: "https://eyes.bidblitz.ae", status: "active", position: 10, revision: 0, sso: true, sso_ready: true, open_mode: "sso", sso_message: "SSO konfiguriert; das Zielprojekt prüft Anmeldung und Rechte." };
 const data = { owner: { email: "admin@bidblitz.ae" }, projects: [project] };
 const response = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
 let container, root;
@@ -97,4 +97,12 @@ test("create adds the saved project without losing existing cards", async () => 
   expect(fetch.mock.calls[1][1].method).toBe("POST");
   expect(JSON.parse(fetch.mock.calls[1][1].body).id).toBe("neu");
   expect(container.querySelectorAll("article").length).toBe(2);
+});
+
+
+test("prepared access stays disabled and summary shows connection state", async () => {
+  fetch.mockResolvedValueOnce(response({ ...data, projects: [{ ...project, sso_ready: false, open_mode: "unavailable" }] }));
+  await render();
+  expect(button("Noch nicht verfügbar").disabled).toBe(true);
+  expect(container.textContent).toContain("0 Zugänge eingerichtet · 1 vorbereitet · 0 noch nicht angebunden");
 });

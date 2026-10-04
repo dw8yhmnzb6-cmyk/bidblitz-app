@@ -15,19 +15,43 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from routes.admin_projects import require_owner, require_admin_write, get_project
 
 router = APIRouter(prefix="/api/admin/sso", tags=["admin-sso"])
+# Only audited receivers may receive an owner credential. Catalogue URLs are never used.
 SSO_TARGETS = {
-    "eyes": {"handoff_url": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
-             "browser_url": "https://eyes.bidblitz.ae", "mode": "exchange"},
-    "trade": {"handoff_url": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
-              "browser_url": "https://trade.bidblitz.ae/auth/bidblitz-sso", "mode": "redirect"},
+    name: {"handoff_url": f"https://{name}.bidblitz.ae/api/auth/bidblitz-sso",
+           "browser_url": f"https://{name}.bidblitz.ae/auth/bidblitz-sso", "mode": "redirect"}
+    for name in ("eyes", "trade", "nex", "stack")
 }
+SSO_ADAPTERS = frozenset((*SSO_TARGETS, "aion", "verify"))
+
+
+def sso_targets():
+    targets = dict(SSO_TARGETS)
+    for name, endpoint in (("aion", "/api/auth/bidblitz-sso"), ("verify", "/v1/auth/bidblitz-sso")):
+        base = os.getenv(f"BIDBLITZ_{name.upper()}_BASE_URL", "").strip().rstrip("/")
+        if not base:
+            continue
+        from urllib.parse import urlsplit
+        try:
+            url = urlsplit(base)
+            valid = (url.scheme == "https" and url.hostname and
+                     url.hostname.endswith(".bidblitz.ae") and not url.username and
+                     not url.password and url.port in (None, 443) and
+                     not url.path and not url.query and not url.fragment and
+                     not any(ord(c) <= 32 or c == "\\" for c in base))
+        except ValueError:
+            valid = False
+        if valid:
+            targets[name] = {"handoff_url": base + endpoint,
+                             "browser_url": base + "/auth/bidblitz-sso", "mode": "redirect"}
+    return targets
 
 
 def sso_configuration(project_id):
     specific = os.getenv(f"BIDBLITZ_SSO_{project_id.upper()}_SECRET")
     secret = (specific if specific is not None else os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "")).strip()
     owner_id = os.getenv("BIDBLITZ_OWNER_ID", "bidblitz-owner-primary").strip()
-    return {"configured": project_id in SSO_TARGETS and len(secret) >= 32 and bool(owner_id),
+    enabled = os.getenv(f"BIDBLITZ_SSO_{project_id.upper()}_ENABLED", "false").strip().lower() in {"true", "1", "yes"}
+    return {"configured": enabled and project_id in sso_targets() and len(secret) >= 32 and bool(owner_id),
             "secret": secret, "owner_id": owner_id}
 
 
@@ -45,7 +69,7 @@ def _sign(payload, secret):
 async def create_sso_handoff(project_id: str, request: Request, response: Response):
     user = await require_owner(request)
     require_admin_write(request)
-    target = SSO_TARGETS.get(project_id)
+    target = sso_targets().get(project_id)
     if not target:
         raise HTTPException(404, "Zentrale Anmeldung ist für dieses Projekt noch nicht angebunden.")
     project = await get_project(project_id)

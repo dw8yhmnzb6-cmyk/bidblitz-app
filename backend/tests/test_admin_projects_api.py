@@ -45,6 +45,8 @@ def context(monkeypatch):
     monkeypatch.setattr(security, "db", database)
     monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae")
     monkeypatch.setenv("BIDBLITZ_OWNER_ID", "test-owner")
+    for name in ("EYES", "TRADE", "NEX", "STACK", "AION", "VERIFY"):
+        monkeypatch.delenv(f"BIDBLITZ_SSO_{name}_ENABLED", raising=False)
     monkeypatch.delenv("BIDBLITZ_SSO_SHARED_SECRET", raising=False)
     monkeypatch.delenv("BIDBLITZ_SSO_EYES_SECRET", raising=False)
     monkeypatch.delenv("BIDBLITZ_SSO_TRADE_SECRET", raising=False)
@@ -146,9 +148,13 @@ def test_sso_secret_does_not_imply_remote_access(context, monkeypatch):
     client, _, _ = context
     monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "s" * 48)
     rows = {p["id"]: p for p in client.get("/api/admin/projects").json()["projects"]}
+    assert rows["eyes"]["sso_state"] == "not_configured"
+    assert rows["eyes"]["open_mode"] == "unavailable"
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
+    rows = {p["id"]: p for p in client.get("/api/admin/projects").json()["projects"]}
     assert rows["eyes"]["sso_state"] == "configured"
     assert rows["eyes"]["permissions"] != ["*"]
-    assert rows["nex"]["sso_state"] == "not_integrated"
+    assert rows["nex"]["sso_state"] == "not_configured"
     assert rows["verify"]["open_mode"] == "unavailable"
     assert "s" * 48 not in json.dumps(rows)
     monkeypatch.setenv("BIDBLITZ_OWNER_ID", "")
@@ -158,6 +164,7 @@ def test_sso_secret_does_not_imply_remote_access(context, monkeypatch):
 
 def test_handoff_target_fixed_nonce_fresh_and_not_cached(context, monkeypatch):
     client, _, _ = context
+    monkeypatch.setenv("BIDBLITZ_SSO_EYES_ENABLED", "true")
     monkeypatch.setenv("BIDBLITZ_SSO_EYES_SECRET", "e" * 48)
     body = update_body(admin_projects._defaults()["eyes"], admin_url="https://evil.example")
     assert client.put("/api/admin/projects/eyes", json=body, headers=HEADERS).status_code == 200
@@ -166,7 +173,7 @@ def test_handoff_target_fixed_nonce_fresh_and_not_cached(context, monkeypatch):
     assert first.status_code == 200
     assert first.headers["cache-control"] == "no-store"
     data = first.json()
-    assert data["browser_url"] == "https://eyes.bidblitz.ae"
+    assert data["browser_url"] == "https://eyes.bidblitz.ae/auth/bidblitz-sso"
     assert data["code"] != second.json()["code"]
     segment = data["code"].split(".")[0]
     payload = json.loads(base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4)))
@@ -182,12 +189,13 @@ def test_hidden_projects_cannot_issue_handoffs(context, monkeypatch):
     body = update_body(admin_projects._defaults()["trade"], status="hidden")
     assert client.put("/api/admin/projects/trade", json=body, headers=HEADERS).status_code == 200
     assert client.post("/api/admin/sso/trade", headers=HEADERS).status_code == 403
-    assert client.post("/api/admin/sso/nex", headers=HEADERS).status_code == 404
+    assert client.post("/api/admin/sso/nex", headers=HEADERS).status_code == 503
 
 
 def test_explicit_empty_project_secret_disables_legacy_fallback(context, monkeypatch):
     client, _, _ = context
     monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "x" * 48)
+    monkeypatch.setenv("BIDBLITZ_SSO_TRADE_ENABLED", "true")
     monkeypatch.setenv("BIDBLITZ_SSO_EYES_SECRET", "")
     assert client.post("/api/admin/sso/eyes", headers=HEADERS).status_code == 503
     assert client.post("/api/admin/sso/trade", headers=HEADERS).status_code == 200
@@ -198,5 +206,38 @@ def test_configured_super_admin_can_manage_projects(context):
     asyncio.run(database.users.update_one({"_id": user_id}, {"$set": {"role": "super_admin"}}))
     assert client.get("/api/admin/projects").status_code == 200
     assert client.post("/api/admin/projects", json=draft(), headers=HEADERS).status_code == 201
+    asyncio.run(database.users.update_one({"_id": user_id}, {"$set": {"email": "other@example.com"}}))
+    assert client.get("/api/admin/projects").status_code == 403
+
+
+@pytest.mark.parametrize("name", ["eyes", "trade", "nex", "stack"])
+def test_each_receiver_requires_explicit_release_flag(context, monkeypatch, name):
+    client, _, _ = context
+    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "x" * 48)
+    assert client.post(f"/api/admin/sso/{name}", headers=HEADERS).status_code == 503
+    monkeypatch.setenv(f"BIDBLITZ_SSO_{name.upper()}_ENABLED", "true")
+    assert client.post(f"/api/admin/sso/{name}", headers=HEADERS).status_code == 200
+
+@pytest.mark.parametrize("name", ["aion", "verify"])
+def test_optional_base_only_accepts_trusted_https_origin(context, monkeypatch, name):
+    client, _, _ = context
+    monkeypatch.setenv("BIDBLITZ_SSO_SHARED_SECRET", "x" * 48)
+    monkeypatch.setenv(f"BIDBLITZ_SSO_{name.upper()}_ENABLED", "true")
+    body = update_body(admin_projects._defaults()[name], status="dev")
+    assert client.put(f"/api/admin/projects/{name}", json=body, headers=HEADERS).status_code == 200
+    for base in ["http://aion.bidblitz.ae", "https://evil.example", "https://aion.bidblitz.ae@evil.example", "https://aion.bidblitz.ae/path", "https://aion.bidblitz.ae?code=x", "https://aion.bidblitz.ae:8443"]:
+        monkeypatch.setenv(f"BIDBLITZ_{name.upper()}_BASE_URL", base)
+        assert client.post(f"/api/admin/sso/{name}", headers=HEADERS).status_code == 404
+    monkeypatch.setenv(f"BIDBLITZ_{name.upper()}_BASE_URL", f"https://{name}.bidblitz.ae")
+    result = client.post(f"/api/admin/sso/{name}", headers=HEADERS)
+    assert result.status_code == 200
+    assert result.json()["browser_url"] == f"https://{name}.bidblitz.ae/auth/bidblitz-sso"
+
+
+def test_canonical_owner_config_uses_current_database_identity(context, monkeypatch):
+    client, database, user_id = context
+    monkeypatch.delenv("BIDBLITZ_OWNER_EMAILS")
+    monkeypatch.setenv("BIDBLITZ_CANONICAL_OWNER_EMAIL", "admin@bidblitz.ae")
+    assert client.get("/api/admin/projects").status_code == 200
     asyncio.run(database.users.update_one({"_id": user_id}, {"$set": {"email": "other@example.com"}}))
     assert client.get("/api/admin/projects").status_code == 403

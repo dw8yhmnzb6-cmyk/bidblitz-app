@@ -21,7 +21,7 @@ def _normalized_email(value):
 
 def _is_platform_owner(user):
     configured = {_normalized_email(v) for v in os.getenv(
-        "BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae").split(",") if v.strip()}
+        "BIDBLITZ_OWNER_EMAILS", os.getenv("BIDBLITZ_CANONICAL_OWNER_EMAIL", "admin@bidblitz.ae")).split(",") if v.strip()}
     # Use the current database identity, never token-supplied login aliases.
     return (user.get("role") in {"admin", "super_admin"}
             and not user.get("login_disabled") and not user.get("is_disabled")
@@ -101,19 +101,20 @@ async def get_project(project_id):
 
 
 def project_view(project):
-    from routes.admin_sso import sso_configuration, SSO_TARGETS
+    from routes.admin_sso import sso_configuration, sso_targets, SSO_ADAPTERS
     project = {k: v for k, v in project.items() if k not in {"_id", "audit"}}
     native = project["id"] == "bidblitz"
-    target = SSO_TARGETS.get(project["id"])
+    target = sso_targets().get(project["id"])
+    adapter = project["id"] in SSO_ADAPTERS
     configured = bool(target and sso_configuration(project["id"])["configured"])
     available = project["status"] in {"active", "dev"}
     return {**project, "permissions": ["catalogue:manage"],
-            "sso": native or bool(target), "sso_ready": native or (configured and available),
-            "sso_state": "native" if native else "configured" if configured else "not_configured" if target else "not_integrated",
-            "open_mode": "internal" if native else "sso" if configured and available else "link" if project.get("admin_url") and available else "unavailable",
+            "sso": native or adapter, "sso_ready": native or (configured and available),
+            "sso_state": "native" if native else "configured" if configured else "not_configured" if adapter else "not_integrated",
+            "open_mode": "internal" if native else "sso" if configured and available else "unavailable",
             "sso_message": "Mit deiner BidBlitz-Sitzung geöffnet." if native else
             "SSO konfiguriert; das Zielprojekt prüft Anmeldung und Rechte." if configured else
-            "SSO noch nicht konfiguriert. Separate Projektanmeldung erforderlich." if target else
+            "Gemeinsame Anmeldung vorbereitet; noch nicht aktiviert." if adapter else
             "Separate Projektanmeldung erforderlich; zentrale Anmeldung noch nicht angebunden."}
 
 
