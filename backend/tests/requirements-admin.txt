@@ -1,0 +1,2 @@
+# Test-only MongoDB adapter; no external database or user accounts are touched.
+mongomock-motor==0.0.36
