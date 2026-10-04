@@ -52,6 +52,76 @@ async function mockGamesApis(page: Page) {
   });
 }
 
+async function mockGamesAdminApis(page: Page) {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'admin-1',
+        name: 'Games Admin',
+        email: 'games-admin@example.test',
+        role: 'admin',
+        modes: ['personal'],
+        kyc_status: 'approved',
+        kyc_verified: true,
+        language: 'de',
+      }),
+    });
+  });
+  await page.route('**/api/admin/game-studio/versions**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ versions: [] }),
+    });
+  });
+  await page.route('**/api/admin/game-studio/preflight', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ready: true,
+        checks: {
+          public_origin_safe: true,
+          preview_origin_safe: true,
+          origins_isolated: true,
+          upload_storage_safe: true,
+          preview_storage_safe: true,
+          release_storage_safe: true,
+          storage_roots_distinct: true,
+          billing_fail_closed: true,
+        },
+        public_origin: { host: 'play.games.example.test' },
+        preview_origin: { host: 'preview.games.example.test' },
+        billing: { enabled: false, fail_closed: true },
+      }),
+    });
+  });
+  await page.route('**/api/admin/game-studio/diagnostics', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ok',
+        preflight_ready: true,
+        billing_fail_closed: true,
+        counts: {
+          drafts: 8,
+          versions: 14,
+          submitted: 3,
+          archive_approved: 2,
+          preview_approved: 1,
+          published: 4,
+          unpublished: 2,
+          publication_events: 11,
+          publication_locks: 0,
+        },
+      }),
+    });
+  });
+}
+
 async function openGames(page: Page, width: number, height: number, language = 'de') {
   await page.setViewportSize({ width, height });
   await mockGamesApis(page);
@@ -152,6 +222,32 @@ test('Games RTL language switch persists and keeps fallback readable', async ({ 
   await page.reload({ waitUntil: 'networkidle' });
   await expect(page.getByTestId('games-platform-page')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByTestId('games-language-select').locator('select')).toHaveValue('ar');
+});
+
+test('Games admin operations diagnostics render without private data', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockGamesAdminApis(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('bb_hint_dismissed', '1');
+  });
+
+  await page.goto('/admin/game-studio', { waitUntil: 'networkidle' });
+
+  const diagnostics = page.getByTestId('games-diagnostics-card');
+  await expect(diagnostics).toBeVisible({ timeout: 20000 });
+  await expect(diagnostics.getByText('Games Betrieb')).toBeVisible();
+  await expect(diagnostics.getByText('Betrieb OK')).toBeVisible();
+  await expect(diagnostics.getByText('Entwürfe')).toBeVisible();
+  await expect(diagnostics.getByText('8', { exact: true })).toBeVisible();
+  await expect(diagnostics.getByText('Aktive Locks')).toBeVisible();
+  await expect(diagnostics.getByText('0', { exact: true })).toBeVisible();
+
+  const preflight = page.getByTestId('games-preflight-card');
+  await expect(preflight).toBeVisible();
+  await expect(preflight.getByText('play.games.example.test')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
 
 test('Games Match preview opens from catalog and remains usable on 320px', async ({ page }) => {
