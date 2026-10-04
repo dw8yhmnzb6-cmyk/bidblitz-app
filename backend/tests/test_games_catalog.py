@@ -37,6 +37,10 @@ def match(doc, query):
     return True
 
 
+class DuplicateKeyError(Exception):
+    code = 11000
+
+
 class Collection:
     def __init__(self, docs=None):
         self.docs = [dict(row) for row in (docs or [])]
@@ -49,8 +53,17 @@ class Collection:
         return Cursor([doc for doc in self.docs if match(doc, query)])
 
     async def insert_one(self, doc):
+        if "_id" in doc and any(row.get("_id") == doc["_id"] for row in self.docs):
+            raise DuplicateKeyError("duplicate _id")
         self.docs.append(dict(doc))
-        return types.SimpleNamespace(inserted_id=doc.get("id"))
+        return types.SimpleNamespace(inserted_id=doc.get("_id") or doc.get("id"))
+
+    async def delete_one(self, query):
+        for index, row in enumerate(self.docs):
+            if match(row, query):
+                self.docs.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
 
     async def update_one(self, query, update, upsert=False):
         row = next((doc for doc in self.docs if match(doc, query)), None)
@@ -114,6 +127,7 @@ class GamesCatalogTest(unittest.TestCase):
             game_studio_drafts=Collection([draft]),
             games_catalog=Collection(),
             game_studio_publication_events=Collection(),
+            games_publication_locks=Collection(),
         )
         catalog.db = self.db
         catalog.get_current_user = AsyncMock(return_value={"_id": "admin-1", "role": "admin"})
@@ -149,6 +163,27 @@ class GamesCatalogTest(unittest.TestCase):
         version = self.db.game_studio_versions.docs[0]
         self.assertEqual(version["publication_status"], "published")
         self.assertEqual(self.db.game_studio_publication_events.docs[0]["action"], "publish")
+        self.assertEqual(self.db.games_publication_locks.docs, [])
+
+
+    def test_repeat_publish_of_active_version_is_idempotent(self):
+        first = asyncio.run(catalog.publish_version("v1", None))
+        second = asyncio.run(catalog.publish_version("v1", None))
+        self.assertEqual(second["active_version_id"], first["active_version_id"])
+        self.assertEqual(len(self.db.game_studio_publication_events.docs), 1)
+        self.assertEqual(catalog.reserve_publication_slot.await_count, 1)
+        self.assertEqual(self.db.games_publication_locks.docs, [])
+
+
+    def test_publication_lock_blocks_overlapping_admin_action(self):
+        token = asyncio.run(catalog._acquire_publication_lock("draft-1"))
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(catalog._acquire_publication_lock("draft-1"))
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertTrue(asyncio.run(catalog._release_publication_lock("draft-1", token)))
+        replacement = asyncio.run(catalog._acquire_publication_lock("draft-1"))
+        self.assertNotEqual(replacement, token)
+        self.assertTrue(asyncio.run(catalog._release_publication_lock("draft-1", replacement)))
 
 
     def test_published_release_is_frozen_separately_from_preview(self):
