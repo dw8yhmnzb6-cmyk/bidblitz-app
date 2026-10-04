@@ -108,3 +108,14 @@ def test_match_uses_games_admin_module_and_not_external_sso():
     assert row["native_path"] == "/admin/game-settings"
     assert row["sso_state"] == "native"
     assert row["access_profile"]["scope"] == "bidblitz"
+
+
+def test_icharging_uses_existing_ev_admin_and_keeps_charge_separate():
+    projects = admin_projects._defaults()
+    charging = admin_projects.project_view(projects["charging"], {"role": "admin"})
+    assert charging["native_path"] == "/admin/ev"
+    assert charging["open_mode"] == "internal"
+    assert charging["sso_state"] == "native"
+    assert charging["access_profile"]["scope"] == "bidblitz"
+    assert projects["charge"]["status"] == "coming_soon"
+    assert projects["charge"]["admin_url"] is None

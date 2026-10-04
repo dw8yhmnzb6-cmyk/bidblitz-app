@@ -7,7 +7,7 @@ PROJECTS = [
     {"id":"stack","name":"BidBlitz Stack","description":"Infrastruktur & Developer Stack","url":"https://stack.bidblitz.ae","admin_url":"https://stack.bidblitz.ae","status":"dev","sso":False},
     {"id":"aion","name":"AION","description":"KI-Assistent & Brain","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"power","name":"Power BidBlitz","description":"Powerbank Sharing","url":None,"admin_url":None,"status":"pending","sso":False},
-    {"id":"charging","name":"iCharging","description":"Ladeinfrastruktur & Elektromobilität; getrennt von BidBlitz Charge","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"charging","name":"iCharging","description":"Ladeinfrastruktur & Elektromobilität; vorhandene EV-Verwaltung, getrennt von BidBlitz Charge","url":"/admin/ev","admin_url":"/admin/ev","status":"connected","sso":True},
     {"id":"verify","name":"BidBlitz Verify","description":"Identitätsprüfung","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"passport","name":"BidBlitz Passport","description":"Digital Product Passport","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"games","name":"Game.BidBlitz","description":"Games Plattform; bestehender BidBlitz-Adminbereich","url":None,"admin_url":"/admin/game-settings","status":"connected","sso":True},
