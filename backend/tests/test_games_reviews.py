@@ -11,7 +11,15 @@ from routes import games_reviews as reviews
 
 
 def matches(doc, query):
-    return all(doc.get(key) == value for key, value in query.items())
+    for key, value in query.items():
+        current = doc.get(key)
+        if isinstance(value, dict):
+            if "$in" in value and current not in value["$in"]:
+                return False
+            continue
+        if current != value:
+            return False
+    return True
 
 
 class Cursor:
@@ -40,6 +48,16 @@ class AggregateCursor:
         rows = [row for row in self.rows if matches(row, match_query)]
         if not rows:
             return []
+        group = self.pipeline[1]["$group"]
+        if group.get("_id") == "$game_id":
+            grouped = {}
+            for row in rows:
+                grouped.setdefault(row["game_id"], []).append(row)
+            return [{
+                "_id": game_id,
+                "count": len(items),
+                "average": sum(int(item["rating"]) for item in items) / len(items),
+            } for game_id, items in grouped.items()]
         return [{
             "_id": None,
             "count": len(rows),
@@ -140,6 +158,34 @@ class GamesReviewsTest(unittest.TestCase):
         ))
         public = asyncio.run(reviews.list_public_reviews("match"))
         self.assertEqual(public["summary"], {"count": 2, "average": 4.0})
+
+    def test_bulk_summaries_include_match_and_published_community_only(self):
+        self.db.games_catalog.docs.extend([
+            {"id": "community-game", "status": "published"},
+            {"id": "offline-game", "status": "unpublished"},
+        ])
+        self.db.games_reviews.docs.extend([
+            {"id": "a", "owner_id": "u1", "game_id": "match", "rating": 5, "text": "", "status": "visible"},
+            {"id": "b", "owner_id": "u2", "game_id": "match", "rating": 3, "text": "", "status": "visible"},
+            {"id": "c", "owner_id": "u3", "game_id": "match", "rating": 1, "text": "", "status": "hidden"},
+            {"id": "d", "owner_id": "u4", "game_id": "community-game", "rating": 4, "text": "", "status": "visible"},
+            {"id": "e", "owner_id": "u5", "game_id": "offline-game", "rating": 5, "text": "", "status": "visible"},
+        ])
+
+        result = asyncio.run(reviews.review_summaries("match,community-game,offline-game"))
+        self.assertEqual(result["summaries"]["match"], {"count": 2, "average": 4.0})
+        self.assertEqual(result["summaries"]["community-game"], {"count": 1, "average": 4.0})
+        self.assertNotIn("offline-game", result["summaries"])
+
+    def test_bulk_summaries_reject_invalid_or_excessive_ids(self):
+        with self.assertRaises(HTTPException) as invalid:
+            asyncio.run(reviews.review_summaries("match,../bad"))
+        self.assertEqual(invalid.exception.status_code, 400)
+
+        too_many = ",".join(f"game-{index}" for index in range(reviews._MAX_SUMMARY_GAMES + 1))
+        with self.assertRaises(HTTPException) as excessive:
+            asyncio.run(reviews.review_summaries(too_many))
+        self.assertEqual(excessive.exception.status_code, 400)
 
     def test_admin_can_hide_and_super_admin_can_restore_with_audit(self):
         asyncio.run(reviews.upsert_review(
