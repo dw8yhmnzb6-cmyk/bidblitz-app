@@ -18,13 +18,15 @@ def test_non_owner_admin_is_not_platform_owner(monkeypatch):
 
 
 def test_owner_alias_is_accepted(monkeypatch):
-    monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "owner@bidblitz.ae")
+    monkeypatch.setenv("BIDBLITZ_CANONICAL_OWNER_EMAIL", "admin@bidblitz.ae")
+    monkeypatch.setenv("BIDBLITZ_OWNER_EMAILS", "admin@bidblitz.ae,owner@example.com")
     assert _is_platform_owner({
         "role": "admin",
-        "email": "login@example.com",
-        "email_aliases": ["owner@bidblitz.ae"],
+        "email": "admin@bidblitz.ae",
+        "canonical_email": "admin@bidblitz.ae",
+        "login_email": "owner@example.com",
+        "email_aliases": ["owner@example.com"],
     })
-
 
 def test_project_registry_never_invents_urls_for_pending_projects():
     pending = [p for p in PROJECTS if p["status"] == "pending"]
