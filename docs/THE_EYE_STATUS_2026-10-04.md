@@ -81,6 +81,10 @@ python -m pytest backend/tests/test_the_eye_v1_contract.py backend/tests/test_th
 
 **Keine belastbare Gesamt-Prozentzahl:** Der gesamte geplante Produktumfang und echte Integrationsnachweise sind noch nicht vollständig abgenommen. Die 100 % beziehen sich nur auf die 57 gezielten bestandenen Prüfungen.
 
+## Ergänzung: Vorbereitung der Datenübernahme
+
+Am 4. Oktober 2026 wurde das lesende Prüfwerkzeug `scripts/the_eye_data_preflight.py` im selben Entwicklungsprojekt ergänzt. Die separate Anleitung `docs/THE_EYE_DATA_MIGRATION.md` beschreibt die gesicherte Codekopie auf dem Stack, die noch nicht verifizierte Laufzeitquelle und die ausgeschlossenen gemeinsamen Benutzerdaten. Die aktuellen gezielten Prüfungen ergeben **79/79 bestandene Tests** (57 bisherige plus 22 neue). Die neue Prüfung ist lokal ausgeführt und kein Live-Datenbank- oder Wiederherstellungsnachweis.
+
 ## Endpunkt-Inventar
 
 Die folgende Liste wurde direkt aus den Routen-Deklarationen des geprüften Codes erzeugt. Bei den HTTP-Routen gilt das Präfix `/api/the-eye`; der WebSocket-Pfad ist bereits vollständig.
