@@ -204,7 +204,7 @@ export default function AdminGamesReviewPage({ onBack }) {
                   {version.publication_status === "published"
                     ? <button onClick={() => changePublication(version, "unpublish")} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/25 bg-rose-300/10 px-4 py-3 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.unpublish}</button>
                     : <button onClick={() => changePublication(version, version.publication_status === "inactive" ? "rollback" : "publish")} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-xs font-bold text-[#061329] disabled:opacity-50">{version.publication_status === "inactive" ? <RotateCcw size={15} /> : <Rocket size={15} />}{version.publication_status === "inactive" ? c.rollback : c.publish}</button>}
-                </div>}
+                </div></>}
               </article>;
             })}</div>}
       </div>
