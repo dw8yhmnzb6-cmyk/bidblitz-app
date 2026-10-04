@@ -388,6 +388,14 @@ def test_admin_system_error_center_covers_core_modules_and_recovery():
     assert 'probe.status_code ?? "—"' in dashboard
     assert '"behoben"' in dashboard
     assert '"offen"' in dashboard
+    assert "Letzte Seiten- & Asset-Fehler" in dashboard
+    assert "monitor-frontend-errors-list" in dashboard
+
+    error_boundary = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "ErrorBoundary.jsx").read_text(encoding="utf-8")
+    assert "const sanitizeResourceUrl" in error_boundary
+    assert 'boundary: "resource-error"' in error_boundary
+    assert 'source: "window.resource-error"' in error_boundary
+    assert 'resource_url: resourceUrl' in error_boundary
 
 
 def test_biopay_missing_facepay_flag_fails_closed():
