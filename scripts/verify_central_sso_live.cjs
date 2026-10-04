@@ -1,0 +1,23 @@
+const fs=require('node:fs'); const assert=require('node:assert/strict'); const {chromium}=require(process.env.ADMIN_PLAYWRIGHT_PATH);
+const projects=[{id:'eyes',name:'Eyes.BidBlitz',role:'admin'},{id:'trade',name:'Trade BidBlitz',role:'SUPER_ADMIN'},{id:'nex',name:'BidBlitz NEX',role:'OWNER'},{id:'stack',name:'BidBlitz Stack',role:'OWNER'}];
+(async()=>{const token=fs.readFileSync('/tmp/bidblitz-admin-browser-cookie.txt','utf8').trim();const browser=await chromium.launch({headless:true});const results=[];
+try{for(const width of [390,1440]){for(const project of projects){
+ const context=await browser.newContext({viewport:{width,height:900}});await context.addCookies([{name:'access_token',value:token,domain:'bidblitz.ae',path:'/',httpOnly:true,secure:true,sameSite:'Lax'}]);
+ const allowed=new Set(['bidblitz.ae',project.id+'.bidblitz.ae']);await context.route('**/*',route=>{const req=route.request(),u=new URL(req.url());if(!allowed.has(u.hostname))return route.abort();if(!['GET','HEAD'].includes(req.method())&&!['/api/admin/sso/'+project.id,'/api/auth/bidblitz-sso','/api/auth/logout'].includes(u.pathname))return route.abort();return route.continue();});
+ const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://bidblitz.ae/admin/projects',{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'Alle Projekte',exact:true}).waitFor();
+ const card=page.locator('article').filter({has:page.getByRole('heading',{name:project.name,exact:true})});const button=card.getByRole('button',{name:'Mit BidBlitz anmelden',exact:true});await button.waitFor();assert(await button.isEnabled());
+ const handoffPromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/admin/sso/'+project.id&&r.request().method()==='POST');
+ const exchangePromise=page.waitForResponse(r=>new URL(r.url()).hostname===project.id+'.bidblitz.ae'&&new URL(r.url()).pathname==='/api/auth/bidblitz-sso'&&r.request().method()==='POST');
+ await button.click();const handoffResponse=await handoffPromise;assert.equal(handoffResponse.status(),200);const handoff=await handoffResponse.json();
+ const response=await exchangePromise;assert.equal(response.status(),200);const data=await response.json();assert.equal(data.role||(data.user||{}).role,project.role);assert(!data.mfa_required);
+ await page.waitForURL(u=>u.hostname===project.id+'.bidblitz.ae'&&u.pathname==='/'&&!u.hash,{timeout:30000});
+ const profilePath=project.id==='trade'?'/api/customer/me':'/api/auth/me';const headers={Origin:'https://'+project.id+'.bidblitz.ae'};if(data.access_token)headers.Authorization='Bearer '+data.access_token;if(data.csrf_token)headers['X-CSRF-Token']=data.csrf_token;
+ const me=await context.request.get('https://'+project.id+'.bidblitz.ae'+profilePath,{headers});assert.equal(me.status(),200);const profile=await me.json();assert.equal(profile.role||(profile.user||{}).role,project.role);
+ await page.waitForFunction(()=>document.body.innerText.length>150,{timeout:15000});
+ assert(await page.evaluate(code=>![localStorage,sessionStorage].some(storage=>Object.values(storage).some(v=>String(v).includes(code))),handoff.code));
+ assert.deepEqual(errors,[]);const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert(!overflow,'Horizontal overflow in '+project.id+' at '+width);
+ const logout=await context.request.post('https://'+project.id+'.bidblitz.ae/api/auth/logout',{headers});assert([200,204].includes(logout.status()));
+ results.push({project:project.id,viewport:width,issuer:200,receiver:200,role:project.role,session:200,code_removed:true,code_not_stored:true,no_page_errors:true,no_overflow:true,logout:logout.status()});console.log('LIVE_SSO_BROWSER_PASSED',JSON.stringify(results.at(-1)));await context.close();
+ }}fs.writeFileSync('/tmp/admin-sso-browser-results.json',JSON.stringify(results,null,2));
+}finally{await browser.close();fs.rmSync('/tmp/bidblitz-admin-browser-cookie.txt',{force:true});}
+})().catch(e=>{console.error(String(e.message).replace(/#code=[^\s"'<>]+/g,'#code=[redacted]'));process.exitCode=1;});

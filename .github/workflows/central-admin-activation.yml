@@ -1,15 +1,22 @@
-name: Central admin activation inventory (read only)
+name: Approved central project SSO activation
 on:
   push:
     branches: [work/central-admin-activation-20261004]
     paths: [.github/workflows/central-admin-activation.yml]
 permissions:
   contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 jobs:
-  baseline:
+  activate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Configure verified host and existing deployment authentication
         env:
           DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -25,38 +32,12 @@ jobs:
           fi
           sudo apt-get update -qq
           sudo apt-get install -y -qq sshpass
-      - name: Inspect existing issuer configuration without emitting secrets
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+
+      - name: Prepare browser before issuing any temporary verification session
         run: |
-          set -euo pipefail
-          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
-          if [ -f ~/.ssh/bidblitz_deploy_key ]; then
-            SSH+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
-          else
-            test -n "$SSHPASS"
-            SSH=(sshpass -e "${SSH[@]}")
-          fi
-          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend && venv/bin/python -' <<'PY'
-          import asyncio,os,json,sys
-          from urllib.request import Request,urlopen
-          from core import security
-          from core.database import db
-          from routes.admin_sso import sso_configuration,sso_targets
-          async def main():
-              emails=[s.strip().lower() for s in os.getenv('BIDBLITZ_OWNER_EMAILS',os.getenv('BIDBLITZ_CANONICAL_OWNER_EMAIL','admin@bidblitz.ae')).split(',') if s.strip()]
-              owner=await db.users.find_one({'email':{'$in':emails},'role':{'$in':['admin','super_admin']}})
-              assert owner and not owner.get('is_disabled') and not owner.get('login_disabled')
-              assert not any(owner.get(k) for k in ('mfa_enabled','two_factor_enabled','totp_enabled','totp_secret','two_factor_secret'))
-              token=security.create_access_token(str(owner.get('_id') or owner['id']),owner['email'])
-              with urlopen(Request('http://127.0.0.1:8001/api/admin/projects',headers={'Authorization':'Bearer '+token}),timeout=15) as r:
-                  projects=json.load(r)['projects']
-              print('ISSUER_INVENTORY',json.dumps([{'id':p['id'],'status':p['status'],'access':p.get('access'),'integration':p.get('integration')} for p in projects]))
-              print('ISSUER_CONFIG',json.dumps({name:{k:v for k,v in sso_configuration(name).items() if k not in ('secret','owner_id')} for name in ('eyes','trade','nex','stack','aion','verify','bidtax')}))
-              print('ISSUER_TARGETS',json.dumps(sso_targets()))
-          asyncio.run(main())
-          PY
-      - name: Stage separate SSO keys, encrypted only for the connected owner workstation
+          npm install --prefix /tmp/admin-activation-browser --no-audit --no-fund playwright
+          /tmp/admin-activation-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Activate only live-tested Eyes, Trade, NEX and Stack handoffs
         env:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
@@ -71,42 +52,21 @@ jobs:
             SSH=(sshpass -e "${SSH[@]}")
             SCP=(sshpass -e "${SCP[@]}")
           fi
-          cat > /tmp/admin-transfer-public.pem <<'PUBLIC'
-          -----BEGIN PUBLIC KEY-----
-          MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA0I7cfTZo5o1mV43yKpel
-          Mi1dEUSTdK2orT4MFnmAjX/QyIz7NDgFoaHiUfBZCuzLYAqlhrpmzA2/DXgF1Ier
-          KSzoSw+GMaZ3bfTdiUkEY+To7fefvrxebCvq0VQstGNT6wb2PApmFaOI8h+umLxO
-          NoSefx89BIQ1x24iCXJrnIaeuzgLAWWgwA9Ca70jKP+4cBGXwCj3s8ZgXhnhIK84
-          JkJC9fkRXVa8jysBk691PWF3tpa+Q82ODFgU9PjPX+DAdsTTn0oS/iLLxEbUZUhf
-          FmHgdm2g0H0/nhrIopCPCe0xQhJ8IAOnY7p0ik6Kr8LP4DYjDmEghIGf2scKL0+k
-          OhC/78OhZNKV7kJy4hNuwFW/kVTdgsciKNmRvedtAOUDwFVIMn61jU5OUYib2pVV
-          gtDwkE0TEYDrRG9hwcglOf/QmVuWRggXMyFBkvkS7Kl864+eKcw7qFze5XXaAEtA
-          6/crd85zxsPIyHl0N6zTKGMKEq2j4UiodJGw/LOLJvjXAgMBAAE=
-          -----END PUBLIC KEY-----
-          PUBLIC
-          "${SCP[@]}" /tmp/admin-transfer-public.pem root@212.227.20.190:/tmp/admin-transfer-public.pem
-          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend && venv/bin/python -' <<'PY'
-          import json,os,secrets,subprocess
-          from pathlib import Path
-          from core import config
-          target=Path('/root/bidblitz-central-sso-20261004.json')
-          if not target.exists():
-              data={'owner_id':os.getenv('BIDBLITZ_OWNER_ID','bidblitz-owner-primary').strip(),'keys':{n:secrets.token_urlsafe(48) for n in ('eyes','trade','nex','stack')}}
-              assert data['owner_id']
-              fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-              with os.fdopen(fd,'w') as f:json.dump(data,f)
-          data=json.loads(target.read_text())
-          stage=Path('/tmp/bidblitz-admin-encrypted-20261004');stage.mkdir(mode=0o700,exist_ok=True)
-          for name,key in data['keys'].items():
-              payload=json.dumps({'owner_id':data['owner_id'],'secret':key}).encode()
-              assert len(payload)<=318
-              subprocess.run(['openssl','pkeyutl','-encrypt','-pubin','-inkey','/tmp/admin-transfer-public.pem','-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256','-out',str(stage/(name+'.enc'))],input=payload,check=True)
-          print('ENCRYPTED_PROJECT_KEYS_STAGED',','.join(sorted(data['keys'])))
-          PY
-          mkdir -p encrypted-project-keys
-          "${SCP[@]}" 'root@212.227.20.190:/tmp/bidblitz-admin-encrypted-20261004/*.enc' ./encrypted-project-keys/
+          "${SCP[@]}" scripts/enable_central_admin_sso.py root@212.227.20.190:/tmp/enable_central_admin_sso.py
+          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend && venv/bin/python /tmp/enable_central_admin_sso.py'
+          "${SCP[@]}" root@212.227.20.190:/tmp/bidblitz-admin-browser-cookie.txt /tmp/bidblitz-admin-browser-cookie.txt
+          "${SSH[@]}" root@212.227.20.190 'rm -f /tmp/bidblitz-admin-browser-cookie.txt'
+          chmod 600 /tmp/bidblitz-admin-browser-cookie.txt
+          if ! ADMIN_PLAYWRIGHT_PATH=/tmp/admin-activation-browser/node_modules/playwright node scripts/verify_central_sso_live.cjs; then
+            "${SSH[@]}" root@212.227.20.190 'cp /var/www/bidblitz/admin-sso-env-backup-20261004/backend.env /var/www/bidblitz/backend/.env; chmod 600 /var/www/bidblitz/backend/.env; pm2 restart api >/dev/null'
+            echo 'SSO_FLAGS_ROLLED_BACK_AFTER_BROWSER_FAILURE'
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: encrypted-admin-project-keys
-          path: encrypted-project-keys/*.enc
-          retention-days: 1
+          name: central-sso-live-browser-evidence
+          path: /tmp/admin-sso-browser-results.json
+          retention-days: 7
+      - name: Remove temporary verification session material
+        if: always()
+        run: rm -f /tmp/bidblitz-admin-browser-cookie.txt
