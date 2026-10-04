@@ -20,7 +20,7 @@ const COPY = {
     requestChanges: "Änderungen verlangen", reject: "Ablehnen", saveError: "Prüfentscheidung konnte nicht gespeichert werden.",
     blocked: "Ausführung bleibt isoliert", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", approvePreview: "Preview freigeben", publish: "Im Katalog veröffentlichen", rollback: "Diese Version aktivieren", unpublish: "Veröffentlichung stoppen", publishError: "Veröffentlichungsstatus konnte nicht geändert werden.", published: "Veröffentlicht",
     preflightTitle: "Games Launch-Preflight", preflightReady: "Sicher für nicht-monetäre Staging-Tests", preflightBlocked: "Konfiguration noch nicht bereit", preflightLoadError: "Preflight konnte nicht geladen werden.", publicOrigin: "Public-Origin", previewOrigin: "Preview-Origin", storageSafety: "Private Speicher", billingGuard: "Billing-Sperre", safe: "Sicher", unsafe: "Prüfen", billingOff: "Gesperrt", billingOn: "Aktiv",
-    diagnosticsTitle: "Games Betrieb", diagnosticsSubtitle: "Live-Snapshot der Games-Pipeline ohne private Pfade oder Kundendaten.", diagnosticsLoadError: "Games-Diagnose konnte nicht geladen werden.", drafts: "Entwürfe", versions: "Versionen", publicationEvents: "Publikationsereignisse", publicationLocks: "Aktive Locks", unpublished: "Offline", operational: "Betrieb OK", attention: "Prüfung erforderlich",
+    diagnosticsTitle: "Games Betrieb", diagnosticsSubtitle: "Live-Snapshot der Games-Pipeline ohne private Pfade oder Kundendaten.", diagnosticsLoadError: "Games-Diagnose konnte nicht geladen werden.", drafts: "Entwürfe", versions: "Versionen", publicationEvents: "Publikationsereignisse", publicationLocks: "Aktive Locks", unpublished: "Offline", reviewsVisible: "Reviews sichtbar", reviewsHidden: "Reviews ausgeblendet", reviewModerationEvents: "Review-Moderationen", operational: "Betrieb OK", attention: "Prüfung erforderlich",
   },
   en: {
     back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
@@ -32,7 +32,7 @@ const COPY = {
     requestChanges: "Request changes", reject: "Reject", saveError: "Could not save review decision.",
     blocked: "Execution remains isolated", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.", openPreview: "Open private preview", previewError: "Could not create preview link.", approvePreview: "Approve preview", publish: "Publish to catalog", rollback: "Make this version active", unpublish: "Stop publication", publishError: "Could not change publication status.", published: "Published",
     preflightTitle: "Games launch preflight", preflightReady: "Safe for non-monetary staging tests", preflightBlocked: "Configuration not ready yet", preflightLoadError: "Could not load preflight.", publicOrigin: "Public origin", previewOrigin: "Preview origin", storageSafety: "Private storage", billingGuard: "Billing guard", safe: "Safe", unsafe: "Check", billingOff: "Locked", billingOn: "Enabled",
-    diagnosticsTitle: "Games operations", diagnosticsSubtitle: "Live Games pipeline snapshot without private paths or customer data.", diagnosticsLoadError: "Could not load Games diagnostics.", drafts: "Drafts", versions: "Versions", publicationEvents: "Publication events", publicationLocks: "Active locks", unpublished: "Offline", operational: "Operations OK", attention: "Needs attention",
+    diagnosticsTitle: "Games operations", diagnosticsSubtitle: "Live Games pipeline snapshot without private paths or customer data.", diagnosticsLoadError: "Could not load Games diagnostics.", drafts: "Drafts", versions: "Versions", publicationEvents: "Publication events", publicationLocks: "Active locks", unpublished: "Offline", reviewsVisible: "Reviews visible", reviewsHidden: "Reviews hidden", reviewModerationEvents: "Review moderation", operational: "Operations OK", attention: "Needs attention",
   },
   sq: {
     back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
@@ -44,7 +44,7 @@ const COPY = {
     requestChanges: "Kërko ndryshime", reject: "Refuzo", saveError: "Vendimi nuk u ruajt.",
     blocked: "Ekzekutimi mbetet i izoluar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", approvePreview: "Prano provën", publish: "Publiko në katalog", rollback: "Aktivizo këtë version", unpublish: "Ndalo publikimin", publishError: "Statusi i publikimit nuk u ndryshua.", published: "Publikuar",
     preflightTitle: "Kontrolli para publikimit", preflightReady: "I sigurt për testim pa pagesa", preflightBlocked: "Konfigurimi ende nuk është gati", preflightLoadError: "Kontrolli nuk u ngarkua.", publicOrigin: "Origjina publike", previewOrigin: "Origjina e provës", storageSafety: "Ruajtja private", billingGuard: "Bllokimi i pagesave", safe: "Sigurt", unsafe: "Kontrollo", billingOff: "Bllokuar", billingOn: "Aktiv",
-    diagnosticsTitle: "Operimi i Games", diagnosticsSubtitle: "Pamje e pipeline-it të Games pa shtigje private ose të dhëna klientësh.", diagnosticsLoadError: "Diagnostika e Games nuk u ngarkua.", drafts: "Drafte", versions: "Versione", publicationEvents: "Ngjarje publikimi", publicationLocks: "Bllokime aktive", unpublished: "Offline", operational: "Operimi OK", attention: "Kërkon kontroll",
+    diagnosticsTitle: "Operimi i Games", diagnosticsSubtitle: "Pamje e pipeline-it të Games pa shtigje private ose të dhëna klientësh.", diagnosticsLoadError: "Diagnostika e Games nuk u ngarkua.", drafts: "Drafte", versions: "Versione", publicationEvents: "Ngjarje publikimi", publicationLocks: "Bllokime aktive", unpublished: "Offline", reviewsVisible: "Vlerësime të dukshme", reviewsHidden: "Vlerësime të fshehura", reviewModerationEvents: "Moderime vlerësimesh", operational: "Operimi OK", attention: "Kërkon kontroll",
   },
 };
 
@@ -245,6 +245,9 @@ export default function AdminGamesReviewPage({ onBack }) {
               [c.unpublished, diagnostics.counts?.unpublished],
               [c.publicationEvents, diagnostics.counts?.publication_events],
               [c.publicationLocks, diagnostics.counts?.publication_locks],
+              [c.reviewsVisible, diagnostics.counts?.reviews_visible],
+              [c.reviewsHidden, diagnostics.counts?.reviews_hidden],
+              [c.reviewModerationEvents, diagnostics.counts?.review_moderation_events],
             ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
               <p className="text-[11px] text-white/45">{label}</p>
               <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
