@@ -106,6 +106,7 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
             ]),
             game_studio_versions=Collection(),
             games_reviews=Collection(),
+            games_launch_totals=Collection(),
             games_publication_slots=SlotCollection(),
         )
 
@@ -133,6 +134,11 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
             {"game_id": "draft-1", "status": "hidden"},
             {"game_id": "draft-bob", "status": "visible"},
         ])
+        developer.db.games_launch_totals.docs.extend([
+            {"game_id": "draft-1", "launches": 17},
+            {"game_id": "old-game", "launches": 3},
+            {"game_id": "draft-bob", "launches": 999},
+        ])
 
         result = asyncio.run(developer.developer_analytics(None))
         self.assertEqual(result["drafts"], 1)
@@ -143,10 +149,14 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         self.assertEqual(result["unpublished"], 1)
         self.assertEqual(result["reviews_visible"], 1)
         self.assertEqual(result["reviews_hidden"], 1)
+        self.assertEqual(result["approximate_launches"], 20)
+        self.assertEqual(result["launch_measurement"], "approximate_non_monetary")
         self.assertFalse(result["billing_ready"])
         self.assertNotIn("owner_id", result)
         self.assertNotIn("revenue", result)
         self.assertNotIn("payout", result)
+        self.assertNotIn("owner_id", str(result))
+        self.assertNotIn("999", str(result))
 
     def test_checkout_fails_closed_until_billing_is_explicitly_ready(self):
         with self.assertRaises(HTTPException) as context:
