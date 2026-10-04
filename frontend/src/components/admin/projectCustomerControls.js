@@ -7,7 +7,7 @@ const REMOTE = {
   stack: { label: 'Organisationen ansehen', actions: ['Organisationen ansehen'], note: 'Stack zeigt die Organisationen im Admin-Center. Kundensperren und Gutschriften sind dort noch nicht implementiert.' },
 };
 // Public project origins observed during this repair; no central login is implied.
-const SEPARATE_PROJECT_SITES = { aion: 'https://aion.bidblitz.ae', verify: 'https://verify.bidblitz.ae', games: 'https://games.bidblitz.ae' };
+const SEPARATE_PROJECT_SITES = { aion: 'https://aion.bidblitz.ae', verify: 'https://verify.bidblitz.ae' };
 
 export function projectCustomerControls(project) {
   if (NATIVE_PROJECTS.has(project.id) && project.open_mode === 'internal') {

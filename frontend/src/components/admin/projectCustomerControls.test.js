@@ -27,4 +27,5 @@ test('observed public project sites are separate from central account capabiliti
   expect(separateProjectUrl({ id: 'aion', status: 'coming_soon', admin_url: null, url: null })).toBe('https://aion.bidblitz.ae/');
   expect(projectCustomerControls({ id: 'aion', open_mode: 'unavailable' }).available).toBe(false);
   expect(separateProjectUrl({ id: 'passport', admin_url: null, url: null })).toBeNull();
+  expect(separateProjectUrl({ id: 'games', admin_url: null, url: null })).toBeNull();
 });

@@ -1,4 +1,4 @@
-name: Verify customer navigation and unambiguous WebKit handoffs
+name: Verified customer tools and real public project links
 on:
   push:
     branches: [work/admin-customer-controls-20261004]
