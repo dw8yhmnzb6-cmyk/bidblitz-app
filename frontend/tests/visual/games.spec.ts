@@ -8,6 +8,23 @@ const GAMES_VIEWPORTS = VISUAL_VIEWPORTS.filter(({ width }) =>
 );
 
 async function mockGamesApis(page: Page) {
+  // The static SPA server falls back to index.html for unknown /api paths.
+  // Explicit auth failures keep the browser acceptance run in a real guest
+  // state instead of accidentally mapping the HTML fallback to a fake user.
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Not authenticated' }),
+    });
+  });
+  await page.route('**/api/auth/refresh', async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'No refresh session' }),
+    });
+  });
   await page.route('**/api/games/catalog', async (route) => {
     await route.fulfill({
       status: 200,
