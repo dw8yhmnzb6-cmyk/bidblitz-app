@@ -220,6 +220,8 @@ def register_all_routers(app):
         ("routes.games_catalog", "public_router"),
         ("routes.games_developer", "router"),
         ("routes.games_developer", "admin_router"),
+        ("routes.games_publication_history", "router"),
+        ("routes.games_publication_history", "admin_router"),
         ("routes.games_profile", "router"),
         ("routes.games_progress", "router"),
         ("routes.casino", "router"),
