@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from datetime import datetime, timezone, timedelta
 import hashlib
+import os
 from bson import ObjectId
 from core.database import db
 from core.security import (
@@ -46,6 +47,17 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
     if not email:
         return [""]
+
+    owner_aliases = {
+        str(value).lower().strip()
+        for value in os.getenv("BIDBLITZ_OWNER_LOGIN_ALIASES", "").split(",")
+        if value.strip()
+    }
+    if email in owner_aliases:
+        # Resolve an explicitly configured owner login alias only to the
+        # canonical admin record. Never let a same-email customer record gain
+        # admin authority by being included in this lookup.
+        return ["admin@bidblitz.ae", "admin@bitblitz.ae"]
     if email == "admin@bidblitz.ae":
         return [email, "admin@bitblitz.ae"]
     if email == "admin@bidblitz.com":

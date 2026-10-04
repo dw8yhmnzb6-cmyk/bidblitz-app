@@ -1,0 +1,92 @@
+"""Short-lived SSO handoff from the central BidBlitz owner admin.
+
+No password is shared with child projects. The handoff is HMAC-signed, scoped to
+one project and expires quickly. Child projects must additionally enforce nonce
+single-use.
+"""
+import base64
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import time
+
+from fastapi import APIRouter, HTTPException, Request
+from core.security import get_current_user
+from routes.admin_projects import _is_platform_owner
+
+router = APIRouter(prefix="/api/admin/sso", tags=["admin-sso"])
+
+def _sso_targets() -> dict[str, dict[str, str]]:
+    targets = {
+        "eyes": {
+            "handoff_url": "https://eyes.bidblitz.ae/api/auth/bidblitz-sso",
+            "browser_url": "https://eyes.bidblitz.ae",
+        },
+        "trade": {
+            "handoff_url": "https://trade.bidblitz.ae/api/auth/bidblitz-sso",
+            "browser_url": "https://trade.bidblitz.ae/auth/bidblitz-sso",
+        },
+    }
+    aion_base = os.getenv("BIDBLITZ_AION_BASE_URL", "").strip().rstrip("/")
+    if aion_base:
+        targets["aion"] = {
+            "handoff_url": f"{aion_base}/api/auth/bidblitz-sso",
+            "browser_url": aion_base,
+        }
+    return targets
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _sign(payload: dict, secret: str) -> str:
+    body = _b64url(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+    signature = _b64url(hmac.new(secret.encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest())
+    return f"{body}.{signature}"
+
+
+@router.post("/{project_id}")
+async def create_sso_handoff(project_id: str, request: Request):
+    user = await get_current_user(request)
+    if not _is_platform_owner(user):
+        raise HTTPException(status_code=403, detail="Platform owner access required")
+
+    target = _sso_targets().get(project_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Project SSO is not connected")
+
+    enabled_flag = os.getenv(f"BIDBLITZ_SSO_{project_id.upper()}_ENABLED", "").strip().lower()
+    if enabled_flag not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=503, detail="Project SSO is not enabled")
+
+    secret_name = f"BIDBLITZ_SSO_{project_id.upper()}_SECRET"
+    secret = os.getenv(secret_name, "").strip()
+    if len(secret) < 32:
+        raise HTTPException(status_code=503, detail="Project SSO secret is not configured")
+
+    now = int(time.time())
+    owner_id = os.getenv("BIDBLITZ_OWNER_ID", "bidblitz-owner-primary").strip()
+    if not owner_id:
+        raise HTTPException(status_code=503, detail="Central owner identity is not configured")
+
+    payload = {
+        "iss": "https://bidblitz.ae",
+        "aud": project_id,
+        "sub": owner_id,
+        "email": str(user.get("canonical_email") or user.get("email") or "").strip().lower(),
+        "role": "owner",
+        "permissions": ["*"],
+        "iat": now,
+        "exp": now + 60,
+        "nonce": secrets.token_urlsafe(24),
+    }
+    return {
+        "project_id": project_id,
+        "handoff_url": target["handoff_url"],
+        "browser_url": target["browser_url"],
+        "code": _sign(payload, secret),
+        "expires_in": 60,
+    }

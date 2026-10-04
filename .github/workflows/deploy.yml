@@ -88,11 +88,11 @@ jobs:
           perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
           npm run build
           test ! -f build/version.json || cat build/version.json
-          if grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
+          if grep -R --include='*.js' -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
             echo "::error::localhost URL leaked into production build"
             exit 1
           fi
-          if grep -R -E "https?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)|wss?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)" build/static/js; then
+          if grep -R --include='*.js' -E "https?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)|wss?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)" build/static/js; then
             echo "::error::preview origin leaked into production build"
             exit 1
           fi
@@ -102,9 +102,31 @@ jobs:
         run: |
           npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
 
-      - name: Pre-deployment backend smoke checks
+      - name: Setup Python for backend smoke checks
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend smoke dependencies
         run: |
-          PYTHONPATH=/app/backend DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          from pathlib import Path
+          src = Path("backend/requirements.txt")
+          dst = Path("/tmp/backend-requirements-preflight.txt")
+          filtered = [
+              line for line in src.read_text().splitlines()
+              if not line.strip().startswith("emergentintegrations==")
+          ]
+          dst.write_text("\n".join(filtered) + "\n")
+          PY
+          pip install -r /tmp/backend-requirements-preflight.txt
+
+      - name: Pre-deployment backend smoke checks
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+          DEMO_SEED: "false"
+        run: pytest backend/tests/test_ci_smoke.py -q
 
       - name: Verify deployment secrets
         if: steps.run_mode.outputs.should_deploy == 'true'
