@@ -56,3 +56,57 @@ jobs:
               print('ISSUER_TARGETS',json.dumps(sso_targets()))
           asyncio.run(main())
           PY
+      - name: Stage separate SSO keys, encrypted only for the connected owner workstation
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          SCP=(scp -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o ConnectTimeout=15)
+          if [ -f ~/.ssh/bidblitz_deploy_key ]; then
+            SSH+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+            SCP+=(-i ~/.ssh/bidblitz_deploy_key -o BatchMode=yes)
+          else
+            test -n "$SSHPASS"
+            SSH=(sshpass -e "${SSH[@]}")
+            SCP=(sshpass -e "${SCP[@]}")
+          fi
+          cat > /tmp/admin-transfer-public.pem <<'PUBLIC'
+          -----BEGIN PUBLIC KEY-----
+          MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA0I7cfTZo5o1mV43yKpel
+          Mi1dEUSTdK2orT4MFnmAjX/QyIz7NDgFoaHiUfBZCuzLYAqlhrpmzA2/DXgF1Ier
+          KSzoSw+GMaZ3bfTdiUkEY+To7fefvrxebCvq0VQstGNT6wb2PApmFaOI8h+umLxO
+          NoSefx89BIQ1x24iCXJrnIaeuzgLAWWgwA9Ca70jKP+4cBGXwCj3s8ZgXhnhIK84
+          JkJC9fkRXVa8jysBk691PWF3tpa+Q82ODFgU9PjPX+DAdsTTn0oS/iLLxEbUZUhf
+          FmHgdm2g0H0/nhrIopCPCe0xQhJ8IAOnY7p0ik6Kr8LP4DYjDmEghIGf2scKL0+k
+          OhC/78OhZNKV7kJy4hNuwFW/kVTdgsciKNmRvedtAOUDwFVIMn61jU5OUYib2pVV
+          gtDwkE0TEYDrRG9hwcglOf/QmVuWRggXMyFBkvkS7Kl864+eKcw7qFze5XXaAEtA
+          6/crd85zxsPIyHl0N6zTKGMKEq2j4UiodJGw/LOLJvjXAgMBAAE=
+          -----END PUBLIC KEY-----
+          PUBLIC
+          "${SCP[@]}" /tmp/admin-transfer-public.pem root@212.227.20.190:/tmp/admin-transfer-public.pem
+          "${SSH[@]}" root@212.227.20.190 'cd /var/www/bidblitz/backend && venv/bin/python -' <<'PY'
+          import json,os,secrets,subprocess
+          from pathlib import Path
+          from core import config
+          target=Path('/root/bidblitz-central-sso-20261004.json')
+          if not target.exists():
+              data={'owner_id':os.getenv('BIDBLITZ_OWNER_ID','bidblitz-owner-primary').strip(),'keys':{n:secrets.token_urlsafe(48) for n in ('eyes','trade','nex','stack')}}
+              assert data['owner_id']
+              fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+              with os.fdopen(fd,'w') as f:json.dump(data,f)
+          data=json.loads(target.read_text())
+          stage=Path('/tmp/bidblitz-admin-encrypted-20261004');stage.mkdir(mode=0o700,exist_ok=True)
+          for name,key in data['keys'].items():
+              payload=json.dumps({'owner_id':data['owner_id'],'secret':key}).encode()
+              assert len(payload)<=318
+              subprocess.run(['openssl','pkeyutl','-encrypt','-pubin','-inkey','/tmp/admin-transfer-public.pem','-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256','-out',str(stage/(name+'.enc'))],input=payload,check=True)
+          print('ENCRYPTED_PROJECT_KEYS_STAGED',','.join(sorted(data['keys'])))
+          PY
+          mkdir -p encrypted-project-keys
+          "${SCP[@]}" 'root@212.227.20.190:/tmp/bidblitz-admin-encrypted-20261004/*.enc' ./encrypted-project-keys/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-admin-project-keys
+          path: encrypted-project-keys/*.enc
+          retention-days: 1
