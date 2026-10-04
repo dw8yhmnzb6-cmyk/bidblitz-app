@@ -49,7 +49,7 @@ PROJECTS = [
     {"id":"trade","name":"Trade BidBlitz","description":"Trading Dashboard","url":"https://trade.bidblitz.ae","admin_url":"https://trade.bidblitz.ae","status":"online","sso":False},
     {"id":"nex","name":"BidBlitz NEX","description":"AI Workflow Plattform","url":"https://nex.bidblitz.ae","admin_url":"https://nex.bidblitz.ae","status":"online","sso":False},
     {"id":"stack","name":"BidBlitz Stack","description":"Infrastruktur & Developer Stack","url":"https://stack.bidblitz.ae","admin_url":"https://stack.bidblitz.ae","status":"dev","sso":False},
-    {"id":"aion","name":"AION","description":"KI-Assistent & Brain","url":None,"admin_url":None,"status":"pending","sso":False},
+    {"id":"aion","name":"AION","description":"KI-Assistent & Brain","url":None,"admin_url":None,"status":"pending","sso":False,"adapter":"prepared"},
     {"id":"power","name":"Power BidBlitz","description":"Powerbank Sharing","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"charging","name":"Charging.BidBlitz","description":"Charging Zubehör","url":None,"admin_url":None,"status":"pending","sso":False},
     {"id":"verify","name":"BidBlitz Verify","description":"Identitätsprüfung","url":None,"admin_url":None,"status":"pending","sso":False},
@@ -79,12 +79,26 @@ async def list_admin_projects(request: Request):
         "projects": [
             {
                 **project,
+                **(
+                    {
+                        "url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
+                        "admin_url": os.getenv("BIDBLITZ_AION_BASE_URL", "").rstrip("/") or None,
+                        "status": "online" if os.getenv("BIDBLITZ_AION_BASE_URL", "").strip() else "pending",
+                    }
+                    if project["id"] == "aion"
+                    else {}
+                ),
                 "permissions": ["*"],
                 "sso_ready": bool(
                     project["id"] == "bidblitz"
                     or (
                         project["id"] in {"eyes", "trade"}
                         and len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) >= 32
+                    )
+                    or (
+                        project["id"] == "aion"
+                        and len(os.getenv("BIDBLITZ_SSO_SHARED_SECRET", "").strip()) >= 32
+                        and bool(os.getenv("BIDBLITZ_AION_BASE_URL", "").strip())
                     )
                 ),
             }
