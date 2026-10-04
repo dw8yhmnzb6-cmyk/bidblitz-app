@@ -22,12 +22,13 @@ on:
       - "frontend/src/components/AdminGameReviewsPanel.jsx"
       - "frontend/src/components/GamePublicationHistory.jsx"
       - "frontend/src/components/GamesDeveloperPlanCard.jsx"
+      - "frontend/src/components/GamesDeveloperAnalyticsCard.jsx"
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
-      - "frontend/public/games/**"
+      - "frontend/public/game-assets/**"
       - "frontend/scripts/test-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
@@ -55,11 +56,14 @@ on:
       - "frontend/src/components/GameReviewsPanel.jsx"
       - "frontend/src/components/AdminGameReviewsPanel.jsx"
       - "frontend/src/components/GamePublicationHistory.jsx"
+      - "frontend/src/components/GamesDeveloperPlanCard.jsx"
+      - "frontend/src/components/GamesDeveloperAnalyticsCard.jsx"
+      - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
-      - "frontend/public/games/**"
+      - "frontend/public/game-assets/**"
       - "frontend/scripts/test-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
@@ -155,6 +159,7 @@ jobs:
           src/components/AdminGameReviewsPanel.jsx
           src/components/GamePublicationHistory.jsx
           src/components/GamesDeveloperPlanCard.jsx
+          src/components/GamesDeveloperAnalyticsCard.jsx
           src/components/AdminGameDeveloperPlanCard.jsx
           src/components/GamesLanguageSelect.jsx
           src/config/languagePolicy.mjs
