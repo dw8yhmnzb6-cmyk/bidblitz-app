@@ -124,6 +124,31 @@ class AdminGameStudioReviewTest(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 409)
 
 
+    def test_preview_approval_requires_prepared_preview(self):
+        asyncio.run(review.review_version(
+            "v1",
+            review.VersionReviewInput(action="approve_archive"),
+            None,
+        ))
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(review.review_version(
+                "v1",
+                review.VersionReviewInput(action="approve_preview"),
+                None,
+            ))
+        self.assertEqual(context.exception.status_code, 409)
+
+        review.db.game_studio_versions.docs[0]["preview_status"] = "prepared"
+        result = asyncio.run(review.review_version(
+            "v1",
+            review.VersionReviewInput(action="approve_preview"),
+            None,
+        ))
+        self.assertEqual(result["review_status"], "preview_approved")
+        self.assertEqual(result["execution_status"], "isolated_preview_only")
+        self.assertEqual(review.db.game_studio_review_events.docs[-1]["action"], "approve_preview")
+
+
     def test_private_preview_extracts_validated_files_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / "game.zip"
