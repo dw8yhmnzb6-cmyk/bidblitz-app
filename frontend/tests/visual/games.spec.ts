@@ -50,6 +50,20 @@ async function mockGamesApis(page: Page) {
       body: JSON.stringify({ favorites: [] }),
     });
   });
+  await page.route('**/api/games/reviews/match', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        game_id: 'match',
+        summary: { count: 2, average: 4.5 },
+        reviews: [
+          { id: 'review-a', game_id: 'match', rating: 5, text: 'Great puzzle game.' },
+          { id: 'review-b', game_id: 'match', rating: 4, text: 'Nice levels.' },
+        ],
+      }),
+    });
+  });
 }
 
 async function mockGamesAdminApis(page: Page) {
@@ -121,6 +135,23 @@ async function mockGamesAdminApis(page: Page) {
     });
   });
 }
+  await page.route('**/api/admin/games/reviews?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        count: 1,
+        reviews: [{
+          id: '0123456789abcdef0123456789abcdef',
+          game_id: 'match',
+          rating: 2,
+          text: 'Needs moderator attention.',
+          status: 'visible',
+          moderation_note: '',
+        }],
+      }),
+    });
+  });
 
 async function openGames(page: Page, width: number, height: number, language = 'de') {
   await page.setViewportSize({ width, height });
@@ -247,6 +278,23 @@ test('Games admin operations diagnostics render without private data', async ({ 
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
   await expect(preflight.getByText('play.games.example.test')).toBeVisible();
+
+  const moderation = page.getByTestId('admin-games-reviews');
+  await expect(moderation).toBeVisible();
+  await expect(moderation.getByText('Spielerbewertungen moderieren')).toBeVisible();
+  await expect(moderation.getByText('Needs moderator attention.')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Games review panel exposes public ratings without requiring login', async ({ page }) => {
+  await openGames(page, 390, 844);
+
+  await page.getByRole('button', { name: 'Bewertungen' }).first().click();
+  const panel = page.getByTestId('game-reviews-match');
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText('4.5', { exact: false })).toBeVisible();
+  await expect(panel.getByText('Great puzzle game.')).toBeVisible();
+  await expect(panel.getByText('Melde dich an, um selbst zu bewerten.')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
