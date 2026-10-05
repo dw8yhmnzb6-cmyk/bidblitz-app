@@ -15,6 +15,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Shared checked frontend/backend language registry; script-sensitive locale resolution, RTL metadata and explicit English fallback where Games copy is not yet reviewed.
 - Translation readiness now separates “copy present” from “human reviewed” through a checked review manifest and CI report, so fallback or machine-provided copy cannot be mistaken for launch-reviewed localization.
 - Games admin review shows translation readiness directly, including technical coverage, human-reviewed count and pending language codes without treating untranslated review work as launch-ready.
+- A separate manual Games launch-readiness workflow runs the full non-monetary regression and fails closed until every localized language option is explicitly marked human-reviewed; it performs no deployment and enables no billing.
 - Account-backed Games favorites with guest-local fallback and Mongo concurrency protection.
 - BidBlitz Match synchronizes unlocked levels, best scores and stars across signed-in devices. Coins, purchases, lives, RNG and active board remain device-local and are never accepted by the progress API.
 - Secure third-party HTML5 ZIP quarantine upload: size/file-count limits, root index.html requirement, path/symlink/archive/server-file rejection and private non-public storage. Uploaded code is not executed before review.
