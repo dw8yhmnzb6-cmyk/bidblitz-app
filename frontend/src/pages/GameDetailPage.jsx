@@ -4,6 +4,7 @@ import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store";
 import GameReviewsPanel from "../components/GameReviewsPanel";
 import GamesLanguageSelect from "../components/GamesLanguageSelect";
+import GamesPersonalRankingCard from "../components/GamesPersonalRankingCard";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
@@ -296,6 +297,8 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                 <h2 className="flex items-center gap-2 text-lg font-bold"><Languages size={19} className="text-cyan-300" />{c.languages}</h2>
                 <div className="mt-4 flex flex-wrap gap-2">{languageLabels.map((label) => <span key={label} className="rounded-full border border-white/10 bg-white/[.04] px-3 py-2 text-xs text-white/70">{label}</span>)}</div>
               </section>
+
+              {isFirstParty && <GamesPersonalRankingCard gameId={game.id} locale={locale} />}
 
               {!isFirstParty && <p className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-200/10 bg-cyan-300/5 p-4 text-xs leading-relaxed text-cyan-50/70"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-cyan-300" />{c.safety}</p>}
               <p className="mt-3 text-xs text-white/40">{c.noMoney}</p>
