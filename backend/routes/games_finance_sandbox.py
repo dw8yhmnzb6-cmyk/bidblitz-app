@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
+from pymongo import ReturnDocument
 
 from core.database import db
 from core.security import get_current_user
@@ -127,6 +128,7 @@ def _public_transaction(doc: dict) -> dict:
         "developer_eur_cents": int(doc.get("developer_eur_cents") or 0),
         "platform_eur_cents": int(doc.get("platform_eur_cents") or 0),
         "developer_share_bps": int(doc.get("developer_share_bps") or 0),
+        "status": doc.get("status", "completed"),
         "created_at": doc.get("created_at"),
         "sandbox": True,
         "monetary_execution": False,
@@ -180,14 +182,21 @@ async def _summary(owner_id: str | None = None) -> dict:
         {
             "_id": 0,
             "kind": 1,
+            "status": 1,
             "gross_eur_cents": 1,
             "developer_eur_cents": 1,
             "platform_eur_cents": 1,
         },
     ).limit(10000).to_list(10000)
 
-    purchases = [row for row in rows if row.get("kind") == "purchase"]
-    refunds = [row for row in rows if row.get("kind") == "refund"]
+    purchases = [
+        row for row in rows
+        if row.get("kind") == "purchase" and row.get("status", "completed") == "completed"
+    ]
+    refunds = [
+        row for row in rows
+        if row.get("kind") == "refund" and row.get("status") == "completed"
+    ]
 
     def total(items, key):
         return sum(max(0, int(row.get(key) or 0)) for row in items)
@@ -260,6 +269,8 @@ async def create_sandbox_purchase(body: SandboxPurchaseInput, request: Request):
         "note": body.note,
         "created_by": str(admin.get("_id") or admin.get("id") or ""),
         "created_at": now,
+        "status": "completed",
+        "refunded_eur_cents": 0,
         "sandbox": True,
         "monetary_execution": False,
     }
@@ -291,39 +302,25 @@ async def create_sandbox_refund(
         return _public_transaction(existing)
 
     purchase = await db.games_finance_sandbox_transactions.find_one(
-        {"id": purchase_id, "kind": "purchase"},
+        {"id": purchase_id, "kind": "purchase", "status": "completed"},
         {"_id": 0},
     )
     if not purchase:
         raise HTTPException(404, "Sandbox-Kauf nicht gefunden")
 
-    refunds = await db.games_finance_sandbox_transactions.find(
-        {"purchase_id": purchase_id, "kind": "refund"},
-        {"_id": 0, "gross_eur_cents": 1, "developer_eur_cents": 1, "platform_eur_cents": 1},
-    ).limit(1000).to_list(1000)
-    refunded = sum(max(0, int(row.get("gross_eur_cents") or 0)) for row in refunds)
-    remaining = int(purchase.get("gross_eur_cents") or 0) - refunded
-    if body.amount_eur_cents > remaining:
-        raise HTTPException(409, "Refund überschreitet den verbleibenden Sandbox-Betrag")
-
     share_bps = int(purchase.get("developer_share_bps") or 0)
-    if body.amount_eur_cents == remaining:
-        developer_refunded = sum(max(0, int(row.get("developer_eur_cents") or 0)) for row in refunds)
-        platform_refunded = sum(max(0, int(row.get("platform_eur_cents") or 0)) for row in refunds)
-        developer_cents = max(0, int(purchase.get("developer_eur_cents") or 0) - developer_refunded)
-        platform_cents = max(0, int(purchase.get("platform_eur_cents") or 0) - platform_refunded)
-    else:
-        developer_cents, platform_cents = _split(body.amount_eur_cents, share_bps)
     now = datetime.now(timezone.utc)
-    doc = {
-        "id": _transaction_id("refund", body.idempotency_key),
+    refund_id = _transaction_id("refund", body.idempotency_key)
+    pending = {
+        "id": refund_id,
         "kind": "refund",
+        "status": "pending",
         "game_id": purchase.get("game_id"),
         "purchase_id": purchase_id,
         "developer_owner_id": purchase.get("developer_owner_id"),
         "gross_eur_cents": body.amount_eur_cents,
-        "developer_eur_cents": developer_cents,
-        "platform_eur_cents": platform_cents,
+        "developer_eur_cents": 0,
+        "platform_eur_cents": 0,
         "developer_share_bps": share_bps,
         "idempotency_key": body.idempotency_key,
         "reason": body.reason,
@@ -333,7 +330,7 @@ async def create_sandbox_refund(
         "monetary_execution": False,
     }
     try:
-        await db.games_finance_sandbox_transactions.insert_one(doc)
+        await db.games_finance_sandbox_transactions.insert_one(pending)
     except Exception as exc:
         if not _duplicate_key(exc):
             raise
@@ -341,8 +338,76 @@ async def create_sandbox_refund(
         if not existing:
             raise
         _assert_same_refund(existing, purchase_id, body)
+        if existing.get("status") != "completed":
+            raise HTTPException(409, "Refund wird bereits verarbeitet")
         return _public_transaction(existing)
-    return _public_transaction(doc)
+
+    reserved = await db.games_finance_sandbox_transactions.find_one_and_update(
+        {
+            "id": purchase_id,
+            "kind": "purchase",
+            "status": "completed",
+            "$expr": {
+                "$lte": [
+                    {
+                        "$add": [
+                            {"$ifNull": ["$refunded_eur_cents", 0]},
+                            body.amount_eur_cents,
+                        ]
+                    },
+                    "$gross_eur_cents",
+                ]
+            },
+        },
+        {
+            "$inc": {"refunded_eur_cents": body.amount_eur_cents},
+            "$set": {"refund_updated_at": now},
+        },
+        projection={"_id": 0},
+        return_document=ReturnDocument.BEFORE,
+    )
+    if not reserved:
+        await db.games_finance_sandbox_transactions.delete_one(
+            {"id": refund_id, "status": "pending"}
+        )
+        raise HTTPException(409, "Refund überschreitet den verbleibenden Sandbox-Betrag")
+
+    prior_refunded = max(0, int(reserved.get("refunded_eur_cents") or 0))
+    new_refunded = prior_refunded + body.amount_eur_cents
+    developer_before = (prior_refunded * share_bps) // 10_000
+    developer_after = (new_refunded * share_bps) // 10_000
+    developer_cents = developer_after - developer_before
+    platform_cents = body.amount_eur_cents - developer_cents
+
+    try:
+        result = await db.games_finance_sandbox_transactions.update_one(
+            {"id": refund_id, "status": "pending"},
+            {
+                "$set": {
+                    "status": "completed",
+                    "developer_eur_cents": developer_cents,
+                    "platform_eur_cents": platform_cents,
+                    "completed_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+        if not result.matched_count:
+            raise RuntimeError("Sandbox refund reservation disappeared")
+    except Exception:
+        await db.games_finance_sandbox_transactions.update_one(
+            {"id": purchase_id, "kind": "purchase"},
+            {"$inc": {"refunded_eur_cents": -body.amount_eur_cents}},
+        )
+        await db.games_finance_sandbox_transactions.delete_one(
+            {"id": refund_id, "status": "pending"}
+        )
+        raise
+
+    completed = await db.games_finance_sandbox_transactions.find_one(
+        {"id": refund_id, "status": "completed"},
+        {"_id": 0},
+    )
+    return _public_transaction(completed or pending)
 
 
 @admin_router.get("/sandbox/transactions")
