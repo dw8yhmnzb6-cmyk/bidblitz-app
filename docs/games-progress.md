@@ -35,6 +35,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Developer Studio includes owner-scoped portfolio analytics for drafts, versions, publication state and review counts.
 - Privacy-minimal approximate launch counters store only aggregate per-game counts. They contain no account ID, IP, device fingerprint, wallet or monetary data and are shown to the owning developer as a non-billing metric.
 - Read-only release health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency. Admin sees only game metadata, status and safe issue codes; private release paths are never returned.
+- Developer Studio exposes an owner-scoped per-game analytics breakdown with publication status, version, visible/hidden review counts, average rating and approximate non-monetary launches. Other developers' games and metrics are excluded.
 - Existing financial production guards remain in place.
 
 ## Verification
@@ -55,6 +56,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Public catalog detail API tests verify that only published public fields are returned and private release/owner data stays hidden.
 - Anonymous launch-counter tests verify published-game gating and absence of user/wallet identifiers; developer analytics tests verify owner scoping and explicitly non-monetary launch totals.
 - Release-health backend tests cover healthy, busy and degraded states, and browser acceptance verifies the admin card without exposing private paths.
+- Per-game developer analytics tests verify owner isolation, non-monetary semantics, rating calculation and exclusion of another developer's high launch counts; browser acceptance verifies the portfolio cards.
 - Local Match game copy is not yet human-reviewed in all 50 languages.
 - Native physical-device acceptance remains separate from browser viewport automation.
 
@@ -70,4 +72,4 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 63%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 65%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
