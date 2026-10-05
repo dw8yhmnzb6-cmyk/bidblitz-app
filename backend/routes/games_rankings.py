@@ -58,6 +58,20 @@ async def get_personal_ranking(game_id: str, request: Request):
     normalized = str(game_id or "").strip().lower()
     collection, levels = _collection_for(normalized)
     owner_id = await _owner(request)
+    verified = False
+    integrity = "client_synced_unverified"
+
+    if normalized == "runner":
+        verified_collection = db.games_runner_verified_progress
+        verified_row = await verified_collection.find_one(
+            {"owner_id": owner_id},
+            {"_id": 0, "owner_id": 0, "best": 1, "stars": 1},
+        )
+        verified_best = _clean_scores((verified_row or {}).get("best"), levels)
+        if sum(verified_best) > 0:
+            collection = verified_collection
+            verified = True
+            integrity = "server_replayed_not_full_anti_cheat"
 
     row = await collection.find_one(
         {"owner_id": owner_id},
@@ -82,8 +96,8 @@ async def get_personal_ranking(game_id: str, request: Request):
 
     return {
         "game_id": normalized,
-        "mode": "practice",
-        "verified": False,
+        "mode": "server_replayed" if verified else "practice",
+        "verified": verified,
         "public_leaderboard_enabled": False,
         "rank": rank,
         "participants": int(participants),
@@ -92,5 +106,5 @@ async def get_personal_ranking(game_id: str, request: Request):
         "completed_levels": int(completed_levels),
         "max_levels": levels,
         "privacy": "private_self_only",
-        "integrity": "client_synced_unverified",
+        "integrity": integrity,
     }
