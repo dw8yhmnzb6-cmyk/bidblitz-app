@@ -253,6 +253,25 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/admin/game-studio/finance/summary', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        sandbox_enabled: false,
+        configured: true,
+        currency: 'EUR',
+        developer_share_bps: 2000,
+        purchase_count: 5,
+        refund_count: 2,
+        net_gross_eur_cents: 4200,
+        net_developer_eur_cents: 840,
+        net_platform_eur_cents: 3360,
+        monetary_execution: false,
+        payout_execution: false,
+      }),
+    });
+  });
   await page.route('**/api/admin/game-studio/release-health', async (route) => {
     await route.fulfill({
       status: 200,
@@ -339,6 +358,25 @@ async function mockDeveloperStudioApis(page: Page) {
         published_games: 1,
         max_published_games: 0,
         billing_ready: false,
+      }),
+    });
+  });
+  await page.route('**/api/games/finance/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        sandbox_enabled: false,
+        configured: true,
+        currency: 'EUR',
+        developer_share_bps: 2000,
+        purchase_count: 3,
+        refund_count: 1,
+        net_gross_eur_cents: 2500,
+        net_developer_eur_cents: 500,
+        net_platform_eur_cents: 2000,
+        monetary_execution: false,
+        payout_execution: false,
       }),
     });
   });
@@ -515,6 +553,13 @@ test('Games developer studio shows owner-scoped non-monetary portfolio metrics',
   await expect(gameAnalytics.getByText('17', { exact: true })).toBeVisible();
   await expect(gameAnalytics.getByText('4.5', { exact: false })).toBeVisible();
   await expect(analytics.getByText('Games-Billing bleibt gesperrt.')).toBeVisible();
+
+  const finance = page.getByTestId('games-finance-sandbox-developer');
+  await expect(finance).toBeVisible();
+  await expect(finance.getByText('Finanz-Sandbox')).toBeVisible();
+  await expect(finance.getByText('Sandbox gesperrt')).toBeVisible();
+  await expect(finance.getByText('20.00%', { exact: true })).toBeVisible();
+  await expect(finance.getByText(/Keine echte Zahlung/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
@@ -567,6 +612,12 @@ test('Games admin operations diagnostics render without private data', async ({ 
   const reviewedGerman = translations.getByTestId('translation-review-de');
   await reviewedGerman.getByRole('button', { name: 'Freigabe zurücknehmen' }).click();
   await expect(translations.getByText('0/50', { exact: true })).toBeVisible();
+
+  const finance = page.getByTestId('games-finance-sandbox-admin');
+  await expect(finance).toBeVisible();
+  await expect(finance.getByText('Finanz-Sandbox')).toBeVisible();
+  await expect(finance.getByText('Sandbox gesperrt')).toBeVisible();
+  await expect(finance.getByText(/keine Wallet-Abbuchung/i)).toBeVisible();
 
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
