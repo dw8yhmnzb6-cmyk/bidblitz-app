@@ -172,6 +172,7 @@ jobs:
           src/config/studioCreatePolicy.mjs
           src/config/gamesFavoritesPolicy.mjs
           src/config/gamesRecentPolicy.mjs
+          src/config/gamesCoreTranslations.mjs
       - name: Run Games JavaScript tests
         run: |
           node frontend/scripts/sync-games-languages.cjs --check
