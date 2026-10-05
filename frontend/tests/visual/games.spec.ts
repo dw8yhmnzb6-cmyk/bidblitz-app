@@ -174,6 +174,25 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/admin/game-studio/release-health', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ok',
+        summary: { published: 1, healthy: 1, busy: 0, degraded: 0 },
+        games: [{
+          id: 'community-puzzle',
+          title: 'Community Puzzle',
+          active_version_id: 'community-v2',
+          version_number: 2,
+          status: 'ok',
+          issues: [],
+        }],
+        side_effects: 'none',
+      }),
+    });
+  });
   await page.route('**/api/admin/games/reviews**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -416,6 +435,14 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(diagnostics.getByText('Reviews sichtbar')).toBeVisible();
   await expect(diagnostics.getByText('Reviews ausgeblendet')).toBeVisible();
   await expect(diagnostics.getByText('Review-Moderationen')).toBeVisible();
+
+  const releaseHealth = page.getByTestId('games-release-health-card');
+  await expect(releaseHealth).toBeVisible();
+  await expect(releaseHealth.getByText('Release Health')).toBeVisible();
+  await expect(releaseHealth.getByText('Community Puzzle')).toBeVisible();
+  await expect(releaseHealth.getByText('Gesund')).toBeVisible();
+  await expect(releaseHealth).not.toContainText('release_path');
+  await expect(releaseHealth).not.toContainText('/private/');
 
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
