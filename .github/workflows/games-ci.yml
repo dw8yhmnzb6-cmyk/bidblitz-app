@@ -176,6 +176,7 @@ jobs:
       - name: Run Games JavaScript tests
         run: |
           node frontend/scripts/sync-games-languages.cjs --check
+          node --test frontend/scripts/test-games-core-translations.mjs
           node --test             frontend/scripts/test-games-languages.mjs             frontend/scripts/test-games-recent.mjs             frontend/scripts/test-studio-create.mjs             frontend/scripts/test-games-favorites.mjs             frontend/scripts/test-match-account-progress.cjs             frontend/scripts/test-match-preview.cjs
       - name: Build frontend
         env:
