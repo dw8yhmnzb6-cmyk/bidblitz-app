@@ -4,6 +4,7 @@ import { useI18n } from "../store/I18nContext";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard";
 import AdminGameReviewsPanel from "../components/AdminGameReviewsPanel";
+import GamesTranslationReadinessCard from "../components/GamesTranslationReadinessCard";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND}/api/admin/game-studio/versions`;
@@ -318,6 +319,8 @@ export default function AdminGamesReviewPage({ onBack }) {
             </div> : <p className="mt-4 rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-white/45">{c.noPublishedGames}</p>}
           </>}
         </section>
+
+        <GamesTranslationReadinessCard locale={locale} />
 
         <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
           <div className="flex flex-wrap items-center justify-between gap-3">
