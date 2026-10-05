@@ -4,6 +4,7 @@ const E = require('../public/game-assets/match-preview/engine.js');
 const B = require('../public/game-assets/bubble-islands/engine.js');
 const BS = require('../public/game-assets/bubble-islands/account-progress.js');
 const R = require('../public/game-assets/blitz-runner/engine.js');
+const RS = require('../public/game-assets/blitz-runner/account-progress.js');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
@@ -319,4 +320,35 @@ test('Blitz Runner rejects invalid actions, locked levels and corrupt saves',()=
   ]){
     const p=R.initial(5);mutate(p);assert.equal(R.decode(JSON.stringify(p)),null);
   }
+});
+
+
+test('Blitz Runner account progress merges only monotonic summary fields',()=>{
+  const profile=R.initial(22);
+  const remote={version:1,unlocked:3,best:Array(15).fill(0),stars:Array(15).fill(0)};
+  remote.best[0]=1700;remote.best[1]=1800;remote.stars[0]=2;remote.stars[1]=3;
+  const activeBefore=JSON.stringify(profile.active);
+  const merged=RS.merge(profile,remote);
+  assert.ok(merged.changed);
+  assert.equal(merged.profile.unlocked,3);
+  assert.equal(merged.profile.best[0],1700);
+  assert.equal(merged.profile.stars[1],3);
+  assert.equal(JSON.stringify(merged.profile.active),activeBefore);
+  assert.deepEqual(RS.summary(merged.profile),{
+    version:1,
+    unlocked:3,
+    best:merged.profile.best,
+    stars:merged.profile.stars,
+  });
+});
+
+test('Blitz Runner account progress rejects malformed and gapped summaries',()=>{
+  const valid={version:1,unlocked:2,best:[1000,...Array(14).fill(0)],stars:[2,...Array(14).fill(0)]};
+  assert.ok(RS.validSummary(valid));
+  for(const bad of [
+    {...valid,unlocked:15},
+    {...valid,best:valid.best.slice(0,14)},
+    {...valid,stars:[0,...valid.stars.slice(1)]},
+    {...valid,best:[1000,0,1200,...Array(12).fill(0)],stars:[2,0,2,...Array(12).fill(0)],unlocked:4},
+  ]) assert.equal(RS.validSummary(bad),false);
 });
