@@ -19,6 +19,7 @@ const COPY = {
     back: "Zurück zu Games", firstParty: "BIDBLITZ ORIGINAL", community: "COMMUNITY-SPIEL",
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategie", sports: "Sport",
     matchDescription: "Kombiniere Symbole, löse Kettenreaktionen und entdecke 30 Level in der ersten BidBlitz-Spielwelt.",
+    bubbleDescription: "Räume große Gruppen gleichfarbiger Bubbles, plane Ketten und entdecke 20 schwebende Insel-Level.",
     play: "Spielvorschau öffnen", openGame: "Spiel sicher öffnen", favorite: "Merken", unfavorite: "Nicht mehr merken",
     languages: "Spielsprachen", version: "Veröffentlichte Version", rating: "Bewertung", reviews: "Bewertungen",
     loading: "Spiel wird geladen…", missing: "Dieses Spiel ist nicht verfügbar.", retry: "Neu laden",
@@ -30,6 +31,7 @@ const COPY = {
     back: "Back to Games", firstParty: "BIDBLITZ ORIGINAL", community: "COMMUNITY GAME",
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategy", sports: "Sports",
     matchDescription: "Match symbols, trigger chain reactions and explore 30 levels in BidBlitz's first game world.",
+    bubbleDescription: "Clear large groups of matching bubbles, plan chains and explore 20 floating-island levels.",
     play: "Open game preview", openGame: "Open game safely", favorite: "Save", unfavorite: "Remove saved game",
     languages: "Game languages", version: "Published version", rating: "Rating", reviews: "Reviews",
     loading: "Loading game…", missing: "This game is not available.", retry: "Reload",
@@ -41,6 +43,7 @@ const COPY = {
     back: "Kthehu te Games", firstParty: "BIDBLITZ ORIGINAL", community: "LOJË E KOMUNITETIT",
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategji", sports: "Sport",
     matchDescription: "Kombino simbolet, krijo reaksione zinxhir dhe zbulo 30 nivele në botën e parë të lojërave BidBlitz.",
+    bubbleDescription: "Pastro grupe të mëdha flluskash me të njëjtën ngjyrë dhe zbulo 20 nivele me ishuj fluturues.",
     play: "Hap provën e lojës", openGame: "Hap lojën në mënyrë të sigurt", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat",
     languages: "Gjuhët e lojës", version: "Versioni i publikuar", rating: "Vlerësimi", reviews: "Vlerësime",
     loading: "Po ngarkohet loja…", missing: "Kjo lojë nuk është e disponueshme.", retry: "Ringarko",
@@ -50,13 +53,23 @@ const COPY = {
   },
 };
 
-const MATCH = {
-  id: "match",
-  title: "BidBlitz Match",
-  category: "Puzzle",
-  languages: ["de"],
-  source: "first_party",
-  version_number: 1,
+const FIRST_PARTY = {
+  match: {
+    id: "match",
+    title: "BidBlitz Match",
+    category: "Puzzle",
+    languages: ["de"],
+    source: "first_party",
+    version_number: 1,
+  },
+  bubble: {
+    id: "bubble",
+    title: "Bubble Islands",
+    category: "Puzzle",
+    languages: ["de"],
+    source: "first_party",
+    version_number: 1,
+  },
 };
 
 function categoryLabel(category, c) {
@@ -76,8 +89,9 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
   const rtl = gameLanguages.find(({ code }) => code === selectedCode)?.rtl;
   const normalizedId = String(gameId || "").trim().toLowerCase();
 
-  const [game, setGame] = useState(normalizedId === "match" ? MATCH : null);
-  const [loading, setLoading] = useState(normalizedId !== "match");
+  const initialFirstParty = FIRST_PARTY[normalizedId] || null;
+  const [game, setGame] = useState(initialFirstParty);
+  const [loading, setLoading] = useState(!initialFirstParty);
   const [error, setError] = useState("");
   const [summary, setSummary] = useState({ count: 0, average: null });
   const [favorites, setFavorites] = useState([]);
@@ -87,8 +101,8 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
 
   const loadGame = useCallback(async () => {
     setError("");
-    if (normalizedId === "match") {
-      setGame(MATCH);
+    if (FIRST_PARTY[normalizedId]) {
+      setGame(FIRST_PARTY[normalizedId]);
       setLoading(false);
       return;
     }
@@ -209,9 +223,10 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
   };
 
   const isFavorite = Boolean(game?.id && favorites.includes(game.id));
-  const isMatch = game?.id === "match";
-  const description = isMatch ? c.matchDescription : game?.description || "";
-  const cover = isMatch ? `${ART}/match.webp` : null;
+  const isFirstParty = Boolean(game?.id && FIRST_PARTY[game.id]);
+  const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : null;
+  const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.description || "";
+  const cover = game?.id === "match" ? `${ART}/match.webp` : game?.id === "bubble" ? `${ART}/bubble.webp` : null;
 
   return (
     <main lang={locale} dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="game-detail-page">
@@ -235,7 +250,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                     {cover ? <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="flex h-full min-h-[280px] items-center justify-center"><Gamepad2 size={110} strokeWidth={1} className="text-cyan-200/60" /></div>}
                   </div>
                   <div className="p-6 sm:p-8">
-                    <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-bold tracking-wider text-cyan-100">{isMatch ? c.firstParty : c.community}</span>
+                    <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-bold tracking-wider text-cyan-100">{isFirstParty ? c.firstParty : c.community}</span>
                     <p className="mt-5 text-sm text-cyan-200">{categoryLabel(game.category, c)}</p>
                     <h1 className="mt-2 text-3xl font-black sm:text-5xl">{game.title}</h1>
                     <p className="mt-4 text-sm leading-relaxed text-sky-100/75 sm:text-base">{description}</p>
@@ -256,7 +271,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                      {isMatch ? <button onClick={() => { recordRecent(); onNavigate("/games/match"); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
+                      {isFirstParty ? <button onClick={() => { recordRecent(); onNavigate(firstPartyRoute); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
                         : <a href={game.public_url} target="_blank" rel="noopener noreferrer" onClick={recordRecent} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><ExternalLink size={18} />{c.openGame}</a>}
                       <button onClick={changeFavorite} disabled={favoriteBusy} aria-pressed={isFavorite} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:opacity-50 ${isFavorite ? "border-cyan-300 bg-cyan-300/15 text-cyan-100" : "border-white/20 bg-white/5 text-white/80"}`}><Heart size={18} fill={isFavorite ? "currentColor" : "none"} />{isFavorite ? c.unfavorite : c.favorite}</button>
                     </div>
@@ -271,7 +286,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                 <div className="mt-4 flex flex-wrap gap-2">{languageLabels.map((label) => <span key={label} className="rounded-full border border-white/10 bg-white/[.04] px-3 py-2 text-xs text-white/70">{label}</span>)}</div>
               </section>
 
-              {!isMatch && <p className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-200/10 bg-cyan-300/5 p-4 text-xs leading-relaxed text-cyan-50/70"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-cyan-300" />{c.safety}</p>}
+              {!isFirstParty && <p className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-200/10 bg-cyan-300/5 p-4 text-xs leading-relaxed text-cyan-50/70"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-cyan-300" />{c.safety}</p>}
               <p className="mt-3 text-xs text-white/40">{c.noMoney}</p>
 
               <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />
