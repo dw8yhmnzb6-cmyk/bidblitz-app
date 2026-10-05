@@ -1,16 +1,51 @@
 (function () {
   'use strict';
   const E = window.BidBlitzRunner;
+  const S = window.BidBlitzRunnerProgressSync;
   const KEY = 'bidblitz.blitz-runner.preview.v1';
+  const PROGRESS_API = '/api/games/progress/runner';
   const $ = id => document.getElementById(id);
   const seed = () => { const values=new Uint32Array(1);crypto.getRandomValues(values);return values[0]||42; };
   let raw=null,storageOK=true;
   try{raw=localStorage.getItem(KEY);}catch{storageOK=false;}
   let profile=E.decode(raw)||E.initial(seed());
+  let accountSync='pending',syncActive=false,syncQueued=false;
 
   function persist(){
     try{localStorage.setItem(KEY,JSON.stringify(profile));storageOK=true;}catch{storageOK=false;}
-    $('save-note').textContent=storageOK?'Fortschritt wird lokal gespeichert.':'Lokales Speichern ist hier nicht verfügbar.';
+    if(!storageOK)$('save-note').textContent='Lokales Speichern ist hier nicht verfügbar.';
+    else if(accountSync==='account')$('save-note').textContent='Level, Sterne und Bestwerte werden im BidBlitz-Konto synchronisiert. Der laufende Lauf bleibt lokal.';
+    else if(accountSync==='error')$('save-note').textContent='Lokaler Fortschritt gespeichert. Kontosynchronisierung ist vorübergehend nicht verfügbar.';
+    else if(accountSync==='guest')$('save-note').textContent='Fortschritt wird auf diesem Gerät gespeichert.';
+    else $('save-note').textContent='Lokaler Fortschritt gespeichert. Kontosynchronisierung wird geprüft.';
+  }
+
+  async function syncAccountProgress(){
+    if(!S)return;
+    if(syncActive){syncQueued=true;return;}
+    syncActive=true;syncQueued=false;
+    try{
+      const current=await fetch(PROGRESS_API,{credentials:'include'});
+      if(current.status===401||current.status===403){accountSync='guest';persist();return;}
+      if(!current.ok)throw new Error('progress-load');
+      const remote=await current.json();
+      const merged=S.merge(profile,remote);
+      if(merged.changed){profile=merged.profile;persist();render();}
+      const savedResponse=await fetch(PROGRESS_API,{
+        method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(S.summary(profile))
+      });
+      if(!savedResponse.ok)throw new Error('progress-save');
+      const saved=await savedResponse.json();
+      const confirmed=S.merge(profile,saved);
+      if(confirmed.changed){profile=confirmed.profile;persist();render();}
+      accountSync='account';persist();
+    }catch{
+      accountSync='error';persist();
+    }finally{
+      syncActive=false;
+      if(syncQueued){syncQueued=false;queueMicrotask(syncAccountProgress);}
+    }
   }
 
   function startLevel(level){
@@ -75,6 +110,7 @@
     const result=E.advance(profile.active,direction);
     if(!result.ok)return;
     profile=E.complete(profile,result.state);persist();render();
+    if(result.state.status==='won')syncAccountProgress();
     if(result.collision)$('status').textContent='Kollision! Starte das Level neu und wechsle früher die Spur.';
     else if(result.state.status==='won')$('status').textContent='Ziel erreicht!';
     else $('status').textContent=result.collected?'Lichtpunkt gesammelt!':'Sauberer Abschnitt.';
@@ -82,7 +118,7 @@
 
   $('left').addEventListener('click',()=>move(-1));$('straight').addEventListener('click',()=>move(0));$('right').addEventListener('click',()=>move(1));
   window.addEventListener('keydown',event=>{if(event.key==='ArrowLeft'){event.preventDefault();move(-1);}else if(event.key==='ArrowRight'){event.preventDefault();move(1);}else if(event.key==='ArrowUp'||event.key===' '){event.preventDefault();move(0);}});
-  window.BidBlitzRunnerPreview={snapshot:()=>JSON.parse(JSON.stringify(profile)),startLevel,move};
-  persist();render();
+  window.BidBlitzRunnerPreview={snapshot:()=>JSON.parse(JSON.stringify(profile)),startLevel,move,syncProgress:syncAccountProgress};
+  persist();render();syncAccountProgress();
   if(raw&&!E.decode(raw))$('status').textContent='Der gespeicherte Stand war ungültig. Ein neuer Lauf wurde gestartet.';
 }());
