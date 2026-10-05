@@ -4,12 +4,15 @@
   const S = window.BidBlitzRunnerProgressSync;
   const KEY = 'bidblitz.blitz-runner.preview.v1';
   const PROGRESS_API = '/api/games/progress/runner';
+  const INTEGRITY_SESSION_API = '/api/games/integrity/runner/sessions';
+  const INTEGRITY_VERIFY_API = '/api/games/integrity/runner/verify';
   const $ = id => document.getElementById(id);
   const seed = () => { const values=new Uint32Array(1);crypto.getRandomValues(values);return values[0]||42; };
   let raw=null,storageOK=true;
   try{raw=localStorage.getItem(KEY);}catch{storageOK=false;}
   let profile=E.decode(raw)||E.initial(seed());
   let accountSync='pending',syncActive=false,syncQueued=false;
+  let verification=null,starting=false;
 
   function persist(){
     try{localStorage.setItem(KEY,JSON.stringify(profile));storageOK=true;}catch{storageOK=false;}
@@ -48,11 +51,53 @@
     }
   }
 
-  function startLevel(level){
-    const result=E.begin(profile,level,seed());
-    if(!result.ok)return;
-    profile=result.profile;persist();render();
-    $('status').textContent='Strecke gestartet. Wähle für jeden Abschnitt deine Spur.';
+  async function startLevel(level){
+    if(starting)return;
+    starting=true;
+    verification=null;
+    let runSeed=seed();
+    try{
+      const response=await fetch(INTEGRITY_SESSION_API,{
+        method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({level})
+      });
+      if(response.ok){
+        const session=await response.json();
+        if(session&&typeof session.session_id==='string'&&Number.isInteger(session.seed)){
+          runSeed=session.seed;
+          verification={sessionId:session.session_id,actions:[]};
+        }
+      }
+    }catch{}
+    try{
+      const result=E.begin(profile,level,runSeed);
+      if(!result.ok)return;
+      profile=result.profile;persist();render();
+      $('status').textContent=verification
+        ? 'Strecke gestartet. Dieser Lauf kann serverseitig nachgespielt werden.'
+        : 'Strecke gestartet. Wähle für jeden Abschnitt deine Spur.';
+    }finally{
+      starting=false;
+    }
+  }
+
+  async function verifyRun(){
+    if(!verification)return;
+    const pending=verification;
+    verification=null;
+    try{
+      const response=await fetch(INTEGRITY_VERIFY_API,{
+        method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({session_id:pending.sessionId,actions:pending.actions})
+      });
+      if(!response.ok)throw new Error('integrity');
+      const body=await response.json();
+      $('status').textContent=body&&body.verified
+        ? 'Ziel erreicht! Ergebnis serverseitig reproduziert.'
+        : 'Ziel erreicht. Server-Prüfung nicht bestätigt.';
+    }catch{
+      $('status').textContent='Ziel erreicht. Server-Prüfung nicht verfügbar.';
+    }
   }
 
   function previewSegments(){
@@ -109,11 +154,18 @@
   function move(direction){
     const result=E.advance(profile.active,direction);
     if(!result.ok)return;
+    if(verification)verification.actions.push(direction);
     profile=E.complete(profile,result.state);persist();render();
-    if(result.state.status==='won')syncAccountProgress();
-    if(result.collision)$('status').textContent='Kollision! Starte das Level neu und wechsle früher die Spur.';
-    else if(result.state.status==='won')$('status').textContent='Ziel erreicht!';
-    else $('status').textContent=result.collected?'Lichtpunkt gesammelt!':'Sauberer Abschnitt.';
+    if(result.collision){
+      verification=null;
+      $('status').textContent='Kollision! Starte das Level neu und wechsle früher die Spur.';
+    }else if(result.state.status==='won'){
+      syncAccountProgress();
+      if(verification)verifyRun();
+      else $('status').textContent='Ziel erreicht! Dieser Lauf ist lokal und unverifiziert.';
+    }else{
+      $('status').textContent=result.collected?'Lichtpunkt gesammelt!':'Sauberer Abschnitt.';
+    }
   }
 
   $('left').addEventListener('click',()=>move(-1));$('straight').addEventListener('click',()=>move(0));$('right').addEventListener('click',()=>move(1));
