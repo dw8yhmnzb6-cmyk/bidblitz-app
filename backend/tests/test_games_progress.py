@@ -17,9 +17,17 @@ class Router:
         return lambda *args, **kwargs: lambda function: function
 
 
+class HTTPException(Exception):
+    def __init__(self, status_code, detail):
+        self.status_code = status_code
+        self.detail = detail
+        super().__init__(detail)
+
+
 fastapi = types.ModuleType("fastapi")
 fastapi.APIRouter = Router
 fastapi.Request = object
+fastapi.HTTPException = HTTPException
 database = types.ModuleType("core.database")
 database.db = types.SimpleNamespace()
 security = types.ModuleType("core.security")
@@ -35,6 +43,17 @@ with patch.dict(sys.modules, {
     "core.security": security,
 }):
     spec.loader.exec_module(progress)
+
+ranking_source = Path(__file__).resolve().parents[1] / "routes" / "games_rankings.py"
+ranking_spec = importlib.util.spec_from_file_location("games_rankings_under_test", ranking_source)
+rankings = importlib.util.module_from_spec(ranking_spec)
+with patch.dict(sys.modules, {
+    "fastapi": fastapi,
+    "core": types.ModuleType("core"),
+    "core.database": database,
+    "core.security": security,
+}):
+    ranking_spec.loader.exec_module(rankings)
 
 
 class Collection:
@@ -64,6 +83,24 @@ class Collection:
             else:
                 row[key] = max(row.get(key, value), value)
         return types.SimpleNamespace(matched_count=1)
+
+    async def count_documents(self, query):
+        rows = [
+            doc for doc in self.docs
+            if isinstance(doc.get("best"), list)
+            and any(type(value) is int and value > 0 for value in doc["best"])
+        ]
+        expression = query.get("$expr")
+        if expression:
+            threshold = expression["$gt"][1]
+            rows = [
+                doc for doc in rows
+                if sum(
+                    value for value in doc.get("best", [])
+                    if type(value) is int and value > 0
+                ) > threshold
+            ]
+        return len(rows)
 
 
 def payload(completed=0, score_base=1000):
@@ -224,6 +261,28 @@ class GamesProgressTest(unittest.TestCase):
         for value in cases:
             with self.assertRaises(ValidationError):
                 progress.RunnerProgressInput(**value)
+
+    def test_personal_practice_ranking_is_private_and_unverified(self):
+        asyncio.run(progress.save_match_progress(None, payload(3, 1000)))
+        security.get_current_user.return_value = {"_id": "bob"}
+        asyncio.run(progress.save_match_progress(None, payload(3, 2000)))
+        security.get_current_user.return_value = {"_id": "alice"}
+
+        result = asyncio.run(rankings.get_personal_ranking("match", None))
+
+        self.assertEqual(result["rank"], 2)
+        self.assertEqual(result["participants"], 2)
+        self.assertEqual(result["completed_levels"], 3)
+        self.assertFalse(result["verified"])
+        self.assertFalse(result["public_leaderboard_enabled"])
+        self.assertEqual(result["privacy"], "private_self_only")
+        self.assertNotIn("owner_id", result)
+        self.assertNotIn("players", result)
+
+    def test_personal_ranking_rejects_unsupported_games(self):
+        with self.assertRaises(HTTPException) as raised:
+            asyncio.run(rankings.get_personal_ranking("community-puzzle", None))
+        self.assertEqual(raised.exception.status_code, 404)
 
 
 if __name__ == "__main__":
