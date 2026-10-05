@@ -17,6 +17,8 @@ const COPY = {
     levels: "Level",
     unranked: "Noch nicht platziert",
     note: "Practice-Ranking: nur dein eigener Rang wird angezeigt. Scores sind noch nicht serverseitig gegen Manipulation verifiziert.",
+    verifiedNote: "Server-Replay-Ranking: dein Runner-Ergebnis wurde aus Server-Seed und Aktionsfolge reproduziert. Das ist noch kein vollständiger Anti-Cheat und kein öffentliches Trusted-Leaderboard.",
+    verifiedLabel: "Server-Replay",
   },
   en: {
     title: "Your ranking",
@@ -30,6 +32,8 @@ const COPY = {
     levels: "Levels",
     unranked: "Not ranked yet",
     note: "Practice ranking: only your own rank is shown. Scores are not yet server-verified against manipulation.",
+    verifiedNote: "Server replay ranking: your Runner result was reproduced from the server seed and action trace. This is not yet full anti-cheat or a public trusted leaderboard.",
+    verifiedLabel: "Server replay",
   },
   sq: {
     title: "Renditja jote",
@@ -43,6 +47,8 @@ const COPY = {
     levels: "Nivele",
     unranked: "Ende pa renditje",
     note: "Renditje prove: shfaqet vetëm renditja jote. Rezultatet ende nuk verifikohen nga serveri kundër manipulimit.",
+    verifiedNote: "Renditje me replay të serverit: rezultati i Runner u riprodhua nga seed-i i serverit dhe gjurmët e veprimeve. Kjo ende nuk është anti-cheat i plotë ose renditje publike e besuar.",
+    verifiedLabel: "Replay i serverit",
   },
 };
 
@@ -87,9 +93,12 @@ export default function GamesPersonalRankingCard({ gameId, locale = "en" }) {
 
   return (
     <section className="mt-6 rounded-3xl border border-cyan-200/15 bg-[#0a1d36] p-5" data-testid="games-personal-ranking">
-      <h2 className="flex items-center gap-2 text-lg font-bold">
-        <Trophy size={19} className="text-cyan-300" />{c.title}
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-bold">
+          <Trophy size={19} className="text-cyan-300" />{c.title}
+        </h2>
+        {ranking?.verified && <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-[10px] font-semibold text-emerald-100">{c.verifiedLabel}</span>}
+      </div>
 
       {!user.sessionReady || state === "loading"
         ? <p className="mt-4 flex items-center gap-2 text-sm text-white/55"><Loader2 size={16} className="animate-spin" />{c.loading}</p>
@@ -124,7 +133,7 @@ export default function GamesPersonalRankingCard({ gameId, locale = "en" }) {
             </div>}
 
       <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-cyan-50/55">
-        <ShieldCheck size={16} className="mt-0.5 shrink-0 text-cyan-300" />{c.note}
+        <ShieldCheck size={16} className="mt-0.5 shrink-0 text-cyan-300" />{ranking?.verified ? c.verifiedNote : c.note}
       </p>
     </section>
   );
