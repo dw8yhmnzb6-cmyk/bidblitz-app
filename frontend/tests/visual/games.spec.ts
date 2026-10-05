@@ -75,6 +75,7 @@ async function mockGamesApis(page: Page) {
       body: JSON.stringify({
         summaries: {
           match: { count: 2, average: 4.5 },
+          bubble: { count: 1, average: 5.0 },
           'community-puzzle': { count: 3, average: 4.33 },
         },
       }),
@@ -98,6 +99,17 @@ async function mockGamesApis(page: Page) {
           { id: 'review-a', game_id: 'match', rating: 5, text: 'Great puzzle game.' },
           { id: 'review-b', game_id: 'match', rating: 4, text: 'Nice levels.' },
         ],
+      }),
+    });
+  });
+  await page.route('**/api/games/reviews/bubble', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        game_id: 'bubble',
+        summary: { count: 1, average: 5.0 },
+        reviews: [{ id: 'review-bubble', game_id: 'bubble', rating: 5, text: 'Colorful and calm.' }],
       }),
     });
   });
@@ -534,6 +546,34 @@ test('Published community game detail deep link keeps external play isolated', a
   await expect(play).toHaveAttribute('target', '_blank');
   await expect(play).toHaveAttribute('rel', /noopener/);
   await expect(detail.getByText(/cookie-freien Games-Origin/)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Bubble Islands detail page is first-party and opens its own preview', async ({ page }) => {
+  await openGames(page, 390, 844);
+
+  const bubbleCard = page.locator('article').filter({ hasText: 'Bubble Islands' }).first();
+  await expect(bubbleCard).toBeVisible();
+  await expect(bubbleCard.getByTestId('game-rating-bubble')).toContainText('5.0');
+  await bubbleCard.getByRole('button', { name: 'Details' }).click();
+
+  await expect(page).toHaveURL(/\/games\/title\/bubble$/);
+  const detail = page.getByTestId('game-detail-page');
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole('heading', { name: 'Bubble Islands' })).toBeVisible();
+  await expect(detail.getByText('BIDBLITZ ORIGINAL')).toBeVisible();
+  await expect(detail.getByText(/20 schwebende Insel-Level/)).toBeVisible();
+
+  await detail.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await expect(page).toHaveURL(/\/games\/bubble$/);
+  await expect(page.getByTestId('bubble-islands-page')).toBeVisible();
+
+  const frame = page.locator('iframe[title*="Bubble Islands"]');
+  await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('src', '/game-assets/bubble-islands/bubble.html');
+  const game = frame.contentFrame();
+  await expect(game.getByTestId('bubble-islands-game')).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Bubble Islands' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
