@@ -225,6 +225,8 @@ def register_all_routers(app):
         ("routes.games_profile", "router"),
         ("routes.games_progress", "router"),
         ("routes.games_rankings", "router"),
+        ("routes.games_finance_sandbox", "router"),
+        ("routes.games_finance_sandbox", "admin_router"),
         ("routes.games_analytics", "router"),
         ("routes.games_recent", "router"),
         ("routes.games_reviews", "router"),
