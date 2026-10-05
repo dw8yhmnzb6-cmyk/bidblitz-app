@@ -440,7 +440,7 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(releaseHealth).toBeVisible();
   await expect(releaseHealth.getByText('Release Health')).toBeVisible();
   await expect(releaseHealth.getByText('Community Puzzle')).toBeVisible();
-  await expect(releaseHealth.getByText('Gesund')).toBeVisible();
+  await expect(releaseHealth.getByText('Gesund', { exact: true }).first()).toBeVisible();
   await expect(releaseHealth).not.toContainText('release_path');
   await expect(releaseHealth).not.toContainText('/private/');
 
