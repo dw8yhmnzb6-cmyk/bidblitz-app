@@ -5,6 +5,7 @@ const B = require('../public/game-assets/bubble-islands/engine.js');
 const BS = require('../public/game-assets/bubble-islands/account-progress.js');
 const R = require('../public/game-assets/blitz-runner/engine.js');
 const RS = require('../public/game-assets/blitz-runner/account-progress.js');
+const RUNNER_INTEGRITY_VECTORS = require('../../backend/data/runner_integrity_vectors.json');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
@@ -351,4 +352,20 @@ test('Blitz Runner account progress rejects malformed and gapped summaries',()=>
     {...valid,stars:[0,...valid.stars.slice(1)]},
     {...valid,best:[1000,0,1200,...Array(12).fill(0)],stars:[2,0,2,...Array(12).fill(0)],unlocked:4},
   ]) assert.equal(RS.validSummary(bad),false);
+});
+
+
+test('Blitz Runner browser engine matches server integrity replay vectors',()=>{
+  for(const vector of RUNNER_INTEGRITY_VECTORS){
+    let state=R.createGame(vector.level,vector.seed);
+    for(const direction of vector.actions){
+      const result=R.advance(state,direction);
+      assert.equal(result.ok,true,`level ${vector.level}: action rejected`);
+      state=result.state;
+    }
+    assert.equal(state.status,'won',`level ${vector.level}: expected win`);
+    assert.equal(state.score,vector.score,`level ${vector.level}: score mismatch`);
+    assert.equal(state.shards,vector.shards,`level ${vector.level}: shard mismatch`);
+    assert.equal(R.starsFor(state),vector.stars,`level ${vector.level}: stars mismatch`);
+  }
 });
