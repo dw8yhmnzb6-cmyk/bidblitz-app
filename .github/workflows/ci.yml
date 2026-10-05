@@ -70,6 +70,7 @@ jobs:
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
           backend/tests/test_games_finance_sandbox.py
+          backend/tests/test_games_finance_sandbox_mongo.py
           backend/tests/test_quick_topup_idempotency.py
           backend/tests/test_stripe_wallet_settlement.py
           backend/tests/test_stripe_bid_credit_settlement.py
