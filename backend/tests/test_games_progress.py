@@ -358,6 +358,36 @@ class GamesProgressTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             integrity.replay_runner(1, 123456, [0, 0, 0])
 
+    def test_runner_personal_rank_prefers_server_replayed_scores(self):
+        session = asyncio.run(integrity.create_runner_integrity_session(
+            integrity.RunnerSessionInput(level=1),
+            None,
+        ))
+        actions = runner_safe_actions(session["level"], session["seed"])
+        verified = asyncio.run(integrity.verify_runner_integrity(
+            integrity.RunnerVerifyInput(
+                session_id=session["session_id"],
+                actions=actions,
+            ),
+            None,
+        ))
+
+        database.db.games_runner_verified_progress.docs.append({
+            "owner_id": "bob",
+            "version": 1,
+            "best": [999999] + [0] * 14,
+            "stars": [3] + [0] * 14,
+        })
+
+        ranking = asyncio.run(rankings.get_personal_ranking("runner", None))
+        self.assertTrue(ranking["verified"])
+        self.assertEqual(ranking["mode"], "server_replayed")
+        self.assertEqual(ranking["integrity"], "server_replayed_not_full_anti_cheat")
+        self.assertEqual(ranking["total_score"], verified["score"])
+        self.assertEqual(ranking["participants"], 2)
+        self.assertEqual(ranking["rank"], 2)
+        self.assertFalse(ranking["public_leaderboard_enabled"])
+
     def test_personal_practice_ranking_is_private_and_unverified(self):
         asyncio.run(progress.save_match_progress(None, payload(3, 1000)))
         security.get_current_user.return_value = {"_id": "bob"}
