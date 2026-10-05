@@ -427,8 +427,8 @@ test('Games developer studio shows owner-scoped non-monetary portfolio metrics',
   const analytics = page.getByTestId('games-developer-analytics');
   await expect(analytics).toBeVisible();
   await expect(analytics.getByText('Dein Games-Portfolio')).toBeVisible();
-  await expect(analytics.getByText('Öffentliche Reviews')).toBeVisible();
-  await expect(analytics.getByText('Starts (ca.)')).toBeVisible();
+  await expect(analytics.getByText('Öffentliche Reviews', { exact: true }).first()).toBeVisible();
+  await expect(analytics.getByText('Starts (ca.)', { exact: true }).first()).toBeVisible();
   await expect(analytics.getByText('42', { exact: true })).toBeVisible();
   const gameAnalytics = page.getByTestId('developer-game-analytics-game-a');
   await expect(gameAnalytics).toBeVisible();
