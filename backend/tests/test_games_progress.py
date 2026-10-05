@@ -55,17 +55,46 @@ with patch.dict(sys.modules, {
 }):
     ranking_spec.loader.exec_module(rankings)
 
+integrity_source = Path(__file__).resolve().parents[1] / "routes" / "games_integrity.py"
+integrity_spec = importlib.util.spec_from_file_location("games_integrity_under_test", integrity_source)
+integrity = importlib.util.module_from_spec(integrity_spec)
+with patch.dict(sys.modules, {
+    "fastapi": fastapi,
+    "core": types.ModuleType("core"),
+    "core.database": database,
+    "core.security": security,
+}):
+    integrity_spec.loader.exec_module(integrity)
+
 
 class Collection:
     def __init__(self):
         self.docs = []
 
+    @staticmethod
+    def _matches(doc, query):
+        for key, expected in query.items():
+            current = doc.get(key)
+            if isinstance(expected, dict):
+                if "$gt" in expected and not (current is not None and current > expected["$gt"]):
+                    return False
+                if "$ne" in expected and current == expected["$ne"]:
+                    return False
+                continue
+            if current != expected:
+                return False
+        return True
+
     async def find_one(self, query, projection=None):
-        row = next((doc for doc in self.docs if all(doc.get(k) == v for k, v in query.items())), None)
+        row = next((doc for doc in self.docs if self._matches(doc, query)), None)
         return dict(row) if row else None
 
+    async def insert_one(self, doc):
+        self.docs.append(dict(doc))
+        return types.SimpleNamespace(inserted_id=doc.get("_id") or doc.get("id"))
+
     async def update_one(self, query, update, upsert=False):
-        row = next((doc for doc in self.docs if all(doc.get(k) == v for k, v in query.items())), None)
+        row = next((doc for doc in self.docs if self._matches(doc, query)), None)
         if row is None and upsert:
             row = dict(query)
             for key, value in update.get("$setOnInsert", {}).items():
@@ -123,6 +152,24 @@ def bubble_payload(completed=0, score_base=700):
     return progress.BubbleProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
 
 
+def runner_safe_actions(level, seed):
+    lane = 1
+    actions = []
+    for segment in integrity._runner_course(level, seed):
+        choices = []
+        for direction in (-1, 0, 1):
+            next_lane = max(0, min(2, lane + direction))
+            if next_lane != segment["obstacle"]:
+                choices.append((direction, next_lane))
+        preferred = next(
+            ((direction, next_lane) for direction, next_lane in choices if next_lane == segment["shard"]),
+            choices[0],
+        )
+        direction, lane = preferred
+        actions.append(direction)
+    return actions
+
+
 def runner_payload(completed=0, score_base=500):
     best = [0] * 15
     stars = [0] * 15
@@ -141,6 +188,8 @@ class GamesProgressTest(unittest.TestCase):
         database.db.games_match_progress = self.collection
         database.db.games_bubble_progress = self.bubble_collection
         database.db.games_runner_progress = self.runner_collection
+        database.db.games_integrity_sessions = Collection()
+        database.db.games_runner_verified_progress = Collection()
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
 
@@ -261,6 +310,53 @@ class GamesProgressTest(unittest.TestCase):
         for value in cases:
             with self.assertRaises(ValidationError):
                 progress.RunnerProgressInput(**value)
+
+    def test_runner_server_replay_verifies_only_reproducible_win(self):
+        session = asyncio.run(integrity.create_runner_integrity_session(
+            integrity.RunnerSessionInput(level=1),
+            None,
+        ))
+        actions = runner_safe_actions(session["level"], session["seed"])
+        result = asyncio.run(integrity.verify_runner_integrity(
+            integrity.RunnerVerifyInput(
+                session_id=session["session_id"],
+                actions=actions,
+            ),
+            None,
+        ))
+
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["status"], "won")
+        self.assertGreater(result["score"], 0)
+        self.assertFalse(result["public_trusted_leaderboard_enabled"])
+        self.assertEqual(result["integrity"], "server_replayed_not_full_anti_cheat")
+
+        verified = asyncio.run(integrity.get_runner_verified_progress(None))
+        self.assertEqual(verified["best"][0], result["score"])
+        self.assertEqual(verified["stars"][0], result["stars"])
+        self.assertEqual(verified["verified_levels"], 1)
+
+        with self.assertRaises(HTTPException) as reused:
+            asyncio.run(integrity.verify_runner_integrity(
+                integrity.RunnerVerifyInput(
+                    session_id=session["session_id"],
+                    actions=actions,
+                ),
+                None,
+            ))
+        self.assertEqual(reused.exception.status_code, 404)
+
+    def test_runner_integrity_session_respects_account_unlocks(self):
+        with self.assertRaises(HTTPException) as locked:
+            asyncio.run(integrity.create_runner_integrity_session(
+                integrity.RunnerSessionInput(level=2),
+                None,
+            ))
+        self.assertEqual(locked.exception.status_code, 409)
+
+    def test_runner_replay_rejects_incomplete_action_sequence(self):
+        with self.assertRaises(ValueError):
+            integrity.replay_runner(1, 123456, [0, 0, 0])
 
     def test_personal_practice_ranking_is_private_and_unverified(self):
         asyncio.run(progress.save_match_progress(None, payload(3, 1000)))
