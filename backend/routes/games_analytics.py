@@ -15,7 +15,7 @@ from core.database import db
 
 router = APIRouter(prefix="/api/games/analytics", tags=["games-analytics"])
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
-_FIRST_PARTY_GAME_IDS = {"match", "bubble"}
+_FIRST_PARTY_GAME_IDS = {"match", "bubble", "runner"}
 
 
 def _game_id(value: str) -> str:
