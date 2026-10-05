@@ -20,6 +20,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategie", sports: "Sport",
     matchDescription: "Kombiniere Symbole, löse Kettenreaktionen und entdecke 30 Level in der ersten BidBlitz-Spielwelt.",
     bubbleDescription: "Räume große Gruppen gleichfarbiger Bubbles, plane Ketten und entdecke 20 schwebende Insel-Level.",
+    runnerDescription: "Wechsle zwischen drei Spuren, weiche Hindernissen aus und sammle Lichtpunkte auf 15 Neon-Strecken.",
     play: "Spielvorschau öffnen", openGame: "Spiel sicher öffnen", favorite: "Merken", unfavorite: "Nicht mehr merken",
     languages: "Spielsprachen", version: "Veröffentlichte Version", rating: "Bewertung", reviews: "Bewertungen",
     loading: "Spiel wird geladen…", missing: "Dieses Spiel ist nicht verfügbar.", retry: "Neu laden",
@@ -32,6 +33,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategy", sports: "Sports",
     matchDescription: "Match symbols, trigger chain reactions and explore 30 levels in BidBlitz's first game world.",
     bubbleDescription: "Clear large groups of matching bubbles, plan chains and explore 20 floating-island levels.",
+    runnerDescription: "Switch between three lanes, dodge obstacles and collect light shards across 15 neon tracks.",
     play: "Open game preview", openGame: "Open game safely", favorite: "Save", unfavorite: "Remove saved game",
     languages: "Game languages", version: "Published version", rating: "Rating", reviews: "Reviews",
     loading: "Loading game…", missing: "This game is not available.", retry: "Reload",
@@ -44,6 +46,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategji", sports: "Sport",
     matchDescription: "Kombino simbolet, krijo reaksione zinxhir dhe zbulo 30 nivele në botën e parë të lojërave BidBlitz.",
     bubbleDescription: "Pastro grupe të mëdha flluskash me të njëjtën ngjyrë dhe zbulo 20 nivele me ishuj fluturues.",
+    runnerDescription: "Ndërro mes tri korsive, shmang pengesat dhe mblidh dritë në 15 pista neon.",
     play: "Hap provën e lojës", openGame: "Hap lojën në mënyrë të sigurt", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat",
     languages: "Gjuhët e lojës", version: "Versioni i publikuar", rating: "Vlerësimi", reviews: "Vlerësime",
     loading: "Po ngarkohet loja…", missing: "Kjo lojë nuk është e disponueshme.", retry: "Ringarko",
@@ -66,6 +69,14 @@ const FIRST_PARTY = {
     id: "bubble",
     title: "Bubble Islands",
     category: "Puzzle",
+    languages: ["de"],
+    source: "first_party",
+    version_number: 1,
+  },
+  runner: {
+    id: "runner",
+    title: "Blitz Runner",
+    category: "Arcade",
     languages: ["de"],
     source: "first_party",
     version_number: 1,
@@ -224,9 +235,9 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
 
   const isFavorite = Boolean(game?.id && favorites.includes(game.id));
   const isFirstParty = Boolean(game?.id && FIRST_PARTY[game.id]);
-  const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : null;
-  const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.description || "";
-  const cover = game?.id === "match" ? `${ART}/match.webp` : game?.id === "bubble" ? `${ART}/bubble.webp` : null;
+  const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : game?.id === "runner" ? "/games/runner" : null;
+  const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.id === "runner" ? c.runnerDescription : game?.description || "";
+  const cover = game?.id === "match" ? `${ART}/match.webp` : game?.id === "bubble" ? `${ART}/bubble.webp` : game?.id === "runner" ? `${ART}/runner.webp` : null;
 
   return (
     <main lang={locale} dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="game-detail-page">
