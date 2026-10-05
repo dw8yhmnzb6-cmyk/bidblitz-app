@@ -28,6 +28,16 @@ def bubble_payload(completed: int, score_base: int):
     return progress.BubbleProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
 
 
+def runner_payload(completed: int, score_base: int):
+    best = [0] * 15
+    stars = [0] * 15
+    for index in range(completed):
+        best[index] = score_base + index
+        stars[index] = 2 if index % 2 == 0 else 3
+    unlocked = 1 if completed == 0 else min(15, completed + 1)
+    return progress.RunnerProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
+
+
 class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         url = os.getenv("GAME_STUDIO_TEST_MONGO_URL")
@@ -37,8 +47,10 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
         self.database = self.client["bidblitz_games_progress_test"]
         await self.database.games_match_progress.delete_many({})
         await self.database.games_bubble_progress.delete_many({})
+        await self.database.games_runner_progress.delete_many({})
         await self.database.games_match_progress.create_index("owner_id", unique=True)
         await self.database.games_bubble_progress.create_index("owner_id", unique=True)
+        await self.database.games_runner_progress.create_index("owner_id", unique=True)
         self.old_db = progress.db
         self.old_owner = progress._owner
         progress.db = self.database
@@ -107,6 +119,22 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["unlocked"], 8)
         self.assertEqual(saved["best"][0], 900)
         self.assertEqual(saved["best"][4], 604)
+        self.assertEqual(saved["stars"][1], 3)
+
+
+    async def test_parallel_runner_devices_merge_monotonically(self):
+        one = runner_payload(4, 800)
+        two = runner_payload(7, 500)
+        await asyncio.gather(*[
+            progress.save_runner_progress(None, one),
+            progress.save_runner_progress(None, two),
+            progress.save_runner_progress(None, one),
+            progress.save_runner_progress(None, two),
+        ])
+        saved = await progress.get_runner_progress(None)
+        self.assertEqual(saved["unlocked"], 8)
+        self.assertEqual(saved["best"][0], 800)
+        self.assertEqual(saved["best"][4], 504)
         self.assertEqual(saved["stars"][1], 3)
 
 
