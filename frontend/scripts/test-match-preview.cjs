@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const E = require('../public/game-assets/match-preview/engine.js');
 const B = require('../public/game-assets/bubble-islands/engine.js');
 const BS = require('../public/game-assets/bubble-islands/account-progress.js');
+const R = require('../public/game-assets/blitz-runner/engine.js');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
@@ -245,4 +246,77 @@ test('Bubble Islands account progress rejects malformed and gapped summaries',()
     {...valid,stars:[0,...valid.stars.slice(1)]},
     {...valid,best:[1000,0,1200,...Array(17).fill(0)],stars:[2,0,2,...Array(17).fill(0)],unlocked:4},
   ]) assert.equal(BS.validSummary(bad),false);
+});
+
+
+test('Blitz Runner creates deterministic safe courses across all levels',()=>{
+  for(let level=1;level<=R.LEVEL_COUNT;level++) for(let seed=1;seed<=5;seed++){
+    const game=R.createGame(level,seed);
+    assert.equal(game.course.length,R.levels[level-1].distance);
+    assert.deepEqual(game,R.createGame(level,seed));
+    for(const segment of game.course){
+      assert.ok(segment.obstacle>=-1&&segment.obstacle<R.LANES);
+      assert.ok(segment.shard>=-1&&segment.shard<R.LANES);
+      assert.notEqual(segment.obstacle>=0?segment.obstacle:-99,segment.shard);
+    }
+  }
+});
+
+test('Blitz Runner collision ends the run without mutating input',()=>{
+  const game=R.createGame(1,7);
+  game.lane=1;
+  game.course[0]={obstacle:1,shard:0};
+  const before=JSON.stringify(game);
+  const result=R.advance(game,0);
+  assert.ok(result.ok);
+  assert.ok(result.collision);
+  assert.equal(result.state.status,'lost');
+  assert.equal(result.state.position,0);
+  assert.equal(JSON.stringify(game),before);
+});
+
+test('Blitz Runner safe steps collect shards and reach the finish',()=>{
+  let game=R.createGame(1,9);
+  game.course=game.course.map(()=>({obstacle:2,shard:1}));
+  while(game.status==='playing'){
+    const result=R.advance(game,0);
+    assert.ok(result.ok);
+    assert.equal(result.collision,false);
+    assert.equal(result.collected,true);
+    game=result.state;
+  }
+  assert.equal(game.status,'won');
+  assert.equal(game.position,game.course.length);
+  assert.equal(game.shards,game.course.length);
+  assert.equal(R.starsFor(game),3);
+});
+
+test('Blitz Runner completion unlocks next level and keeps stronger replay result',()=>{
+  let profile=R.initial(11);
+  let game=R.createGame(1,5);
+  game.position=game.course.length;game.status='won';game.score=5000;game.shards=20;
+  profile=R.complete(profile,game);
+  assert.equal(profile.unlocked,2);
+  assert.equal(profile.best[0],5000);
+  assert.equal(profile.stars[0],3);
+  const weaker={...game,score:1000,shards:0};
+  const replay=R.complete(profile,weaker);
+  assert.equal(replay.best[0],5000);
+  assert.equal(replay.stars[0],3);
+});
+
+test('Blitz Runner rejects invalid actions, locked levels and corrupt saves',()=>{
+  const profile=R.initial(4),before=JSON.stringify(profile.active);
+  assert.equal(R.advance(profile.active,2).ok,false);
+  assert.equal(JSON.stringify(profile.active),before);
+  assert.equal(R.begin(profile,2,9).ok,false);
+  assert.ok(R.decode(JSON.stringify(profile)));
+  for(const mutate of [
+    p=>p.unlocked=0,
+    p=>p.active.lane=3,
+    p=>p.active.course[0].shard=p.active.course[0].obstacle>=0?p.active.course[0].obstacle:4,
+    p=>p.active.status='paid',
+  ]){
+    const p=R.initial(5);mutate(p);assert.equal(R.decode(JSON.stringify(p)),null);
+  }
 });
