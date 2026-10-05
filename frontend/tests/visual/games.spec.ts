@@ -68,6 +68,13 @@ async function mockGamesApis(page: Page) {
       body: JSON.stringify({ favorites: [] }),
     });
   });
+  await page.route('**/api/games/progress/bubble', async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Not authenticated' }),
+    });
+  });
   await page.route('**/api/games/reviews/summaries**', async (route) => {
     await route.fulfill({
       status: 200,
