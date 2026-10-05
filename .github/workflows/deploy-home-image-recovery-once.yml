@@ -20,10 +20,10 @@ jobs:
       - name: Package the reviewed image-only delta
         run: |
           set -euo pipefail
-          git diff ce2798a75eb7d4d2bdd68a43abcb146b0d86c65a e4b8c5300b60fd7295f1f4aea976b37765e8038f -- backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py > /tmp/bidblitz-image-recovery-e4b8c530.patch
+          git diff ce2798a75eb7d4d2bdd68a43abcb146b0d86c65a e4b8c5300b60fd7295f1f4aea976b37765e8038f -- backend/core/product_images.py backend/routes/recommendations.py > /tmp/bidblitz-image-recovery-e4b8c530.patch
           test -s /tmp/bidblitz-image-recovery-e4b8c530.patch
           git diff --check ce2798a75eb7d4d2bdd68a43abcb146b0d86c65a e4b8c5300b60fd7295f1f4aea976b37765e8038f
-          python3 -m py_compile backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py
+          python3 -m py_compile backend/core/product_images.py backend/routes/recommendations.py
           sudo apt-get update -qq
           sudo apt-get install -y -qq sshpass
           mkdir -p "$HOME/.ssh"
@@ -49,7 +49,7 @@ jobs:
           test ! -e "$APP_ROOT/core/product_images.py"
           STAGE=$(mktemp -d /tmp/bidblitz-image-recovery.XXXXXX)
           mkdir -p "$STAGE/backend/core" "$STAGE/backend/routes"
-          for file in routes/recommendations.py routes/insurance.py; do
+          for file in routes/recommendations.py; do
             cp -p "$APP_ROOT/$file" "$STAGE/backend/$file"
           done
           curl -fsS --max-time 15 http://127.0.0.1:8001/api/recommendations/home -o "$STAGE/before-home.json"
@@ -58,7 +58,7 @@ jobs:
           "$PY" - "$STAGE" <<'PY'
           import hashlib, json, pathlib, sys
           stage = pathlib.Path(sys.argv[1])
-          files = ["routes/recommendations.py", "routes/insurance.py"]
+          files = ["routes/recommendations.py"]
           hashes = {name: hashlib.sha256((stage / "backend" / name).read_bytes()).hexdigest() for name in files}
           (stage / "before-hashes.json").write_text(json.dumps(hashes))
           home = json.loads((stage / "before-home.json").read_text())
@@ -71,7 +71,7 @@ jobs:
           cd "$STAGE"
           patch --dry-run --batch --forward --fuzz=0 -p1 < "$PATCH_FILE"
           patch --batch --forward --fuzz=0 -p1 < "$PATCH_FILE"
-          "$PY" -m py_compile backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py
+          "$PY" -m py_compile backend/core/product_images.py backend/routes/recommendations.py
           "$PY" - "$STAGE" <<'PY'
           import ast, asyncio, importlib.util, json, pathlib, sys
           from types import SimpleNamespace
@@ -104,15 +104,13 @@ jobs:
           database = SimpleNamespace(properties=empty, events=empty, restaurants=empty, jobs=empty, flights=empty, insurance_products=Collection([stored]))
           async def anonymous(request): raise HTTPException(status_code=401)
           context = {"db": database, "normalize_insurance_product_image": normalize, "get_current_user": anonymous, "Request": object, "TEST_MODE": False, "HTTPException": HTTPException}
-          for name, functions in [("recommendations.py", {"get_home_recommendations"}), ("insurance.py", {"list_products", "get_product"})]:
+          for name, functions in [("recommendations.py", {"get_home_recommendations"})]:
               for node in ast.parse((stage / "backend/routes" / name).read_text()).body:
                   if isinstance(node, ast.AsyncFunctionDef) and node.name in functions:
                       node.decorator_list = []
                       exec(compile(ast.Module(body=[node], type_ignores=[]), name, "exec"), context)
           assert asyncio.run(context["get_home_recommendations"](None))["sections"][0]["items"] == [expected]
-          assert asyncio.run(context["list_products"]()) == {"products": [expected], "count": 1}
-          assert asyncio.run(context["get_product"](stored["product_id"])) == expected
-          print("STAGED_TESTS_PASSED: current production source; home/list/detail; preserved record; custom/malformed URLs")
+          print("STAGED_TESTS_PASSED: current production source; home response; preserved record; custom/malformed URLs")
           PY
           "$PY" - "$STAGE" "$APP_ROOT" <<'PY'
           import hashlib, json, pathlib, sys
@@ -125,7 +123,7 @@ jobs:
           PY
           BACKUP_ROOT="/var/www/bidblitz/image-recovery-backup-$(date -u +%Y%m%dT%H%M%S)"
           mkdir -p "$BACKUP_ROOT/routes"
-          for file in routes/recommendations.py routes/insurance.py; do
+          for file in routes/recommendations.py; do
             cp -p "$APP_ROOT/$file" "$BACKUP_ROOT/$file"
           done
           cp "$STAGE/before-hashes.json" "$BACKUP_ROOT/before-hashes.json"
@@ -133,7 +131,7 @@ jobs:
             result=$?
             trap - ERR
             set +e
-            for file in routes/recommendations.py routes/insurance.py; do
+            for file in routes/recommendations.py; do
               cp -p "$BACKUP_ROOT/$file" "$APP_ROOT/$file"
             done
             rm -f "$APP_ROOT/core/product_images.py"
@@ -143,7 +141,7 @@ jobs:
           }
           trap rollback ERR
           install -m 644 "$STAGE/backend/core/product_images.py" "$APP_ROOT/core/product_images.py"
-          for file in routes/recommendations.py routes/insurance.py; do
+          for file in routes/recommendations.py; do
             cp -p "$STAGE/backend/$file" "$APP_ROOT/$file.image-recovery.tmp"
             mv -f "$APP_ROOT/$file.image-recovery.tmp" "$APP_ROOT/$file"
           done
