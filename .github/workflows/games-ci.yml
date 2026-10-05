@@ -5,12 +5,14 @@ on:
     paths:
       - "backend/routes/game_studio*.py"
       - "backend/routes/games_*.py"
+      - "backend/routes/games_finance_sandbox.py"
       - "backend/routes/admin_game_studio.py"
       - "backend/routes/game_preview.py"
       - "backend/routes/games_catalog.py"
       - "backend/routes/games_developer.py"
       - "backend/tests/test_game_studio*.py"
       - "backend/tests/test_games_*.py"
+      - "backend/tests/test_games_finance_sandbox.py"
       - "backend/tests/test_admin_game_studio.py"
       - "backend/core/database.py"
       - "backend/core/router_registry.py"
@@ -28,6 +30,7 @@ on:
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/components/GamesTranslationReadinessCard.jsx"
+      - "frontend/src/components/GamesFinanceSandboxCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -44,12 +47,14 @@ on:
     paths:
       - "backend/routes/game_studio*.py"
       - "backend/routes/games_*.py"
+      - "backend/routes/games_finance_sandbox.py"
       - "backend/routes/admin_game_studio.py"
       - "backend/routes/game_preview.py"
       - "backend/routes/games_catalog.py"
       - "backend/routes/games_developer.py"
       - "backend/tests/test_game_studio*.py"
       - "backend/tests/test_games_*.py"
+      - "backend/tests/test_games_finance_sandbox.py"
       - "backend/tests/test_admin_game_studio.py"
       - "backend/core/database.py"
       - "backend/core/router_registry.py"
@@ -67,6 +72,7 @@ on:
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/components/GamesTranslationReadinessCard.jsx"
+      - "frontend/src/components/GamesFinanceSandboxCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -145,6 +151,7 @@ jobs:
           backend/tests/test_games_developer.py
           backend/tests/test_games_developer_mongo.py
           backend/tests/test_games_publication_history.py
+          backend/tests/test_games_finance_sandbox.py
 
   games-frontend:
     runs-on: ubuntu-latest
@@ -173,6 +180,7 @@ jobs:
           src/components/AdminGameDeveloperPlanCard.jsx
           src/components/GamesLanguageSelect.jsx
           src/components/GamesTranslationReadinessCard.jsx
+          src/components/GamesFinanceSandboxCard.jsx
           src/config/languagePolicy.mjs
           src/config/studioCreatePolicy.mjs
           src/config/gamesFavoritesPolicy.mjs
