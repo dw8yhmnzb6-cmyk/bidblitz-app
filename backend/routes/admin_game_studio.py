@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.database import db
 from core.security import get_current_user
+from routes.game_studio import SUPPORTED_LANGUAGES
 from routes.game_studio_uploads import UPLOAD_ROOT, _clean_member_name, _inspect_zip
 
 
@@ -75,6 +76,16 @@ class VersionReviewInput(BaseModel):
     @field_validator("note", mode="before")
     @classmethod
     def trim_note(cls, value):
+        return str(value or "").strip()
+
+
+class TranslationReviewInput(BaseModel):
+    reviewed: bool
+    note: str = Field(default="", max_length=1000)
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def trim_translation_note(cls, value):
         return str(value or "").strip()
 
 
@@ -237,3 +248,88 @@ async def prepare_private_preview(version_id: str, request: Request):
     result = _public_version(saved)
     result["preview_status"] = "prepared"
     return result
+
+
+SOURCE_LANGUAGE = "en"
+
+
+def _public_translation_review(code: str, doc: dict | None) -> dict:
+    doc = doc or {}
+    return {
+        "code": code,
+        "reviewed": bool(doc.get("reviewed")),
+        "reviewed_at": doc.get("reviewed_at") if doc.get("reviewed") else None,
+        "note": str(doc.get("note") or ""),
+    }
+
+
+@router.get("/translation-reviews")
+async def translation_reviews(request: Request):
+    """Read human translation-review state without exposing reviewer identity."""
+    await _admin(request)
+    codes = sorted(code for code in SUPPORTED_LANGUAGES if code != SOURCE_LANGUAGE)
+    rows = await db.games_translation_reviews.find(
+        {"code": {"$in": codes}},
+        {"_id": 0, "code": 1, "reviewed": 1, "reviewed_at": 1, "note": 1},
+    ).to_list(len(codes))
+    by_code = {
+        str(row.get("code")): row
+        for row in rows
+        if str(row.get("code") or "") in SUPPORTED_LANGUAGES
+    }
+    items = [_public_translation_review(code, by_code.get(code)) for code in codes]
+    reviewed = [item["code"] for item in items if item["reviewed"]]
+    pending = [item["code"] for item in items if not item["reviewed"]]
+    return {
+        "source_language": SOURCE_LANGUAGE,
+        "localized_count": len(codes),
+        "human_reviewed_count": len(reviewed),
+        "pending_count": len(pending),
+        "human_reviewed_codes": reviewed,
+        "pending_codes": pending,
+        "items": items,
+    }
+
+
+@router.post("/translation-reviews/{code}")
+async def set_translation_review(
+    code: str,
+    payload: TranslationReviewInput,
+    request: Request,
+):
+    """Record an explicit human admin review decision for one translation."""
+    admin = await _admin(request)
+    normalized = str(code or "").strip()
+    if normalized not in SUPPORTED_LANGUAGES:
+        raise HTTPException(404, "Unbekannter Sprachcode")
+    if normalized == SOURCE_LANGUAGE:
+        raise HTTPException(400, "Die Quellsprache wird nicht als Übersetzung geprüft")
+
+    now = datetime.now(timezone.utc).isoformat()
+    reviewer_id = str(admin.get("_id") or admin.get("id") or "")
+    reviewed_at = now if payload.reviewed else None
+    await db.games_translation_reviews.update_one(
+        {"code": normalized},
+        {"$set": {
+            "code": normalized,
+            "reviewed": payload.reviewed,
+            "reviewed_at": reviewed_at,
+            "note": payload.note,
+            "reviewer_id": reviewer_id,
+            "updated_at": now,
+        }},
+        upsert=True,
+    )
+    await db.games_translation_review_events.insert_one({
+        "id": f"translation-review:{normalized}:{now}",
+        "code": normalized,
+        "reviewed": payload.reviewed,
+        "note": payload.note,
+        "reviewer_id": reviewer_id,
+        "created_at": now,
+    })
+    row = await db.games_translation_reviews.find_one(
+        {"code": normalized},
+        {"_id": 0, "code": 1, "reviewed": 1, "reviewed_at": 1, "note": 1},
+    )
+    return _public_translation_review(normalized, row)
