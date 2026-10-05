@@ -504,6 +504,15 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(releaseHealth).not.toContainText('release_path');
   await expect(releaseHealth).not.toContainText('/private/');
 
+  const translations = page.getByTestId('games-translation-readiness-card');
+  await expect(translations).toBeVisible();
+  await expect(translations.getByText('Sprach-Readiness')).toBeVisible();
+  await expect(translations.getByText('Technisch vollständig')).toBeVisible();
+  await expect(translations.getByText('Noch nicht launchbereit')).toBeVisible();
+  await expect(translations.getByText('51', { exact: true }).first()).toBeVisible();
+  await expect(translations.getByText('0/50', { exact: true })).toBeVisible();
+  await expect(translations.getByText('50', { exact: true }).first()).toBeVisible();
+
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
   await expect(preflight.getByText('play.games.example.test')).toBeVisible();
