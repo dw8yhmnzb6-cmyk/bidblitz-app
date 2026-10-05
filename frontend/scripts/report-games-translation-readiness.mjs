@@ -1,4 +1,8 @@
-import { GAMES_TRANSLATION_READINESS as readiness } from "../src/config/gamesTranslationReadiness.mjs";
+import languages from "../src/config/gamesLanguages.json" with { type: "json" };
+import reviewManifest from "../src/config/gamesTranslationReview.json" with { type: "json" };
+import { buildGamesTranslationReadiness } from "../src/config/gamesTranslationReadiness.mjs";
+
+const readiness = buildGamesTranslationReadiness({ languageOptions: languages, review: reviewManifest });
 
 const strict = process.argv.includes("--require-human-reviewed");
 
