@@ -6,6 +6,9 @@ import { VISUAL_VIEWPORTS } from './test-data';
 const GAMES_VIEWPORTS = VISUAL_VIEWPORTS.filter(({ width }) =>
   [320, 390, 768, 1440].includes(width)
 );
+const RUNNER_INTEGRITY_VECTORS = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../../backend/data/runner_integrity_vectors.json'), 'utf8')
+);
 
 async function mockGamesApis(page: Page) {
   // The static SPA server falls back to index.html for unknown /api paths.
@@ -740,6 +743,76 @@ test('Blitz Runner detail page opens its first-party preview', async ({ page }) 
   await expect(game.getByTestId('blitz-runner-game')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Blitz Runner' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+});
+
+test('Blitz Runner sends a server-issued replay session and verifies the exact action trace', async ({ page }) => {
+  const vector = RUNNER_INTEGRITY_VECTORS[0];
+  const sessionId = 'a'.repeat(32);
+
+  await page.route('**/api/games/integrity/runner/sessions', async (route) => {
+    const body = route.request().postDataJSON() as { level?: number };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        session_id: sessionId,
+        game_id: 'runner',
+        level: body.level,
+        seed: vector.seed,
+        expires_at: '2026-10-05T09:30:00+00:00',
+        score_verification: 'server_replay_required',
+      }),
+    });
+  });
+  await page.route('**/api/games/integrity/runner/verify', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'won',
+        level: vector.level,
+        score: vector.score,
+        shards: vector.shards,
+        stars: vector.stars,
+        verified: true,
+        integrity: 'server_replayed_not_full_anti_cheat',
+        public_trusted_leaderboard_enabled: false,
+      }),
+    });
+  });
+
+  await openGames(page, 390, 844);
+  const runnerCard = page.locator('article').filter({ hasText: 'Blitz Runner' }).first();
+  await runnerCard.getByRole('button', { name: 'Details' }).click();
+  const detail = page.getByTestId('game-detail-page');
+  await detail.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await expect(page).toHaveURL(/\/games\/runner$/);
+
+  const iframe = page.locator('iframe[title*="Blitz Runner"]');
+  await expect(iframe).toBeVisible();
+  const handle = await iframe.elementHandle();
+  const runnerFrame = await handle?.contentFrame();
+  expect(runnerFrame).not.toBeNull();
+
+  await runnerFrame!.evaluate(async () => {
+    await (window as any).BidBlitzRunnerPreview.startLevel(1);
+  });
+
+  const verifyRequest = page.waitForRequest((request) =>
+    request.method() === 'POST' &&
+    request.url().includes('/api/games/integrity/runner/verify')
+  );
+  await runnerFrame!.evaluate((actions) => {
+    for (const direction of actions) {
+      (window as any).BidBlitzRunnerPreview.move(direction);
+    }
+  }, vector.actions);
+  const request = await verifyRequest;
+  expect(request.postDataJSON()).toEqual({
+    session_id: sessionId,
+    actions: vector.actions,
+  });
+  await expect(runnerFrame!.locator('#status')).toContainText('serverseitig reproduziert');
 });
 
 test('Games Match preview opens from catalog and remains usable on 320px', async ({ page }) => {
