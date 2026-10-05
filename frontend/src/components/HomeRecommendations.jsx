@@ -21,6 +21,33 @@ const SECTION_CONFIG = {
   flight: { icon: Plane, color: "#06B6D4", route: "/flights" },
 };
 
+const RecommendationImage = ({ src, title, Icon, color }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div
+        className="w-full h-20 flex items-center justify-center"
+        style={{ background: `${color}10` }}
+        data-testid="recommendation-image-fallback"
+        aria-label={title ? `Bild nicht verfügbar: ${title}` : "Bild nicht verfügbar"}
+      >
+        <Icon size={24} style={{ color }} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={title || ""}
+      className="w-full h-20 object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const HomeRecommendations = ({ onNavigate }) => {
   const { t } = useI18n();
   const [sections, setSections] = useState([]);
@@ -71,17 +98,12 @@ const HomeRecommendations = ({ onNavigate }) => {
                   className="flex-shrink-0 w-[40vw] max-w-[170px] bg-[#111118] rounded-xl border border-white/5 overflow-hidden cursor-pointer hover:border-white/10 transition-colors"
                 >
                   {/* Image */}
-                  {(item.images?.[0] || item.image_url || item.company_logo || item.airline_logo) ? (
-                    <img
-                      src={item.images?.[0] || item.image_url || item.company_logo || item.airline_logo}
-                      alt=""
-                      className="w-full h-20 object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-20 flex items-center justify-center" style={{ background: `${cfg.color}10` }}>
-                      <Icon size={24} style={{ color: cfg.color }} />
-                    </div>
-                  )}
+                  <RecommendationImage
+                    src={item.images?.[0] || item.image_url || item.company_logo || item.airline_logo}
+                    title={item.title || item.name || item.company_name || item.airline || ""}
+                    Icon={Icon}
+                    color={cfg.color}
+                  />
 
                   {/* Content */}
                   <div className="p-2">
