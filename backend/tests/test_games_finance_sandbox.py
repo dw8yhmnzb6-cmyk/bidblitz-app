@@ -58,6 +58,49 @@ class Collection:
         self.docs.append(dict(doc))
         return types.SimpleNamespace(inserted_id=doc.get("id"))
 
+    async def update_one(self, query, update):
+        row = next((doc for doc in self.docs if matches(doc, query)), None)
+        if row is None:
+            return types.SimpleNamespace(matched_count=0)
+        for key, value in update.get("$inc", {}).items():
+            row[key] = int(row.get(key) or 0) + int(value)
+        for key, value in update.get("$set", {}).items():
+            row[key] = value
+        return types.SimpleNamespace(matched_count=1)
+
+    async def delete_one(self, query):
+        for index, row in enumerate(self.docs):
+            if matches(row, query):
+                self.docs.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
+
+    async def find_one_and_update(
+        self,
+        query,
+        update,
+        projection=None,
+        return_document=None,
+    ):
+        base_query = {key: value for key, value in query.items() if key != "$expr"}
+        row = next((doc for doc in self.docs if matches(doc, base_query)), None)
+        if row is None:
+            return None
+
+        refund_delta = int(update.get("$inc", {}).get("refunded_eur_cents") or 0)
+        if "$expr" in query:
+            current = int(row.get("refunded_eur_cents") or 0)
+            gross = int(row.get("gross_eur_cents") or 0)
+            if current + refund_delta > gross:
+                return None
+
+        before = dict(row)
+        for key, value in update.get("$inc", {}).items():
+            row[key] = int(row.get(key) or 0) + int(value)
+        for key, value in update.get("$set", {}).items():
+            row[key] = value
+        return before
+
 
 class GamesFinanceSandboxTest(unittest.TestCase):
     def setUp(self):
