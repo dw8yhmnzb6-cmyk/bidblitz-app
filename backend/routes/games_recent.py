@@ -16,7 +16,7 @@ from core.security import get_current_user
 router = APIRouter(prefix="/api/games/recent", tags=["games-recent"])
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _MAX_RECENT = 20
-_FIRST_PARTY_GAME_IDS = {"match", "bubble"}
+_FIRST_PARTY_GAME_IDS = {"match", "bubble", "runner"}
 
 
 def _game_id(value: str) -> str:
