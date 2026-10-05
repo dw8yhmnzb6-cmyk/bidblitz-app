@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../public/game-assets/match-preview/engine.js');
+const B = require('../public/game-assets/bubble-islands/engine.js');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
@@ -128,3 +129,88 @@ test('Corrupted lives and recovery timestamps are rejected',()=>{
  const p=E.initial(1,1000);mutate(p);assert.equal(E.decode(JSON.stringify(p)),null);
  }
 });
+
+test('Bubble Islands starts all 20 levels with at least one valid group',()=>{
+  for(let level=1;level<=B.LEVEL_COUNT;level++) for(let seed=1;seed<=6;seed++){
+    const game=B.createGame(level,seed);
+    assert.equal(game.board.length,B.SIZE);
+    assert.ok(B.hasMove(game.board));
+    assert.ok(B.groups(game.board).some(group=>group.length>=2));
+    assert.equal(game.moves,B.levels[level-1].moves);
+  }
+});
+
+test('Bubble Islands is deterministic for the same level and seed',()=>{
+  assert.deepEqual(B.createGame(7,123456),B.createGame(7,123456));
+});
+
+test('Bubble Islands pop scores group squared, spends one move and preserves input',()=>{
+  const game=B.createGame(1,77);
+  const cells=B.groups(game.board)[0];
+  assert.ok(cells.length>=2);
+  const before=JSON.stringify(game);
+  const result=B.pop(game,cells[0]);
+  assert.ok(result.ok);
+  assert.equal(result.removed.length,cells.length);
+  assert.equal(result.gained,cells.length*cells.length*10);
+  assert.equal(result.state.moves,game.moves-1);
+  assert.equal(result.state.score,result.gained);
+  assert.equal(JSON.stringify(game),before);
+  assert.ok(result.state.board.every(value=>Number.isInteger(value)&&value>=-1&&value<B.COLORS));
+});
+
+test('Bubble Islands single bubbles cannot be popped and consume no move',()=>{
+  const board=[
+    0,1,2,3,4,0,1,
+    1,2,3,4,0,1,2,
+    2,3,4,0,1,2,3,
+    3,4,0,1,2,3,4,
+    4,0,1,2,3,4,0,
+    0,1,2,3,4,0,1,
+    1,2,3,4,0,1,2,
+  ];
+  assert.equal(B.groups(board).length,0);
+  const game=B.createGame(1,9);
+  game.board=board;
+  const before=JSON.stringify(game);
+  const result=B.pop(game,0);
+  assert.equal(result.ok,false);
+  assert.equal(JSON.stringify(game),before);
+});
+
+test('Bubble Islands completion unlocks next level and records stars once',()=>{
+  let profile=B.initial(5);
+  const game={...profile.active,score:B.levels[0].target*2,status:'won'};
+  profile=B.complete(profile,game);
+  assert.equal(profile.unlocked,2);
+  assert.equal(profile.stars[0],3);
+  assert.equal(profile.best[0],game.score);
+  const weaker={...game,score:B.levels[0].target,status:'won'};
+  const replay=B.complete(profile,weaker);
+  assert.equal(replay.best[0],game.score);
+  assert.equal(replay.stars[0],3);
+});
+
+test('Bubble Islands locked levels cannot start and valid save round-trips',()=>{
+  const profile=B.initial(42);
+  const locked=B.begin(profile,2,99);
+  assert.equal(locked.ok,false);
+  assert.deepEqual(locked.profile,profile);
+  assert.ok(B.decode(JSON.stringify(profile)));
+});
+
+test('Bubble Islands rejects corrupted local saves',()=>{
+  for(const mutate of [
+    profile=>profile.unlocked=0,
+    profile=>profile.best[0]=-1,
+    profile=>profile.stars[0]=4,
+    profile=>profile.active.board[0]=99,
+    profile=>profile.active.moves=-1,
+    profile=>profile.active.status='paid',
+  ]){
+    const profile=B.initial(3);
+    mutate(profile);
+    assert.equal(B.decode(JSON.stringify(profile)),null);
+  }
+});
+
