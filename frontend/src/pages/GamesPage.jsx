@@ -6,6 +6,7 @@ import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import GameReviewsPanel from "../components/GameReviewsPanel";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
+import { getGamesCoreCopy } from "../config/gamesCoreTranslations.mjs";
 import { loadLocalFavorites, saveLocalFavorites, toggleFavorite } from "../config/gamesFavoritesPolicy.mjs";
 import { loadLocalRecent, recordLocalRecent } from "../config/gamesRecentPolicy.mjs";
 
@@ -57,9 +58,9 @@ const FIRST_PARTY_GAMES = [
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
   const { lang } = useI18n();
   const user = useUser();
-  const locale = resolveLocale(lang, Object.keys(COPY));
-  const c = COPY[locale];
   const selectedCode = resolveLocale(lang, gameLanguages.map(({ code }) => code));
+  const locale = resolveLocale(selectedCode, Object.keys(COPY));
+  const c = { ...COPY[locale], ...getGamesCoreCopy(selectedCode) };
   const rtl = gameLanguages.find(({ code }) => code === selectedCode)?.rtl;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -241,7 +242,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
   }, [query, category, c, allGames]);
 
   return (
-    <main lang={locale} dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="games-platform-page">
+    <main lang={selectedCode} dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="games-platform-page">
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-7">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm hover:bg-white/10"><ArrowLeft size={18} />{c.back}</button>
