@@ -4547,3 +4547,84 @@ def test_biopay_requires_verified_provider_in_production():
     assert 'serverseitige Hardware-Attestation ist noch nicht verifiziert' in panel
     assert 'data-testid="pos-biopay-preview-disabled"' in panel
     assert 'Biometrische Zahlungen sind in Production ohne verifizierte Provider-/Hardware-Attestation deaktiviert.' in panel
+
+
+def test_insurance_product_image_repairs_existing_record_without_mutation():
+    from core.product_images import normalize_insurance_product_image
+
+    stored = {"product_id": "existing-phone", "title": "Smartphone Pro", "monthly_price": 9.9,
+              "image_url": "https://images.unsplash.com/photo-1551355716-d99cdb39c5b9?w=400&q=80"}
+    result = normalize_insurance_product_image(stored)
+    assert result == {**stored, "image_url": "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"}
+    assert stored["image_url"].endswith("photo-1551355716-d99cdb39c5b9?w=400&q=80")
+    assert result is not stored
+
+
+@pytest.mark.parametrize("image_url", [
+    "https://images.unsplash.com/photo-1551355716-d99cdb39c5b9?w=800&h=500&fit=crop",
+    "http://images.unsplash.com/photo-1551355716-d99cdb39c5b9",
+])
+def test_retired_insurance_image_is_repaired_for_existing_size_variants(image_url):
+    from core.product_images import normalize_insurance_product_image
+
+    result = normalize_insurance_product_image({"image_url": image_url})
+    assert result["image_url"] == "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"
+
+
+@pytest.mark.parametrize("image_url", [
+    None, "", "https://provider.example/customer-photo.jpg",
+    "https://provider.example/photo-1551355716-d99cdb39c5b9",
+    "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80",
+    "https://[invalid",
+])
+def test_unrelated_insurance_images_are_preserved(image_url):
+    from core.product_images import normalize_insurance_product_image
+
+    product = {"image_url": image_url, "product_id": "custom"}
+    assert normalize_insurance_product_image(product) == product
+
+
+def test_existing_insurance_image_is_repaired_in_home_list_and_detail(monkeypatch):
+    from types import SimpleNamespace
+    from routes import insurance, recommendations
+
+    stored = {"product_id": "existing-phone", "title": "Smartphone Pro", "monthly_price": 9.9,
+              "image_url": "https://images.unsplash.com/photo-1551355716-d99cdb39c5b9?w=400&q=80"}
+
+    class ReadOnlyCollection:
+        def __init__(self, products):
+            self.products = products
+
+        def find(self, *args, **kwargs):
+            return self
+
+        def sort(self, *args):
+            return self
+
+        def limit(self, *args):
+            return self
+
+        async def to_list(self, *args):
+            return self.products
+
+        async def find_one(self, *args):
+            return self.products[0]
+
+    empty = ReadOnlyCollection([])
+    database = SimpleNamespace(properties=empty, events=empty, restaurants=empty, jobs=empty,
+                               flights=empty, insurance_products=ReadOnlyCollection([stored]))
+
+    async def anonymous(_request):
+        raise HTTPException(status_code=401)
+
+    monkeypatch.setattr(recommendations, "db", database)
+    monkeypatch.setattr(recommendations, "get_current_user", anonymous)
+    monkeypatch.setattr(insurance, "db", database)
+    home = asyncio.run(recommendations.get_home_recommendations(None))
+    listing = asyncio.run(insurance.list_products())
+    detail = asyncio.run(insurance.get_product("existing-phone"))
+    expected = {**stored, "image_url": "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"}
+    assert home["sections"][0]["items"] == [expected]
+    assert listing == {"products": [expected], "count": 1}
+    assert detail == expected
+    assert stored["image_url"].endswith("photo-1551355716-d99cdb39c5b9?w=400&q=80")
