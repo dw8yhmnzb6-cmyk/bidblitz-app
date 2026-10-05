@@ -201,6 +201,88 @@ async def developer_analytics(request: Request):
     }
 
 
+@router.get("/analytics/games")
+async def developer_game_analytics(request: Request):
+    """Owner-scoped per-game portfolio metrics. Never a billing/payout source."""
+    owner_id = await _owner(request)
+    catalog_rows = await db.games_catalog.find(
+        {"owner_id": owner_id},
+        {
+            "_id": 0,
+            "id": 1,
+            "title": 1,
+            "status": 1,
+            "version_number": 1,
+            "updated_at": 1,
+        },
+    ).limit(100).to_list(100)
+    game_ids = [str(row.get("id") or "") for row in catalog_rows if row.get("id")]
+
+    reviews_by_game = {}
+    if game_ids:
+        review_rows = await db.games_reviews.find(
+            {"game_id": {"$in": game_ids}},
+            {
+                "_id": 0,
+                "game_id": 1,
+                "rating": 1,
+                "status": 1,
+            },
+        ).limit(10000).to_list(10000)
+        for review in review_rows:
+            game_id = str(review.get("game_id") or "")
+            if game_id not in game_ids:
+                continue
+            metrics = reviews_by_game.setdefault(game_id, {
+                "visible": 0,
+                "hidden": 0,
+                "rating_sum": 0,
+            })
+            if review.get("status") == "visible":
+                metrics["visible"] += 1
+                rating = review.get("rating")
+                if isinstance(rating, int) and 1 <= rating <= 5:
+                    metrics["rating_sum"] += rating
+            elif review.get("status") == "hidden":
+                metrics["hidden"] += 1
+
+    launches_by_game = {}
+    if game_ids:
+        launch_rows = await db.games_launch_totals.find(
+            {"game_id": {"$in": game_ids}},
+            {"_id": 0, "game_id": 1, "launches": 1},
+        ).limit(100).to_list(100)
+        for row in launch_rows:
+            game_id = str(row.get("game_id") or "")
+            launches = row.get("launches")
+            if game_id in game_ids and isinstance(launches, int):
+                launches_by_game[game_id] = max(0, launches)
+
+    games = []
+    for row in catalog_rows:
+        game_id = str(row.get("id") or "")
+        metrics = reviews_by_game.get(game_id, {"visible": 0, "hidden": 0, "rating_sum": 0})
+        visible = int(metrics["visible"])
+        games.append({
+            "id": game_id,
+            "title": str(row.get("title") or game_id),
+            "status": row.get("status"),
+            "version_number": row.get("version_number"),
+            "reviews_visible": visible,
+            "reviews_hidden": int(metrics["hidden"]),
+            "rating_average": round(metrics["rating_sum"] / visible, 2) if visible else None,
+            "approximate_launches": launches_by_game.get(game_id, 0),
+            "launch_measurement": "approximate_non_monetary",
+            "updated_at": row.get("updated_at"),
+        })
+
+    return {
+        "games": games,
+        "count": len(games),
+        "monetary": False,
+    }
+
+
 async def assert_publication_entitlement(owner_id: str, draft_id: str) -> dict:
     entitlement = await db.games_developer_entitlements.find_one({"owner_id": owner_id})
     if not _active_entitlement(entitlement):
