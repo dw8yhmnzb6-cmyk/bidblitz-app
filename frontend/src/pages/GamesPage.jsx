@@ -52,7 +52,7 @@ const COPY = {
 const FIRST_PARTY_GAMES = [
   { id: "match", title: "BidBlitz Match", category: "Puzzle", text: "matchText", available: true },
   { id: "bubble", title: "Bubble Islands", category: "Puzzle", text: "bubbleText", available: true },
-  { id: "runner", title: "Blitz Runner", category: "Arcade", text: "runnerText", available: false },
+  { id: "runner", title: "Blitz Runner", category: "Arcade", text: "runnerText", available: true },
 ];
 
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
@@ -102,7 +102,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const ids = ["match", "bubble", ...publishedGames.map((game) => game.id)]
+    const ids = ["match", "bubble", "runner", ...publishedGames.map((game) => game.id)]
       .filter((value, index, values) => typeof value === "string" && value && values.indexOf(value) === index)
       .slice(0, 50);
     if (ids.length === 0) {
