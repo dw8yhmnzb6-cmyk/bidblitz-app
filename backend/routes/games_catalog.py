@@ -226,6 +226,128 @@ def _roots_are_distinct(*roots: Path) -> bool:
     return len(set(resolved)) == len(resolved)
 
 
+def _release_snapshot_issues(version: dict | None) -> list[str]:
+    if not version:
+        return ["active_version_missing"]
+
+    issues = []
+    if version.get("publication_status") != "published":
+        issues.append("version_not_published")
+    if version.get("release_status") != "frozen":
+        issues.append("release_not_frozen")
+
+    raw_path = str(version.get("release_path") or "").strip()
+    if not raw_path:
+        issues.append("release_snapshot_missing")
+        return issues
+
+    try:
+        release_root = RELEASE_ROOT.resolve()
+        release_path = Path(raw_path).resolve()
+    except (OSError, RuntimeError):
+        issues.append("release_snapshot_unavailable")
+        return issues
+
+    if not release_path.is_relative_to(release_root):
+        issues.append("release_outside_root")
+        return issues
+    if not (release_path / "index.html").is_file():
+        issues.append("release_index_missing")
+    return issues
+
+
+def _public_url_issues(catalog_row: dict) -> list[str]:
+    slug = str(catalog_row.get("slug") or "")
+    if not slug or not _SLUG.fullmatch(slug):
+        return ["public_slug_invalid"]
+    try:
+        expected = _configured_public_url(slug)
+    except HTTPException:
+        return ["public_origin_not_ready"]
+    if catalog_row.get("public_url") != expected:
+        return ["public_url_mismatch"]
+    return []
+
+
+@admin_router.get("/release-health")
+async def games_release_health(request: Request):
+    """Read-only health for published third-party release snapshots."""
+    await _admin(request)
+    rows = await db.games_catalog.find(
+        {"status": "published"},
+        {
+            "_id": 0,
+            "id": 1,
+            "title": 1,
+            "slug": 1,
+            "public_url": 1,
+            "active_version_id": 1,
+            "version_number": 1,
+            "updated_at": 1,
+        },
+    ).sort("updated_at", -1).limit(200).to_list(200)
+
+    games = []
+    healthy = 0
+    busy = 0
+    degraded = 0
+
+    for row in rows:
+        game_id = str(row.get("id") or "")
+        version_id = str(row.get("active_version_id") or "")
+        version = None
+        if game_id and version_id:
+            version = await db.game_studio_versions.find_one(
+                {"id": version_id, "draft_id": game_id},
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "draft_id": 1,
+                    "publication_status": 1,
+                    "release_status": 1,
+                    "release_path": 1,
+                },
+            )
+        issues = [*_release_snapshot_issues(version), *_public_url_issues(row)]
+        lock = await db.games_publication_locks.find_one(
+            {"_id": game_id},
+            {"_id": 1},
+        ) if game_id else None
+
+        if issues:
+            status = "degraded"
+            degraded += 1
+        elif lock:
+            status = "busy"
+            busy += 1
+        else:
+            status = "ok"
+            healthy += 1
+
+        games.append({
+            "id": game_id,
+            "title": str(row.get("title") or game_id),
+            "active_version_id": version_id or None,
+            "version_number": row.get("version_number"),
+            "status": status,
+            "issues": issues,
+            "updated_at": row.get("updated_at"),
+        })
+
+    return {
+        "status": "ok" if degraded == 0 else "attention",
+        "summary": {
+            "published": len(games),
+            "healthy": healthy,
+            "busy": busy,
+            "degraded": degraded,
+        },
+        "games": games,
+        "side_effects": "none",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @admin_router.get("/diagnostics")
 async def games_diagnostics(request: Request):
     """Read-only operational snapshot for the Games admin dashboard."""
