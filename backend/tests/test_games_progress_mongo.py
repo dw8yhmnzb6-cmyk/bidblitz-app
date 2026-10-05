@@ -18,6 +18,16 @@ def payload(completed: int, score_base: int):
     return progress.MatchProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
 
 
+def bubble_payload(completed: int, score_base: int):
+    best = [0] * 20
+    stars = [0] * 20
+    for index in range(completed):
+        best[index] = score_base + index
+        stars[index] = 2 if index % 2 == 0 else 3
+    unlocked = 1 if completed == 0 else min(20, completed + 1)
+    return progress.BubbleProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
+
+
 class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         url = os.getenv("GAME_STUDIO_TEST_MONGO_URL")
@@ -26,7 +36,9 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
         self.client = AsyncIOMotorClient(url)
         self.database = self.client["bidblitz_games_progress_test"]
         await self.database.games_match_progress.delete_many({})
+        await self.database.games_bubble_progress.delete_many({})
         await self.database.games_match_progress.create_index("owner_id", unique=True)
+        await self.database.games_bubble_progress.create_index("owner_id", unique=True)
         self.old_db = progress.db
         self.old_owner = progress._owner
         progress.db = self.database
@@ -80,6 +92,22 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
             return "alice"
         progress._owner = alice
         self.assertEqual((await progress.get_match_progress(None))["unlocked"], 4)
+
+
+    async def test_parallel_bubble_devices_merge_monotonically(self):
+        one = bubble_payload(4, 900)
+        two = bubble_payload(7, 600)
+        await asyncio.gather(*[
+            progress.save_bubble_progress(None, one),
+            progress.save_bubble_progress(None, two),
+            progress.save_bubble_progress(None, one),
+            progress.save_bubble_progress(None, two),
+        ])
+        saved = await progress.get_bubble_progress(None)
+        self.assertEqual(saved["unlocked"], 8)
+        self.assertEqual(saved["best"][0], 900)
+        self.assertEqual(saved["best"][4], 604)
+        self.assertEqual(saved["stars"][1], 3)
 
 
 if __name__ == "__main__":
