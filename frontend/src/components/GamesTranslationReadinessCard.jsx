@@ -141,7 +141,7 @@ export default function GamesTranslationReadinessCard({ locale = "en" }) {
   const reviewReady = pendingCount === 0;
 
   const renderLanguageRow = (code, reviewed) => (
-    <div key={code} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.025] px-3 py-2">
+    <div key={code} data-testid={`translation-review-${code}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.025] px-3 py-2">
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold text-white/85">{labels.get(code) || code}</p>
         <p className="mt-0.5 font-mono text-[10px] text-white/35">{code}</p>
