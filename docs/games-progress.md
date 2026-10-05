@@ -13,6 +13,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Draft creation uses an Idempotency-Key and atomic per-account slot reservations, so retries target the same create attempt and concurrent requests cannot exceed 100 drafts. Deleted create keys cannot recreate a removed draft.
 - Language selectors in catalog and studio: 50 distinct languages, 51 options including separate Chinese scripts. Preferences persist locally; existing regional options remain supported.
 - Shared checked frontend/backend language registry; script-sensitive locale resolution, RTL metadata and explicit English fallback where Games copy is not yet reviewed.
+- Translation readiness now separates “copy present” from “human reviewed” through a checked review manifest and CI report, so fallback or machine-provided copy cannot be mistaken for launch-reviewed localization.
 - Account-backed Games favorites with guest-local fallback and Mongo concurrency protection.
 - BidBlitz Match synchronizes unlocked levels, best scores and stars across signed-in devices. Coins, purchases, lives, RNG and active board remain device-local and are never accepted by the progress API.
 - Secure third-party HTML5 ZIP quarantine upload: size/file-count limits, root index.html requirement, path/symlink/archive/server-file rejection and private non-public storage. Uploaded code is not executed before review.
@@ -49,6 +50,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Secure upload, review, private preview, public catalog, publication history, developer entitlement, launch preflight and publication-lock flows have dedicated backend tests.
 - Mongo-backed tests cover developer publication-slot concurrency and per-game publication-operation locking.
 - Games frontend ESLint is green.
+- Translation readiness tests verify registry integrity, missing-copy detection and rejection of invalid human-review claims; CI prints pending human-review codes without falsely marking them launch-ready.
 - Games JavaScript tests, including Match rules/storage/account-progress, are green.
 - Bubble Islands engine and account-progress tests cover deterministic boards, scoring, level unlocks, corrupt saves and monotonic account merge behavior.
 - Blitz Runner engine and account-progress tests cover deterministic courses, collision/safe-step behavior, scoring, level unlocks, corrupt saves and monotonic account merge behavior.
