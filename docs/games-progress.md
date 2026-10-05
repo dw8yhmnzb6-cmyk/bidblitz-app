@@ -6,7 +6,8 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 
 - Games catalog with search, category filters and illustrated first-party/community cards.
 - First-party BidBlitz Match preview with 30 levels, specials, lives and test coins.
-- First-party Bubble Islands preview is playable with 20 deterministic puzzle levels, local save state, ratings/favorites/recent-play integration and account-backed synchronization of unlocked levels, best scores and stars. It has no wagers, payouts or wallet connection. Blitz Runner remains planned.
+- First-party Bubble Islands preview is playable with 20 deterministic puzzle levels, local save state, ratings/favorites/recent-play integration and account-backed synchronization of unlocked levels, best scores and stars. It has no wagers, payouts or wallet connection.
+- First-party Blitz Runner preview is playable with 15 deterministic runner levels, local save state, ratings/favorites/recent-play integration and account-backed synchronization of unlocked levels, best scores and stars. It has no wagers, payouts or wallet connection.
 - Games SPA deep-link routing is separated from static first-party game assets: `/games` is the application route and Match assets live under `/game-assets`, avoiding static-host/Nginx directory collisions.
 - Existing authentication and owner-scoped developer metadata drafts, revision checks and unsaved-input protection.
 - Draft creation uses an Idempotency-Key and atomic per-account slot reservations, so retries target the same create attempt and concurrent requests cannot exceed 100 drafts. Deleted create keys cannot recreate a removed draft.
@@ -50,6 +51,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Games frontend ESLint is green.
 - Games JavaScript tests, including Match rules/storage/account-progress, are green.
 - Bubble Islands engine and account-progress tests cover deterministic boards, scoring, level unlocks, corrupt saves and monotonic account merge behavior.
+- Blitz Runner engine and account-progress tests cover deterministic courses, collision/safe-step behavior, scoring, level unlocks, corrupt saves and monotonic account merge behavior.
 - Games frontend production build is green.
 - Playwright Games browser acceptance is green for 320x568, 390x844, 768x1024 and 1440x900.
 - Browser acceptance covers catalog/search/filter behavior, persisted RTL language switching and the Match preview on 320 px width.
@@ -57,6 +59,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Browser acceptance covers the public review panel, guest-safe behavior, Games admin operations diagnostics and the review moderation list.
 - Browser acceptance also covers Match/community detail deep links, visible language badges, rating summaries, recent-play UI and anonymous launch telemetry.
 - Browser acceptance covers Bubble Islands catalog/card rating, first-party detail routing and the embedded playable preview.
+- Browser acceptance covers Blitz Runner catalog/card rating, first-party detail routing and the embedded playable preview.
 - Public catalog detail API tests verify that only published public fields are returned and private release/owner data stays hidden.
 - Anonymous launch-counter tests verify published-game gating and absence of user/wallet identifiers; developer analytics tests verify owner scoping and explicitly non-monetary launch totals.
 - Release-health backend tests cover healthy, busy and degraded states, and browser acceptance verifies the admin card without exposing private paths.
@@ -70,7 +73,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 2. Physical-device acceptance where needed beyond automated browser/mobile viewport coverage.
 3. Developer billing provider integration; keep checkout disabled until explicitly approved.
 4. Games purchases, refunds, developer revenue share and payouts, with separate financial/admin controls.
-5. Blitz Runner and broader player features such as trusted rankings where approved.
+5. Broader player features such as trusted rankings where approved.
 6. Production host/DNS/environment configuration for Games.BidBlitz.ae plus isolated public-game and preview origins.
 7. Deployment, monitoring and final launch acceptance.
 
