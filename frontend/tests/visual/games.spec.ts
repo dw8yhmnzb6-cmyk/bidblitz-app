@@ -283,6 +283,27 @@ async function mockDeveloperStudioApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/games/developer/analytics/games', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        count: 1,
+        monetary: false,
+        games: [{
+          id: 'game-a',
+          title: 'Island Quest',
+          status: 'published',
+          version_number: 2,
+          reviews_visible: 2,
+          reviews_hidden: 1,
+          rating_average: 4.5,
+          approximate_launches: 17,
+          launch_measurement: 'approximate_non_monetary',
+        }],
+      }),
+    });
+  });
 }
 
 async function openGames(page: Page, width: number, height: number, language = 'de') {
@@ -409,6 +430,11 @@ test('Games developer studio shows owner-scoped non-monetary portfolio metrics',
   await expect(analytics.getByText('Öffentliche Reviews')).toBeVisible();
   await expect(analytics.getByText('Starts (ca.)')).toBeVisible();
   await expect(analytics.getByText('42', { exact: true })).toBeVisible();
+  const gameAnalytics = page.getByTestId('developer-game-analytics-game-a');
+  await expect(gameAnalytics).toBeVisible();
+  await expect(gameAnalytics.getByText('Island Quest')).toBeVisible();
+  await expect(gameAnalytics.getByText('17', { exact: true })).toBeVisible();
+  await expect(gameAnalytics.getByText('4.5', { exact: false })).toBeVisible();
   await expect(analytics.getByText('Games-Billing bleibt gesperrt.')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
