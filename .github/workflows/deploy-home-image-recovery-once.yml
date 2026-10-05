@@ -1,0 +1,195 @@
+name: One-time Home Insurance Image Recovery
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/deploy-home-image-recovery-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e4b8c5300b60fd7295f1f4aea976b37765e8038f
+          fetch-depth: 0
+      - name: Package the reviewed image-only delta
+        run: |
+          set -euo pipefail
+          git diff ce2798a75eb7d4d2bdd68a43abcb146b0d86c65a e4b8c5300b60fd7295f1f4aea976b37765e8038f -- backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py > /tmp/bidblitz-image-recovery-e4b8c530.patch
+          test -s /tmp/bidblitz-image-recovery-e4b8c530.patch
+          git diff --check ce2798a75eb7d4d2bdd68a43abcb146b0d86c65a e4b8c5300b60fd7295f1f4aea976b37765e8038f
+          python3 -m py_compile backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' '212.227.20.190 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDKptYyzslhxZrCw9Sw6geiaiIhalloP+wIAI7IMlNVA' > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+      - name: Upload reviewed patch through the existing deployment connection
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: sshpass -e scp -o StrictHostKeyChecking=yes -o ConnectTimeout=10 /tmp/bidblitz-image-recovery-e4b8c530.patch root@212.227.20.190:/tmp/bidblitz-image-recovery-e4b8c530.patch
+      - name: Stage, validate, back up and activate the image correction
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=10 root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -Eeuo pipefail
+          APP_ROOT=/var/www/bidblitz/backend
+          PY="$APP_ROOT/venv/bin/python"
+          PATCH_FILE=/tmp/bidblitz-image-recovery-e4b8c530.patch
+          test -x "$PY"
+          command -v patch >/dev/null
+          pm2 describe api >/dev/null
+          test ! -e "$APP_ROOT/core/product_images.py"
+          STAGE=$(mktemp -d /tmp/bidblitz-image-recovery.XXXXXX)
+          mkdir -p "$STAGE/backend/core" "$STAGE/backend/routes"
+          for file in routes/recommendations.py routes/insurance.py; do
+            cp -p "$APP_ROOT/$file" "$STAGE/backend/$file"
+          done
+          curl -fsS --max-time 15 http://127.0.0.1:8001/api/recommendations/home -o "$STAGE/before-home.json"
+          curl -fsS --max-time 20 https://bidblitz.ae/version.json -o "$STAGE/before-version.json"
+          curl -fsS --max-time 20 https://bidblitz.ae/api/payments/pricing -o "$STAGE/before-pricing.json"
+          "$PY" - "$STAGE" <<'PY'
+          import hashlib, json, pathlib, sys
+          stage = pathlib.Path(sys.argv[1])
+          files = ["routes/recommendations.py", "routes/insurance.py"]
+          hashes = {name: hashlib.sha256((stage / "backend" / name).read_bytes()).hexdigest() for name in files}
+          (stage / "before-hashes.json").write_text(json.dumps(hashes))
+          home = json.loads((stage / "before-home.json").read_text())
+          target = [item for section in home["sections"] if section["type"] == "insurance" for item in section["items"] if item.get("title") == "Smartphone Pro"]
+          assert len(target) == 1, "Expected exactly one existing Smartphone Pro record"
+          assert "photo-1551355716-d99cdb39c5b9" in target[0].get("image_url", ""), "Live record changed; do not apply an obsolete patch"
+          version = json.loads((stage / "before-version.json").read_text())
+          print("PREFLIGHT", json.dumps({"files": hashes, "frontend_version": version.get("frontend_version"), "product_id": target[0]["product_id"]}))
+          PY
+          cd "$STAGE"
+          patch --dry-run --batch --forward --fuzz=0 -p1 < "$PATCH_FILE"
+          patch --batch --forward --fuzz=0 -p1 < "$PATCH_FILE"
+          "$PY" -m py_compile backend/core/product_images.py backend/routes/recommendations.py backend/routes/insurance.py
+          "$PY" - "$STAGE" <<'PY'
+          import ast, asyncio, importlib.util, json, pathlib, sys
+          from types import SimpleNamespace
+          from fastapi import HTTPException
+          stage = pathlib.Path(sys.argv[1])
+          spec = importlib.util.spec_from_file_location("staged_product_images", stage / "backend/core/product_images.py")
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          normalize = helper.normalize_insurance_product_image
+          home = json.loads((stage / "before-home.json").read_text())
+          stored = next(item for section in home["sections"] if section["type"] == "insurance" for item in section["items"] if item.get("title") == "Smartphone Pro")
+          old_url = stored["image_url"]
+          new_url = "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"
+          expected = {**stored, "image_url": new_url}
+          assert normalize(stored) == expected
+          assert stored["image_url"] == old_url
+          for value in [None, "", "https://provider.example/image.jpg", "https://[invalid", new_url]:
+              product = {"image_url": value}
+              assert normalize(product) == product
+          for value in [old_url.split("?")[0], old_url.replace("w=400", "w=800"), old_url.replace("https:", "http:")]:
+              assert normalize({"image_url": value})["image_url"] == new_url
+          class Collection:
+              def __init__(self, items): self.items = items
+              def find(self, *args, **kwargs): return self
+              def sort(self, *args): return self
+              def limit(self, *args): return self
+              async def to_list(self, *args): return self.items
+              async def find_one(self, *args): return self.items[0]
+          empty = Collection([])
+          database = SimpleNamespace(properties=empty, events=empty, restaurants=empty, jobs=empty, flights=empty, insurance_products=Collection([stored]))
+          async def anonymous(request): raise HTTPException(status_code=401)
+          context = {"db": database, "normalize_insurance_product_image": normalize, "get_current_user": anonymous, "Request": object, "TEST_MODE": False, "HTTPException": HTTPException}
+          for name, functions in [("recommendations.py", {"get_home_recommendations"}), ("insurance.py", {"list_products", "get_product"})]:
+              for node in ast.parse((stage / "backend/routes" / name).read_text()).body:
+                  if isinstance(node, ast.AsyncFunctionDef) and node.name in functions:
+                      node.decorator_list = []
+                      exec(compile(ast.Module(body=[node], type_ignores=[]), name, "exec"), context)
+          assert asyncio.run(context["get_home_recommendations"](None))["sections"][0]["items"] == [expected]
+          assert asyncio.run(context["list_products"]()) == {"products": [expected], "count": 1}
+          assert asyncio.run(context["get_product"](stored["product_id"])) == expected
+          print("STAGED_TESTS_PASSED: current production source; home/list/detail; preserved record; custom/malformed URLs")
+          PY
+          "$PY" - "$STAGE" "$APP_ROOT" <<'PY'
+          import hashlib, json, pathlib, sys
+          stage, app = map(pathlib.Path, sys.argv[1:])
+          baseline = json.loads((stage / "before-hashes.json").read_text())
+          for name, expected in baseline.items():
+              actual = hashlib.sha256((app / name).read_bytes()).hexdigest()
+              assert actual == expected, f"Concurrent source change: {name}"
+          assert not (app / "core/product_images.py").exists(), "Unexpected existing helper"
+          PY
+          BACKUP_ROOT="/var/www/bidblitz/image-recovery-backup-$(date -u +%Y%m%dT%H%M%S)"
+          mkdir -p "$BACKUP_ROOT/routes"
+          for file in routes/recommendations.py routes/insurance.py; do
+            cp -p "$APP_ROOT/$file" "$BACKUP_ROOT/$file"
+          done
+          cp "$STAGE/before-hashes.json" "$BACKUP_ROOT/before-hashes.json"
+          rollback() {
+            result=$?
+            trap - ERR
+            set +e
+            for file in routes/recommendations.py routes/insurance.py; do
+              cp -p "$BACKUP_ROOT/$file" "$APP_ROOT/$file"
+            done
+            rm -f "$APP_ROOT/core/product_images.py"
+            pm2 restart api
+            echo "IMAGE_RECOVERY_ROLLED_BACK: $BACKUP_ROOT"
+            exit "$result"
+          }
+          trap rollback ERR
+          install -m 644 "$STAGE/backend/core/product_images.py" "$APP_ROOT/core/product_images.py"
+          for file in routes/recommendations.py routes/insurance.py; do
+            cp -p "$STAGE/backend/$file" "$APP_ROOT/$file.image-recovery.tmp"
+            mv -f "$APP_ROOT/$file.image-recovery.tmp" "$APP_ROOT/$file"
+          done
+          pm2 restart api
+          verified=0
+          for attempt in $(seq 1 25); do
+            if curl -fsS --max-time 5 http://127.0.0.1:8001/api/recommendations/home -o "$STAGE/after-local-home.json"; then
+              if "$PY" - "$STAGE/after-local-home.json" "$STAGE/before-home.json" <<'PY'
+          import json, pathlib, sys
+          def target(path):
+              data = json.loads(pathlib.Path(path).read_text())
+              return next(item for section in data["sections"] if section["type"] == "insurance" for item in section["items"] if item.get("title") == "Smartphone Pro")
+          after, before = map(target, sys.argv[1:])
+          assert after["image_url"] == "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"
+          assert {**after, "image_url": before["image_url"]} == before
+          print("LOCAL_HOME_VERIFIED", after["product_id"])
+          PY
+              then verified=1; break; fi
+            fi
+            sleep 2
+          done
+          test "$verified" = 1
+          curl -fsS --max-time 20 'https://bidblitz.ae/api/recommendations/home?image_recovery=e4b8c530' -o "$STAGE/after-public-home.json"
+          curl -fsS --max-time 20 https://bidblitz.ae/version.json -o "$STAGE/after-version.json"
+          curl -fsS --max-time 20 https://bidblitz.ae/api/payments/pricing -o "$STAGE/after-pricing.json"
+          curl -fsS --max-time 20 https://bidblitz.ae/api/payments/fee-info >/dev/null
+          curl -fsS --max-time 20 https://bidblitz.ae/api/system/version >/dev/null
+          curl -fsS --max-time 20 'https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80' >/dev/null
+          "$PY" - "$STAGE" <<'PY'
+          import json, pathlib, sys
+          stage = pathlib.Path(sys.argv[1])
+          def target(name):
+              data = json.loads((stage / name).read_text())
+              return next(item for section in data["sections"] if section["type"] == "insurance" for item in section["items"] if item.get("title") == "Smartphone Pro")
+          before, after = target("before-home.json"), target("after-public-home.json")
+          assert after["image_url"] == "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"
+          assert {**after, "image_url": before["image_url"]} == before
+          old_version = json.loads((stage / "before-version.json").read_text())
+          new_version = json.loads((stage / "after-version.json").read_text())
+          assert old_version == new_version, "Frontend release changed during deployment"
+          old_pricing = json.loads((stage / "before-pricing.json").read_text())
+          new_pricing = json.loads((stage / "after-pricing.json").read_text())
+          assert old_pricing == new_pricing, "Payment pricing changed during image deployment"
+          print("PUBLIC_IMAGE_FIX_VERIFIED", json.dumps({"product_id": after["product_id"], "image_url": after["image_url"], "frontend_version": new_version.get("frontend_version")}))
+          PY
+          trap - ERR
+          echo "IMAGE_RECOVERY_ACTIVATED e4b8c5300b60fd7295f1f4aea976b37765e8038f; backup: $BACKUP_ROOT"
+          rm -f "$PATCH_FILE"
+          REMOTE
