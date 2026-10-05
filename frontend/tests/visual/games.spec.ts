@@ -138,6 +138,9 @@ async function mockGamesApis(page: Page) {
 }
 
 async function mockGamesAdminApis(page: Page) {
+  const reviewedTranslations = new Set<string>();
+  const reviewableCodes = ['de', 'sq'];
+
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -205,6 +208,48 @@ async function mockGamesAdminApis(page: Page) {
           reviews_hidden: 2,
           review_moderation_events: 3,
         },
+      }),
+    });
+  });
+  await page.route('**/api/admin/game-studio/translation-reviews**', async (route) => {
+    const url = new URL(route.request().url());
+    const prefix = '/api/admin/game-studio/translation-reviews/';
+    if (route.request().method() === 'POST' && url.pathname.startsWith(prefix)) {
+      const code = decodeURIComponent(url.pathname.slice(prefix.length));
+      const body = route.request().postDataJSON() as { reviewed?: boolean };
+      if (body.reviewed) reviewedTranslations.add(code);
+      else reviewedTranslations.delete(code);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code,
+          reviewed: reviewedTranslations.has(code),
+          reviewed_at: reviewedTranslations.has(code) ? '2026-10-05T08:00:00+00:00' : null,
+          note: '',
+        }),
+      });
+      return;
+    }
+
+    const reviewed = [...reviewedTranslations];
+    const pending = reviewableCodes.filter((code) => !reviewedTranslations.has(code));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        source_language: 'en',
+        localized_count: 50,
+        human_reviewed_count: reviewed.length,
+        pending_count: 50 - reviewed.length,
+        human_reviewed_codes: reviewed,
+        pending_codes: pending,
+        items: reviewableCodes.map((code) => ({
+          code,
+          reviewed: reviewedTranslations.has(code),
+          reviewed_at: reviewedTranslations.has(code) ? '2026-10-05T08:00:00+00:00' : null,
+          note: '',
+        })),
       }),
     });
   });
@@ -512,6 +557,16 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(translations.getByText('51', { exact: true }).first()).toBeVisible();
   await expect(translations.getByText('0/50', { exact: true })).toBeVisible();
   await expect(translations.getByText('50', { exact: true }).first()).toBeVisible();
+
+  await translations.getByText('Offene Sprachen (50)', { exact: true }).click();
+  const germanReview = translations.getByTestId('translation-review-de');
+  await expect(germanReview).toBeVisible();
+  await germanReview.getByRole('button', { name: 'Als geprüft markieren' }).click();
+  await expect(translations.getByText('1/50', { exact: true })).toBeVisible();
+  await translations.getByText('Geprüfte Sprachen (1)', { exact: true }).click();
+  const reviewedGerman = translations.getByTestId('translation-review-de');
+  await reviewedGerman.getByRole('button', { name: 'Freigabe zurücknehmen' }).click();
+  await expect(translations.getByText('0/50', { exact: true })).toBeVisible();
 
   const preflight = page.getByTestId('games-preflight-card');
   await expect(preflight).toBeVisible();
