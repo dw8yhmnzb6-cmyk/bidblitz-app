@@ -9,6 +9,7 @@ const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND}/api/admin/game-studio/versions`;
 const PREFLIGHT_API = `${BACKEND}/api/admin/game-studio/preflight`;
 const DIAGNOSTICS_API = `${BACKEND}/api/admin/game-studio/diagnostics`;
+const RELEASE_HEALTH_API = `${BACKEND}/api/admin/game-studio/release-health`;
 const COPY = {
   de: {
     back: "Zurück", eyebrow: "BIDBLITZ GAMES · ADMIN-PRÜFUNG", title: "Spielversionen prüfen.",
@@ -21,6 +22,7 @@ const COPY = {
     blocked: "Ausführung bleibt isoliert", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", approvePreview: "Preview freigeben", publish: "Im Katalog veröffentlichen", rollback: "Diese Version aktivieren", unpublish: "Veröffentlichung stoppen", publishError: "Veröffentlichungsstatus konnte nicht geändert werden.", published: "Veröffentlicht",
     preflightTitle: "Games Launch-Preflight", preflightReady: "Sicher für nicht-monetäre Staging-Tests", preflightBlocked: "Konfiguration noch nicht bereit", preflightLoadError: "Preflight konnte nicht geladen werden.", publicOrigin: "Public-Origin", previewOrigin: "Preview-Origin", storageSafety: "Private Speicher", billingGuard: "Billing-Sperre", safe: "Sicher", unsafe: "Prüfen", billingOff: "Gesperrt", billingOn: "Aktiv",
     diagnosticsTitle: "Games Betrieb", diagnosticsSubtitle: "Live-Snapshot der Games-Pipeline ohne private Pfade oder Kundendaten.", diagnosticsLoadError: "Games-Diagnose konnte nicht geladen werden.", drafts: "Entwürfe", versions: "Versionen", publicationEvents: "Publikationsereignisse", publicationLocks: "Aktive Locks", unpublished: "Offline", reviewsVisible: "Reviews sichtbar", reviewsHidden: "Reviews ausgeblendet", reviewModerationEvents: "Review-Moderationen", operational: "Betrieb OK", attention: "Prüfung erforderlich",
+    releaseHealthTitle: "Release Health", releaseHealthSubtitle: "Prüft veröffentlichte Community-Spiele, ohne fremden Code auszuführen oder Serverpfade offenzulegen.", releaseHealthLoadError: "Release-Status konnte nicht geladen werden.", healthy: "Gesund", releaseBusy: "Änderung läuft", degraded: "Fehlerhaft", noPublishedGames: "Keine veröffentlichten Community-Spiele.",
   },
   en: {
     back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
@@ -33,6 +35,7 @@ const COPY = {
     blocked: "Execution remains isolated", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.", openPreview: "Open private preview", previewError: "Could not create preview link.", approvePreview: "Approve preview", publish: "Publish to catalog", rollback: "Make this version active", unpublish: "Stop publication", publishError: "Could not change publication status.", published: "Published",
     preflightTitle: "Games launch preflight", preflightReady: "Safe for non-monetary staging tests", preflightBlocked: "Configuration not ready yet", preflightLoadError: "Could not load preflight.", publicOrigin: "Public origin", previewOrigin: "Preview origin", storageSafety: "Private storage", billingGuard: "Billing guard", safe: "Safe", unsafe: "Check", billingOff: "Locked", billingOn: "Enabled",
     diagnosticsTitle: "Games operations", diagnosticsSubtitle: "Live Games pipeline snapshot without private paths or customer data.", diagnosticsLoadError: "Could not load Games diagnostics.", drafts: "Drafts", versions: "Versions", publicationEvents: "Publication events", publicationLocks: "Active locks", unpublished: "Offline", reviewsVisible: "Reviews visible", reviewsHidden: "Reviews hidden", reviewModerationEvents: "Review moderation", operational: "Operations OK", attention: "Needs attention",
+    releaseHealthTitle: "Release health", releaseHealthSubtitle: "Checks published community games without executing third-party code or exposing server paths.", releaseHealthLoadError: "Could not load release health.", healthy: "Healthy", releaseBusy: "Change in progress", degraded: "Degraded", noPublishedGames: "No published community games.",
   },
   sq: {
     back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
@@ -45,6 +48,7 @@ const COPY = {
     blocked: "Ekzekutimi mbetet i izoluar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", approvePreview: "Prano provën", publish: "Publiko në katalog", rollback: "Aktivizo këtë version", unpublish: "Ndalo publikimin", publishError: "Statusi i publikimit nuk u ndryshua.", published: "Publikuar",
     preflightTitle: "Kontrolli para publikimit", preflightReady: "I sigurt për testim pa pagesa", preflightBlocked: "Konfigurimi ende nuk është gati", preflightLoadError: "Kontrolli nuk u ngarkua.", publicOrigin: "Origjina publike", previewOrigin: "Origjina e provës", storageSafety: "Ruajtja private", billingGuard: "Bllokimi i pagesave", safe: "Sigurt", unsafe: "Kontrollo", billingOff: "Bllokuar", billingOn: "Aktiv",
     diagnosticsTitle: "Operimi i Games", diagnosticsSubtitle: "Pamje e pipeline-it të Games pa shtigje private ose të dhëna klientësh.", diagnosticsLoadError: "Diagnostika e Games nuk u ngarkua.", drafts: "Drafte", versions: "Versione", publicationEvents: "Ngjarje publikimi", publicationLocks: "Bllokime aktive", unpublished: "Offline", reviewsVisible: "Vlerësime të dukshme", reviewsHidden: "Vlerësime të fshehura", reviewModerationEvents: "Moderime vlerësimesh", operational: "Operimi OK", attention: "Kërkon kontroll",
+    releaseHealthTitle: "Gjendja e publikimeve", releaseHealthSubtitle: "Kontrollon lojërat e publikuara pa ekzekutuar kod të palëve të treta ose pa zbuluar shtigje serveri.", releaseHealthLoadError: "Gjendja e publikimeve nuk u ngarkua.", healthy: "Në rregull", releaseBusy: "Ndryshim në proces", degraded: "Me problem", noPublishedGames: "Nuk ka lojëra komunitare të publikuara.",
   },
 };
 
@@ -85,6 +89,24 @@ export default function AdminGamesReviewPage({ onBack }) {
   const [diagnostics, setDiagnostics] = useState(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
   const [diagnosticsError, setDiagnosticsError] = useState("");
+  const [releaseHealth, setReleaseHealth] = useState(null);
+  const [releaseHealthLoading, setReleaseHealthLoading] = useState(true);
+  const [releaseHealthError, setReleaseHealthError] = useState("");
+
+  const loadReleaseHealth = useCallback(async () => {
+    setReleaseHealthLoading(true);
+    setReleaseHealthError("");
+    try {
+      const response = await fetch(RELEASE_HEALTH_API, { credentials: "include" });
+      const body = await read(response);
+      setReleaseHealth(body);
+    } catch (loadError) {
+      setReleaseHealth(null);
+      setReleaseHealthError(loadError?.message || c.releaseHealthLoadError);
+    } finally {
+      setReleaseHealthLoading(false);
+    }
+  }, [c.releaseHealthLoadError]);
 
   const loadDiagnostics = useCallback(async () => {
     setDiagnosticsLoading(true);
@@ -132,6 +154,7 @@ export default function AdminGamesReviewPage({ onBack }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadPreflight(); }, [loadPreflight]);
   useEffect(() => { loadDiagnostics(); }, [loadDiagnostics]);
+  useEffect(() => { loadReleaseHealth(); }, [loadReleaseHealth]);
 
   const prepare = async (versionId) => {
     setBusy(versionId); setError("");
@@ -174,7 +197,7 @@ export default function AdminGamesReviewPage({ onBack }) {
       else url = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/games/${encodeURIComponent(version.draft_id)}/unpublish`;
       const response = await fetch(url, { method: "POST", credentials: "include" });
       await read(response);
-      await Promise.all([load(), loadDiagnostics()]);
+      await Promise.all([load(), loadDiagnostics(), loadReleaseHealth()]);
     } catch (publishError) {
       setError(publishError?.message || c.publishError);
     } finally {
@@ -253,6 +276,47 @@ export default function AdminGamesReviewPage({ onBack }) {
               <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
             </div>)}
           </div>}
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-release-health-card">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.releaseHealthTitle}</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">{c.releaseHealthSubtitle}</p>
+            </div>
+            <button onClick={loadReleaseHealth} disabled={releaseHealthLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+              <RefreshCw size={14} className={releaseHealthLoading ? "animate-spin" : ""} />{c.retry}
+            </button>
+          </div>
+          {releaseHealthError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{releaseHealthError}</p>}
+          {releaseHealth && <>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                [c.healthy, releaseHealth.summary?.healthy],
+                [c.releaseBusy, releaseHealth.summary?.busy],
+                [c.degraded, releaseHealth.summary?.degraded],
+              ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                <p className="text-[10px] text-white/45">{label}</p>
+                <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
+              </div>)}
+            </div>
+            {Array.isArray(releaseHealth.games) && releaseHealth.games.length > 0 ? <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {releaseHealth.games.map((game) => <article key={game.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">{game.title || game.id}</p>
+                    <p className="mt-1 text-[10px] text-white/40">v{Number(game.version_number || 0)} · {game.id}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${game.status === "ok" ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100" : game.status === "busy" ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100" : "border-rose-300/20 bg-rose-300/10 text-rose-100"}`}>
+                    {game.status === "ok" ? c.healthy : game.status === "busy" ? c.releaseBusy : c.degraded}
+                  </span>
+                </div>
+                {Array.isArray(game.issues) && game.issues.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">
+                  {game.issues.map((issue) => <code key={issue} className="rounded-lg border border-rose-300/15 bg-rose-300/5 px-2 py-1 text-[10px] text-rose-100/80">{String(issue).replaceAll("_", " ")}</code>)}
+                </div>}
+              </article>)}
+            </div> : <p className="mt-4 rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-white/45">{c.noPublishedGames}</p>}
+          </>}
         </section>
 
         <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
