@@ -299,7 +299,7 @@ async def create_sandbox_refund(
 
     refunds = await db.games_finance_sandbox_transactions.find(
         {"purchase_id": purchase_id, "kind": "refund"},
-        {"_id": 0, "gross_eur_cents": 1},
+        {"_id": 0, "gross_eur_cents": 1, "developer_eur_cents": 1, "platform_eur_cents": 1},
     ).limit(1000).to_list(1000)
     refunded = sum(max(0, int(row.get("gross_eur_cents") or 0)) for row in refunds)
     remaining = int(purchase.get("gross_eur_cents") or 0) - refunded
@@ -307,7 +307,13 @@ async def create_sandbox_refund(
         raise HTTPException(409, "Refund überschreitet den verbleibenden Sandbox-Betrag")
 
     share_bps = int(purchase.get("developer_share_bps") or 0)
-    developer_cents, platform_cents = _split(body.amount_eur_cents, share_bps)
+    if body.amount_eur_cents == remaining:
+        developer_refunded = sum(max(0, int(row.get("developer_eur_cents") or 0)) for row in refunds)
+        platform_refunded = sum(max(0, int(row.get("platform_eur_cents") or 0)) for row in refunds)
+        developer_cents = max(0, int(purchase.get("developer_eur_cents") or 0) - developer_refunded)
+        platform_cents = max(0, int(purchase.get("platform_eur_cents") or 0) - platform_refunded)
+    else:
+        developer_cents, platform_cents = _split(body.amount_eur_cents, share_bps)
     now = datetime.now(timezone.utc)
     doc = {
         "id": _transaction_id("refund", body.idempotency_key),
