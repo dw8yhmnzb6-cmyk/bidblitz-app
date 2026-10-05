@@ -27,6 +27,7 @@ on:
       - "frontend/src/components/GamesDeveloperAnalyticsCard.jsx"
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
+      - "frontend/src/components/GamesTranslationReadinessCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -65,6 +66,7 @@ on:
       - "frontend/src/components/GamesDeveloperAnalyticsCard.jsx"
       - "frontend/src/components/AdminGameDeveloperPlanCard.jsx"
       - "frontend/src/components/GamesLanguageSelect.jsx"
+      - "frontend/src/components/GamesTranslationReadinessCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -170,6 +172,7 @@ jobs:
           src/components/GamesDeveloperAnalyticsCard.jsx
           src/components/AdminGameDeveloperPlanCard.jsx
           src/components/GamesLanguageSelect.jsx
+          src/components/GamesTranslationReadinessCard.jsx
           src/config/languagePolicy.mjs
           src/config/studioCreatePolicy.mjs
           src/config/gamesFavoritesPolicy.mjs
