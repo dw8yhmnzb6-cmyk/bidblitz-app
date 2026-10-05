@@ -36,6 +36,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Privacy-minimal approximate launch counters store only aggregate per-game counts. They contain no account ID, IP, device fingerprint, wallet or monetary data and are shown to the owning developer as a non-billing metric.
 - Read-only release health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency. Admin sees only game metadata, status and safe issue codes; private release paths are never returned.
 - Developer Studio exposes an owner-scoped per-game analytics breakdown with publication status, version, visible/hidden review counts, average rating and approximate non-monetary launches. Other developers' games and metrics are excluded.
+- Read-only Release Health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency without executing third-party code or exposing private paths.
 - Existing financial production guards remain in place.
 
 ## Verification
