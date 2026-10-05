@@ -102,7 +102,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const ids = ["match", ...publishedGames.map((game) => game.id)]
+    const ids = ["match", "bubble", ...publishedGames.map((game) => game.id)]
       .filter((value, index, values) => typeof value === "string" && value && values.indexOf(value) === index)
       .slice(0, 50);
     if (ids.length === 0) {
