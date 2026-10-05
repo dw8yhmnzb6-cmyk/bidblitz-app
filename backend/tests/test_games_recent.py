@@ -74,6 +74,12 @@ class GamesRecentTest(unittest.TestCase):
         )
         recent.get_current_user = AsyncMock(return_value={"_id": "alice", "role": "user"})
 
+    def test_bubble_islands_is_playable_recent_game(self):
+        result = asyncio.run(recent.record_recent_game("bubble", None))
+        self.assertEqual(result["game_id"], "bubble")
+        listed = asyncio.run(recent.list_recent_games(None))
+        self.assertEqual(listed["games"][0]["game_id"], "bubble")
+
     def test_first_party_and_published_game_can_be_recorded_without_owner_leak(self):
         match = asyncio.run(recent.record_recent_game("match", None))
         bubble = asyncio.run(recent.record_recent_game("bubble", None))
