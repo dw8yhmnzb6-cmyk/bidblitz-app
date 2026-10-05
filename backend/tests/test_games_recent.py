@@ -74,14 +74,16 @@ class GamesRecentTest(unittest.TestCase):
         )
         recent.get_current_user = AsyncMock(return_value={"_id": "alice", "role": "user"})
 
-    def test_match_and_published_game_can_be_recorded_without_owner_leak(self):
+    def test_first_party_and_published_game_can_be_recorded_without_owner_leak(self):
         match = asyncio.run(recent.record_recent_game("match", None))
+        bubble = asyncio.run(recent.record_recent_game("bubble", None))
         community = asyncio.run(recent.record_recent_game("community-one", None))
         self.assertEqual(match["game_id"], "match")
+        self.assertEqual(bubble["game_id"], "bubble")
         self.assertEqual(community["game_id"], "community-one")
 
         result = asyncio.run(recent.list_recent_games(None))
-        self.assertEqual({row["game_id"] for row in result["games"]}, {"match", "community-one"})
+        self.assertEqual({row["game_id"] for row in result["games"]}, {"match", "bubble", "community-one"})
         self.assertTrue(all("owner_id" not in row for row in result["games"]))
         self.assertTrue(all("launch_count" not in row for row in result["games"]))
 
