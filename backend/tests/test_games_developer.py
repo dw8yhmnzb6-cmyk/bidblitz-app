@@ -315,14 +315,19 @@ class GamesAnalyticsCounterTest(unittest.TestCase):
             games_launch_totals=self.launches,
         )
 
-    def test_anonymous_match_launch_counter_is_non_monetary(self):
+    def test_anonymous_first_party_launch_counters_are_non_monetary(self):
         first = asyncio.run(analytics.record_game_launch("match"))
         asyncio.run(analytics.record_game_launch("match"))
+        bubble = asyncio.run(analytics.record_game_launch("bubble"))
         self.assertTrue(first["recorded"])
+        self.assertTrue(bubble["recorded"])
         self.assertFalse(first["monetary"])
+        self.assertFalse(bubble["monetary"])
         self.assertEqual(first["measurement"], "approximate_launches")
-        self.assertEqual(self.launches.docs[0]["launches"], 2)
-        serialized = str(self.launches.docs[0])
+        by_game = {row["game_id"]: row for row in self.launches.docs}
+        self.assertEqual(by_game["match"]["launches"], 2)
+        self.assertEqual(by_game["bubble"]["launches"], 1)
+        serialized = str(self.launches.docs)
         self.assertNotIn("owner_id", serialized)
         self.assertNotIn("user_id", serialized)
         self.assertNotIn("wallet", serialized)
