@@ -146,6 +146,17 @@ class GamesReviewsTest(unittest.TestCase):
         self.assertEqual(public["summary"], {"count": 1, "average": 4.0})
         self.assertEqual(public["reviews"][0]["text"], "Relaxing island puzzle.")
 
+    def test_bubble_islands_is_reviewable_first_party(self):
+        result = asyncio.run(reviews.upsert_review(
+            "bubble",
+            reviews.ReviewInput(rating=5, text="Colorful and calm."),
+            None,
+        ))
+        self.assertEqual(result["review"]["game_id"], "bubble")
+        public = asyncio.run(reviews.list_public_reviews("bubble"))
+        self.assertEqual(public["summary"], {"count": 1, "average": 5.0})
+        self.assertEqual(public["reviews"][0]["text"], "Colorful and calm.")
+
     def test_upsert_keeps_one_review_per_account_and_game(self):
         asyncio.run(reviews.upsert_review(
             "match", reviews.ReviewInput(rating=3, text="First"), None
