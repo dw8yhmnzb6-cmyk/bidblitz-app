@@ -5,7 +5,8 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 ## Implemented
 
 - Games catalog with search, category filters and illustrated first-party/community cards.
-- First-party BidBlitz Match preview with 30 levels, specials, lives and test coins. Bubble Islands and Blitz Runner remain planned.
+- First-party BidBlitz Match preview with 30 levels, specials, lives and test coins.
+- First-party Bubble Islands preview is playable with 20 deterministic puzzle levels, local save state, ratings/favorites/recent-play integration and account-backed synchronization of unlocked levels, best scores and stars. It has no wagers, payouts or wallet connection. Blitz Runner remains planned.
 - Games SPA deep-link routing is separated from static first-party game assets: `/games` is the application route and Match assets live under `/game-assets`, avoiding static-host/Nginx directory collisions.
 - Existing authentication and owner-scoped developer metadata drafts, revision checks and unsaved-input protection.
 - Draft creation uses an Idempotency-Key and atomic per-account slot reservations, so retries target the same create attempt and concurrent requests cannot exceed 100 drafts. Deleted create keys cannot recreate a removed draft.
@@ -30,7 +31,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Games review moderation supports admin/super-admin hide/restore actions with audit events; the Games admin UI includes the moderation queue and review health metrics.
 - The public Games catalog exposes reviews on demand; guests can read reviews and signed-in users can create, edit and delete their own review.
 - Public rating summaries are loaded in bulk and shown directly on playable game cards without exposing reviewer identities.
-- Public game detail pages exist for BidBlitz Match and published community games, including descriptions, languages, version, ratings, favorites and a clear isolated launch action.
+- Public game detail pages exist for BidBlitz Match, Bubble Islands and published community games, including descriptions, languages, version, ratings, favorites and a clear isolated launch action.
 - Account-backed recent play history stores only game IDs and timestamps; guests use local-device recent history.
 - Developer Studio includes owner-scoped portfolio analytics for drafts, versions, publication state and review counts.
 - Privacy-minimal approximate launch counters store only aggregate per-game counts. They contain no account ID, IP, device fingerprint, wallet or monetary data and are shown to the owning developer as a non-billing metric.
@@ -43,17 +44,19 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 
 - Dedicated Games backend suite is green on the current branch.
 - Developer API tests cover account isolation, revisions, language validation, idempotent creation, quota enforcement and deleted-key replay protection.
-- Games profile and Match progress tests include real MongoDB concurrency checks.
+- Games profile, Match progress and Bubble Islands progress tests include real MongoDB concurrency checks.
 - Secure upload, review, private preview, public catalog, publication history, developer entitlement, launch preflight and publication-lock flows have dedicated backend tests.
 - Mongo-backed tests cover developer publication-slot concurrency and per-game publication-operation locking.
 - Games frontend ESLint is green.
 - Games JavaScript tests, including Match rules/storage/account-progress, are green.
+- Bubble Islands engine and account-progress tests cover deterministic boards, scoring, level unlocks, corrupt saves and monotonic account merge behavior.
 - Games frontend production build is green.
 - Playwright Games browser acceptance is green for 320x568, 390x844, 768x1024 and 1440x900.
 - Browser acceptance covers catalog/search/filter behavior, persisted RTL language switching and the Match preview on 320 px width.
 - Review backend tests cover account isolation, one-review-per-game behavior, public redaction, averages, deletion, published-game gating and admin/super-admin moderation audit.
 - Browser acceptance covers the public review panel, guest-safe behavior, Games admin operations diagnostics and the review moderation list.
 - Browser acceptance also covers Match/community detail deep links, visible language badges, rating summaries, recent-play UI and anonymous launch telemetry.
+- Browser acceptance covers Bubble Islands catalog/card rating, first-party detail routing and the embedded playable preview.
 - Public catalog detail API tests verify that only published public fields are returned and private release/owner data stays hidden.
 - Anonymous launch-counter tests verify published-game gating and absence of user/wallet identifiers; developer analytics tests verify owner scoping and explicitly non-monetary launch totals.
 - Release-health backend tests cover healthy, busy and degraded states, and browser acceptance verifies the admin card without exposing private paths.
@@ -67,10 +70,10 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 2. Physical-device acceptance where needed beyond automated browser/mobile viewport coverage.
 3. Developer billing provider integration; keep checkout disabled until explicitly approved.
 4. Games purchases, refunds, developer revenue share and payouts, with separate financial/admin controls.
-5. Additional first-party games and broader player features such as trusted rankings where approved.
+5. Blitz Runner and broader player features such as trusted rankings where approved.
 6. Production host/DNS/environment configuration for Games.BidBlitz.ae plus isolated public-game and preview origins.
 7. Deployment, monitoring and final launch acceptance.
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 65%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 70%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
