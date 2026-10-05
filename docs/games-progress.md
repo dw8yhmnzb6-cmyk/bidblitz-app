@@ -43,6 +43,9 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Read-only release health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency. Admin sees only game metadata, status and safe issue codes; private release paths are never returned.
 - Developer Studio exposes an owner-scoped per-game analytics breakdown with publication status, version, visible/hidden review counts, average rating and approximate non-monetary launches. Other developers' games and metrics are excluded.
 - Read-only Release Health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency without executing third-party code or exposing private paths.
+- A fail-closed Games finance sandbox models published developer-game purchases, partial/full refunds and configurable developer revenue-share splits using integer cents only. It never calls a payment provider, debits a wallet or executes a payout.
+- Sandbox purchase/refund writes are idempotent, owner-scoped and privacy-minimal; refund reservations are atomic so concurrent refund requests cannot exceed the original simulated purchase amount, and cent rounding reconciles exactly on full refund.
+- Games admin and developer studio expose read-only finance-sandbox summaries that clearly distinguish simulated values from real money. The sandbox and revenue-share percentage both default to disabled/unconfigured.
 - Existing financial production guards remain in place.
 
 ## Verification
@@ -70,6 +73,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Release-health backend tests cover healthy, busy and degraded states, and browser acceptance verifies the admin card without exposing private paths.
 - Per-game developer analytics tests verify owner isolation, non-monetary semantics, rating calculation and exclusion of another developer's high launch counts; browser acceptance verifies the portfolio cards.
 - Personal ranking tests cover rank calculation, unranked/unsupported cases and privacy-minimal output without exposing other players; the exercised assertions live in the existing Games progress CI suite.
+- Finance sandbox tests cover fail-closed configuration, integer-safe revenue split, purchase/refund idempotency, owner isolation, redaction and exact full-refund reconciliation. Real Mongo concurrency tests verify duplicate purchase retries create one ledger row and parallel distinct refunds cannot over-refund a purchase.
 - Local Match game copy is not yet human-reviewed in all 50 languages.
 - Native physical-device acceptance remains separate from browser viewport automation.
 
@@ -78,11 +82,11 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 1. Human-reviewed translation content for all planned languages.
 2. Physical-device acceptance where needed beyond automated browser/mobile viewport coverage.
 3. Developer billing provider integration; keep checkout disabled until explicitly approved.
-4. Games purchases, refunds, developer revenue share and payouts, with separate financial/admin controls.
+4. Real payment-provider purchases/refunds, production revenue settlement and developer payouts. The calculation/admin sandbox exists, but all real monetary execution remains disabled.
 5. Server-authoritative anti-cheat / verification before any public or trusted leaderboard is enabled.
 6. Production host/DNS/environment configuration for Games.BidBlitz.ae plus isolated public-game and preview origins.
 7. Deployment, monitoring and final launch acceptance.
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 74%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 78%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
