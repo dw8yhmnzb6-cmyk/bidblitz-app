@@ -578,7 +578,7 @@ test('Bubble Islands detail page is first-party and opens its own preview', asyn
   const frame = page.locator('iframe[title*="Bubble Islands"]');
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', '/game-assets/bubble-islands/bubble.html');
-  const game = frame.contentFrame();
+  const game = page.frameLocator('iframe[title*="Bubble Islands"]');
   await expect(game.getByTestId('bubble-islands-game')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Bubble Islands' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
