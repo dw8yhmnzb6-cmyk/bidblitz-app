@@ -5,6 +5,7 @@ import GamesLanguageSelect from "../components/GamesLanguageSelect";
 import GameVersionPanel from "../components/GameVersionPanel";
 import GamesDeveloperPlanCard from "../components/GamesDeveloperPlanCard";
 import GamesDeveloperAnalyticsCard from "../components/GamesDeveloperAnalyticsCard";
+import GamesFinanceSandboxCard from "../components/GamesFinanceSandboxCard";
 import gameLanguages from "../config/gamesLanguages.json";
 import { resolveLocale } from "../config/languagePolicy.mjs";
 import { prepareCreateAttempt, uncertainCreateError } from "../config/studioCreatePolicy.mjs";
@@ -207,6 +208,7 @@ export default function GameStudioPage({ onBack }) {
 
         <GamesDeveloperPlanCard locale={locale} />
         <GamesDeveloperAnalyticsCard locale={locale} />
+        <GamesFinanceSandboxCard locale={locale} mode="developer" />
 
         <div className="mt-9 flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-bold"><Sparkles size={20} className="text-cyan-300" />{c.draft}</h2><span className="text-xs text-white/40">{drafts.length} / 100</span></div>
         {error && <div role="alert" className="mt-4 rounded-xl border border-rose-300/30 bg-rose-400/10 p-4 text-sm text-rose-100">{error} <button onClick={load} disabled={busy} className="ml-3 underline disabled:opacity-50">{c.retry}</button></div>}
