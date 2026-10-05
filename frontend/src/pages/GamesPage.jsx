@@ -51,7 +51,7 @@ const COPY = {
 
 const FIRST_PARTY_GAMES = [
   { id: "match", title: "BidBlitz Match", category: "Puzzle", text: "matchText", available: true },
-  { id: "bubble", title: "Bubble Islands", category: "Puzzle", text: "bubbleText", available: false },
+  { id: "bubble", title: "Bubble Islands", category: "Puzzle", text: "bubbleText", available: true },
   { id: "runner", title: "Blitz Runner", category: "Arcade", text: "runnerText", available: false },
 ];
 
@@ -278,7 +278,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
                 <h3 className="mt-1 truncate text-sm font-bold">{game.title}</h3>
                 {game.external && game.publicUrl
                   ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordRecent(game.id)} className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-cyan-300 px-3 py-2 text-xs font-bold text-[#061329]">{c.continueGame}</a>
-                  : <button onClick={() => { recordRecent(game.id); onNavigate("/games/match"); }} className="mt-3 w-full rounded-xl bg-cyan-300 px-3 py-2 text-xs font-bold text-[#061329]">{c.continueGame}</button>}
+                  : <button onClick={() => { recordRecent(game.id); onNavigate(`/games/${game.id}`); }} className="mt-3 w-full rounded-xl bg-cyan-300 px-3 py-2 text-xs font-bold text-[#061329]">{c.continueGame}</button>}
               </article>)}
             </div>
           </section>}
@@ -304,7 +304,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
                   <span className="text-white/45">({Number(reviewSummary.count)})</span>
                 </div>}
                 <div className="mt-5 flex flex-wrap items-center gap-2">
-                  {game.external && game.publicUrl ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordRecent(game.id)} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.openPublished}</a> : game.available ? <button onClick={() => { recordRecent(game.id); onNavigate("/games/match"); }} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
+                  {game.external && game.publicUrl ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordRecent(game.id)} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.openPublished}</a> : game.available ? <button onClick={() => { recordRecent(game.id); onNavigate(`/games/${game.id}`); }} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
                   {game.available && <button onClick={() => onNavigate(`/games/title/${encodeURIComponent(game.id)}`)} className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">{c.details}</button>}
                   <button onClick={() => changeFavorite(game.id)} disabled={favoriteBusy === game.id} aria-pressed={favorites.includes(game.id)} aria-label={favorites.includes(game.id) ? c.unfavorite : c.favorite} className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition disabled:opacity-50 ${favorites.includes(game.id) ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"}`}><Heart size={18} fill={favorites.includes(game.id) ? "currentColor" : "none"} /></button>
                 </div>
