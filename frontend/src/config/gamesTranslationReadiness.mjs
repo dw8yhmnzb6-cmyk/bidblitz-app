@@ -1,5 +1,3 @@
-import languages from "./gamesLanguages.json" with { type: "json" };
-import reviewManifest from "./gamesTranslationReview.json" with { type: "json" };
 import { GAMES_CORE_TRANSLATION_CODES } from "./gamesCoreTranslations.mjs";
 
 function unique(values) {
@@ -13,10 +11,16 @@ function assertUnique(label, values) {
 }
 
 export function buildGamesTranslationReadiness({
-  languageOptions = languages,
+  languageOptions,
   coreTranslationCodes = GAMES_CORE_TRANSLATION_CODES,
-  review = reviewManifest,
+  review,
 } = {}) {
+  if (!Array.isArray(languageOptions)) {
+    throw new Error("Games language registry is required");
+  }
+  if (!review || typeof review !== "object") {
+    throw new Error("Games translation review manifest is required");
+  }
   const registeredCodes = languageOptions.map(({ code }) => code);
   assertUnique("Games language registry", registeredCodes);
 
@@ -79,6 +83,3 @@ export function buildGamesTranslationReadiness({
   };
 }
 
-export const GAMES_TRANSLATION_READINESS = Object.freeze(
-  buildGamesTranslationReadiness(),
-);
