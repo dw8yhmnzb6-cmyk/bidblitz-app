@@ -16,6 +16,7 @@ from core.security import get_current_user
 router = APIRouter(prefix="/api/games/recent", tags=["games-recent"])
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _MAX_RECENT = 20
+_FIRST_PARTY_GAME_IDS = {"match", "bubble"}
 
 
 def _game_id(value: str) -> str:
@@ -32,7 +33,7 @@ async def _owner(request: Request) -> str:
 
 async def _assert_playable(game_id: str) -> str:
     game_id = _game_id(game_id)
-    if game_id == "match":
+    if game_id in _FIRST_PARTY_GAME_IDS:
         return game_id
     row = await db.games_catalog.find_one(
         {"id": game_id, "status": "published"},
