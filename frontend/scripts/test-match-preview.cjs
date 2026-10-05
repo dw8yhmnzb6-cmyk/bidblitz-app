@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../public/game-assets/match-preview/engine.js');
 const B = require('../public/game-assets/bubble-islands/engine.js');
+const BS = require('../public/game-assets/bubble-islands/account-progress.js');
 
 test('Every level starts without matches and with an available move across 240 fixtures', () => {
   for (let level=1;level<=30;level++) for(let seed=1;seed<=8;seed++) {
@@ -214,3 +215,34 @@ test('Bubble Islands rejects corrupted local saves',()=>{
   }
 });
 
+
+
+test('Bubble Islands account progress merges only monotonic summary fields',()=>{
+  const profile=B.initial(12);
+  const remote={version:1,unlocked:3,best:Array(20).fill(0),stars:Array(20).fill(0)};
+  remote.best[0]=1200;remote.best[1]=1300;remote.stars[0]=2;remote.stars[1]=3;
+  const activeBefore=JSON.stringify(profile.active);
+  const merged=BS.merge(profile,remote);
+  assert.ok(merged.changed);
+  assert.equal(merged.profile.unlocked,3);
+  assert.equal(merged.profile.best[0],1200);
+  assert.equal(merged.profile.stars[1],3);
+  assert.equal(JSON.stringify(merged.profile.active),activeBefore);
+  assert.deepEqual(BS.summary(merged.profile),{
+    version:1,
+    unlocked:3,
+    best:merged.profile.best,
+    stars:merged.profile.stars,
+  });
+});
+
+test('Bubble Islands account progress rejects malformed and gapped summaries',()=>{
+  const valid={version:1,unlocked:2,best:[1000,...Array(19).fill(0)],stars:[2,...Array(19).fill(0)]};
+  assert.ok(BS.validSummary(valid));
+  for(const bad of [
+    {...valid,unlocked:20},
+    {...valid,best:valid.best.slice(0,19)},
+    {...valid,stars:[0,...valid.stars.slice(1)]},
+    {...valid,best:[1000,0,1200,...Array(17).fill(0)],stars:[2,0,2,...Array(17).fill(0)],unlocked:4},
+  ]) assert.equal(BS.validSummary(bad),false);
+});
