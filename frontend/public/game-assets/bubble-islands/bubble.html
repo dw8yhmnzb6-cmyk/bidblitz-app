@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Bubble Islands · BidBlitz Games</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app" data-testid="bubble-islands-game">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BIDBLITZ ORIGINAL</p>
+        <h1>Bubble Islands</h1>
+        <p id="island-name" class="island-name">Coral Bay</p>
+      </div>
+      <div class="logo" aria-label="BidBlitz Games">B <span>GAMES</span></div>
+    </header>
+
+    <section class="stats" aria-label="Spielstatus">
+      <article><span>Level</span><strong id="level">1</strong></article>
+      <article><span>Züge</span><strong id="moves">18</strong></article>
+      <article><span>Punkte</span><strong id="score">0</strong></article>
+      <article><span>Ziel</span><strong id="target">800</strong></article>
+    </section>
+
+    <section class="progress-wrap" aria-label="Zielfortschritt">
+      <div class="progress-track"><div id="progress" class="progress-bar"></div></div>
+      <span id="progress-text">0 / 800</span>
+    </section>
+
+    <section class="game-card">
+      <div class="instructions">
+        <p>Tippe auf eine Gruppe aus mindestens <b>2 gleichfarbigen Bubbles</b>. Je größer die Gruppe, desto mehr Punkte.</p>
+        <p>Keine Einsätze, keine Käufe, keine Echtgeld-Belohnungen.</p>
+      </div>
+      <div id="board" class="board" role="grid" aria-label="Bubble Islands Spielfeld"></div>
+      <p id="status" class="status" role="status">Finde eine Bubble-Gruppe und starte deine Inselreise.</p>
+    </section>
+
+    <section id="result" class="result" hidden>
+      <div>
+        <p id="result-stars" class="result-stars" aria-label="Sterne"></p>
+        <h2 id="result-title">Level geschafft!</h2>
+        <p id="result-text"></p>
+      </div>
+      <div class="result-actions">
+        <button id="next" type="button" class="primary">Weiter</button>
+        <button id="restart" type="button" class="secondary">Erneut spielen</button>
+      </div>
+    </section>
+
+    <section class="levels" aria-labelledby="levels-title">
+      <div class="levels-head">
+        <h2 id="levels-title">Inseln & Level</h2>
+        <span id="save-note">Fortschritt wird lokal gespeichert.</span>
+      </div>
+      <div id="level-list" class="level-list"></div>
+    </section>
+  </main>
+  <script src="./engine.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
