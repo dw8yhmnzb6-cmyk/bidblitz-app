@@ -12,6 +12,14 @@ from fastapi import HTTPException
 from routes import admin_game_studio as review
 
 
+class Cursor:
+    def __init__(self, docs):
+        self.docs = [dict(item) for item in docs]
+
+    async def to_list(self, limit):
+        return self.docs[:limit]
+
+
 class Collection:
     def __init__(self, docs=None):
         self.docs = [dict(item) for item in (docs or [])]
@@ -22,12 +30,33 @@ class Collection:
                 return dict(doc)
         return None
 
-    async def update_one(self, query, update):
+    async def update_one(self, query, update, upsert=False):
         for doc in self.docs:
             if self._matches(doc, query):
                 doc.update(update.get("$set", {}))
                 return types.SimpleNamespace(matched_count=1)
+        if upsert:
+            doc = {
+                key: value for key, value in query.items()
+                if not isinstance(value, dict)
+            }
+            doc.update(update.get("$set", {}))
+            self.docs.append(doc)
+            return types.SimpleNamespace(matched_count=0, upserted_id=doc.get("_id") or doc.get("code"))
         return types.SimpleNamespace(matched_count=0)
+
+    def find(self, query=None, projection=None):
+        query = query or {}
+        rows = [doc for doc in self.docs if self._matches(doc, query)]
+        if projection:
+            rows = [
+                {
+                    key: value for key, value in doc.items()
+                    if projection.get(key, 1) and key != "_id"
+                }
+                for doc in rows
+            ]
+        return Cursor(rows)
 
     async def insert_one(self, doc):
         self.docs.append(dict(doc))
@@ -39,6 +68,8 @@ class Collection:
             current = doc.get(key)
             if isinstance(value, dict):
                 if "$ne" in value and current == value["$ne"]:
+                    return False
+                if "$in" in value and current not in value["$in"]:
                     return False
                 continue
             if current != value:
@@ -61,6 +92,8 @@ class AdminGameStudioReviewTest(unittest.TestCase):
         review.db = types.SimpleNamespace(
             game_studio_versions=Collection([self.version]),
             game_studio_review_events=Collection(),
+            games_translation_reviews=Collection(),
+            games_translation_review_events=Collection(),
         )
         review.get_current_user = AsyncMock(return_value={"_id": "admin1", "role": "admin"})
 
@@ -184,6 +217,52 @@ class AdminGameStudioReviewTest(unittest.TestCase):
             "review_status": "archive_approved",
         })
         self.assertEqual(public, {"id": "v1", "review_status": "archive_approved"})
+
+    def test_translation_review_is_explicit_private_and_audited(self):
+        result = asyncio.run(review.set_translation_review(
+            "de",
+            review.TranslationReviewInput(reviewed=True, note="Native review completed."),
+            None,
+        ))
+        self.assertEqual(result["code"], "de")
+        self.assertTrue(result["reviewed"])
+        self.assertNotIn("reviewer_id", result)
+
+        stored = review.db.games_translation_reviews.docs[0]
+        self.assertEqual(stored["reviewer_id"], "admin1")
+        events = review.db.games_translation_review_events.docs
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["code"], "de")
+        self.assertTrue(events[0]["reviewed"])
+
+        summary = asyncio.run(review.translation_reviews(None))
+        self.assertEqual(summary["localized_count"], len(review.SUPPORTED_LANGUAGES) - 1)
+        self.assertEqual(summary["human_reviewed_count"], 1)
+        self.assertIn("de", summary["human_reviewed_codes"])
+        self.assertNotIn("en", [item["code"] for item in summary["items"]])
+
+    def test_translation_review_can_be_revoked_and_source_is_never_counted(self):
+        asyncio.run(review.set_translation_review(
+            "sq",
+            review.TranslationReviewInput(reviewed=True),
+            None,
+        ))
+        revoked = asyncio.run(review.set_translation_review(
+            "sq",
+            review.TranslationReviewInput(reviewed=False, note="Needs another pass."),
+            None,
+        ))
+        self.assertFalse(revoked["reviewed"])
+        self.assertIsNone(revoked["reviewed_at"])
+        self.assertEqual(len(review.db.games_translation_review_events.docs), 2)
+
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(review.set_translation_review(
+                "en",
+                review.TranslationReviewInput(reviewed=True),
+                None,
+            ))
+        self.assertEqual(context.exception.status_code, 400)
 
 
 if __name__ == "__main__":
