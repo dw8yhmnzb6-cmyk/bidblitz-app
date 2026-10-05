@@ -10,11 +10,20 @@ from unittest.mock import AsyncMock
 from fastapi import HTTPException
 
 from routes import admin_game_studio as review
+from routes import games_finance_sandbox as finance
 
 
 class Cursor:
     def __init__(self, docs):
         self.docs = [dict(item) for item in docs]
+
+    def sort(self, key, direction):
+        self.docs.sort(key=lambda item: item.get(key) or "", reverse=direction < 0)
+        return self
+
+    def limit(self, limit):
+        self.docs = self.docs[:limit]
+        return self
 
     async def to_list(self, limit):
         return self.docs[:limit]
@@ -263,6 +272,99 @@ class AdminGameStudioReviewTest(unittest.TestCase):
                 None,
             ))
         self.assertEqual(context.exception.status_code, 400)
+
+
+class GamesFinanceSandboxTest(unittest.TestCase):
+    def setUp(self):
+        self.previous_enabled = finance.FINANCE_SANDBOX_ENABLED
+        self.previous_share = finance.DEVELOPER_SHARE_BPS
+        finance.FINANCE_SANDBOX_ENABLED = False
+        finance.DEVELOPER_SHARE_BPS = 2000
+        finance.db = types.SimpleNamespace(
+            games_catalog=Collection([{
+                "id": "community-puzzle",
+                "status": "published",
+                "owner_id": "developer-1",
+                "title": "Community Puzzle",
+            }]),
+            games_finance_sandbox_transactions=Collection(),
+        )
+        finance.get_current_user = AsyncMock(return_value={"_id": "admin1", "role": "admin"})
+
+    def tearDown(self):
+        finance.FINANCE_SANDBOX_ENABLED = self.previous_enabled
+        finance.DEVELOPER_SHARE_BPS = self.previous_share
+
+    def test_finance_sandbox_fails_closed_by_default(self):
+        payload = finance.SandboxPurchaseInput(
+            game_id="community-puzzle",
+            gross_eur_cents=1000,
+            idempotency_key="purchase-001",
+        )
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(finance.create_sandbox_purchase(payload, None))
+        self.assertEqual(context.exception.status_code, 503)
+        self.assertEqual(finance.db.games_finance_sandbox_transactions.docs, [])
+
+    def test_sandbox_models_purchase_refund_and_share_without_money_execution(self):
+        finance.FINANCE_SANDBOX_ENABLED = True
+        purchase_input = finance.SandboxPurchaseInput(
+            game_id="community-puzzle",
+            gross_eur_cents=1000,
+            idempotency_key="purchase-001",
+        )
+        purchase = asyncio.run(finance.create_sandbox_purchase(purchase_input, None))
+        repeated = asyncio.run(finance.create_sandbox_purchase(purchase_input, None))
+
+        self.assertEqual(repeated["id"], purchase["id"])
+        self.assertEqual(len(finance.db.games_finance_sandbox_transactions.docs), 1)
+        self.assertEqual(purchase["developer_eur_cents"], 200)
+        self.assertEqual(purchase["platform_eur_cents"], 800)
+        self.assertFalse(purchase["monetary_execution"])
+
+        refund = asyncio.run(finance.create_sandbox_refund(
+            purchase["id"],
+            finance.SandboxRefundInput(
+                amount_eur_cents=500,
+                reason="Sandbox partial refund",
+                idempotency_key="refund-001",
+            ),
+            None,
+        ))
+        self.assertEqual(refund["developer_eur_cents"], 100)
+        self.assertEqual(refund["platform_eur_cents"], 400)
+        self.assertFalse(refund["monetary_execution"])
+
+        summary = asyncio.run(finance.admin_finance_sandbox_summary(None))
+        self.assertEqual(summary["purchase_count"], 1)
+        self.assertEqual(summary["refund_count"], 1)
+        self.assertEqual(summary["net_gross_eur_cents"], 500)
+        self.assertEqual(summary["net_developer_eur_cents"], 100)
+        self.assertEqual(summary["net_platform_eur_cents"], 400)
+        self.assertFalse(summary["monetary_execution"])
+        self.assertFalse(summary["payout_execution"])
+
+    def test_sandbox_refund_cannot_exceed_remaining_amount(self):
+        finance.FINANCE_SANDBOX_ENABLED = True
+        purchase = asyncio.run(finance.create_sandbox_purchase(
+            finance.SandboxPurchaseInput(
+                game_id="community-puzzle",
+                gross_eur_cents=1000,
+                idempotency_key="purchase-002",
+            ),
+            None,
+        ))
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(finance.create_sandbox_refund(
+                purchase["id"],
+                finance.SandboxRefundInput(
+                    amount_eur_cents=1001,
+                    reason="Too large refund",
+                    idempotency_key="refund-002",
+                ),
+                None,
+            ))
+        self.assertEqual(context.exception.status_code, 409)
 
 
 if __name__ == "__main__":
