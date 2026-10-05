@@ -29,6 +29,11 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Account-backed player reviews are implemented for playable/published Games: strict 1–5 star ratings, optional text, one review per account/game, public rating summaries and owner-ID redaction.
 - Games review moderation supports admin/super-admin hide/restore actions with audit events; the Games admin UI includes the moderation queue and review health metrics.
 - The public Games catalog exposes reviews on demand; guests can read reviews and signed-in users can create, edit and delete their own review.
+- Public rating summaries are loaded in bulk and shown directly on playable game cards without exposing reviewer identities.
+- Public game detail pages exist for BidBlitz Match and published community games, including descriptions, languages, version, ratings, favorites and a clear isolated launch action.
+- Account-backed recent play history stores only game IDs and timestamps; guests use local-device recent history.
+- Developer Studio includes owner-scoped portfolio analytics for drafts, versions, publication state and review counts.
+- Privacy-minimal approximate launch counters store only aggregate per-game counts. They contain no account ID, IP, device fingerprint, wallet or monetary data and are shown to the owning developer as a non-billing metric.
 - Existing financial production guards remain in place.
 
 ## Verification
@@ -45,6 +50,9 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Browser acceptance covers catalog/search/filter behavior, persisted RTL language switching and the Match preview on 320 px width.
 - Review backend tests cover account isolation, one-review-per-game behavior, public redaction, averages, deletion, published-game gating and admin/super-admin moderation audit.
 - Browser acceptance covers the public review panel, guest-safe behavior, Games admin operations diagnostics and the review moderation list.
+- Browser acceptance also covers Match/community detail deep links, visible language badges, rating summaries, recent-play UI and anonymous launch telemetry.
+- Public catalog detail API tests verify that only published public fields are returned and private release/owner data stays hidden.
+- Anonymous launch-counter tests verify published-game gating and absence of user/wallet identifiers; developer analytics tests verify owner scoping and explicitly non-monetary launch totals.
 - Local Match game copy is not yet human-reviewed in all 50 languages.
 - Native physical-device acceptance remains separate from browser viewport automation.
 
@@ -60,4 +68,4 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 55%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 60%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
