@@ -8,6 +8,7 @@ from typing import Optional, List
 from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
+from core.product_images import normalize_insurance_product_image
 from core.security import get_current_user
 from core.config import TEST_MODE
 import secrets
@@ -112,7 +113,7 @@ async def list_products(category: str = "", limit: int = 30):
     if category:
         query["category"] = category
     products = await db.insurance_products.find(query, {"_id": 0}).sort("monthly_price", 1).limit(limit).to_list(limit)
-    return {"products": products, "count": len(products)}
+    return {"products": [normalize_insurance_product_image(product) for product in products], "count": len(products)}
 
 
 @router.get("/products/{product_id}")
@@ -123,7 +124,7 @@ async def get_product(product_id: str):
     p = await db.insurance_products.find_one(query, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Versicherung nicht gefunden")
-    return p
+    return normalize_insurance_product_image(p)
 
 
 @router.post("/products")
