@@ -23,6 +23,7 @@ admin_router = APIRouter(prefix="/api/admin/games/reviews", tags=["admin-games-r
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _MAX_PUBLIC_REVIEWS = 50
 _MAX_SUMMARY_GAMES = 50
+_FIRST_PARTY_GAME_IDS = {"match", "bubble"}
 
 
 class ReviewInput(BaseModel):
@@ -71,7 +72,7 @@ async def _admin(request: Request) -> dict:
 
 async def _assert_reviewable_game(game_id: str) -> str:
     game_id = _game_id(game_id)
-    if game_id == "match":
+    if game_id in _FIRST_PARTY_GAME_IDS:
         return game_id
     game = await db.games_catalog.find_one(
         {"id": game_id, "status": "published"},
@@ -139,10 +140,9 @@ async def _reviewable_game_ids(game_ids: list[str]) -> list[str]:
             raise HTTPException(400, "Zu viele Spiele angefragt")
 
     allowed = []
-    if "match" in seen:
-        allowed.append("match")
+    allowed.extend(game_id for game_id in unique if game_id in _FIRST_PARTY_GAME_IDS)
 
-    community_ids = [game_id for game_id in unique if game_id != "match"]
+    community_ids = [game_id for game_id in unique if game_id not in _FIRST_PARTY_GAME_IDS]
     if community_ids:
         rows = await db.games_catalog.find(
             {"id": {"$in": community_ids}, "status": "published"},
