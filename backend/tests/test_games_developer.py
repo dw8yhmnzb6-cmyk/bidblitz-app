@@ -160,6 +160,42 @@ class GamesDeveloperEntitlementTest(unittest.TestCase):
         self.assertNotIn("owner_id", str(result))
         self.assertNotIn("999", str(result))
 
+    def test_per_game_analytics_are_owner_scoped_and_non_monetary(self):
+        self.catalog.docs.extend([
+            {"id": "game-a", "owner_id": "alice", "title": "Game A", "status": "published", "version_number": 2},
+            {"id": "game-old", "owner_id": "alice", "title": "Old Game", "status": "unpublished", "version_number": 1},
+            {"id": "game-bob", "owner_id": "bob", "title": "Bob Game", "status": "published", "version_number": 9},
+        ])
+        developer.db.games_reviews.docs.extend([
+            {"game_id": "game-a", "status": "visible", "rating": 5},
+            {"game_id": "game-a", "status": "visible", "rating": 4},
+            {"game_id": "game-a", "status": "hidden", "rating": 1},
+            {"game_id": "game-bob", "status": "visible", "rating": 5},
+        ])
+        developer.db.games_launch_totals.docs.extend([
+            {"game_id": "game-a", "launches": 17},
+            {"game_id": "game-old", "launches": 3},
+            {"game_id": "game-bob", "launches": 999},
+        ])
+
+        result = asyncio.run(developer.developer_game_analytics(None))
+        self.assertFalse(result["monetary"])
+        self.assertEqual(result["count"], 2)
+        by_id = {row["id"]: row for row in result["games"]}
+        self.assertEqual(set(by_id), {"game-a", "game-old"})
+        self.assertEqual(by_id["game-a"]["rating_average"], 4.5)
+        self.assertEqual(by_id["game-a"]["reviews_visible"], 2)
+        self.assertEqual(by_id["game-a"]["reviews_hidden"], 1)
+        self.assertEqual(by_id["game-a"]["approximate_launches"], 17)
+        self.assertEqual(by_id["game-a"]["launch_measurement"], "approximate_non_monetary")
+        self.assertEqual(by_id["game-old"]["approximate_launches"], 3)
+        serialized = str(result)
+        self.assertNotIn("game-bob", serialized)
+        self.assertNotIn("owner_id", serialized)
+        self.assertNotIn("revenue", serialized)
+        self.assertNotIn("payout", serialized)
+        self.assertNotIn("999", serialized)
+
     def test_checkout_fails_closed_until_billing_is_explicitly_ready(self):
         with self.assertRaises(HTTPException) as context:
             asyncio.run(developer.developer_checkout(None))
