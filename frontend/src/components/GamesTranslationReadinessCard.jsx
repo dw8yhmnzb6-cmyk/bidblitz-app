@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, Languages } from "lucide-react";
-import { GAMES_TRANSLATION_READINESS } from "../config/gamesTranslationReadiness.mjs";
+import languages from "../config/gamesLanguages.json";
+import reviewManifest from "../config/gamesTranslationReview.json";
+import { buildGamesTranslationReadiness } from "../config/gamesTranslationReadiness.mjs";
 
 const COPY = {
   de: {
@@ -45,7 +47,7 @@ const COPY = {
 
 export default function GamesTranslationReadinessCard({ locale = "en" }) {
   const c = COPY[locale] || COPY.en;
-  const readiness = GAMES_TRANSLATION_READINESS;
+  const readiness = buildGamesTranslationReadiness({ languageOptions: languages, review: reviewManifest });
   const structurallyReady = readiness.structurallyReady;
   const reviewReady = readiness.humanReviewReady;
 
