@@ -448,7 +448,7 @@ test('Games Match detail page exposes rating, languages and safe preview navigat
   await expect(detail.getByRole('heading', { name: 'BidBlitz Match' })).toBeVisible();
   await expect(detail.getByText('BIDBLITZ ORIGINAL')).toBeVisible();
   await expect(detail.getByText('4.5', { exact: false }).first()).toBeVisible();
-  await expect(detail.getByText('Deutsch', { exact: true }).first()).toBeVisible();
+  await expect(detail.getByText('Deutsch', { exact: true }).last()).toBeVisible();
   await expect(detail.getByText('v1', { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
@@ -471,8 +471,8 @@ test('Published community game detail deep link keeps external play isolated', a
   await expect(detail).toBeVisible({ timeout: 20000 });
   await expect(detail.getByRole('heading', { name: 'Community Puzzle' })).toBeVisible();
   await expect(detail.getByText('COMMUNITY-SPIEL', { exact: true }).first()).toBeVisible();
-  await expect(detail.getByText('Deutsch', { exact: true }).first()).toBeVisible();
-  await expect(detail.getByText('English', { exact: true }).first()).toBeVisible();
+  await expect(detail.getByText('Deutsch', { exact: true }).last()).toBeVisible();
+  await expect(detail.getByText('English', { exact: true }).last()).toBeVisible();
   await expect(detail.getByText('v2', { exact: true })).toBeVisible();
   const play = detail.getByRole('link', { name: 'Spiel sicher öffnen' });
   await expect(play).toHaveAttribute('href', 'https://play.games.example.test/game/community-puzzle/index.html');
