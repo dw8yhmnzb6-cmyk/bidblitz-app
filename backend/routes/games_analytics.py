@@ -15,6 +15,7 @@ from core.database import db
 
 router = APIRouter(prefix="/api/games/analytics", tags=["games-analytics"])
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
+_FIRST_PARTY_GAME_IDS = {"match", "bubble"}
 
 
 def _game_id(value: str) -> str:
@@ -26,7 +27,7 @@ def _game_id(value: str) -> str:
 
 async def _assert_playable(game_id: str) -> str:
     game_id = _game_id(game_id)
-    if game_id == "match":
+    if game_id in _FIRST_PARTY_GAME_IDS:
         return game_id
     row = await db.games_catalog.find_one(
         {"id": game_id, "status": "published"},
