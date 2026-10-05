@@ -361,7 +361,9 @@ test('Games RTL language switch persists and keeps fallback readable', async ({ 
   await expect(shell).toHaveAttribute('dir', 'rtl');
   await expect(language).toHaveValue('ar');
   await expect(language).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByTestId('games-language-select').getByRole('status')).toContainText('currently shown in English');
+  await expect(page.getByTestId('games-language-select').getByRole('status')).toContainText('Core Games navigation is translated');
+  await expect(page.getByRole('heading', { name: 'مغامرتك القادمة.' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'ابحث عن ألعاب' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('bidblitz_lang'))).toBe('ar');
   await expectNoHorizontalOverflow(page);
 
