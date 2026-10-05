@@ -83,6 +83,7 @@ async function mockGamesApis(page: Page) {
         summaries: {
           match: { count: 2, average: 4.5 },
           bubble: { count: 1, average: 5.0 },
+          runner: { count: 2, average: 4.5 },
           'community-puzzle': { count: 3, average: 4.33 },
         },
       }),
@@ -117,6 +118,20 @@ async function mockGamesApis(page: Page) {
         game_id: 'bubble',
         summary: { count: 1, average: 5.0 },
         reviews: [{ id: 'review-bubble', game_id: 'bubble', rating: 5, text: 'Colorful and calm.' }],
+      }),
+    });
+  });
+  await page.route('**/api/games/reviews/runner', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        game_id: 'runner',
+        summary: { count: 2, average: 4.5 },
+        reviews: [
+          { id: 'review-runner-a', game_id: 'runner', rating: 5, text: 'Fast and clean.' },
+          { id: 'review-runner-b', game_id: 'runner', rating: 4, text: 'Nice track design.' },
+        ],
       }),
     });
   });
@@ -581,6 +596,34 @@ test('Bubble Islands detail page is first-party and opens its own preview', asyn
   const game = page.frameLocator('iframe[title*="Bubble Islands"]');
   await expect(game.getByTestId('bubble-islands-game')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Bubble Islands' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Blitz Runner detail page opens its first-party preview', async ({ page }) => {
+  await openGames(page, 390, 844);
+
+  const runnerCard = page.locator('article').filter({ hasText: 'Blitz Runner' }).first();
+  await expect(runnerCard).toBeVisible();
+  await expect(runnerCard.getByTestId('game-rating-runner')).toContainText('4.5');
+  await runnerCard.getByRole('button', { name: 'Details' }).click();
+
+  await expect(page).toHaveURL(/\/games\/title\/runner$/);
+  const detail = page.getByTestId('game-detail-page');
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole('heading', { name: 'Blitz Runner' })).toBeVisible();
+  await expect(detail.getByText('BIDBLITZ ORIGINAL')).toBeVisible();
+  await expect(detail.getByText(/15 Neon-Strecken/)).toBeVisible();
+
+  await detail.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await expect(page).toHaveURL(/\/games\/runner$/);
+  await expect(page.getByTestId('blitz-runner-page')).toBeVisible();
+
+  const frame = page.locator('iframe[title*="Blitz Runner"]');
+  await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('src', '/game-assets/blitz-runner/runner.html');
+  const game = page.frameLocator('iframe[title*="Blitz Runner"]');
+  await expect(game.getByTestId('blitz-runner-game')).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Blitz Runner' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
