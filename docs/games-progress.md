@@ -37,6 +37,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Public rating summaries are loaded in bulk and shown directly on playable game cards without exposing reviewer identities.
 - Public game detail pages exist for BidBlitz Match, Bubble Islands and published community games, including descriptions, languages, version, ratings, favorites and a clear isolated launch action.
 - Account-backed recent play history stores only game IDs and timestamps; guests use local-device recent history.
+- Private personal practice rankings are available for Match, Bubble Islands and Blitz Runner. They return only the signed-in player’s own rank and aggregate participant counts; no other account IDs, names, emails or score rows are exposed. Because first-party scores are still client-synced, rankings are explicitly marked unverified and no public leaderboard is enabled.
 - Developer Studio includes owner-scoped portfolio analytics for drafts, versions, publication state and review counts.
 - Privacy-minimal approximate launch counters store only aggregate per-game counts. They contain no account ID, IP, device fingerprint, wallet or monetary data and are shown to the owning developer as a non-billing metric.
 - Read-only release health monitoring verifies each published community game's active version, frozen release snapshot and public URL consistency. Admin sees only game metadata, status and safe issue codes; private release paths are never returned.
@@ -68,6 +69,7 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 - Anonymous launch-counter tests verify published-game gating and absence of user/wallet identifiers; developer analytics tests verify owner scoping and explicitly non-monetary launch totals.
 - Release-health backend tests cover healthy, busy and degraded states, and browser acceptance verifies the admin card without exposing private paths.
 - Per-game developer analytics tests verify owner isolation, non-monetary semantics, rating calculation and exclusion of another developer's high launch counts; browser acceptance verifies the portfolio cards.
+- Personal ranking tests cover rank calculation, unranked/unsupported cases and privacy-minimal output without exposing other players; the exercised assertions live in the existing Games progress CI suite.
 - Local Match game copy is not yet human-reviewed in all 50 languages.
 - Native physical-device acceptance remains separate from browser viewport automation.
 
@@ -77,10 +79,10 @@ Scope: existing BidBlitz application, Games platform, original Match game and de
 2. Physical-device acceptance where needed beyond automated browser/mobile viewport coverage.
 3. Developer billing provider integration; keep checkout disabled until explicitly approved.
 4. Games purchases, refunds, developer revenue share and payouts, with separate financial/admin controls.
-5. Broader player features such as trusted rankings where approved.
+5. Server-authoritative anti-cheat / verification before any public or trusted leaderboard is enabled.
 6. Production host/DNS/environment configuration for Games.BidBlitz.ae plus isolated public-game and preview origins.
 7. Deployment, monitoring and final launch acceptance.
 
 ## Progress reporting
 
-Planning document: 100%. Overall programming: approximately 70%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
+Planning document: 100%. Overall programming: approximately 74%. Public Games production deployment: 0%. Percentages are rough scope estimates, not test coverage or production readiness. Translation infrastructure is implemented; translation content is incomplete. Monetary Games flows remain disabled and must not be treated as production-ready.
