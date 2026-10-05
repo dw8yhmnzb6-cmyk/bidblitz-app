@@ -407,6 +407,17 @@ def test_monitoring_filters_expected_auth_noise_and_cors_preflight_is_safe():
     assert '"Access-Control-Allow-Credentials": "true"' in middleware
 
 
+def test_home_recommendation_images_fail_safe():
+    home = (BACKEND_DIR.parent / "frontend" / "src" / "components" / "HomeRecommendations.jsx").read_text(encoding="utf-8")
+    insurance = (BACKEND_DIR / "routes" / "insurance.py").read_text(encoding="utf-8")
+
+    assert "const RecommendationImage" in home
+    assert 'onError={() => setFailed(true)}' in home
+    assert 'data-testid="recommendation-image-fallback"' in home
+    assert "photo-1551355716-d99cdb39c5b9" not in insurance
+    assert "photo-1556656793-08538906a9f8" in insurance
+
+
 def test_admin_system_error_center_covers_core_modules_and_recovery():
     monitoring = (BACKEND_DIR / "routes" / "monitoring.py").read_text(encoding="utf-8")
     admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPage.jsx").read_text(encoding="utf-8")
