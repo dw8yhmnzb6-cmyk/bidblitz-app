@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import languages from "../src/config/gamesLanguages.json" with { type: "json" };
+import reviewManifest from "../src/config/gamesTranslationReview.json" with { type: "json" };
 import { buildGamesTranslationReadiness } from "../src/config/gamesTranslationReadiness.mjs";
 
 test("translation readiness separates copy presence from human review", () => {
-  const readiness = buildGamesTranslationReadiness();
+  const readiness = buildGamesTranslationReadiness({ languageOptions: languages, review: reviewManifest });
 
   assert.equal(readiness.registeredOptionCount, 51);
   assert.equal(readiness.localizedOptionCount, 50);
