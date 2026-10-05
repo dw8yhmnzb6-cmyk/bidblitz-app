@@ -83,6 +83,7 @@ async def create_indexes():
     # BidBlitz Games
     await safe_create_index(db.games_profiles, "owner_id", unique=True, critical=True)
     await safe_create_index(db.games_match_progress, "owner_id", unique=True, critical=True)
+    await safe_create_index(db.games_bubble_progress, "owner_id", unique=True, critical=True)
     await safe_create_index(db.games_launch_totals, "game_id", unique=True, critical=True)
     await safe_create_index(db.games_recent_plays, [("owner_id", 1), ("game_id", 1)], unique=True, critical=True)
     await safe_create_index(db.games_recent_plays, [("owner_id", 1), ("last_played_at", -1)])
