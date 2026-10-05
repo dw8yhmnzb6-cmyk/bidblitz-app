@@ -7,6 +7,7 @@ the metadata workflow toward a future isolated preview environment.
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 import hashlib
 import os
 import shutil
@@ -309,7 +310,7 @@ async def set_translation_review(
     reviewer_id = str(admin.get("_id") or admin.get("id") or "")
     reviewed_at = now if payload.reviewed else None
     await db.games_translation_reviews.update_one(
-        {"code": normalized},
+        {"_id": normalized},
         {"$set": {
             "code": normalized,
             "reviewed": payload.reviewed,
@@ -321,7 +322,7 @@ async def set_translation_review(
         upsert=True,
     )
     await db.games_translation_review_events.insert_one({
-        "id": f"translation-review:{normalized}:{now}",
+        "id": f"translation-review:{normalized}:{uuid4().hex}",
         "code": normalized,
         "reviewed": payload.reviewed,
         "note": payload.note,
