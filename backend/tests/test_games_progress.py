@@ -86,12 +86,24 @@ def bubble_payload(completed=0, score_base=700):
     return progress.BubbleProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
 
 
+def runner_payload(completed=0, score_base=500):
+    best = [0] * 15
+    stars = [0] * 15
+    for index in range(completed):
+        best[index] = score_base + index
+        stars[index] = 2
+    unlocked = 1 if completed == 0 else min(15, completed + 1)
+    return progress.RunnerProgressInput(version=1, unlocked=unlocked, best=best, stars=stars)
+
+
 class GamesProgressTest(unittest.TestCase):
     def setUp(self):
         self.collection = Collection()
         self.bubble_collection = Collection()
+        self.runner_collection = Collection()
         database.db.games_match_progress = self.collection
         database.db.games_bubble_progress = self.bubble_collection
+        database.db.games_runner_progress = self.runner_collection
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
 
@@ -173,6 +185,45 @@ class GamesProgressTest(unittest.TestCase):
         for value in cases:
             with self.assertRaises(ValidationError):
                 progress.BubbleProgressInput(**value)
+
+
+    def test_runner_progress_defaults_and_moves_forward_only(self):
+        empty = asyncio.run(progress.get_runner_progress(None))
+        self.assertEqual(empty["unlocked"], 1)
+        self.assertEqual(empty["best"], [0] * 15)
+        self.assertEqual(empty["stars"], [0] * 15)
+
+        first = asyncio.run(progress.save_runner_progress(None, runner_payload(4, 900)))
+        self.assertEqual(first["unlocked"], 5)
+        lower = asyncio.run(progress.save_runner_progress(None, runner_payload(2, 300)))
+        self.assertEqual(lower["unlocked"], 5)
+        self.assertEqual(lower["best"][:4], first["best"][:4])
+        higher = asyncio.run(progress.save_runner_progress(None, runner_payload(5, 1200)))
+        self.assertEqual(higher["unlocked"], 6)
+        self.assertGreaterEqual(higher["best"][0], 1200)
+
+    def test_runner_progress_is_account_bound_and_minimal(self):
+        asyncio.run(progress.save_runner_progress(None, runner_payload(3)))
+        security.get_current_user.return_value = {"_id": "bob"}
+        self.assertEqual(asyncio.run(progress.get_runner_progress(None))["unlocked"], 1)
+        security.get_current_user.return_value = {"_id": "alice"}
+        result = asyncio.run(progress.get_runner_progress(None))
+        self.assertEqual(result["unlocked"], 4)
+        for forbidden in ("coins", "energy", "active", "purchases", "receipts", "course", "lane", "rng", "position"):
+            self.assertNotIn(forbidden, result)
+
+    def test_invalid_runner_progress_is_rejected(self):
+        valid = runner_payload(2).model_dump()
+        cases = [
+            {**valid, "unlocked": 15},
+            {**valid, "best": valid["best"][:14]},
+            {**valid, "stars": [0, 2] + [0] * 13},
+            {**valid, "best": [500, 0, 700] + [0] * 12, "stars": [2, 0, 2] + [0] * 12, "unlocked": 4},
+            {**valid, "best": [True, 501] + [0] * 13},
+        ]
+        for value in cases:
+            with self.assertRaises(ValidationError):
+                progress.RunnerProgressInput(**value)
 
 
 if __name__ == "__main__":
