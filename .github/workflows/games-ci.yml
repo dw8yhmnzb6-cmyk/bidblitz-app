@@ -32,6 +32,7 @@ on:
       - "frontend/src/config/studioCreatePolicy.mjs"
       - "frontend/public/game-assets/**"
       - "frontend/scripts/test-games-*.mjs"
+      - "frontend/scripts/report-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
       - "frontend/tests/visual/games.spec.ts"
@@ -69,6 +70,7 @@ on:
       - "frontend/src/config/studioCreatePolicy.mjs"
       - "frontend/public/game-assets/**"
       - "frontend/scripts/test-games-*.mjs"
+      - "frontend/scripts/report-games-*.mjs"
       - "frontend/scripts/test-studio-create.mjs"
       - "frontend/scripts/test-match-*.cjs"
       - "frontend/tests/visual/games.spec.ts"
@@ -173,10 +175,12 @@ jobs:
           src/config/gamesFavoritesPolicy.mjs
           src/config/gamesRecentPolicy.mjs
           src/config/gamesCoreTranslations.mjs
+          src/config/gamesTranslationReadiness.mjs
       - name: Run Games JavaScript tests
         run: |
           node frontend/scripts/sync-games-languages.cjs --check
-          node --test frontend/scripts/test-games-core-translations.mjs
+          node frontend/scripts/report-games-translation-readiness.mjs
+          node --test frontend/scripts/test-games-core-translations.mjs frontend/scripts/test-games-translation-readiness.mjs
           node --test             frontend/scripts/test-games-languages.mjs             frontend/scripts/test-games-recent.mjs             frontend/scripts/test-studio-create.mjs             frontend/scripts/test-games-favorites.mjs             frontend/scripts/test-match-account-progress.cjs             frontend/scripts/test-match-preview.cjs
       - name: Build frontend
         env:
