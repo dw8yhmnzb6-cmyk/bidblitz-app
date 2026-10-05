@@ -182,6 +182,44 @@ class GamesCatalogTest(unittest.TestCase):
         self.assertNotIn("release_path", result)
         self.assertNotIn("preview_path", result)
 
+    def test_release_health_reports_healthy_snapshot_without_private_paths(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        result = asyncio.run(catalog.games_release_health(None))
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["summary"], {
+            "published": 1,
+            "healthy": 1,
+            "busy": 0,
+            "degraded": 0,
+        })
+        self.assertEqual(result["games"][0]["id"], "draft-1")
+        self.assertEqual(result["games"][0]["status"], "ok")
+        self.assertEqual(result["games"][0]["issues"], [])
+        serialized = json.dumps(result)
+        self.assertNotIn("owner_id", serialized)
+        self.assertNotIn("release_path", serialized)
+        self.assertNotIn(str(Path(self.tmp.name)), serialized)
+
+    def test_release_health_marks_active_publication_lock_busy(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        self.db.games_publication_locks.docs.append({"_id": "draft-1", "token": "busy"})
+        result = asyncio.run(catalog.games_release_health(None))
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["summary"]["busy"], 1)
+        self.assertEqual(result["summary"]["degraded"], 0)
+        self.assertEqual(result["games"][0]["status"], "busy")
+
+    def test_release_health_detects_inconsistent_release_without_exposing_path(self):
+        asyncio.run(catalog.publish_version("v1", None))
+        version = self.db.game_studio_versions.docs[0]
+        version["release_status"] = "broken"
+        result = asyncio.run(catalog.games_release_health(None))
+        self.assertEqual(result["status"], "attention")
+        self.assertEqual(result["summary"]["degraded"], 1)
+        self.assertEqual(result["games"][0]["status"], "degraded")
+        self.assertIn("release_not_frozen", result["games"][0]["issues"])
+        self.assertNotIn("release_path", json.dumps(result))
+
     def test_preflight_reports_safe_non_monetary_configuration_without_private_paths(self):
         result = asyncio.run(catalog.games_preflight(None))
         self.assertTrue(result["ready"])
