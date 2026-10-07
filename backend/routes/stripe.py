@@ -431,6 +431,8 @@ async def stripe_webhook(request: Request):
                 # Some emergentintegrations versions return metadata under .metadata, else fetch transaction row
                 txn_doc = await db.payment_transactions.find_one({"session_id": event.session_id})
                 if txn_doc and (txn_doc.get("metadata", {}).get("type") == "bid_credits" or meta.get("type") == "bid_credits"):
+                    if txn_doc.get("payment_status") == "crediting":
+                        raise RuntimeError("Bid-credit fulfillment is incomplete and requires retry/reconciliation")
                     if txn_doc.get("payment_status") != "credited":
                         m = txn_doc.get("metadata", {}) or meta
                         credits_to_add = int(m.get("credits", 0))
@@ -493,8 +495,9 @@ async def stripe_webhook(request: Request):
                                     "created_at": datetime.now(timezone.utc).isoformat(),
                                 })
             except Exception as e:
-                import logging as _logging
-                _logging.getLogger("bidblitz.stripe").error(f"bid_credits webhook handling failed: {e}", exc_info=True)
+                logger.error(f"bid_credits webhook handling failed: {e}", exc_info=True)
+                await _record_stripe_side_effect_failure("bid_credits_webhook", event.session_id, e)
+                raise
 
         return {"received": True}
     except Exception as exc:
