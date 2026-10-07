@@ -97,6 +97,8 @@ class GamesRankingsTest(unittest.TestCase):
         ])
         database.db.games_bubble_progress = Collection()
         database.db.games_runner_progress = Collection()
+        database.db.games_bubble_verified_progress = Collection()
+        database.db.games_runner_verified_progress = Collection()
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
 
@@ -126,6 +128,50 @@ class GamesRankingsTest(unittest.TestCase):
         self.assertIsNone(result["rank"])
         self.assertEqual(result["participants"], 3)
         self.assertEqual(result["total_score"], 0)
+
+    def test_bubble_ranking_prefers_server_verified_progress_when_available(self):
+        database.db.games_bubble_progress = Collection([
+            {
+                "owner_id": "alice",
+                "best": [999999] + [0] * 19,
+                "stars": [3] + [0] * 19,
+                "unlocked": 2,
+            },
+        ])
+        database.db.games_bubble_verified_progress = Collection([
+            {
+                "owner_id": "alice",
+                "best": [1200] + [0] * 19,
+                "stars": [2] + [0] * 19,
+            },
+            {
+                "owner_id": "bob",
+                "best": [1500] + [0] * 19,
+                "stars": [3] + [0] * 19,
+            },
+        ])
+        result = asyncio.run(rankings.get_personal_ranking("bubble", None))
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["mode"], "server_replayed")
+        self.assertEqual(result["total_score"], 1200)
+        self.assertEqual(result["rank"], 2)
+        self.assertEqual(result["participants"], 2)
+        self.assertEqual(result["integrity"], "server_replayed_not_full_anti_cheat")
+        self.assertFalse(result["public_leaderboard_enabled"])
+
+    def test_bubble_without_verified_score_stays_private_practice(self):
+        database.db.games_bubble_progress = Collection([
+            {
+                "owner_id": "alice",
+                "best": [700] + [0] * 19,
+                "stars": [1] + [0] * 19,
+                "unlocked": 2,
+            },
+        ])
+        result = asyncio.run(rankings.get_personal_ranking("bubble", None))
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["mode"], "practice")
+        self.assertEqual(result["total_score"], 700)
 
     def test_unknown_game_is_rejected(self):
         with self.assertRaises(HTTPException) as raised:
