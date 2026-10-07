@@ -160,8 +160,16 @@ def validate_runtime_safety():
         errors.append("Mongo URL points to a test database")
     if "localhost" in (FRONTEND_URL or "").lower() or "localhost" in (BACKEND_URL or "").lower():
         errors.append("Frontend/Backend URL contains localhost")
+    if not (FRONTEND_URL or "").lower().startswith("https://") or not (BACKEND_URL or "").lower().startswith("https://"):
+        errors.append("Frontend/Backend URL must use HTTPS in production")
     if not STRIPE_API_KEY or not STRIPE_WEBHOOK_SECRET:
         errors.append("Required payment secrets are missing")
+    else:
+        stripe_key = STRIPE_API_KEY.strip().lower()
+        if stripe_key.startswith(("sk_test_", "rk_test_")):
+            errors.append("Stripe test API key is forbidden in production")
+        if not STRIPE_WEBHOOK_SECRET.strip().startswith("whsec_"):
+            errors.append("Stripe webhook secret has an invalid format")
     if ADMIN_PASSWORD in {"BidBlitz2026!", "admin", "password", "123456"}:
         errors.append("Default admin password detected")
     if errors:
