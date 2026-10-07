@@ -359,6 +359,26 @@ test("farm achievements are computed from existing progress without extra saved 
   assert.equal(list["level-50"].achieved, true);
 });
 
+test("farm completion score grows with endgame progress", () => {
+  const start = F.initial(1400);
+  const early = F.completionScore(start);
+  assert.ok(early.percent >= 0 && early.percent < 50);
+
+  const end = F.initial(1400);
+  end.level = 50;
+  end.xp = 5000;
+  end.unlockedPlots = 12;
+  end.buildings = { coop: 5, barn: 5, silo: 5 };
+  end.completedOrders = 60;
+  end.harvests = 30;
+  end.animals.chicken.count = 3;
+  end.animals.cow.count = 3;
+  end.animals.sheep.count = 3;
+  const completed = F.completionScore(end);
+  assert.ok(completed.percent > early.percent);
+  assert.ok(completed.percent <= 100);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
