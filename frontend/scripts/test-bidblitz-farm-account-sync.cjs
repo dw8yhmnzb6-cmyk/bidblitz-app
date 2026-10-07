@@ -46,7 +46,7 @@ test("completed orders and inventory break same-day sync ties", () => {
 });
 
 test("invalid progress values fail safely instead of outranking valid state", () => {
-  assert.deepEqual(S.progressTuple(null), [0, 0, 0]);
-  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(S.progressTuple(null), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   assert.equal(S.chooseNewer(state(1, 0, 0), null), "local");
 });
