@@ -60,3 +60,26 @@ footer span{display:block;margin-top:5px;color:#cdf5d7}
 .task-progress{height:7px;margin:9px 0 6px;border-radius:99px;background:#ffffff12;overflow:hidden}
 .task-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#85e995,#e0ff8c);border-radius:99px}
 @media(max-width:700px){.farm-brief{grid-template-columns:1fr}}
+
+.farm-section{margin-top:24px}
+.farm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.farm-card{border:1px solid #baf8cd22;border-radius:20px;background:#ffffff08;padding:14px}
+.farm-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.farm-card-icon{font-size:30px}
+.farm-card h3{margin:3px 0;font-size:15px}
+.farm-card p{margin:3px 0;color:#b7d1bf;font-size:11px;line-height:1.45}
+.farm-card strong{color:#e5ffb2}
+.farm-card-actions{display:flex;gap:7px;margin-top:12px}
+.farm-card-actions button{flex:1;padding:9px 8px;font-size:11px}
+.farm-card-actions button.primary{background:#8eef94;color:#0b2a17;font-weight:800}
+.farm-card-actions button:disabled{opacity:.4}
+.missions{display:grid;gap:10px;margin-top:14px}
+.mission{border:1px solid #baf8cd22;border-radius:18px;background:#ffffff07;padding:14px}
+.mission-top{display:flex;justify-content:space-between;gap:12px}
+.mission-title{font-size:13px;font-weight:800}
+.mission-reward{font-size:11px;color:#dfff9d}
+.mission-progress{height:8px;margin:10px 0 7px;border-radius:99px;background:#ffffff12;overflow:hidden}
+.mission-progress span{display:block;height:100%;background:linear-gradient(90deg,#70df91,#dfff8f);border-radius:99px}
+.mission-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#aac8b3;font-size:11px}
+.mission-foot button{padding:8px 11px;font-size:11px}
+@media(max-width:700px){.farm-grid{grid-template-columns:1fr}}
