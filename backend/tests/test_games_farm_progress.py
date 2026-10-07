@@ -1,0 +1,147 @@
+"""Tests for BidBlitz Farm account-backed progress."""
+import asyncio
+import types
+import unittest
+from unittest.mock import AsyncMock
+
+from fastapi import HTTPException
+from pydantic import ValidationError
+
+from routes import games_farm_progress as farm
+
+
+class DuplicateKeyError(Exception):
+    code = 11000
+
+
+class Collection:
+    def __init__(self):
+        self.docs = []
+
+    async def find_one(self, query, projection=None):
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                return dict(doc)
+        return None
+
+    async def insert_one(self, doc):
+        if any(row.get("owner_id") == doc.get("owner_id") for row in self.docs):
+            raise DuplicateKeyError()
+        self.docs.append(dict(doc))
+        return types.SimpleNamespace(inserted_id=doc.get("owner_id"))
+
+    async def update_one(self, query, update):
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                doc.update(update.get("$set", {}))
+                for key, value in update.get("$inc", {}).items():
+                    doc[key] = int(doc.get(key) or 0) + value
+                return types.SimpleNamespace(matched_count=1)
+        return types.SimpleNamespace(matched_count=0)
+
+
+def state(day=1, seed=123456, xp=0, coins=60, harvests=0):
+    season = farm._season_for_day(day)
+    return {
+        "version": 1,
+        "seed": seed,
+        "day": day,
+        "season": season,
+        "weather": farm._weather_for(seed, day, season),
+        "coins": coins,
+        "xp": xp,
+        "level": farm._level_from_xp(xp),
+        "harvests": harvests,
+        "plots": [
+            {
+                "id": i,
+                "crop": None,
+                "plantedDay": None,
+                "growth": 0,
+                "watered": False,
+                "health": 100,
+                "ready": False,
+            }
+            for i in range(1, 7)
+        ],
+        "lastEvent": "Farm bereit.",
+    }
+
+
+class GamesFarmProgressTest(unittest.TestCase):
+    def setUp(self):
+        self.collection = Collection()
+        farm.db = types.SimpleNamespace(games_farm_progress=self.collection)
+        farm.get_current_user = AsyncMock(return_value={"_id": "alice"})
+
+    def test_empty_account_then_first_save(self):
+        empty = asyncio.run(farm.get_farm_progress(None))
+        self.assertFalse(empty["exists"])
+        saved = asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=0, state=farm.FarmStateInput(**state())),
+            None,
+        ))
+        self.assertTrue(saved["exists"])
+        self.assertEqual(saved["revision"], 1)
+        self.assertEqual(saved["state"]["coins"], 60)
+
+    def test_revision_conflict_returns_current_server_snapshot(self):
+        first = asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=0, state=farm.FarmStateInput(**state())),
+            None,
+        ))
+        second_state = state(day=2, xp=40, coins=70, harvests=1)
+        second = asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=first["revision"], state=farm.FarmStateInput(**second_state)),
+            None,
+        ))
+        self.assertEqual(second["revision"], 2)
+
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(farm.save_farm_progress(
+                farm.FarmSaveInput(revision=1, state=farm.FarmStateInput(**state(day=3, xp=80))),
+                None,
+            ))
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(context.exception.detail["current"]["revision"], 2)
+
+    def test_accounts_are_isolated(self):
+        asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=0, state=farm.FarmStateInput(**state())),
+            None,
+        ))
+        farm.get_current_user.return_value = {"_id": "bob"}
+        self.assertFalse(asyncio.run(farm.get_farm_progress(None))["exists"])
+        bob = asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=0, state=farm.FarmStateInput(**state(seed=77))),
+            None,
+        ))
+        self.assertEqual(bob["state"]["seed"], 77)
+        self.assertEqual(len(self.collection.docs), 2)
+
+    def test_invalid_weather_level_and_plot_shape_are_rejected(self):
+        bad_weather = state()
+        bad_weather["weather"] = "storm" if bad_weather["weather"] != "storm" else "sunny"
+        bad_level = state(xp=80)
+        bad_level["level"] = 1
+        bad_plot = state()
+        bad_plot["plots"][0]["crop"] = "wheat"
+        bad_plot["plots"][0]["plantedDay"] = None
+
+        for value in (bad_weather, bad_level, bad_plot):
+            with self.assertRaises(ValidationError):
+                farm.FarmStateInput(**value)
+
+    def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
+        payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
+        saved = asyncio.run(farm.save_farm_progress(
+            farm.FarmSaveInput(revision=0, state=payload),
+            None,
+        ))
+        self.assertEqual(saved["state"]["coins"], 123)
+        for forbidden in ("wallet", "eur", "balance", "payment", "payout", "purchase"):
+            self.assertNotIn(forbidden, saved["state"])
+
+
+if __name__ == "__main__":
+    unittest.main()
