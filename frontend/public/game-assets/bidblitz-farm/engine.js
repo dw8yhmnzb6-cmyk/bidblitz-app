@@ -14,6 +14,22 @@
     tomato: { id: 'tomato', name: 'Tomato', seedCost: 10, growDays: 4, sell: 34, xp: 10, preferred: ['Spring','Summer'] },
     carrot: { id: 'carrot', name: 'Carrot', seedCost: 6,  growDays: 3, sell: 18, xp: 6, preferred: ['Spring','Autumn','Winter'] },
   };
+  const ANIMALS = {
+    chicken: { id: 'chicken', name: 'Huhn', icon: '🐔', cost: 30, feedCost: 3, produceDays: 1, product: 'Eier', productValue: 7, xp: 3, building: 'coop' },
+    cow: { id: 'cow', name: 'Kuh', icon: '🐄', cost: 90, feedCost: 8, produceDays: 2, product: 'Milch', productValue: 24, xp: 7, building: 'barn' },
+    sheep: { id: 'sheep', name: 'Schaf', icon: '🐑', cost: 65, feedCost: 6, produceDays: 2, product: 'Wolle', productValue: 18, xp: 5, building: 'barn' },
+  };
+  const BUILDINGS = {
+    coop: { id: 'coop', name: 'Hühnerstall', icon: '🏠', baseCost: 70, maxLevel: 5 },
+    barn: { id: 'barn', name: 'Scheune', icon: '🏚️', baseCost: 100, maxLevel: 5 },
+    silo: { id: 'silo', name: 'Silo', icon: '🌾', baseCost: 80, maxLevel: 5 },
+  };
+  const MISSIONS = [
+    { id: 'harvest-5', title: 'Ernte 5 Pflanzen', kind: 'harvests', target: 5, rewardCoins: 30, rewardXp: 15 },
+    { id: 'animals-3', title: 'Halte 3 Tiere', kind: 'animals', target: 3, rewardCoins: 45, rewardXp: 20 },
+    { id: 'buildings-5', title: 'Erreiche 5 Gebäude-Level', kind: 'buildings', target: 5, rewardCoins: 60, rewardXp: 25 },
+    { id: 'farm-level-5', title: 'Erreiche Farm-Level 5', kind: 'level', target: 5, rewardCoins: 80, rewardXp: 30 },
+  ];
 
   const clone = value => JSON.parse(JSON.stringify(value));
 
@@ -57,6 +73,13 @@
       xp: 0,
       level: 1,
       harvests: 0,
+      animals: {
+        chicken: { count: 0, fed: false, progress: 0, ready: 0 },
+        cow: { count: 0, fed: false, progress: 0, ready: 0 },
+        sheep: { count: 0, fed: false, progress: 0, ready: 0 },
+      },
+      buildings: { coop: 1, barn: 1, silo: 1 },
+      claimedMissions: [],
       plots: Array.from({ length: PLOT_COUNT }, (_, index) => emptyPlot(index + 1)),
       lastEvent: 'Farm gestartet.',
     };
@@ -116,6 +139,19 @@
       return updated;
     });
 
+    for (const [animalId, herd] of Object.entries(next.animals || {})) {
+      const spec = ANIMALS[animalId];
+      if (!spec || herd.count <= 0) continue;
+      if (herd.fed) {
+        herd.progress += 1;
+        if (herd.progress >= spec.produceDays) {
+          herd.ready += herd.count;
+          herd.progress = 0;
+        }
+      }
+      herd.fed = false;
+    }
+
     next.day += 1;
     next.season = seasonForDay(next.day);
     next.weather = weatherFor(next.seed, next.day, next.season);
@@ -132,7 +168,8 @@
     const crop = CROPS[plot.crop];
     const healthMultiplier = Math.max(.5, plot.health / 100);
     const seasonBonus = crop.preferred.includes(SEASONS[next.season]) ? 1.1 : 1;
-    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus));
+    const siloBonus = 1 + Math.max(0, (next.buildings?.silo || 1) - 1) * 0.05;
+    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus));
     next.coins += revenue;
     next.xp += crop.xp;
     next.level = levelFromXp(next.xp);
@@ -169,6 +206,105 @@
     return { type: 'calm', icon: '🌿', title: 'Ruhiger Farmtag', text: 'Gute Bedingungen für Pflege und Planung.' };
   }
 
+  function buildingUpgradeCost(profile, buildingId) {
+    const spec = BUILDINGS[buildingId];
+    const level = profile?.buildings?.[buildingId];
+    if (!spec || !Number.isInteger(level) || level < 1 || level >= spec.maxLevel) return null;
+    return spec.baseCost * level;
+  }
+
+  function animalCapacity(profile, animalId) {
+    const spec = ANIMALS[animalId];
+    if (!spec) return 0;
+    return Math.max(0, (profile?.buildings?.[spec.building] || 1) * 3);
+  }
+
+  function buyAnimal(profile, animalId) {
+    const spec = ANIMALS[animalId];
+    if (!profile || !spec) return { ok: false, profile, reason: 'animal' };
+    const herd = profile.animals?.[animalId];
+    if (!herd || herd.count >= animalCapacity(profile, animalId)) return { ok: false, profile, reason: 'capacity' };
+    if (profile.coins < spec.cost) return { ok: false, profile, reason: 'coins' };
+    const next = clone(profile);
+    next.coins -= spec.cost;
+    next.animals[animalId].count += 1;
+    next.lastEvent = spec.name + ' gekauft.';
+    return { ok: true, profile: next };
+  }
+
+  function feedAnimals(profile, animalId) {
+    const spec = ANIMALS[animalId];
+    const herd = profile?.animals?.[animalId];
+    if (!profile || !spec || !herd || herd.count <= 0 || herd.fed) return { ok: false, profile, reason: 'animal' };
+    const cost = spec.feedCost * herd.count;
+    if (profile.coins < cost) return { ok: false, profile, reason: 'coins' };
+    const next = clone(profile);
+    next.coins -= cost;
+    next.animals[animalId].fed = true;
+    next.lastEvent = spec.name + ': Futter für ' + herd.count + ' Tier(e).';
+    return { ok: true, profile: next, cost };
+  }
+
+  function collectAnimalProduct(profile, animalId) {
+    const spec = ANIMALS[animalId];
+    const herd = profile?.animals?.[animalId];
+    if (!profile || !spec || !herd || herd.ready <= 0) return { ok: false, profile };
+    const next = clone(profile);
+    const quantity = next.animals[animalId].ready;
+    const revenue = quantity * spec.productValue;
+    next.animals[animalId].ready = 0;
+    next.coins += revenue;
+    next.xp += quantity * spec.xp;
+    next.level = levelFromXp(next.xp);
+    next.lastEvent = quantity + '× ' + spec.product + ' eingesammelt: +' + revenue + ' Münzen.';
+    return { ok: true, profile: next, quantity, revenue };
+  }
+
+  function upgradeBuilding(profile, buildingId) {
+    const spec = BUILDINGS[buildingId];
+    const cost = buildingUpgradeCost(profile, buildingId);
+    if (!profile || !spec || cost === null) return { ok: false, profile, reason: 'max' };
+    if (profile.coins < cost) return { ok: false, profile, reason: 'coins' };
+    const next = clone(profile);
+    next.coins -= cost;
+    next.buildings[buildingId] += 1;
+    next.xp += 10 * next.buildings[buildingId];
+    next.level = levelFromXp(next.xp);
+    next.lastEvent = spec.name + ' auf Level ' + next.buildings[buildingId] + ' ausgebaut.';
+    return { ok: true, profile: next, cost };
+  }
+
+  function missionValue(profile, mission) {
+    if (mission.kind === 'harvests') return profile.harvests;
+    if (mission.kind === 'animals') return Object.values(profile.animals || {}).reduce((sum, herd) => sum + (herd.count || 0), 0);
+    if (mission.kind === 'buildings') return Object.values(profile.buildings || {}).reduce((sum, level) => sum + (level || 0), 0);
+    if (mission.kind === 'level') return profile.level;
+    return 0;
+  }
+
+  function missionStatus(profile) {
+    return MISSIONS.map(mission => ({
+      ...mission,
+      value: Math.min(mission.target, missionValue(profile, mission)),
+      completed: missionValue(profile, mission) >= mission.target,
+      claimed: (profile.claimedMissions || []).includes(mission.id),
+    }));
+  }
+
+  function claimMission(profile, missionId) {
+    const mission = MISSIONS.find(item => item.id === missionId);
+    if (!profile || !mission || (profile.claimedMissions || []).includes(missionId)) return { ok: false, profile };
+    const value = missionValue(profile, mission);
+    if (value < mission.target) return { ok: false, profile };
+    const next = clone(profile);
+    next.claimedMissions.push(mission.id);
+    next.coins += mission.rewardCoins;
+    next.xp += mission.rewardXp;
+    next.level = levelFromXp(next.xp);
+    next.lastEvent = 'Mission abgeschlossen: ' + mission.title + '.';
+    return { ok: true, profile: next };
+  }
+
   function forecast(profile, days = 7) {
     if (!profile || !Number.isInteger(days) || days < 1 || days > 14) return [];
     return Array.from({ length: days }, (_, index) => {
@@ -185,6 +321,18 @@
       if (!value || value.version !== VERSION || !int(value.seed, 1, 4294967295)) return null;
       if (!int(value.day, 1, 100000) || !int(value.season, 0, 3) || !WEATHER.includes(value.weather)) return null;
       if (!int(value.coins, 0, 1e9) || !int(value.xp, 0, 1e9) || !int(value.level, 1, 50) || !int(value.harvests, 0, 1e9)) return null;
+      if (!value.animals) value.animals = initial(value.seed).animals;
+      if (!value.buildings) value.buildings = { coop: 1, barn: 1, silo: 1 };
+      if (!Array.isArray(value.claimedMissions)) value.claimedMissions = [];
+      for (const [animalId, spec] of Object.entries(ANIMALS)) {
+        const herd = value.animals[animalId];
+        if (!herd || !int(herd.count, 0, 100) || typeof herd.fed !== 'boolean' || !int(herd.progress, 0, spec.produceDays) || !int(herd.ready, 0, 100000)) return null;
+        if (herd.count > animalCapacity(value, animalId)) return null;
+      }
+      for (const [buildingId, spec] of Object.entries(BUILDINGS)) {
+        if (!int(value.buildings[buildingId], 1, spec.maxLevel)) return null;
+      }
+      if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
       if (!Array.isArray(value.plots) || value.plots.length !== PLOT_COUNT) return null;
       for (let i = 0; i < PLOT_COUNT; i++) {
         const plot = value.plots[i];
@@ -206,8 +354,10 @@
   }
 
   return {
-    VERSION, PLOT_COUNT, SEASONS, WEATHER, CROPS,
+    VERSION, PLOT_COUNT, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS,
     initial, plant, water, advanceDay, harvest, forecast,
-    weatherFor, seasonForDay, levelFromXp, dailyTask, weatherEvent, decode,
+    weatherFor, seasonForDay, levelFromXp, dailyTask, weatherEvent,
+    buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
+    upgradeBuilding, missionStatus, claimMission, decode,
   };
 }));
