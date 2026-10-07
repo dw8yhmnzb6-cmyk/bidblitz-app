@@ -96,3 +96,18 @@ footer span{display:block;margin-top:5px;color:#cdf5d7}
 .land-panel p:last-child{margin:0;color:#b4d0bc;font-size:11px}
 .land-panel button{min-width:150px;background:linear-gradient(90deg,#dfff8d,#8eed98);color:#0d2b18;border:0;font-weight:800}
 @media(max-width:700px){.market-grid{grid-template-columns:repeat(2,1fr)}.land-panel{align-items:stretch;flex-direction:column}.land-panel button{width:100%}}
+
+.orders-panel{margin:18px 0;padding:16px;border:1px solid #baf8cd22;border-radius:22px;background:#ffffff08}
+.inventory-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:12px}
+.inventory-item{border-radius:13px;background:#ffffff08;padding:9px 5px;text-align:center}
+.inventory-item span{display:block;font-size:18px}
+.inventory-item b{display:block;margin-top:4px;font-size:11px;color:#dff9e5}
+.orders-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.order-card{border:1px solid #baf8cd22;border-radius:16px;background:#112d22;padding:12px}
+.order-card.done{opacity:.65}
+.order-card h3{margin:0;font-size:13px}
+.order-card p{margin:5px 0;color:#b7d2bf;font-size:11px}
+.order-card button{width:100%;margin-top:9px;padding:9px 10px;font-size:11px}
+.order-card button.primary{background:#dfff8d;color:#0d2b18;font-weight:800}
+.order-card button:disabled{opacity:.4}
+@media(max-width:800px){.inventory-grid{grid-template-columns:repeat(4,1fr)}.orders-grid{grid-template-columns:1fr}}
