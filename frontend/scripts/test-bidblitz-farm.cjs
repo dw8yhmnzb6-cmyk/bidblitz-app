@@ -75,6 +75,66 @@ test("daily tasks and weather events are deterministic", () => {
   assert.equal(typeof event.text, "string");
 });
 
+test("animals respect building capacity and produce virtual farm goods", () => {
+  let farm = F.initial(21);
+  for (let i = 0; i < 3; i++) farm = F.buyAnimal(farm, "chicken").profile;
+  assert.equal(farm.animals.chicken.count, 3);
+  assert.equal(F.buyAnimal(farm, "chicken").reason, "capacity");
+
+  const fed = F.feedAnimals(farm, "chicken");
+  assert.equal(fed.ok, true);
+  farm = F.advanceDay(fed.profile).profile;
+  assert.equal(farm.animals.chicken.ready, 3);
+
+  const before = farm.coins;
+  const collected = F.collectAnimalProduct(farm, "chicken");
+  assert.equal(collected.ok, true);
+  assert.equal(collected.quantity, 3);
+  assert.ok(collected.profile.coins > before);
+  assert.equal(collected.profile.animals.chicken.ready, 0);
+});
+
+test("building upgrades increase capacity and silo harvest value", () => {
+  let farm = F.initial(22);
+  farm.coins = 1000;
+  const coopCost = F.buildingUpgradeCost(farm, "coop");
+  const upgraded = F.upgradeBuilding(farm, "coop");
+  assert.equal(upgraded.ok, true);
+  assert.equal(upgraded.cost, coopCost);
+  assert.equal(upgraded.profile.buildings.coop, 2);
+  assert.equal(F.animalCapacity(upgraded.profile, "chicken"), 6);
+
+  const base = F.initial(42);
+  let improved = F.initial(42);
+  improved.coins = 1000;
+  improved = F.upgradeBuilding(improved, "silo").profile;
+  let a = F.plant(base, 1, "carrot").profile;
+  let b = F.plant(improved, 1, "carrot").profile;
+  for (let i = 0; i < 8 && !a.plots[0].ready; i++) {
+    a = F.water(a, 1).profile; a = F.advanceDay(a).profile;
+    b = F.water(b, 1).profile; b = F.advanceDay(b).profile;
+  }
+  const harvestA = F.harvest(a, 1);
+  const harvestB = F.harvest(b, 1);
+  assert.ok(harvestB.revenue >= harvestA.revenue);
+});
+
+test("missions unlock once and grant only virtual rewards", () => {
+  let farm = F.initial(33);
+  farm.harvests = 5;
+  let mission = F.missionStatus(farm).find(item => item.id === "harvest-5");
+  assert.equal(mission.completed, true);
+  assert.equal(mission.claimed, false);
+
+  const claimed = F.claimMission(farm, "harvest-5");
+  assert.equal(claimed.ok, true);
+  assert.ok(claimed.profile.coins > farm.coins);
+  assert.ok(claimed.profile.xp > farm.xp);
+  mission = F.missionStatus(claimed.profile).find(item => item.id === "harvest-5");
+  assert.equal(mission.claimed, true);
+  assert.equal(F.claimMission(claimed.profile, "harvest-5").ok, false);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
