@@ -31,8 +31,22 @@ test("farm expansion, buildings and animals break same-day sync ties", () => {
   assert.equal(S.compareProgress(stocked, base), 1);
 });
 
+test("completed orders and inventory break same-day sync ties", () => {
+  const base = {
+    day: 5, xp: 100, harvests: 3, completedOrders: 0, unlockedPlots: 6,
+    buildings: { coop: 1, barn: 1, silo: 1 },
+    animals: { chicken: { count: 1 }, cow: { count: 0 }, sheep: { count: 0 } },
+    inventory: { wheat: 0, corn: 0, tomato: 0, carrot: 0, eggs: 0, milk: 0, wool: 0 },
+  };
+  const ordered = { ...base, completedOrders: 1 };
+  assert.equal(S.compareProgress(ordered, base), 1);
+
+  const stocked = { ...base, inventory: { ...base.inventory, wheat: 2 } };
+  assert.equal(S.compareProgress(stocked, base), 1);
+});
+
 test("invalid progress values fail safely instead of outranking valid state", () => {
   assert.deepEqual(S.progressTuple(null), [0, 0, 0]);
-  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0, 0, 0]);
   assert.equal(S.chooseNewer(state(1, 0, 0), null), "local");
 });
