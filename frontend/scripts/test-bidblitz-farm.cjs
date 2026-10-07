@@ -249,6 +249,35 @@ test("harvests and animal products create order inventory without wallet fields"
   }
 });
 
+test("order streak completes after all three daily orders and grants only virtual bonuses", () => {
+  let farm = F.initial(999);
+  const orders = F.orderBoard(farm);
+  for (const order of orders) {
+    farm.inventory[order.itemId] = (farm.inventory[order.itemId] || 0) + order.quantity;
+    const result = F.fulfillOrder(farm, order.id);
+    assert.equal(result.ok, true);
+    farm = result.profile;
+  }
+  assert.equal(farm.completedOrders, 3);
+  assert.equal(farm.orderStreak, 1);
+  assert.equal(farm.lastOrderStreakDay, farm.day);
+  assert.equal(F.customerRank(farm).level, 1);
+});
+
+test("customer rank increases with completed order count", () => {
+  const farm = F.initial(1000);
+  farm.completedOrders = 0;
+  assert.equal(F.customerRank(farm).id, "new");
+  farm.completedOrders = 6;
+  assert.equal(F.customerRank(farm).id, "known");
+  farm.completedOrders = 15;
+  assert.equal(F.customerRank(farm).id, "trusted");
+  farm.completedOrders = 30;
+  assert.equal(F.customerRank(farm).id, "expert");
+  farm.completedOrders = 60;
+  assert.equal(F.customerRank(farm).id, "legend");
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
