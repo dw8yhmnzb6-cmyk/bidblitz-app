@@ -666,7 +666,7 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(integrity.getByText('BidBlitz Match')).toBeVisible();
   await expect(integrity.getByText('Bubble Islands')).toBeVisible();
   await expect(integrity.getByText('Blitz Runner')).toBeVisible();
-  await expect(integrity.getByText('Server-Replay')).toHaveCount(3);
+  await expect(integrity.getByText('Server-Replay', { exact: true })).toHaveCount(3);
   await expect(integrity.getByText('Öffentliches Trusted-Leaderboard')).toBeVisible();
   await expect(integrity.getByText('Aus', { exact: true })).toBeVisible();
   await expect(integrity).not.toContainText('owner_id');
