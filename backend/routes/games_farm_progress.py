@@ -23,8 +23,9 @@ MAX_PLOTS = 12
 ANIMAL_BUILDING = {"chicken": "coop", "cow": "barn", "sheep": "barn"}
 ANIMAL_PRODUCE_DAYS = {"chicken": 1, "cow": 2, "sheep": 2}
 BUILDING_MAX_LEVEL = {"coop": 5, "barn": 5, "silo": 5}
-MISSION_IDS = {"harvest-5", "animals-3", "buildings-5", "farm-level-5"}
+MISSION_IDS = {"harvest-5", "animals-3", "buildings-5", "farm-level-5", "orders-10", "land-12", "buildings-9", "farm-level-10"}
 INVENTORY_IDS = {"wheat", "corn", "tomato", "carrot", "eggs", "milk", "wool"}
+LEVEL_REWARD_LEVELS = {5, 10, 20, 30, 40, 50}
 
 
 def _xorshift(value: int) -> int:
@@ -112,6 +113,7 @@ class FarmStateInput(BaseModel):
     orderStreak: int = Field(default=0, strict=True, ge=0, le=30)
     lastOrderStreakDay: int = Field(default=0, strict=True, ge=0, le=100000)
     claimedMissions: list[str] = Field(default_factory=list, max_length=20)
+    claimedLevelRewards: list[int] = Field(default_factory=list, max_length=6)
     plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=MAX_PLOTS)
     lastEvent: str = Field(default="", max_length=160)
 
@@ -126,6 +128,13 @@ class FarmStateInput(BaseModel):
             parts = value.split("-")
             if len(parts) != 3 or not parts[1].isdigit() or parts[2] not in {"0", "1", "2"}:
                 raise ValueError("Ungültige Farm-Bestellung")
+        return values
+
+    @field_validator("claimedLevelRewards")
+    @classmethod
+    def validate_level_rewards(cls, values: list[int]) -> list[int]:
+        if len(values) != len(set(values)) or any(value not in LEVEL_REWARD_LEVELS for value in values):
+            raise ValueError("Ungültige Farm-Level-Belohnungen")
         return values
 
     @field_validator("claimedMissions")
@@ -143,6 +152,8 @@ class FarmStateInput(BaseModel):
             raise ValueError("Ungültiges Wetter für diesen Farm-Tag")
         if self.level != _level_from_xp(self.xp):
             raise ValueError("Farm-Level passt nicht zu XP")
+        if any(level > self.level for level in self.claimedLevelRewards):
+            raise ValueError("Level-Belohnung wurde zu früh eingelöst")
         if self.lastOrderStreakDay > self.day:
             raise ValueError("Ungültiger Auftragstag")
         if self.unlockedPlots not in {6, 9, 12}:
