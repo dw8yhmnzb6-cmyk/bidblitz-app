@@ -1136,9 +1136,14 @@ async def refund_payment(req: RefundRequest, request: Request):
     actor = await get_actor_context(user, payment["store_id"], payment.get("register_id", ""))
     require_permission(actor, "refund.issue")
 
-    refund_amount = float(req.amount) if req.amount else float(payment["amount"])
-    if refund_amount <= 0 or refund_amount > float(payment["amount"]):
-        raise HTTPException(status_code=400, detail="Refund-Betrag ungültig")
+    payment_amount = float(payment["amount"])
+    already_refunded = float(payment.get("refunded_total") or 0)
+    remaining_refundable = round(max(payment_amount - already_refunded, 0), 2)
+    refund_amount = float(req.amount) if req.amount is not None else remaining_refundable
+    if remaining_refundable <= 0:
+        raise HTTPException(status_code=409, detail="Zahlung wurde bereits vollständig erstattet")
+    if refund_amount <= 0 or refund_amount > remaining_refundable:
+        raise HTTPException(status_code=400, detail=f"Refund-Betrag ungültig. Maximal EUR {remaining_refundable:.2f}")
 
     limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
     policy = evaluate_transaction_limits(actor, "refund", refund_amount, limits)
@@ -1154,7 +1159,7 @@ async def refund_payment(req: RefundRequest, request: Request):
     refund_doc = await execute_refund_action({"payment_id": req.payment_id, "amount": refund_amount, "reason": req.reason or ""}, actor, request=request)
     await db.pos_shifts.update_one({"shift_id": payment.get("shift_id") or ""}, {"$inc": {"refund_total": refund_amount}})
     await _audit(str(user["_id"]), "payment.refund", {"payment_id": payment["payment_id"], "amount": refund_amount})
-    return {"ok": True, "refund": refund_doc, "new_status": PAYMENT_STATUS_REFUNDED if refund_amount >= float(payment["amount"]) else "partial_refund"}
+    return {"ok": True, "refund": refund_doc, "new_status": "refunded" if float(refund_doc.get("amount") or 0) >= remaining_refundable else "partial_refund"}
 
 
 # ───────────────────────────────────────────────────────────────────────
