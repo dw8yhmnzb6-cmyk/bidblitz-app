@@ -256,6 +256,13 @@
     return Math.max(0, (profile?.buildings?.[spec.building] || 1) * 3);
   }
 
+  function animalProductBonus(profile, animalId) {
+    const spec = ANIMALS[animalId];
+    if (!spec) return 1;
+    const level = profile?.buildings?.[spec.building] || 1;
+    return 1 + Math.max(0, level - 1) * 0.05;
+  }
+
   function buyAnimal(profile, animalId) {
     const spec = ANIMALS[animalId];
     if (!profile || !spec) return { ok: false, profile, reason: 'animal' };
@@ -288,7 +295,7 @@
     if (!profile || !spec || !herd || herd.ready <= 0) return { ok: false, profile };
     const next = clone(profile);
     const quantity = next.animals[animalId].ready;
-    const revenue = Math.max(1, Math.floor(quantity * spec.productValue * marketMultiplier(next, animalId)));
+    const revenue = Math.max(1, Math.floor(quantity * spec.productValue * marketMultiplier(next, animalId) * animalProductBonus(next, animalId)));
     next.animals[animalId].ready = 0;
     const productId = animalId === 'chicken' ? 'eggs' : animalId === 'cow' ? 'milk' : 'wool';
     next.inventory[productId] = (next.inventory[productId] || 0) + quantity;
@@ -518,7 +525,7 @@
     VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS, INVENTORY_ITEMS,
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
-    buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
+    buildingUpgradeCost, animalCapacity, animalProductBonus, buyAnimal, feedAnimals, collectAnimalProduct,
     upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
