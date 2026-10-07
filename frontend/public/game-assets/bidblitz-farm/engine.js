@@ -92,9 +92,11 @@
     const index = profile.plots.findIndex(plot => plot.id === plotId);
     if (index < 0 || plotId > (profile.unlockedPlots || PLOT_COUNT) || profile.plots[index].crop) return { ok: false, profile, reason: 'plot' };
     const crop = CROPS[cropId];
-    if (profile.coins < crop.seedCost) return { ok: false, profile, reason: 'coins' };
+    const event = seasonEvent(profile);
+    const seedCost = Math.max(1, Math.ceil(crop.seedCost * (1 - (event?.seedDiscount || 0))));
+    if (profile.coins < seedCost) return { ok: false, profile, reason: 'coins' };
     const next = clone(profile);
-    next.coins -= crop.seedCost;
+    next.coins -= seedCost;
     next.plots[index] = {
       id: plotId, crop: cropId, plantedDay: next.day, growth: 0,
       watered: false, health: 100, ready: false,
@@ -136,6 +138,12 @@
       if (!wet && next.weather === 'sunny') updated.health = Math.max(0, updated.health - 15);
       else if (next.weather === 'storm') updated.health = Math.max(0, updated.health - 8);
       else updated.health = Math.min(100, updated.health + 4);
+
+      const seasonal = seasonEvent(next);
+      if (seasonal?.id === 'summer-heat' && !wet) updated.health = Math.max(0, updated.health - seasonal.healthPenalty);
+      if (seasonal?.id === 'winter-frost' && !CROPS[updated.crop].preferred.includes('Winter')) {
+        updated.health = Math.max(0, updated.health - seasonal.healthPenalty);
+      }
       const crop = CROPS[updated.crop];
       updated.ready = updated.health > 0 && updated.growth >= crop.growDays;
       return updated;
@@ -172,7 +180,8 @@
     const seasonBonus = crop.preferred.includes(SEASONS[next.season]) ? 1.1 : 1;
     const siloBonus = 1 + Math.max(0, (next.buildings?.silo || 1) - 1) * 0.05;
     const marketBonus = marketMultiplier(next, crop.id);
-    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus * marketBonus));
+    const eventBonus = 1 + (seasonEvent(next)?.harvestBonus || 0);
+    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus * marketBonus * eventBonus));
     next.coins += revenue;
     next.xp += crop.xp;
     next.level = levelFromXp(next.xp);
@@ -195,6 +204,16 @@
       return { id: 'harvest', title: 'Erreiche 3 Ernten', target: 3, value: Math.min(3, profile.harvests) };
     }
     return { id: 'xp', title: 'Sammle 40 Farm-XP', target: 40, value: profile.xp % 40 };
+  }
+
+  function seasonEvent(profile) {
+    if (!profile) return null;
+    const cycleDay = ((profile.day - 1) % 28) + 1;
+    if (cycleDay === 7) return { id: 'spring-fair', icon: '🌱', title: 'Frühlings-Saatfest', text: 'Saatgut kostet heute 20% weniger.', seedDiscount: 0.20, harvestBonus: 0, healthPenalty: 0 };
+    if (cycleDay === 14) return { id: 'summer-heat', icon: '🌞', title: 'Sommer-Hitzewoche', text: 'Unbewässerte Felder verlieren heute zusätzliche Gesundheit.', seedDiscount: 0, harvestBonus: 0, healthPenalty: 8 };
+    if (cycleDay === 21) return { id: 'autumn-festival', icon: '🍂', title: 'Herbst-Erntefest', text: 'Ernten bringen heute 20% mehr virtuelle Farm-Münzen.', seedDiscount: 0, harvestBonus: 0.20, healthPenalty: 0 };
+    if (cycleDay === 28) return { id: 'winter-frost', icon: '❄️', title: 'Winter-Frosttag', text: 'Nicht winterfeste Pflanzen verlieren zusätzliche Gesundheit.', seedDiscount: 0, harvestBonus: 0, healthPenalty: 12 };
+    return null;
   }
 
   function weatherEvent(profile) {
@@ -399,7 +418,7 @@
   return {
     VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS,
     initial, plant, water, advanceDay, harvest, forecast,
-    weatherFor, seasonForDay, levelFromXp, dailyTask, weatherEvent,
+    weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
     upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, decode,
   };
