@@ -396,7 +396,7 @@
   }
 
   function renderBrief() {
-    const event = F.weatherEvent(profile);
+    const event = F.seasonEvent(profile) || F.weatherEvent(profile);
     $('weather-event-icon').textContent = event?.icon || '🌿';
     $('weather-event-title').textContent = event?.title || 'Ruhiger Farmtag';
     $('weather-event-text').textContent = event?.text || 'Gute Bedingungen für Pflege und Planung.';
