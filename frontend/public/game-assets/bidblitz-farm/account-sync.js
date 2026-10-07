@@ -12,13 +12,18 @@
     const animals = state.animals && typeof state.animals === 'object'
       ? Object.values(state.animals).reduce((sum, herd) => sum + (Number.isInteger(herd?.count) && herd.count >= 0 ? herd.count : 0), 0)
       : 0;
+    const inventory = state.inventory && typeof state.inventory === 'object'
+      ? Object.values(state.inventory).reduce((sum, value) => sum + (Number.isInteger(value) && value >= 0 ? value : 0), 0)
+      : 0;
     return [
       Number.isInteger(state.day) && state.day >= 0 ? state.day : 0,
       Number.isInteger(state.xp) && state.xp >= 0 ? state.xp : 0,
       Number.isInteger(state.harvests) && state.harvests >= 0 ? state.harvests : 0,
+      Number.isInteger(state.completedOrders) && state.completedOrders >= 0 ? state.completedOrders : 0,
       Number.isInteger(state.unlockedPlots) && state.unlockedPlots >= 0 ? state.unlockedPlots : 0,
       buildings,
       animals,
+      inventory,
     ];
   }
 
