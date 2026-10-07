@@ -96,6 +96,17 @@ test("animals respect building capacity and produce virtual farm goods", () => {
   assert.equal(collected.profile.animals.chicken.ready, 0);
 });
 
+test("animal buildings increase virtual product value", () => {
+  let farm = F.initial(77);
+  farm.coins = 1000;
+  assert.equal(F.animalProductBonus(farm, "chicken"), 1);
+  farm = F.upgradeBuilding(farm, "coop").profile;
+  assert.equal(F.animalProductBonus(farm, "chicken"), 1.05);
+  farm = F.upgradeBuilding(farm, "barn").profile;
+  assert.equal(F.animalProductBonus(farm, "cow"), 1.05);
+  assert.equal(F.animalProductBonus(farm, "sheep"), 1.05);
+});
+
 test("building upgrades increase capacity and silo harvest value", () => {
   let farm = F.initial(22);
   farm.coins = 1000;
