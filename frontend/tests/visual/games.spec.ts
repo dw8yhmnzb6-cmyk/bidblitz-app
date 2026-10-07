@@ -715,7 +715,10 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   await expect(game.getByRole('heading', { name: 'Gebäude & Ausbau' })).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Missionen' })).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Farm-Markt' })).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Bestellungen' })).toBeVisible();
   await expect(game.getByText('6 / 12 Felder freigeschaltet')).toBeVisible();
+  await expect(game.locator('#inventory .inventory-item')).toHaveCount(7);
+  await expect(game.locator('#orders .order-card')).toHaveCount(3);
 
   const handle = await frame.elementHandle();
   const farmFrame = await handle?.contentFrame();
@@ -727,8 +730,9 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
     api.nextDay();
     const collected = api.collectAnimalProduct('chicken');
     const market = api.market();
+    const orders = api.orders();
     const snapshot = api.snapshot();
-    return { bought, fed, collected, market, snapshot };
+    return { bought, fed, collected, market, orders, snapshot };
   });
   expect(actions.bought).toBe(true);
   expect(actions.fed).toBe(true);
@@ -736,6 +740,7 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   expect(actions.snapshot.animals.chicken.count).toBe(1);
   expect(actions.snapshot.animals.chicken.ready).toBe(0);
   expect(actions.market.day).toBe(actions.snapshot.day);
+  expect(actions.orders).toHaveLength(3);
   await expectNoHorizontalOverflow(page);
 });
 
