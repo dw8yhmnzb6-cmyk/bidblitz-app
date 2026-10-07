@@ -366,6 +366,23 @@
     return { ok: true, profile: next };
   }
 
+  function completionScore(profile) {
+    if (!profile) return { percent: 0, parts: {} };
+    const missionList = missionStatus(profile);
+    const achievementList = achievements(profile);
+    const buildingLevels = Object.values(profile.buildings || {}).reduce((sum, level) => sum + (level || 0), 0);
+    const parts = {
+      level: Math.min(1, (profile.level || 1) / 50),
+      land: Math.min(1, (profile.unlockedPlots || PLOT_COUNT) / MAX_PLOTS),
+      buildings: Math.min(1, buildingLevels / 15),
+      missions: missionList.length ? missionList.filter(item => item.completed).length / missionList.length : 0,
+      orders: Math.min(1, (profile.completedOrders || 0) / 60),
+      achievements: achievementList.length ? achievementList.filter(item => item.achieved).length / achievementList.length : 0,
+    };
+    const average = Object.values(parts).reduce((sum, value) => sum + value, 0) / Object.keys(parts).length;
+    return { percent: Math.round(average * 100), parts };
+  }
+
   function achievements(profile) {
     if (!profile) return [];
     const animalCount = Object.values(profile.animals || {}).reduce((sum, herd) => sum + (herd.count || 0), 0);
@@ -596,6 +613,6 @@
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, animalProductBonus, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, achievements, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
+    upgradeBuilding, missionStatus, claimMission, completionScore, achievements, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
