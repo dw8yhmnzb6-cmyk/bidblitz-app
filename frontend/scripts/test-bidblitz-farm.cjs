@@ -194,9 +194,9 @@ test("season events are deterministic and affect virtual farm economy", () => {
   const event = F.seasonEvent(spring);
   assert.equal(event.id, "spring-fair");
   const before = spring.coins;
-  const planted = F.plant(spring, 1, "wheat");
+  const planted = F.plant(spring, 1, "tomato");
   assert.equal(planted.ok, true);
-  assert.ok(before - planted.profile.coins < F.CROPS.wheat.seedCost);
+  assert.ok(before - planted.profile.coins < F.CROPS.tomato.seedCost);
 
   const autumn = F.initial(1234);
   autumn.day = 21;
