@@ -140,7 +140,7 @@ class GamesIntegrityTest(unittest.TestCase):
 
     def test_verified_match_win_consumes_session_and_updates_progress(self):
         seed, actions, _ = self.find_winning_match_fixture()
-        session_id = "m" * 32
+        session_id = "a" * 32
         self.sessions.docs.append({
             "_id": session_id,
             "owner_id": "alice",
