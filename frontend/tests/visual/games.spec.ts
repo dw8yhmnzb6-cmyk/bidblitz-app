@@ -256,6 +256,26 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/admin/game-studio/integrity/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        games: [
+          { game_id: 'match', mode: 'server_replay', verified_profiles: 4, public_trusted_leaderboard_enabled: false },
+          { game_id: 'bubble', mode: 'server_replay', verified_profiles: 3, public_trusted_leaderboard_enabled: false },
+          { game_id: 'runner', mode: 'server_replay', verified_profiles: 5, public_trusted_leaderboard_enabled: false },
+          { game_id: 'farm', mode: 'no_competitive_score', verified_profiles: 0, public_trusted_leaderboard_enabled: false },
+        ],
+        verified_profiles_total: 12,
+        active_replay_sessions: 2,
+        public_trusted_leaderboards_enabled: false,
+        privacy: 'aggregate_counts_only',
+        integrity: 'server_replay_not_full_anti_cheat',
+      }),
+    });
+  });
+
   await page.route('**/api/admin/game-studio/finance/summary', async (route) => {
     await route.fulfill({
       status: 200,
@@ -615,6 +635,19 @@ test('Games admin operations diagnostics render without private data', async ({ 
   const reviewedGerman = translations.getByTestId('translation-review-de');
   await reviewedGerman.getByRole('button', { name: 'Freigabe zurücknehmen' }).click();
   await expect(translations.getByText('0/50', { exact: true })).toBeVisible();
+
+  const integrity = page.getByTestId('games-integrity-card');
+  await expect(integrity).toBeVisible();
+  await expect(integrity.getByText('Integritätsstatus')).toBeVisible();
+  await expect(integrity.getByText('12 verifizierte Profile')).toBeVisible();
+  await expect(integrity.getByText('BidBlitz Match')).toBeVisible();
+  await expect(integrity.getByText('Bubble Islands')).toBeVisible();
+  await expect(integrity.getByText('Blitz Runner')).toBeVisible();
+  await expect(integrity.getByText('Server-Replay')).toHaveCount(3);
+  await expect(integrity.getByText('Öffentliches Trusted-Leaderboard')).toBeVisible();
+  await expect(integrity.getByText('Aus', { exact: true })).toBeVisible();
+  await expect(integrity).not.toContainText('owner_id');
+  await expect(integrity).not.toContainText('email');
 
   const finance = page.getByTestId('games-finance-sandbox-admin');
   await expect(finance).toBeVisible();
