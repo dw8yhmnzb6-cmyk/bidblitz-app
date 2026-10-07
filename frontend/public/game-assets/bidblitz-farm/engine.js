@@ -31,6 +31,15 @@
     { id: 'buildings-5', title: 'Erreiche 5 Gebäude-Level', kind: 'buildings', target: 5, rewardCoins: 60, rewardXp: 25 },
     { id: 'farm-level-5', title: 'Erreiche Farm-Level 5', kind: 'level', target: 5, rewardCoins: 80, rewardXp: 30 },
   ];
+  const INVENTORY_ITEMS = {
+    wheat: { id: 'wheat', name: 'Weizen', icon: '🌾', baseValue: 12 },
+    corn: { id: 'corn', name: 'Mais', icon: '🌽', baseValue: 22 },
+    tomato: { id: 'tomato', name: 'Tomate', icon: '🍅', baseValue: 34 },
+    carrot: { id: 'carrot', name: 'Karotte', icon: '🥕', baseValue: 18 },
+    eggs: { id: 'eggs', name: 'Eier', icon: '🥚', baseValue: 7 },
+    milk: { id: 'milk', name: 'Milch', icon: '🥛', baseValue: 24 },
+    wool: { id: 'wool', name: 'Wolle', icon: '🧶', baseValue: 18 },
+  };
 
   const clone = value => JSON.parse(JSON.stringify(value));
 
@@ -81,6 +90,9 @@
         sheep: { count: 0, fed: false, progress: 0, ready: 0 },
       },
       buildings: { coop: 1, barn: 1, silo: 1 },
+      inventory: Object.fromEntries(Object.keys(INVENTORY_ITEMS).map(id => [id, 0])),
+      fulfilledOrders: [],
+      completedOrders: 0,
       claimedMissions: [],
       plots: Array.from({ length: MAX_PLOTS }, (_, index) => emptyPlot(index + 1)),
       lastEvent: 'Farm gestartet.',
@@ -183,6 +195,7 @@
     const eventBonus = 1 + (seasonEvent(next)?.harvestBonus || 0);
     const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus * marketBonus * eventBonus));
     next.coins += revenue;
+    next.inventory[crop.id] = (next.inventory[crop.id] || 0) + 1;
     next.xp += crop.xp;
     next.level = levelFromXp(next.xp);
     next.harvests += 1;
@@ -275,6 +288,8 @@
     const quantity = next.animals[animalId].ready;
     const revenue = Math.max(1, Math.floor(quantity * spec.productValue * marketMultiplier(next, animalId)));
     next.animals[animalId].ready = 0;
+    const productId = animalId === 'chicken' ? 'eggs' : animalId === 'cow' ? 'milk' : 'wool';
+    next.inventory[productId] = (next.inventory[productId] || 0) + quantity;
     next.coins += revenue;
     next.xp += quantity * spec.xp;
     next.level = levelFromXp(next.xp);
@@ -362,6 +377,44 @@
     return { ok: true, profile: next, cost };
   }
 
+  function orderBoard(profile) {
+    if (!profile) return [];
+    const ids = Object.keys(INVENTORY_ITEMS);
+    return Array.from({ length: 3 }, (_, index) => {
+      let rng = (profile.seed ^ ((profile.day * 1103515245) >>> 0) ^ ((index + 1) * 2654435761)) >>> 0;
+      rng = xorshift(rng);
+      const itemId = ids[rng % ids.length];
+      rng = xorshift(rng);
+      const quantity = 1 + (rng % 3);
+      const item = INVENTORY_ITEMS[itemId];
+      const rewardCoins = Math.max(5, Math.floor(item.baseValue * quantity * 1.35));
+      const rewardXp = 3 + quantity * 2;
+      const id = 'order-' + profile.day + '-' + index;
+      return {
+        id, itemId, name: item.name, icon: item.icon, quantity,
+        rewardCoins, rewardXp,
+        fulfilled: (profile.fulfilledOrders || []).includes(id),
+        available: (profile.inventory?.[itemId] || 0) >= quantity,
+      };
+    });
+  }
+
+  function fulfillOrder(profile, orderId) {
+    if (!profile || typeof orderId !== 'string') return { ok: false, profile, reason: 'order' };
+    const order = orderBoard(profile).find(item => item.id === orderId);
+    if (!order || order.fulfilled) return { ok: false, profile, reason: 'order' };
+    if ((profile.inventory?.[order.itemId] || 0) < order.quantity) return { ok: false, profile, reason: 'inventory' };
+    const next = clone(profile);
+    next.inventory[order.itemId] -= order.quantity;
+    next.coins += order.rewardCoins;
+    next.xp += order.rewardXp;
+    next.level = levelFromXp(next.xp);
+    next.completedOrders = (next.completedOrders || 0) + 1;
+    next.fulfilledOrders = [...(next.fulfilledOrders || []), order.id].slice(-90);
+    next.lastEvent = 'Bestellung geliefert: ' + order.quantity + '× ' + order.name + '.';
+    return { ok: true, profile: next, order };
+  }
+
   function forecast(profile, days = 7) {
     if (!profile || !Number.isInteger(days) || days < 1 || days > 14) return [];
     return Array.from({ length: days }, (_, index) => {
@@ -380,6 +433,9 @@
       if (!int(value.coins, 0, 1e9) || !int(value.xp, 0, 1e9) || !int(value.level, 1, 50) || !int(value.harvests, 0, 1e9)) return null;
       if (!value.animals) value.animals = initial(value.seed).animals;
       if (!value.buildings) value.buildings = { coop: 1, barn: 1, silo: 1 };
+      if (!value.inventory) value.inventory = Object.fromEntries(Object.keys(INVENTORY_ITEMS).map(id => [id, 0]));
+      if (!Array.isArray(value.fulfilledOrders)) value.fulfilledOrders = [];
+      if (!Number.isInteger(value.completedOrders)) value.completedOrders = 0;
       if (!Array.isArray(value.claimedMissions)) value.claimedMissions = [];
       for (const [animalId, spec] of Object.entries(ANIMALS)) {
         const herd = value.animals[animalId];
@@ -389,6 +445,11 @@
       for (const [buildingId, spec] of Object.entries(BUILDINGS)) {
         if (!int(value.buildings[buildingId], 1, spec.maxLevel)) return null;
       }
+      for (const id of Object.keys(INVENTORY_ITEMS)) {
+        if (!int(value.inventory[id], 0, 1000000)) return null;
+      }
+      if (!int(value.completedOrders, 0, 1000000)) return null;
+      if (value.fulfilledOrders.length > 90 || !value.fulfilledOrders.every(id => /^order-\d{1,6}-[0-2]$/.test(id))) return null;
       if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
       if (!Number.isInteger(value.unlockedPlots)) value.unlockedPlots = PLOT_COUNT;
       if (![6, 9, 12].includes(value.unlockedPlots)) return null;
@@ -416,10 +477,10 @@
   }
 
   return {
-    VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS,
+    VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS, INVENTORY_ITEMS,
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, decode,
+    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, orderBoard, fulfillOrder, decode,
   };
 }));
