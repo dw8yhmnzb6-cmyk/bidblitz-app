@@ -373,6 +373,11 @@
     inventoryBox.replaceChildren();
     ordersBox.replaceChildren();
 
+    const rank = F.customerRank(profile);
+    $('customer-rank').textContent = rank.name;
+    $('order-streak').textContent = profile.orderStreak || 0;
+    $('completed-orders').textContent = profile.completedOrders || 0;
+
     for (const [id, spec] of Object.entries(F.INVENTORY_ITEMS)) {
       const item = document.createElement('div');
       item.className = 'inventory-item';
