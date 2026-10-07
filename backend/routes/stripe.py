@@ -246,45 +246,32 @@ async def checkout_status(session_id: str, request: Request):
     credited = False
     topup_promo = None
 
-    # If paid, credit the wallet (only once)
+    # If paid, credit the wallet through the canonical idempotent payment engine.
     if stripe_status.payment_status == "paid" and payment["status"] not in ("completed", "credited"):
-        # Atomic update — use findOneAndUpdate with status check to prevent double credit
-        result = await db.payment_transactions.find_one_and_update(
-            {"session_id": session_id, "status": {"$nin": ["completed", "credited"]}},
-            {"$set": {"status": "credited", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        credit_result = await process_stripe_payment(
+            session_id=session_id,
+            user_id=user_id,
+            amount=float(payment["amount"]),
         )
-
-        if result:
-            # Credit wallet
-            await db.users.update_one(
-                {"_id": user["_id"]},
-                {"$inc": {"balance": payment["amount"]}},
+        if not credit_result.success:
+            raise HTTPException(
+                status_code=503,
+                detail=credit_result.error or "Wallet credit is still processing",
             )
 
-            # Create transaction record
-            txn = {
-                "id": secrets.token_hex(8),
-                "user_id": user_id,
-                "type": "topup",
-                "amount": payment["amount"],
-                "description": f"Stripe top-up (EUR {payment['amount']:.2f})",
-                "merchant_name": "Stripe",
-                "status": "completed",
-                "reference": f"STRIPE-{session_id[:12].upper()}",
-                "payment_method": "stripe",
-                "category": "topup",
-                "stripe_session_id": session_id,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-            await db.transactions.insert_one(txn)
-            txn.pop("_id", None)
+        credited = True
+        txn = await db.transactions.find_one(
+            {"id": credit_result.transaction_id},
+            {"_id": 0},
+        ) or {
+            "id": credit_result.transaction_id,
+            "reference": credit_result.reference or f"STRIPE-{session_id[:12].upper()}",
+        }
 
-            credited = True
-
-            await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
-                            ip=ip, user_agent=ua,
-                            details={"session_id": session_id, "amount": payment["amount"],
-                                     "reference": txn["reference"]})
+        await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"session_id": session_id, "amount": payment["amount"],
+                                 "reference": txn["reference"]})
             
             # Send payment confirmation email
             try:
