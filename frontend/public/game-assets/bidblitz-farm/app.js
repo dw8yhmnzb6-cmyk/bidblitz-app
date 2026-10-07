@@ -242,10 +242,11 @@
       const card = document.createElement('article');
       card.className = 'farm-card';
       const capacity = F.animalCapacity(profile, spec.id);
+      const productionBonus = Math.round((F.animalProductBonus(profile, spec.id) - 1) * 100);
       card.innerHTML =
         '<div class="farm-card-head"><div><div class="farm-card-icon">' + spec.icon + '</div><h3>' + spec.name + '</h3></div><strong>' + herd.count + ' / ' + capacity + '</strong></div>' +
         '<p>' + spec.product + ': ' + herd.ready + ' bereit · Produktion ' + herd.progress + ' / ' + spec.produceDays + '</p>' +
-        '<p>' + (herd.fed ? 'Gefüttert für den nächsten Tag.' : 'Futter nötig für Produktion.') + '</p>';
+        '<p>Gebäudebonus: +' + productionBonus + '% · ' + (herd.fed ? 'Gefüttert für den nächsten Tag.' : 'Futter nötig für Produktion.') + '</p>';
 
       const actions = document.createElement('div');
       actions.className = 'farm-card-actions';
