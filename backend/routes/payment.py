@@ -11,8 +11,29 @@ from core.payment_engine import TransactionType, debit_wallet, credit_wallet
 from schemas.models import PaymentRequest, SendRequest, MerchantScanPayment
 from routes.promotions import check_applicable_promotion, apply_promotion
 import secrets
+import logging
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
+logger = logging.getLogger("bidblitz.payment")
+
+
+async def _record_side_effect_failure(kind: str, user_id: str, reference: str, exc: Exception, extra: dict | None = None):
+    error = str(exc)[:500]
+    logger.warning("Payment side effect failed kind=%s user=%s ref=%s error=%s", kind, user_id, reference, error)
+    try:
+        await db.payment_side_effect_failures.insert_one({
+            "kind": kind,
+            "user_id": user_id,
+            "reference": reference,
+            "error": error,
+            "extra": extra or {},
+            "status": "open",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as log_exc:
+        logger.error("Could not persist payment side-effect failure: %s", log_exc)
+
+
 
 
 def generate_reference():
@@ -184,8 +205,8 @@ async def pay(req: PaymentRequest, request: Request):
                 {"$inc": {"count": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
                 upsert=True,
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("first_payment_conversion", user_id, ref, exc)
 
     # ── Check for applicable promotions (cashback) ──
     promo_applied = None
@@ -210,8 +231,8 @@ async def pay(req: PaymentRequest, request: Request):
                 await apply_promotion(user_id, promo["name"], req.amount)
                 updated_user = await db.users.find_one({"_id": user["_id"]})
                 promo_applied = {"name": promo["name"], "cashback": cashback}
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("payment_cashback", user_id, ref, exc, {"amount": req.amount})
 
     # ── Loyalty / Coins reward ──
     try:
@@ -220,8 +241,8 @@ async def pay(req: PaymentRequest, request: Request):
             user_id=user_id, source_type="payment", source_id=ref,
             amount=req.amount, tx_id=txn["id"],
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("payment_loyalty", user_id, ref, exc, {"amount": req.amount})
 
     return {
         "success": True,
@@ -274,8 +295,8 @@ async def send_money(req: SendRequest, request: Request):
             if fee < 0:
                 fee = 0
             promo_applied = {"name": promo["name"], "discount": discount, "value": promo["value"]}
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("send_promotion_lookup", user_id, "pending", exc, {"amount": req.amount})
 
     total_debit = round(req.amount + fee, 2)
 
@@ -351,8 +372,8 @@ async def send_money(req: SendRequest, request: Request):
     if promo_applied:
         try:
             await apply_promotion(user_id, promo_applied["name"], req.amount)
-        except Exception:
-            pass
+        except Exception as exc:
+            await _record_side_effect_failure("send_promotion_apply", user_id, ref, exc, {"amount": req.amount})
 
     # ── Loyalty / Coins reward for transfers ──
     try:
@@ -361,8 +382,8 @@ async def send_money(req: SendRequest, request: Request):
             user_id=user_id, source_type="transfer", source_id=ref,
             amount=req.amount, tx_id=sender_txn["id"],
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("send_loyalty", user_id, ref, exc, {"amount": req.amount})
 
     return {
         "success": True,
@@ -636,8 +657,8 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
                 await apply_promotion(customer_id, promo["name"], req.amount)
                 updated_customer = await db.users.find_one({"_id": customer["_id"]})
                 promo_applied = {"name": promo["name"], "cashback": cashback}
-    except Exception:
-        pass
+    except Exception as exc:
+        await _record_side_effect_failure("merchant_scan_cashback", customer_id, ref, exc, {"amount": req.amount})
 
     return {
         "success": True,
