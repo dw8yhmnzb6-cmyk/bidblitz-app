@@ -228,6 +228,7 @@ def register_all_routers(app):
         ("routes.games_rankings", "router"),
         ("routes.games_integrity", "router"),
         ("routes.games_integrity_status", "router"),
+        ("routes.games_launch_readiness", "router"),
         ("routes.games_finance_sandbox", "router"),
         ("routes.games_finance_sandbox", "admin_router"),
         ("routes.games_analytics", "router"),
