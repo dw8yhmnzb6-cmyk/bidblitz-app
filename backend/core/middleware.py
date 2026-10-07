@@ -43,8 +43,8 @@ def setup_middleware(app):
             return origin
         if origin and origin in CORS_ORIGINS:
             return origin
-        if CORS_ORIGINS and CORS_ORIGINS[0] != "*":
-            return CORS_ORIGINS[0]
+        # Never reflect a different configured origin for an untrusted caller.
+        # Credentialed CORS must either match exactly or remain unset.
         return ""
 
     @app.middleware("http")
