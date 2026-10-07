@@ -22,7 +22,7 @@ const COPY = {
     search: "Spiel suchen", all: "Alle Spiele", puzzle: "Puzzle", arcade: "Arcade", count: "Spiele",
     first: "UNSER ERSTES SPIEL", matchText: "Kombiniere Symbole, löse Kettenreaktionen und entdecke 30 Level.",
     play: "Spielvorschau öffnen", planned: "In Planung", bubbleText: "Eine neue Puzzlewelt voller schwebender Inseln.",
-    runnerText: "Ein Laufabenteuer auf leuchtenden Wegen.", empty: "Keine Spiele gefunden.", clear: "Filter zurücksetzen",
+    runnerText: "Ein Laufabenteuer auf leuchtenden Wegen.", farmText: "Baue deine Farm aus, plane Ernten nach Wetter und Jahreszeiten und entwickle deinen Betrieb.", empty: "Keine Spiele gefunden.", clear: "Filter zurücksetzen",
     studio: "Dein Spiel auf BidBlitz", studioText: "Bereite dein eigenes Spiel im Entwicklerstudio vor.", openStudio: "Entwicklerstudio öffnen",
     local: "Match ist eine lokale Vorschau auf Deutsch. Fortschritt bleibt auf diesem Gerät. Testmünzen haben keinen Geldwert.",
     plannedText: "Weitere Spiele sind in Vorbereitung. Ein Veröffentlichungstermin steht noch nicht fest.", strategy: "Strategie", sports: "Sport", community: "Von Entwicklern", openPublished: "Spiel öffnen", details: "Details", catalogError: "Veröffentlichte Community-Spiele konnten nicht geladen werden.", favorite: "Merken", unfavorite: "Nicht mehr merken", favoriteAccount: "Merkliste wird in deinem BidBlitz-Konto gespeichert.", favoriteDevice: "Merkliste wird nur auf diesem Gerät gespeichert.", favoriteError: "Merkliste konnte nicht synchronisiert werden.", recentTitle: "Weiterspielen", recentText: "Deine zuletzt geöffneten Spiele.", continueGame: "Weiter",
@@ -32,7 +32,7 @@ const COPY = {
     search: "Search games", all: "All games", puzzle: "Puzzle", arcade: "Arcade", count: "Games",
     first: "OUR FIRST GAME", matchText: "Match symbols, trigger chain reactions and explore 30 levels.",
     play: "Open game preview", planned: "Planned", bubbleText: "A new puzzle world full of floating islands.",
-    runnerText: "A running adventure on glowing paths.", empty: "No games found.", clear: "Reset filters",
+    runnerText: "A running adventure on glowing paths.", farmText: "Grow your farm, plan crops around weather and seasons, and expand your operation.", empty: "No games found.", clear: "Reset filters",
     studio: "Your game on BidBlitz", studioText: "Prepare your own game in the developer studio.", openStudio: "Open developer studio",
     local: "Match is a local preview in German. Progress stays on this device. Test coins have no monetary value.",
     plannedText: "More games are being prepared. A release date has not been set.", strategy: "Strategy", sports: "Sports", community: "From developers", openPublished: "Open game", details: "Details", catalogError: "Published community games could not be loaded.", favorite: "Save", unfavorite: "Remove saved game", favoriteAccount: "Saved games are stored in your BidBlitz account.", favoriteDevice: "Saved games are stored only on this device.", favoriteError: "Could not sync saved games.", recentTitle: "Continue playing", recentText: "Your recently opened games.", continueGame: "Continue",
@@ -42,7 +42,7 @@ const COPY = {
     search: "Kërko lojë", all: "Të gjitha", puzzle: "Puzzle", arcade: "Arcade", count: "Lojëra",
     first: "LOJA JONË E PARË", matchText: "Kombino simbolet, krijo reaksione zinxhir dhe zbulo 30 nivele.",
     play: "Hap provën e lojës", planned: "Në planifikim", bubbleText: "Një botë e re puzzle me ishuj fluturues.",
-    runnerText: "Një aventurë vrapimi në rrugë të ndriçuara.", empty: "Nuk u gjetën lojëra.", clear: "Hiq filtrat",
+    runnerText: "Një aventurë vrapimi në rrugë të ndriçuara.", farmText: "Zgjero fermën, planifiko të korrat sipas motit dhe stinëve dhe zhvillo biznesin tënd.", empty: "Nuk u gjetën lojëra.", clear: "Hiq filtrat",
     studio: "Loja jote në BidBlitz", studioText: "Përgatit lojën tënde në studion e zhvilluesit.", openStudio: "Hap studion e zhvilluesit",
     local: "Match është një provë lokale në gjermanisht. Progresi ruhet në këtë pajisje. Monedhat e provës nuk kanë vlerë monetare.",
     plannedText: "Lojëra të tjera po përgatiten. Data e publikimit ende nuk është caktuar.", strategy: "Strategji", sports: "Sport", community: "Nga zhvilluesit", openPublished: "Hap lojën", details: "Detaje", catalogError: "Lojërat e publikuara të komunitetit nuk u ngarkuan.", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat", favoriteAccount: "Lojërat e ruajtura ruhen në llogarinë tënde BidBlitz.", favoriteDevice: "Lojërat e ruajtura ruhen vetëm në këtë pajisje.", favoriteError: "Lista e lojërave nuk u sinkronizua.", recentTitle: "Vazhdo lojën", recentText: "Lojërat që ke hapur së fundi.", continueGame: "Vazhdo",
@@ -53,6 +53,7 @@ const FIRST_PARTY_GAMES = [
   { id: "match", title: "BidBlitz Match", category: "Puzzle", text: "matchText", available: true },
   { id: "bubble", title: "Bubble Islands", category: "Puzzle", text: "bubbleText", available: true },
   { id: "runner", title: "Blitz Runner", category: "Arcade", text: "runnerText", available: true },
+  { id: "farm", title: "BidBlitz Farm", category: "Strategy", text: "farmText", available: false, planned: true },
 ];
 
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
@@ -296,7 +297,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
               const categoryLabel = game.category === "Puzzle" ? c.puzzle : game.category === "Arcade" ? c.arcade : game.category === "Strategy" ? c.strategy : game.category === "Sports" ? c.sports : game.category;
               const reviewSummary = reviewSummaries[game.id];
               return <article key={game.id} className="overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-b from-[#17355a] to-[#0b1e37] shadow-xl">
-              {game.external ? <div className="flex aspect-[4/3] w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(65,228,244,.28),transparent_38%),linear-gradient(135deg,#113d73,#1d214d)]"><div className="text-center"><Gamepad2 size={64} strokeWidth={1.1} className="mx-auto text-cyan-200/75" /><span className="mt-3 inline-block rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold text-cyan-100">{c.community}</span></div></div> : <img src={`${ART}/${game.id}.webp`} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />}
+              {game.external ? <div className="flex aspect-[4/3] w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgba(65,228,244,.28),transparent_38%),linear-gradient(135deg,#113d73,#1d214d)]"><div className="text-center"><Gamepad2 size={64} strokeWidth={1.1} className="mx-auto text-cyan-200/75" /><span className="mt-3 inline-block rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold text-cyan-100">{c.community}</span></div></div> : game.id === "farm" ? <div className="flex aspect-[4/3] w-full items-center justify-center bg-[radial-gradient(circle_at_35%_25%,rgba(134,239,172,.28),transparent_38%),linear-gradient(145deg,#173f2d,#315b35_52%,#172a34)]"><div className="text-center"><span className="text-6xl" aria-hidden="true">🌾</span><p className="mt-3 text-sm font-bold text-emerald-100">Weather Farm</p></div></div> : <img src={`${ART}/${game.id}.webp`} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />}
               <div className="p-5"><p className="text-sm text-cyan-200">{categoryLabel}</p><h2 className="mt-2 text-2xl font-bold">{game.title}</h2><p className="mt-3 min-h-12 text-sm leading-relaxed text-sky-100/70">{description}</p>
                 {game.available && reviewSummary?.count > 0 && <div data-testid={`game-rating-${game.id}`} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-200/20 bg-amber-200/5 px-3 py-1.5 text-xs text-amber-100" aria-label={`${Number(reviewSummary.average).toFixed(1)} von 5 Sternen, ${reviewSummary.count} Bewertungen`}>
                   <Star size={14} className="fill-current text-amber-300" />
@@ -305,7 +306,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
                 </div>}
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   {game.external && game.publicUrl ? <a href={game.publicUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordRecent(game.id)} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.openPublished}</a> : game.available ? <button onClick={() => { recordRecent(game.id); onNavigate(`/games/${game.id}`); }} className="rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329] hover:bg-cyan-200">{c.play}</button> : <span className="inline-block rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-white/70">{c.planned}</span>}
-                  {game.available && <button onClick={() => onNavigate(`/games/title/${encodeURIComponent(game.id)}`)} className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">{c.details}</button>}
+                  <button onClick={() => onNavigate(`/games/title/${encodeURIComponent(game.id)}`)} className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">{c.details}</button>
                   <button onClick={() => changeFavorite(game.id)} disabled={favoriteBusy === game.id} aria-pressed={favorites.includes(game.id)} aria-label={favorites.includes(game.id) ? c.unfavorite : c.favorite} className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition disabled:opacity-50 ${favorites.includes(game.id) ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10"}`}><Heart size={18} fill={favorites.includes(game.id) ? "currentColor" : "none"} /></button>
                 </div>
                 {game.available && <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />}
