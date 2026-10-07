@@ -592,7 +592,7 @@
       if (!int(value.completedOrders, 0, 1000000)) return null;
       if (!int(value.orderStreak, 0, 30)) return null;
       if (!int(value.lastOrderStreakDay, 0, value.day)) return null;
-      if (value.fulfilledOrders.length > 90 || !value.fulfilledOrders.every(id => /^order-\d{1,6}-[0-2]$/.test(id))) return null;
+      if (value.fulfilledOrders.length > 90 || value.fulfilledOrders.length !== new Set(value.fulfilledOrders).size || !value.fulfilledOrders.every(id => /^order-\d{1,6}-[0-2]$/.test(id) && Number(id.split('-')[1]) <= value.day)) return null;
       if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
       if (value.claimedLevelRewards.length !== new Set(value.claimedLevelRewards).size) return null;
       if (!value.claimedLevelRewards.every(level => LEVEL_REWARDS.some(reward => reward.level === level) && level <= value.level)) return null;
