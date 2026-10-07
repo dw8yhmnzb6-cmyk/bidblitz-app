@@ -17,7 +17,7 @@ const COPY = {
     levels: "Level",
     unranked: "Noch nicht platziert",
     note: "Practice-Ranking: nur dein eigener Rang wird angezeigt. Scores sind noch nicht serverseitig gegen Manipulation verifiziert.",
-    verifiedNote: "Server-Replay-Ranking: dein Runner-Ergebnis wurde aus Server-Seed und Aktionsfolge reproduziert. Das ist noch kein vollständiger Anti-Cheat und kein öffentliches Trusted-Leaderboard.",
+    verifiedNote: "Server-Replay-Ranking: dein Ergebnis wurde aus einem Server-Seed und deiner Aktionsfolge reproduziert. Das ist noch kein vollständiger Anti-Cheat und kein öffentliches Trusted-Leaderboard.",
     verifiedLabel: "Server-Replay",
   },
   en: {
@@ -32,7 +32,7 @@ const COPY = {
     levels: "Levels",
     unranked: "Not ranked yet",
     note: "Practice ranking: only your own rank is shown. Scores are not yet server-verified against manipulation.",
-    verifiedNote: "Server replay ranking: your Runner result was reproduced from the server seed and action trace. This is not yet full anti-cheat or a public trusted leaderboard.",
+    verifiedNote: "Server replay ranking: your result was reproduced from a server seed and action trace. This is not yet full anti-cheat or a public trusted leaderboard.",
     verifiedLabel: "Server replay",
   },
   sq: {
@@ -47,7 +47,7 @@ const COPY = {
     levels: "Nivele",
     unranked: "Ende pa renditje",
     note: "Renditje prove: shfaqet vetëm renditja jote. Rezultatet ende nuk verifikohen nga serveri kundër manipulimit.",
-    verifiedNote: "Renditje me replay të serverit: rezultati i Runner u riprodhua nga seed-i i serverit dhe gjurmët e veprimeve. Kjo ende nuk është anti-cheat i plotë ose renditje publike e besuar.",
+    verifiedNote: "Renditje me replay të serverit: rezultati yt u riprodhua nga seed-i i serverit dhe gjurmët e veprimeve. Kjo ende nuk është anti-cheat i plotë ose renditje publike e besuar.",
     verifiedLabel: "Replay i serverit",
   },
 };
