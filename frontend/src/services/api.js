@@ -393,7 +393,7 @@ export const api = {
   getPosCart: (cartId) => request(`/api/pos/cart/${encodeURIComponent(cartId)}`),
   createPosPayment: (body) => request("/api/pos/payment/create", { method: "POST", body: JSON.stringify(body) }),
   getPosPaymentStatus: (paymentId) => request(`/api/pos/payment/status/${encodeURIComponent(paymentId)}`),
-  refundPosPayment: (body) => request("/api/pos/payment/refund", { method: "POST", body: JSON.stringify(body) }),
+  refundPosPayment: (body) => request("/api/pos/payment/refund", { method: "POST", body: JSON.stringify({ ...body, idempotency_key: body?.idempotency_key || (globalThis.crypto?.randomUUID?.() ?? `refund-${Date.now()}-${Math.random().toString(16).slice(2)}`) }) }),
   getPosReceipt: (receiptId) => request(`/api/pos/receipts/${encodeURIComponent(receiptId)}`),
   emailPosReceipt: (receiptId, email = "") => request(`/api/pos/receipts/${encodeURIComponent(receiptId)}/email`, { method: "POST", body: JSON.stringify(email ? { email } : {}) }),
   printPosReceipt: (body) => request("/api/pos/hardware/printer/print", { method: "POST", body: JSON.stringify(body) }),
