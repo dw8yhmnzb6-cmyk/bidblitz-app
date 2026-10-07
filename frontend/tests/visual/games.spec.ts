@@ -717,8 +717,10 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   await expect(game.getByRole('heading', { name: 'Farm-Markt' })).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Bestellungen' })).toBeVisible();
   await expect(game.getByText('Farm-Fortschritt')).toBeVisible();
+  await expect(game.getByText('Gesamtfortschritt')).toBeVisible();
   await expect(game.getByText('Level 5')).toBeVisible();
   await expect(game.getByText('Level 50')).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Erfolge' })).toBeVisible();
   await expect(game.getByText('6 / 12 Felder freigeschaltet')).toBeVisible();
   await expect(game.getByText('Kundenstufe')).toBeVisible();
   await expect(game.getByText('Liefer-Serie')).toBeVisible();
