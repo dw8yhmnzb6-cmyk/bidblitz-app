@@ -6,6 +6,7 @@ import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard
 import AdminGameReviewsPanel from "../components/AdminGameReviewsPanel";
 import GamesTranslationReadinessCard from "../components/GamesTranslationReadinessCard";
 import GamesFinanceSandboxCard from "../components/GamesFinanceSandboxCard";
+import AdminGamesIntegrityCard from "../components/AdminGamesIntegrityCard";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND}/api/admin/game-studio/versions`;
@@ -322,6 +323,7 @@ export default function AdminGamesReviewPage({ onBack }) {
         </section>
 
         <GamesTranslationReadinessCard locale={locale} />
+        <AdminGamesIntegrityCard locale={locale} />
         <GamesFinanceSandboxCard locale={locale} mode="admin" />
 
         <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
