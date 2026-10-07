@@ -132,6 +132,33 @@ class GamesFarmProgressTest(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 farm.FarmStateInput(**value)
 
+    def test_animals_buildings_and_missions_are_validated(self):
+        value = state()
+        value["animals"] = {
+            "chicken": {"count": 3, "fed": True, "progress": 0, "ready": 0},
+            "cow": {"count": 0, "fed": False, "progress": 0, "ready": 0},
+            "sheep": {"count": 0, "fed": False, "progress": 0, "ready": 0},
+        }
+        value["buildings"] = {"coop": 1, "barn": 1, "silo": 1}
+        value["claimedMissions"] = ["harvest-5"]
+        parsed = farm.FarmStateInput(**value)
+        self.assertEqual(parsed.animals.chicken.count, 3)
+        self.assertEqual(parsed.buildings.coop, 1)
+        self.assertEqual(parsed.claimedMissions, ["harvest-5"])
+
+        too_many = dict(value)
+        too_many["animals"] = {
+            **value["animals"],
+            "chicken": {"count": 4, "fed": False, "progress": 0, "ready": 0},
+        }
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**too_many)
+
+        bad_mission = dict(value)
+        bad_mission["claimedMissions"] = ["not-a-real-mission"]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**bad_mission)
+
     def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
         payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
         saved = asyncio.run(farm.save_farm_progress(
