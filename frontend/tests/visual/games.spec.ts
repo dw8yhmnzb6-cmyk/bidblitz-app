@@ -776,6 +776,9 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   const game = page.frameLocator('iframe[title*="BidBlitz Farm"]');
   await expect(game.getByTestId('bidblitz-farm-game')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'BidBlitz Farm' })).toBeVisible();
+  const quickNav = game.getByRole('navigation', { name: 'Farm-Bereiche' });
+  await expect(quickNav.getByRole('link')).toHaveCount(5);
+  await expect(quickNav.getByRole('link', { name: /Felder/ })).toHaveAttribute('href', '#farm-fields');
   await expect(game.getByText('7-Tage-Vorschau')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Tiere' })).toBeVisible();
   await expect(game.getByRole('heading', { name: 'Gebäude & Ausbau' })).toBeVisible();
