@@ -418,6 +418,17 @@ def test_home_recommendation_images_fail_safe():
     assert "photo-1556656793-08538906a9f8" in insurance
 
 
+def test_production_cors_keeps_bidblitz_first_party_and_rejects_origin_substitution():
+    config = (BACKEND_DIR / "core" / "config.py").read_text(encoding="utf-8")
+    middleware = (BACKEND_DIR / "core" / "middleware.py").read_text(encoding="utf-8")
+
+    assert '("https://bidblitz.ae", "https://www.bidblitz.ae")' in config
+    assert "if IS_PRODUCTION:" in config
+    assert "CORS_ORIGINS.append(_origin)" in config
+    assert 'return CORS_ORIGINS[0]' not in middleware
+    assert "# Never reflect a different configured origin for an untrusted caller." in middleware
+
+
 def test_api_cors_preflight_is_handled_before_routes():
     source = (BACKEND_DIR / "core" / "middleware.py").read_text(encoding="utf-8")
 
