@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>BidBlitz Farm</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="farm-shell" data-testid="bidblitz-farm-game">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BIDBLITZ ORIGINAL</p>
+        <h1>BidBlitz Farm</h1>
+        <p class="sub">Wetter planen · Felder pflegen · Ernten · Farm ausbauen</p>
+      </div>
+      <div class="money-card"><span>Virtuelle Münzen</span><strong id="coins">0</strong></div>
+    </header>
+
+    <section class="weather-card">
+      <div class="weather-main">
+        <div id="weather-icon" class="weather-icon">☀️</div>
+        <div><p id="season" class="season">Frühling</p><h2 id="weather">Sonnig</h2><p>Tag <span id="day">1</span></p></div>
+      </div>
+      <div class="stats">
+        <div><span>Farm-Level</span><strong id="level">1</strong></div>
+        <div><span>XP</span><strong id="xp">0</strong></div>
+        <div><span>Ernten</span><strong id="harvests">0</strong></div>
+      </div>
+      <div class="forecast">
+        <h3>7-Tage-Vorschau</h3>
+        <div id="forecast" class="forecast-grid"></div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div>
+        <label for="crop-select">Pflanze</label>
+        <select id="crop-select"></select>
+      </div>
+      <button id="next-day" type="button">Nächster Tag</button>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>Deine Felder</h2><p id="event">Farm gestartet.</p></div>
+      <div id="plots" class="plots"></div>
+    </section>
+
+    <footer>
+      Nur virtuelle Farm-Münzen. Keine Einsätze, keine Auszahlung und keine Wallet-Verbindung.
+      <span id="save-note">Lokaler Spielstand.</span>
+    </footer>
+  </main>
+</body>
+</html>
