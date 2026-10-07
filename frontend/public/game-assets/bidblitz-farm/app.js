@@ -151,7 +151,7 @@
   function renderPlots() {
     const box = $('plots');
     box.replaceChildren();
-    profile.plots.forEach(plot => {
+    profile.plots.filter(plot => plot.id <= (profile.unlockedPlots || F.PLOT_COUNT)).forEach(plot => {
       const article = document.createElement('article');
       article.className = 'plot ' + (!plot.crop ? 'empty' : '') + (plot.ready ? ' ready' : '');
       const head = document.createElement('div');
@@ -367,6 +367,34 @@
     });
   }
 
+  function renderMarket() {
+    const box = $('market');
+    box.replaceChildren();
+    const snapshot = F.marketSnapshot(profile);
+    const labels = {
+      wheat: ['🌾', 'Weizen'], corn: ['🌽', 'Mais'], tomato: ['🍅', 'Tomate'], carrot: ['🥕', 'Karotte'],
+      chicken: ['🥚', 'Eier'], cow: ['🥛', 'Milch'], sheep: ['🧶', 'Wolle'],
+    };
+    for (const [id, multiplier] of Object.entries({ ...snapshot.crops, ...snapshot.animals })) {
+      const node = document.createElement('div');
+      node.className = 'market-item ' + (multiplier >= 1 ? 'up' : 'down');
+      const label = labels[id] || ['🧺', id];
+      node.innerHTML = '<span>' + label[0] + ' ' + label[1] + '</span><strong>' + Math.round(multiplier * 100) + '%</strong>';
+      box.append(node);
+    }
+  }
+
+  function renderLand() {
+    const unlocked = profile.unlockedPlots || F.PLOT_COUNT;
+    const cost = F.landExpansionCost(profile);
+    $('unlocked-plots').textContent = unlocked;
+    $('land-text').textContent = cost === null
+      ? 'Maximale Farmfläche freigeschaltet.'
+      : 'Nächste Erweiterung: +' + Math.min(3, F.MAX_PLOTS - unlocked) + ' Felder für ' + cost + ' virtuelle Münzen.';
+    $('expand-land').disabled = cost === null;
+    $('expand-land').textContent = cost === null ? 'Maximal' : 'Erweitern · ' + cost;
+  }
+
   function renderBrief() {
     const event = F.weatherEvent(profile);
     $('weather-event-icon').textContent = event?.icon || '🌿';
@@ -392,12 +420,25 @@
     $('harvests').textContent = profile.harvests;
     $('event').textContent = profile.lastEvent || 'Farm bereit.';
     renderForecast();
+    renderMarket();
+    renderLand();
     renderBrief();
     renderPlots();
     renderAnimals();
     renderBuildings();
     renderMissions();
   }
+
+  $('expand-land').addEventListener('click', () => {
+    const result = F.expandLand(profile);
+    if (!result.ok) {
+      $('event').textContent = result.reason === 'coins' ? 'Nicht genug virtuelle Farm-Münzen für die Erweiterung.' : 'Farmfläche ist bereits maximal.';
+      return;
+    }
+    profile = result.profile;
+    persistAndSync();
+    render();
+  });
 
   $('next-day').addEventListener('click', () => {
     const result = F.advanceDay(profile);
@@ -460,5 +501,11 @@
       if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
+    expandLand: () => {
+      const result = F.expandLand(profile);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    market: () => F.marketSnapshot(profile),
   };
 }());
