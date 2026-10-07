@@ -294,66 +294,66 @@ async def checkout_status(session_id: str, request: Request):
                         details={"session_id": session_id, "amount": payment["amount"],
                                  "reference": txn["reference"]})
             
-            # Send payment confirmation email
-            try:
-                from core.email import send_payment_confirmation_email
-                send_payment_confirmation_email(
-                    to=user.get("email", ""),
-                    amount=payment["amount"],
-                    payment_type="topup",
-                    reference=txn["reference"],
-                    user_name=user.get("name", "")
-                )
-            except Exception as exc:
-                await _record_stripe_side_effect_failure("topup_confirmation_email", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
+        # Send payment confirmation email
+        try:
+            from core.email import send_payment_confirmation_email
+            send_payment_confirmation_email(
+                to=user.get("email", ""),
+                amount=payment["amount"],
+                payment_type="topup",
+                reference=txn["reference"],
+                user_name=user.get("name", "")
+            )
+        except Exception as exc:
+            await _record_stripe_side_effect_failure("topup_confirmation_email", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
 
-            # ── Save payment method for 1-click top-up ──
-            try:
-                stripe_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent.payment_method"])
-                pi = stripe_session.get("payment_intent")
-                if pi and isinstance(pi, stripe.PaymentIntent):
-                    pm = pi.get("payment_method")
-                    cust_id = stripe_session.get("customer") or pi.get("customer")
-                    if pm and isinstance(pm, stripe.PaymentMethod):
-                        card = pm.get("card", {})
-                        await db.users.update_one(
-                            {"_id": user["_id"]},
-                            {"$set": {
-                                "stripe_customer_id": str(cust_id) if cust_id else "",
-                                "stripe_pm_id": pm.id,
-                                "stripe_card_brand": card.get("brand", ""),
-                                "stripe_card_last4": card.get("last4", ""),
-                                "stripe_card_exp_month": card.get("exp_month", 0),
-                                "stripe_card_exp_year": card.get("exp_year", 0),
-                                "stripe_pm_saved_at": datetime.now(timezone.utc).isoformat(),
-                            }},
-                        )
-            except Exception as exc:
-                await _record_stripe_side_effect_failure("save_payment_method", session_id, exc, {"user_id": user_id})
+        # ── Save payment method for 1-click top-up ──
+        try:
+            stripe_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent.payment_method"])
+            pi = stripe_session.get("payment_intent")
+            if pi and isinstance(pi, stripe.PaymentIntent):
+                pm = pi.get("payment_method")
+                cust_id = stripe_session.get("customer") or pi.get("customer")
+                if pm and isinstance(pm, stripe.PaymentMethod):
+                    card = pm.get("card", {})
+                    await db.users.update_one(
+                        {"_id": user["_id"]},
+                        {"$set": {
+                            "stripe_customer_id": str(cust_id) if cust_id else "",
+                            "stripe_pm_id": pm.id,
+                            "stripe_card_brand": card.get("brand", ""),
+                            "stripe_card_last4": card.get("last4", ""),
+                            "stripe_card_exp_month": card.get("exp_month", 0),
+                            "stripe_card_exp_year": card.get("exp_year", 0),
+                            "stripe_pm_saved_at": datetime.now(timezone.utc).isoformat(),
+                        }},
+                    )
+        except Exception as exc:
+            await _record_stripe_side_effect_failure("save_payment_method", session_id, exc, {"user_id": user_id})
 
-            # ── Check for bonus_topup promotions ──
-            topup_promo = None
-            try:
-                promo = await check_applicable_promotion(user_id, "topup", payment["amount"])
-                if promo:
-                    bonus = round(payment["amount"] * promo["value"] / 100, 2)
-                    if bonus > 0:
-                        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": bonus}})
-                        await db.transactions.insert_one({
-                            "id": secrets.token_hex(8),
-                            "user_id": user_id,
-                            "type": "reward",
-                            "amount": bonus,
-                            "description": f"Top-up bonus: {promo['name']} ({promo['value']}%)",
-                            "status": "completed",
-                            "reference": f"PROMO-{secrets.token_hex(4).upper()}",
-                            "category": "promotion",
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                        })
-                        await apply_promotion(user_id, promo["name"], payment["amount"])
-                        topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
-            except Exception as exc:
-                await _record_stripe_side_effect_failure("topup_promotion", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
+        # ── Check for bonus_topup promotions ──
+        topup_promo = None
+        try:
+            promo = await check_applicable_promotion(user_id, "topup", payment["amount"])
+            if promo:
+                bonus = round(payment["amount"] * promo["value"] / 100, 2)
+                if bonus > 0:
+                    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": bonus}})
+                    await db.transactions.insert_one({
+                        "id": secrets.token_hex(8),
+                        "user_id": user_id,
+                        "type": "reward",
+                        "amount": bonus,
+                        "description": f"Top-up bonus: {promo['name']} ({promo['value']}%)",
+                        "status": "completed",
+                        "reference": f"PROMO-{secrets.token_hex(4).upper()}",
+                        "category": "promotion",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    await apply_promotion(user_id, promo["name"], payment["amount"])
+                    topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
+        except Exception as exc:
+            await _record_stripe_side_effect_failure("topup_promotion", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
 
     if stripe_status.payment_status != "paid" and payment["status"] not in ("completed", "credited"):
         await log_audit(AuditEvent.TOPUP_FAILED, user_id=user_id, email=user.get("email", ""),
