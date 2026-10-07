@@ -418,6 +418,19 @@ def test_home_recommendation_images_fail_safe():
     assert "photo-1556656793-08538906a9f8" in insurance
 
 
+def test_api_cors_preflight_is_handled_before_routes():
+    source = (BACKEND_DIR / "core" / "middleware.py").read_text(encoding="utf-8")
+
+    assert "async def credentialed_options_guard(request: Request, call_next):" in source
+    assert 'request.method == "OPTIONS" and request.url.path.startswith("/api/")' in source
+    assert "return Response(status_code=204, headers=headers)" in source
+    assert '"Access-Control-Allow-Credentials": "true"' in source
+    assert '"Access-Control-Allow-Origin"' in source
+    assert 'allow_credentials=True' in source
+    assert 'allow_methods=["*"]' in source
+    assert 'allow_headers=["*"]' in source
+
+
 def test_admin_system_error_center_covers_core_modules_and_recovery():
     monitoring = (BACKEND_DIR / "routes" / "monitoring.py").read_text(encoding="utf-8")
     admin_page = (BACKEND_DIR.parent / "frontend" / "src" / "pages" / "AdminPage.jsx").read_text(encoding="utf-8")
