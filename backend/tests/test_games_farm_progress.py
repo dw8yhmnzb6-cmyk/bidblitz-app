@@ -188,6 +188,29 @@ class GamesFarmProgressTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             farm.FarmStateInput(**bad)
 
+    def test_inventory_and_fulfilled_orders_are_validated(self):
+        value = state(day=6, xp=120, coins=400, harvests=5)
+        value["inventory"] = {
+            "wheat": 2, "corn": 1, "tomato": 0, "carrot": 3,
+            "eggs": 4, "milk": 1, "wool": 0,
+        }
+        value["fulfilledOrders"] = ["order-6-0", "order-6-2"]
+        value["completedOrders"] = 2
+        parsed = farm.FarmStateInput(**value)
+        self.assertEqual(parsed.inventory.wheat, 2)
+        self.assertEqual(parsed.completedOrders, 2)
+        self.assertEqual(parsed.fulfilledOrders, ["order-6-0", "order-6-2"])
+
+        duplicate = dict(value)
+        duplicate["fulfilledOrders"] = ["order-6-0", "order-6-0"]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**duplicate)
+
+        invalid = dict(value)
+        invalid["fulfilledOrders"] = ["bad-order"]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**invalid)
+
     def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
         payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
         saved = asyncio.run(farm.save_farm_progress(
