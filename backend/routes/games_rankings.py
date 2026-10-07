@@ -61,8 +61,13 @@ async def get_personal_ranking(game_id: str, request: Request):
     verified = False
     integrity = "client_synced_unverified"
 
+    verified_collection = None
     if normalized == "runner":
         verified_collection = db.games_runner_verified_progress
+    elif normalized == "bubble":
+        verified_collection = db.games_bubble_verified_progress
+
+    if verified_collection is not None:
         verified_row = await verified_collection.find_one(
             {"owner_id": owner_id},
             {"_id": 0, "owner_id": 0, "best": 1, "stars": 1},
