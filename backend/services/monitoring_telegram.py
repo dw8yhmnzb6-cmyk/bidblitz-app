@@ -21,7 +21,6 @@ def get_telegram_settings() -> dict:
     return {
         "configured": bool(token and chat_id),
         "mode": mode,
-        "chat_id": chat_id,
         "chat_id_masked": _mask_secret(chat_id),
         "token_masked": _mask_secret(token),
     }
