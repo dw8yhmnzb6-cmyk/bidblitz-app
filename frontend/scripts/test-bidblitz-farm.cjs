@@ -334,6 +334,31 @@ test("level progress reports next threshold and max-level completion", () => {
   assert.equal(max.percent, 100);
 });
 
+test("farm achievements are computed from existing progress without extra saved state", () => {
+  const farm = F.initial(1300);
+  let list = Object.fromEntries(F.achievements(farm).map(item => [item.id, item]));
+  assert.equal(list["first-harvest"].achieved, false);
+  assert.equal(list["land-max"].achieved, false);
+
+  farm.harvests = 30;
+  farm.completedOrders = 30;
+  farm.unlockedPlots = 12;
+  farm.animals.chicken.count = 3;
+  farm.animals.cow.count = 3;
+  farm.animals.sheep.count = 3;
+  farm.buildings = { coop: 5, barn: 5, silo: 5 };
+  farm.level = 50;
+  list = Object.fromEntries(F.achievements(farm).map(item => [item.id, item]));
+
+  assert.equal(list["first-harvest"].achieved, true);
+  assert.equal(list["harvest-25"].achieved, true);
+  assert.equal(list["orders-25"].achieved, true);
+  assert.equal(list["animals-9"].achieved, true);
+  assert.equal(list["land-max"].achieved, true);
+  assert.equal(list["buildings-max"].achieved, true);
+  assert.equal(list["level-50"].achieved, true);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
