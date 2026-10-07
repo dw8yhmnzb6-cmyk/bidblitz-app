@@ -156,6 +156,7 @@ const AdminGamesReviewPage = lazy(() => import("./pages/AdminGamesReviewPage"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
 const BubbleIslandsPage = lazy(() => import("./pages/BubbleIslandsPage"));
 const BlitzRunnerPage = lazy(() => import("./pages/BlitzRunnerPage"));
+const BidBlitzFarmPage = lazy(() => import("./pages/BidBlitzFarmPage"));
 const GameDetailPage = lazy(() => import("./pages/GameDetailPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
@@ -1212,6 +1213,8 @@ function AppContent() {
         return <BubbleIslandsPage onBack={() => handleNavigate("/games")} />;
       case "/games/runner":
         return <BlitzRunnerPage onBack={() => handleNavigate("/games")} />;
+      case "/games/farm":
+        return <BidBlitzFarmPage onBack={() => handleNavigate("/games")} />;
       case "/admin/game-studio":
         return isAdminRole
           ? <AdminGamesReviewPage onBack={() => handleNavigate("/games")} />
