@@ -97,6 +97,7 @@ class GamesRankingsTest(unittest.TestCase):
         ])
         database.db.games_bubble_progress = Collection()
         database.db.games_runner_progress = Collection()
+        database.db.games_match_verified_progress = Collection()
         database.db.games_bubble_verified_progress = Collection()
         database.db.games_runner_verified_progress = Collection()
         security.get_current_user.reset_mock()
@@ -128,6 +129,19 @@ class GamesRankingsTest(unittest.TestCase):
         self.assertIsNone(result["rank"])
         self.assertEqual(result["participants"], 3)
         self.assertEqual(result["total_score"], 0)
+
+    def test_match_ranking_prefers_server_verified_progress_when_available(self):
+        database.db.games_match_verified_progress = Collection([
+            match_doc("alice", [900, 1100], [2, 3]),
+            match_doc("bob", [1200, 1300], [3, 3]),
+        ])
+        result = asyncio.run(rankings.get_personal_ranking("match", None))
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["mode"], "server_replayed")
+        self.assertEqual(result["total_score"], 2000)
+        self.assertEqual(result["rank"], 2)
+        self.assertEqual(result["participants"], 2)
+        self.assertEqual(result["integrity"], "server_replayed_not_full_anti_cheat")
 
     def test_bubble_ranking_prefers_server_verified_progress_when_available(self):
         database.db.games_bubble_progress = Collection([
