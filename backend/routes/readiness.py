@@ -64,18 +64,56 @@ async def check_wallet() -> dict:
 
 
 async def check_stripe() -> dict:
-    """Check Stripe integration."""
+    """Check Stripe integration and production-critical configuration."""
     try:
         import os
-        stripe_key = os.environ.get("STRIPE_API_KEY")
-        
-        # Check recent stripe sessions
+        stripe_key = (os.environ.get("STRIPE_API_KEY") or "").strip()
+        webhook_secret = (os.environ.get("STRIPE_WEBHOOK_SECRET") or "").strip()
         sessions = await db.payment_transactions.count_documents({"type": "stripe_checkout"})
-        
+        test_key = stripe_key.lower().startswith(("sk_test_", "rk_test_"))
+        webhook_format_ok = webhook_secret.startswith("whsec_")
+        configured = bool(stripe_key and webhook_secret)
+        status = "ok" if configured and not test_key and webhook_format_ok else "error"
         return {
-            "status": "ok" if stripe_key else "error",
-            "configured": bool(stripe_key),
+            "status": status,
+            "configured": configured,
+            "live_key": bool(stripe_key) and not test_key,
+            "webhook_secret_configured": bool(webhook_secret),
+            "webhook_secret_format_ok": webhook_format_ok,
             "total_sessions": sessions,
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+async def check_payment_integrity() -> dict:
+    """Detect stuck or contradictory payment states before go-live."""
+    try:
+        stuck_stripe = await db.payment_transactions.count_documents({
+            "payment_status": {"$in": ["crediting", "crediting_failed"]},
+        })
+        open_side_effects = await db.payment_side_effect_failures.count_documents({"status": "open"})
+        negative_balances = await db.users.count_documents({"balance": {"$lt": 0}})
+        over_refunds = 0
+        async for payment in db.pos_payments.find(
+            {"refunded_total": {"$gt": 0}},
+            {"amount": 1, "refunded_total": 1},
+        ):
+            if float(payment.get("refunded_total") or 0) > float(payment.get("amount") or 0) + 0.001:
+                over_refunds += 1
+
+        status = "ok"
+        if stuck_stripe or negative_balances or over_refunds:
+            status = "error"
+        elif open_side_effects:
+            status = "warning"
+
+        return {
+            "status": status,
+            "stuck_stripe_credits": stuck_stripe,
+            "open_payment_side_effect_failures": open_side_effects,
+            "negative_wallet_balances": negative_balances,
+            "over_refunded_pos_payments": over_refunds,
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -276,6 +314,7 @@ async def full_system_check(request: Request):
         check_auth(),
         check_wallet(),
         check_stripe(),
+        check_payment_integrity(),
         check_auctions(),
         check_mining(),
         check_taxi(),
@@ -290,12 +329,13 @@ async def full_system_check(request: Request):
         "auth": results[1] if not isinstance(results[1], Exception) else {"status": "error", "message": str(results[1])},
         "wallet": results[2] if not isinstance(results[2], Exception) else {"status": "error", "message": str(results[2])},
         "stripe": results[3] if not isinstance(results[3], Exception) else {"status": "error", "message": str(results[3])},
-        "auctions": results[4] if not isinstance(results[4], Exception) else {"status": "error", "message": str(results[4])},
-        "mining": results[5] if not isinstance(results[5], Exception) else {"status": "error", "message": str(results[5])},
-        "taxi": results[6] if not isinstance(results[6], Exception) else {"status": "error", "message": str(results[6])},
-        "scooter": results[7] if not isinstance(results[7], Exception) else {"status": "error", "message": str(results[7])},
-        "food": results[8] if not isinstance(results[8], Exception) else {"status": "error", "message": str(results[8])},
-        "security": results[9] if not isinstance(results[9], Exception) else {"status": "error", "message": str(results[9])},
+        "payment_integrity": results[4] if not isinstance(results[4], Exception) else {"status": "error", "message": str(results[4])},
+        "auctions": results[5] if not isinstance(results[5], Exception) else {"status": "error", "message": str(results[5])},
+        "mining": results[6] if not isinstance(results[6], Exception) else {"status": "error", "message": str(results[6])},
+        "taxi": results[7] if not isinstance(results[7], Exception) else {"status": "error", "message": str(results[7])},
+        "scooter": results[8] if not isinstance(results[8], Exception) else {"status": "error", "message": str(results[8])},
+        "food": results[9] if not isinstance(results[9], Exception) else {"status": "error", "message": str(results[9])},
+        "security": results[10] if not isinstance(results[10], Exception) else {"status": "error", "message": str(results[10])},
     }
     
     # Overall status
