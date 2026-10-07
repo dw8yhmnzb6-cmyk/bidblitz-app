@@ -127,6 +127,10 @@
     $('level-progress-percent').textContent = progress.percent + '%';
     $('level-progress-bar').style.width = progress.percent + '%';
 
+    const completion = F.completionScore(profile);
+    $('completion-percent').textContent = completion.percent + '%';
+    $('completion-bar').style.width = completion.percent + '%';
+
     const box = $('level-rewards');
     box.replaceChildren();
     F.levelRewardStatus(profile).forEach(reward => {
