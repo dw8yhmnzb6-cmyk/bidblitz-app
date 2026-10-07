@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import os
 import logging
+from core.config import TEST_MODE
 
 router = APIRouter(prefix="/api/staff/subscription", tags=["staff-subscription"])
 logger = logging.getLogger("bidblitz.staff_subscription")
@@ -300,7 +301,16 @@ async def create_checkout_session(req: CheckoutReq, request: Request):
             "message": "Enterprise-Plan: Bitte kontaktiere unser Sales-Team unter sales@bidblitz.com",
         }
 
-    # PLACEHOLDER: In production, create real Stripe Checkout Session
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Staff-Abo-Checkout ist in Production deaktiviert, bis die echte Stripe-Subscription "
+                "vollständig angebunden ist. Es wird kein Abo ohne verifizierte Zahlung aktiviert."
+            ),
+        )
+
+    # TEST_MODE only: local subscription simulation
     # Currently we activate directly for testing without real billing
     stripe_secret = os.getenv("STRIPE_SECRET_KEY", "")
     if stripe_secret.startswith("sk_live_"):

@@ -39,11 +39,36 @@ DEFAULT_MODEL = ("openai", "gpt-5.2")
 
 
 async def _get_child(child_id: str, parent_id: str) -> dict:
-    """Verify child belongs to parent and return doc."""
+    """Verify entitled parent ownership and return child."""
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(parent_id)
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id}, {"_id": 0})
     if not child:
         raise HTTPException(404, "Kind nicht gefunden oder keine Berechtigung")
     return child
+
+
+async def _grant_child_blz_once(child_id: str, amount: int, grant_key: str) -> tuple[bool, bool]:
+    import hashlib
+    digest = hashlib.sha256(grant_key.encode("utf-8")).hexdigest()[:24]
+    field = f"premium_reward_grants.{digest}"
+    result = await db.kids_children.update_one(
+        {"child_id": child_id, field: {"$exists": False}},
+        {
+            "$inc": {"balance_blz": int(amount)},
+            "$set": {
+                field: {
+                    "amount": int(amount),
+                    "grant_key_hash": digest,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    if result.modified_count == 1:
+        return True, True
+    existing = await db.kids_children.find_one({"child_id": child_id, field: {"$exists": True}}, {"_id": 1})
+    return False, bool(existing)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -102,7 +127,18 @@ async def submit_chore(req: ChoreSubmit, request: Request):
     chore = await db.kids_chores.find_one({"chore_id": req.chore_id}, {"_id": 0})
     if not chore:
         raise HTTPException(404, "Aufgabe nicht gefunden")
-    # Either parent or child can submit (kid in kids-app, parent on behalf)
+
+    child = await db.kids_children.find_one({"child_id": chore["child_id"]}, {"_id": 0})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(str(chore.get("parent_id") or child.get("parent_id") or ""))
+    allowed_ids = {str(child.get("parent_id") or ""), str(child.get("user_id") or "")}
+    if uid not in allowed_ids and user.get("role") != "admin":
+        raise HTTPException(403, "Keine Berechtigung für diese Aufgabe")
+    if chore.get("status") == "approved":
+        raise HTTPException(400, "Bereits genehmigt")
+
     now = datetime.now(timezone.utc).isoformat()
     await db.kids_chores.update_one(
         {"chore_id": req.chore_id},
@@ -130,24 +166,33 @@ async def approve_chore(chore_id: str, request: Request):
     chore = await db.kids_chores.find_one({"chore_id": chore_id, "parent_id": parent_id}, {"_id": 0})
     if not chore:
         raise HTTPException(404, "Aufgabe nicht gefunden")
-    if chore["status"] == "approved":
-        raise HTTPException(400, "Bereits genehmigt")
+    await _get_child(chore["child_id"], parent_id)
 
     now = datetime.now(timezone.utc).isoformat()
     reward = int(chore.get("reward_blz", 0))
+    reward_new, grant_ok = await _grant_child_blz_once(
+        chore["child_id"],
+        reward,
+        grant_key=f"chore:{chore_id}",
+    )
+    if not grant_ok:
+        raise HTTPException(500, "Belohnung konnte nicht sicher verbucht werden")
 
-    # Credit child wallet
-    await db.kids_children.update_one(
-        {"child_id": chore["child_id"]},
-        {"$inc": {"balance_blz": reward}},
+    status_update = await db.kids_chores.update_one(
+        {"chore_id": chore_id, "parent_id": parent_id},
+        {"$set": {
+            "status": "approved",
+            "approved_at": chore.get("approved_at") or now,
+            "credited_blz": reward,
+            "reward_grant_key": f"chore:{chore_id}",
+        }},
     )
-    await db.kids_chores.update_one(
-        {"chore_id": chore_id},
-        {"$set": {"status": "approved", "approved_at": now, "credited_blz": reward}},
-    )
-    # Track for achievements
-    await _track_achievement(chore["child_id"], "chore_completed", 1)
-    return {"ok": True, "reward_blz": reward}
+    if status_update.matched_count != 1:
+        raise HTTPException(409, "Aufgabe änderte sich gleichzeitig")
+
+    if reward_new:
+        await _track_achievement(chore["child_id"], "chore_completed", 1)
+    return {"ok": True, "reward_blz": reward, "replayed": not reward_new}
 
 
 @router.post("/chores/{chore_id}/reject")

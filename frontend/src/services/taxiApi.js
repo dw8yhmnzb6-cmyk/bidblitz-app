@@ -3,7 +3,7 @@
  * All functions throw on network errors. HTTP errors return { ok: false, error }.
  * Caller controls UI state (loading, error toasts, etc).
  */
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 
 const credJson = { credentials: "include", headers: { "Content-Type": "application/json" } };
@@ -184,7 +184,7 @@ export async function fetchActiveRide() {
 }
 
 export async function fetchRide(rideId) {
-  const res = await safeFetch(`${API}/api/taxi/ride/${rideId}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/rides/${rideId}`, cred);
   if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
@@ -219,7 +219,7 @@ export async function fetchRideHistory() {
   return data?.rides || [];
 }
 
-export async function estimateRide({ pickup, dropoff, promoCode }) {
+export async function estimateRide({ pickup, dropoff, promoCode, scheduledAt = null }) {
   const body = {
     pickup_address: pickup.address || "",
     pickup_lat: pickup.lat,
@@ -227,6 +227,7 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
     dropoff_address: dropoff.address || "",
     dropoff_lat: dropoff.lat,
     dropoff_lng: dropoff.lng,
+    scheduled_at: scheduledAt || null,
   };
   if (promoCode) body.promo_code = promoCode;
   const res = await safeFetch(`${API}/api/taxi/estimate`, {
@@ -236,9 +237,31 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
   });
   if (!res) return { ok: false, error: "Taxi-Server momentan nicht erreichbar" };
   const data = await readJson(res);
-  return res.ok
-    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null, region: data?.region || '', region_label: data?.region_label || '', fixed_fares: data?.fixed_fares || {} }
-    : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
+  if (!res.ok) return { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
+
+  const sharedPricing = {
+    tariff_zone: data?.tariff_zone || null,
+    time_tariff: data?.time_tariff || null,
+    fixed_fares: data?.fixed_fares || {},
+    region: data?.region || "",
+    region_label: data?.region_label || "",
+  };
+  const estimates = (data?.estimates || []).map((item) => ({
+    ...sharedPricing,
+    ...item,
+    tariff_zone: item?.tariff_zone || sharedPricing.tariff_zone,
+    time_tariff: item?.time_tariff || sharedPricing.time_tariff,
+    fixed_fares: item?.fixed_fares || sharedPricing.fixed_fares,
+    region: item?.region || sharedPricing.region,
+    region_label: item?.region_label || sharedPricing.region_label,
+  }));
+  return {
+    ok: true,
+    estimates,
+    surge: data?.surge || { active: false, multiplier: 1.0 },
+    promo: data?.promo || null,
+    ...sharedPricing,
+  };
 }
 
 export async function fetchPricing() {
@@ -256,6 +279,7 @@ export async function validatePromoCode(code) {
 
 export async function bookRideApi({
   pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null,
+  idempotencyKey, quoteId,
 }) {
   const body = {
     pickup_address: pickup.address || "",
@@ -281,15 +305,35 @@ export async function bookRideApi({
     recipient_phone: options.recipientPhone || null,
     booking_mode: options.bookingMode || "now",
     promo_code: promoCode || null,
+    quote_id: quoteId || null,
+    idempotency_key: idempotencyKey || null,
+  };
+  const headers = {
+    "Content-Type": "application/json",
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
   };
   const res = await safeFetch(`${API}/api/taxi/book`, {
-    ...credJson,
+    credentials: "include",
+    headers,
     method: "POST",
     body: JSON.stringify(body),
   });
-  if (!res) return { ok: false, error: "Buchung momentan nicht möglich" };
+  if (!res) return { ok: false, error: "Buchung momentan nicht möglich", retryable: true, code: "network" };
   const data = await readJson(res);
-  return res.ok ? { ok: true, ride: data?.ride } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };
+  if (res.ok) {
+    return {
+      ok: true,
+      ride: data?.ride,
+      replayed: Boolean(data?.replayed),
+      matching_drivers: Number(data?.matching_drivers || 0),
+    };
+  }
+  return {
+    ok: false,
+    error: typeof data?.detail === "string" ? data.detail : data?.detail?.message || "Buchung fehlgeschlagen",
+    retryable: res.status >= 500,
+    status: res.status,
+  };
 }
 
 export async function cancelRideApi(rideId, reason = null) {
@@ -316,30 +360,61 @@ export async function setDriverStatus(rideId, status) {
 }
 
 // ── Geocoding (Mapbox) ─────────────────────────────────────────────────────
-export async function forwardGeocode(query) {
+export async function forwardGeocode(query, { lat, lng, language = "de" } = {}) {
+  if (!query) return null;
+
+  // Use the same server-side geocoder as autocomplete so Taxi works in every
+  // supported country instead of being hard-coded to DE/AT/CH.
+  const qs = new URLSearchParams({ q: query, limit: "1", lang: language });
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    qs.set("lat", String(lat));
+    qs.set("lng", String(lng));
+  }
+  const proxy = await safeFetch(`${API}/api/taxi/geocode?${qs.toString()}`, cred);
+  if (proxy?.ok) {
+    const data = await readJson(proxy);
+    const feature = data?.features?.[0];
+    if (feature?.center) {
+      return { lat: feature.center[1], lng: feature.center[0], address: feature.place_name || query };
+    }
+  }
+
   if (!MAPBOX_TOKEN) return null;
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
     query,
-  )}.json?access_token=${MAPBOX_TOKEN}&country=de,at,ch&language=de&limit=1`;
+  )}.json?access_token=${MAPBOX_TOKEN}&language=${encodeURIComponent(language)}&limit=1`;
   const res = await safeFetch(url);
-  if (!res) return null;
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const data = await readJson(res);
-  const f = data?.features?.[0];
-  if (!f?.center) return null;
-  return { lat: f.center[1], lng: f.center[0], address: f.place_name || query };
+  const feature = data?.features?.[0];
+  if (!feature?.center) return null;
+  return { lat: feature.center[1], lng: feature.center[0], address: feature.place_name || query };
 }
 
 export async function reverseGeocode(lat, lng, signal) {
-  if (!MAPBOX_TOKEN) return null;
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const directUrl = MAPBOX_TOKEN
+    ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`
+    : null;
+
   try {
-    const res = await safeFetch(url, { signal });
-    if (!res) return null;
-    if (!res.ok) return null;
-    const data = await readJson(res);
-    const f = data?.features?.[0];
-    return f?.place_name || null;
+    if (directUrl) {
+      const direct = await safeFetch(directUrl, { signal });
+      if (direct?.ok) {
+        const data = await readJson(direct);
+        const feature = data?.features?.[0];
+        if (feature?.place_name) return feature.place_name;
+      }
+    }
+
+    const proxy = await safeFetch(
+      `${API}/api/taxi/geocode/reverse?lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&lang=de`,
+      { ...cred, signal },
+    );
+    if (!proxy?.ok) return null;
+    const data = await readJson(proxy);
+    return data?.address || null;
   } catch {
     return null;
   }

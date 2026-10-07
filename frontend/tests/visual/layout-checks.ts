@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { expect, type Locator, type Page } from 'playwright/test';
+import { findVisibleTranslationKey } from './translation-key-check.cjs';
 import { FLOATING_AI_SELECTORS, FORBIDDEN_VISIBLE_TOKENS, GERMAN_CURRENCY_PATTERN, GERMAN_ETA_PATTERN } from './test-data';
 
 type ViewportSpec = { name: string; width: number; height: number };
@@ -11,6 +12,7 @@ type RouteConfig = {
   waitFor: string;
   fullPageTestId: string;
   primaryActionSelector: string;
+  primaryActionMayScroll?: boolean;
   priceSelectors: string[];
   timerSelectors: string[];
   imageSelectors: string[];
@@ -19,7 +21,7 @@ type RouteConfig = {
   expectBottomNav: boolean;
 };
 
-const OUTPUT_DIR = path.resolve(process.cwd(), 'frontend/qa-output');
+const OUTPUT_DIR = path.resolve(__dirname, '../../qa-output');
 const SCREENSHOT_DIR = path.join(OUTPUT_DIR, 'screenshots');
 const RAW_AUDIT_PATH = path.join(OUTPUT_DIR, 'raw-route-audit.json');
 
@@ -37,7 +39,7 @@ function slugify(value: string) {
 function screenshotPath(routeKey: string, viewportName: string, suffix: string) {
   ensureQaOutput();
   const relative = path.join('frontend/qa-output/screenshots', `${slugify(routeKey)}-${viewportName}-${suffix}.png`);
-  return { absolute: path.resolve(process.cwd(), relative), relative };
+  return { absolute: path.join(SCREENSHOT_DIR, path.basename(relative)), relative };
 }
 
 function issueId(routeKey: string, viewportName: string, rule: string, index: number) {
@@ -79,6 +81,9 @@ export async function prepareVisualPage(page: Page, viewport: ViewportSpec) {
   ensureQaOutput();
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.addInitScript(() => {
+    localStorage.setItem('bidblitz_lang', 'de');
+    localStorage.setItem('bidblitz_onboarded', '1');
+    localStorage.setItem('bb_hint_dismissed', '1');
     document.documentElement.classList.add('test-mode-active');
     document.body?.classList.add('test-mode-active');
   });
@@ -161,10 +166,15 @@ function appendAuditEntry(entry: any) {
   fs.writeFileSync(RAW_AUDIT_PATH, JSON.stringify(raw, null, 2));
 }
 
-export async function runRouteAudit(page: Page, config: RouteConfig, viewport: ViewportSpec, routeOverride?: string) {
+export async function runRouteAudit(page: Page, config: RouteConfig, viewport: ViewportSpec, routeOverride?: string, options: { navigate?: boolean } = {}) {
   const route = routeOverride || config.route || '/';
   await prepareVisualPage(page, viewport);
-  await openRoute(page, route, config.waitFor);
+  if (options.navigate !== false) {
+    await openRoute(page, route, config.waitFor);
+  } else {
+    // Auction selection is component state; reloading the URL discards it.
+    await page.waitForSelector(config.waitFor, { timeout: 20000 });
+  }
   const full = screenshotPath(config.routeKey, viewport.name, 'before');
   await page.screenshot({ path: full.absolute, fullPage: true, animations: 'disabled' });
   const componentScreenshots = await captureComponents(page, config.routeKey, viewport.name, config.componentSelectors);
@@ -238,7 +248,8 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     });
   }
 
-  if (/\b[a-z0-9_-]+\.[a-z0-9_.-]+\b/.test(bodyText)) {
+  const visibleTranslationKey = findVisibleTranslationKey(bodyText);
+  if (visibleTranslationKey) {
     issues.push({
       issue_id: issueId(config.routeKey, viewport.name, 'translation-key-visible', issues.length),
       severity: 'high',
@@ -247,7 +258,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
       viewport: viewport.name,
       status: 'New',
       rule: 'translation-key-visible',
-      problem: 'An untranslated translation key appears to be visible in the UI.',
+      problem: `An untranslated translation key is visible: ${visibleTranslationKey}`,
       affected_component: config.fullPageTestId,
       confidence: 0.8,
       safe_to_auto_fix: true,
@@ -322,6 +333,15 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     }
   }
 
+  // Component screenshots may scroll the page. Reset before checking controls.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const primaryLocator = page.locator(config.primaryActionSelector).first();
+  if (config.primaryActionMayScroll && await primaryLocator.count()) {
+    await primaryLocator.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await page.waitForTimeout(100);
+    // Trial click checks visibility, stability and obstruction without placing a bid.
+    await primaryLocator.click({ trial: true });
+  }
   const primaryAction = await boxFor(page, config.primaryActionSelector);
   if (!primaryAction) {
     issues.push({
@@ -383,7 +403,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
   }
 
   const bottomNav = await boxFor(page, '[data-testid="bottom-nav"]');
-  if (config.expectBottomNav && !bottomNav) {
+  if (config.expectBottomNav && viewport.width < 1024 && !bottomNav) {
     issues.push({
       issue_id: issueId(config.routeKey, viewport.name, 'missing-bottom-nav', issues.length),
       severity: 'medium',
@@ -445,6 +465,17 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     });
   }
 
+  // Read individual labels; body-text regexes merge unrelated numbers across lines.
+  const numericCandidates = config.priceSelectors.length
+    ? await page.locator(config.priceSelectors.join(', ')).allTextContents()
+    : [];
+  if (routePath === '/taxi') {
+    for (const label of await page.locator('[data-testid^="taxi-vehicle-card-"]').allInnerTexts()) {
+      const eta = label.match(/\d+\sMin\.?/);
+      if (eta) numericCandidates.push(eta[0]);
+    }
+  }
+
   const entry = {
     route: routePath,
     route_key: config.routeKey,
@@ -454,7 +485,7 @@ export async function runRouteAudit(page: Page, config: RouteConfig, viewport: V
     component_screenshots: componentScreenshots,
     issues,
     text_sample: textSample,
-    numeric_candidates: (bodyText.match(/-?\d[\d.,%\s]*(?:€|EUR|Min\.|Std\.|Sek\.)?/g) || []).slice(0, 100),
+    numeric_candidates: numericCandidates,
     image_references: metrics.images || [],
     checked_at: new Date().toISOString(),
   };

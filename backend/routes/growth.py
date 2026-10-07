@@ -1,7 +1,7 @@
 """
 Growth Features Batch:
 1. Daily Free-Spin (tägliches Glücksrad ohne Einsatz)
-2. Birthday Bonus (€10 + 10 BLZ am Geburtstag)
+2. Birthday Bonus (€10; BLZ rewards only in TEST_MODE)
 3. Kleinanzeigen (Local Classifieds mit Boost-Monetarisierung)
 4. Push-Trigger Hooks (nutzt existierende notifications-Collection)
 """
@@ -15,7 +15,9 @@ import secrets
 import logging
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 try:
     from routes.quests import track_event as _quest_track
 except Exception:
@@ -74,83 +76,24 @@ async def _has_premium(user_id: str) -> bool:
 
 @router.get("/spin-wheel/status")
 async def spin_status(request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    today = datetime.now(timezone.utc).date().isoformat()
-    spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    is_premium = await _has_premium(uid)
-    limit = PREMIUM_SPINS_PER_DAY if is_premium else FREE_SPINS_PER_DAY
-    remaining = max(0, limit - spins_today)
-    # Next reset at UTC midnight
-    now = datetime.now(timezone.utc)
-    next_reset = (now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
+    await get_current_user(request)
     return {
-        "spins_today": spins_today,
-        "limit": limit,
-        "remaining": remaining,
-        "is_premium": is_premium,
-        "next_reset": next_reset,
-        "prizes": [{"label": p["label"], "type": p["type"], "value": p["value"]} for p in SPIN_PRIZES],
+        "deprecated": True,
+        "remaining": 0,
+        "limit": 0,
+        "prizes": [],
+        "value_rewards_enabled": False,
+        "canonical_path": "/api/rewards/spin-wheel/status",
     }
 
 
 @router.post("/spin-wheel/spin")
 async def spin_wheel(request: Request):
-    user = await get_current_user(request)
-    uid = str(user.get("_id") or user.get("id"))
-    today = datetime.now(timezone.utc).date().isoformat()
-    spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
-    is_premium = await _has_premium(uid)
-    limit = PREMIUM_SPINS_PER_DAY if is_premium else FREE_SPINS_PER_DAY
-    if spins_today >= limit:
-        raise HTTPException(400, f"Kein Spin mehr heute (Limit: {limit}). Komm morgen wieder!")
-
-    # Weighted random
-    total = sum(p["weight"] for p in SPIN_PRIZES)
-    roll = random.uniform(0, total)
-    acc = 0
-    prize_idx = 0
-    for i, p in enumerate(SPIN_PRIZES):
-        acc += p["weight"]
-        if roll <= acc:
-            prize_idx = i
-            break
-    prize = SPIN_PRIZES[prize_idx]
-
-    now = datetime.now(timezone.utc)
-    # Credit prize
-    if prize["type"] == "blz":
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": prize["value"]}})
-        currency = "BLZ"
-    else:
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": prize["value"]}})
-        currency = "EUR"
-
-    # Log spin
-    await db.spin_wheel_log.insert_one({
-        "user_id": uid, "date": today,
-        "prize_type": prize["type"], "prize_value": prize["value"], "prize_label": prize["label"],
-        "prize_index": prize_idx,
-        "created_at": now.isoformat(),
-    })
-    # Transaction log
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus",
-        "amount": prize["value"], "currency": currency,
-        "status": "completed", "description": f"Glücksrad: {prize['label']}",
-        "merchant_name": "BidBlitz", "category": "spin_wheel",
-        "reference": f"SPIN-{now.strftime('%Y%m%d%H%M%S')}",
-        "date": now.isoformat(), "created_at": now.isoformat(),
-    })
-    # Quest tracking
-    try: await _quest_track(uid, "spin_wheel", 1)
-    except Exception: pass
-    return {
-        "ok": True,
-        "prize_index": prize_idx,
-        "prize": {"label": prize["label"], "type": prize["type"], "value": prize["value"]},
-        "remaining": max(0, limit - spins_today - 1),
-    }
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Glücksrad deaktiviert. Verwende /api/rewards/spin-wheel/spin.",
+    )
 
 
 async def _spin_wheel_post_hook(uid: str):
@@ -260,41 +203,190 @@ async def set_birthdate(req: BirthdateUpdate, request: Request):
 
 @router.post("/birthday/claim")
 async def claim_birthday_bonus(request: Request):
-    """User claims today's birthday bonus (once per year)."""
+    """Credit the annual birthday reward exactly once after verified DOB matching."""
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
     bd = user.get("birthdate")
     if not bd:
         raise HTTPException(400, "Bitte Geburtsdatum im Profil hinterlegen")
+
+    if not TEST_MODE:
+        extracted_dob = str(user.get("kyc_extracted_dob") or "").strip()
+        if user.get("kyc_status") != "approved" or not extracted_dob or extracted_dob != bd:
+            raise HTTPException(
+                status_code=403,
+                detail="Geburtstags-Bonus erfordert ein durch KYC verifiziertes Geburtsdatum.",
+            )
+
     now = datetime.now(timezone.utc)
+    birthday_blz = BIRTHDAY_BLZ if TEST_MODE else 0
     today_md = f"{now.month:02d}-{now.day:02d}"
     try:
-        bd_md = bd[5:10]  # MM-DD
+        bd_md = bd[5:10]
     except Exception:
         raise HTTPException(400, "Ungültiges Geburtsdatum")
     if today_md != bd_md:
         raise HTTPException(400, "Heute ist nicht dein Geburtstag 🎂")
-    # Check if already claimed this year
+
+    claim_id = f"birthday:{uid}:{now.year}"
     year_key = f"{now.year}-{bd_md}"
-    existing = await db.birthday_claims.find_one({"user_id": uid, "year_key": year_key})
-    if existing:
+
+    # Preserve prior claims created by the legacy year_key scheme.
+    legacy = await db.birthday_claims.find_one(
+        {"user_id": uid, "year_key": year_key, "_id": {"$ne": claim_id}}
+    )
+    if legacy:
+        await db.birthday_claims.update_one(
+            {"_id": claim_id},
+            {"$setOnInsert": {
+                "_id": claim_id,
+                "user_id": uid,
+                "year_key": year_key,
+                "status": "completed",
+                "migrated_from_legacy": True,
+                "claimed_at": legacy.get("claimed_at") or now.isoformat(),
+            }},
+            upsert=True,
+        )
         raise HTTPException(400, "Geburtstags-Bonus dieses Jahr bereits erhalten 🎉")
 
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": BIRTHDAY_EUR, "balance_blz": BIRTHDAY_BLZ}})
-    await db.birthday_claims.insert_one({
-        "user_id": uid, "year_key": year_key,
-        "eur": BIRTHDAY_EUR, "blz": BIRTHDAY_BLZ,
-        "claimed_at": now.isoformat(),
-    })
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "bonus", "amount": BIRTHDAY_EUR, "currency": "EUR",
-        "status": "completed", "description": f"🎂 Geburtstags-Bonus {now.year}",
-        "merchant_name": "BidBlitz", "category": "birthday",
-        "reference": f"BDAY-{now.strftime('%Y%m%d')}",
-        "date": now.isoformat(), "created_at": now.isoformat(),
-    })
-    await _notify(uid, "🎂 Happy Birthday!", f"Wir schenken dir €{BIRTHDAY_EUR} + {BIRTHDAY_BLZ} BLZ. Feier schön!", "birthday")
-    return {"ok": True, "eur": BIRTHDAY_EUR, "blz": BIRTHDAY_BLZ}
+    reserve = await db.birthday_claims.update_one(
+        {"_id": claim_id},
+        {"$setOnInsert": {
+            "_id": claim_id,
+            "user_id": uid,
+            "year_key": year_key,
+            "eur": BIRTHDAY_EUR,
+            "blz": birthday_blz,
+            "status": "reserved",
+            "reserved_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
+    existing = await db.birthday_claims.find_one({"_id": claim_id}, {"_id": 0}) or {}
+    if reserve.upserted_id is None and existing.get("status") == "completed":
+        return {
+            "ok": True,
+            "eur": float(existing.get("eur") or BIRTHDAY_EUR),
+            "blz": int(existing.get("blz") or 0),
+            "replayed": True,
+        }
+
+    wallet_result = await credit_wallet(
+        user_id=uid,
+        amount=BIRTHDAY_EUR,
+        tx_type=TransactionType.REWARD,
+        description=f"Geburtstags-Bonus {now.year}",
+        reference=f"BDAY-{uid[-8:]}-{now.year}",
+        metadata={"kind": "birthday_bonus", "year": now.year},
+        idempotency_key=f"birthday:{uid}:{now.year}:eur",
+    )
+    if not wallet_result.success:
+        await db.birthday_claims.update_one(
+            {"_id": claim_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "wallet_error": (wallet_result.error or "wallet_credit_failed")[:300],
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Geburtstags-Wallet-Gutschrift benötigt Abstimmung")
+
+    blz_marker = f"birthday_reward_markers.y{now.year}"
+    awarded_blz = 0
+    if birthday_blz > 0:
+        blz_result = await db.users.update_one(
+            {"_id": _oid(uid), blz_marker: {"$exists": False}},
+            {
+                "$inc": {"balance_blz": birthday_blz},
+                "$set": {blz_marker: {
+                    "amount": birthday_blz,
+                    "claim_id": claim_id,
+                    "created_at": now.isoformat(),
+                }},
+            },
+        )
+        if blz_result.modified_count != 1:
+            marker_exists = await db.users.find_one(
+                {"_id": _oid(uid), blz_marker: {"$exists": True}},
+                {"_id": 1},
+            )
+            if not marker_exists:
+                await db.birthday_claims.update_one(
+                    {"_id": claim_id},
+                    {"$set": {
+                        "status": "reconciliation_required",
+                        "wallet_transaction_id": wallet_result.transaction_id,
+                        "blz_error": "birthday_blz_credit_failed",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail="EUR wurde gutgeschrieben, BLZ-Gutschrift benötigt Abstimmung",
+                )
+        awarded_blz = birthday_blz
+        await db.transactions.update_one(
+            {"_id": f"{claim_id}:blz"},
+            {"$setOnInsert": {
+                "_id": f"{claim_id}:blz",
+                "id": f"{claim_id}:blz",
+                "user_id": uid,
+                "type": "bonus",
+                "amount": birthday_blz,
+                "currency": "BLZ",
+                "status": "completed",
+                "description": f"Geburtstags-Bonus {now.year}",
+                "merchant_name": "BidBlitz",
+                "category": "birthday",
+                "reference": f"BDAY-BLZ-{now.year}-{uid[-8:]}",
+                "date": now.isoformat(),
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+    else:
+        legacy_blz_marker = await db.users.find_one(
+            {"_id": _oid(uid), blz_marker: {"$exists": True}},
+            {"_id": 1},
+        )
+        if legacy_blz_marker:
+            awarded_blz = BIRTHDAY_BLZ
+
+    await db.birthday_claims.update_one(
+        {"_id": claim_id},
+        {"$set": {
+            "status": "completed",
+            "wallet_transaction_id": wallet_result.transaction_id,
+            "blz": awarded_blz,
+            "claimed_at": datetime.now(timezone.utc).isoformat(),
+        }, "$unset": {"wallet_error": "", "blz_error": ""}},
+    )
+    gift_message = f"Wir schenken dir €{BIRTHDAY_EUR}"
+    if awarded_blz > 0:
+        gift_message += f" + {awarded_blz} BLZ"
+    gift_message += ". Feier schön!"
+
+    await db.notifications.update_one(
+        {"_id": f"birthday:{uid}:{now.year}:notification"},
+        {"$setOnInsert": {
+            "_id": f"birthday:{uid}:{now.year}:notification",
+            "notification_id": f"birthday-{uid[-8:]}-{now.year}",
+            "user_id": uid,
+            "title": "🎂 Happy Birthday!",
+            "message": gift_message,
+            "type": "birthday",
+            "read": False,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
+    return {
+        "ok": True,
+        "eur": BIRTHDAY_EUR,
+        "blz": awarded_blz,
+        "replayed": bool(wallet_result.idempotent_replay),
+    }
 
 
 @router.get("/birthday/status")
@@ -304,20 +396,46 @@ async def birthday_status(request: Request):
     bd = user.get("birthdate")
     now = datetime.now(timezone.utc)
     if not bd:
-        return {"birthdate_set": False, "is_birthday": False, "already_claimed": False}
+        return {
+            "birthdate_set": False,
+            "is_birthday": False,
+            "already_claimed": False,
+            "claim_available": False,
+        }
     try:
         today_md = f"{now.month:02d}-{now.day:02d}"
         is_birthday = bd[5:10] == today_md
     except Exception:
-        return {"birthdate_set": False, "is_birthday": False}
+        return {
+            "birthdate_set": False,
+            "is_birthday": False,
+            "already_claimed": False,
+            "claim_available": False,
+        }
+
+    claim_id = f"birthday:{uid}:{now.year}"
     year_key = f"{now.year}-{bd[5:10]}" if len(bd) >= 10 else ""
-    already = False
-    if year_key:
-        already = bool(await db.birthday_claims.find_one({"user_id": uid, "year_key": year_key}))
+    existing = await db.birthday_claims.find_one({"_id": claim_id})
+    if not existing and year_key:
+        existing = await db.birthday_claims.find_one({"user_id": uid, "year_key": year_key})
+
+    dob_verified = bool(
+        TEST_MODE
+        or (
+            user.get("kyc_status") == "approved"
+            and str(user.get("kyc_extracted_dob") or "").strip() == bd
+        )
+    )
+    birthday_blz = BIRTHDAY_BLZ if TEST_MODE else 0
     return {
-        "birthdate_set": True, "birthdate": bd,
-        "is_birthday": is_birthday, "already_claimed": already,
-        "eur": BIRTHDAY_EUR, "blz": BIRTHDAY_BLZ,
+        "birthdate_set": True,
+        "birthdate": bd,
+        "is_birthday": is_birthday,
+        "already_claimed": bool(existing and existing.get("status", "completed") == "completed"),
+        "claim_available": bool(is_birthday and dob_verified and not existing),
+        "dob_verified": dob_verified,
+        "eur": BIRTHDAY_EUR if dob_verified else 0,
+        "blz": birthday_blz if dob_verified else 0,
     }
 
 
@@ -466,36 +584,125 @@ async def my_classifieds(request: Request):
 
 class BoostRequest(BaseModel):
     tier: str = Field(..., pattern="^(top_7d|top_30d|highlight_7d)$")
+    idempotency_key: Optional[str] = Field(None, max_length=200)
 
 
 @router.post("/classifieds/{classified_id}/boost")
 async def boost_classified(classified_id: str, req: BoostRequest, request: Request):
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
+    raw_key = (req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+
     item = await db.classifieds.find_one({"classified_id": classified_id})
-    if not item: raise HTTPException(404, "Anzeige nicht gefunden")
+    if not item:
+        raise HTTPException(404, "Anzeige nicht gefunden")
     if item["user_id"] != uid:
         raise HTTPException(403, "Nur der Ersteller darf boosten")
 
     tier = BOOST_TIERS[req.tier]
-    bal = float(user.get("balance", 0) or 0)
-    if bal < tier["eur"]:
-        raise HTTPException(400, f"Nicht genug Guthaben (brauchst €{tier['eur']})")
+    idem_key = f"classified-boost:{uid}:{classified_id}:{req.tier}:{raw_key}"
+    previous = item.get("last_boost_purchase") or {}
+    if previous.get("idempotency_key") == idem_key:
+        return {
+            "ok": True,
+            "until": previous.get("until"),
+            "tier": req.tier,
+            "transaction_id": previous.get("transaction_id"),
+            "replayed": True,
+        }
 
-    await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -tier["eur"]}})
-    until = (datetime.now(timezone.utc) + timedelta(days=tier["days"])).isoformat()
+    now_dt = datetime.now(timezone.utc)
+    now_iso = now_dt.isoformat()
     field = "highlight_until" if req.tier.startswith("highlight") else "boost_until"
-    await db.classifieds.update_one({"classified_id": classified_id}, {"$set": {field: until}})
+    active_until = item.get(field)
+    if active_until and str(active_until) > now_iso:
+        raise HTTPException(status_code=409, detail="Dieser Boost ist bereits aktiv")
 
-    now = datetime.now(timezone.utc).isoformat()
-    await db.transactions.insert_one({
-        "user_id": uid, "type": "payment", "amount": tier["eur"], "currency": "EUR",
-        "status": "completed", "description": f"Kleinanzeige Boost: {tier['label']}",
-        "merchant_name": "BidBlitz", "category": "classified_boost",
-        "reference": f"BOOST-{classified_id}-{req.tier}",
-        "date": now, "created_at": now,
-    })
-    return {"ok": True, "until": until, "tier": req.tier}
+    claimed = await db.classifieds.update_one(
+        {
+            "classified_id": classified_id,
+            "user_id": uid,
+            "$and": [
+                {"$or": [{field: {"$exists": False}}, {field: None}, {field: {"$lte": now_iso}}]},
+                {"$or": [
+                    {"boost_payment_pending": {"$exists": False}},
+                    {"boost_payment_pending.idempotency_key": idem_key},
+                ]},
+            ],
+        },
+        {"$set": {
+            "boost_payment_pending": {
+                "idempotency_key": idem_key,
+                "tier": req.tier,
+                "amount": tier["eur"],
+                "reserved_at": now_iso,
+            }
+        }},
+    )
+    if claimed.modified_count != 1:
+        current = await db.classifieds.find_one({"classified_id": classified_id}) or {}
+        previous = current.get("last_boost_purchase") or {}
+        if previous.get("idempotency_key") == idem_key:
+            return {
+                "ok": True,
+                "until": previous.get("until"),
+                "tier": req.tier,
+                "transaction_id": previous.get("transaction_id"),
+                "replayed": True,
+            }
+        pending = current.get("boost_payment_pending") or {}
+        if pending.get("idempotency_key") != idem_key:
+            raise HTTPException(status_code=409, detail="Ein anderer Boost wird bereits verarbeitet")
+
+    payment = await debit_wallet(
+        user_id=uid,
+        amount=tier["eur"],
+        tx_type=TransactionType.PAYMENT,
+        description=f"Kleinanzeige Boost: {tier['label']}",
+        reference=f"BOOST-{classified_id[:12]}-{req.tier}",
+        metadata={"classified_id": classified_id, "tier": req.tier},
+        idempotency_key=idem_key,
+    )
+    if not payment.success:
+        await db.classifieds.update_one(
+            {"classified_id": classified_id, "boost_payment_pending.idempotency_key": idem_key},
+            {"$unset": {"boost_payment_pending": ""}},
+        )
+        raise HTTPException(status_code=400, detail=payment.error or "Boost-Zahlung fehlgeschlagen")
+
+    until = (now_dt + timedelta(days=tier["days"])).isoformat()
+    finalized = await db.classifieds.update_one(
+        {"classified_id": classified_id, "boost_payment_pending.idempotency_key": idem_key},
+        {
+            "$set": {
+                field: until,
+                "last_boost_purchase": {
+                    "idempotency_key": idem_key,
+                    "tier": req.tier,
+                    "amount": tier["eur"],
+                    "until": until,
+                    "transaction_id": payment.transaction_id,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                },
+            },
+            "$unset": {"boost_payment_pending": ""},
+        },
+    )
+    if finalized.modified_count != 1:
+        current = await db.classifieds.find_one({"classified_id": classified_id}) or {}
+        previous = current.get("last_boost_purchase") or {}
+        if previous.get("idempotency_key") != idem_key:
+            raise HTTPException(status_code=500, detail="Boost bezahlt; Aktivierung benötigt Abstimmung")
+
+    return {
+        "ok": True,
+        "until": until,
+        "tier": req.tier,
+        "transaction_id": payment.transaction_id,
+        "replayed": bool(payment.idempotent_replay),
+    }
 
 
 # ══════════════════════════════════════════════════════════════

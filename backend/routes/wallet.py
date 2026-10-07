@@ -23,6 +23,13 @@ def generate_reference():
     return f"BLZ-{secrets.token_hex(4).upper()}"
 
 
+def _require_transfer_key(request: Request, body_key: str | None) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 1 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
+
+
 def _ensure_kyc(user: dict):
     """Block wallet writes until KYC is approved (admins exempt)."""
     if TEST_MODE:
@@ -307,6 +314,7 @@ class SendMoneyRequest(BaseModel):
     recipient: Optional[str] = None  # generic: email OR user_number (auto-detect)
     amount: float
     note: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 @router.post("/send")
@@ -315,6 +323,7 @@ async def send_money(req: SendMoneyRequest, request: Request):
     Accepts either recipient_email, recipient_number (e.g. BE12345), or recipient (auto-detect)."""
     user = await get_current_user(request)
     _ensure_kyc(user)
+    transfer_key = _require_transfer_key(request, req.idempotency_key)
     sender_id = str(user["_id"])
 
     # Validate amount
@@ -357,6 +366,7 @@ async def send_money(req: SendMoneyRequest, request: Request):
             "recipient_email": recipient_email,
             "recipient_number": recipient.get("user_number"),
         },
+        idempotency_key=transfer_key,
     )
 
     if not result.success:
@@ -380,59 +390,31 @@ class AdminSendRequest(BaseModel):
     recipient_email: str
     amount: float
     note: Optional[str] = "Geschenk vom Admin"
+    idempotency_key: Optional[str] = None
+    admin_password: str = ""
+    otp_code: Optional[str] = None
+
 
 @router.post("/admin/send")
 async def admin_send_money(req: AdminSendRequest, request: Request):
-    """Admin sends money to a user - NO FEES, direct credit to recipient wallet.
-    Admin's wallet is NOT debited - this is essentially 'creating' money for users."""
-    user = await get_current_user(request)
-    
-    # ONLY ADMIN CAN USE THIS ENDPOINT
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Nur Admin kann diese Funktion nutzen")
-    
-    # Validate amount
-    if req.amount < 0.01:
-        raise HTTPException(status_code=400, detail="Mindestbetrag: €0.01")
-    if req.amount > 100000:
-        raise HTTPException(status_code=400, detail="Maximalbetrag: €100.000")
-    
-    # Find recipient
-    recipient_email = req.recipient_email.lower().strip()
-    recipient = await db.users.find_one({"email": recipient_email})
+    from routes.admin_wallet import CreditReq, _require_admin, _execute_admin_mutation
+    from pydantic import ValidationError
+    admin = await _require_admin(request)
+    recipient = await db.users.find_one({"email": req.recipient_email.lower().strip()})
     if not recipient:
-        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden. Bitte E-Mail überprüfen.")
-    
-    recipient_id = str(recipient["_id"])
-    
-    # Direct credit to recipient wallet (no debit from admin, no fees)
-    from core.payment_engine import credit_wallet, TransactionType
-    
-    result = await credit_wallet(
-        user_id=recipient_id,
-        amount=req.amount,
-        tx_type=TransactionType.ADMIN_CREDIT,
-        description=f"Admin-Geschenk: {req.note or 'Gutschrift'}",
-        metadata={
-            "admin_id": str(user["_id"]),
-            "admin_email": user.get("email"),
-            "note": req.note,
-            "type": "admin_gift",
-            "no_fee": True
-        }
-    )
-    
-    if not result.success:
-        raise HTTPException(status_code=400, detail=result.error)
-    
-    return {
-        "success": True,
-        "message": f"€{req.amount:.2f} an {recipient.get('name', recipient_email)} gesendet (ohne Provision)",
-        "recipient_name": recipient.get("name", recipient_email),
-        "recipient_new_balance": result.new_balance,
-        "reference": result.reference,
-        "transaction_id": result.transaction_id,
-    }
+        raise HTTPException(404, "Empfänger nicht gefunden.")
+    try:
+        command = CreditReq(user_id=str(recipient["_id"]), amount_eur=req.amount,
+                            reason=req.note or "Admin-Gutschrift", idempotency_key=req.idempotency_key,
+                            admin_password=req.admin_password, otp_code=req.otp_code)
+    except ValidationError:
+        raise HTTPException(422, "Ungültiger Betrag oder Buchungsgrund.")
+    result = await _execute_admin_mutation(command, request, "credit", admin=admin)
+    if result.get("pending_approval"):
+        return {**result, "success": False}
+    return {**result, "success": True, "recipient_name": recipient.get("name", req.recipient_email),
+            "recipient_new_balance": result.get("balance_eur"),
+            "message": "Admin-Gutschrift gebucht."}
 
 
 
@@ -573,6 +555,7 @@ async def transfer_by_number(request: Request):
     body = await request.json()
     recipient_number = body.get("recipient_number")
     amount = float(body.get("amount", 0))
+    transfer_key = _require_transfer_key(request, body.get("idempotency_key"))
     
     if not recipient_number:
         raise HTTPException(status_code=400, detail="Empfänger-Nummer fehlt")
@@ -611,6 +594,7 @@ async def transfer_by_number(request: Request):
             "recipient_email": recipient_email,
             "audit_metadata": {"route": "wallet.transfer_by_number"},
         },
+        idempotency_key=transfer_key,
     )
     if not transfer_result.success:
         raise HTTPException(status_code=400, detail=transfer_result.error or "Überweisung fehlgeschlagen")

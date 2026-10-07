@@ -46,10 +46,12 @@ class TransferRequest(BaseModel):
 
 
 class ChildPayRequest(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0, le=100)
     description: str = Field(..., min_length=2)
+    merchant_id: Optional[str] = None
     merchant_name: Optional[str] = None
     category: Optional[str] = "general"
+    idempotency_key: Optional[str] = None
 
 
 class CreateTaskRequest(BaseModel):
@@ -392,81 +394,47 @@ async def transfer_to_child(req: TransferRequest, request: Request):
 
 @router.post("/pay")
 async def child_pay(req: ChildPayRequest, request: Request):
-    """Child makes a payment (authenticated as child via PIN session)."""
-    # Get child_id from session/token
-    child_session = request.state.child_session if hasattr(request.state, 'child_session') else None
-    
-    if not child_session:
-        # Try to get from header
-        child_id = request.headers.get("X-Child-ID")
-        if not child_id:
-            raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    else:
-        child_id = child_session.get("child_id")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    # Check limits
-    limit_check = await check_spending_limits(child_id, req.amount)
-    if not limit_check["allowed"]:
-        # Alert parent
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": child["parent_id"],
-            "type": "kids_limit_reached",
-            "title": "Limit erreicht!",
-            "message": f"{child.get('name')} hat versucht €{req.amount:.2f} auszugeben: {limit_check['reason']}",
-            "data": {"child_id": child_id, "amount": req.amount},
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        raise HTTPException(status_code=400, detail=limit_check["reason"])
-    
-    now = datetime.now(timezone.utc)
-    tx_id = secrets.token_hex(8)
-    
-    # Deduct from child
-    new_balance = child.get("balance", 0) - req.amount
-    await db.children.update_one(
-        {"child_id": child_id},
-        {"$set": {"balance": new_balance}, "$inc": {"total_spent": req.amount}}
+    """Compatibility route using the canonical child-token payment lifecycle."""
+    from routes.kids import (
+        get_child_from_token,
+        _process_child_wallet_payment,
+        _require_kids_idempotency_key,
+        create_parent_notification,
     )
-    
-    # Record transaction
-    await db.child_transactions.insert_one({
-        "tx_id": tx_id,
-        "child_id": child_id,
-        "parent_id": child["parent_id"],
-        "amount": -req.amount,
-        "type": "spend",
-        "description": req.description,
-        "merchant_name": req.merchant_name,
-        "category": req.category,
-        "balance_after": new_balance,
-        "created_at": now.isoformat(),
-    })
-    
-    # Notify parent
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": child["parent_id"],
-        "type": "kids_spending",
-        "title": f"{child.get('name')} hat ausgegeben",
-        "message": f"€{req.amount:.2f} - {req.description}",
-        "data": {"child_id": child_id, "amount": req.amount, "tx_id": tx_id},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    return {
-        "ok": True,
-        "new_balance": new_balance,
-        "daily_remaining": limit_check.get("daily_remaining", 0),
-        "weekly_remaining": limit_check.get("weekly_remaining", 0),
-        "tx_id": tx_id,
-    }
+
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+    idempotency_key = _require_kids_idempotency_key(
+        req.idempotency_key,
+        request,
+        prefix=f"kids-legacy-payment:{child_id}",
+    )
+
+    result = await _process_child_wallet_payment(
+        child=child,
+        amount=round(float(req.amount), 2),
+        merchant_id=req.merchant_id,
+        merchant_name=req.merchant_name,
+        description=req.description,
+        idempotency_key=idempotency_key,
+        initiated_by="child_legacy_compat",
+    )
+
+    if not result.get("replayed"):
+        tx = result.get("transaction") or {}
+        await create_parent_notification(
+            parent_id=child.get("parent_id"),
+            child_id=child_id,
+            child_name=child.get("name"),
+            event_type="child_payment",
+            title=f"{child.get('name')} hat bezahlt",
+            message=f"€{req.amount:.2f} bei {tx.get('merchant_name', 'Händler')}",
+            amount=req.amount,
+            merchant_name=tx.get("merchant_name"),
+            severity="info",
+        )
+
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -581,11 +549,10 @@ async def get_tasks(child_id: str, request: Request, status: str = None):
 @router.post("/task/submit/{task_id}")
 async def submit_task(task_id: str, request: Request):
     """Child submits task for approval."""
-    # Get child from header
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+
     task = await db.child_tasks.find_one({"task_id": task_id, "child_id": child_id})
     if not task:
         raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
@@ -617,92 +584,94 @@ async def submit_task(task_id: str, request: Request):
 
 @router.post("/task/approve/{task_id}")
 async def approve_task(task_id: str, request: Request):
-    """Parent approves task and releases reward FROM PARENT WALLET."""
+    """Parent approves a task and pays its reward exactly once."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
-    
     task = await db.child_tasks.find_one({"task_id": task_id, "parent_id": parent_id})
     if not task:
         raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
-    
-    if task["status"] not in ["pending", "submitted"]:
-        raise HTTPException(status_code=400, detail="Aufgabe bereits bearbeitet")
-    
-    now = datetime.now(timezone.utc)
+
     child_id = task["child_id"]
-    reward = task["reward_amount"]
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CRITICAL: Check parent balance BEFORE approving
-    # ═══════════════════════════════════════════════════════════════════════════
-    parent_balance = user.get("balance", 0)
-    if parent_balance < reward:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben im Wallet (€{parent_balance:.2f}). Benötigt: €{reward:.2f}"
-        )
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # DEBIT PARENT WALLET (Real money flow)
-    # ═══════════════════════════════════════════════════════════════════════════
+    reward = round(float(task["reward_amount"]), 2)
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
     debit_result = await debit_wallet(
         user_id=parent_id,
         amount=reward,
-        tx_type=TransactionType.TRANSFER,
-        description=f"Aufgaben-Belohnung an {task.get('child_name', 'Kind')}",
-        reference=f"TASK-{task_id[:8].upper()}",
-        metadata={"child_id": child_id, "task_id": task_id}
+        tx_type=TransactionType.KIDS_TRANSFER,
+        description=f"Aufgaben-Belohnung an {task.get('child_name', child.get('name', 'Kind'))}",
+        reference=f"TASK-{task_id[:12].upper()}",
+        metadata={"child_id": child_id, "task_id": task_id, "kind": "kids_task_reward"},
+        idempotency_key=f"kids-task-reward:{task_id}",
     )
-    
     if not debit_result.success:
         raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CREDIT CHILD BALANCE
-    # ═══════════════════════════════════════════════════════════════════════════
-    await db.children.update_one(
-        {"child_id": child_id},
-        {"$inc": {"balance": reward, "total_received": reward, "tasks_completed": 1}}
+
+    marker_field = f"task_reward_markers.{task_id}"
+    child_credit = await db.kids_children.update_one(
+        {"child_id": child_id, "parent_id": parent_id, marker_field: {"$exists": False}},
+        {
+            "$inc": {"balance": reward, "total_received": reward, "tasks_completed": 1},
+            "$set": {
+                marker_field: {
+                    "amount": reward,
+                    "wallet_transaction_id": debit_result.transaction_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
     )
-    
-    # Record child transaction
-    await db.child_transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
-        "child_id": child_id,
-        "parent_id": parent_id,
-        "amount": reward,
-        "type": "reward",
-        "description": f"Aufgabe: {task['title']}",
-        "task_id": task_id,
-        "created_at": now.isoformat(),
-    })
-    
-    # Update task
+    if child_credit.modified_count != 1:
+        already = await db.kids_children.find_one(
+            {"child_id": child_id, marker_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not already:
+            rollback = await credit_wallet(
+                user_id=parent_id,
+                amount=reward,
+                tx_type=TransactionType.REFUND,
+                description="Kids Task Reward Rollback",
+                reference=f"TASK-ROLLBACK-{task_id[:10].upper()}",
+                source="kids_task_reward_rollback",
+                metadata={"child_id": child_id, "task_id": task_id},
+                idempotency_key=f"kids-task-reward-rollback:{task_id}",
+            )
+            if not rollback.success:
+                raise HTTPException(status_code=500, detail="Aufgaben-Belohnung benötigt manuelle Abstimmung")
+            raise HTTPException(status_code=409, detail="Belohnung wurde zurückgebucht")
+
+    now = datetime.now(timezone.utc)
+    await db.child_transactions.update_one(
+        {"tx_id": f"TASK-{task_id}", "child_id": child_id},
+        {"$setOnInsert": {
+            "tx_id": f"TASK-{task_id}",
+            "child_id": child_id,
+            "parent_id": parent_id,
+            "amount": reward,
+            "type": "reward",
+            "description": f"Aufgabe: {task['title']}",
+            "task_id": task_id,
+            "created_at": now.isoformat(),
+        }},
+        upsert=True,
+    )
     await db.child_tasks.update_one(
-        {"task_id": task_id},
-        {"$set": {"status": "completed", "completed_at": now.isoformat()}}
+        {"task_id": task_id, "parent_id": parent_id},
+        {"$set": {"status": "completed", "completed_at": now.isoformat()}},
     )
-    
-    # Notify child
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": f"child_{child_id}",
-        "type": "kids_reward",
-        "title": f"€{reward:.2f} verdient!",
-        "message": f"Aufgabe '{task['title']}' abgeschlossen!",
-        "data": {"task_id": task_id, "amount": reward},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
-    
-    child = await db.children.find_one({"child_id": child_id}, {"_id": 0, "pin_hash": 0})
-    
+
+    updated_child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0}) or {}
     return {
         "ok": True,
         "reward": reward,
-        "child_balance": child.get("balance", 0),
+        "child_balance": updated_child.get("balance", 0),
         "parent_balance": debit_result.new_balance,
-        "message": f"€{reward:.2f} an {child.get('name')} ausgezahlt!",
+        "message": f"€{reward:.2f} an {updated_child.get('name', 'Kind')} ausgezahlt!",
+        "replayed": debit_result.idempotent_replay,
     }
 
 
@@ -747,14 +716,10 @@ async def reject_task(task_id: str, request: Request):
 
 @router.post("/location/update")
 async def update_location(req: LocationUpdateRequest, request: Request):
-    """Child device sends location update."""
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    """Child device sends location update with the canonical child token."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
     
     now = datetime.now(timezone.utc)
     
@@ -1004,78 +969,32 @@ async def get_analytics(child_id: str, request: Request, days: int = 7):
 # CHILD LOGIN (PIN-based)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/child-login")
+@router.post("/legacy/child-login")
 async def child_login(req: ChildLoginRequest):
-    """Child logs in with PIN."""
-    import hashlib
-    
-    child = await db.children.find_one({"child_id": req.child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    pin_hash = hashlib.sha256(req.pin.encode()).hexdigest()
-    if pin_hash != child.get("pin_hash"):
-        raise HTTPException(status_code=401, detail="Falscher PIN")
-    
-    if child.get("is_locked"):
-        raise HTTPException(status_code=403, detail="Konto gesperrt")
-    
-    # Generate child session token
-    session_token = secrets.token_hex(32)
-    now = datetime.now(timezone.utc)
-    
-    await db.child_sessions.update_one(
-        {"child_id": req.child_id},
-        {"$set": {
-            "token": session_token,
-            "created_at": now.isoformat(),
-            "expires_at": (now + timedelta(hours=24)).isoformat(),
-        }},
-        upsert=True
-    )
-    
-    return {
-        "ok": True,
-        "child_id": req.child_id,
-        "name": child.get("name"),
-        "balance": child.get("balance", 0),
-        "avatar": child.get("avatar"),
-        "token": session_token,
-    }
+    """Compatibility login delegated to the canonical child session."""
+    from routes.kids import child_login as canonical_child_login
+    result = await canonical_child_login(req)
+    return {**result, "token": result.get("child_token")}
 
 
 @router.get("/child-me")
 async def get_child_profile(request: Request):
-    """Get child's own profile (child mode)."""
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.children.find_one(
-        {"child_id": child_id},
-        {"_id": 0, "pin_hash": 0, "parent_id": 0}
-    )
-    
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
-    
-    # Get pending tasks
+    """Legacy profile route backed by the canonical child token."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+
     tasks = await db.child_tasks.find(
         {"child_id": child_id, "status": "pending"},
         {"_id": 0}
     ).to_list(10)
-    
-    # Get recent transactions
     txs = await db.child_transactions.find(
         {"child_id": child_id},
         {"_id": 0}
     ).sort("created_at", -1).limit(5).to_list(5)
-    
-    return {
-        "child": child,
-        "pending_tasks": tasks,
-        "recent_transactions": txs,
-    }
+
+    public_child = {k: v for k, v in child.items() if k not in {"pin_hash", "pin_hash_v2", "pin_salt", "parent_id"}}
+    return {"child": public_child, "pending_tasks": tasks, "recent_transactions": txs}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1118,13 +1037,9 @@ async def child_send_message(request: Request):
     body = await request.json()
     message_text = body.get("message", "")
     
-    child_id = request.headers.get("X-Child-ID")
-    if not child_id:
-        raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
-    
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
     
     now = datetime.now(timezone.utc)
     msg_id = secrets.token_hex(8)
@@ -1416,16 +1331,10 @@ async def remove_custom_app(app_id: str, request: Request):
 
 @router.post("/apps/usage")
 async def report_app_usage(req: AppUsageRequest, request: Request):
-    """Report app usage from child device."""
-    token = request.cookies.get("child_token") or request.headers.get("X-Child-Token")
-    if not token:
-        raise HTTPException(401)
-    import jwt
-    try:
-        payload = jwt.decode(token, "bidblitz-kids-secret-2026", algorithms=["HS256"])
-        child_id = payload.get("child_id")
-    except Exception:
-        raise HTTPException(401)
+    """Report app usage from the authenticated child device."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     await db.app_usage.update_one(
@@ -1480,16 +1389,10 @@ class DeviceStatusRequest(BaseModel):
 
 @router.post("/device/status")
 async def update_device_status(req: DeviceStatusRequest, request: Request):
-    """Update device status from child's phone."""
-    token = request.cookies.get("child_token") or request.headers.get("X-Child-Token")
-    if not token:
-        raise HTTPException(401)
-    import jwt
-    try:
-        payload = jwt.decode(token, "bidblitz-kids-secret-2026", algorithms=["HS256"])
-        child_id = payload.get("child_id")
-    except Exception:
-        raise HTTPException(401)
+    """Update device status from the authenticated child's phone."""
+    from routes.kids import get_child_from_token
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
 
     await db.device_status.update_one(
         {"child_id": child_id},
@@ -1504,20 +1407,22 @@ async def update_device_status(req: DeviceStatusRequest, request: Request):
         upsert=True,
     )
 
-    # Alert if battery low
     if req.battery_percent <= 15:
-        child = await db.kids_children.find_one({"child_id": child_id})
-        if child:
-            await db.child_alerts.insert_one({
+        marker = f"battery-low:{child_id}:{datetime.now(timezone.utc).strftime('%Y-%m-%d-%H')}"
+        await db.child_alerts.update_one(
+            {"dedupe_key": marker},
+            {"$setOnInsert": {
                 "alert_id": secrets.token_hex(8),
+                "dedupe_key": marker,
                 "parent_id": child["parent_id"],
                 "child_id": child_id,
                 "type": "battery_low",
                 "message": f"Akku von {child['name']} ist bei {req.battery_percent}%!",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "read": False,
-            })
-
+            }},
+            upsert=True,
+        )
     return {"ok": True}
 
 
@@ -1561,9 +1466,20 @@ class SOSRequest(BaseModel):
 @router.post("/sos/{child_id}")
 async def trigger_sos(child_id: str, req: SOSRequest, request: Request):
     """Trigger SOS from child device or parent."""
-    child = await db.kids_children.find_one({"child_id": child_id})
-    if not child:
-        raise HTTPException(404, "Kind nicht gefunden")
+    child_token = request.headers.get("X-Child-Token")
+    if child_token:
+        from routes.kids import get_child_from_token
+        child = await get_child_from_token(request)
+        if child.get("child_id") != child_id:
+            raise HTTPException(status_code=403, detail="Child-Token passt nicht zu diesem Kind")
+    else:
+        user = await get_current_user(request)
+        parent_id = str(user["_id"])
+        child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
+        if not child and user.get("role") == "admin":
+            child = await db.kids_children.find_one({"child_id": child_id})
+        if not child:
+            raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Kind")
 
     # Get latest location
     loc = await db.child_locations.find_one(

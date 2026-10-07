@@ -9,7 +9,9 @@ load_dotenv(ROOT_DIR / '.env')
 APP_ENV = os.environ.get("APP_ENV", "development")
 IS_PRODUCTION = APP_ENV == "production"
 DEBUG = os.environ.get("DEBUG", "true").lower() == "true" and not IS_PRODUCTION
-TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
+# TEST_MODE must never be effective in production, even if the environment is
+# accidentally configured with TEST_MODE=true.
+TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true" and not IS_PRODUCTION
 
 # ── Database ──
 MONGO_URL = os.environ["MONGO_URL"]
@@ -52,6 +54,13 @@ elif FRONTEND_URL:
     CORS_ORIGINS = [FRONTEND_URL]
 else:
     CORS_ORIGINS = []
+
+# Production must always accept the canonical first-party web origins even if a
+# stale preview FRONTEND_URL/CORS_ORIGINS value remains in the server env.
+if IS_PRODUCTION:
+    for _origin in ("https://bidblitz.ae", "https://www.bidblitz.ae"):
+        if _origin not in CORS_ORIGINS:
+            CORS_ORIGINS.append(_origin)
 
 # ── Rewards & Growth ──
 REWARDS = {

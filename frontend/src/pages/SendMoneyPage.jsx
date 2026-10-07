@@ -93,6 +93,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const nativeScannerListenerRef = useRef(null);
   const nativeScannerErrorListenerRef = useRef(null);
   const appStateListenerRef = useRef(null);
+  const transferAttemptKeyRef = useRef(null);
 
   const prefersImageCapture = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
   const isNativeCapacitor = typeof Capacitor?.isNativePlatform === "function" ? Capacitor.isNativePlatform() : false;
@@ -703,6 +704,10 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
 
   const setMax = () => setAmount(balance.toFixed(2));
 
+  useEffect(() => {
+    transferAttemptKeyRef.current = null;
+  }, [recipient?.user_id, amount, message]);
+
   const handleSend = async () => {
     const numAmount = parseFloat(amount);
     if (!numAmount || numAmount < 0.01) return setError("Mindestbetrag: €0.01");
@@ -714,15 +719,25 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       if (recipient.transfer_method === "merchant_barcode_preview") {
         throw new Error("Dieser Barcode gehört zum Händler-Kassieren. Bitte nutze 'Bezahlen' im Wallet für Händler-Zahlungen.");
       }
+      if (!transferAttemptKeyRef.current) {
+        transferAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+          ? `p2p-${crypto.randomUUID()}`
+          : `p2p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = transferAttemptKeyRef.current;
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/transfer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         credentials: "include",
         body: JSON.stringify({
           recipient_id: recipient.user_id,
           amount: numAmount,
           message: message || null,
-          transfer_method: "direct",
+          transfer_method: recipient.transfer_method || "direct",
+          idempotency_key: idempotencyKey,
         }),
       });
       if (!res.ok) {
@@ -730,6 +745,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
         throw new Error(errData.detail || "Überweisung fehlgeschlagen");
       }
       const data = await res.json();
+      transferAttemptKeyRef.current = null;
       setResult(data);
       setStep(3);
     } catch (sendError) {

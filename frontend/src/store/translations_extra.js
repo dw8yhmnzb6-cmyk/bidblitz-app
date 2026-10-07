@@ -746,4 +746,83 @@ const extra = {
   },
 };
 
+// Public merchant commission copy, including regional language fallbacks.
+const merchantCommissionCopy = {
+  "en": [
+    "From 1.5%",
+    "Merchant commission",
+    "Merchants pay a commission from 1.5% per transaction. The applicable rate depends on the payment method and agreement."
+  ],
+  "de": [
+    "Ab 1,5 %",
+    "Händlerprovision",
+    "Händler zahlen ab 1,5 % Provision pro Transaktion. Der konkrete Satz richtet sich nach Zahlungsart und Vereinbarung."
+  ],
+  "sq": [
+    "Nga 1,5 %",
+    "Komisioni i tregtarit",
+    "Tregtarët paguajnë komision nga 1,5 % për transaksion. Norma konkrete varet nga mënyra e pagesës dhe marrëveshja."
+  ],
+  "tr": [
+    "%1,5’ten başlayan",
+    "İş yeri komisyonu",
+    "İş yerleri işlem başına %1,5’ten başlayan komisyon öder. Geçerli oran ödeme yöntemine ve anlaşmaya bağlıdır."
+  ],
+  "fr": [
+    "À partir de 1,5 %",
+    "Commission commerçant",
+    "Les commerçants paient une commission à partir de 1,5 % par transaction. Le taux applicable dépend du moyen de paiement et de l’accord."
+  ],
+  "es": [
+    "Desde el 1,5 %",
+    "Comisión del comercio",
+    "Los comercios pagan una comisión desde el 1,5 % por transacción. La tarifa aplicable depende del método de pago y del acuerdo."
+  ],
+  "it": [
+    "A partire dall’1,5%",
+    "Commissione esercente",
+    "Gli esercenti pagano una commissione a partire dall’1,5% per transazione. La tariffa applicabile dipende dal metodo di pagamento e dall’accordo."
+  ],
+  "pt": [
+    "A partir de 1,5%",
+    "Comissão do comerciante",
+    "Os comerciantes pagam uma comissão a partir de 1,5% por transação. A taxa aplicável depende do método de pagamento e do acordo."
+  ],
+  "nl": [
+    "Vanaf 1,5%",
+    "Commissie voor handelaren",
+    "Handelaren betalen een commissie vanaf 1,5% per transactie. Het toepasselijke tarief hangt af van de betaalmethode en de overeenkomst."
+  ],
+  "pl": [
+    "Od 1,5%",
+    "Prowizja sprzedawcy",
+    "Sprzedawcy płacą prowizję od 1,5% za transakcję. Obowiązująca stawka zależy od metody płatności i umowy."
+  ],
+  "ru": [
+    "От 1,5 %",
+    "Комиссия продавца",
+    "Продавцы платят комиссию от 1,5 % за транзакцию. Применяемая ставка зависит от способа оплаты и соглашения."
+  ],
+  "ar": [
+    "ابتداءً من 1.5٪",
+    "عمولة التاجر",
+    "يدفع التجار عمولة تبدأ من 1.5٪ لكل معاملة. تعتمد النسبة المطبقة على طريقة الدفع والاتفاق."
+  ]
+};
+for (const [lang, [from, label, terms]] of Object.entries(merchantCommissionCopy)) {
+  Object.assign(extra[lang], {
+    "merchant.commission_from": from,
+    "merchant.commission_label": label,
+    "merchant.commission_terms": terms,
+    "ml.stat_fee": label,
+    "ml.b_low_fees": label,
+    "ml.b_low_fees_d": terms,
+    "ml.hero_desc": terms,
+    "ml.pricing_desc": terms,
+    "onboarding.low_fees": label,
+    "onboarding.low_fees_desc": terms,
+    "onboarding.lowest_fee": label,
+  });
+}
+
 export default extra;

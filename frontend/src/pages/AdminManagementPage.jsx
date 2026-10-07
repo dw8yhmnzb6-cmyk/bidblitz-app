@@ -109,6 +109,7 @@ const CustomersTab = () => {
   const [legacyLoading, setLegacyLoading] = useState(true);
   const [sendingResetId, setSendingResetId] = useState(null);
   const [fixingAuthId, setFixingAuthId] = useState(null);
+  const [permissions, setPermissions] = useState({ can_manage_privileged_roles: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,7 +121,9 @@ const CustomersTab = () => {
       else if (filter === "merchant") params.set("role", "merchant");
       const res = await fetch(`${API}/api/admin/customers?${params}`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Kunden konnten nicht geladen werden");
       setCustomers(data.customers || []);
+      setPermissions(data.permissions || { can_manage_privileged_roles: false });
     } catch (err) {
       toast.error("Fehler: " + err.message);
     }
@@ -284,6 +287,7 @@ const CustomersTab = () => {
         </div>
       </div>
 
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : customers.length === 0 ? (
@@ -325,6 +329,7 @@ const CustomersTab = () => {
       {selected && (
         <CustomerDetailModal
           customer={selected}
+          permissions={permissions}
           onClose={() => setSelected(null)}
           onChanged={() => { setSelected(null); load(); }}
         />
@@ -354,6 +359,9 @@ const AuthHealthTab = () => {
   useEffect(() => { load(); }, [load]);
 
   const runCleanup = async (mode = "safe") => {
+    if (mode === "aggressive" && !window.confirm("Aggressive Auth-Bereinigung wirklich ausführen? Nur nicht-privilegierte Kundenkonten werden verarbeitet.")) {
+      return;
+    }
     setCleanupLoading(true);
     try {
       const res = await fetch(`${API}/api/admin/auth-health/cleanup`, {
@@ -434,8 +442,11 @@ const AuthHealthTab = () => {
   );
 };
 
-const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
+const CustomerDetailModal = ({ customer, permissions, onClose, onChanged }) => {
   const [loading, setLoading] = useState(false);
+  const canManagePrivileged = Boolean(permissions?.can_manage_privileged_roles);
+  const privilegedTarget = ["admin", "super_admin"].includes(String(customer.role || ""));
+  const privilegedActionBlocked = privilegedTarget && !canManagePrivileged;
   const [showPwForm, setShowPwForm] = useState(false);
 
   const doAction = async (url, body, successMsg, method = "POST") => {
@@ -451,23 +462,30 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
       if (!res.ok) throw new Error(data.detail || "Fehler");
       toast.success(successMsg);
       onChanged();
+      return true;
     } catch (err) {
       toast.error(err.message);
+      return false;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const ban = () => doAction(`/api/admin/customers/${customer.user_id}/ban`, { banned: !customer.banned, reason: "Admin action" }, customer.banned ? "Kunde entsperrt" : "Kunde gesperrt");
   const setRole = (role) => doAction(`/api/admin/customers/${customer.user_id}/role`, { role }, `Rolle: ${role}`);
   const approveKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "approve", reason: "Manuell durch Admin freigeschaltet" }, "KYC freigeschaltet");
   const rejectKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "reject", reason: "Manuell durch Admin abgelehnt" }, "KYC abgelehnt");
-  const resetPw = () => {
-    doAction(`/api/admin/customers/${customer.user_id}/reset-password`, { reason: "Admin security reset" }, "Reset-Link gesendet");
-    setShowPwForm(false);
+  const resetPw = async () => {
+    const ok = await doAction(
+      `/api/admin/customers/${customer.user_id}/reset-password`,
+      { reason: "Admin security reset" },
+      "Reset-Link gesendet",
+    );
+    if (ok) setShowPwForm(false);
   };
   const del = () => {
-    if (!window.confirm(`Kunde ${customer.email} wirklich dauerhaft löschen?`)) return;
-    doAction(`/api/admin/customers/${customer.user_id}`, null, "Kunde gelöscht", "DELETE");
+    if (!window.confirm(`Konto von ${customer.email} wirklich schließen? Login wird gesperrt; Finanz- und Auditdaten bleiben erhalten.`)) return;
+    doAction(`/api/admin/customers/${customer.user_id}`, null, "Konto geschlossen", "DELETE");
   };
 
   return (
@@ -506,12 +524,18 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           </div>
         )}
 
+        {privilegedActionBlocked && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="customer-privileged-action-note">
+            Dieses privilegierte Konto kann nur vom Hauptadmin/Super-Admin sicherheitsrelevant geändert werden.
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <button
               data-testid="customer-action-kyc-approve"
               onClick={approveKyc}
-              disabled={loading || customer.kyc_status === "approved"}
+              disabled={loading || privilegedActionBlocked || customer.kyc_status === "approved"}
               className="py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <BadgeCheck size={14} /> KYC freischalten
@@ -519,7 +543,7 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
             <button
               data-testid="customer-action-kyc-reject"
               onClick={rejectKyc}
-              disabled={loading || customer.kyc_status === "rejected"}
+              disabled={loading || privilegedActionBlocked || customer.kyc_status === "rejected"}
               className="py-2.5 rounded-xl bg-orange-50 text-orange-700 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <AlertTriangle size={14} /> KYC ablehnen
@@ -529,8 +553,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <button
             data-testid="customer-action-ban"
             onClick={ban}
-            disabled={loading}
-            className={`w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 ${
+            disabled={loading || privilegedActionBlocked}
+            className={`w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 ${
               customer.banned ? "bg-green-500 text-white" : "bg-red-500 text-white"
             }`}
           >
@@ -543,7 +567,11 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
                 key={r}
                 data-testid={`customer-role-${r}`}
                 onClick={() => setRole(r)}
-                disabled={loading || customer.role === r}
+                disabled={
+                  loading ||
+                  customer.role === r ||
+                  (!canManagePrivileged && (r === "admin" || privilegedTarget))
+                }
                 className={`py-2 rounded-xl text-[11px] font-semibold ${
                   customer.role === r ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"
                 }`}
@@ -557,7 +585,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
             <button
               data-testid="customer-action-pw"
               onClick={() => setShowPwForm(true)}
-              className="w-full py-2.5 rounded-xl bg-gray-100 text-[13px] font-semibold flex items-center justify-center gap-2"
+              disabled={privilegedActionBlocked}
+              className="w-full py-2.5 rounded-xl bg-gray-100 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Key size={14} /> Reset-Link senden
             </button>
@@ -576,10 +605,10 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <button
             data-testid="customer-action-delete"
             onClick={del}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2"
+            disabled={loading || privilegedActionBlocked}
+            className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <Trash2 size={14} /> Dauerhaft löschen
+            <Trash2 size={14} /> Konto schließen
           </button>
         </div>
       </motion.div>
@@ -590,6 +619,48 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
 // ═══════════════════════════════════════════════════════════
 // TRANSACTIONS TAB
 // ═══════════════════════════════════════════════════════════
+// Generic Admin refunds are only for standalone EUR debit transactions.
+const GENERIC_REFUND_BLOCKED_TYPES = new Set([
+  "refund", "transfer", "merchant_payment", "merchant_payment_received",
+  "p2p_send", "p2p_receive", "kids_transfer", "payout", "stripe_topup", "topup",
+]);
+
+const canGenericRefund = (tx = {}) => {
+  const type = String(tx.type || "");
+  const direction = String(tx.direction || "");
+  const currency = String(tx.currency || "EUR").toUpperCase();
+  const metadata = tx.metadata || {};
+  const hasCounterparty = Boolean(
+    metadata.counterparty_user_id || metadata.recipient_id || metadata.merchant_id
+  );
+  const amount = Math.abs(Number(tx.amount || 0));
+
+  return (
+    tx.status === "completed" &&
+    !tx.refunded &&
+    !GENERIC_REFUND_BLOCKED_TYPES.has(type) &&
+    !hasCounterparty &&
+    (!direction || direction === "debit") &&
+    currency === "EUR" &&
+    amount > 0
+  );
+};
+
+
+const formatAdminTransactionAmount = (tx = {}) => {
+  const currency = String(tx.currency || "EUR").toUpperCase();
+  if (currency === "BLZ") return `${Number(tx.amount ?? tx.amount_blz ?? 0)} BLZ`;
+  if (tx.amount !== undefined && tx.amount !== null) {
+    const value = Number(tx.amount || 0).toFixed(2);
+    return currency === "EUR" ? `€${value}` : `${value} ${currency}`;
+  }
+  if (tx.amount_eur !== undefined && tx.amount_eur !== null) {
+    return `€${Number(tx.amount_eur || 0).toFixed(2)}`;
+  }
+  if (tx.coins !== undefined && tx.coins !== null) return `${tx.coins} Coins`;
+  return "—";
+};
+
 const TransactionsTab = () => {
   const [tx, setTx] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -658,7 +729,7 @@ const TransactionsTab = () => {
         <div className="space-y-2">
           {tx.map((t, i) => {
             const ref = t.reference || t.tx_id || `tx-${i}`;
-            const isRefundable = t.status === "completed" && !t.refunded && t.type !== "refund" && t.amount > 0;
+            const isRefundable = canGenericRefund(t);
             return (
               <div key={ref} className="bg-white rounded-xl p-3 shadow-sm" data-testid={`tx-${ref}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -681,10 +752,7 @@ const TransactionsTab = () => {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-[14px] font-bold" style={{ color: t.type === "refund" ? "#A855F7" : "#1f2937" }}>
-                      {t.currency === "BLZ" ? `${t.amount || t.amount_blz || 0} BLZ` :
-                       t.amount ? `€${Number(t.amount).toFixed(2)}` :
-                       t.amount_eur ? `€${Number(t.amount_eur).toFixed(2)}` :
-                       t.coins ? `${t.coins} Coins` : "—"}
+                      {formatAdminTransactionAmount(t)}
                     </p>
                     {isRefundable && (
                       <button
@@ -712,6 +780,9 @@ const TransactionsTab = () => {
 // MODULES TAB (Generic CRUD)
 // ═══════════════════════════════════════════════════════════
 const MODULE_DEFS = [
+  { key: "immobilien", label: "Immobilien", fields: ["title", "type", "city", "price", "status"] },
+  { key: "freelancer", label: "Freelancer", fields: ["name", "category", "location", "hourly_rate", "rating"] },
+  { key: "elearning", label: "E-Learning", fields: ["title", "category", "level", "price", "rating"] },
   { key: "handwerker", label: "Handwerker", fields: ["name", "category", "city", "rating"] },
   { key: "gebrauchtwagen", label: "Gebrauchtwagen", fields: ["title", "brand", "price", "city"] },
   { key: "reinigung", label: "Reinigung", fields: ["name", "price_per_hour", "min_hours"] },
@@ -723,11 +794,16 @@ const MODULE_DEFS = [
   { key: "fitness", label: "Fitness", fields: ["name", "type", "city", "monthly_price"] },
   { key: "reisen", label: "Reiseangebote", fields: ["title", "destination", "duration_days", "price_per_person"] },
   { key: "ladesaeulen", label: "Ladesäulen", fields: ["name", "operator", "city", "power_kw", "price_per_kwh"] },
-  { key: "scooter-abos", label: "Scooter-Abos", fields: ["name", "price", "duration_days"] },
+  { key: "scooter-abos", label: "Scooter-Abos", fields: ["plan_id", "name", "duration", "price", "duration_days", "unlock_fee", "free_minutes_per_day", "per_minute_rate"] },
 ];
 
 const ModulesTab = ({ initialModule }) => {
-  const [selectedMod, setSelectedMod] = useState(initialModule ? MODULE_DEFS.find(m => m.key === initialModule) : null);
+  const [selectedMod, setSelectedMod] = useState(initialModule ? MODULE_DEFS.find(m => m.key === initialModule) || null : null);
+
+  useEffect(() => {
+    const requested = initialModule ? MODULE_DEFS.find((m) => m.key === initialModule) || null : null;
+    setSelectedMod(requested);
+  }, [initialModule]);
 
   if (!selectedMod) {
     return (
@@ -752,17 +828,27 @@ const ModulesTab = ({ initialModule }) => {
 };
 
 const ModuleCRUD = ({ mod, onBack }) => {
+  const moderationOnly = mod.key === "dating";
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
+  const [readOnlyReason, setReadOnlyReason] = useState("");
+  const [createDisabled, setCreateDisabled] = useState(false);
+  const [createDisabledReason, setCreateDisabledReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/admin/module/${mod.key}/list`, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Modul konnte nicht geladen werden");
       setItems(data.items || []);
+      setReadOnly(Boolean(data.read_only));
+      setReadOnlyReason(data.read_only_reason || "");
+      setCreateDisabled(Boolean(data.create_disabled));
+      setCreateDisabledReason(data.create_disabled_reason || "");
     } catch (err) {
       toast.error(err.message);
     }
@@ -772,14 +858,15 @@ const ModuleCRUD = ({ mod, onBack }) => {
   useEffect(() => { load(); }, [load]);
 
   const del = async (id) => {
-    if (!window.confirm("Eintrag löschen?")) return;
+    const confirmText = moderationOnly ? "Dating-Profil moderativ deaktivieren?" : "Eintrag löschen?";
+    if (!window.confirm(confirmText)) return;
     try {
-      const res = await fetch(`${API}/api/admin/module/${mod.key}/${id}`, {
+      const res = await fetch(`${API}/api/admin/module/${mod.key}/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "include",
       });
       if (!res.ok) throw new Error((await res.json()).detail || "Fehler");
-      toast.success("Gelöscht");
+      toast.success(moderationOnly ? "Profil deaktiviert" : "Gelöscht");
       load();
     } catch (err) {
       toast.error(err.message);
@@ -793,19 +880,32 @@ const ModuleCRUD = ({ mod, onBack }) => {
           <ArrowLeft size={14} />
         </button>
         <h2 className="flex-1 text-[14px] font-bold">{mod.label}</h2>
-        <button
-          data-testid="module-add-btn"
-          onClick={() => { setEditing({}); setShowForm(true); }}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-900 text-white text-[11px] font-semibold"
-        >
-          <Plus size={11} /> Neu
-        </button>
+        {!readOnly && !createDisabled && (
+          <button
+            data-testid="module-add-btn"
+            onClick={() => { setEditing({}); setShowForm(true); }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-900 text-white text-[11px] font-semibold"
+          >
+            <Plus size={11} /> Neu
+          </button>
+        )}
       </div>
+
+      {readOnly && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800" data-testid="module-read-only-note">
+          {readOnlyReason || "Dieses Live-Modul ist hier nur lesbar."}
+        </div>
+      )}
+      {!readOnly && createDisabled && (
+        <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-medium text-blue-800" data-testid="module-create-disabled-note">
+          {createDisabledReason || "Neue Einträge können für dieses Modul nicht manuell angelegt werden."}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : items.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">Noch keine Einträge. Klick &quot;Neu&quot;.</p>
+        <p className="text-center text-gray-400 text-sm py-8">{readOnly ? "Keine Live-Daten vorhanden." : createDisabled ? "Keine Einträge vorhanden." : <>Noch keine Einträge. Klick &quot;Neu&quot;.</>}</p>
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {
@@ -824,27 +924,34 @@ const ModuleCRUD = ({ mod, onBack }) => {
                     ))}
                   </div>
                 </div>
-                <button
-                  data-testid={`item-edit-${id}`}
-                  onClick={() => { setEditing(item); setShowForm(true); }}
-                  className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
-                >
-                  <Edit3 size={12} />
-                </button>
-                <button
-                  data-testid={`item-delete-${id}`}
-                  onClick={() => del(id)}
-                  className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {!readOnly && (
+                  <>
+                    {!moderationOnly && (
+                      <button
+                        data-testid={`item-edit-${id}`}
+                        onClick={() => { setEditing(item); setShowForm(true); }}
+                        className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    )}
+                    <button
+                      data-testid={moderationOnly ? `item-disable-${id}` : `item-delete-${id}`}
+                      onClick={() => del(id)}
+                      title={moderationOnly ? "Profil deaktivieren" : "Eintrag löschen"}
+                      className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center"
+                    >
+                      {moderationOnly ? <Ban size={12} /> : <Trash2 size={12} />}
+                    </button>
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {showForm && (
+      {!readOnly && showForm && (
         <ModuleForm
           mod={mod}
           item={editing}
@@ -865,7 +972,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
     setSaving(true);
     try {
       const url = isEdit
-        ? `${API}/api/admin/module/${mod.key}/${item.id || item._id}`
+        ? `${API}/api/admin/module/${mod.key}/${encodeURIComponent(item.id || item._id)}`
         : `${API}/api/admin/module/${mod.key}/create`;
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
@@ -902,7 +1009,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
 
         <div className="space-y-2">
           {mod.fields.map((f) => {
-            const isNumber = f.includes("price") || f.includes("rating") || f.includes("count") || f.includes("kw") || f.includes("per_") || f.includes("duration");
+            const isNumber = f.includes("price") || f.includes("rating") || f.includes("count") || f.includes("kw") || f.includes("per_") || f.includes("duration_days") || f.includes("fee") || f.includes("minutes");
             return (
               <div key={f}>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -913,6 +1020,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
                   type={isNumber ? "number" : "text"}
                   step={isNumber ? "0.01" : undefined}
                   value={form[f] ?? ""}
+                  disabled={isEdit && f === "plan_id"}
                   onChange={(e) => setForm({ ...form, [f]: isNumber ? parseFloat(e.target.value) || 0 : e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] mt-0.5"
                 />
@@ -1158,6 +1266,10 @@ const ReengageWidget = () => {
 
   const run = async () => {
     if (!preview || preview.count === 0) return;
+    if (preview.actions_enabled === false) {
+      toast.info(preview.production_message || "Re-Engagement ist aktuell nur als Preview verfügbar.");
+      return;
+    }
     if (!window.confirm(`${preview.count} inaktive User anschreiben und jeweils €${preview.reward_per_user} gutschreiben?\n\nGesamtkosten: €${preview.total_cost.toFixed(2)}\nJeder User bekommt max. 1× alle 30 Tage.`)) return;
     setRunning(true);
     try {
@@ -1185,8 +1297,15 @@ const ReengageWidget = () => {
         <h3 className="text-[13px] font-bold text-purple-900">Re-Engagement: Inaktive User zurückholen</h3>
       </div>
       <p className="text-[11px] text-purple-700/80 mb-3">
-        Sendet personalisierte E-Mail + €5 Gutschein an inaktive User. <strong>Max. 1× alle 30 Tage pro User.</strong>
+        {preview?.actions_enabled === false
+          ? "Preview: zeigt berechtigte Nutzer und mögliche Kosten, ohne E-Mails oder Wallet-Gutschriften auszulösen."
+          : <>Sendet personalisierte E-Mail + €5 Gutschein an inaktive User. <strong>Max. 1× alle 30 Tage pro User.</strong></>}
       </p>
+      {preview?.actions_enabled === false && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-medium text-amber-800" data-testid="reengage-preview-only-note">
+          {preview.production_message || "Production-Aktionen sind deaktiviert."}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-3">
         <label className="text-[11px] font-semibold text-gray-700">Inaktiv seit:</label>
@@ -1224,12 +1343,16 @@ const ReengageWidget = () => {
       <button
         data-testid="reengage-run-btn"
         onClick={run}
-        disabled={running || !preview || preview.count === 0}
+        disabled={running || !preview || preview.count === 0 || preview.actions_enabled === false}
         className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40"
-        style={{ background: preview && preview.count > 0 ? "linear-gradient(135deg,#A855F7,#EC4899)" : "#9CA3AF" }}
+        style={{ background: preview && preview.count > 0 && preview.actions_enabled !== false ? "linear-gradient(135deg,#A855F7,#EC4899)" : "#9CA3AF" }}
       >
         {running ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-        {preview && preview.count > 0 ? `🎁 ${preview.count} User anschreiben` : "Keine inaktiven User"}
+        {preview?.actions_enabled === false
+          ? "Nur Preview – Aktionen deaktiviert"
+          : preview && preview.count > 0
+            ? `🎁 ${preview.count} User anschreiben`
+            : "Keine inaktiven User"}
       </button>
 
       {result && (

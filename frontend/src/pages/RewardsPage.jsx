@@ -69,6 +69,7 @@ const copy = {
     plinkoHistory: "Plinko-Verlauf",
     won: "Gewonnen",
     openPlinko: "Plinko öffnen",
+    valueGamesUnavailable: "Glücksrad, Mystery Boxen und Reward-Plinko sind in Production deaktiviert. Normale Rewards, Coupons und Streaks bleiben verfügbar.",
   },
   en: {
     title: "Reward Hub",
@@ -113,6 +114,7 @@ const copy = {
     plinkoHistory: "Plinko history",
     won: "Won",
     openPlinko: "Open Plinko",
+    valueGamesUnavailable: "Wheel spins, mystery boxes and Reward Plinko are disabled in production. Standard rewards, coupons and streaks remain available.",
   },
 };
 
@@ -230,8 +232,9 @@ export default function RewardsPage({ onBack, onNavigate }) {
   const recentActivity = hub?.recent_activity || [];
   const spinHistory = hub?.spin?.history || [];
   const plinkoHistory = hub?.plinko?.history || [];
+  const valueRandomRewardsEnabled = hub?.value_random_rewards_enabled === true;
   const handleSpin = async () => {
-    if (!hub?.spin?.remaining || spinning) return;
+    if (!valueRandomRewardsEnabled || !hub?.spin?.remaining || spinning) return;
     setSpinning(true);
     setLastSpinPrize(null);
     try {
@@ -253,7 +256,7 @@ export default function RewardsPage({ onBack, onNavigate }) {
   };
 
   const handleOpenBox = async (boxKey) => {
-    if (openingBox) return;
+    if (!valueRandomRewardsEnabled || openingBox) return;
     setOpeningBox(boxKey);
     try {
       const result = await api.openMysteryBox({ box_key: boxKey });
@@ -330,6 +333,11 @@ export default function RewardsPage({ onBack, onNavigate }) {
       </div>
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5">
+        {!valueRandomRewardsEnabled && (
+          <div className="rounded-[22px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100" data-testid="reward-value-games-unavailable">
+            {ui.valueGamesUnavailable}
+          </div>
+        )}
         <section className={`${panel} overflow-hidden p-5`} data-testid="reward-hub-hero-card">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-4">
@@ -370,7 +378,7 @@ export default function RewardsPage({ onBack, onNavigate }) {
                     <p className="mt-1 text-3xl font-black text-[#FFB08A]" data-testid="reward-hub-plinko-ticket-count">{plinkoStatus.ticket_balance ?? 0}</p>
                     <p className="text-sm text-white/55">{plinkoStatus.free_remaining ?? 0} frei · {plinkoStatus.bidcoin_cost ?? 0} {ui.bidCoins}</p>
                   </div>
-                  <button onClick={() => onNavigate && onNavigate("/reward-plinko")} data-testid="reward-hub-open-plinko-button" className="rounded-2xl border border-[#FFB08A]/20 bg-[#FFB08A]/10 px-3 py-2 text-xs font-bold text-[#FFB08A]">
+                  <button onClick={() => valueRandomRewardsEnabled && onNavigate && onNavigate("/reward-plinko")} disabled={!valueRandomRewardsEnabled} data-testid="reward-hub-open-plinko-button" className="rounded-2xl border border-[#FFB08A]/20 bg-[#FFB08A]/10 px-3 py-2 text-xs font-bold text-[#FFB08A]">
                     {ui.openPlinko}
                   </button>
                 </div>
@@ -403,7 +411,7 @@ export default function RewardsPage({ onBack, onNavigate }) {
                 <h2 className="text-xl font-black">{ui.spinTitle}</h2>
                 <p className="text-sm text-white/55">{hub?.spin?.remaining ?? 0} {ui.remaining}</p>
               </div>
-              <button onClick={handleSpin} disabled={!hub?.spin?.remaining || spinning} data-testid="reward-spin-button" className="rounded-2xl bg-gradient-to-r from-[#FFD766] to-[#FFB800] px-4 py-3 text-sm font-black text-[#0B1120] disabled:opacity-50">
+              <button onClick={handleSpin} disabled={!valueRandomRewardsEnabled || !hub?.spin?.remaining || spinning} data-testid="reward-spin-button" className="rounded-2xl bg-gradient-to-r from-[#FFD766] to-[#FFB800] px-4 py-3 text-sm font-black text-[#0B1120] disabled:opacity-50">
                 {spinning ? ui.spinBusy : ui.spinNow}
               </button>
             </div>
@@ -479,7 +487,7 @@ export default function RewardsPage({ onBack, onNavigate }) {
                 <h2 className="text-xl font-black">{ui.plinkoTitle}</h2>
                 <p className="text-sm text-white/55">{plinkoStatus.ticket_balance ?? 0} Tickets · {plinkoStatus.free_remaining ?? 0} frei</p>
               </div>
-              <button onClick={() => onNavigate && onNavigate("/reward-plinko")} data-testid="reward-plinko-open-page-button" className="rounded-2xl bg-gradient-to-r from-[#FFB08A] to-[#FFD166] px-4 py-3 text-sm font-black text-[#0B1120]">
+              <button onClick={() => valueRandomRewardsEnabled && onNavigate && onNavigate("/reward-plinko")} disabled={!valueRandomRewardsEnabled} data-testid="reward-plinko-open-page-button" className="rounded-2xl bg-gradient-to-r from-[#FFB08A] to-[#FFD166] px-4 py-3 text-sm font-black text-[#0B1120]">
                 {ui.openPlinko}
               </button>
             </div>
@@ -544,7 +552,7 @@ export default function RewardsPage({ onBack, onNavigate }) {
                       <div className="flex flex-col items-stretch gap-2 sm:min-w-[180px]">
                         <button
                           onClick={() => handleOpenBox(box.box_key)}
-                          disabled={opening || (!box.can_open_with_bidcoins && !box.premium_can_open_free)}
+                          disabled={!valueRandomRewardsEnabled || opening || (!box.can_open_with_bidcoins && !box.premium_can_open_free)}
                           data-testid={`reward-box-open-button-${box.box_key}`}
                           className="rounded-2xl px-4 py-3 text-sm font-black text-[#07111E] disabled:opacity-50"
                           style={{ background: `linear-gradient(135deg, ${tier.accent}, #ffffff)` }}

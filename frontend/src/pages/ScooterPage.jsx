@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import { useUser } from '../store';
 import MiniLeafletMap from '../components/MiniLeafletMap';
 import ARScooterFinder from '../components/ARScooterFinder';
 import ReviewModal from '../components/ReviewModal';
@@ -8,6 +9,36 @@ import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
 const API = process.env.REACT_APP_BACKEND_URL;
+
+const scooterUnlockStorageKey = (ownerId) => `bidblitz:scooter-unlock-attempt:${ownerId || 'unknown'}`;
+
+const readScooterUnlockAttempt = (ownerId) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(scooterUnlockStorageKey(ownerId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.key !== 'string' || parsed.key.length < 8) return null;
+    if (typeof parsed.scooter_id !== 'string' || !parsed.scooter_id) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const persistScooterUnlockAttempt = (ownerId, attempt) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const storageKey = scooterUnlockStorageKey(ownerId);
+    if (attempt) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+};
 
 // Battery level colors
 const getBatteryColor = (percent) => {
@@ -24,6 +55,7 @@ const getBatteryBg = (percent) => {
 
 export default function ScooterPage({ onNavigate }) {
   const { t } = useI18n();
+  const user = useUser();
   
   // Navigation helper
   const navigate = (path) => {
@@ -41,10 +73,12 @@ export default function ScooterPage({ onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [userBalance, setUserBalance] = useState(0);
-  const [pricing, setPricing] = useState({ unlock_fee: 1.0, per_minute: 0.19 });
+  const [pricing, setPricing] = useState({ unlock_fee: 1.0, per_minute: 0.20, min_balance: 5.0, daily_cap: 20.0 });
+  const [selectedPricing, setSelectedPricing] = useState(null);
+  const [pricingSelectionLoading, setPricingSelectionLoading] = useState(false);
   const [rideTimer, setRideTimer] = useState(0);
   const [rideCost, setRideCost] = useState(0);
-  const [userLocation, setUserLocation] = useState({ lat: 52.52, lng: 13.405 });
+  const [userLocation, setUserLocation] = useState(null);
   const [moduleEnabled, setModuleEnabled] = useState(true);
   const [moduleMessage, setModuleMessage] = useState('');
   const [plans, setPlans] = useState([]);
@@ -67,6 +101,13 @@ export default function ScooterPage({ onNavigate }) {
   // Refs
   const timerRef = useRef(null);
   const pollingRef = useRef(null);
+  const unlockAttemptOwnerId = user?.id || user?.email || 'unknown';
+  const initialUnlockAttempt = readScooterUnlockAttempt(unlockAttemptOwnerId);
+  const unlockAttemptKeyRef = useRef(initialUnlockAttempt?.key || null);
+  const unlockAttemptScooterRef = useRef(initialUnlockAttempt?.scooter_id || null);
+  const endAttemptKeyRef = useRef(null);
+  const subscriptionAttemptRef = useRef({ planId: null, key: null });
+  const pricingSelectionRequestRef = useRef(0);
 
   useEffect(() => {
     fetchUserData();
@@ -80,6 +121,12 @@ export default function ScooterPage({ onNavigate }) {
     };
   }, []);
 
+  useEffect(() => {
+    const saved = readScooterUnlockAttempt(unlockAttemptOwnerId);
+    unlockAttemptKeyRef.current = saved?.key || null;
+    unlockAttemptScooterRef.current = saved?.scooter_id || null;
+  }, [unlockAttemptOwnerId]);
+
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -88,11 +135,16 @@ export default function ScooterPage({ onNavigate }) {
           fetchNearbyScooters(pos.coords.latitude, pos.coords.longitude);
         },
         () => {
-          fetchNearbyScooters(52.52, 13.405);
-        }
+          setUserLocation(null);
+          setScooters([]);
+          setError('Standort konnte nicht ermittelt werden. Bitte Standortzugriff erlauben.');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
       );
     } else {
-      fetchNearbyScooters(52.52, 13.405);
+      setUserLocation(null);
+      setScooters([]);
+      setError('Standortzugriff wird auf diesem Gerät nicht unterstützt.');
     }
   };
 
@@ -116,6 +168,58 @@ export default function ScooterPage({ onNavigate }) {
     } catch (err) {}
   };
 
+  const fetchPricingForLocation = async (lat, lng) => {
+    const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+    const res = await fetch(`${API}/api/scooter/pricing?${params.toString()}`, { credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || 'Lokaler Scooter-Tarif konnte nicht geladen werden.');
+    return data;
+  };
+
+  const selectScooter = async (scooter) => {
+    const lat = Number(scooter?.lat ?? scooter?.location?.lat);
+    const lng = Number(scooter?.lng ?? scooter?.location?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setSelectedScooter(null);
+      setSelectedPricing(null);
+      setError('Scooter-Standort ist ungültig. Fahrtstart wurde gesperrt.');
+      return;
+    }
+
+    const requestId = pricingSelectionRequestRef.current + 1;
+    pricingSelectionRequestRef.current = requestId;
+    setSelectedScooter(scooter);
+    setSelectedPricing(null);
+    setPricingSelectionLoading(true);
+    setError('');
+
+    try {
+      const localPricing = await fetchPricingForLocation(lat, lng);
+      if (pricingSelectionRequestRef.current !== requestId) return;
+      setSelectedPricing(localPricing);
+      if (localPricing.available === false) {
+        setError(localPricing.basis || 'Für diesen Scooter-Standort ist noch kein Tarif freigeschaltet.');
+      }
+    } catch (err) {
+      if (pricingSelectionRequestRef.current !== requestId) return;
+      setSelectedPricing({
+        available: false,
+        billing_supported: false,
+        basis: err?.message || 'Lokaler Scooter-Tarif konnte nicht verifiziert werden.',
+      });
+      setError(err?.message || 'Lokaler Scooter-Tarif konnte nicht verifiziert werden.');
+    } finally {
+      if (pricingSelectionRequestRef.current === requestId) setPricingSelectionLoading(false);
+    }
+  };
+
+  const closeSelectedScooter = () => {
+    pricingSelectionRequestRef.current += 1;
+    setPricingSelectionLoading(false);
+    setSelectedPricing(null);
+    setSelectedScooter(null);
+  };
+
   const fetchNearbyScooters = async (lat, lng) => {
     setLoading(true);
     try {
@@ -125,12 +229,14 @@ export default function ScooterPage({ onNavigate }) {
       if (res.ok) {
         const data = await res.json();
         // Check if module is enabled
+        if (data.pricing) setPricing(data.pricing);
         if (data.module_enabled === false) {
           setModuleEnabled(false);
           setModuleMessage(data.message || 'Scooter-Modul wird derzeit vorbereitet');
           setScooters([]);
         } else {
           setModuleEnabled(true);
+          setModuleMessage(data.pricing?.available === false ? (data.pricing?.basis || 'Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.') : '');
           setScooters(data.scooters || []);
         }
       }
@@ -146,30 +252,40 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/active`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        if (data.has_active_rental && data.rental) {
-          setActiveRental(data.rental);
+        const ride = data.rental || data.ride;
+        if ((data.has_active_rental || data.has_active) && ride) {
+          unlockAttemptKeyRef.current = null;
+          unlockAttemptScooterRef.current = null;
+          persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
+          setActiveRental(ride);
           setView('riding');
-          startRideTimer(data.rental);
+          startRideTimer(ride);
         }
       }
     } catch (err) {}
   };
 
   const startRideTimer = (rental) => {
-    if (!rental.started_at) return;
+    const startedAt = rental.started_at || rental.start_time;
+    if (!startedAt) return;
     
-    const started = new Date(rental.started_at);
+    const started = new Date(startedAt);
     
     if (timerRef.current) clearInterval(timerRef.current);
     
     timerRef.current = setInterval(() => {
       const now = new Date();
-      const seconds = Math.floor((now - started) / 1000);
+      const seconds = Math.max(0, Math.floor((now - started) / 1000));
       setRideTimer(seconds);
-      
+
       const minutes = seconds / 60;
-      const cost = pricing.unlock_fee + (minutes * pricing.per_minute);
-      setRideCost(Math.min(cost, pricing.daily_cap || 15));
+      const unlockFee = Number(rental.unlock_fee ?? pricing.unlock_fee ?? 1);
+      const rate = Number(rental.per_minute_rate ?? pricing.per_minute ?? 0.20);
+      const freeMinutes = Number(rental.free_minutes_remaining_at_start ?? 0);
+      const billableMinutes = Math.max(0, minutes - freeMinutes);
+      const cost = unlockFee + (billableMinutes * rate);
+      const minimumCharge = Number(rental.minimum_charge ?? pricing.minimum_charge ?? unlockFee ?? 0);
+      setRideCost(Math.min(Math.max(cost, minimumCharge), Number(rental.daily_cap ?? pricing.daily_cap ?? 20)));
     }, 1000);
   };
 
@@ -181,8 +297,17 @@ export default function ScooterPage({ onNavigate }) {
 
   // Unlock scooter
   const unlockScooter = async (scooter) => {
-    if (userBalance < pricing.unlock_fee) {
-      setError(`Nicht genug Guthaben. Mindestens €${pricing.unlock_fee.toFixed(2)} erforderlich, du hast €${userBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
+    if (pricingSelectionLoading || !selectedPricing) {
+      setError('Lokaler Scooter-Tarif wird noch geprüft. Bitte erneut versuchen.');
+      return;
+    }
+    if (selectedPricing.available === false) {
+      setError(selectedPricing.basis || 'Für diesen Scooter-Standort ist noch kein Tarif freigeschaltet.');
+      return;
+    }
+    const requiredBalance = Number(selectedPricing.min_balance ?? 5);
+    if (userBalance < requiredBalance) {
+      setError(`Nicht genug Guthaben. Mindestens €${requiredBalance.toFixed(2)} erforderlich, du hast €${userBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
       return;
     }
     
@@ -190,23 +315,65 @@ export default function ScooterPage({ onNavigate }) {
     setError('');
     
     try {
+      if (!unlockAttemptKeyRef.current || unlockAttemptScooterRef.current !== scooter.scooter_id) {
+        unlockAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `scooter-unlock-${crypto.randomUUID()}`
+          : `scooter-unlock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        unlockAttemptScooterRef.current = scooter.scooter_id;
+        persistScooterUnlockAttempt(unlockAttemptOwnerId, {
+          key: unlockAttemptKeyRef.current,
+          scooter_id: scooter.scooter_id,
+          created_at: new Date().toISOString(),
+        });
+      }
+      const idempotencyKey = unlockAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/unlock`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: scooter.scooter_id }),
+        body: JSON.stringify({
+          scooter_id: scooter.scooter_id,
+          idempotency_key: idempotencyKey,
+          pricing_hash: selectedPricing.pricing_hash || null,
+        }),
       });
       
       if (res.ok) {
         const data = await res.json();
-        setActiveRental(data.rental);
+        unlockAttemptKeyRef.current = null;
+        unlockAttemptScooterRef.current = null;
+        persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
+        const ride = data.rental || data.ride;
+        setActiveRental(ride);
         setSelectedScooter(null);
+        setSelectedPricing(null);
         setView('riding');
-        setUserBalance(prev => prev - pricing.unlock_fee);
-        startRideTimer(data.rental);
+        setUserBalance(Number(data.new_balance ?? userBalance));
+        startRideTimer(ride);
       } else {
-        const err = await res.json();
-        setError(err.detail || 'Entsperren fehlgeschlagen');
+        const err = await res.json().catch(() => ({}));
+        const errorCode = typeof err?.detail === 'object' ? err.detail?.error : null;
+        const detailMessage = typeof err?.detail === 'string'
+          ? err.detail
+          : err?.detail?.message || 'Entsperren fehlgeschlagen';
+
+        if (res.status === 409 && errorCode === 'pricing_changed') {
+          const lat = Number(scooter?.lat ?? scooter?.location?.lat);
+          const lng = Number(scooter?.lng ?? scooter?.location?.lng);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            try {
+              const refreshedPricing = await fetchPricingForLocation(lat, lng);
+              setSelectedPricing(refreshedPricing);
+            } catch {
+              setSelectedPricing(null);
+            }
+          }
+        } else if (res.status < 500) {
+          unlockAttemptKeyRef.current = null;
+          unlockAttemptScooterRef.current = null;
+          persistScooterUnlockAttempt(unlockAttemptOwnerId, null);
+        }
+        setError(detailMessage);
       }
     } catch (err) {
       setError('Netzwerkfehler');
@@ -225,15 +392,20 @@ export default function ScooterPage({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: activeRental.scooter_id }),
+        body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
+          scooter_id: activeRental.scooter_id,
+        }),
       });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setActiveRental(prev => ({ ...prev, status: 'paused' }));
-      }
-    } catch (err) {}
-    finally { setLoading(false); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Pause fehlgeschlagen');
+      setActiveRental(prev => ({ ...prev, status: 'paused' }));
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Pause fehlgeschlagen');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Resume ride
@@ -246,14 +418,20 @@ export default function ScooterPage({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ scooter_id: activeRental.scooter_id }),
+        body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
+          scooter_id: activeRental.scooter_id,
+        }),
       });
-      
-      if (res.ok) {
-        setActiveRental(prev => ({ ...prev, status: 'active' }));
-      }
-    } catch (err) {}
-    finally { setLoading(false); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Weiterfahren fehlgeschlagen');
+      setActiveRental(prev => ({ ...prev, status: 'active' }));
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Weiterfahren fehlgeschlagen');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // End ride
@@ -262,28 +440,49 @@ export default function ScooterPage({ onNavigate }) {
     
     setLoading(true);
     try {
+      if (!endAttemptKeyRef.current) {
+        endAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `scooter-end-${crypto.randomUUID()}`
+          : `scooter-end-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = endAttemptKeyRef.current;
       const res = await fetch(`${API}/api/scooter/end`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
         credentials: 'include',
         body: JSON.stringify({
+          ride_id: activeRental.ride_id || activeRental.rental_id,
           scooter_id: activeRental.scooter_id,
-          end_location: userLocation,
+          end_lat: userLocation?.lat,
+          end_lng: userLocation?.lng,
+          end_location: userLocation || null,
+          idempotency_key: idempotencyKey,
         }),
       });
       
       if (res.ok) {
         const data = await res.json();
+        endAttemptKeyRef.current = null;
         if (timerRef.current) clearInterval(timerRef.current);
         setActiveRental(null);
         setView('map');
         setRideTimer(0);
         setRideCost(0);
         setUserBalance(data.new_balance);
-        fetchNearbyScooters(userLocation.lat, userLocation.lng);
+        if (userLocation?.lat != null && userLocation?.lng != null) {
+          fetchNearbyScooters(userLocation.lat, userLocation.lng);
+        }
         
-        // Show summary
-        alert(`Fahrt beendet!\nGesamt: €${data.summary.total_cost.toFixed(2)}\nDauer: ${data.summary.total_minutes} Min`);
+        // Show summary using the ride's locked settlement currency.
+        const summaryCurrency = String(data.summary.currency || data.summary.amount_due_currency || activeRental.currency || pricing.currency || 'EUR').toUpperCase();
+        const totalLabel = `${Number(data.summary.total_cost || 0).toFixed(2)} ${summaryCurrency}`;
+        const duration = data.summary.duration_minutes ?? data.summary.total_minutes;
+        const paymentLine = data.summary.payment_status === "due"
+          ? `\nOffener Betrag: ${Number(data.summary.amount_due || 0).toFixed(2)} ${data.summary.amount_due_currency || summaryCurrency}`
+          : data.summary.payment_status === "reconciliation_required"
+            ? `\nAbrechnung wird geprüft: ${Number(data.summary.amount_due || 0).toFixed(2)} ${data.summary.amount_due_currency || summaryCurrency}`
+            : "";
+        alert(`Fahrt beendet!\nGesamt: ${totalLabel}\nDauer: ${duration} Min${paymentLine}`);
       } else {
         const err = await res.json();
         setError(err.detail || 'Beenden fehlgeschlagen');
@@ -340,7 +539,10 @@ export default function ScooterPage({ onNavigate }) {
       if (res.ok) {
         setRedeemResult({ ok: true, message: data.message, host: data.host_name });
       } else {
-        setRedeemResult({ ok: false, message: data.detail || 'Code ungültig' });
+        const message = typeof data.detail === 'string'
+          ? data.detail
+          : data.detail?.message || 'Code ungültig oder nicht verfügbar';
+        setRedeemResult({ ok: false, message });
       }
     } catch { setRedeemResult({ ok: false, message: 'Netzwerkfehler' }); }
     setShareLoading(false);
@@ -372,7 +574,7 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/history`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setRentalHistory(data.rentals || []);
+        setRentalHistory(data.rentals || data.rides || []);
       }
     } catch (err) {}
   };
@@ -397,23 +599,52 @@ export default function ScooterPage({ onNavigate }) {
   };
 
   const subscribePlan = async (planId) => {
+    const attemptStorageKey = `bidblitz:scooter-sub:${user?.id || user?.email || 'unknown'}:${planId}`;
+    if (subscriptionAttemptRef.current.planId !== planId || !subscriptionAttemptRef.current.key) {
+      const storedKey = typeof window !== 'undefined' ? window.sessionStorage.getItem(attemptStorageKey) : null;
+      subscriptionAttemptRef.current = {
+        planId,
+        key: storedKey || (
+          typeof crypto?.randomUUID === 'function'
+            ? `scooter-sub-${crypto.randomUUID()}`
+            : `scooter-sub-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        ),
+      };
+      if (!storedKey && typeof window !== 'undefined') {
+        window.sessionStorage.setItem(attemptStorageKey, subscriptionAttemptRef.current.key);
+      }
+    }
+
+    const idempotencyKey = subscriptionAttemptRef.current.key;
     setSubLoading(true);
     try {
       const res = await fetch(`${API}/api/scooter/subscribe`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: planId }),
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ plan_id: planId, idempotency_key: idempotencyKey }),
       });
       if (res.ok) {
         const data = await res.json();
+        subscriptionAttemptRef.current = { planId: null, key: null };
+        if (typeof window !== 'undefined') window.sessionStorage.removeItem(attemptStorageKey);
         setMySub(data.subscription);
-        fetchUserData();
+        if (data.new_balance !== undefined) setUserBalance(Number(data.new_balance));
+        else fetchUserData();
         alert(`${data.subscription.plan_name} aktiviert!`);
       } else {
         const err = await res.json();
-        alert(err.detail || 'Fehler beim Abschließen');
+        if ([400, 403, 404].includes(res.status)) {
+          subscriptionAttemptRef.current = { planId: null, key: null };
+          if (typeof window !== 'undefined') window.sessionStorage.removeItem(attemptStorageKey);
+        }
+        alert(typeof err.detail === 'string' ? err.detail : 'Fehler beim Abschließen');
       }
-    } catch {} finally { setSubLoading(false); }
+    } catch {
+      // Keep the same key across network failures/reloads for safe reconciliation.
+      setError('Netzwerkfehler beim Abo-Abschluss. Der sichere Wiederholungsversuch bleibt erhalten.');
+    } finally {
+      setSubLoading(false);
+    }
   };
 
   const cancelSub = async () => {
@@ -422,8 +653,17 @@ export default function ScooterPage({ onNavigate }) {
       const res = await fetch(`${API}/api/scooter/cancel-subscription`, {
         method: 'POST', credentials: 'include',
       });
-      if (res.ok) { setMySub(null); alert('Abo gekündigt'); }
-    } catch {}
+      if (res.ok) {
+        setMySub(null);
+        setError('');
+        alert('Abo gekündigt');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setError(typeof data.detail === 'string' ? data.detail : 'Abo konnte nicht gekündigt werden.');
+    } catch {
+      setError('Netzwerkfehler beim Kündigen des Abos.');
+    }
   };
 
   const pageBottomPadding = selectedScooter
@@ -511,14 +751,18 @@ export default function ScooterPage({ onNavigate }) {
             >
               {/* Map - Leaflet with scooter pins (Mapbox-free) */}
               <div className="relative h-64 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
-                {(() => {
+                {userLocation ? (() => {
+                  const scooterPins = scooters
+                    .filter((s) => Number.isFinite(Number(s.location?.lat)) && Number.isFinite(Number(s.location?.lng)))
+                    .slice(0, 8)
+                    .map((s) => ({
+                      lat: Number(s.location.lat),
+                      lng: Number(s.location.lng),
+                      color: "#10B981",
+                    }));
                   const allPins = [
                     { lat: userLocation.lat, lng: userLocation.lng, color: "#00C2FF", label: "Du" },
-                    ...scooters.slice(0, 8).map((s) => ({
-                      lat: s.location?.lat || userLocation.lat + (Math.random() - 0.5) * 0.01,
-                      lng: s.location?.lng || userLocation.lng + (Math.random() - 0.5) * 0.01,
-                      color: "#10B981",
-                    })),
+                    ...scooterPins,
                   ];
                   return (
                     <MiniLeafletMap
@@ -530,7 +774,11 @@ export default function ScooterPage({ onNavigate }) {
                       testId="scooter-map"
                     />
                   );
-                })()}
+                })() : (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/55" data-testid="scooter-map-location-required">
+                    Standortzugriff erforderlich, um echte Scooter in deiner Nähe anzuzeigen.
+                  </div>
+                )}
                 <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <span className="text-xs font-medium text-green-400">{scooters.length} Scooter in der Nähe</span>
@@ -558,18 +806,18 @@ export default function ScooterPage({ onNavigate }) {
 
               {/* Wallet Balance Card */}
               <div className={`p-4 rounded-xl border mb-4 ${
-                userBalance >= pricing.unlock_fee
+                userBalance >= Number(pricing.min_balance ?? 5)
                   ? 'bg-green-500/10 border-green-500/30'
                   : 'bg-red-500/10 border-red-500/30'
               }`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-400">Dein Wallet</p>
-                    <p className={`text-xl font-bold ${userBalance >= pricing.unlock_fee ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-xl font-bold ${userBalance >= Number(pricing.min_balance ?? 5) ? 'text-green-400' : 'text-red-400'}`}>
                       €{userBalance.toFixed(2)}
                     </p>
                   </div>
-                  {userBalance < pricing.unlock_fee && (
+                  {userBalance < Number(pricing.min_balance ?? 5) && (
                     <button
                       onClick={() => navigate('/wallet')}
                       className="px-4 py-2 bg-green-500 text-black text-sm font-semibold rounded-lg"
@@ -578,9 +826,9 @@ export default function ScooterPage({ onNavigate }) {
                     </button>
                   )}
                 </div>
-                {userBalance < pricing.unlock_fee && (
+                {userBalance < Number(pricing.min_balance ?? 5) && (
                   <p className="text-xs text-red-400 mt-2">
-                    Mindestens €{pricing.unlock_fee?.toFixed(2)} für Entsperren benötigt
+                    Mindestens €{Number(pricing.min_balance ?? 5).toFixed(2)} Guthaben für Fahrtstart benötigt
                   </p>
                 )}
                 {/* Share code redeem shortcut */}
@@ -594,7 +842,23 @@ export default function ScooterPage({ onNavigate }) {
               </div>
 
               {/* Pricing Info */}
-              <div className="p-4 bg-[#111] rounded-xl border border-white/10">
+              <div className="p-4 bg-[#111] rounded-xl border border-white/10" data-testid="scooter-local-pricing">
+                {(pricing.city || pricing.country) && (
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-green-400">Lokaler Tarif</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{[pricing.city, pricing.country].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[10px] font-semibold text-green-300">
+                      {pricing.profile_scope === 'city' ? 'Stadttarif' : pricing.profile_scope === 'country' ? 'Landestarif' : 'Fallback'}
+                    </span>
+                  </div>
+                )}
+                {pricing.available === false && (
+                  <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    {pricing.basis || 'Für diesen Standort ist noch kein Scooter-Tarif freigeschaltet.'}
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-gray-400 text-sm">Entsperren</p>
@@ -623,7 +887,7 @@ export default function ScooterPage({ onNavigate }) {
                   scooters.map((scooter) => (
                     <motion.button
                       key={scooter.scooter_id}
-                      onClick={() => setSelectedScooter(scooter)}
+                      onClick={() => selectScooter(scooter)}
                       className={`w-full p-4 rounded-xl border transition-all text-left ${
                         selectedScooter?.scooter_id === scooter.scooter_id
                           ? 'bg-green-500/10 border-green-500/50'
@@ -679,10 +943,18 @@ export default function ScooterPage({ onNavigate }) {
                         <p className="font-bold">{selectedScooter.scooter_id}</p>
                         <p className="text-sm text-gray-400">{selectedScooter.model} • {selectedScooter.battery_percent}%</p>
                       </div>
-                      <button onClick={() => setSelectedScooter(null)} className="text-gray-500" data-testid="scooter-unlock-sheet-close">✕</button>
+                      <button onClick={closeSelectedScooter} className="text-gray-500" data-testid="scooter-unlock-sheet-close">✕</button>
                     </div>
                     
-                    {userBalance < pricing.unlock_fee ? (
+                    {pricingSelectionLoading || !selectedPricing ? (
+                      <div className="py-4 text-center text-sm text-gray-400" data-testid="scooter-selected-pricing-loading">
+                        Lokalen Tarif prüfen…
+                      </div>
+                    ) : selectedPricing.available === false ? (
+                      <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-center text-xs text-amber-200">
+                        {selectedPricing.basis || 'Für diesen Scooter-Standort ist noch kein Tarif freigeschaltet.'}
+                      </div>
+                    ) : userBalance < Number(selectedPricing.min_balance ?? 5) ? (
                       <div className="text-center py-4">
                         <p className="text-red-400 mb-2">Nicht genug Guthaben</p>
                         <button
@@ -699,7 +971,7 @@ export default function ScooterPage({ onNavigate }) {
                         className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-black text-lg disabled:opacity-50"
                         data-testid="scooter-unlock-button"
                       >
-                        {loading ? 'Entsperren...' : `Entsperren (€${pricing.unlock_fee?.toFixed(2)})`}
+                        {loading ? 'Entsperren...' : `Entsperren (€${Number(selectedPricing.unlock_fee ?? 0).toFixed(2)})`}
                       </button>
                     )}
                   </div>
@@ -738,7 +1010,10 @@ export default function ScooterPage({ onNavigate }) {
                 
                 {activeRental.status === 'paused' && (
                   <div className="mt-4 p-3 bg-yellow-500/20 rounded-xl">
-                    <p className="text-yellow-400 font-medium">⏸️ Pausiert (€{pricing.pause_rate}/Min)</p>
+                    <p className="text-yellow-400 font-medium">⏸️ Pausiert · Scooter bleibt reserviert</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Der normale Fahrtarif läuft weiter: {Number(activeRental.per_minute_rate ?? pricing.per_minute ?? 0).toFixed(2)} {activeRental.currency || pricing.currency || 'EUR'}/Min
+                    </p>
                   </div>
                 )}
               </div>
@@ -758,11 +1033,27 @@ export default function ScooterPage({ onNavigate }) {
               <div className="p-4 bg-[#111] rounded-xl border border-white/10 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Entsperrgebühr</span>
-                  <span>€{pricing.unlock_fee?.toFixed(2)}</span>
+                  <span>€{Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 1).toFixed(2)}</span>
                 </div>
+                {Number(activeRental.free_minutes_remaining_at_start || 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Freiminuten verfügbar</span>
+                    <span className="text-cyan-400">{Number(activeRental.free_minutes_remaining_at_start || 0).toFixed(0)} Min</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Minutenpreis</span>
+                  <span>€{Number(activeRental.per_minute_rate ?? pricing.per_minute ?? 0.20).toFixed(2)}/Min</span>
+                </div>
+                {Number(activeRental.minimum_charge ?? pricing.minimum_charge ?? 0) > Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 0) && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Mindestpreis</span>
+                    <span>€{Number(activeRental.minimum_charge ?? pricing.minimum_charge ?? 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Fahrzeit ({Math.floor(rideTimer / 60)} Min)</span>
-                  <span>€{(rideCost - pricing.unlock_fee).toFixed(2)}</span>
+                  <span>€{Math.max(0, rideCost - Number(activeRental.unlock_fee ?? pricing.unlock_fee ?? 1)).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold pt-2 border-t border-white/10">
                   <span>Gesamt</span>
@@ -903,7 +1194,8 @@ export default function ScooterPage({ onNavigate }) {
 
                 {/* Redeem Code Section */}
                 <div className="pt-4 border-t border-white/10">
-                  <p className="text-xs text-gray-500 mb-2">Freigabe-Code einlösen:</p>
+                  <p className="text-xs text-gray-500 mb-1">Freigabe-Code einlösen:</p>
+                  <p className="text-[10px] text-gray-600 mb-2">In Production benötigt der Gast ein verifiziertes Konto. Die Abrechnung bleibt beim Gastgeber.</p>
                   <div className="flex gap-2">
                     <input
                       value={redeemCode}
@@ -946,7 +1238,7 @@ export default function ScooterPage({ onNavigate }) {
                             <div className="mt-2 flex items-center justify-between p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/10">
                               <div>
                                 <p className="text-[10px] text-gray-500">Live-Kosten</p>
-                                <p className="text-lg font-bold text-cyan-400">€{s.live_cost?.toFixed(2)}</p>
+                                <p className="text-lg font-bold text-cyan-400">{Number(s.live_cost || 0).toFixed(2)} {String(s.currency || activeRental?.currency || pricing.currency || 'EUR').toUpperCase()}</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-[10px] text-gray-500">Fahrzeit</p>
@@ -1009,7 +1301,7 @@ export default function ScooterPage({ onNavigate }) {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-green-400">
-                          €{(rental.total_cost || 0).toFixed(2)}
+                          {Number(rental.total_cost || 0).toFixed(2)} {String(rental.currency || 'EUR').toUpperCase()}
                         </span>
                         <button
                           data-testid={`scooter-review-btn-${rental.rental_id}`}
@@ -1121,23 +1413,43 @@ export default function ScooterPage({ onNavigate }) {
               ))}
 
               {/* Price Comparison */}
-              <div className="p-4 rounded-2xl bg-[#111] border border-white/10">
-                <h4 className="text-sm font-semibold text-gray-300 mb-3">Preisvergleich</h4>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div></div>
-                  <div className="text-blue-400 font-medium">Woche</div>
-                  <div className="text-green-400 font-medium">Monat</div>
-                  <div className="text-yellow-400 font-medium">Jahr</div>
-                  <div className="text-left text-gray-500">Entsperren</div>
-                  <div className="text-white">0€</div><div className="text-white">0€</div><div className="text-white">0€</div>
-                  <div className="text-left text-gray-500">Frei/Tag</div>
-                  <div className="text-white">30 Min</div><div className="text-white">45 Min</div><div className="text-white">60 Min</div>
-                  <div className="text-left text-gray-500">Danach</div>
-                  <div className="text-white">0.15€</div><div className="text-white">0.12€</div><div className="text-white">0.10€</div>
-                  <div className="text-left text-gray-500">Preis</div>
-                  <div className="text-white">9.99€</div><div className="text-white">29.99€</div><div className="text-white">249.99€</div>
+              {plans.length > 0 && (
+                <div className="p-4 rounded-2xl bg-[#111] border border-white/10">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Preisvergleich</h4>
+                  <div className="overflow-x-auto" data-testid="scooter-plan-comparison">
+                    <table className="w-full min-w-[420px] text-xs">
+                      <thead>
+                        <tr>
+                          <th className="pb-2 text-left font-medium text-gray-500">Leistung</th>
+                          {plans.map((plan) => (
+                            <th key={plan.plan_id} className="pb-2 px-2 text-center font-medium text-white">
+                              {plan.name}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        <tr>
+                          <td className="py-2 text-gray-500">Entsperren</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.unlock_fee || 0).toFixed(2)}€</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Frei/Tag</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.free_minutes_per_day || 0)} Min</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Danach</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center text-white">{Number(plan.per_minute_rate || 0).toFixed(2)}€/Min</td>)}
+                        </tr>
+                        <tr>
+                          <td className="py-2 text-gray-500">Preis</td>
+                          {plans.map((plan) => <td key={plan.plan_id} className="px-2 py-2 text-center font-semibold text-white">{Number(plan.price || 0).toFixed(2)}€</td>)}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1147,7 +1459,7 @@ export default function ScooterPage({ onNavigate }) {
       {/* AR Scooter Finder (camera-based) */}
       <ARScooterFinder
         scooters={scooters}
-        onSelectScooter={(s) => setSelectedScooter(s)}
+        onSelectScooter={(s) => selectScooter(s)}
       />
 
       {/* Review Modal (after rental) */}

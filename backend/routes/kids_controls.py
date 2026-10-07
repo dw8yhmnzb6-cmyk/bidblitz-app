@@ -61,6 +61,8 @@ class ActivityPing(BaseModel):
 
 # ─── Helpers ─────────────────────────────────────────────────────
 async def _get_child_for_parent(parent_id: str, child_id: str) -> dict:
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(parent_id)
     child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
@@ -303,6 +305,8 @@ async def ping_activity(child_id: str, body: ActivityPing, request: Request):
     child = await db.kids_children.find_one({"child_id": child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    from routes.kids import require_kids_entitlement
+    await require_kids_entitlement(str(child.get("parent_id") or ""))
     if child.get("parent_id") != uid and child.get("user_id") != uid:
         # Only parent or child themselves
         raise HTTPException(status_code=403, detail="Kein Zugriff")

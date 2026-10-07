@@ -3,11 +3,11 @@
  * Like eBay Kleinanzeigen - Browse, Buy, Sell
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import KYCBanner from '../components/KYCBanner';
-import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List } from 'lucide-react';
+import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List, Package, Truck, Check, RotateCcw } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -45,6 +45,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const [selectedListing, setSelectedListing] = useState(null);
   const [userBalance, setUserBalance] = useState(0);
   const [myListings, setMyListings] = useState([]);
+  const [myPurchases, setMyPurchases] = useState([]);
+  const [mySales, setMySales] = useState([]);
+  const [useShipping, setUseShipping] = useState(false);
+  const [orderBusy, setOrderBusy] = useState(null);
+  const [shippingDrafts, setShippingDrafts] = useState({});
   const [favorites, setFavorites] = useState([]);
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   
@@ -64,6 +69,13 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   // Message state
   const [messageText, setMessageText] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const purchaseAttemptKeyRef = useRef(null);
+  const orderActionKeysRef = useRef({});
+
+  useEffect(() => {
+    purchaseAttemptKeyRef.current = null;
+    setUseShipping(false);
+  }, [selectedListing?.listing_id]);
 
   const openListingById = useCallback(async (listingId) => {
     if (!listingId) return;
@@ -121,6 +133,34 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
     } catch (err) { void err; }
   };
 
+  const fetchMarketplaceOrders = async () => {
+    try {
+      const [purchasesRes, salesRes] = await Promise.all([
+        fetch(API + "/api/marketplace/orders/purchases", { credentials: "include" }),
+        fetch(API + "/api/marketplace/orders/sales", { credentials: "include" }),
+      ]);
+      if (purchasesRes.ok) {
+        const data = await purchasesRes.json();
+        setMyPurchases(data.orders || []);
+      }
+      if (salesRes.ok) {
+        const data = await salesRes.json();
+        const orders = data.orders || [];
+        setMySales(orders);
+        setShippingDrafts((prev) => {
+          const next = { ...prev };
+          for (const order of orders) {
+            next[order.order_id] = next[order.order_id] || {
+              carrier: order.carrier || "",
+              tracking_number: order.tracking_number || "",
+            };
+          }
+          return next;
+        });
+      }
+    } catch (err) { void err; }
+  };
+
   const fetchFavorites = async () => {
     try {
       const res = await fetch(`${API}/api/marketplace/meta/favorites`, { credentials: 'include' });
@@ -138,8 +178,11 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   }, [fetchListings]);
 
   useEffect(() => {
-    if (view === 'my-listings') {
+    if (view === "my-listings") {
       fetchMyListings();
+    }
+    if (view === "orders") {
+      fetchMarketplaceOrders();
     }
   }, [view]);
 
@@ -155,8 +198,12 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
       setView('my-listings');
       return;
     }
-    if (routeParams?.tab === 'create') {
-      setView('create');
+    if (routeParams?.tab === "create") {
+      setView("create");
+      return;
+    }
+    if (routeParams?.tab === "orders") {
+      setView("orders");
     }
   }, [routeParams?.tab]);
 
@@ -218,32 +265,120 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   // Buy item
   const buyItem = async () => {
     if (!selectedListing) return;
-    
-    if (userBalance < selectedListing.price) {
-      alert(`Nicht genug Guthaben. Benötigt: €${selectedListing.price.toFixed(2)}`);
+
+    const shippingCost = useShipping && selectedListing.shipping_available
+      ? Number(selectedListing.shipping_cost || 0)
+      : 0;
+    const required = Number(selectedListing.price || 0) + shippingCost;
+    if (userBalance < required) {
+      alert(`Nicht genug Guthaben. Benötigt: €${required.toFixed(2)}`);
       return;
     }
-    
+
+    if (!purchaseAttemptKeyRef.current) {
+      purchaseAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+        ? `marketplace-buy-${crypto.randomUUID()}`
+        : `marketplace-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = purchaseAttemptKeyRef.current;
+
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/marketplace/buy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         credentials: 'include',
-        body: JSON.stringify({ listing_id: selectedListing.listing_id }),
+        body: JSON.stringify({
+          listing_id: selectedListing.listing_id,
+          use_shipping: !!useShipping,
+          idempotency_key: idempotencyKey,
+        }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        setUserBalance(data.new_balance);
+        purchaseAttemptKeyRef.current = null;
+        setUserBalance(Number(data.new_balance ?? userBalance));
         alert(data.message);
-        setView('browse');
+        setView("orders");
+        await fetchMarketplaceOrders();
         fetchListings();
       } else {
-        const err = await res.json();
-        alert(err.detail || 'Fehler beim Kauf');
+        if (res.status < 500 && res.status !== 409) purchaseAttemptKeyRef.current = null;
+        alert(data.detail || 'Fehler beim Kauf');
       }
-    } catch (err) { void err; }
+    } catch (err) {
+      void err; // keep the same key for a safe retry after a network error
+    }
     setLoading(false);
+  };
+
+  const orderActionKey = (orderId, action) => {
+    const refKey = orderId + ":" + action;
+    if (!orderActionKeysRef.current[refKey]) {
+      orderActionKeysRef.current[refKey] = typeof crypto?.randomUUID === "function"
+        ? "marketplace-" + action + "-" + crypto.randomUUID()
+        : "marketplace-" + action + "-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
+    return { refKey, idempotencyKey: orderActionKeysRef.current[refKey] };
+  };
+
+  const runOrderAction = async (orderId, action, path, extra = {}) => {
+    const { refKey, idempotencyKey } = orderActionKey(orderId, action);
+    setOrderBusy(refKey);
+    try {
+      const res = await fetch(API + path, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ ...extra, idempotency_key: idempotencyKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status < 500 && res.status !== 409) delete orderActionKeysRef.current[refKey];
+        throw new Error(typeof data.detail === "string" ? data.detail : (data.message || "Aktion fehlgeschlagen"));
+      }
+      delete orderActionKeysRef.current[refKey];
+      await Promise.all([fetchMarketplaceOrders(), fetchUserData(), fetchListings()]);
+      return data;
+    } finally {
+      setOrderBusy(null);
+    }
+  };
+
+  const confirmMarketplaceReceived = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "confirm-received", "/api/marketplace/orders/" + order.order_id + "/confirm-received");
+      alert("Empfang bestätigt. Escrow-Auszahlung wurde freigegeben.");
+    } catch (err) { alert(err.message || "Empfang konnte nicht bestätigt werden"); }
+  };
+
+  const cancelMarketplaceOrder = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "cancel", "/api/marketplace/orders/" + order.order_id + "/cancel");
+      alert("Bestellung storniert. Escrow wurde an den Käufer zurückgezahlt.");
+    } catch (err) { alert(err.message || "Stornierung fehlgeschlagen"); }
+  };
+
+  const markMarketplacePickupReady = async (order) => {
+    try {
+      await runOrderAction(order.order_id, "ready-pickup", "/api/marketplace/orders/" + order.order_id + "/ready-pickup");
+    } catch (err) { alert(err.message || "Abholfreigabe fehlgeschlagen"); }
+  };
+
+  const shipMarketplaceOrder = async (order) => {
+    const draft = shippingDrafts[order.order_id] || {};
+    const carrier = String(draft.carrier || "").trim();
+    const trackingNumber = String(draft.tracking_number || "").trim();
+    if (carrier.length < 2 || trackingNumber.length < 4) {
+      alert("Bitte echten Carrier und echte Trackingnummer eingeben.");
+      return;
+    }
+    try {
+      await runOrderAction(order.order_id, "ship", "/api/marketplace/orders/" + order.order_id + "/ship", { carrier, tracking_number: trackingNumber });
+    } catch (err) { alert(err.message || "Versand konnte nicht bestätigt werden"); }
   };
 
   // Contact seller
@@ -300,8 +435,9 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             {[
               { id: 'browse', label: 'Stöbern' },
-              { id: 'my-listings', label: 'Meine' },
-              { id: 'create', label: 'Verkaufen' },
+              { id: "my-listings", label: "Meine" },
+              { id: "orders", label: "Bestellungen" },
+              { id: "create", label: "Verkaufen" },
               { id: 'dashboard', label: 'Dashboard' },
             ].map((tab) => (
               <button
@@ -549,6 +685,21 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
                   )}
                 </div>
                 
+                {selectedListing.shipping_available && (
+                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3" data-testid="marketplace-delivery-choice">
+                    <p className="mb-2 text-xs font-semibold text-white/60">Übergabe wählen</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => setUseShipping(false)} className={"rounded-xl px-3 py-2 text-xs font-bold " + (!useShipping ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" : "bg-white/5 text-white/50 border border-white/10")} data-testid="marketplace-pickup-choice">
+                        Abholung · 0,00 €
+                      </button>
+                      <button onClick={() => setUseShipping(true)} className={"rounded-xl px-3 py-2 text-xs font-bold " + (useShipping ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-white/5 text-white/50 border border-white/10")} data-testid="marketplace-shipping-choice">
+                        Versand · €{Number(selectedListing.shipping_cost || 0).toFixed(2)}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-white/35">Käufergeld bleibt bis zur bestätigten Übergabe im BidBlitz Escrow.</p>
+                  </div>
+                )}
+
                 <p className="mt-4 text-gray-300 whitespace-pre-wrap">{selectedListing.description}</p>
                 
                 {selectedListing.location && (
@@ -606,14 +757,155 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
                   ? 'Nicht verfügbar'
                   : loading 
                     ? 'Wird gekauft...' 
-                    : `Jetzt kaufen - €${selectedListing.price.toFixed(2)}`
+                    : `Jetzt kaufen - €${(Number(selectedListing.price || 0) + (useShipping && selectedListing.shipping_available ? Number(selectedListing.shipping_cost || 0) : 0)).toFixed(2)}`
                 }
               </button>
             </motion.div>
           )}
 
+          {/* ORDERS / ESCROW VIEW */}
+          {view === "orders" && (
+            <motion.div
+              key="orders"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-5"
+              data-testid="marketplace-orders-view"
+            >
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-cyan-400" />
+                  <h2 className="font-bold">Meine Käufe</h2>
+                </div>
+                {myPurchases.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-[#111] p-4 text-sm text-gray-500">Noch keine Käufe.</div>
+                ) : myPurchases.map((order) => {
+                  const busy = orderBusy?.startsWith(order.order_id + ":");
+                  const canCancel = ["awaiting_shipment", "awaiting_pickup"].includes(order.status);
+                  const canConfirm = ["shipped", "ready_for_pickup"].includes(order.status);
+                  return (
+                    <div key={order.order_id} className="rounded-2xl border border-white/5 bg-[#111] p-4" data-testid={"marketplace-purchase-" + order.order_id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-white/90">{order.item_title}</p>
+                          <p className="mt-1 text-xs text-cyan-300">€{Number(order.total_price || 0).toFixed(2)} · Escrow: {order.escrow_status || "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold text-white/50">{order.status}</span>
+                      </div>
+                      {order.tracking_number && (
+                        <div className="mt-3 rounded-xl border border-blue-500/15 bg-blue-500/5 p-3 text-xs">
+                          <div className="flex items-center gap-2 text-blue-300"><Truck size={14} /> {order.carrier || "Carrier"}</div>
+                          <p className="mt-1 break-all font-mono text-white/60">{order.tracking_number}</p>
+                        </div>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        {canConfirm && (
+                          <button
+                            disabled={busy}
+                            onClick={() => confirmMarketplaceReceived(order)}
+                            className="flex-1 rounded-xl bg-green-500/15 py-2 text-xs font-bold text-green-300 disabled:opacity-40"
+                            data-testid={"marketplace-confirm-received-" + order.order_id}
+                          >
+                            <Check size={13} className="mr-1 inline" /> Erhalten
+                          </button>
+                        )}
+                        {canCancel && (
+                          <button
+                            disabled={busy}
+                            onClick={() => cancelMarketplaceOrder(order)}
+                            className="flex-1 rounded-xl bg-red-500/10 py-2 text-xs font-bold text-red-300 disabled:opacity-40"
+                            data-testid={"marketplace-cancel-order-" + order.order_id}
+                          >
+                            <RotateCcw size={13} className="mr-1 inline" /> Stornieren
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-purple-400" />
+                  <h2 className="font-bold">Meine Verkäufe</h2>
+                </div>
+                {mySales.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-[#111] p-4 text-sm text-gray-500">Noch keine Verkäufe.</div>
+                ) : mySales.map((order) => {
+                  const busy = orderBusy?.startsWith(order.order_id + ":");
+                  const draft = shippingDrafts[order.order_id] || {};
+                  return (
+                    <div key={order.order_id} className="rounded-2xl border border-white/5 bg-[#111] p-4" data-testid={"marketplace-sale-" + order.order_id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-white/90">{order.item_title}</p>
+                          <p className="mt-1 text-xs text-purple-300">Auszahlung €{Number(order.seller_amount || 0).toFixed(2)} · Escrow: {order.escrow_status || "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold text-white/50">{order.status}</span>
+                      </div>
+
+                      {order.status === "awaiting_shipment" && (
+                        <div className="mt-3 space-y-2">
+                          <input
+                            value={draft.carrier || ""}
+                            onChange={(e) => setShippingDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), carrier: e.target.value } }))}
+                            placeholder="Carrier, z. B. DHL"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                            data-testid={"marketplace-carrier-" + order.order_id}
+                          />
+                          <input
+                            value={draft.tracking_number || ""}
+                            onChange={(e) => setShippingDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), tracking_number: e.target.value } }))}
+                            placeholder="Echte Trackingnummer"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
+                            data-testid={"marketplace-tracking-" + order.order_id}
+                          />
+                          <button
+                            disabled={busy}
+                            onClick={() => shipMarketplaceOrder(order)}
+                            className="w-full rounded-xl bg-blue-500/15 py-2 text-xs font-bold text-blue-300 disabled:opacity-40"
+                            data-testid={"marketplace-ship-order-" + order.order_id}
+                          >
+                            Als versendet markieren
+                          </button>
+                        </div>
+                      )}
+
+                      {order.status === "awaiting_pickup" && (
+                        <button
+                          disabled={busy}
+                          onClick={() => markMarketplacePickupReady(order)}
+                          className="mt-3 w-full rounded-xl bg-purple-500/15 py-2 text-xs font-bold text-purple-300 disabled:opacity-40"
+                          data-testid={"marketplace-ready-pickup-" + order.order_id}
+                        >
+                          Zur Abholung freigeben
+                        </button>
+                      )}
+
+                      {["awaiting_shipment", "awaiting_pickup"].includes(order.status) && (
+                        <button
+                          disabled={busy}
+                          onClick={() => cancelMarketplaceOrder(order)}
+                          className="mt-2 w-full rounded-xl bg-red-500/10 py-2 text-xs font-bold text-red-300 disabled:opacity-40"
+                        >
+                          Verkauf stornieren
+                        </button>
+                      )}
+
+                      {order.tracking_number && (
+                        <p className="mt-3 text-xs text-white/45">{order.carrier}: <span className="font-mono">{order.tracking_number}</span></p>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+            </motion.div>
+          )}
+
           {/* CREATE VIEW */}
-          {view === 'create' && (
+          {view === "create" && (
             <motion.div
               key="create"
               initial={{ opacity: 0 }}

@@ -1,8 +1,19 @@
+import { Capacitor } from "@capacitor/core";
+
 const PREVIEW_HOST_MATCHERS = ["preview.emergentagent.com", "localhost", "127.0.0.1"];
 const runtimeHost = typeof window !== "undefined" ? window.location.hostname : "";
-const isPreviewRuntime = PREVIEW_HOST_MATCHERS.some((matcher) => runtimeHost.includes(matcher));
+const isNativeRuntime = Capacitor.isNativePlatform();
+const isPreviewRuntime =
+  !isNativeRuntime &&
+  PREVIEW_HOST_MATCHERS.some((matcher) => runtimeHost.includes(matcher));
 
-export const STORE_SAFE_MODE = process.env.REACT_APP_STORE_SAFE_MODE === "true" && !isPreviewRuntime;
+// Store-safe restrictions belong to the native App Store / Play Store shell.
+// The public web app (including bidblitz.ae in Safari/Chrome) must keep its
+// web modules such as Auctions and Mining visible and routable.
+export const STORE_SAFE_MODE =
+  process.env.REACT_APP_STORE_SAFE_MODE === "true" &&
+  !isPreviewRuntime &&
+  isNativeRuntime;
 export const DEMO_MODE = process.env.REACT_APP_DEMO_MODE === "true";
 export const MOCK_PAYMENTS = process.env.REACT_APP_MOCK_PAYMENTS === "true";
 export const IS_PRODUCTION = process.env.NODE_ENV === "production";

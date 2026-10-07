@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Save, ShieldCheck, Video, Users } from "lucide-react";
 import { toast } from "sonner";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 async function api(path, options = {}) {
   const response = await fetch(`${API}${path}`, {

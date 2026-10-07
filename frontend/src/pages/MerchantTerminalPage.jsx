@@ -442,14 +442,20 @@ const MerchantTerminalPage = ({ onBack }) => {
                     className="py-3 rounded-xl flex flex-col items-center gap-1" style={{ background: "rgba(0,232,157,0.06)", border: "1px solid rgba(0,232,157,0.12)" }}>
                     <Zap size={16} className="text-[#00E89D]" />
                     <span className="text-[9px] font-bold text-[#00E89D]">BidBlitz Wallet</span>
-                    <span className="text-[7px] text-[#00E89D]/50">0.3% fee</span>
+                    <span className="text-[7px] text-[#00E89D]/50">Gebühr laut Händler-Tarif</span>
                   </motion.button>
-                  <motion.button data-testid="nfc-card-btn" onClick={() => processNfcPayment("nfc_card")} whileTap={{ scale: 0.95 }} disabled={loading}
-                    className="py-3 rounded-xl flex flex-col items-center gap-1" style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.12)" }}>
+                  <button
+                    type="button"
+                    data-testid="nfc-card-btn"
+                    disabled
+                    className="py-3 rounded-xl flex flex-col items-center gap-1 cursor-not-allowed opacity-45"
+                    style={{ background: "rgba(255,184,0,0.04)", border: "1px solid rgba(255,184,0,0.08)" }}
+                    title="Externe kontaktlose Kartenzahlung ist erst nach verifizierter Terminal-Provider-Anbindung verfügbar."
+                  >
                     <CreditCard size={16} className="text-[#FFB800]" />
                     <span className="text-[9px] font-bold text-[#FFB800]">Card / Contactless</span>
-                    <span className="text-[7px] text-[#FFB800]/50">2.5% fee</span>
-                  </motion.button>
+                    <span className="text-[7px] text-[#FFB800]/50">Provider-Anbindung ausstehend</span>
+                  </button>
                 </div>
 
                 {loading && <Loader2 size={24} className="text-[#A855F7] animate-spin mx-auto mb-3" />}

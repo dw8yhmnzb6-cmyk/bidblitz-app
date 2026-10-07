@@ -178,7 +178,8 @@ async def create_kds_station(req: KDSStation, request: Request, store_id: str):
 
 @router.get("/kds/stations")
 async def list_kds_stations(request: Request, store_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     items = await db.pos_kds_stations.find({"store_id": store_id, "active": True},
                                            {"_id": 0}).to_list(100)
     return {"stations": items}
@@ -187,10 +188,11 @@ async def list_kds_stations(request: Request, store_id: str):
 @router.get("/kds/orders/{station_id}")
 async def kds_orders(station_id: str, request: Request):
     """Orders to display on the kitchen tablet — open + in-progress."""
-    await get_current_user(request)
+    user = await get_current_user(request)
     station = await db.pos_kds_stations.find_one({"station_id": station_id})
     if not station:
         raise HTTPException(status_code=404, detail="Station nicht gefunden")
+    await _require_store_access(user, station["store_id"])
     orders = await db.pos_kds_orders.find({
         "station_id": station_id,
         "status": {"$in": ["open", "in_progress"]},
@@ -319,9 +321,9 @@ async def public_order_submit(req: GuestOrder):
 
 class DepositRegister(BaseModel):
     sale_id: str
-    item_type: str  # "cup", "bottle"
-    deposit_amount: float = 1.0
-    quantity: int = 1
+    item_type: str = Field(..., min_length=2, max_length=32)
+    deposit_amount: float = Field(default=1.0, gt=0, le=1000)
+    quantity: int = Field(default=1, ge=1, le=1000)
 
 
 @router.post("/deposits/register")
@@ -330,6 +332,7 @@ async def register_deposit(req: DepositRegister, request: Request):
     sale = await db.pos_sales.find_one({"sale_id": req.sale_id})
     if not sale:
         raise HTTPException(status_code=404, detail="Sale nicht gefunden")
+    await _require_store_access(user, sale["store_id"])
     did = short_id("DEP", 10)
     await db.pos_deposits.insert_one({
         "deposit_id": did, "sale_id": req.sale_id,
@@ -343,8 +346,8 @@ async def register_deposit(req: DepositRegister, request: Request):
 
 class DepositReturn(BaseModel):
     deposit_id: Optional[str] = None
-    item_type: Optional[str] = None
-    quantity: int = 1
+    item_type: Optional[str] = Field(default=None, max_length=32)
+    quantity: int = Field(default=1, ge=1, le=1000)
 
 
 @router.post("/deposits/return")
@@ -367,7 +370,8 @@ async def return_deposit(req: DepositReturn, request: Request, store_id: str):
 
 @router.get("/deposits/outstanding")
 async def deposits_outstanding(request: Request, store_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     items = await db.pos_deposits.find({"store_id": store_id, "status": "outstanding"},
                                        {"_id": 0}).to_list(500)
     total = sum(d["deposit_amount"] * d["quantity"] for d in items)
@@ -517,7 +521,8 @@ async def create_pricing_rule(req: PricingRule, request: Request, store_id: str)
 
 @router.get("/pricing/rules")
 async def list_pricing_rules(request: Request, store_id: str):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
     items = await db.pos_pricing_rules.find({"store_id": store_id, "active": True},
                                             {"_id": 0}).to_list(200)
     return {"rules": items}
@@ -537,10 +542,11 @@ async def delete_pricing_rule(rule_id: str, request: Request):
 @router.post("/pricing/apply")
 async def apply_pricing(request: Request, product_id: str):
     """Returns the effective price for a product based on active pricing rules."""
-    await get_current_user(request)
+    user = await get_current_user(request)
     prod = await db.pos_products.find_one({"product_id": product_id})
     if not prod:
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    await _require_store_access(user, prod["store_id"])
     base_price = prod["price"]
     now = datetime.now(timezone.utc)
     hour = now.hour
@@ -647,8 +653,8 @@ async def store_timeclock(request: Request, store_id: str, day: Optional[str] = 
 
 class TipAdd(BaseModel):
     sale_id: str
-    amount: float
-    method: str = "card"
+    amount: float = Field(..., gt=0, le=10000)
+    method: str = Field(default="card", min_length=2, max_length=32)
 
 
 @router.post("/tips/add")
@@ -657,6 +663,7 @@ async def add_tip(req: TipAdd, request: Request):
     sale = await db.pos_sales.find_one({"sale_id": req.sale_id})
     if not sale:
         raise HTTPException(status_code=404, detail="Sale nicht gefunden")
+    await _require_store_access(user, sale["store_id"])
     tid = short_id("TIP", 10)
     await db.pos_tips.insert_one({
         "tip_id": tid, "sale_id": req.sale_id,

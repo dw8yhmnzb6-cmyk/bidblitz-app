@@ -3,7 +3,7 @@
  * Multi-Country Support: Deutschland 🇩🇪, Kosovo 🇽🇰, VAE 🇦🇪
  * Backend: /api/classifieds/*
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Plus, Search, MapPin, Eye, MessageCircle, TrendingUp, Trash2, X, Camera, Check, Filter, Globe } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
   const [contactMsg, setContactMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const boostAttemptKeysRef = useRef({});
   const [form, setForm] = useState({
     title: "", description: "", category: "elektronik", price: "", is_free: false,
     city: "", country: "DE", plz: "", condition: "gut", image_urls: [],
@@ -117,14 +118,25 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
 
   const boost = async (cid, tier) => {
     if (!window.confirm(`${boostTiers[tier]?.label} für €${boostTiers[tier]?.eur} buchen?`)) return;
+    const attemptId = `${cid}:${tier}`;
+    if (!boostAttemptKeysRef.current[attemptId]) {
+      boostAttemptKeysRef.current[attemptId] = typeof crypto?.randomUUID === "function"
+        ? `classified-boost-${crypto.randomUUID()}`
+        : `classified-boost-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = boostAttemptKeysRef.current[attemptId];
     try {
       const r = await fetch(`${API}/api/classifieds/${cid}/boost`, {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({ tier, idempotency_key: idempotencyKey }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || "Fehler");
+      delete boostAttemptKeysRef.current[attemptId];
       toast.success("Boost aktiviert! 🚀");
       loadMine();
     } catch (e) { toast.error(e.message); }

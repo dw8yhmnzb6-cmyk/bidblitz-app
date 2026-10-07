@@ -1,4 +1,5 @@
 from datetime import timedelta
+import hashlib
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request
@@ -58,6 +59,7 @@ class PosWalletTopUpRequest(BaseModel):
     customer_user_number: str | None = None
     amount: float = Field(..., gt=0, le=5000)
     payment_method: str = "cash"
+    idempotency_key: str | None = None
 
 
 class PosPaymentPrepareRequest(BaseModel):
@@ -70,6 +72,7 @@ class PosPaymentPrepareRequest(BaseModel):
     cart_id: str | None = None
     payment_method: str = "wallet"
     lookup_type: str | None = None
+    idempotency_key: str | None = None
 
 
 class PosPaymentConfirmPinRequest(BaseModel):
@@ -115,6 +118,14 @@ class GiftCardApprovalRequest(BaseModel):
     payment_method: str = "cash"
     recipient_email: str | None = None
     message: str | None = None
+    idempotency_key: str | None = None
+
+
+def _require_pos_idempotency_key(body_key: str | None, request: Request, prefix: str) -> str:
+    key = str(body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"{prefix}:{key}"
 
 
 class ManualWalletAdjustmentRequest(BaseModel):
@@ -171,17 +182,38 @@ async def secure_wallet_topup(req: PosWalletTopUpRequest, request: Request):
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "wallet.topup")
     customer = await get_resolution_customer(actor, req.resolution_id, req.customer_user_number)
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-topup")
     limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
     policy = evaluate_transaction_limits(actor, "topup", req.amount, limits)
     if policy["hard_limit"] and req.amount > policy["hard_limit"]:
         raise HTTPException(status_code=403, detail="Top-up überschreitet das zulässige Limit")
     await audit_pos_security_event("pos_topup_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": req.amount, "customer_number": customer.get("user_number", ""), "store_id": req.store_id, "register_id": req.register_id, "payment_method": req.payment_method}, severity="info")
     if policy["needs_approval"]:
-        approval = await request_manager_approval(actor, "wallet_topup", req.amount, {"store_id": req.store_id, "register_id": req.register_id, "customer_id": str(customer["_id"]), "payment_method": req.payment_method}, "Large top-up requires manager approval")
+        approval = await request_manager_approval(
+            actor,
+            "wallet_topup",
+            req.amount,
+            {
+                "store_id": req.store_id,
+                "register_id": req.register_id,
+                "customer_id": str(customer["_id"]),
+                "payment_method": req.payment_method,
+                "idempotency_key": idem_key,
+            },
+            "Large top-up requires manager approval",
+            idempotency_key=idem_key,
+        )
         return {"ok": True, "status": "approval_required", "approval": approval, "customer": build_customer_public_view(customer), "message": "Top-up wartet auf Manager-Freigabe"}
     if req.amount >= 300:
         await create_security_alert(actor["merchant_id"], actor["store_id"], "unusual_topup", "Ungewöhnlich hoher POS-Top-up erkannt", {"customer_number": customer.get("user_number", ""), "amount": req.amount}, "medium", actor["user_id"], str(customer["_id"]))
-    return await execute_secure_topup(actor, customer, req.amount, req.payment_method, request=request)
+    return await execute_secure_topup(
+        actor,
+        customer,
+        req.amount,
+        req.payment_method,
+        request=request,
+        idempotency_key=idem_key,
+    )
 
 
 @router.post("/pos/payment/prepare")
@@ -190,37 +222,112 @@ async def secure_payment_prepare(req: PosPaymentPrepareRequest, request: Request
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "payment.collect")
     customer = await get_resolution_customer(actor, req.resolution_id, req.customer_user_number)
-    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
-    policy = evaluate_transaction_limits(actor, "payment", req.amount, limits)
-    if policy["hard_limit"] and req.amount > policy["hard_limit"]:
-        raise HTTPException(status_code=403, detail="Zahlung überschreitet das zulässige Limit")
-    await audit_pos_security_event("pos_payment_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": req.amount, "customer_number": customer.get("user_number", ""), "store_id": req.store_id, "register_id": req.register_id, "cart_id": req.cart_id or ""}, severity="info")
-    if policy["needs_approval"]:
-        approval = await request_manager_approval(actor, "secure_payment", req.amount, {"store_id": req.store_id, "register_id": req.register_id, "customer_id": str(customer["_id"]), "cart_id": req.cart_id or "", "description": req.description}, "Large payment requires manager approval")
-        return {"ok": True, "status": "approval_required", "approval": approval, "customer": build_customer_public_view(customer, req.lookup_type), "message": "Zahlung wartet auf Manager-Freigabe"}
-    payment_id = f"SPY-{ObjectId()}"[-24:].upper()
-    payment_doc = {
-        "payment_id": payment_id,
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-payment")
+    key_hash = hashlib.sha256(
+        f"{actor['user_id']}:{customer['_id']}:{idem_key}".encode("utf-8")
+    ).hexdigest()[:20]
+    payment_id = f"SPY-{key_hash.upper()}"
+    prepare_payload = {
         "merchant_id": actor["merchant_id"],
         "store_id": actor["store_id"],
         "register_id": req.register_id,
         "employee_id": actor["user_id"],
         "customer_id": str(customer["_id"]),
-        "customer_number": customer.get("user_number", ""),
-        "masked_customer": build_customer_public_view(customer, req.lookup_type),
         "amount": round(float(req.amount), 2),
         "description": req.description,
-        "status": "awaiting_pin",
         "cart_id": req.cart_id or "",
         "payment_method": req.payment_method,
+    }
+
+    existing = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0})
+    if existing:
+        if existing.get("prepare_payload") != prepare_payload:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Zahlungsdaten verwendet")
+        return {
+            "ok": True,
+            "status": existing.get("status", "awaiting_pin"),
+            "payment": existing,
+            "customer": build_customer_public_view(customer, req.lookup_type),
+            "replayed": True,
+        }
+
+    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    policy = evaluate_transaction_limits(actor, "payment", req.amount, limits)
+    if policy["hard_limit"] and req.amount > policy["hard_limit"]:
+        raise HTTPException(status_code=403, detail="Zahlung überschreitet das zulässige Limit")
+
+    await audit_pos_security_event(
+        "pos_payment_attempt",
+        request=request,
+        user_id=actor["user_id"],
+        email=user.get("email", ""),
+        details={
+            "amount": req.amount,
+            "customer_number": customer.get("user_number", ""),
+            "store_id": req.store_id,
+            "register_id": req.register_id,
+            "cart_id": req.cart_id or "",
+            "payment_id": payment_id,
+        },
+        severity="info",
+    )
+
+    if policy["needs_approval"]:
+        approval_payload = {
+            **prepare_payload,
+            "payment_id": payment_id,
+            "customer_number": customer.get("user_number", ""),
+            "masked_customer": build_customer_public_view(customer, req.lookup_type),
+            "requires_pin": True,
+            "requires_app_confirmation": bool(policy["requires_app_confirmation"]),
+            "lookup_type": req.lookup_type,
+            "idempotency_key": idem_key,
+        }
+        approval = await request_manager_approval(
+            actor,
+            "secure_payment",
+            req.amount,
+            approval_payload,
+            "Large payment requires manager approval",
+            idempotency_key=idem_key,
+        )
+        return {
+            "ok": True,
+            "status": "approval_required",
+            "approval": approval,
+            "customer": build_customer_public_view(customer, req.lookup_type),
+            "payment_id": payment_id,
+            "message": "Zahlung wartet auf Manager-Freigabe",
+        }
+
+    payment_doc = {
+        "payment_id": payment_id,
+        **prepare_payload,
+        "customer_number": customer.get("user_number", ""),
+        "masked_customer": build_customer_public_view(customer, req.lookup_type),
+        "status": "awaiting_pin",
         "requires_pin": True,
         "requires_app_confirmation": bool(policy["requires_app_confirmation"]),
+        "prepare_payload": prepare_payload,
+        "idempotency_key": idem_key,
         "expires_at": (now_utc() + timedelta(minutes=10)).isoformat(),
         "created_at": now_iso(),
     }
-    await db.pos_secure_payments.insert_one(payment_doc)
-    payment_doc.pop("_id", None)
-    return {"ok": True, "status": "awaiting_pin", "payment": payment_doc, "customer": build_customer_public_view(customer, req.lookup_type)}
+    await db.pos_secure_payments.update_one(
+        {"payment_id": payment_id},
+        {"$setOnInsert": payment_doc},
+        upsert=True,
+    )
+    persisted = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0}) or payment_doc
+    if persisted.get("prepare_payload") != prepare_payload:
+        raise HTTPException(status_code=409, detail="Zahlungskonflikt bei wiederholter Vorbereitung")
+    return {
+        "ok": True,
+        "status": persisted.get("status", "awaiting_pin"),
+        "payment": persisted,
+        "customer": build_customer_public_view(customer, req.lookup_type),
+        "replayed": persisted.get("created_at") != payment_doc["created_at"],
+    }
 
 
 @router.post("/pos/payment/confirm-pin")
@@ -317,12 +424,42 @@ async def request_gift_card_creation(req: GiftCardApprovalRequest, request: Requ
     user = await get_current_user(request)
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "giftcard.create")
+    idem_key = _require_pos_idempotency_key(req.idempotency_key, request, "pos-gift-card")
     limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    payload = {
+        "store_id": req.store_id,
+        "register_id": req.register_id,
+        "amount": round(float(req.amount), 2),
+        "payment_method": req.payment_method,
+        "recipient_email": req.recipient_email,
+        "message": req.message,
+        "idempotency_key": idem_key,
+    }
     if req.amount >= limits.get("gift_card_approval_limit", 0):
-        approval = await request_manager_approval(actor, "gift_card_create", req.amount, req.model_dump(), "Gift card creation requires manager approval")
+        approval = await request_manager_approval(
+            actor,
+            "gift_card_create",
+            req.amount,
+            payload,
+            "Gift card creation requires manager approval",
+            idempotency_key=idem_key,
+        )
         return {"ok": True, "status": "approval_required", "approval": approval}
-    result = await execute_gift_card_action(req.model_dump(), actor, request=request)
-    return {"ok": True, "status": "approved", "gift_card": result}
+    operation_hash = hashlib.sha256(
+        f"{actor['user_id']}:{req.store_id}:{idem_key}".encode("utf-8")
+    ).hexdigest()[:24]
+    result = await execute_gift_card_action(
+        payload,
+        actor,
+        request=request,
+        operation_id=f"DIRECT-GIFT-{operation_hash.upper()}",
+    )
+    return {
+        "ok": True,
+        "status": "approved",
+        "gift_card": result,
+        "replayed": bool(result.get("replayed")),
+    }
 
 
 @router.post("/pos/security/manual-wallet-adjustment/request")
@@ -439,32 +576,267 @@ async def pos_security_approvals(store_id: str, request: Request):
 
 @router.post("/pos/security/approvals/{approval_id}/decision")
 async def pos_security_approval_decision(approval_id: str, req: ApprovalDecisionRequest, request: Request):
+    if req.decision not in {"approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="Ungültige Entscheidung")
+
     user = await get_current_user(request)
     approval = await db.pos_security_approvals.find_one({"approval_id": approval_id})
     if not approval:
         raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
     actor = await get_actor_context(user, approval["store_id"], approval.get("register_id", ""))
     require_permission(actor, "approvals.manage")
-    if approval.get("status") != "pending":
-        raise HTTPException(status_code=400, detail="Freigabe wurde bereits entschieden")
-    if req.decision not in {"approved", "rejected"}:
-        raise HTTPException(status_code=400, detail="Ungültige Entscheidung")
+
+    current_status = str(approval.get("status") or "pending")
+    if current_status in {"approved", "rejected"}:
+        if current_status != req.decision:
+            raise HTTPException(status_code=409, detail="Freigabe wurde bereits anders entschieden")
+        return {
+            "ok": True,
+            "approval_id": approval_id,
+            "decision": current_status,
+            "result": approval.get("result") or {},
+            "replayed": True,
+        }
+    if current_status in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="Freigabe wird bereits verarbeitet oder benötigt Abstimmung")
+    if current_status != "pending":
+        raise HTTPException(status_code=409, detail="Freigabe ist nicht mehr entscheidbar")
+
+    approval_type = approval.get("approval_type")
+    supported_types = {
+        "wallet_topup",
+        "secure_payment",
+        "refund",
+        "gift_card_create",
+        "manual_wallet_adjustment",
+        "customer_account_change",
+        "biopay_payment",
+    }
+    if req.decision == "approved" and approval_type not in supported_types:
+        raise HTTPException(status_code=400, detail="Unbekannter Freigabe-Typ")
+
+    claimed = await db.pos_security_approvals.update_one(
+        {"approval_id": approval_id, "status": "pending"},
+        {"$set": {
+            "status": "processing",
+            "processing_decision": req.decision,
+            "processing_by": actor["user_id"],
+            "processing_at": now_iso(),
+            "decision_note": req.note,
+        }},
+    )
+    if claimed.modified_count != 1:
+        latest = await db.pos_security_approvals.find_one({"approval_id": approval_id}, {"_id": 0}) or {}
+        latest_status = str(latest.get("status") or "")
+        if latest_status in {"approved", "rejected"} and latest_status == req.decision:
+            return {
+                "ok": True,
+                "approval_id": approval_id,
+                "decision": latest_status,
+                "result": latest.get("result") or {},
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Freigabe wird bereits verarbeitet")
+
+    if req.decision == "rejected":
+        finalized = await db.pos_security_approvals.update_one(
+            {
+                "approval_id": approval_id,
+                "status": "processing",
+                "processing_decision": "rejected",
+                "processing_by": actor["user_id"],
+            },
+            {
+                "$set": {
+                    "status": "rejected",
+                    "decided_at": now_iso(),
+                    "decided_by": actor["user_id"],
+                    "result": {},
+                },
+                "$unset": {
+                    "processing_decision": "",
+                    "processing_by": "",
+                    "processing_at": "",
+                },
+            },
+        )
+        if finalized.modified_count != 1:
+            raise HTTPException(status_code=500, detail="Ablehnung benötigt Abstimmung")
+        await audit_pos_security_event(
+            "pos_manager_approval",
+            request=request,
+            user_id=actor["user_id"],
+            email=user.get("email", ""),
+            details={"approval_id": approval_id, "decision": "rejected", "approval_type": approval_type},
+            severity="info",
+        )
+        return {"ok": True, "approval_id": approval_id, "decision": "rejected", "result": {}, "replayed": False}
+
+    payload = approval.get("payload") or {}
     result_payload = None
-    if req.decision == "approved":
-        payload = approval.get("payload") or {}
-        if approval.get("approval_type") == "wallet_topup":
+    try:
+        if approval_type == "wallet_topup":
             customer = await db.users.find_one({"_id": ObjectId(payload["customer_id"])})
-            result_payload = await execute_secure_topup(actor, customer, float(approval.get("amount", 0)), payload.get("payment_method", "cash"), request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "refund":
-            result_payload = await execute_refund_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "gift_card_create":
-            result_payload = await execute_gift_card_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "manual_wallet_adjustment":
-            result_payload = await execute_manual_wallet_adjustment_action(payload, actor, float(approval.get("amount", 0)), request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "customer_account_change":
-            result_payload = await execute_customer_account_change_action(payload, actor, request=request, approval_id=approval_id)
-        elif approval.get("approval_type") == "biopay_payment":
+            if not customer:
+                raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+            result_payload = await execute_secure_topup(
+                actor,
+                customer,
+                float(approval.get("amount", 0)),
+                payload.get("payment_method", "cash"),
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "secure_payment":
+            customer = await db.users.find_one({"_id": ObjectId(payload["customer_id"])})
+            if not customer:
+                raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+            payment_id = str(payload.get("payment_id") or "").strip()
+            if not payment_id:
+                raise HTTPException(status_code=409, detail="Freigegebene Zahlung hat keine stabile Payment-ID")
+            prepare_payload = {
+                "merchant_id": actor["merchant_id"],
+                "store_id": actor["store_id"],
+                "register_id": payload.get("register_id", ""),
+                "employee_id": actor["user_id"],
+                "customer_id": str(customer["_id"]),
+                "amount": round(float(approval.get("amount", 0)), 2),
+                "description": payload.get("description", "POS Zahlung"),
+                "cart_id": payload.get("cart_id", ""),
+                "payment_method": payload.get("payment_method", "wallet"),
+            }
+            payment_doc = {
+                "payment_id": payment_id,
+                **prepare_payload,
+                "customer_number": customer.get("user_number", ""),
+                "masked_customer": payload.get("masked_customer") or build_customer_public_view(customer, payload.get("lookup_type")),
+                "status": "awaiting_pin",
+                "requires_pin": True,
+                "requires_app_confirmation": bool(payload.get("requires_app_confirmation")),
+                "prepare_payload": prepare_payload,
+                "idempotency_key": payload.get("idempotency_key"),
+                "approval_id": approval_id,
+                "expires_at": (now_utc() + timedelta(minutes=10)).isoformat(),
+                "created_at": now_iso(),
+            }
+            await db.pos_secure_payments.update_one(
+                {"payment_id": payment_id},
+                {"$setOnInsert": payment_doc},
+                upsert=True,
+            )
+            persisted = await db.pos_secure_payments.find_one({"payment_id": payment_id}, {"_id": 0}) or payment_doc
+            if persisted.get("prepare_payload") != prepare_payload:
+                raise HTTPException(status_code=409, detail="Freigegebene Zahlung kollidiert mit bestehender Payment-ID")
+            result_payload = {
+                "status": persisted.get("status", "awaiting_pin"),
+                "payment": persisted,
+                "customer": build_customer_public_view(customer, payload.get("lookup_type")),
+                "next_step": "customer_pin",
+            }
+        elif approval_type == "refund":
+            result_payload = await execute_refund_action(
+                {**payload, "amount": approval.get("amount", 0)},
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "gift_card_create":
+            result_payload = await execute_gift_card_action(
+                {**payload, "amount": approval.get("amount", 0)},
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "manual_wallet_adjustment":
+            result_payload = await execute_manual_wallet_adjustment_action(
+                payload,
+                actor,
+                float(approval.get("amount", 0)),
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "customer_account_change":
+            result_payload = await execute_customer_account_change_action(
+                payload,
+                actor,
+                request=request,
+                approval_id=approval_id,
+            )
+        elif approval_type == "biopay_payment":
             result_payload = {"status": "approved", "next_step": "cashier_retry_biopay", "payload": payload}
-    await db.pos_security_approvals.update_one({"approval_id": approval_id}, {"$set": {"status": req.decision, "decided_at": now_iso(), "decided_by": actor["user_id"], "decision_note": req.note, "result": sanitize_audit_value(result_payload or {})}})
-    await audit_pos_security_event("pos_manager_approval", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"approval_id": approval_id, "decision": req.decision, "approval_type": approval.get("approval_type")}, severity="info")
-    return {"ok": True, "approval_id": approval_id, "decision": req.decision, "result": result_payload}
+    except Exception as exc:
+        await db.pos_security_approvals.update_one(
+            {"approval_id": approval_id, "status": "processing", "processing_decision": "approved"},
+            {"$set": {
+                "status": "reconciliation_required",
+                "processing_error": str(exc)[:500],
+                "reconciliation_required_at": now_iso(),
+            }},
+        )
+        await audit_pos_security_event(
+            "pos_manager_approval_reconciliation_required",
+            request=request,
+            user_id=actor["user_id"],
+            email=user.get("email", ""),
+            details={
+                "approval_id": approval_id,
+                "decision": "approved",
+                "approval_type": approval_type,
+                "error": str(exc)[:200],
+            },
+            severity="warning",
+        )
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail="Freigabe-Aktion benötigt Abstimmung")
+
+    safe_result = sanitize_audit_value(result_payload or {})
+    finalized = await db.pos_security_approvals.update_one(
+        {
+            "approval_id": approval_id,
+            "status": "processing",
+            "processing_decision": "approved",
+            "processing_by": actor["user_id"],
+        },
+        {
+            "$set": {
+                "status": "approved",
+                "decided_at": now_iso(),
+                "decided_by": actor["user_id"],
+                "result": safe_result,
+            },
+            "$unset": {
+                "processing_decision": "",
+                "processing_by": "",
+                "processing_at": "",
+                "processing_error": "",
+            },
+        },
+    )
+    if finalized.modified_count != 1:
+        await db.pos_security_approvals.update_one(
+            {"approval_id": approval_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "result": safe_result,
+                "reconciliation_required_at": now_iso(),
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Freigabe ausgeführt; Statusabschluss benötigt Abstimmung")
+
+    await audit_pos_security_event(
+        "pos_manager_approval",
+        request=request,
+        user_id=actor["user_id"],
+        email=user.get("email", ""),
+        details={"approval_id": approval_id, "decision": "approved", "approval_type": approval_type},
+        severity="info",
+    )
+    return {
+        "ok": True,
+        "approval_id": approval_id,
+        "decision": "approved",
+        "result": result_payload,
+        "replayed": False,
+    }
+

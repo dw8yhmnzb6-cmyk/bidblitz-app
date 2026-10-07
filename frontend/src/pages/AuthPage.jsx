@@ -6,6 +6,7 @@ import {
 import { useUser, useI18n } from "../store";
 import KYCVerificationModal from "../components/KYCVerificationModal";
 import { TEST_MODE, TEST_MODE_FULL_ACCESS, isTestModeUser } from "../config/testMode";
+import { request as api } from "../services/api";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -161,15 +162,18 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
       if (typeof onAuthSuccess === "function") {
         onAuthSuccess();
       }
-      // Check for ?ref= in URL and auto-claim referral bonus
+      // Route referral codes to the correct subsystem.
+      // Mining BLZ codes must never be sent to the generic affiliate endpoint.
       try {
         const params = new URLSearchParams(window.location.search);
-        const ref = params.get("ref");
+        const ref = (params.get("ref") || "").trim();
         if (ref) {
-          fetch(`${process.env.REACT_APP_BACKEND_URL}/api/affiliate/claim-signup-bonus`, {
+          const isMiningReferral = ref.toUpperCase().startsWith("BLZ-");
+          const referralEndpoint = isMiningReferral
+            ? "/api/mining/apply-referral"
+            : "/api/affiliate/claim-signup-bonus";
+          api(referralEndpoint, {
             method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: ref }),
           }).catch(() => {});
         }
@@ -332,7 +336,9 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 </div>
                 <h2 className="text-[16px] font-semibold text-white mb-1">Bestätigungscode eingeben</h2>
                 <p className="text-[12px] text-[#555]">
-                  Code an {user.twoFAEmailHint || "deine E-Mail"} gesendet
+                  {user.twoFAMethod === "totp"
+                    ? "Code aus deiner Authenticator-App eingeben"
+                    : `Code an ${user.twoFAEmailHint || "deine E-Mail"} gesendet`}
                 </p>
               </div>
 
@@ -342,9 +348,9 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={6}
+                  maxLength={8}
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                   placeholder="000000"
                   autoFocus
                   className="w-full text-center text-[28px] font-mono font-bold tracking-[0.5em] py-4 px-4 bg-white/[0.02] border border-white/[0.05] rounded-[14px] text-white placeholder:text-[#1a1a1a] outline-none focus:border-[#00C2FF]/25"
@@ -365,7 +371,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
               <motion.button
                 data-testid="verify-2fa-btn"
                 type="submit"
-                disabled={user.isLoading || otpCode.length !== 6}
+                disabled={user.isLoading || ![6, 8].includes(otpCode.length)}
                 className="w-full flex items-center justify-center gap-2 py-[14px] rounded-[14px] text-[13px] font-semibold transition-all disabled:opacity-40"
                 style={{
                   background: "linear-gradient(135deg, #00C2FF 0%, #0088CC 100%)",

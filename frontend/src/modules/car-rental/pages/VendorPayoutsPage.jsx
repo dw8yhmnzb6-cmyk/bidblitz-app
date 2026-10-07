@@ -2,7 +2,7 @@
  * BidBlitz V2 - Vendor Payouts Page
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CreditCard, Loader2, Euro, Clock, Check, AlertCircle, Plus } from "lucide-react";
 import { getVendorPayouts, requestPayout, getVendorDashboard } from "../api";
@@ -23,8 +23,12 @@ export default function VendorPayoutsPage({ onBack }) {
   const [showRequest, setShowRequest] = useState(false);
   const [amount, setAmount] = useState("");
   const [requesting, setRequesting] = useState(false);
+  const payoutAttemptKeyRef = useRef(null);
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    payoutAttemptKeyRef.current = null;
+  }, [amount]);
 
   const load = async () => {
     setLoading(true);
@@ -40,9 +44,15 @@ export default function VendorPayoutsPage({ onBack }) {
   };
 
   const handleRequest = async () => {
+    if (!payoutAttemptKeyRef.current) {
+      payoutAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `car-payout-${crypto.randomUUID()}`
+        : `car-payout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
     setRequesting(true);
     try {
-      await requestPayout(parseFloat(amount));
+      await requestPayout(parseFloat(amount), payoutAttemptKeyRef.current);
+      payoutAttemptKeyRef.current = null;
       setShowRequest(false);
       setAmount("");
       load();

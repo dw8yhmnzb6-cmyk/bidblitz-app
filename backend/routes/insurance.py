@@ -8,12 +8,34 @@ from typing import Optional, List
 from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
+from core.product_images import normalize_insurance_product_image
 from core.security import get_current_user
+from core.config import TEST_MODE
 import secrets
+import hashlib
 
 router = APIRouter(prefix="/api/insurance", tags=["insurance"])
 
 CASHBACK_RATE = 0.02
+
+
+def _require_insurance_live_provider() -> None:
+    if TEST_MODE:
+        return
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "error": "insurance_provider_not_live",
+            "message": "Versicherungsabschluss und Schadenauszahlungen sind noch nicht mit einem lizenzierten Versicherungsanbieter verbunden.",
+        },
+    )
+
+
+def _insurance_idempotency_key(body_key: Optional[str], request: Request, *, action: str) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"insurance-{action}:{key}"
 
 
 class InsuranceProduct(BaseModel):
@@ -33,6 +55,7 @@ class InsurancePurchase(BaseModel):
     product_id: str
     billing: str = "monthly"  # monthly | yearly
     start_date: str = ""
+    idempotency_key: Optional[str] = None
 
 
 CATEGORIES = [
@@ -56,7 +79,7 @@ SEED_PRODUCTS = [
     {"category":"auto","title":"Kfz Basis","provider":"AllgemeinSchutz","description":"Haftpflicht für PKW bis 130 kW","coverage":"Bis 100 Mio. € pers. Schäden","monthly_price":29.90,"deductible":150,"features":["24/7 Schadenservice","Mallorca-Police","Werkstattbindung optional"],"image_url":"https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&q=80"},
     {"category":"auto","title":"Kfz Premium Vollkasko","provider":"AutoPlus","description":"Vollkasko inkl. Diebstahl & Marderbiss","coverage":"Vollkasko + GAP + Neuwert 24 Mo.","monthly_price":68.50,"deductible":300,"features":["Werkstatt-Service","Mietwagen inkl.","E-Auto Akku Schutz"],"image_url":"https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&q=80"},
     {"category":"travel","title":"Reise Welt 365","provider":"GlobeSafe","description":"Jahres-Auslandsreise inkl. Rücktransport","coverage":"Heilkosten unbegrenzt, Rücktransport","monthly_price":7.50,"deductible":0,"features":["365 Tage weltweit","COVID-Versorgung","Gepäck bis 2.000€"],"image_url":"https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80"},
-    {"category":"phone","title":"Smartphone Pro","provider":"DeviceCare","description":"Bruch-, Wasser-, Diebstahlschutz","coverage":"Neuwerterstattung bis 36 Mo.","monthly_price":9.90,"deductible":50,"features":["Express-Reparatur","Akku-Tausch","Daten-Backup"],"image_url":"https://images.unsplash.com/photo-1551355716-d99cdb39c5b9?w=400&q=80"},
+    {"category":"phone","title":"Smartphone Pro","provider":"DeviceCare","description":"Bruch-, Wasser-, Diebstahlschutz","coverage":"Neuwerterstattung bis 36 Mo.","monthly_price":9.90,"deductible":50,"features":["Express-Reparatur","Akku-Tausch","Daten-Backup"],"image_url":"https://images.unsplash.com/photo-1556656793-08538906a9f8?w=600&q=80"},
     {"category":"household","title":"Hausrat 70m²","provider":"HomeShield","description":"Hausrat & Glasbruch für Mietwohnung","coverage":"Bis 80.000€ Hausrat","monthly_price":11.20,"deductible":100,"features":["Fahrraddiebstahl 5%","Elementarschäden","Glasbruch inkl."],"image_url":"https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=400&q=80"},
     {"category":"liability","title":"Privathaftpflicht Plus","provider":"SafetyFirst","description":"Privathaftpflicht für Familie","coverage":"50 Mio. € Personenschäden","monthly_price":4.90,"deductible":0,"features":["Schlüsselverlust","Mietsachschäden","Forderungsausfall"],"image_url":"https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&q=80"},
     {"category":"health","title":"Zahn-Plus","provider":"DentaProtect","description":"Zahnzusatz: Prophylaxe + Zahnersatz","coverage":"90% Zahnersatz, 100% PZR","monthly_price":19.90,"deductible":0,"features":["Implantate inkl.","Kieferorthopädie","Keine Wartezeit auf Prophylaxe"],"image_url":"https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=400&q=80"},
@@ -67,6 +90,8 @@ SEED_PRODUCTS = [
 
 @router.on_event("startup")
 async def seed_insurance():
+    if not TEST_MODE:
+        return
     if await db.insurance_products.count_documents({}) == 0:
         now = datetime.now(timezone.utc).isoformat()
         for p in SEED_PRODUCTS:
@@ -83,18 +108,23 @@ async def seed_insurance():
 @router.get("/products")
 async def list_products(category: str = "", limit: int = 30):
     query = {"status": "active"}
+    if not TEST_MODE:
+        query.update({"is_real": True, "provider_live": True})
     if category:
         query["category"] = category
     products = await db.insurance_products.find(query, {"_id": 0}).sort("monthly_price", 1).limit(limit).to_list(limit)
-    return {"products": products, "count": len(products)}
+    return {"products": [normalize_insurance_product_image(product) for product in products], "count": len(products)}
 
 
 @router.get("/products/{product_id}")
 async def get_product(product_id: str):
-    p = await db.insurance_products.find_one({"product_id": product_id}, {"_id": 0})
+    query = {"product_id": product_id}
+    if not TEST_MODE:
+        query.update({"is_real": True, "provider_live": True})
+    p = await db.insurance_products.find_one(query, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Versicherung nicht gefunden")
-    return p
+    return normalize_insurance_product_image(p)
 
 
 @router.post("/products")
@@ -128,32 +158,30 @@ async def create_product(req: InsuranceProduct, request: Request):
 
 @router.post("/purchase")
 async def purchase_insurance(req: InsurancePurchase, request: Request):
+    _require_insurance_live_provider()
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if req.billing not in {"monthly", "yearly"}:
+        raise HTTPException(status_code=400, detail="Ungültige Abrechnung")
+
+    idempotency_key = _insurance_idempotency_key(req.idempotency_key, request, action="purchase")
+    purchase_hash = hashlib.sha256(f"{user_id}:{idempotency_key}".encode("utf-8")).hexdigest()[:20]
+    policy_id = f"INSP-{purchase_hash.upper()}"
+
+    existing = await db.insurance_policies.find_one({"policy_id": policy_id, "user_id": user_id}, {"_id": 0})
+    if existing:
+        if existing.get("product_id") != req.product_id or existing.get("billing") != req.billing:
+            raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Versicherungsdaten verwendet")
+        return {"ok": True, "policy": existing, "replayed": True}
 
     product = await db.insurance_products.find_one({"product_id": req.product_id, "status": "active"})
     if not product:
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
 
-    price = product["yearly_price"] if req.billing == "yearly" else product["monthly_price"]
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}")
-
-    result = await db.users.update_one(
-        {"_id": user["_id"], "balance": {"$gte": price}},
-        {"$inc": {"balance": -price}},
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Zahlung fehlgeschlagen")
-
+    price = round(float(product["yearly_price"] if req.billing == "yearly" else product["monthly_price"]), 2)
     cashback = round(price * CASHBACK_RATE, 2)
-    if cashback > 0:
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": cashback}})
-
     now = datetime.now(timezone.utc).isoformat()
-    policy_id = secrets.token_hex(8)
-    ref = f"INS-{secrets.token_hex(4).upper()}"
+    ref = f"INS-{purchase_hash[:12].upper()}"
 
     policy = {
         "policy_id": policy_id,
@@ -169,22 +197,71 @@ async def purchase_insurance(req: InsurancePurchase, request: Request):
         "cashback": cashback,
         "deductible": product.get("deductible", 0),
         "start_date": req.start_date or now[:10],
-        "status": "active",
+        "status": "payment_pending",
         "reference": ref,
+        "idempotency_key": idempotency_key,
         "created_at": now,
     }
-    await db.insurance_policies.insert_one(policy)
-    policy.pop("_id", None)
+    await db.insurance_policies.update_one(
+        {"policy_id": policy_id, "user_id": user_id},
+        {"$setOnInsert": policy},
+        upsert=True,
+    )
 
-    await db.insurance_products.update_one({"product_id": req.product_id}, {"$inc": {"purchase_count": 1}})
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+    payment = await debit_wallet(
+        user_id=user_id,
+        amount=price,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Versicherung: {product['title']} ({req.billing})",
+        reference=ref,
+        merchant_name=product.get("provider") or "Versicherungsanbieter",
+        metadata={"policy_id": policy_id, "product_id": req.product_id, "kind": "insurance"},
+        idempotency_key=f"insurance-policy:{policy_id}:premium",
+    )
+    if not payment.success:
+        await db.insurance_policies.update_one(
+            {"policy_id": policy_id},
+            {"$set": {"status": "payment_failed", "payment_error": payment.error, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        raise HTTPException(status_code=400, detail=payment.error or "Zahlung fehlgeschlagen")
 
-    await db.transactions.insert_one({
-        "id": policy_id, "user_id": user_id, "type": "insurance",
-        "amount": -price, "description": f"Versicherung: {product['title']} ({req.billing})",
-        "status": "completed", "reference": ref, "category": "insurance", "created_at": now,
-    })
+    cashback_result = None
+    if cashback > 0:
+        cashback_result = await credit_wallet(
+            user_id=user_id,
+            amount=cashback,
+            tx_type=TransactionType.CASHBACK,
+            description=f"Versicherungs-Cashback: {product['title']}",
+            reference=f"{ref}-CB",
+            source="insurance_cashback",
+            metadata={"policy_id": policy_id, "product_id": req.product_id},
+            idempotency_key=f"insurance-policy:{policy_id}:cashback",
+        )
+        if not cashback_result.success:
+            await db.insurance_policies.update_one(
+                {"policy_id": policy_id},
+                {"$set": {"status": "reconciliation_required", "payment_transaction_id": payment.transaction_id, "cashback_error": cashback_result.error}},
+            )
+            raise HTTPException(status_code=409, detail=cashback_result.error or "Cashback benötigt Abstimmung")
 
-    return {"ok": True, "policy": policy}
+    activated_at = datetime.now(timezone.utc).isoformat()
+    await db.insurance_policies.update_one(
+        {"policy_id": policy_id, "status": {"$in": ["payment_pending", "payment_failed"]}},
+        {"$set": {
+            "status": "active",
+            "payment_transaction_id": payment.transaction_id,
+            "cashback_transaction_id": cashback_result.transaction_id if cashback_result else None,
+            "activated_at": activated_at,
+            "updated_at": activated_at,
+        }},
+    )
+    await db.insurance_products.update_one(
+        {"product_id": req.product_id, f"purchase_markers.{policy_id}": {"$exists": False}},
+        {"$inc": {"purchase_count": 1}, "$set": {f"purchase_markers.{policy_id}": activated_at}},
+    )
+    fresh = await db.insurance_policies.find_one({"policy_id": policy_id}, {"_id": 0}) or policy
+    return {"ok": True, "policy": fresh, "replayed": bool(payment.idempotent_replay)}
 
 
 @router.get("/my-policies")
@@ -280,6 +357,7 @@ class ClaimCreate(BaseModel):
 
 @router.post("/claim")
 async def create_claim(req: ClaimCreate, request: Request):
+    _require_insurance_live_provider()
     user = await get_current_user(request)
     policy = await db.insurance_policies.find_one({"policy_id": req.policy_id})
     if not policy or policy["user_id"] != str(user["_id"]):
@@ -347,17 +425,22 @@ async def admin_review_claim(claim_id: str, req: ClaimReview, request: Request):
     update = {"status": req.status, "review_notes": req.notes,
               "reviewed_at": datetime.now(timezone.utc).isoformat()}
     if req.status == "paid" and req.payout_amount > 0:
-        update["payout_amount"] = req.payout_amount
-        # Credit user wallet
-        await db.users.update_one(
-            {"_id": ObjectId(c["user_id"])} if ObjectId.is_valid(c["user_id"]) else {"_id": c["user_id"]},
-            {"$inc": {"balance": req.payout_amount}},
+        _require_insurance_live_provider()
+        from core.payment_engine import credit_wallet, TransactionType
+
+        payout = await credit_wallet(
+            user_id=str(c["user_id"]),
+            amount=round(float(req.payout_amount), 2),
+            tx_type=TransactionType.REFUND,
+            description=f"Schadenauszahlung: {c['policy_title']}",
+            reference=c["reference"],
+            source="insurance_claim_payout",
+            metadata={"claim_id": claim_id, "policy_id": c.get("policy_id")},
+            idempotency_key=f"insurance-claim:{claim_id}:payout",
         )
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8), "user_id": c["user_id"], "type": "insurance_payout",
-            "amount": req.payout_amount, "description": f"Schadenauszahlung: {c['policy_title']}",
-            "status": "completed", "reference": c["reference"], "category": "insurance",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        if not payout.success:
+            raise HTTPException(status_code=409, detail=payout.error or "Schadenauszahlung benötigt Abstimmung")
+        update["payout_amount"] = round(float(req.payout_amount), 2)
+        update["payout_transaction_id"] = payout.transaction_id
     await db.insurance_claims.update_one({"claim_id": claim_id}, {"$set": update})
     return {"ok": True}

@@ -9,6 +9,7 @@ Features:
 - Push + Email notifications on unlock
 """
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Request
@@ -17,10 +18,123 @@ from bson import ObjectId
 import asyncio
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 from routes.web_push import send_push_to_user
 
 router = APIRouter(prefix="/api/gamification", tags=["gamification"])
+
+
+def _gamification_user_oid(user_id: str):
+    try:
+        return ObjectId(user_id)
+    except Exception:
+        return user_id
+
+
+async def _credit_gamification_blz_once(
+    user_id: str,
+    amount: float,
+    reward_key: str,
+    description: str,
+    category: str,
+) -> dict:
+    amount = round(float(amount or 0), 4)
+    if amount <= 0:
+        return {"transaction_id": None, "replayed": True}
+
+    digest = hashlib.sha256(reward_key.encode("utf-8")).hexdigest()[:24]
+    marker_field = f"gamification_reward_markers.{digest}"
+    user_oid = _gamification_user_oid(user_id)
+    result = await db.users.update_one(
+        {"_id": user_oid, marker_field: {"$exists": False}},
+        {
+            "$inc": {"balance_blz": amount},
+            "$set": {
+                marker_field: {
+                    "amount": amount,
+                    "category": category,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+    replayed = False
+    if result.modified_count != 1:
+        existing = await db.users.find_one(
+            {"_id": user_oid, marker_field: {"$exists": True}},
+            {"_id": 1},
+        )
+        if not existing:
+            raise HTTPException(status_code=409, detail="Gamification-BLZ konnte nicht atomar gutgeschrieben werden")
+        replayed = True
+
+    tx_id = f"GAM-{digest.upper()}"
+    await db.transactions.update_one(
+        {"_id": tx_id},
+        {"$setOnInsert": {
+            "_id": tx_id,
+            "id": tx_id,
+            "user_id": user_id,
+            "type": "reward",
+            "amount_blz": amount,
+            "amount_eur": 0.0,
+            "currency": "BLZ",
+            "status": "completed",
+            "description": description,
+            "category": category,
+            "reference": tx_id,
+            "idempotency_key": reward_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {"transaction_id": tx_id, "replayed": replayed}
+
+
+async def _credit_challenge_rewards_once(user_id: str, challenge_id: str, challenge: dict, day: str) -> None:
+    reward_blz = float(challenge.get("reward_blz", 0) or 0)
+    reward_eur = round(float(challenge.get("reward_eur", 0) or 0), 2)
+    stable = f"gamification-challenge:{user_id}:{day}:{challenge_id}"
+
+    if reward_blz > 0:
+        await _credit_gamification_blz_once(
+            user_id=user_id,
+            amount=reward_blz,
+            reward_key=f"{stable}:blz",
+            description=f"Challenge: {challenge.get('title', challenge_id)}",
+            category="gamification_challenge",
+        )
+    if reward_eur > 0:
+        credit = await credit_wallet(
+            user_id=user_id,
+            amount=reward_eur,
+            tx_type=TransactionType.REWARD,
+            description=f"Challenge: {challenge.get('title', challenge_id)}",
+            source="gamification",
+            reference=f"GAM-CH-{hashlib.sha256(stable.encode()).hexdigest()[:12].upper()}",
+            metadata={"challenge_id": challenge_id, "day": day},
+            idempotency_key=f"{stable}:eur",
+        )
+        if not credit.success:
+            raise HTTPException(
+                status_code=409 if credit.status.value in {"pending", "reconciliation_required"} else 500,
+                detail=credit.error or "Gamification-EUR-Gutschrift fehlgeschlagen",
+            )
+
+
+async def _credit_achievement_reward_once(user_id: str, achievement_id: str, achievement: dict) -> None:
+    reward_blz = float(achievement.get("reward_blz", 0) or 0)
+    if reward_blz <= 0:
+        return
+    await _credit_gamification_blz_once(
+        user_id=user_id,
+        amount=reward_blz,
+        reward_key=f"gamification-achievement:{user_id}:{achievement_id}:blz",
+        description=f"Achievement: {achievement.get('title', achievement_id)}",
+        category="gamification_achievement",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -305,6 +419,8 @@ async def get_daily_challenges(request: Request):
 async def complete_challenge(challenge_id: str, request: Request):
     """Manually complete a challenge (called by other routes)."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BLZ-Gamification-Rewards sind in Production deaktiviert.")
     user_id = str(user["_id"])
     
     if challenge_id not in DAILY_CHALLENGES:
@@ -330,9 +446,10 @@ async def complete_challenge(challenge_id: str, request: Request):
         }
         await db.daily_challenge_progress.insert_one(progress)
     
-    # Check if already completed
+    # A retry after the progress write may still need to finish reward settlement.
     if progress["challenges"].get(challenge_id, {}).get("completed"):
-        return {"ok": False, "message": "Already completed today"}
+        await _credit_challenge_rewards_once(user_id, challenge_id, challenge, today_str)
+        return {"ok": False, "message": "Already completed today", "replayed": True}
     
     # Mark as completed
     await db.daily_challenge_progress.update_one(
@@ -350,17 +467,8 @@ async def complete_challenge(challenge_id: str, request: Request):
         },
     )
     
-    # Award rewards to user
-    if challenge["reward_blz"] > 0:
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance_blz": challenge["reward_blz"]}},
-        )
-    if challenge["reward_eur"] > 0:
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": challenge["reward_eur"]}},
-        )
+    # Retry-safe reward settlement. Replays converge on deterministic keys.
+    await _credit_challenge_rewards_once(user_id, challenge_id, challenge, today_str)
     
     # Send push notification
     try:
@@ -389,6 +497,8 @@ async def track_challenge_progress(user_id: str, challenge_id: str, increment: i
     Track progress for a challenge. Auto-complete when target reached.
     Call this from other routes (e.g., auctions.py, taxi.py, mining.py).
     """
+    if not TEST_MODE:
+        return
     if challenge_id not in DAILY_CHALLENGES:
         return
     
@@ -412,8 +522,9 @@ async def track_challenge_progress(user_id: str, challenge_id: str, increment: i
         }
         await db.daily_challenge_progress.insert_one(progress)
     
-    # Check if already completed
+    # A retry/event replay may still need to finish reward settlement.
     if progress["challenges"].get(challenge_id, {}).get("completed"):
+        await _credit_challenge_rewards_once(user_id, challenge_id, challenge, today_str)
         return
     
     # Update progress
@@ -438,17 +549,8 @@ async def track_challenge_progress(user_id: str, challenge_id: str, increment: i
             },
         )
         
-        # Award rewards
-        if challenge["reward_blz"] > 0:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$inc": {"balance_blz": challenge["reward_blz"]}},
-            )
-        if challenge["reward_eur"] > 0:
-            await db.users.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$inc": {"balance": challenge["reward_eur"]}},
-            )
+        # Retry-safe reward settlement. Replays converge on deterministic keys.
+        await _credit_challenge_rewards_once(user_id, challenge_id, challenge, today_str)
         
         # Send push notification
         try:
@@ -518,6 +620,8 @@ async def get_achievements(request: Request):
 async def unlock_achievement(achievement_id: str, request: Request):
     """Manually unlock an achievement (called by other routes)."""
     user = await get_current_user(request)
+    if not TEST_MODE:
+        raise HTTPException(status_code=503, detail="BLZ-Achievement-Rewards sind in Production deaktiviert.")
     user_id = str(user["_id"])
     
     if achievement_id not in ACHIEVEMENTS:
@@ -532,7 +636,8 @@ async def unlock_achievement(achievement_id: str, request: Request):
     })
     
     if existing:
-        return {"ok": False, "message": "Already unlocked"}
+        await _credit_achievement_reward_once(user_id, achievement_id, achievement)
+        return {"ok": False, "message": "Already unlocked", "replayed": True}
     
     # Unlock achievement
     now = datetime.now(timezone.utc).isoformat()
@@ -542,12 +647,8 @@ async def unlock_achievement(achievement_id: str, request: Request):
         "unlocked_at": now,
     })
     
-    # Award reward
-    if achievement["reward_blz"] > 0:
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance_blz": achievement["reward_blz"]}},
-        )
+    # Retry-safe BLZ reward.
+    await _credit_achievement_reward_once(user_id, achievement_id, achievement)
     
     # Send push notification
     try:
@@ -573,6 +674,8 @@ async def check_and_unlock_achievement(user_id: str, achievement_id: str):
     Check and unlock an achievement if not already unlocked.
     Call this from other routes when a milestone is reached.
     """
+    if not TEST_MODE:
+        return False
     if achievement_id not in ACHIEVEMENTS:
         return False
     
@@ -583,6 +686,8 @@ async def check_and_unlock_achievement(user_id: str, achievement_id: str):
     })
     
     if existing:
+        achievement = ACHIEVEMENTS[achievement_id]
+        await _credit_achievement_reward_once(user_id, achievement_id, achievement)
         return False
     
     achievement = ACHIEVEMENTS[achievement_id]
@@ -595,12 +700,8 @@ async def check_and_unlock_achievement(user_id: str, achievement_id: str):
         "unlocked_at": now,
     })
     
-    # Award reward
-    if achievement["reward_blz"] > 0:
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$inc": {"balance_blz": achievement["reward_blz"]}},
-        )
+    # Retry-safe BLZ reward.
+    await _credit_achievement_reward_once(user_id, achievement_id, achievement)
     
     # Send push notification
     try:

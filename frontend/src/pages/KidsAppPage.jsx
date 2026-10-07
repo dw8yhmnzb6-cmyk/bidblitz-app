@@ -34,10 +34,12 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
 
   // Quiz
   const [quiz, setQuiz] = useState(null);
+  const [quizId, setQuizId] = useState("");
   const [quizIdx, setQuizIdx] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [quizDone, setQuizDone] = useState(false);
   const [quizReward, setQuizReward] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState([]);
   const [answered, setAnswered] = useState(null);
 
   // Load children list
@@ -145,38 +147,62 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
 
   // Quiz
   const startQuiz = async () => {
+    if (!childId) return;
     try {
-      const res = await fetch(`${API}/api/kids-app/quiz`);
+      const res = await fetch(`${API}/api/kids-app/quiz?child_id=${encodeURIComponent(childId)}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
-        setQuiz(d.questions);
-        setQuizIdx(0); setQuizScore(0); setQuizDone(false); setAnswered(null);
+        setQuizId(d.quiz_id || "");
+        setQuiz(d.questions || []);
+        setQuizIdx(0);
+        setQuizScore(0);
+        setQuizReward(0);
+        setQuizAnswers([]);
+        setQuizDone(false);
+        setAnswered(null);
       }
     } catch {}
   };
 
   const answerQuiz = async (answer) => {
-    if (answered !== null) return;
-    const correct = quiz[quizIdx].answer === answer;
-    const newScore = correct ? quizScore + 1 : quizScore;
+    if (answered !== null || !quiz?.[quizIdx]) return;
+    const nextAnswers = [
+      ...quizAnswers,
+      { question_id: quiz[quizIdx].id, answer },
+    ];
+    setQuizAnswers(nextAnswers);
     setAnswered(answer);
-    setQuizScore(newScore);
 
     setTimeout(async () => {
       if (quizIdx + 1 >= quiz.length) {
-        setQuizDone(true);
         try {
           const res = await fetch(`${API}/api/kids-app/quiz/submit`, {
-            method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ child_id: childId, score: newScore, total: quiz.length }),
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              child_id: childId,
+              quiz_id: quizId,
+              answers: nextAnswers,
+            }),
           });
-          if (res.ok) { const d = await res.json(); setQuizReward(d.reward); loadDash(); }
-        } catch {}
+          if (res.ok) {
+            const d = await res.json();
+            setQuizScore(Number(d.score || 0));
+            setQuizReward(Number(d.reward_points ?? d.reward ?? 0));
+            setQuizDone(true);
+            loadDash();
+          } else {
+            setAnswered(null);
+          }
+        } catch {
+          setAnswered(null);
+        }
       } else {
         setQuizIdx(quizIdx + 1);
         setAnswered(null);
       }
-    }, 1000);
+    }, 500);
   };
 
   const avatar = child?.avatar || AVATARS[0];
@@ -451,7 +477,7 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
               {quizReward > 0 && (
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }}
                   className="mt-4 inline-block px-6 py-3 rounded-full" style={{ background: `${COLORS.green}20` }}>
-                  <p className="text-lg font-black" style={{ color: COLORS.green }}>+€{quizReward.toFixed(2)} verdient!</p>
+                  <p className="text-lg font-black" style={{ color: COLORS.green }}>+{quizReward} BLZ-Punkte verdient!</p>
                 </motion.div>
               )}
               <motion.button whileTap={{ scale: 0.95 }} onClick={startQuiz}
@@ -464,7 +490,7 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-bold text-gray-500">Frage {quizIdx + 1}/{quiz.length}</span>
-                <span className="text-sm font-bold" style={{ color: COLORS.green }}>{quizScore} richtig</span>
+                <span className="text-sm font-bold" style={{ color: COLORS.green }}>{quizAnswers.length} beantwortet</span>
               </div>
               <div className="w-full h-2 rounded-full bg-gray-200 mb-6">
                 <div className="h-full rounded-full transition-all" style={{ width: `${((quizIdx + 1) / quiz.length) * 100}%`, background: `linear-gradient(90deg, ${COLORS.cyan}, ${COLORS.purple})` }} />
@@ -474,17 +500,17 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {quiz[quizIdx].options.map((opt, oi) => {
-                  const isCorrect = opt === quiz[quizIdx].answer;
                   const isSelected = answered === opt;
-                  let bg = "bg-white";
-                  if (answered !== null) {
-                    if (isCorrect) bg = "bg-green-100 border-green-400";
-                    else if (isSelected) bg = "bg-red-100 border-red-400";
-                  }
+                  const bg = isSelected ? "bg-yellow-100 border-yellow-400" : "bg-white border-transparent";
                   return (
-                    <motion.button key={oi} whileTap={{ scale: 0.95 }} onClick={() => answerQuiz(opt)}
-                      className={`${bg} rounded-2xl shadow-md p-4 text-center font-bold text-base border-2 ${answered === null ? "border-transparent hover:shadow-lg" : ""}`}
-                      style={answered === null ? { color: "#1a1a2e" } : {}}>
+                    <motion.button
+                      key={oi}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => answerQuiz(opt)}
+                      disabled={answered !== null}
+                      className={`${bg} rounded-2xl shadow-md p-4 text-center font-bold text-base border-2 ${answered === null ? "hover:shadow-lg" : ""}`}
+                      style={{ color: "#1a1a2e" }}
+                    >
                       {opt}
                     </motion.button>
                   );
