@@ -10,11 +10,13 @@ Roles: merchant_admin, store_manager, cashier, accountant, bidblitz_admin
 import secrets
 import logging
 import io
+import asyncio
+from html import escape
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
 
 from core.database import db
@@ -1189,6 +1191,98 @@ def _build_receipt_html(sale: dict, merchant: dict, store: dict) -> str:
     <p style='text-align:center;font-size:10px'>Vielen Dank!<br/>Powered by BidBlitz</p>
     </body></html>
     """
+
+
+class ReceiptEmailRequest(BaseModel):
+    email: Optional[EmailStr] = None
+
+
+def _build_receipt_email_content(sale: dict, merchant: dict, store: dict) -> str:
+    merchant_name = escape(str(merchant.get("business_name") or "BidBlitz POS"))
+    store_name = escape(str(store.get("name") or ""))
+    receipt_id = escape(str(sale.get("receipt_id") or ""))
+    payment_method = escape(str(sale.get("method") or ""))
+    payment_id = escape(str(sale.get("payment_id") or ""))
+    created_at = escape(str(sale.get("created_at") or "")[:19].replace("T", " "))
+    item_rows = "".join(
+        "<tr>"
+        f"<td style='color:#AAA;font-size:13px;padding:6px 0'>{float(item.get('quantity') or 0):g} × {escape(str(item.get('name') or 'Artikel'))}</td>"
+        f"<td style='color:#FFF;font-size:13px;padding:6px 0;text-align:right'>€{float(item.get('line_total') or 0):.2f}</td>"
+        "</tr>"
+        for item in (sale.get("items") or [])
+    )
+    location = " · ".join(part for part in [store_name, escape(str(store.get("city") or ""))] if part)
+    return f"""
+        <h2 style="color:#fff;font-size:18px;margin:0 0 8px;">Dein BidBlitz-Beleg</h2>
+        <p style="color:#777;font-size:12px;margin:0 0 20px;">{merchant_name}{(" · " + location) if location else ""}</p>
+        <div style="background:#111;border-radius:12px;padding:18px;margin:0 0 20px;">
+          <table width="100%" style="border-collapse:collapse;">
+            {item_rows}
+            <tr><td colspan="2" style="border-top:1px solid #262626;padding-top:10px"></td></tr>
+            <tr>
+              <td style="color:#AAA;font-size:14px;padding:6px 0;font-weight:bold">Gesamt</td>
+              <td style="color:#00D26A;font-size:18px;padding:6px 0;text-align:right;font-weight:bold">€{float(sale.get("total") or 0):.2f}</td>
+            </tr>
+          </table>
+        </div>
+        <div style="color:#777;font-size:12px;line-height:1.7;">
+          <div>Beleg: <span style="color:#fff">{receipt_id}</span></div>
+          <div>Datum: <span style="color:#fff">{created_at}</span></div>
+          <div>Zahlung: <span style="color:#fff">{payment_method}</span></div>
+          <div>Referenz: <span style="color:#fff">{payment_id}</span></div>
+        </div>
+    """
+
+
+async def _load_receipt_for_user(receipt_id: str, request: Request):
+    user = await get_current_user(request)
+    sale = await db.pos_sales.find_one({"receipt_id": receipt_id}, {"_id": 0})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Beleg nicht gefunden")
+    if sale.get("customer_id") != str(user["_id"]):
+        await _require_store_access(user, sale["store_id"])
+    merchant = await db.pos_merchants.find_one({"merchant_id": sale["merchant_id"]}, {"_id": 0}) or {}
+    store = await db.pos_stores.find_one({"store_id": sale["store_id"]}, {"_id": 0}) or {}
+    return user, sale, merchant, store
+
+
+@router.post("/receipts/{receipt_id}/email")
+async def email_receipt(receipt_id: str, req: ReceiptEmailRequest, request: Request):
+    user, sale, merchant, store = await _load_receipt_for_user(receipt_id, request)
+
+    recipient = str(req.email or "").strip()
+    if not recipient and sale.get("customer_id"):
+        customer = await db.users.find_one({"_id": ObjectId(sale["customer_id"])}, {"email": 1})
+        recipient = str((customer or {}).get("email") or "").strip()
+    if not recipient:
+        recipient = str(user.get("email") or "").strip()
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Keine E-Mail-Adresse für den Beleg vorhanden")
+
+    from core.email import EMAIL_ENABLED, get_base_template, send_email_detailed
+    if not EMAIL_ENABLED:
+        raise HTTPException(status_code=503, detail="E-Mail-Versand ist noch nicht konfiguriert")
+
+    html = get_base_template(
+        _build_receipt_email_content(sale, merchant, store),
+        f"Beleg {sale['receipt_id']} - BidBlitz",
+    )
+    result = await asyncio.to_thread(
+        send_email_detailed,
+        recipient,
+        f"Dein Beleg {sale['receipt_id']} - BidBlitz",
+        html,
+    )
+    await _audit(str(user["_id"]), "receipt.email", {
+        "receipt_id": sale["receipt_id"],
+        "recipient": recipient,
+        "sent": bool(result.get("sent")),
+        "reason": result.get("reason"),
+    })
+    if not result.get("sent") or result.get("reason") != "sent":
+        raise HTTPException(status_code=502, detail="Beleg-E-Mail konnte nicht zugestellt werden")
+
+    return {"ok": True, "receipt_id": sale["receipt_id"], "email": recipient, "delivery": "sent"}
 
 
 @router.get("/receipts/{receipt_id}")
