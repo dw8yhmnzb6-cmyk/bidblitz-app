@@ -277,6 +277,7 @@ class RefundRequest(BaseModel):
     payment_id: str
     amount: Optional[float] = None    # None = full refund
     reason: Optional[str] = ""
+    idempotency_key: Optional[str] = Field(None, min_length=8, max_length=160)
 
 
 # ───────────────────────────────────────────────────────────────────────
@@ -1156,9 +1157,15 @@ async def refund_payment(req: RefundRequest, request: Request):
             await create_security_alert(actor["merchant_id"], actor["store_id"], "excessive_refunds", "Refund wartet auf Freigabe", {"payment_id": req.payment_id, "amount": refund_amount}, "medium", actor["user_id"])
         return {"ok": True, "status": "approval_required", "approval": approval, "message": "Refund wartet auf Manager-Freigabe"}
 
-    refund_doc = await execute_refund_action({"payment_id": req.payment_id, "amount": refund_amount, "reason": req.reason or ""}, actor, request=request)
-    await db.pos_shifts.update_one({"shift_id": payment.get("shift_id") or ""}, {"$inc": {"refund_total": refund_amount}})
-    await _audit(str(user["_id"]), "payment.refund", {"payment_id": payment["payment_id"], "amount": refund_amount})
+    refund_doc = await execute_refund_action({
+        "payment_id": req.payment_id,
+        "amount": refund_amount,
+        "reason": req.reason or "",
+        "idempotency_key": req.idempotency_key,
+    }, actor, request=request)
+    if not refund_doc.get("idempotent_replay"):
+        await db.pos_shifts.update_one({"shift_id": payment.get("shift_id") or ""}, {"$inc": {"refund_total": refund_amount}})
+        await _audit(str(user["_id"]), "payment.refund", {"payment_id": payment["payment_id"], "amount": refund_amount})
     return {"ok": True, "refund": refund_doc, "new_status": "refunded" if float(refund_doc.get("amount") or 0) >= remaining_refundable else "partial_refund"}
 
 
