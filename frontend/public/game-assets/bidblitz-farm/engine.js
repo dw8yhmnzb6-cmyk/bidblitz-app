@@ -30,6 +30,18 @@
     { id: 'animals-3', title: 'Halte 3 Tiere', kind: 'animals', target: 3, rewardCoins: 45, rewardXp: 20 },
     { id: 'buildings-5', title: 'Erreiche 5 Gebäude-Level', kind: 'buildings', target: 5, rewardCoins: 60, rewardXp: 25 },
     { id: 'farm-level-5', title: 'Erreiche Farm-Level 5', kind: 'level', target: 5, rewardCoins: 80, rewardXp: 30 },
+    { id: 'orders-10', title: 'Liefere 10 Bestellungen', kind: 'orders', target: 10, rewardCoins: 100, rewardXp: 40 },
+    { id: 'land-12', title: 'Schalte alle 12 Felder frei', kind: 'land', target: 12, rewardCoins: 140, rewardXp: 55 },
+    { id: 'buildings-9', title: 'Erreiche 9 Gebäude-Level', kind: 'buildings', target: 9, rewardCoins: 160, rewardXp: 65 },
+    { id: 'farm-level-10', title: 'Erreiche Farm-Level 10', kind: 'level', target: 10, rewardCoins: 200, rewardXp: 80 },
+  ];
+  const LEVEL_REWARDS = [
+    { level: 5, rewardCoins: 50, rewardXp: 10, title: 'Kleine Farm' },
+    { level: 10, rewardCoins: 100, rewardXp: 20, title: 'Wachsender Hof' },
+    { level: 20, rewardCoins: 180, rewardXp: 30, title: 'Landwirtschafts-Profi' },
+    { level: 30, rewardCoins: 260, rewardXp: 40, title: 'Großfarm' },
+    { level: 40, rewardCoins: 360, rewardXp: 50, title: 'Landgut' },
+    { level: 50, rewardCoins: 500, rewardXp: 0, title: 'Farm-Legende' },
   ];
   const INVENTORY_ITEMS = {
     wheat: { id: 'wheat', name: 'Weizen', icon: '🌾', baseValue: 12 },
@@ -96,6 +108,7 @@
       orderStreak: 0,
       lastOrderStreakDay: 0,
       claimedMissions: [],
+      claimedLevelRewards: [],
       plots: Array.from({ length: MAX_PLOTS }, (_, index) => emptyPlot(index + 1)),
       lastEvent: 'Farm gestartet.',
     };
@@ -325,6 +338,8 @@
     if (mission.kind === 'animals') return Object.values(profile.animals || {}).reduce((sum, herd) => sum + (herd.count || 0), 0);
     if (mission.kind === 'buildings') return Object.values(profile.buildings || {}).reduce((sum, level) => sum + (level || 0), 0);
     if (mission.kind === 'level') return profile.level;
+    if (mission.kind === 'orders') return profile.completedOrders || 0;
+    if (mission.kind === 'land') return profile.unlockedPlots || PLOT_COUNT;
     return 0;
   }
 
@@ -349,6 +364,42 @@
     next.level = levelFromXp(next.xp);
     next.lastEvent = 'Mission abgeschlossen: ' + mission.title + '.';
     return { ok: true, profile: next };
+  }
+
+  function levelRewardStatus(profile) {
+    return LEVEL_REWARDS.map(reward => ({
+      ...reward,
+      unlocked: (profile?.level || 1) >= reward.level,
+      claimed: (profile?.claimedLevelRewards || []).includes(reward.level),
+    }));
+  }
+
+  function claimLevelReward(profile, level) {
+    const reward = LEVEL_REWARDS.find(item => item.level === level);
+    if (!profile || !reward || (profile.claimedLevelRewards || []).includes(level) || profile.level < level) {
+      return { ok: false, profile };
+    }
+    const next = clone(profile);
+    next.claimedLevelRewards.push(level);
+    next.coins += reward.rewardCoins;
+    next.xp += reward.rewardXp;
+    next.level = levelFromXp(next.xp);
+    next.lastEvent = 'Level-Meilenstein: ' + reward.title + '.';
+    return { ok: true, profile: next, reward };
+  }
+
+  function nextLevelProgress(profile) {
+    const level = profile?.level || 1;
+    if (level >= 50) return { level: 50, currentXp: profile?.xp || 0, nextXp: profile?.xp || 0, percent: 100 };
+    const baseXp = (level - 1) * 40;
+    const nextXp = level * 40;
+    const currentXp = Math.max(baseXp, profile?.xp || 0);
+    return {
+      level,
+      currentXp,
+      nextXp,
+      percent: Math.max(0, Math.min(100, Math.round(((currentXp - baseXp) / 40) * 100))),
+    };
   }
 
   function marketMultiplier(profile, itemId) {
@@ -480,6 +531,7 @@
       if (!Number.isInteger(value.orderStreak)) value.orderStreak = 0;
       if (!Number.isInteger(value.lastOrderStreakDay)) value.lastOrderStreakDay = 0;
       if (!Array.isArray(value.claimedMissions)) value.claimedMissions = [];
+      if (!Array.isArray(value.claimedLevelRewards)) value.claimedLevelRewards = [];
       for (const [animalId, spec] of Object.entries(ANIMALS)) {
         const herd = value.animals[animalId];
         if (!herd || !int(herd.count, 0, 100) || typeof herd.fed !== 'boolean' || !int(herd.progress, 0, spec.produceDays) || !int(herd.ready, 0, 100000)) return null;
@@ -496,6 +548,8 @@
       if (!int(value.lastOrderStreakDay, 0, value.day)) return null;
       if (value.fulfilledOrders.length > 90 || !value.fulfilledOrders.every(id => /^order-\d{1,6}-[0-2]$/.test(id))) return null;
       if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
+      if (value.claimedLevelRewards.length !== new Set(value.claimedLevelRewards).size) return null;
+      if (!value.claimedLevelRewards.every(level => LEVEL_REWARDS.some(reward => reward.level === level) && level <= value.level)) return null;
       if (!Number.isInteger(value.unlockedPlots)) value.unlockedPlots = PLOT_COUNT;
       if (![6, 9, 12].includes(value.unlockedPlots)) return null;
       if (!Array.isArray(value.plots) || ![PLOT_COUNT, MAX_PLOTS].includes(value.plots.length)) return null;
@@ -522,10 +576,10 @@
   }
 
   return {
-    VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS, INVENTORY_ITEMS,
+    VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS, LEVEL_REWARDS, INVENTORY_ITEMS,
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, animalProductBonus, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
+    upgradeBuilding, missionStatus, claimMission, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
