@@ -19,8 +19,20 @@ test("newer remote farm wins, equal progress keeps local device state", () => {
   assert.equal(S.chooseNewer(state(4, 0, 0), state(3, 999, 999)), "local");
 });
 
+test("farm expansion, buildings and animals break same-day sync ties", () => {
+  const base = { day: 4, xp: 80, harvests: 2, unlockedPlots: 6, buildings: { coop: 1, barn: 1, silo: 1 }, animals: { chicken: { count: 0 }, cow: { count: 0 }, sheep: { count: 0 } } };
+  const expanded = { ...base, unlockedPlots: 9 };
+  assert.equal(S.compareProgress(expanded, base), 1);
+
+  const built = { ...base, buildings: { coop: 2, barn: 1, silo: 1 } };
+  assert.equal(S.compareProgress(built, base), 1);
+
+  const stocked = { ...base, animals: { chicken: { count: 2 }, cow: { count: 0 }, sheep: { count: 0 } } };
+  assert.equal(S.compareProgress(stocked, base), 1);
+});
+
 test("invalid progress values fail safely instead of outranking valid state", () => {
   assert.deepEqual(S.progressTuple(null), [0, 0, 0]);
-  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0]);
+  assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0]);
   assert.equal(S.chooseNewer(state(1, 0, 0), null), "local");
 });
