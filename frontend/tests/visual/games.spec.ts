@@ -912,6 +912,174 @@ test('Blitz Runner sends a server-issued replay session and verifies the exact a
   await expect(runnerFrame!.locator('#status')).toContainText('serverseitig reproduziert');
 });
 
+test('BidBlitz Match requests a server seed and verifies the exact swap trace', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openGames(page, 390, 844);
+  await page.getByRole('button', { name: 'Spielvorschau öffnen' }).first().click();
+  await expect(page).toHaveURL(/\/games\/match$/);
+
+  const iframe = page.locator('iframe[title*="BidBlitz Match"]');
+  await expect(iframe).toBeVisible();
+  const handle = await iframe.elementHandle();
+  const matchFrame = await handle?.contentFrame();
+  expect(matchFrame).not.toBeNull();
+
+  const fixture = await matchFrame!.evaluate(() => {
+    const E = (window as any).BidBlitzMatch;
+    for (let seed = 1; seed <= 500; seed++) {
+      let state = E.createGame(1, seed);
+      const actions: Array<{ a: number; b: number }> = [];
+      for (let turn = 0; turn < 80 && state.status === 'playing'; turn++) {
+        const pair = E.hint(state.board);
+        if (!pair) break;
+        const result = E.swap(state, pair[0], pair[1]);
+        if (!result.ok) break;
+        actions.push({ a: pair[0], b: pair[1] });
+        state = result.state;
+      }
+      if (state.status === 'won') return { seed, actions, score: state.score };
+    }
+    throw new Error('No deterministic Match fixture found');
+  });
+
+  const sessionId = 'b'.repeat(32);
+  await page.route('**/api/games/integrity/match/sessions', async (route) => {
+    const body = route.request().postDataJSON() as { level?: number };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        session_id: sessionId,
+        game_id: 'match',
+        level: body.level,
+        seed: fixture.seed,
+        expires_at: '2026-10-07T23:30:00+00:00',
+        score_verification: 'server_replay_required',
+      }),
+    });
+  });
+  await page.route('**/api/games/integrity/match/verify', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'won',
+        level: 1,
+        score: fixture.score,
+        stars: 2,
+        verified: true,
+        integrity: 'server_replayed_not_full_anti_cheat',
+        public_trusted_leaderboard_enabled: false,
+      }),
+    });
+  });
+
+  await matchFrame!.evaluate(async () => {
+    await (window as any).BidBlitzPreview.startLevel(1);
+  });
+
+  const verifyRequest = page.waitForRequest((request) =>
+    request.method() === 'POST' &&
+    request.url().includes('/api/games/integrity/match/verify')
+  );
+  await matchFrame!.evaluate(async (actions) => {
+    for (const action of actions) {
+      await (window as any).BidBlitzPreview.move(action.a, action.b);
+    }
+  }, fixture.actions);
+  const request = await verifyRequest;
+  expect(request.postDataJSON()).toEqual({
+    session_id: sessionId,
+    actions: fixture.actions,
+  });
+  await expect(matchFrame!.locator('#status')).toContainText('serverseitig reproduziert');
+});
+
+test('Bubble Islands requests a server seed and verifies the exact pop trace', async ({ page }) => {
+  await openGames(page, 390, 844);
+  const bubbleCard = page.locator('article').filter({ hasText: 'Bubble Islands' }).first();
+  await bubbleCard.getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  await expect(page).toHaveURL(/\/games\/bubble$/);
+
+  const iframe = page.locator('iframe[title*="Bubble Islands"]');
+  await expect(iframe).toBeVisible();
+  const handle = await iframe.elementHandle();
+  const bubbleFrame = await handle?.contentFrame();
+  expect(bubbleFrame).not.toBeNull();
+
+  const fixture = await bubbleFrame!.evaluate(() => {
+    const E = (window as any).BidBlitzBubbleIslands;
+    for (let seed = 1; seed <= 300; seed++) {
+      let state = E.createGame(1, seed);
+      const actions: number[] = [];
+      for (let turn = 0; turn < 30 && state.status === 'playing'; turn++) {
+        const groups = E.groups(state.board).sort((a: number[], b: number[]) => b.length - a.length);
+        if (!groups.length) break;
+        const index = groups[0][0];
+        const result = E.pop(state, index);
+        if (!result.ok) break;
+        actions.push(index);
+        state = result.state;
+      }
+      if (state.status === 'won') return { seed, actions, score: state.score };
+    }
+    throw new Error('No deterministic Bubble fixture found');
+  });
+
+  const sessionId = 'c'.repeat(32);
+  await page.route('**/api/games/integrity/bubble/sessions', async (route) => {
+    const body = route.request().postDataJSON() as { level?: number };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        session_id: sessionId,
+        game_id: 'bubble',
+        level: body.level,
+        seed: fixture.seed,
+        expires_at: '2026-10-07T23:30:00+00:00',
+        score_verification: 'server_replay_required',
+      }),
+    });
+  });
+  await page.route('**/api/games/integrity/bubble/verify', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'won',
+        level: 1,
+        score: fixture.score,
+        stars: 2,
+        verified: true,
+        integrity: 'server_replayed_not_full_anti_cheat',
+        public_trusted_leaderboard_enabled: false,
+      }),
+    });
+  });
+
+  await bubbleFrame!.evaluate(async () => {
+    await (window as any).BidBlitzBubblePreview.startLevel(1);
+  });
+
+  const verifyRequest = page.waitForRequest((request) =>
+    request.method() === 'POST' &&
+    request.url().includes('/api/games/integrity/bubble/verify')
+  );
+  await bubbleFrame!.evaluate((actions) => {
+    for (const index of actions) {
+      (window as any).BidBlitzBubblePreview.choose(index);
+    }
+  }, fixture.actions);
+  const request = await verifyRequest;
+  expect(request.postDataJSON()).toEqual({
+    session_id: sessionId,
+    actions: fixture.actions,
+  });
+  await expect(bubbleFrame!.locator('#status')).toContainText('serverseitig reproduziert');
+});
+
 test('Games Match preview opens from catalog and remains usable on 320px', async ({ page }) => {
   await openGames(page, 320, 568);
 
