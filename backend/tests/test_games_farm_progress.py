@@ -211,6 +211,11 @@ class GamesFarmProgressTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             farm.FarmStateInput(**invalid)
 
+        future_order = dict(value)
+        future_order["fulfilledOrders"] = ["order-7-0"]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**future_order)
+
     def test_order_streak_fields_are_validated(self):
         value = state(day=8, xp=160, coins=500, harvests=6)
         value["orderStreak"] = 3
