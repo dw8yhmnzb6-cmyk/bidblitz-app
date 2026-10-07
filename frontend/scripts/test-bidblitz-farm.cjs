@@ -379,6 +379,24 @@ test("farm completion score grows with endgame progress", () => {
   assert.ok(completed.percent <= 100);
 });
 
+test("farm onboarding steps are derived from existing progress", () => {
+  let farm = F.initial(1500);
+  let steps = Object.fromEntries(F.onboardingSteps(farm).map(item => [item.id, item.done]));
+  assert.equal(steps.plant, false);
+  assert.equal(steps.harvest, false);
+  assert.equal(steps.animal, false);
+  assert.equal(steps.order, false);
+  assert.equal(steps.expand, false);
+
+  farm.plots[0].crop = "wheat";
+  farm.harvests = 1;
+  farm.animals.chicken.count = 1;
+  farm.completedOrders = 1;
+  farm.unlockedPlots = 9;
+  steps = Object.fromEntries(F.onboardingSteps(farm).map(item => [item.id, item.done]));
+  assert.equal(Object.values(steps).every(Boolean), true);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
