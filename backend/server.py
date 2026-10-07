@@ -640,8 +640,21 @@ async def _load_routers_for_worker():
     if getattr(app.state, "routes_loaded", False):
         return
     app.state.startup_status = "routes_loading"
-    register_all_routers(app)
+    registered, failed = register_all_routers(app)
     app.state.routes_loaded = True
+    app.state.router_registration = {
+        "registered": registered,
+        "failed": list(failed or []),
+    }
+    if failed:
+        message = f"Router registration incomplete: {len(failed)} failed"
+        if IS_PRODUCTION:
+            app.state.startup_status = "error"
+            raise RuntimeError(message)
+        app.state.startup_status = "degraded"
+        logger.warning("%s (%s mode)", message, APP_ENV)
+        return
+    app.state.startup_status = "ready"
     logger.info(f"✓ BidBlitz V2 API routers loaded ({APP_ENV} mode)")
 
 
@@ -668,7 +681,8 @@ async def startup_event():
     if _should_use_sync_startup():
         logger.info("Synchronous startup enabled for test/CI context")
         await _load_routers_for_worker()
-        app.state.startup_status = "ready"
+        if getattr(app.state, "startup_status", "") != "degraded":
+            app.state.startup_status = "ready"
         app.state.post_startup_task = None
         return
     if lock_file is None:
