@@ -144,6 +144,7 @@ jobs:
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
           backend/tests/test_games_farm_progress.py
+          backend/tests/test_games_farm_progress_mongo.py
           backend/tests/test_games_recent.py
           backend/tests/test_games_reviews.py
           backend/tests/test_games_preview.py
