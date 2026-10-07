@@ -391,32 +391,22 @@ async def stripe_webhook(request: Request):
                 pass
 
             # 1. Wallet-Topup
+            # Use the canonical payment engine so wallet credit + idempotency are
+            # handled in one place. Never mark a Stripe payment as credited
+            # before the wallet credit itself has completed.
             payment = await db.payment_transactions.find_one({"session_id": event.session_id})
-            if payment and payment["status"] not in ("completed", "credited"):
-                result = await db.payment_transactions.find_one_and_update(
-                    {"session_id": event.session_id, "status": {"$nin": ["completed", "credited"]}},
-                    {"$set": {"status": "credited", "payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}},
+            if payment:
+                credit_result = await process_stripe_payment(
+                    session_id=event.session_id,
+                    user_id=str(payment["user_id"]),
+                    amount=float(payment["amount"]),
+                    payment_intent_id=getattr(event, "payment_intent_id", None),
                 )
-                if result:
-                    await db.users.update_one(
-                        {"_id": {"$eq": result["user_id"]}},
-                        {"$inc": {"balance": result["amount"]}},
+                if not credit_result.success:
+                    raise RuntimeError(
+                        f"Stripe wallet credit incomplete for {event.session_id}: "
+                        f"{credit_result.error or credit_result.status}"
                     )
-                    txn = {
-                        "id": secrets.token_hex(8),
-                        "user_id": result["user_id"],
-                        "type": "topup",
-                        "amount": result["amount"],
-                        "description": f"Stripe top-up (EUR {result['amount']:.2f})",
-                        "merchant_name": "Stripe",
-                        "status": "completed",
-                        "reference": f"STRIPE-{event.session_id[:12].upper()}",
-                        "payment_method": "stripe",
-                        "category": "topup",
-                        "stripe_session_id": event.session_id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                    await db.transactions.insert_one(txn)
 
             # 2. POS Feature-Purchase (Add-On Buchung)
             try:
@@ -485,8 +475,15 @@ async def stripe_webhook(request: Request):
                 _logging.getLogger("bidblitz.stripe").error(f"bid_credits webhook handling failed: {e}", exc_info=True)
 
         return {"received": True}
-    except Exception:
-        return {"received": True}
+    except Exception as exc:
+        import logging as _logging
+        _logging.getLogger("bidblitz.stripe").error(
+            f"Stripe webhook processing failed: {exc}",
+            exc_info=True,
+        )
+        # Non-2xx is intentional: Stripe must retry transient failures instead
+        # of considering a payment event successfully processed.
+        raise HTTPException(status_code=500, detail="Webhook processing failed")
 
 
 # ── Get available packages ──
