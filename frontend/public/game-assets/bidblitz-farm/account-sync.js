@@ -5,7 +5,7 @@
   'use strict';
 
   function progressTuple(state) {
-    if (!state || typeof state !== 'object') return [0, 0, 0];
+    if (!state || typeof state !== 'object') return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const buildings = state.buildings && typeof state.buildings === 'object'
       ? Object.values(state.buildings).reduce((sum, value) => sum + (Number.isInteger(value) && value >= 0 ? value : 0), 0)
       : 0;
