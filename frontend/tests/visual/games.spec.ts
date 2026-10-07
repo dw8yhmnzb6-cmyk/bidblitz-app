@@ -689,20 +689,28 @@ test('Published community game detail deep link keeps external play isolated', a
   await expectNoHorizontalOverflow(page);
 });
 
-test('BidBlitz Farm is listed as a planned first-party strategy game', async ({ page }) => {
+test('BidBlitz Farm detail page opens its first-party farm preview', async ({ page }) => {
   await openGames(page, 390, 844);
 
   const farmCard = page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first();
   await expect(farmCard).toBeVisible();
-  await expect(farmCard).toContainText('In Planung');
   await farmCard.getByRole('button', { name: 'Details' }).click();
 
   await expect(page).toHaveURL(/\/games\/title\/farm$/);
   const detail = page.getByTestId('game-detail-page');
   await expect(detail.getByRole('heading', { name: 'BidBlitz Farm' })).toBeVisible();
   await expect(detail.getByText('Strategie', { exact: true }).first()).toBeVisible();
-  await expect(detail.getByText('In Planung', { exact: true })).toBeVisible();
-  await expect(detail.getByRole('button', { name: 'Spielvorschau öffnen' })).toHaveCount(0);
+  await detail.getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+
+  await expect(page).toHaveURL(/\/games\/farm$/);
+  await expect(page.getByTestId('bidblitz-farm-page')).toBeVisible();
+  const frame = page.locator('iframe[title*="BidBlitz Farm"]');
+  await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('src', '/game-assets/bidblitz-farm/farm.html');
+  const game = page.frameLocator('iframe[title*="BidBlitz Farm"]');
+  await expect(game.getByTestId('bidblitz-farm-game')).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'BidBlitz Farm' })).toBeVisible();
+  await expect(game.getByText('7-Tage-Vorschau')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
