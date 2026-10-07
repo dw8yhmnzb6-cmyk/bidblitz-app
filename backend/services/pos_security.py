@@ -794,13 +794,19 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
             detail=f"Refund überschreitet Restbetrag von EUR {remaining_refundable:.2f}",
         )
 
+    request_key = str(refund_payload.get("idempotency_key") or "").strip()
     refund_key = (
-        f"pos-refund:{payment['payment_id']}:{approval_id}"
-        if approval_id
-        else f"pos-refund:{payment['payment_id']}:{already_refunded:.2f}:{refund_amount:.2f}"
+        f"pos-refund:{payment['payment_id']}:{request_key}"
+        if request_key
+        else (
+            f"pos-refund:{payment['payment_id']}:approval:{approval_id}"
+            if approval_id
+            else f"pos-refund:{payment['payment_id']}:{already_refunded:.2f}:{refund_amount:.2f}:{actor['user_id']}"
+        )
     )
     existing_refund = await db.pos_refunds.find_one({"idempotency_key": refund_key}, {"_id": 0})
     if existing_refund:
+        existing_refund["idempotent_replay"] = True
         return existing_refund
 
     if method in {"wallet_qr", "barcode", "secure_wallet"} and payment.get("customer_id"):
@@ -873,6 +879,7 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
         "issued_by": actor["user_id"],
         "issued_at": now_iso(),
         "approval_id": approval_id or None,
+        "idempotent_replay": False,
     }
     await db.pos_refunds.insert_one(refund_doc)
     await db.pos_payments.update_one(
