@@ -289,6 +289,51 @@ test("customer rank increases with completed order count", () => {
   assert.equal(F.customerRank(farm).id, "legend");
 });
 
+test("level milestone rewards unlock once and stay virtual", () => {
+  let farm = F.initial(1200);
+  farm.xp = 160;
+  farm.level = F.levelFromXp(farm.xp);
+  let rewards = F.levelRewardStatus(farm);
+  const level5 = rewards.find(item => item.level === 5);
+  assert.equal(level5.unlocked, true);
+  assert.equal(level5.claimed, false);
+
+  const beforeCoins = farm.coins;
+  const claimed = F.claimLevelReward(farm, 5);
+  assert.equal(claimed.ok, true);
+  assert.ok(claimed.profile.coins > beforeCoins);
+  assert.ok(claimed.profile.claimedLevelRewards.includes(5));
+  assert.equal(F.claimLevelReward(claimed.profile, 5).ok, false);
+});
+
+test("endgame missions track orders land buildings and level", () => {
+  const farm = F.initial(1201);
+  farm.completedOrders = 10;
+  farm.unlockedPlots = 12;
+  farm.buildings = { coop: 3, barn: 3, silo: 3 };
+  farm.xp = 360;
+  farm.level = F.levelFromXp(farm.xp);
+  const status = Object.fromEntries(F.missionStatus(farm).map(item => [item.id, item]));
+  assert.equal(status["orders-10"].completed, true);
+  assert.equal(status["land-12"].completed, true);
+  assert.equal(status["buildings-9"].completed, true);
+  assert.equal(status["farm-level-10"].completed, true);
+});
+
+test("level progress reports next threshold and max-level completion", () => {
+  const farm = F.initial(1202);
+  farm.xp = 100;
+  farm.level = F.levelFromXp(farm.xp);
+  const progress = F.nextLevelProgress(farm);
+  assert.equal(progress.level, 3);
+  assert.ok(progress.percent >= 0 && progress.percent <= 100);
+
+  farm.xp = 5000;
+  farm.level = 50;
+  const max = F.nextLevelProgress(farm);
+  assert.equal(max.percent, 100);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
