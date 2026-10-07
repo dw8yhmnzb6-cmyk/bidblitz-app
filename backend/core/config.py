@@ -55,6 +55,13 @@ elif FRONTEND_URL:
 else:
     CORS_ORIGINS = []
 
+# Production must always accept the canonical first-party web origins even if a
+# stale preview FRONTEND_URL/CORS_ORIGINS value remains in the server env.
+if IS_PRODUCTION:
+    for _origin in ("https://bidblitz.ae", "https://www.bidblitz.ae"):
+        if _origin not in CORS_ORIGINS:
+            CORS_ORIGINS.append(_origin)
+
 # ── Rewards & Growth ──
 REWARDS = {
     "signup_bonus": 0.0,
