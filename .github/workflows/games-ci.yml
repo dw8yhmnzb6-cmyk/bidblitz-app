@@ -143,6 +143,7 @@ jobs:
           backend/tests/test_games_profile_mongo.py
           backend/tests/test_games_progress.py
           backend/tests/test_games_progress_mongo.py
+          backend/tests/test_games_farm_progress.py
           backend/tests/test_games_recent.py
           backend/tests/test_games_reviews.py
           backend/tests/test_games_preview.py
@@ -193,7 +194,7 @@ jobs:
           node frontend/scripts/sync-games-languages.cjs --check
           node frontend/scripts/report-games-translation-readiness.mjs
           node --test frontend/scripts/test-games-core-translations.mjs frontend/scripts/test-games-translation-readiness.mjs
-          node --test             frontend/scripts/test-games-languages.mjs             frontend/scripts/test-games-recent.mjs             frontend/scripts/test-studio-create.mjs             frontend/scripts/test-games-favorites.mjs             frontend/scripts/test-match-account-progress.cjs             frontend/scripts/test-match-preview.cjs             frontend/scripts/test-bidblitz-farm.cjs
+          node --test             frontend/scripts/test-games-languages.mjs             frontend/scripts/test-games-recent.mjs             frontend/scripts/test-studio-create.mjs             frontend/scripts/test-games-favorites.mjs             frontend/scripts/test-match-account-progress.cjs             frontend/scripts/test-match-preview.cjs             frontend/scripts/test-bidblitz-farm.cjs             frontend/scripts/test-bidblitz-farm-account-sync.cjs
       - name: Build frontend
         env:
           CI: "false"
