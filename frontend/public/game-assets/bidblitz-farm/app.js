@@ -368,6 +368,21 @@
     });
   }
 
+  function renderAchievements() {
+    const box = $('achievements');
+    box.replaceChildren();
+    F.achievements(profile).forEach(item => {
+      const node = document.createElement('article');
+      node.className = 'achievement' + (item.achieved ? ' achieved' : '');
+      node.innerHTML =
+        '<div class="achievement-icon">' + item.icon + '</div>' +
+        '<h3>' + item.title + '</h3>' +
+        '<p>' + item.text + '</p>' +
+        '<span>' + (item.achieved ? 'Erreicht' : 'Offen') + '</span>';
+      box.append(node);
+    });
+  }
+
   function renderMissions() {
     const box = $('missions');
     box.replaceChildren();
@@ -511,6 +526,7 @@
     renderAnimals();
     renderBuildings();
     renderMissions();
+    renderAchievements();
   }
 
   $('expand-land').addEventListener('click', () => {
@@ -602,5 +618,6 @@
       if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
+    achievements: () => F.achievements(profile),
   };
 }());
