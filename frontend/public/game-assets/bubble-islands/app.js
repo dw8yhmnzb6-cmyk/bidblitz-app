@@ -4,6 +4,8 @@
   const S = window.BidBlitzBubbleProgressSync;
   const KEY = 'bidblitz.bubble.islands.v1';
   const PROGRESS_API = '/api/games/progress/bubble';
+  const INTEGRITY_SESSION_API = '/api/games/integrity/bubble/sessions';
+  const INTEGRITY_VERIFY_API = '/api/games/integrity/bubble/verify';
   const $ = id => document.getElementById(id);
   const seed = () => {
     const values = new Uint32Array(1);
@@ -18,6 +20,8 @@
   let accountSync = 'pending';
   let syncActive = false;
   let syncQueued = false;
+  let verification = null;
+  let starting = false;
 
   const boardButtons = [];
   for (let index = 0; index < E.SIZE; index++) {
@@ -101,6 +105,48 @@
     }
   }
 
+  async function requestIntegritySession(level) {
+    verification = null;
+    let runSeed = seed();
+    try {
+      const response = await fetch(INTEGRITY_SESSION_API, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level }),
+      });
+      if (response.ok) {
+        const session = await response.json();
+        if (session && typeof session.session_id === 'string' && Number.isInteger(session.seed)) {
+          runSeed = session.seed;
+          verification = { sessionId: session.session_id, actions: [] };
+        }
+      }
+    } catch {}
+    return runSeed;
+  }
+
+  async function verifyBubbleRun() {
+    if (!verification) return;
+    const pending = verification;
+    verification = null;
+    try {
+      const response = await fetch(INTEGRITY_VERIFY_API, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: pending.sessionId, actions: pending.actions }),
+      });
+      if (!response.ok) throw new Error('integrity');
+      const body = await response.json();
+      $('status').textContent = body && body.verified
+        ? 'Insel geschafft! Ergebnis serverseitig reproduziert.'
+        : 'Insel geschafft. Server-Prüfung nicht bestätigt.';
+    } catch {
+      $('status').textContent = 'Insel geschafft. Server-Prüfung nicht verfügbar.';
+    }
+  }
+
   function currentSpec() {
     return E.levels[profile.active.level - 1];
   }
@@ -112,20 +158,39 @@
       $('status').textContent = 'Diese Bubble ist allein. Tippe auf mindestens zwei verbundene Bubbles derselben Farbe.';
       return;
     }
+    if (verification) verification.actions.push(index);
     profile = E.complete(profile, result.state);
     persist();
     render();
-    if (profile.active.status === 'won') syncAccountProgress();
-    $('status').textContent = '+' + result.gained + ' Punkte · ' + result.removed.length + ' Bubbles entfernt.';
+    if (profile.active.status === 'won') {
+      syncAccountProgress();
+      if (verification) verifyBubbleRun();
+    } else if (profile.active.status === 'lost') {
+      verification = null;
+    } else {
+      $('status').textContent = '+' + result.gained + ' Punkte · ' + result.removed.length + ' Bubbles entfernt.';
+    }
   }
 
-  function startLevel(level) {
-    const result = E.begin(profile, level, seed());
-    if (!result.ok) return;
-    profile = result.profile;
-    persist();
-    render();
-    $('status').textContent = 'Neue Insel gestartet. Finde große Bubble-Gruppen für mehr Punkte.';
+  async function startLevel(level) {
+    if (starting) return;
+    starting = true;
+    try {
+      const runSeed = await requestIntegritySession(level);
+      const result = E.begin(profile, level, runSeed);
+      if (!result.ok) {
+        verification = null;
+        return;
+      }
+      profile = result.profile;
+      persist();
+      render();
+      $('status').textContent = verification
+        ? 'Neue Insel gestartet. Dieser Versuch kann serverseitig nachgespielt werden.'
+        : 'Neue Insel gestartet. Finde große Bubble-Gruppen für mehr Punkte.';
+    } finally {
+      starting = false;
+    }
   }
 
   function renderBoard() {
@@ -189,6 +254,7 @@
   window.BidBlitzBubblePreview = {
     snapshot: () => JSON.parse(JSON.stringify(profile)),
     startLevel,
+    choose,
   };
 
   persist();
