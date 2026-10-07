@@ -190,6 +190,8 @@ class GamesProgressTest(unittest.TestCase):
         database.db.games_runner_progress = self.runner_collection
         database.db.games_integrity_sessions = Collection()
         database.db.games_runner_verified_progress = Collection()
+        database.db.games_match_verified_progress = Collection()
+        database.db.games_bubble_verified_progress = Collection()
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
 
