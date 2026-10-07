@@ -7,7 +7,8 @@ test("initial farm is deterministic and valid", () => {
   const b = F.initial(12345);
   assert.deepEqual(a, b);
   assert.equal(a.day, 1);
-  assert.equal(a.plots.length, 6);
+  assert.equal(a.plots.length, 12);
+  assert.equal(a.unlockedPlots, 6);
   assert.equal(a.coins, 60);
   assert.equal(F.decode(JSON.stringify(a)).seed, 12345);
 });
@@ -172,6 +173,17 @@ test("locked farm plots cannot be planted before expansion", () => {
   const rich = { ...farm, coins: 1000 };
   const expanded = F.expandLand(rich).profile;
   assert.equal(F.plant(expanded, 7, "wheat").ok, true);
+});
+
+test("legacy six-plot saves migrate to twelve slots without unlocking land", () => {
+  const legacy = F.initial(404);
+  legacy.plots = legacy.plots.slice(0, 6);
+  delete legacy.unlockedPlots;
+  const decoded = F.decode(JSON.stringify(legacy));
+  assert.ok(decoded);
+  assert.equal(decoded.plots.length, 12);
+  assert.equal(decoded.unlockedPlots, 6);
+  assert.equal(decoded.plots[11].id, 12);
 });
 
 test("corrupt saves are rejected", () => {
