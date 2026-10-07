@@ -54,6 +54,28 @@ class Collection:
             return types.SimpleNamespace(matched_count=0, upserted_id=doc.get("_id") or doc.get("code"))
         return types.SimpleNamespace(matched_count=0)
 
+    async def find_one_and_update(self, query, update, projection=None, return_document=None):
+        for doc in self.docs:
+            if doc.get("id") != query.get("id") or doc.get("kind") != query.get("kind") or doc.get("status") != query.get("status"):
+                continue
+            amount = int(update.get("$inc", {}).get("refunded_eur_cents", 0))
+            current = int(doc.get("refunded_eur_cents") or 0)
+            gross = int(doc.get("gross_eur_cents") or 0)
+            if current + amount > gross:
+                continue
+            before = dict(doc)
+            doc["refunded_eur_cents"] = current + amount
+            doc.update(update.get("$set", {}))
+            return before
+        return None
+
+    async def delete_one(self, query):
+        for index, doc in enumerate(self.docs):
+            if self._matches(doc, query):
+                self.docs.pop(index)
+                return types.SimpleNamespace(deleted_count=1)
+        return types.SimpleNamespace(deleted_count=0)
+
     def find(self, query=None, projection=None):
         query = query or {}
         rows = [doc for doc in self.docs if self._matches(doc, query)]
