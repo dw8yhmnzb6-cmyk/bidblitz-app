@@ -439,10 +439,10 @@ async def stripe_webhook(request: Request):
                         if credits_to_add and user_id:
                             # Idempotent: only credit if not already done
                             updated = await db.payment_transactions.find_one_and_update(
-                                {"session_id": event.session_id, "payment_status": {"$ne": "credited"}},
+                                {"session_id": event.session_id, "payment_status": {"$nin": ["credited", "crediting"]}},
                                 {"$set": {
-                                    "payment_status": "credited",
-                                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                                    "payment_status": "crediting",
+                                    "crediting_started_at": datetime.now(timezone.utc).isoformat(),
                                 }},
                             )
                             if updated:
@@ -452,7 +452,13 @@ async def stripe_webhook(request: Request):
                                     user_query["$or"].append({"_id": ObjectId(user_id)})
                                 except Exception:
                                     pass
-                                await db.users.update_one(user_query, {"$inc": {"bid_credits": credits_to_add}})
+                                credit_result = await db.users.update_one(user_query, {"$inc": {"bid_credits": credits_to_add}})
+                                if credit_result.modified_count != 1:
+                                    await db.payment_transactions.update_one(
+                                        {"session_id": event.session_id, "payment_status": "crediting"},
+                                        {"$set": {"payment_status": "crediting_failed", "crediting_error": "user_credit_failed"}},
+                                    )
+                                    raise RuntimeError("Bid-credit fulfillment failed: user not updated")
                                 if pending_id:
                                     await db.pending_credit_purchases.update_one(
                                         {"pending_id": pending_id},
@@ -462,6 +468,14 @@ async def stripe_webhook(request: Request):
                                             "session_id": event.session_id,
                                         }},
                                     )
+                                await db.payment_transactions.update_one(
+                                    {"session_id": event.session_id, "payment_status": "crediting"},
+                                    {"$set": {
+                                        "payment_status": "credited",
+                                        "status": "credited",
+                                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                                    }},
+                                )
                                 # Audit
                                 await db.transactions.insert_one({
                                     "id": secrets.token_hex(8),
