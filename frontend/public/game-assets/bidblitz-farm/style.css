@@ -144,3 +144,8 @@ footer span{display:block;margin-top:5px;color:#cdf5d7}
 .achievement.achieved span{background:#dfff8d22;color:#e7ffb7}
 @media(max-width:800px){.achievements{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:430px){.achievements{grid-template-columns:1fr}}
+
+.completion-row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;font-size:11px;color:#b6cfbd}
+.completion-row strong{color:#e7ffad}
+.completion-progress{height:9px;margin:7px 0 13px;border-radius:99px;background:#ffffff12;overflow:hidden}
+.completion-progress span{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6ce59a,#8eeaff,#e3ff8d)}
