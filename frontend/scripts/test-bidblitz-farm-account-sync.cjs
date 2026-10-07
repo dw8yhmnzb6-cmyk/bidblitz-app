@@ -50,3 +50,19 @@ test("invalid progress values fail safely instead of outranking valid state", ()
   assert.deepEqual(S.progressTuple({ day: "9", xp: -1, harvests: null }), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   assert.equal(S.chooseNewer(state(1, 0, 0), null), "local");
 });
+
+test("claimed milestone rewards and missions resolve otherwise equal device progress", () => {
+  const base = { day: 8, xp: 450, harvests: 10, claimedMissions: [], claimedLevelRewards: [] };
+  const withMission = { ...base, claimedMissions: ["first-harvest"] };
+  const withReward = { ...withMission, claimedLevelRewards: [5] };
+  assert.equal(S.chooseNewer(base, withMission), "remote");
+  assert.equal(S.chooseNewer(withMission, withReward), "remote");
+  assert.equal(S.chooseNewer(withReward, withReward), "local");
+  assert.equal(S.compareProgress({ ...withReward, claimedMissions: ["first-harvest", "first-harvest"] }, withReward), 0);
+});
+
+test("malformed sync subtrees never inflate the progress comparison", () => {
+  const safe = { day: 2, xp: 10, harvests: 1 };
+  const malformed = { day: 2, xp: 10, harvests: 1, buildings: { coop: -8 }, animals: { cow: { count: "999" } }, inventory: { eggs: -5 } };
+  assert.equal(S.compareProgress(safe, malformed), 0);
+});
