@@ -31,6 +31,7 @@ on:
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/components/GamesTranslationReadinessCard.jsx"
       - "frontend/src/components/GamesFinanceSandboxCard.jsx"
+      - "frontend/src/components/GamesPersonalRankingCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -73,6 +74,7 @@ on:
       - "frontend/src/components/GamesLanguageSelect.jsx"
       - "frontend/src/components/GamesTranslationReadinessCard.jsx"
       - "frontend/src/components/GamesFinanceSandboxCard.jsx"
+      - "frontend/src/components/GamesPersonalRankingCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -146,6 +148,8 @@ jobs:
           backend/tests/test_games_farm_progress.py
           backend/tests/test_games_farm_progress_mongo.py
           backend/tests/test_games_recent.py
+          backend/tests/test_games_integrity.py
+          backend/tests/test_games_rankings.py
           backend/tests/test_games_reviews.py
           backend/tests/test_games_preview.py
           backend/tests/test_games_catalog.py
@@ -184,6 +188,7 @@ jobs:
           src/components/GamesLanguageSelect.jsx
           src/components/GamesTranslationReadinessCard.jsx
           src/components/GamesFinanceSandboxCard.jsx
+          src/components/GamesPersonalRankingCard.jsx
           src/config/languagePolicy.mjs
           src/config/studioCreatePolicy.mjs
           src/config/gamesFavoritesPolicy.mjs
