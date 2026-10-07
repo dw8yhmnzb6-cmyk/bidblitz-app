@@ -186,6 +186,25 @@ test("legacy six-plot saves migrate to twelve slots without unlocking land", () 
   assert.equal(decoded.plots[11].id, 12);
 });
 
+test("season events are deterministic and affect virtual farm economy", () => {
+  const spring = F.initial(1234);
+  spring.day = 7;
+  spring.season = F.seasonForDay(7);
+  spring.weather = F.weatherFor(spring.seed, 7, spring.season);
+  const event = F.seasonEvent(spring);
+  assert.equal(event.id, "spring-fair");
+  const before = spring.coins;
+  const planted = F.plant(spring, 1, "wheat");
+  assert.equal(planted.ok, true);
+  assert.ok(before - planted.profile.coins < F.CROPS.wheat.seedCost);
+
+  const autumn = F.initial(1234);
+  autumn.day = 21;
+  autumn.season = F.seasonForDay(21);
+  autumn.weather = F.weatherFor(autumn.seed, 21, autumn.season);
+  assert.equal(F.seasonEvent(autumn).id, "autumn-festival");
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
