@@ -1252,12 +1252,12 @@ async def email_receipt(receipt_id: str, req: ReceiptEmailRequest, request: Requ
 
     recipient = str(req.email or "").strip()
     if not recipient and sale.get("customer_id"):
-        customer = await db.users.find_one({"_id": ObjectId(sale["customer_id"])}, {"email": 1})
+        customer_id = str(sale["customer_id"])
+        customer_query = {"_id": ObjectId(customer_id)} if ObjectId.is_valid(customer_id) else {"_id": customer_id}
+        customer = await db.users.find_one(customer_query, {"email": 1})
         recipient = str((customer or {}).get("email") or "").strip()
     if not recipient:
-        recipient = str(user.get("email") or "").strip()
-    if not recipient:
-        raise HTTPException(status_code=400, detail="Keine E-Mail-Adresse für den Beleg vorhanden")
+        raise HTTPException(status_code=400, detail="Keine Kunden-E-Mail-Adresse für den Beleg vorhanden")
 
     from core.email import EMAIL_ENABLED, get_base_template, send_email_detailed
     if not EMAIL_ENABLED:
