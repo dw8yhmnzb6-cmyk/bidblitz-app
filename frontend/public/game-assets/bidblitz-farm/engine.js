@@ -142,6 +142,33 @@
     return { ok: true, profile: next, revenue };
   }
 
+  function dailyTask(profile) {
+    if (!profile) return null;
+    const cycle = (profile.day - 1) % 4;
+    if (cycle === 0) {
+      return { id: 'plant', title: 'Pflanze 2 Felder', target: 2, value: profile.plots.filter(plot => plot.crop).length };
+    }
+    if (cycle === 1) {
+      return { id: 'water', title: 'Bewässere 3 Felder', target: 3, value: profile.plots.filter(plot => plot.watered).length };
+    }
+    if (cycle === 2) {
+      return { id: 'harvest', title: 'Erreiche 3 Ernten', target: 3, value: Math.min(3, profile.harvests) };
+    }
+    return { id: 'xp', title: 'Sammle 40 Farm-XP', target: 40, value: profile.xp % 40 };
+  }
+
+  function weatherEvent(profile) {
+    if (!profile) return null;
+    let rng = (profile.seed ^ ((profile.day * 3266489917) >>> 0) ^ 0x9e3779b9) >>> 0;
+    rng = xorshift(rng);
+    const roll = rng / 4294967296;
+    if (profile.weather === 'storm' && roll < .55) return { type: 'storm', icon: '🌪️', title: 'Sturmwarnung', text: 'Empfindliche Pflanzen verlieren bei Gewitter etwas Gesundheit.' };
+    if (profile.weather === 'rain' && roll < .45) return { type: 'rain', icon: '💧', title: 'Natürliche Bewässerung', text: 'Regen versorgt deine Felder automatisch mit Wasser.' };
+    if (profile.weather === 'sunny' && roll < .35) return { type: 'heat', icon: '🔥', title: 'Heißer Tag', text: 'Unbewässerte Felder wachsen heute langsamer.' };
+    if (roll < .18) return { type: 'market', icon: '🧺', title: 'Markttag', text: 'Plane deine nächste Ernte für gute virtuelle Verkaufserlöse.' };
+    return { type: 'calm', icon: '🌿', title: 'Ruhiger Farmtag', text: 'Gute Bedingungen für Pflege und Planung.' };
+  }
+
   function forecast(profile, days = 7) {
     if (!profile || !Number.isInteger(days) || days < 1 || days > 14) return [];
     return Array.from({ length: days }, (_, index) => {
@@ -181,6 +208,6 @@
   return {
     VERSION, PLOT_COUNT, SEASONS, WEATHER, CROPS,
     initial, plant, water, advanceDay, harvest, forecast,
-    weatherFor, seasonForDay, levelFromXp, decode,
+    weatherFor, seasonForDay, levelFromXp, dailyTask, weatherEvent, decode,
   };
 }));
