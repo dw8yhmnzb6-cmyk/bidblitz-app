@@ -205,6 +205,50 @@ test("season events are deterministic and affect virtual farm economy", () => {
   assert.equal(F.seasonEvent(autumn).id, "autumn-festival");
 });
 
+test("daily farm orders are deterministic and consume only virtual inventory", () => {
+  let farm = F.initial(909);
+  const first = F.orderBoard(farm);
+  const second = F.orderBoard(farm);
+  assert.deepEqual(first, second);
+  assert.equal(first.length, 3);
+  const order = first[0];
+
+  farm.inventory[order.itemId] = order.quantity;
+  const beforeCoins = farm.coins;
+  const beforeXp = farm.xp;
+  const fulfilled = F.fulfillOrder(farm, order.id);
+  assert.equal(fulfilled.ok, true);
+  assert.equal(fulfilled.profile.inventory[order.itemId], 0);
+  assert.equal(fulfilled.profile.completedOrders, 1);
+  assert.ok(fulfilled.profile.coins > beforeCoins);
+  assert.ok(fulfilled.profile.xp > beforeXp);
+  assert.equal(F.fulfillOrder(fulfilled.profile, order.id).ok, false);
+});
+
+test("harvests and animal products create order inventory without wallet fields", () => {
+  let farm = F.initial(910);
+  farm.coins = 500;
+  farm = F.plant(farm, 1, "wheat").profile;
+  for (let i = 0; i < 6 && !farm.plots[0].ready; i++) {
+    farm = F.water(farm, 1).profile;
+    farm = F.advanceDay(farm).profile;
+  }
+  const harvested = F.harvest(farm, 1);
+  assert.equal(harvested.ok, true);
+  assert.equal(harvested.profile.inventory.wheat, 1);
+
+  farm = harvested.profile;
+  farm = F.buyAnimal(farm, "chicken").profile;
+  farm = F.feedAnimals(farm, "chicken").profile;
+  farm = F.advanceDay(farm).profile;
+  const collected = F.collectAnimalProduct(farm, "chicken");
+  assert.equal(collected.ok, true);
+  assert.equal(collected.profile.inventory.eggs, 1);
+  for (const forbidden of ["wallet", "eur", "payout", "payment"]) {
+    assert.equal(forbidden in collected.profile, false);
+  }
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
