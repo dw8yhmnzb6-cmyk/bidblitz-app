@@ -366,6 +366,19 @@
     return { ok: true, profile: next };
   }
 
+  function onboardingSteps(profile) {
+    if (!profile) return [];
+    const animals = Object.values(profile.animals || {}).reduce((sum, herd) => sum + (herd.count || 0), 0);
+    const hasCrop = (profile.plots || []).some(plot => plot.crop);
+    return [
+      { id: 'plant', title: 'Erstes Feld bepflanzen', done: hasCrop || profile.harvests > 0 },
+      { id: 'harvest', title: 'Erste Pflanze ernten', done: profile.harvests > 0 },
+      { id: 'animal', title: 'Erstes Tier kaufen', done: animals > 0 },
+      { id: 'order', title: 'Erste Bestellung liefern', done: (profile.completedOrders || 0) > 0 },
+      { id: 'expand', title: 'Farm auf 9 Felder erweitern', done: (profile.unlockedPlots || PLOT_COUNT) >= 9 },
+    ];
+  }
+
   function completionScore(profile) {
     if (!profile) return { percent: 0, parts: {} };
     const missionList = missionStatus(profile);
@@ -613,6 +626,6 @@
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, animalProductBonus, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, completionScore, achievements, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
+    upgradeBuilding, missionStatus, claimMission, onboardingSteps, completionScore, achievements, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
