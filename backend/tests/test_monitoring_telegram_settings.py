@@ -6,6 +6,10 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+import os
+os.environ.setdefault("MONGO_URL", "mongodb://127.0.0.1:27017")
+os.environ.setdefault("DB_NAME", "bidblitz_test")
+
 
 def test_telegram_settings_do_not_expose_raw_credentials(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123456789:super-secret-bot-token")
