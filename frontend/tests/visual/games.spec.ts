@@ -711,6 +711,27 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   await expect(game.getByTestId('bidblitz-farm-game')).toBeVisible();
   await expect(game.getByRole('heading', { name: 'BidBlitz Farm' })).toBeVisible();
   await expect(game.getByText('7-Tage-Vorschau')).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Tiere' })).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Gebäude & Ausbau' })).toBeVisible();
+  await expect(game.getByRole('heading', { name: 'Missionen' })).toBeVisible();
+
+  const handle = await frame.elementHandle();
+  const farmFrame = await handle?.contentFrame();
+  expect(farmFrame).not.toBeNull();
+  const actions = await farmFrame!.evaluate(() => {
+    const api = (window as any).BidBlitzFarmPreview;
+    const bought = api.buyAnimal('chicken');
+    const fed = api.feedAnimals('chicken');
+    api.nextDay();
+    const collected = api.collectAnimalProduct('chicken');
+    const snapshot = api.snapshot();
+    return { bought, fed, collected, snapshot };
+  });
+  expect(actions.bought).toBe(true);
+  expect(actions.fed).toBe(true);
+  expect(actions.collected).toBe(true);
+  expect(actions.snapshot.animals.chicken.count).toBe(1);
+  expect(actions.snapshot.animals.chicken.ready).toBe(0);
   await expectNoHorizontalOverflow(page);
 });
 
