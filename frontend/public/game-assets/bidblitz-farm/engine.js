@@ -93,6 +93,8 @@
       inventory: Object.fromEntries(Object.keys(INVENTORY_ITEMS).map(id => [id, 0])),
       fulfilledOrders: [],
       completedOrders: 0,
+      orderStreak: 0,
+      lastOrderStreakDay: 0,
       claimedMissions: [],
       plots: Array.from({ length: MAX_PLOTS }, (_, index) => emptyPlot(index + 1)),
       lastEvent: 'Farm gestartet.',
@@ -399,6 +401,21 @@
     });
   }
 
+  function customerRank(profile) {
+    const completed = Math.max(0, Number(profile?.completedOrders) || 0);
+    if (completed >= 60) return { id: 'legend', name: 'Markt-Legende', level: 5 };
+    if (completed >= 30) return { id: 'expert', name: 'Liefer-Experte', level: 4 };
+    if (completed >= 15) return { id: 'trusted', name: 'Stamm-Lieferant', level: 3 };
+    if (completed >= 6) return { id: 'known', name: 'Bekannter Hof', level: 2 };
+    return { id: 'new', name: 'Neuer Lieferant', level: 1 };
+  }
+
+  function dailyOrderCompletion(profile, day = profile?.day) {
+    if (!profile || !Number.isInteger(day)) return 0;
+    const prefix = 'order-' + day + '-';
+    return (profile.fulfilledOrders || []).filter(id => id.startsWith(prefix)).length;
+  }
+
   function fulfillOrder(profile, orderId) {
     if (!profile || typeof orderId !== 'string') return { ok: false, profile, reason: 'order' };
     const order = orderBoard(profile).find(item => item.id === orderId);
@@ -411,8 +428,25 @@
     next.level = levelFromXp(next.xp);
     next.completedOrders = (next.completedOrders || 0) + 1;
     next.fulfilledOrders = [...(next.fulfilledOrders || []), order.id].slice(-90);
-    next.lastEvent = 'Bestellung geliefert: ' + order.quantity + '× ' + order.name + '.';
-    return { ok: true, profile: next, order };
+
+    const completedToday = dailyOrderCompletion(next, next.day);
+    let streakBonusCoins = 0;
+    let streakBonusXp = 0;
+    if (completedToday >= 3) {
+      next.orderStreak = next.lastOrderStreakDay === next.day - 1
+        ? Math.min(30, (next.orderStreak || 0) + 1)
+        : 1;
+      next.lastOrderStreakDay = next.day;
+      streakBonusCoins = 10 + next.orderStreak * 5;
+      streakBonusXp = 5 + next.orderStreak * 2;
+      next.coins += streakBonusCoins;
+      next.xp += streakBonusXp;
+      next.level = levelFromXp(next.xp);
+    }
+
+    next.lastEvent = 'Bestellung geliefert: ' + order.quantity + '× ' + order.name +
+      (streakBonusCoins ? ' · Serienbonus +' + streakBonusCoins + ' Münzen.' : '.');
+    return { ok: true, profile: next, order, streakBonusCoins, streakBonusXp };
   }
 
   function forecast(profile, days = 7) {
@@ -436,6 +470,8 @@
       if (!value.inventory) value.inventory = Object.fromEntries(Object.keys(INVENTORY_ITEMS).map(id => [id, 0]));
       if (!Array.isArray(value.fulfilledOrders)) value.fulfilledOrders = [];
       if (!Number.isInteger(value.completedOrders)) value.completedOrders = 0;
+      if (!Number.isInteger(value.orderStreak)) value.orderStreak = 0;
+      if (!Number.isInteger(value.lastOrderStreakDay)) value.lastOrderStreakDay = 0;
       if (!Array.isArray(value.claimedMissions)) value.claimedMissions = [];
       for (const [animalId, spec] of Object.entries(ANIMALS)) {
         const herd = value.animals[animalId];
@@ -449,6 +485,8 @@
         if (!int(value.inventory[id], 0, 1000000)) return null;
       }
       if (!int(value.completedOrders, 0, 1000000)) return null;
+      if (!int(value.orderStreak, 0, 30)) return null;
+      if (!int(value.lastOrderStreakDay, 0, value.day)) return null;
       if (value.fulfilledOrders.length > 90 || !value.fulfilledOrders.every(id => /^order-\d{1,6}-[0-2]$/.test(id))) return null;
       if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
       if (!Number.isInteger(value.unlockedPlots)) value.unlockedPlots = PLOT_COUNT;
@@ -481,6 +519,6 @@
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, orderBoard, fulfillOrder, decode,
+    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
