@@ -6,6 +6,7 @@
 
   const VERSION = 1;
   const PLOT_COUNT = 6;
+  const MAX_PLOTS = 12;
   const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'];
   const WEATHER = ['sunny', 'cloudy', 'rain', 'storm'];
   const CROPS = {
@@ -73,6 +74,7 @@
       xp: 0,
       level: 1,
       harvests: 0,
+      unlockedPlots: PLOT_COUNT,
       animals: {
         chicken: { count: 0, fed: false, progress: 0, ready: 0 },
         cow: { count: 0, fed: false, progress: 0, ready: 0 },
@@ -80,7 +82,7 @@
       },
       buildings: { coop: 1, barn: 1, silo: 1 },
       claimedMissions: [],
-      plots: Array.from({ length: PLOT_COUNT }, (_, index) => emptyPlot(index + 1)),
+      plots: Array.from({ length: MAX_PLOTS }, (_, index) => emptyPlot(index + 1)),
       lastEvent: 'Farm gestartet.',
     };
   }
@@ -88,7 +90,7 @@
   function plant(profile, plotId, cropId) {
     if (!profile || !CROPS[cropId]) return { ok: false, profile, reason: 'crop' };
     const index = profile.plots.findIndex(plot => plot.id === plotId);
-    if (index < 0 || profile.plots[index].crop) return { ok: false, profile, reason: 'plot' };
+    if (index < 0 || plotId > (profile.unlockedPlots || PLOT_COUNT) || profile.plots[index].crop) return { ok: false, profile, reason: 'plot' };
     const crop = CROPS[cropId];
     if (profile.coins < crop.seedCost) return { ok: false, profile, reason: 'coins' };
     const next = clone(profile);
@@ -103,7 +105,7 @@
 
   function water(profile, plotId) {
     const index = profile?.plots?.findIndex(plot => plot.id === plotId) ?? -1;
-    if (index < 0 || !profile.plots[index].crop || profile.plots[index].ready) return { ok: false, profile };
+    if (index < 0 || plotId > (profile.unlockedPlots || PLOT_COUNT) || !profile.plots[index].crop || profile.plots[index].ready) return { ok: false, profile };
     const next = clone(profile);
     next.plots[index].watered = true;
     next.lastEvent = 'Feld ' + plotId + ' bewässert.';
@@ -162,14 +164,15 @@
 
   function harvest(profile, plotId) {
     const index = profile?.plots?.findIndex(plot => plot.id === plotId) ?? -1;
-    if (index < 0 || !profile.plots[index].crop || !profile.plots[index].ready) return { ok: false, profile };
+    if (index < 0 || plotId > (profile.unlockedPlots || PLOT_COUNT) || !profile.plots[index].crop || !profile.plots[index].ready) return { ok: false, profile };
     const next = clone(profile);
     const plot = next.plots[index];
     const crop = CROPS[plot.crop];
     const healthMultiplier = Math.max(.5, plot.health / 100);
     const seasonBonus = crop.preferred.includes(SEASONS[next.season]) ? 1.1 : 1;
     const siloBonus = 1 + Math.max(0, (next.buildings?.silo || 1) - 1) * 0.05;
-    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus));
+    const marketBonus = marketMultiplier(next, crop.id);
+    const revenue = Math.max(1, Math.floor(crop.sell * healthMultiplier * seasonBonus * siloBonus * marketBonus));
     next.coins += revenue;
     next.xp += crop.xp;
     next.level = levelFromXp(next.xp);
@@ -251,7 +254,7 @@
     if (!profile || !spec || !herd || herd.ready <= 0) return { ok: false, profile };
     const next = clone(profile);
     const quantity = next.animals[animalId].ready;
-    const revenue = quantity * spec.productValue;
+    const revenue = Math.max(1, Math.floor(quantity * spec.productValue * marketMultiplier(next, animalId)));
     next.animals[animalId].ready = 0;
     next.coins += revenue;
     next.xp += quantity * spec.xp;
@@ -305,6 +308,41 @@
     return { ok: true, profile: next };
   }
 
+  function marketMultiplier(profile, itemId) {
+    if (!profile) return 1;
+    let hash = 0;
+    for (let i = 0; i < String(itemId).length; i++) hash = ((hash * 31) + String(itemId).charCodeAt(i)) >>> 0;
+    let rng = (profile.seed ^ ((profile.day * 1597334677) >>> 0) ^ hash) >>> 0;
+    rng = xorshift(rng);
+    return 0.85 + (rng / 4294967296) * 0.45;
+  }
+
+  function marketSnapshot(profile) {
+    const crops = Object.fromEntries(Object.keys(CROPS).map(id => [id, Number(marketMultiplier(profile, id).toFixed(2))]));
+    const animals = Object.fromEntries(Object.keys(ANIMALS).map(id => [id, Number(marketMultiplier(profile, id).toFixed(2))]));
+    return { day: profile.day, crops, animals };
+  }
+
+  function landExpansionCost(profile) {
+    const unlocked = profile?.unlockedPlots || PLOT_COUNT;
+    if (unlocked >= MAX_PLOTS) return null;
+    return unlocked === 6 ? 180 : 360;
+  }
+
+  function expandLand(profile) {
+    if (!profile) return { ok: false, profile, reason: 'farm' };
+    const cost = landExpansionCost(profile);
+    if (cost === null) return { ok: false, profile, reason: 'max' };
+    if (profile.coins < cost) return { ok: false, profile, reason: 'coins' };
+    const next = clone(profile);
+    next.coins -= cost;
+    next.unlockedPlots = Math.min(MAX_PLOTS, (next.unlockedPlots || PLOT_COUNT) + 3);
+    next.xp += 20;
+    next.level = levelFromXp(next.xp);
+    next.lastEvent = 'Farmfläche auf ' + next.unlockedPlots + ' Felder erweitert.';
+    return { ok: true, profile: next, cost };
+  }
+
   function forecast(profile, days = 7) {
     if (!profile || !Number.isInteger(days) || days < 1 || days > 14) return [];
     return Array.from({ length: days }, (_, index) => {
@@ -333,8 +371,13 @@
         if (!int(value.buildings[buildingId], 1, spec.maxLevel)) return null;
       }
       if (!value.claimedMissions.every(id => MISSIONS.some(mission => mission.id === id))) return null;
-      if (!Array.isArray(value.plots) || value.plots.length !== PLOT_COUNT) return null;
-      for (let i = 0; i < PLOT_COUNT; i++) {
+      if (!Number.isInteger(value.unlockedPlots)) value.unlockedPlots = PLOT_COUNT;
+      if (![6, 9, 12].includes(value.unlockedPlots)) return null;
+      if (!Array.isArray(value.plots) || ![PLOT_COUNT, MAX_PLOTS].includes(value.plots.length)) return null;
+      if (value.plots.length === PLOT_COUNT) {
+        value.plots = value.plots.concat(Array.from({ length: MAX_PLOTS - PLOT_COUNT }, (_, index) => emptyPlot(PLOT_COUNT + index + 1)));
+      }
+      for (let i = 0; i < MAX_PLOTS; i++) {
         const plot = value.plots[i];
         if (!plot || plot.id !== i + 1 || !int(plot.health, 0, 100) || typeof plot.watered !== 'boolean' || typeof plot.ready !== 'boolean') return null;
         if (plot.crop === null) {
@@ -354,10 +397,10 @@
   }
 
   return {
-    VERSION, PLOT_COUNT, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS,
+    VERSION, PLOT_COUNT, MAX_PLOTS, SEASONS, WEATHER, CROPS, ANIMALS, BUILDINGS, MISSIONS,
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, weatherEvent,
     buildingUpgradeCost, animalCapacity, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, decode,
+    upgradeBuilding, missionStatus, claimMission, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, decode,
   };
 }));
