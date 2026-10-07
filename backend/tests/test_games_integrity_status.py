@@ -61,7 +61,7 @@ class GamesIntegrityStatusTest(unittest.TestCase):
         self.assertFalse(result["public_trusted_leaderboards_enabled"])
         self.assertEqual(result["privacy"], "aggregate_counts_only")
         serialized = str(result)
-        for secret in ("owner_id", "email", "score", "best"):
+        for secret in ("owner_id", "email", "total_score", "best"):
             self.assertNotIn(secret, serialized)
 
     def test_super_admin_is_allowed(self):
