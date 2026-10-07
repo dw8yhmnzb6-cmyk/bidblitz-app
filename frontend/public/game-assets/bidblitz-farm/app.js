@@ -1,7 +1,10 @@
 (function () {
   'use strict';
   const F = window.BidBlitzFarm;
+  const S = window.BidBlitzFarmAccountSync;
   const KEY = 'bidblitz.farm.preview.v1';
+  const META_KEY = 'bidblitz.farm.account-sync.v1';
+  const PROGRESS_API = '/api/games/progress/farm';
   const $ = id => document.getElementById(id);
   const CROP_ICON = { wheat:'🌾', corn:'🌽', tomato:'🍅', carrot:'🥕' };
   const WEATHER_ICON = { sunny:'☀️', cloudy:'☁️', rain:'🌧️', storm:'⛈️' };
@@ -17,17 +20,104 @@
     }
   };
 
-  let raw = null;
+  let raw = null, rawMeta = null;
   let storageOK = true;
-  try { raw = localStorage.getItem(KEY); } catch { storageOK = false; }
+  try { raw = localStorage.getItem(KEY); rawMeta = localStorage.getItem(META_KEY); } catch { storageOK = false; }
   let profile = F.decode(raw) || F.initial(seed());
+  let accountRevision = 0, accountSync = 'pending', syncActive = false, syncQueued = false;
+  try {
+    const meta = JSON.parse(rawMeta || '{}');
+    if (Number.isInteger(meta.revision) && meta.revision >= 0) accountRevision = meta.revision;
+  } catch {}
+
+  function saveMeta() {
+    try { localStorage.setItem(META_KEY, JSON.stringify({ revision: accountRevision })); } catch {}
+  }
 
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(profile)); storageOK = true; }
     catch { storageOK = false; }
-    $('save-note').textContent = storageOK
-      ? 'Lokaler Spielstand gespeichert. Keine Wallet-Verbindung.'
-      : 'Lokales Speichern ist hier nicht verfügbar.';
+    if (!storageOK) $('save-note').textContent = 'Lokales Speichern ist hier nicht verfügbar.';
+    else if (accountSync === 'account') $('save-note').textContent = 'Farm-Spielstand wird im BidBlitz-Konto synchronisiert. Virtuelle Farm-Münzen sind kein Wallet-Guthaben.';
+    else if (accountSync === 'error') $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung ist vorübergehend nicht verfügbar.';
+    else if (accountSync === 'guest') $('save-note').textContent = 'Farm-Spielstand wird nur auf diesem Gerät gespeichert. Keine Wallet-Verbindung.';
+    else $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung wird geprüft.';
+  }
+
+  function adoptRemote(remote) {
+    if (!remote || !remote.exists || !remote.state) return false;
+    const decoded = F.decode(JSON.stringify(remote.state));
+    if (!decoded) return false;
+    profile = decoded;
+    accountRevision = Number.isInteger(remote.revision) ? remote.revision : 0;
+    saveMeta();
+    persist();
+    render();
+    return true;
+  }
+
+  async function pushFarmState(revision, retries = 1) {
+    const response = await fetch(PROGRESS_API, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision, state: profile }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) {
+      accountRevision = body.revision || revision + 1;
+      saveMeta();
+      accountSync = 'account';
+      persist();
+      return true;
+    }
+    if (response.status === 409 && body.detail && body.detail.current) {
+      const current = body.detail.current;
+      if (current.exists && current.state && S.compareProgress(profile, current.state) > 0 && retries > 0) {
+        accountRevision = current.revision || 0;
+        saveMeta();
+        return pushFarmState(accountRevision, retries - 1);
+      }
+      if (current.exists) adoptRemote(current);
+      return false;
+    }
+    throw new Error('farm-progress-save');
+  }
+
+  async function syncAccountProgress() {
+    if (!S) return;
+    if (syncActive) { syncQueued = true; return; }
+    syncActive = true; syncQueued = false;
+    try {
+      const response = await fetch(PROGRESS_API, { credentials: 'include' });
+      if (response.status === 401 || response.status === 403) {
+        accountSync = 'guest'; persist(); return;
+      }
+      if (!response.ok) throw new Error('farm-progress-load');
+      const remote = await response.json();
+
+      if (!remote.exists) {
+        await pushFarmState(0);
+      } else if (S.chooseNewer(profile, remote.state) === 'remote') {
+        adoptRemote(remote);
+        accountSync = 'account'; persist();
+      } else {
+        accountRevision = remote.revision || 0;
+        saveMeta();
+        await pushFarmState(accountRevision);
+      }
+    } catch {
+      accountSync = 'error';
+      persist();
+    } finally {
+      syncActive = false;
+      if (syncQueued) { syncQueued = false; queueMicrotask(syncAccountProgress); }
+    }
+  }
+
+  function persistAndSync() {
+    persist();
+    syncAccountProgress();
   }
 
   function renderForecast() {
@@ -108,7 +198,7 @@
             return;
           }
           profile = result.profile;
-          persist();
+          persistAndSync();
           render();
         });
         actions.append(plant);
@@ -121,7 +211,7 @@
           const result = F.harvest(profile, plot.id);
           if (!result.ok) return;
           profile = result.profile;
-          persist();
+          persistAndSync();
           render();
         });
         actions.append(harvest);
@@ -134,7 +224,7 @@
           const result = F.water(profile, plot.id);
           if (!result.ok) return;
           profile = result.profile;
-          persist();
+          persistAndSync();
           render();
         });
         actions.append(water);
@@ -162,34 +252,36 @@
     const result = F.advanceDay(profile);
     if (!result.ok) return;
     profile = result.profile;
-    persist();
+    persistAndSync();
     render();
   });
 
   renderCropSelect();
   persist();
   render();
+  syncAccountProgress();
   window.BidBlitzFarmPreview = {
     snapshot: () => JSON.parse(JSON.stringify(profile)),
+    syncProgress: syncAccountProgress,
     plant: (plotId, cropId) => {
       const result = F.plant(profile, plotId, cropId);
-      if (result.ok) { profile = result.profile; persist(); render(); }
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
     water: plotId => {
       const result = F.water(profile, plotId);
-      if (result.ok) { profile = result.profile; persist(); render(); }
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
     nextDay: () => {
       profile = F.advanceDay(profile).profile;
-      persist();
+      persistAndSync();
       render();
       return true;
     },
     harvest: plotId => {
       const result = F.harvest(profile, plotId);
-      if (result.ok) { profile = result.profile; persist(); render(); }
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
   };
