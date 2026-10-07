@@ -53,7 +53,7 @@ const FIRST_PARTY_GAMES = [
   { id: "match", title: "BidBlitz Match", category: "Puzzle", text: "matchText", available: true },
   { id: "bubble", title: "Bubble Islands", category: "Puzzle", text: "bubbleText", available: true },
   { id: "runner", title: "Blitz Runner", category: "Arcade", text: "runnerText", available: true },
-  { id: "farm", title: "BidBlitz Farm", category: "Strategy", text: "farmText", available: false, planned: true },
+  { id: "farm", title: "BidBlitz Farm", category: "Strategy", text: "farmText", available: true },
 ];
 
 export default function GamesPage({ onBack, onNavigate, preview = false }) {
@@ -103,7 +103,7 @@ export default function GamesPage({ onBack, onNavigate, preview = false }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const ids = ["match", "bubble", "runner", ...publishedGames.map((game) => game.id)]
+    const ids = ["match", "bubble", "runner", "farm", ...publishedGames.map((game) => game.id)]
       .filter((value, index, values) => typeof value === "string" && value && values.indexOf(value) === index)
       .slice(0, 50);
     if (ids.length === 0) {
