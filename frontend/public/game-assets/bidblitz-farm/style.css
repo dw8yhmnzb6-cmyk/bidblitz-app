@@ -117,3 +117,19 @@ footer span{display:block;margin-top:5px;color:#cdf5d7}
 .order-status span{display:block;color:#a9cdb4;font-size:10px}
 .order-status strong{display:block;margin-top:4px;font-size:13px;color:#e6ffb4}
 @media(max-width:700px){.order-status{grid-template-columns:1fr}}
+
+.level-panel{margin:18px 0;padding:16px;border:1px solid #c9ff8d22;border-radius:22px;background:linear-gradient(135deg,#203c27,#163328)}
+.level-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.level-panel-head h3{margin:4px 0 0;font-size:17px}
+.level-panel-head strong{font-size:14px;color:#e3ff9d}
+.level-progress{height:10px;margin:12px 0;border-radius:99px;background:#ffffff12;overflow:hidden}
+.level-progress span{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#71dc8e,#dfff8d)}
+.level-rewards{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.level-reward{border:1px solid #ffffff10;border-radius:13px;background:#ffffff07;padding:9px;text-align:center}
+.level-reward.unlocked{border-color:#dfff8d55;background:#dfff8d10}
+.level-reward.claimed{opacity:.58}
+.level-reward b{display:block;font-size:11px}
+.level-reward span{display:block;margin-top:3px;font-size:10px;color:#adcab5}
+.level-reward button{width:100%;margin-top:7px;padding:7px 6px;font-size:10px}
+@media(max-width:760px){.level-rewards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:430px){.level-rewards{grid-template-columns:repeat(2,1fr)}}
