@@ -7,9 +7,9 @@
   function progressTuple(state) {
     if (!state || typeof state !== 'object') return [0, 0, 0];
     return [
-      Number.isInteger(state.day) ? state.day : 0,
-      Number.isInteger(state.xp) ? state.xp : 0,
-      Number.isInteger(state.harvests) ? state.harvests : 0,
+      Number.isInteger(state.day) && state.day >= 0 ? state.day : 0,
+      Number.isInteger(state.xp) && state.xp >= 0 ? state.xp : 0,
+      Number.isInteger(state.harvests) && state.harvests >= 0 ? state.harvests : 0,
     ];
   }
 
