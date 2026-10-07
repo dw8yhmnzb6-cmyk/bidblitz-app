@@ -82,10 +82,18 @@ class GamesIntegrityTest(unittest.TestCase):
             {"owner_id": "bob", "unlocked": 1},
         ])
         self.verified = Collection()
+        self.match_progress = Collection([{"owner_id": "alice", "unlocked": 3}])
+        self.match_verified = Collection()
+        self.bubble_progress = Collection([{"owner_id": "alice", "unlocked": 3}])
+        self.bubble_verified = Collection()
         integrity.db = types.SimpleNamespace(
             games_integrity_sessions=self.sessions,
             games_runner_progress=self.progress,
             games_runner_verified_progress=self.verified,
+            games_match_progress=self.match_progress,
+            games_match_verified_progress=self.match_verified,
+            games_bubble_progress=self.bubble_progress,
+            games_bubble_verified_progress=self.bubble_verified,
         )
 
     def tearDown(self):
@@ -105,6 +113,80 @@ class GamesIntegrityTest(unittest.TestCase):
             "expires_at": expires or (datetime.now(timezone.utc) + timedelta(minutes=10)),
         })
         return session_id
+
+    def find_winning_match_fixture(self, level=1):
+        for seed in range(1, 400):
+            state = integrity._match_create(level, seed)
+            actions = []
+            for _ in range(80):
+                if state["status"] != "playing":
+                    break
+                pair = integrity._match_hint(state["board"])
+                if not pair:
+                    break
+                actions.append({"a": pair[0], "b": pair[1]})
+                state = integrity._match_swap(state, pair[0], pair[1])
+            if state["status"] == "won":
+                return seed, actions, state
+        self.fail("No deterministic Match winning fixture found")
+
+    def test_match_server_replay_can_reproduce_complete_win(self):
+        seed, actions, final_state = self.find_winning_match_fixture()
+        result = integrity.replay_match(1, seed, actions)
+        self.assertEqual(result["status"], "won")
+        self.assertEqual(result["score"], final_state["score"])
+        self.assertEqual(result["turns"], len(actions))
+        self.assertGreaterEqual(result["stars"], 1)
+
+    def test_verified_match_win_consumes_session_and_updates_progress(self):
+        seed, actions, _ = self.find_winning_match_fixture()
+        session_id = "m" * 32
+        self.sessions.docs.append({
+            "_id": session_id,
+            "owner_id": "alice",
+            "game_id": "match",
+            "level": 1,
+            "seed": seed,
+            "used": False,
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+        })
+        body = integrity.MatchVerifyInput(
+            session_id=session_id,
+            actions=[integrity.MatchSwapInput(**action) for action in actions],
+        )
+        result = asyncio.run(integrity.verify_match_integrity(body, None))
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["status"], "won")
+        self.assertFalse(result["public_trusted_leaderboard_enabled"])
+
+        progress = asyncio.run(integrity.get_match_verified_progress(None))
+        self.assertEqual(progress["best"][0], result["score"])
+        self.assertEqual(progress["stars"][0], result["stars"])
+        self.assertEqual(progress["verified_levels"], 1)
+
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(integrity.verify_match_integrity(body, None))
+        self.assertEqual(context.exception.status_code, 404)
+
+    def test_match_session_creation_respects_unlocks(self):
+        created = asyncio.run(
+            integrity.create_match_integrity_session(
+                integrity.MatchSessionInput(level=3),
+                None,
+            )
+        )
+        self.assertEqual(created["game_id"], "match")
+        self.assertEqual(created["level"], 3)
+        self.assertEqual(len(created["session_id"]), 32)
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(
+                integrity.create_match_integrity_session(
+                    integrity.MatchSessionInput(level=4),
+                    None,
+                )
+            )
+        self.assertEqual(context.exception.status_code, 409)
 
     def test_backend_replay_matches_shared_browser_vectors(self):
         for vector in self.vectors:
