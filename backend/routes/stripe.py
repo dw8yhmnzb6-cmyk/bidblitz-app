@@ -225,7 +225,7 @@ async def checkout_status(session_id: str, request: Request):
 
     # Poll Stripe for current status
     host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
+    webhook_url = f"{host_url}/api/stripe/webhook"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
     stripe_status = await stripe_checkout.get_checkout_status(session_id)
@@ -361,7 +361,7 @@ async def stripe_webhook(request: Request):
 
     try:
         host_url = str(request.base_url).rstrip("/")
-        webhook_url = f"{host_url}/api/webhook/stripe"
+        webhook_url = f"{host_url}/api/stripe/webhook"
         stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
         event = await stripe_checkout.handle_webhook(body, signature)
 
