@@ -367,6 +367,50 @@
     });
   }
 
+  function renderOrders() {
+    const inventoryBox = $('inventory');
+    const ordersBox = $('orders');
+    inventoryBox.replaceChildren();
+    ordersBox.replaceChildren();
+
+    for (const [id, spec] of Object.entries(F.INVENTORY_ITEMS)) {
+      const item = document.createElement('div');
+      item.className = 'inventory-item';
+      item.innerHTML = '<span>' + spec.icon + '</span><b>' + (profile.inventory?.[id] || 0) + '</b>';
+      item.title = spec.name;
+      inventoryBox.append(item);
+    }
+
+    F.orderBoard(profile).forEach(order => {
+      const card = document.createElement('article');
+      card.className = 'order-card' + (order.fulfilled ? ' done' : '');
+      card.innerHTML =
+        '<h3>' + order.icon + ' ' + order.quantity + '× ' + order.name + '</h3>' +
+        '<p>Bonus: +' + order.rewardCoins + ' Münzen · +' + order.rewardXp + ' XP</p>' +
+        '<p>Lager: ' + (profile.inventory?.[order.itemId] || 0) + ' / ' + order.quantity + '</p>';
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'primary';
+      button.textContent = order.fulfilled ? 'Geliefert' : 'Liefern';
+      button.disabled = order.fulfilled || !order.available;
+      button.addEventListener('click', () => {
+        const result = F.fulfillOrder(profile, order.id);
+        if (!result.ok) {
+          $('event').textContent = result.reason === 'inventory'
+            ? 'Nicht genug Lagerbestand für diese Bestellung.'
+            : 'Bestellung kann nicht geliefert werden.';
+          return;
+        }
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+      card.append(button);
+      ordersBox.append(card);
+    });
+  }
+
   function renderMarket() {
     const box = $('market');
     box.replaceChildren();
@@ -421,6 +465,7 @@
     $('event').textContent = profile.lastEvent || 'Farm bereit.';
     renderForecast();
     renderMarket();
+    renderOrders();
     renderLand();
     renderBrief();
     renderPlots();
@@ -507,5 +552,11 @@
       return result.ok;
     },
     market: () => F.marketSnapshot(profile),
+    orders: () => F.orderBoard(profile),
+    fulfillOrder: orderId => {
+      const result = F.fulfillOrder(profile, orderId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
   };
 }());
