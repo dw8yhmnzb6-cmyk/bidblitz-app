@@ -158,3 +158,34 @@ footer span{display:block;margin-top:5px;color:#cdf5d7}
 .onboarding-step span{display:block;margin-top:6px;font-size:10px;color:#aecab6}
 @media(max-width:800px){.onboarding-steps{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:430px){.onboarding-steps{grid-template-columns:1fr}}
+
+/* Compact touch-first Farm layout. Keep two fields per row on normal phones. */
+button{min-height:44px;touch-action:manipulation}
+button:focus-visible,select:focus-visible{outline:3px solid #dfff8d;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.5}
+.farm-shell{width:100%;min-width:0;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+.farm-card,.plot,.order-card,.mission,.market-panel,.orders-panel{min-width:0}
+.farm-card-actions{flex-wrap:wrap}
+.farm-card-actions button{flex:1 1 75px;min-width:0;overflow-wrap:anywhere}
+@media(max-width:430px){
+  .farm-shell{padding:12px}
+  .plots{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .plot{padding:10px;min-height:170px;border-radius:16px}
+  .plot-head{font-size:10px}
+  .crop-icon{font-size:29px;margin:10px 0 5px}
+  .crop-name{font-size:13px}
+  .plot-actions button{font-size:11px;min-height:44px}
+  .forecast-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .weather-card{padding:14px;border-radius:20px}
+  .weather-icon{width:60px;height:60px;font-size:32px}
+  .weather-main h2{font-size:21px}
+  .order-status{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .order-status div{padding:8px}
+  .order-status strong{font-size:11px;overflow-wrap:anywhere}
+  .inventory-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:340px){
+  .plots{grid-template-columns:1fr}
+  .forecast-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .order-status{grid-template-columns:1fr}
+}
