@@ -9,6 +9,11 @@ if str(BACKEND_DIR) not in sys.path:
 import os
 os.environ.setdefault("MONGO_URL", "mongodb://127.0.0.1:27017")
 os.environ.setdefault("DB_NAME", "bidblitz_test")
+os.environ.setdefault("JWT_SECRET", "x" * 64)
+os.environ.setdefault("ADMIN_EMAIL", "admin@bidblitz.ae")
+os.environ.setdefault("ADMIN_PASSWORD", "Strong-Test-Password-2026")
+os.environ.setdefault("FRONTEND_URL", "https://example.test")
+os.environ.setdefault("BACKEND_URL", "https://api.example.test")
 
 
 def test_telegram_settings_do_not_expose_raw_credentials(monkeypatch):
