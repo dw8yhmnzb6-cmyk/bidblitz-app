@@ -256,6 +256,29 @@ async function mockGamesAdminApis(page: Page) {
       }),
     });
   });
+  await page.route('**/api/admin/game-studio/launch-readiness', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        non_monetary_launch_ready: false,
+        commercial_launch_ready: false,
+        blockers: ['human_translation_review', 'physical_device_acceptance', 'production_approval', 'billing_provider'],
+        technical: { ready: true, scope: 'games_non_monetary_preflight' },
+        translations: { source_language: 'en', required: 50, reviewed: 0, ready: false },
+        integrity: {
+          server_replay_games: ['match', 'bubble', 'runner'],
+          ready: true,
+          public_trusted_leaderboards_enabled: false,
+        },
+        physical_devices: { accepted: false },
+        production: { approved: false },
+        billing: { ready: false },
+        side_effects: 'none',
+      }),
+    });
+  });
+
   await page.route('**/api/admin/game-studio/integrity/status', async (route) => {
     await route.fulfill({
       status: 200,
@@ -648,6 +671,16 @@ test('Games admin operations diagnostics render without private data', async ({ 
   await expect(integrity.getByText('Aus', { exact: true })).toBeVisible();
   await expect(integrity).not.toContainText('owner_id');
   await expect(integrity).not.toContainText('email');
+
+  const readiness = page.getByTestId('games-launch-readiness-card');
+  await expect(readiness).toBeVisible();
+  await expect(readiness.getByText('Launch-Readiness')).toBeVisible();
+  await expect(readiness.getByText('Nicht-monetärer Launch')).toBeVisible();
+  await expect(readiness.getByText('Kommerzieller Launch')).toBeVisible();
+  await expect(readiness.getByText('Menschliche Sprachprüfung')).toBeVisible();
+  await expect(readiness.getByText('Physische Geräteabnahme')).toBeVisible();
+  await expect(readiness.getByText('Production-Freigabe')).toBeVisible();
+  await expect(readiness.getByText('Billing-Anbieter')).toBeVisible();
 
   const finance = page.getByTestId('games-finance-sandbox-admin');
   await expect(finance).toBeVisible();
