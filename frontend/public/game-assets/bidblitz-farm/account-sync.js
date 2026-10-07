@@ -15,6 +15,8 @@
     const inventory = state.inventory && typeof state.inventory === 'object'
       ? Object.values(state.inventory).reduce((sum, value) => sum + (Number.isInteger(value) && value >= 0 ? value : 0), 0)
       : 0;
+    const claimedMissions = Array.isArray(state.claimedMissions) ? new Set(state.claimedMissions).size : 0;
+    const claimedLevelRewards = Array.isArray(state.claimedLevelRewards) ? new Set(state.claimedLevelRewards).size : 0;
     return [
       Number.isInteger(state.day) && state.day >= 0 ? state.day : 0,
       Number.isInteger(state.xp) && state.xp >= 0 ? state.xp : 0,
@@ -24,6 +26,8 @@
       buildings,
       animals,
       inventory,
+      claimedMissions,
+      claimedLevelRewards,
     ];
   }
 
