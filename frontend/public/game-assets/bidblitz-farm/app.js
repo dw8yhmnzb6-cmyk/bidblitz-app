@@ -120,6 +120,38 @@
     syncAccountProgress();
   }
 
+  function renderLevelProgress() {
+    const progress = F.nextLevelProgress(profile);
+    $('level-progress-current').textContent = progress.level;
+    $('level-progress-next').textContent = progress.level >= 50 ? 50 : progress.level + 1;
+    $('level-progress-percent').textContent = progress.percent + '%';
+    $('level-progress-bar').style.width = progress.percent + '%';
+
+    const box = $('level-rewards');
+    box.replaceChildren();
+    F.levelRewardStatus(profile).forEach(reward => {
+      const node = document.createElement('article');
+      node.className = 'level-reward' + (reward.unlocked ? ' unlocked' : '') + (reward.claimed ? ' claimed' : '');
+      node.innerHTML =
+        '<b>Level ' + reward.level + '</b>' +
+        '<span>' + reward.title + '</span>' +
+        '<span>+' + reward.rewardCoins + ' Münzen · +' + reward.rewardXp + ' XP</span>';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = reward.claimed ? 'Eingelöst' : reward.unlocked ? 'Belohnung' : 'Gesperrt';
+      button.disabled = reward.claimed || !reward.unlocked;
+      button.addEventListener('click', () => {
+        const result = F.claimLevelReward(profile, reward.level);
+        if (!result.ok) return;
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+      node.append(button);
+      box.append(node);
+    });
+  }
+
   function renderForecast() {
     const box = $('forecast');
     box.replaceChildren();
@@ -470,6 +502,7 @@
     $('harvests').textContent = profile.harvests;
     $('event').textContent = profile.lastEvent || 'Farm bereit.';
     renderForecast();
+    renderLevelProgress();
     renderMarket();
     renderOrders();
     renderLand();
@@ -561,6 +594,11 @@
     orders: () => F.orderBoard(profile),
     fulfillOrder: orderId => {
       const result = F.fulfillOrder(profile, orderId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    claimLevelReward: level => {
+      const result = F.claimLevelReward(profile, level);
       if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
