@@ -397,6 +397,14 @@ test("farm onboarding steps are derived from existing progress", () => {
   assert.equal(Object.values(steps).every(Boolean), true);
 });
 
+test("saved Farm orders reject duplicates and future dates", () => {
+  const profile = F.initial(456);
+  const duplicate = { ...profile, fulfilledOrders: ["order-1-0", "order-1-0"] };
+  const future = { ...profile, fulfilledOrders: ["order-2-0"] };
+  assert.equal(F.decode(JSON.stringify(duplicate)), null);
+  assert.equal(F.decode(JSON.stringify(future)), null);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
