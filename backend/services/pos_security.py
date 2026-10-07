@@ -777,32 +777,118 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
     payment = await db.pos_payments.find_one({"payment_id": refund_payload["payment_id"]})
     if not payment:
         raise HTTPException(status_code=404, detail="Zahlung nicht gefunden")
-    refund_amount = round(float(refund_payload.get("amount") or payment.get("amount") or 0), 2)
+
+    payment_amount = round(float(payment.get("amount") or 0), 2)
+    already_refunded = round(float(payment.get("refunded_total") or 0), 2)
+    remaining_refundable = round(max(payment_amount - already_refunded, 0), 2)
+    refund_amount = round(float(refund_payload.get("amount") or remaining_refundable), 2)
     method = payment.get("method", "")
+
     if refund_amount <= 0:
         raise HTTPException(status_code=400, detail="Refund-Betrag ungültig")
+    if remaining_refundable <= 0:
+        raise HTTPException(status_code=409, detail="Zahlung wurde bereits vollständig erstattet")
+    if refund_amount > remaining_refundable:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Refund überschreitet Restbetrag von EUR {remaining_refundable:.2f}",
+        )
+
+    refund_key = (
+        f"pos-refund:{payment['payment_id']}:{approval_id}"
+        if approval_id
+        else f"pos-refund:{payment['payment_id']}:{already_refunded:.2f}:{refund_amount:.2f}"
+    )
+    existing_refund = await db.pos_refunds.find_one({"idempotency_key": refund_key}, {"_id": 0})
+    if existing_refund:
+        return existing_refund
+
     if method in {"wallet_qr", "barcode", "secure_wallet"} and payment.get("customer_id"):
         merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
-        if merchant:
-            owner_id = str(merchant["owner_id"])
-            await debit_wallet(
+        if not merchant:
+            raise HTTPException(status_code=409, detail="Händlerkonto für Refund nicht gefunden")
+
+        owner_id = str(merchant["owner_id"])
+        merchant_debit = await debit_wallet(
+            user_id=owner_id,
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Refund {payment['payment_id']} Merchant Reversal",
+            reference=f"MRFD-{payment['payment_id']}-{refund_key[-12:]}",
+            merchant_name=merchant.get("business_name", ""),
+            metadata={"approval_id": approval_id or None, "payment_id": payment["payment_id"], "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "merchant_reversal"}},
+            idempotency_key=f"{refund_key}:merchant",
+        )
+        if not merchant_debit.success:
+            raise HTTPException(status_code=409, detail=merchant_debit.error or "Händlerbelastung für Refund fehlgeschlagen")
+
+        customer_credit = await credit_wallet(
+            user_id=payment["customer_id"],
+            amount=refund_amount,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Refund {payment['payment_id']}",
+            reference=f"RFD-{payment['payment_id']}-{refund_key[-12:]}",
+            metadata={"approval_id": approval_id or None, "payment_id": payment["payment_id"], "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "customer_refund"}},
+            idempotency_key=f"{refund_key}:customer",
+        )
+        if not customer_credit.success:
+            rollback = await credit_wallet(
                 user_id=owner_id,
                 amount=refund_amount,
                 tx_type=TransactionType.REFUND,
-                description=f"POS Refund {payment['payment_id']} Merchant Reversal",
-                reference=f"MRFD-{payment['payment_id']}",
-                merchant_name=merchant.get("business_name", ""),
-                metadata={"approval_id": approval_id or None, "payment_id": payment["payment_id"], "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "merchant_reversal"}},
+                description=f"POS Refund rollback {payment['payment_id']}",
+                reference=f"RFD-RB-{payment['payment_id']}-{refund_key[-12:]}",
+                source="pos_refund_rollback",
+                metadata={"refund_key": refund_key, "reason": customer_credit.error or "customer_credit_failed"},
+                idempotency_key=f"{refund_key}:merchant-rollback",
             )
-            await db.pos_merchants.update_one({"merchant_id": payment["merchant_id"]}, {"$inc": {"settlement_balance": -refund_amount}})
-        await credit_wallet(user_id=payment["customer_id"], amount=refund_amount, tx_type=TransactionType.REFUND, description=f"POS Refund {payment['payment_id']}", reference=f"RFD-{payment['payment_id']}", metadata={"approval_id": approval_id or None, "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "customer_refund"}})
-    refund_doc = {"refund_id": f"RFD-{secrets.token_hex(5).upper()}", "payment_id": payment["payment_id"], "store_id": payment["store_id"], "merchant_id": payment["merchant_id"], "amount": refund_amount, "method": method, "reason": refund_payload.get("reason", ""), "issued_by": actor["user_id"], "issued_at": now_iso(), "approval_id": approval_id or None}
+            if not rollback.success:
+                await create_security_alert(
+                    actor["merchant_id"],
+                    actor["store_id"],
+                    "refund_reconciliation_required",
+                    "Refund benötigt manuelle Abstimmung",
+                    {"payment_id": payment["payment_id"], "amount": refund_amount, "refund_key": refund_key},
+                    "critical",
+                    actor["user_id"],
+                )
+            raise HTTPException(status_code=409, detail=customer_credit.error or "Kundengutschrift für Refund fehlgeschlagen")
+
+        await db.pos_merchants.update_one(
+            {"merchant_id": payment["merchant_id"]},
+            {"$inc": {"settlement_balance": -refund_amount}},
+        )
+
+    new_refunded_total = round(already_refunded + refund_amount, 2)
+    new_status = "refunded" if new_refunded_total >= payment_amount else "partial_refund"
+    refund_doc = {
+        "refund_id": f"RFD-{secrets.token_hex(5).upper()}",
+        "idempotency_key": refund_key,
+        "payment_id": payment["payment_id"],
+        "store_id": payment["store_id"],
+        "merchant_id": payment["merchant_id"],
+        "amount": refund_amount,
+        "method": method,
+        "reason": refund_payload.get("reason", ""),
+        "issued_by": actor["user_id"],
+        "issued_at": now_iso(),
+        "approval_id": approval_id or None,
+    }
     await db.pos_refunds.insert_one(refund_doc)
-    await db.pos_payments.update_one({"payment_id": payment["payment_id"]}, {"$set": {"status": "refunded" if refund_amount >= float(payment.get("amount", 0)) else "partial_refund"}, "$inc": {"refunded_total": refund_amount}})
-    await audit_pos_security_event("pos_manager_approval_refund_executed", request=request, user_id=actor["user_id"], email=actor["user"].get("email", ""), details={"payment_id": payment["payment_id"], "amount": refund_amount, "approval_id": approval_id}, severity="info")
+    await db.pos_payments.update_one(
+        {"payment_id": payment["payment_id"]},
+        {"$set": {"status": new_status, "refunded_total": new_refunded_total}},
+    )
+    await audit_pos_security_event(
+        "pos_manager_approval_refund_executed",
+        request=request,
+        user_id=actor["user_id"],
+        email=actor["user"].get("email", ""),
+        details={"payment_id": payment["payment_id"], "amount": refund_amount, "approval_id": approval_id, "refunded_total": new_refunded_total},
+        severity="info",
+    )
     refund_doc.pop("_id", None)
     return refund_doc
-
 
 async def execute_gift_card_action(payload: dict, actor: dict, request: Request | None = None, approval_id: str = "") -> dict:
     amount = round(float(payload.get("amount") or 0), 2)
