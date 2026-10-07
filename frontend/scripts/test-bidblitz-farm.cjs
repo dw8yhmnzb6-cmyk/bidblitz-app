@@ -77,6 +77,7 @@ test("daily tasks and weather events are deterministic", () => {
 
 test("animals respect building capacity and produce virtual farm goods", () => {
   let farm = F.initial(21);
+  farm.coins = 200;
   for (let i = 0; i < 3; i++) farm = F.buyAnimal(farm, "chicken").profile;
   assert.equal(farm.animals.chicken.count, 3);
   assert.equal(F.buyAnimal(farm, "chicken").reason, "capacity");
