@@ -63,6 +63,18 @@ test("forecast is deterministic and spans season changes", () => {
   assert.ok(new Set(first.map(day => day.season)).size >= 2);
 });
 
+test("daily tasks and weather events are deterministic", () => {
+  const farm = F.initial(888);
+  assert.deepEqual(F.dailyTask(farm), F.dailyTask(farm));
+  assert.deepEqual(F.weatherEvent(farm), F.weatherEvent(farm));
+  const task = F.dailyTask(farm);
+  assert.ok(task.target > 0);
+  assert.ok(task.value >= 0);
+  const event = F.weatherEvent(farm);
+  assert.equal(typeof event.title, "string");
+  assert.equal(typeof event.text, "string");
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
