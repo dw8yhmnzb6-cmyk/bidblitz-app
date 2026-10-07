@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/games/progress/farm", tags=["games-farm-progress
 CROPS = {"wheat", "corn", "tomato", "carrot"}
 WEATHER = {"sunny", "cloudy", "rain", "storm"}
 PLOT_COUNT = 6
+MAX_PLOTS = 12
 ANIMAL_BUILDING = {"chicken": "coop", "cow": "barn", "sheep": "barn"}
 ANIMAL_PRODUCE_DAYS = {"chicken": 1, "cow": 2, "sheep": 2}
 BUILDING_MAX_LEVEL = {"coop": 5, "barn": 5, "silo": 5}
@@ -53,7 +54,7 @@ def _level_from_xp(xp: int) -> int:
 
 
 class FarmPlotInput(BaseModel):
-    id: int = Field(strict=True, ge=1, le=PLOT_COUNT)
+    id: int = Field(strict=True, ge=1, le=MAX_PLOTS)
     crop: Literal["wheat", "corn", "tomato", "carrot"] | None = None
     plantedDay: int | None = Field(default=None, ge=1, le=100000, strict=True)
     growth: float = Field(ge=0, le=1000)
@@ -91,10 +92,11 @@ class FarmStateInput(BaseModel):
     xp: int = Field(strict=True, ge=0, le=1_000_000_000)
     level: int = Field(strict=True, ge=1, le=50)
     harvests: int = Field(strict=True, ge=0, le=1_000_000_000)
+    unlockedPlots: int = Field(default=PLOT_COUNT, strict=True)
     animals: FarmAnimalsInput = Field(default_factory=FarmAnimalsInput)
     buildings: FarmBuildingsInput = Field(default_factory=FarmBuildingsInput)
     claimedMissions: list[str] = Field(default_factory=list, max_length=20)
-    plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=PLOT_COUNT)
+    plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=MAX_PLOTS)
     lastEvent: str = Field(default="", max_length=160)
 
     @field_validator("claimedMissions")
@@ -112,8 +114,17 @@ class FarmStateInput(BaseModel):
             raise ValueError("Ungültiges Wetter für diesen Farm-Tag")
         if self.level != _level_from_xp(self.xp):
             raise ValueError("Farm-Level passt nicht zu XP")
+        if self.unlockedPlots not in {6, 9, 12}:
+            raise ValueError("Ungültige Anzahl freigeschalteter Farm-Felder")
+        if len(self.plots) not in {PLOT_COUNT, MAX_PLOTS}:
+            raise ValueError("Farm-Felder sind unvollständig")
+        if len(self.plots) == PLOT_COUNT:
+            self.plots.extend([
+                FarmPlotInput(id=index, crop=None, plantedDay=None, growth=0, watered=False, health=100, ready=False)
+                for index in range(PLOT_COUNT + 1, MAX_PLOTS + 1)
+            ])
         ids = [plot.id for plot in self.plots]
-        if ids != list(range(1, PLOT_COUNT + 1)):
+        if ids != list(range(1, MAX_PLOTS + 1)):
             raise ValueError("Farm-Felder sind unvollständig oder falsch sortiert")
         for animal_id, building_id in ANIMAL_BUILDING.items():
             herd = getattr(self.animals, animal_id)
