@@ -21,7 +21,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategie", sports: "Sport",
     matchDescription: "Kombiniere Symbole, löse Kettenreaktionen und entdecke 30 Level in der ersten BidBlitz-Spielwelt.",
     bubbleDescription: "Räume große Gruppen gleichfarbiger Bubbles, plane Ketten und entdecke 20 schwebende Insel-Level.",
-    runnerDescription: "Wechsle zwischen drei Spuren, weiche Hindernissen aus und sammle Lichtpunkte auf 15 Neon-Strecken.",
+    runnerDescription: "Wechsle zwischen drei Spuren, weiche Hindernissen aus und sammle Lichtpunkte auf 15 Neon-Strecken.", farmDescription: "Baue Felder, Tiere und Gebäude aus, plane Bewässerung und Ernte nach Wetter und Jahreszeiten und entwickle deine Farm Schritt für Schritt.", planned: "In Planung",
     play: "Spielvorschau öffnen", openGame: "Spiel sicher öffnen", favorite: "Merken", unfavorite: "Nicht mehr merken",
     languages: "Spielsprachen", version: "Veröffentlichte Version", rating: "Bewertung", reviews: "Bewertungen",
     loading: "Spiel wird geladen…", missing: "Dieses Spiel ist nicht verfügbar.", retry: "Neu laden",
@@ -34,7 +34,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategy", sports: "Sports",
     matchDescription: "Match symbols, trigger chain reactions and explore 30 levels in BidBlitz's first game world.",
     bubbleDescription: "Clear large groups of matching bubbles, plan chains and explore 20 floating-island levels.",
-    runnerDescription: "Switch between three lanes, dodge obstacles and collect light shards across 15 neon tracks.",
+    runnerDescription: "Switch between three lanes, dodge obstacles and collect light shards across 15 neon tracks.", farmDescription: "Grow fields, animals and buildings, plan irrigation and harvests around weather and seasons, and expand your farm step by step.", planned: "Planned",
     play: "Open game preview", openGame: "Open game safely", favorite: "Save", unfavorite: "Remove saved game",
     languages: "Game languages", version: "Published version", rating: "Rating", reviews: "Reviews",
     loading: "Loading game…", missing: "This game is not available.", retry: "Reload",
@@ -47,7 +47,7 @@ const COPY = {
     puzzle: "Puzzle", arcade: "Arcade", strategy: "Strategji", sports: "Sport",
     matchDescription: "Kombino simbolet, krijo reaksione zinxhir dhe zbulo 30 nivele në botën e parë të lojërave BidBlitz.",
     bubbleDescription: "Pastro grupe të mëdha flluskash me të njëjtën ngjyrë dhe zbulo 20 nivele me ishuj fluturues.",
-    runnerDescription: "Ndërro mes tri korsive, shmang pengesat dhe mblidh dritë në 15 pista neon.",
+    runnerDescription: "Ndërro mes tri korsive, shmang pengesat dhe mblidh dritë në 15 pista neon.", farmDescription: "Zgjero arat, kafshët dhe ndërtesat, planifiko ujitjen dhe korrjen sipas motit dhe stinëve dhe zhvillo fermën hap pas hapi.", planned: "Në planifikim",
     play: "Hap provën e lojës", openGame: "Hap lojën në mënyrë të sigurt", favorite: "Ruaj", unfavorite: "Hiqe nga të ruajturat",
     languages: "Gjuhët e lojës", version: "Versioni i publikuar", rating: "Vlerësimi", reviews: "Vlerësime",
     loading: "Po ngarkohet loja…", missing: "Kjo lojë nuk është e disponueshme.", retry: "Ringarko",
@@ -81,6 +81,15 @@ const FIRST_PARTY = {
     languages: ["de"],
     source: "first_party",
     version_number: 1,
+  },
+  farm: {
+    id: "farm",
+    title: "BidBlitz Farm",
+    category: "Strategy",
+    languages: ["de", "en", "sq"],
+    source: "first_party",
+    version_number: 0,
+    planned: true,
   },
 };
 
@@ -237,7 +246,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
   const isFavorite = Boolean(game?.id && favorites.includes(game.id));
   const isFirstParty = Boolean(game?.id && FIRST_PARTY[game.id]);
   const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : game?.id === "runner" ? "/games/runner" : null;
-  const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.id === "runner" ? c.runnerDescription : game?.description || "";
+  const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.id === "runner" ? c.runnerDescription : game?.id === "farm" ? c.farmDescription : game?.description || "";
   const cover = game?.id === "match" ? `${ART}/match.webp` : game?.id === "bubble" ? `${ART}/bubble.webp` : game?.id === "runner" ? `${ART}/runner.webp` : null;
 
   return (
@@ -283,8 +292,9 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                      {isFirstParty ? <button onClick={() => { recordRecent(); onNavigate(firstPartyRoute); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
-                        : <a href={game.public_url} target="_blank" rel="noopener noreferrer" onClick={recordRecent} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><ExternalLink size={18} />{c.openGame}</a>}
+                      {isFirstParty && firstPartyRoute ? <button onClick={() => { recordRecent(); onNavigate(firstPartyRoute); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><Gamepad2 size={18} />{c.play}</button>
+                        : isFirstParty ? <span className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white/70"><Gamepad2 size={18} />{c.planned}</span>
+                          : <a href={game.public_url} target="_blank" rel="noopener noreferrer" onClick={recordRecent} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-[#061329]"><ExternalLink size={18} />{c.openGame}</a>}
                       <button onClick={changeFavorite} disabled={favoriteBusy} aria-pressed={isFavorite} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:opacity-50 ${isFavorite ? "border-cyan-300 bg-cyan-300/15 text-cyan-100" : "border-white/20 bg-white/5 text-white/80"}`}><Heart size={18} fill={isFavorite ? "currentColor" : "none"} />{isFavorite ? c.unfavorite : c.favorite}</button>
                     </div>
                     <p className="mt-3 text-[11px] text-white/40">{favoriteMode === "account" ? c.accountFavorite : c.deviceFavorite}</p>
@@ -298,12 +308,12 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                 <div className="mt-4 flex flex-wrap gap-2">{languageLabels.map((label) => <span key={label} className="rounded-full border border-white/10 bg-white/[.04] px-3 py-2 text-xs text-white/70">{label}</span>)}</div>
               </section>
 
-              {isFirstParty && <GamesPersonalRankingCard gameId={game.id} locale={locale} />}
+              {isFirstParty && firstPartyRoute && <GamesPersonalRankingCard gameId={game.id} locale={locale} />}
 
               {!isFirstParty && <p className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-200/10 bg-cyan-300/5 p-4 text-xs leading-relaxed text-cyan-50/70"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-cyan-300" />{c.safety}</p>}
               <p className="mt-3 text-xs text-white/40">{c.noMoney}</p>
 
-              <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />
+              {(!isFirstParty || firstPartyRoute) && <GameReviewsPanel gameId={game.id} gameTitle={game.title} locale={locale} />}
             </>}
         {error && !loading && <p role="alert" className="mt-4 text-center text-xs text-rose-200">{error}</p>}
       </div>
