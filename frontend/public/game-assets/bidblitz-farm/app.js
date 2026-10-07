@@ -234,6 +234,20 @@
     });
   }
 
+  function renderBrief() {
+    const event = F.weatherEvent(profile);
+    $('weather-event-icon').textContent = event?.icon || '🌿';
+    $('weather-event-title').textContent = event?.title || 'Ruhiger Farmtag';
+    $('weather-event-text').textContent = event?.text || 'Gute Bedingungen für Pflege und Planung.';
+
+    const task = F.dailyTask(profile);
+    const value = Math.min(task?.target || 1, Math.max(0, task?.value || 0));
+    const target = task?.target || 1;
+    $('task-title').textContent = task?.title || 'Farm pflegen';
+    $('task-progress').style.width = Math.round((value / target) * 100) + '%';
+    $('task-text').textContent = value + ' / ' + target;
+  }
+
   function render() {
     $('coins').textContent = profile.coins.toLocaleString('de-DE');
     $('day').textContent = profile.day;
@@ -245,6 +259,7 @@
     $('harvests').textContent = profile.harvests;
     $('event').textContent = profile.lastEvent || 'Farm bereit.';
     renderForecast();
+    renderBrief();
     renderPlots();
   }
 
