@@ -196,3 +196,31 @@ button:disabled{cursor:not-allowed;opacity:.5}
 .farm-quick-nav a:focus-visible{outline:3px solid #dfff8d;outline-offset:2px}
 #farm-fields,#farm-orders,#farm-animals,#farm-buildings,#farm-missions{scroll-margin-top:12px}
 @media(max-width:430px){.farm-quick-nav{margin-right:-12px;padding-right:12px}}
+
+/* Farm mobile ergonomics: respect notches, prevent overflow and enlarge touch targets. */
+@media(max-width:700px){
+  .farm-shell{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .topbar{gap:10px}
+  .money-card{padding:10px 14px}
+  .weather-card{margin-top:12px}
+  .farm-quick-nav{position:sticky;top:0;z-index:5;background:#102c24f2;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  #farm-fields,#farm-orders,#farm-animals,#farm-buildings,#farm-missions{scroll-margin-top:76px}
+  .farm-card-actions button,.plot-actions button,.order-card button,.mission-foot button,.level-reward button{min-height:44px}
+  .plot-actions,.farm-card-actions{flex-wrap:wrap}
+  .plot-actions button{flex:1 1 60px;min-width:0;overflow-wrap:anywhere}
+  .weather-main,.farm-card-head,.mission-top,.level-panel-head{min-width:0}
+  .weather-main>div:last-child,.farm-card-head>div,.mission-top>div{min-width:0}
+  .farm-card,.mission,.order-card,.level-reward,.forecast-day{overflow-wrap:anywhere}
+}
+@media(max-width:375px){
+  .farm-shell{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .stats{gap:6px}
+  .stats div{padding:8px}
+  .stats strong{font-size:16px}
+  .plot{padding:8px}
+  .plot-actions{gap:5px}
+  .farm-quick-nav a{padding:9px 11px}
+}
+@media(prefers-reduced-motion:reduce){
+  .farm-quick-nav{scroll-behavior:auto}
+}
