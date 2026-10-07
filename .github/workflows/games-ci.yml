@@ -33,6 +33,7 @@ on:
       - "frontend/src/components/GamesFinanceSandboxCard.jsx"
       - "frontend/src/components/GamesPersonalRankingCard.jsx"
       - "frontend/src/components/AdminGamesIntegrityCard.jsx"
+      - "frontend/src/components/AdminGamesLaunchReadinessCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -77,6 +78,7 @@ on:
       - "frontend/src/components/GamesFinanceSandboxCard.jsx"
       - "frontend/src/components/GamesPersonalRankingCard.jsx"
       - "frontend/src/components/AdminGamesIntegrityCard.jsx"
+      - "frontend/src/components/AdminGamesLaunchReadinessCard.jsx"
       - "frontend/src/config/games*.mjs"
       - "frontend/src/config/games*.json"
       - "frontend/src/config/studioCreatePolicy.mjs"
@@ -152,6 +154,7 @@ jobs:
           backend/tests/test_games_recent.py
           backend/tests/test_games_integrity.py
           backend/tests/test_games_integrity_status.py
+          backend/tests/test_games_launch_readiness.py
           backend/tests/test_games_rankings.py
           backend/tests/test_games_reviews.py
           backend/tests/test_games_preview.py
@@ -193,6 +196,7 @@ jobs:
           src/components/GamesFinanceSandboxCard.jsx
           src/components/GamesPersonalRankingCard.jsx
           src/components/AdminGamesIntegrityCard.jsx
+          src/components/AdminGamesLaunchReadinessCard.jsx
           src/config/languagePolicy.mjs
           src/config/studioCreatePolicy.mjs
           src/config/gamesFavoritesPolicy.mjs
