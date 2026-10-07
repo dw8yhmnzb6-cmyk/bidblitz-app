@@ -21,6 +21,14 @@
       <div class="money-card"><span>Virtuelle Münzen</span><strong id="coins">0</strong></div>
     </header>
 
+    <nav class="farm-quick-nav" aria-label="Farm-Bereiche">
+      <a href="#farm-fields">🌱 Felder</a>
+      <a href="#farm-orders">📦 Aufträge</a>
+      <a href="#farm-animals">🐔 Tiere</a>
+      <a href="#farm-buildings">🏠 Gebäude</a>
+      <a href="#farm-missions">🎯 Missionen</a>
+    </nav>
+
     <section class="weather-card">
       <div class="weather-main">
         <div id="weather-icon" class="weather-icon">☀️</div>
@@ -69,7 +77,7 @@
       <div id="market" class="market-grid"></div>
     </section>
 
-    <section class="orders-panel">
+    <section id="farm-orders" class="orders-panel">
       <div class="section-head"><h2>Bestellungen</h2><p>Lagerbestand liefern · virtuelle Bonusbelohnungen</p></div>
       <div class="order-status">
         <div><span>Kundenstufe</span><strong id="customer-rank">Neuer Lieferant</strong></div>
@@ -97,22 +105,22 @@
       <button id="next-day" type="button">Nächster Tag</button>
     </section>
 
-    <section>
+    <section id="farm-fields">
       <div class="section-head"><h2>Deine Felder</h2><p id="event">Farm gestartet.</p></div>
       <div id="plots" class="plots"></div>
     </section>
 
-    <section class="farm-section">
+    <section id="farm-animals" class="farm-section">
       <div class="section-head"><h2>Tiere</h2><p>Füttern · produzieren · einsammeln</p></div>
       <div id="animals" class="farm-grid"></div>
     </section>
 
-    <section class="farm-section">
+    <section id="farm-buildings" class="farm-section">
       <div class="section-head"><h2>Gebäude & Ausbau</h2><p>Mehr Kapazität und bessere Ernteerlöse</p></div>
       <div id="buildings" class="farm-grid"></div>
     </section>
 
-    <section class="farm-section">
+    <section id="farm-missions" class="farm-section">
       <div class="section-head"><h2>Missionen</h2><p>Nur virtuelle Farm-Belohnungen</p></div>
       <div id="missions" class="missions"></div>
     </section>
