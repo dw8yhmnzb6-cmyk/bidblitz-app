@@ -245,7 +245,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
 
   const isFavorite = Boolean(game?.id && favorites.includes(game.id));
   const isFirstParty = Boolean(game?.id && FIRST_PARTY[game.id]);
-  const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : game?.id === "runner" ? "/games/runner" : null;
+  const firstPartyRoute = game?.id === "match" ? "/games/match" : game?.id === "bubble" ? "/games/bubble" : game?.id === "runner" ? "/games/runner" : game?.id === "farm" ? "/games/farm" : null;
   const description = game?.id === "match" ? c.matchDescription : game?.id === "bubble" ? c.bubbleDescription : game?.id === "runner" ? c.runnerDescription : game?.id === "farm" ? c.farmDescription : game?.description || "";
   const cover = game?.id === "match" ? `${ART}/match.webp` : game?.id === "bubble" ? `${ART}/bubble.webp` : game?.id === "runner" ? `${ART}/runner.webp` : null;
 
@@ -308,7 +308,7 @@ export default function GameDetailPage({ gameId, onBack, onNavigate }) {
                 <div className="mt-4 flex flex-wrap gap-2">{languageLabels.map((label) => <span key={label} className="rounded-full border border-white/10 bg-white/[.04] px-3 py-2 text-xs text-white/70">{label}</span>)}</div>
               </section>
 
-              {isFirstParty && firstPartyRoute && <GamesPersonalRankingCard gameId={game.id} locale={locale} />}
+              {isFirstParty && firstPartyRoute && game.id !== "farm" && <GamesPersonalRankingCard gameId={game.id} locale={locale} />}
 
               {!isFirstParty && <p className="mt-5 flex items-start gap-2 rounded-2xl border border-cyan-200/10 bg-cyan-300/5 p-4 text-xs leading-relaxed text-cyan-50/70"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-cyan-300" />{c.safety}</p>}
               <p className="mt-3 text-xs text-white/40">{c.noMoney}</p>
