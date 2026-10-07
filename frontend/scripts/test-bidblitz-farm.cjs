@@ -136,6 +136,44 @@ test("missions unlock once and grant only virtual rewards", () => {
   assert.equal(F.claimMission(claimed.profile, "harvest-5").ok, false);
 });
 
+test("farm market prices are deterministic per day and affect virtual revenue", () => {
+  const farm = F.initial(101);
+  const a = F.marketSnapshot(farm);
+  const b = F.marketSnapshot(farm);
+  assert.deepEqual(a, b);
+  assert.equal(a.day, 1);
+  assert.equal(typeof a.crops.wheat, "number");
+  assert.ok(a.crops.wheat >= 0.85 && a.crops.wheat <= 1.30);
+});
+
+test("farm land expands from 6 to 9 to 12 plots with virtual coins only", () => {
+  let farm = F.initial(202);
+  farm.coins = 1000;
+  assert.equal(farm.unlockedPlots, 6);
+  assert.equal(F.landExpansionCost(farm), 180);
+
+  let expanded = F.expandLand(farm);
+  assert.equal(expanded.ok, true);
+  farm = expanded.profile;
+  assert.equal(farm.unlockedPlots, 9);
+  assert.equal(F.landExpansionCost(farm), 360);
+
+  expanded = F.expandLand(farm);
+  assert.equal(expanded.ok, true);
+  farm = expanded.profile;
+  assert.equal(farm.unlockedPlots, 12);
+  assert.equal(F.landExpansionCost(farm), null);
+  assert.equal(F.expandLand(farm).ok, false);
+});
+
+test("locked farm plots cannot be planted before expansion", () => {
+  const farm = F.initial(303);
+  assert.equal(F.plant(farm, 7, "wheat").ok, false);
+  const rich = { ...farm, coins: 1000 };
+  const expanded = F.expandLand(rich).profile;
+  assert.equal(F.plant(expanded, 7, "wheat").ok, true);
+});
+
 test("corrupt saves are rejected", () => {
   const base = F.initial(123);
   const invalid = [
