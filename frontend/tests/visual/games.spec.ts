@@ -819,6 +819,30 @@ test('BidBlitz Farm detail page opens its first-party farm preview', async ({ pa
   await expectNoHorizontalOverflow(page);
 });
 
+test('BidBlitz Farm stays compact and touch-accessible on a 390px phone', async ({ page }) => {
+  await openGames(page, 390, 844);
+  const farmCard = page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first();
+  await farmCard.getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const game = page.frameLocator('iframe[title*="BidBlitz Farm"]');
+  const farm = game.getByTestId('bidblitz-farm-game');
+  await expect(farm).toBeVisible();
+  const grid = game.locator('#plots');
+  await expect(grid.locator('.plot')).toHaveCount(6);
+  const columns = await grid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+  expect(columns).toBe(2);
+  const buttons = game.locator('#plots button');
+  const first = buttons.first();
+  const height = await first.evaluate(element => element.getBoundingClientRect().height);
+  expect(height).toBeGreaterThanOrEqual(44);
+  const frame = page.locator('iframe[title*="BidBlitz Farm"]');
+  const handle = await frame.elementHandle();
+  const child = await handle?.contentFrame();
+  expect(child).not.toBeNull();
+  const overflow = await child!.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(overflow).toBe(false);
+});
+
 test('Bubble Islands detail page is first-party and opens its own preview', async ({ page }) => {
   await openGames(page, 390, 844);
 
