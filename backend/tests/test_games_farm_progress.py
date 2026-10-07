@@ -229,6 +229,39 @@ class GamesFarmProgressTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             farm.FarmStateInput(**future)
 
+    def test_level_rewards_and_extended_missions_are_validated(self):
+        value = state(day=12, xp=360, coins=700, harvests=12)
+        value["completedOrders"] = 10
+        value["unlockedPlots"] = 12
+        value["buildings"] = {"coop": 3, "barn": 3, "silo": 3}
+        value["claimedMissions"] = ["orders-10", "land-12", "buildings-9", "farm-level-10"]
+        value["claimedLevelRewards"] = [5, 10]
+        value["plots"] = [
+            {
+                "id": i,
+                "crop": None,
+                "plantedDay": None,
+                "growth": 0,
+                "watered": False,
+                "health": 100,
+                "ready": False,
+            }
+            for i in range(1, 13)
+        ]
+        parsed = farm.FarmStateInput(**value)
+        self.assertEqual(parsed.claimedLevelRewards, [5, 10])
+        self.assertIn("orders-10", parsed.claimedMissions)
+
+        early = dict(value)
+        early["claimedLevelRewards"] = [20]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**early)
+
+        bad_level = dict(value)
+        bad_level["claimedLevelRewards"] = [7]
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**bad_level)
+
     def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
         payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
         saved = asyncio.run(farm.save_farm_progress(
