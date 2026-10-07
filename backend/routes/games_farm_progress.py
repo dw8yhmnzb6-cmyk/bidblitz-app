@@ -156,6 +156,8 @@ class FarmStateInput(BaseModel):
             raise ValueError("Level-Belohnung wurde zu früh eingelöst")
         if self.lastOrderStreakDay > self.day:
             raise ValueError("Ungültiger Auftragstag")
+        if any(int(order.split("-")[1]) > self.day for order in self.fulfilledOrders):
+            raise ValueError("Farm-Bestellung liegt in der Zukunft")
         if self.unlockedPlots not in {6, 9, 12}:
             raise ValueError("Ungültige Anzahl freigeschalteter Farm-Felder")
         if len(self.plots) not in {PLOT_COUNT, MAX_PLOTS}:
