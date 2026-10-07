@@ -98,7 +98,7 @@ async def send_telegram_message(text: str, notification_type: str, extra_meta: d
         return result
 
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
-    chat_id = settings["chat_id"]
+    chat_id = (os.environ.get("TELEGRAM_CHAT_ID") or "").strip()
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
