@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.database import db
 from core.security import get_current_user
@@ -19,6 +19,10 @@ router = APIRouter(prefix="/api/games/progress/farm", tags=["games-farm-progress
 CROPS = {"wheat", "corn", "tomato", "carrot"}
 WEATHER = {"sunny", "cloudy", "rain", "storm"}
 PLOT_COUNT = 6
+ANIMAL_BUILDING = {"chicken": "coop", "cow": "barn", "sheep": "barn"}
+ANIMAL_PRODUCE_DAYS = {"chicken": 1, "cow": 2, "sheep": 2}
+BUILDING_MAX_LEVEL = {"coop": 5, "barn": 5, "silo": 5}
+MISSION_IDS = {"harvest-5", "animals-3", "buildings-5", "farm-level-5"}
 
 
 def _xorshift(value: int) -> int:
@@ -58,6 +62,25 @@ class FarmPlotInput(BaseModel):
     ready: bool
 
 
+class FarmAnimalInput(BaseModel):
+    count: int = Field(strict=True, ge=0, le=100)
+    fed: bool = False
+    progress: int = Field(strict=True, ge=0, le=10)
+    ready: int = Field(strict=True, ge=0, le=100000)
+
+
+class FarmAnimalsInput(BaseModel):
+    chicken: FarmAnimalInput = Field(default_factory=lambda: FarmAnimalInput(count=0, fed=False, progress=0, ready=0))
+    cow: FarmAnimalInput = Field(default_factory=lambda: FarmAnimalInput(count=0, fed=False, progress=0, ready=0))
+    sheep: FarmAnimalInput = Field(default_factory=lambda: FarmAnimalInput(count=0, fed=False, progress=0, ready=0))
+
+
+class FarmBuildingsInput(BaseModel):
+    coop: int = Field(default=1, strict=True, ge=1, le=5)
+    barn: int = Field(default=1, strict=True, ge=1, le=5)
+    silo: int = Field(default=1, strict=True, ge=1, le=5)
+
+
 class FarmStateInput(BaseModel):
     version: Literal[1] = 1
     seed: int = Field(strict=True, ge=1, le=4294967295)
@@ -68,8 +91,18 @@ class FarmStateInput(BaseModel):
     xp: int = Field(strict=True, ge=0, le=1_000_000_000)
     level: int = Field(strict=True, ge=1, le=50)
     harvests: int = Field(strict=True, ge=0, le=1_000_000_000)
+    animals: FarmAnimalsInput = Field(default_factory=FarmAnimalsInput)
+    buildings: FarmBuildingsInput = Field(default_factory=FarmBuildingsInput)
+    claimedMissions: list[str] = Field(default_factory=list, max_length=20)
     plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=PLOT_COUNT)
     lastEvent: str = Field(default="", max_length=160)
+
+    @field_validator("claimedMissions")
+    @classmethod
+    def validate_missions(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)) or any(value not in MISSION_IDS for value in values):
+            raise ValueError("Ungültige Farm-Missionen")
+        return values
 
     @model_validator(mode="after")
     def validate_snapshot(self):
@@ -82,6 +115,16 @@ class FarmStateInput(BaseModel):
         ids = [plot.id for plot in self.plots]
         if ids != list(range(1, PLOT_COUNT + 1)):
             raise ValueError("Farm-Felder sind unvollständig oder falsch sortiert")
+        for animal_id, building_id in ANIMAL_BUILDING.items():
+            herd = getattr(self.animals, animal_id)
+            building_level = getattr(self.buildings, building_id)
+            if herd.count > building_level * 3:
+                raise ValueError("Tierbestand überschreitet Gebäudekapazität")
+            if herd.progress > ANIMAL_PRODUCE_DAYS[animal_id]:
+                raise ValueError("Ungültiger Tier-Produktionsfortschritt")
+        for building_id, max_level in BUILDING_MAX_LEVEL.items():
+            if getattr(self.buildings, building_id) > max_level:
+                raise ValueError("Ungültiges Gebäude-Level")
         for plot in self.plots:
             if plot.crop is None:
                 if plot.plantedDay is not None or plot.growth != 0 or plot.ready:
