@@ -565,29 +565,29 @@ async def quick_topup(req: QuickTopUpRequest, request: Request):
     if intent.status != "succeeded":
         raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
 
-    # Credit wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": amount}},
+    # Credit wallet through the canonical engine using the Stripe PaymentIntent
+    # as the idempotency anchor. A client retry must never credit twice.
+    credit_result = await process_stripe_payment(
+        session_id=f"quick:{intent.id}",
+        user_id=user_id,
+        amount=amount,
+        payment_intent_id=intent.id,
     )
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=503,
+            detail=credit_result.error or "Wallet credit is still processing",
+        )
 
-    ref = f"QUICK-{secrets.token_hex(6).upper()}"
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "topup",
-        "amount": amount,
-        "description": f"1-Click Top-Up (EUR {amount:.2f})",
-        "merchant_name": "Stripe",
-        "status": "completed",
+    ref = credit_result.reference or f"QUICK-{intent.id[:12].upper()}"
+    txn = await db.transactions.find_one(
+        {"id": credit_result.transaction_id},
+        {"_id": 0},
+    ) or {
+        "id": credit_result.transaction_id,
         "reference": ref,
-        "payment_method": "saved_card",
-        "category": "topup",
-        "stripe_pi_id": intent.id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "amount": amount,
     }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
 
     await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
                     ip=ip, user_agent=ua,
