@@ -211,6 +211,24 @@ class GamesFarmProgressTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             farm.FarmStateInput(**invalid)
 
+    def test_order_streak_fields_are_validated(self):
+        value = state(day=8, xp=160, coins=500, harvests=6)
+        value["orderStreak"] = 3
+        value["lastOrderStreakDay"] = 7
+        parsed = farm.FarmStateInput(**value)
+        self.assertEqual(parsed.orderStreak, 3)
+        self.assertEqual(parsed.lastOrderStreakDay, 7)
+
+        bad = dict(value)
+        bad["orderStreak"] = 31
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**bad)
+
+        future = dict(value)
+        future["lastOrderStreakDay"] = 9
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**future)
+
     def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
         payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
         saved = asyncio.run(farm.save_farm_progress(
