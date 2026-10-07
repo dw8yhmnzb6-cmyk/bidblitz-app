@@ -159,6 +159,35 @@ class GamesFarmProgressTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             farm.FarmStateInput(**bad_mission)
 
+    def test_legacy_six_plot_snapshot_is_padded_and_expanded_land_is_valid(self):
+        legacy = farm.FarmStateInput(**state())
+        self.assertEqual(legacy.unlockedPlots, 6)
+        self.assertEqual(len(legacy.plots), 12)
+        self.assertEqual(legacy.plots[-1].id, 12)
+
+        expanded = state(day=5, xp=120, coins=500, harvests=4)
+        expanded["unlockedPlots"] = 9
+        expanded["plots"] = [
+            {
+                "id": i,
+                "crop": None,
+                "plantedDay": None,
+                "growth": 0,
+                "watered": False,
+                "health": 100,
+                "ready": False,
+            }
+            for i in range(1, 13)
+        ]
+        parsed = farm.FarmStateInput(**expanded)
+        self.assertEqual(parsed.unlockedPlots, 9)
+        self.assertEqual(len(parsed.plots), 12)
+
+        bad = dict(expanded)
+        bad["unlockedPlots"] = 8
+        with self.assertRaises(ValidationError):
+            farm.FarmStateInput(**bad)
+
     def test_server_accepts_virtual_gameplay_state_but_no_wallet_fields(self):
         payload = farm.FarmStateInput(**state(day=4, xp=90, coins=123, harvests=3))
         saved = asyncio.run(farm.save_farm_progress(
