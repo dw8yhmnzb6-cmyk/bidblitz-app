@@ -366,6 +366,22 @@
     return { ok: true, profile: next };
   }
 
+  function achievements(profile) {
+    if (!profile) return [];
+    const animalCount = Object.values(profile.animals || {}).reduce((sum, herd) => sum + (herd.count || 0), 0);
+    const buildingLevels = Object.values(profile.buildings || {}).reduce((sum, level) => sum + (level || 0), 0);
+    const definitions = [
+      { id: 'first-harvest', icon: '🌱', title: 'Erste Ernte', text: 'Ernte deine erste Pflanze.', achieved: profile.harvests >= 1 },
+      { id: 'harvest-25', icon: '🌾', title: 'Ernte-Profi', text: 'Erreiche 25 Ernten.', achieved: profile.harvests >= 25 },
+      { id: 'orders-25', icon: '📦', title: 'Zuverlässiger Lieferant', text: 'Liefere 25 Bestellungen.', achieved: (profile.completedOrders || 0) >= 25 },
+      { id: 'animals-9', icon: '🐾', title: 'Tierfreund', text: 'Halte mindestens 9 Tiere.', achieved: animalCount >= 9 },
+      { id: 'land-max', icon: '🗺️', title: 'Großer Hof', text: 'Schalte alle 12 Felder frei.', achieved: (profile.unlockedPlots || PLOT_COUNT) >= MAX_PLOTS },
+      { id: 'buildings-max', icon: '🏆', title: 'Meisterbetrieb', text: 'Bringe alle Gebäude auf Level 5.', achieved: buildingLevels >= 15 },
+      { id: 'level-50', icon: '👑', title: 'Farm-Legende', text: 'Erreiche Farm-Level 50.', achieved: profile.level >= 50 },
+    ];
+    return definitions;
+  }
+
   function levelRewardStatus(profile) {
     return LEVEL_REWARDS.map(reward => ({
       ...reward,
@@ -580,6 +596,6 @@
     initial, plant, water, advanceDay, harvest, forecast,
     weatherFor, seasonForDay, levelFromXp, dailyTask, seasonEvent, weatherEvent,
     buildingUpgradeCost, animalCapacity, animalProductBonus, buyAnimal, feedAnimals, collectAnimalProduct,
-    upgradeBuilding, missionStatus, claimMission, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
+    upgradeBuilding, missionStatus, claimMission, achievements, levelRewardStatus, claimLevelReward, nextLevelProgress, marketMultiplier, marketSnapshot, landExpansionCost, expandLand, customerRank, dailyOrderCompletion, orderBoard, fulfillOrder, decode,
   };
 }));
