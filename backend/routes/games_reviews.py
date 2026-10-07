@@ -23,7 +23,7 @@ admin_router = APIRouter(prefix="/api/admin/games/reviews", tags=["admin-games-r
 _GAME_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _MAX_PUBLIC_REVIEWS = 50
 _MAX_SUMMARY_GAMES = 50
-_FIRST_PARTY_GAME_IDS = {"match", "bubble", "runner"}
+_FIRST_PARTY_GAME_IDS = {"match", "bubble", "runner", "farm"}
 
 
 class ReviewInput(BaseModel):
