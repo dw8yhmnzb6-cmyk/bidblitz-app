@@ -109,6 +109,8 @@ class FarmStateInput(BaseModel):
     inventory: FarmInventoryInput = Field(default_factory=FarmInventoryInput)
     fulfilledOrders: list[str] = Field(default_factory=list, max_length=90)
     completedOrders: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    orderStreak: int = Field(default=0, strict=True, ge=0, le=30)
+    lastOrderStreakDay: int = Field(default=0, strict=True, ge=0, le=100000)
     claimedMissions: list[str] = Field(default_factory=list, max_length=20)
     plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=MAX_PLOTS)
     lastEvent: str = Field(default="", max_length=160)
@@ -141,6 +143,8 @@ class FarmStateInput(BaseModel):
             raise ValueError("Ungültiges Wetter für diesen Farm-Tag")
         if self.level != _level_from_xp(self.xp):
             raise ValueError("Farm-Level passt nicht zu XP")
+        if self.lastOrderStreakDay > self.day:
+            raise ValueError("Ungültiger Auftragstag")
         if self.unlockedPlots not in {6, 9, 12}:
             raise ValueError("Ungültige Anzahl freigeschalteter Farm-Felder")
         if len(self.plots) not in {PLOT_COUNT, MAX_PLOTS}:
