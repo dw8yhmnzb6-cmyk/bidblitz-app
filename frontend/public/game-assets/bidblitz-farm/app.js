@@ -120,6 +120,19 @@
     syncAccountProgress();
   }
 
+  function renderOnboarding() {
+    const box = $('onboarding-steps');
+    box.replaceChildren();
+    F.onboardingSteps(profile).forEach((step, index) => {
+      const node = document.createElement('article');
+      node.className = 'onboarding-step' + (step.done ? ' done' : '');
+      node.innerHTML =
+        '<b>' + (index + 1) + '. ' + step.title + '</b>' +
+        '<span>' + (step.done ? 'Erledigt' : 'Noch offen') + '</span>';
+      box.append(node);
+    });
+  }
+
   function renderLevelProgress() {
     const progress = F.nextLevelProgress(profile);
     $('level-progress-current').textContent = progress.level;
@@ -521,6 +534,7 @@
     $('harvests').textContent = profile.harvests;
     $('event').textContent = profile.lastEvent || 'Farm bereit.';
     renderForecast();
+    renderOnboarding();
     renderLevelProgress();
     renderMarket();
     renderOrders();
