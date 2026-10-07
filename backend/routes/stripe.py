@@ -18,6 +18,7 @@ Supports saved payment methods for 1-click top-up.
 
 import secrets
 import stripe
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -37,6 +38,26 @@ from core.payment_engine import process_stripe_payment, PaymentResult
 from routes.promotions import check_applicable_promotion, apply_promotion
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
+logger = logging.getLogger("bidblitz.stripe")
+
+
+async def _record_stripe_side_effect_failure(kind: str, reference: str, exc: Exception, extra: dict | None = None):
+    error = str(exc)[:500]
+    logger.warning("Stripe side effect failed kind=%s ref=%s error=%s", kind, reference, error)
+    try:
+        await db.payment_side_effect_failures.insert_one({
+            "kind": kind,
+            "user_id": str((extra or {}).get("user_id") or ""),
+            "reference": reference,
+            "error": error,
+            "extra": extra or {},
+            "status": "open",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as log_exc:
+        logger.error("Could not persist Stripe side-effect failure: %s", log_exc)
+
+
 
 # Initialize Stripe via emergentintegrations proxy
 _checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
@@ -283,8 +304,8 @@ async def checkout_status(session_id: str, request: Request):
                     reference=txn["reference"],
                     user_name=user.get("name", "")
                 )
-            except Exception:
-                pass  # Non-critical — don't break the top-up flow
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("topup_confirmation_email", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
 
             # ── Save payment method for 1-click top-up ──
             try:
@@ -307,8 +328,8 @@ async def checkout_status(session_id: str, request: Request):
                                 "stripe_pm_saved_at": datetime.now(timezone.utc).isoformat(),
                             }},
                         )
-            except Exception:
-                pass  # Non-critical — don't break the top-up flow
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("save_payment_method", session_id, exc, {"user_id": user_id})
 
             # ── Check for bonus_topup promotions ──
             topup_promo = None
@@ -331,8 +352,8 @@ async def checkout_status(session_id: str, request: Request):
                         })
                         await apply_promotion(user_id, promo["name"], payment["amount"])
                         topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
-            except Exception:
-                pass
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("topup_promotion", session_id, exc, {"user_id": user_id, "amount": payment["amount"]})
 
     if stripe_status.payment_status != "paid" and payment["status"] not in ("completed", "credited"):
         await log_audit(AuditEvent.TOPUP_FAILED, user_id=user_id, email=user.get("email", ""),
@@ -369,13 +390,13 @@ async def stripe_webhook(request: Request):
             try:
                 from routes.dating import handle_dating_premium_webhook
                 await handle_dating_premium_webhook(event.session_id)
-            except Exception:
-                pass
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("dating_premium_webhook", event.session_id, exc)
             try:
                 from routes.pool_management import handle_pool_ticket_webhook
                 await handle_pool_ticket_webhook(event.session_id)
-            except Exception:
-                pass
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("pool_ticket_webhook", event.session_id, exc)
 
             # 1. Wallet-Topup
             # Use the canonical payment engine so wallet credit + idempotency are
@@ -401,8 +422,8 @@ async def stripe_webhook(request: Request):
                 if feature_purchase and feature_purchase.get("status") != "completed":
                     from routes.pos_features import activate_feature_after_payment
                     await activate_feature_after_payment(event.session_id)
-            except Exception:
-                pass
+            except Exception as exc:
+                await _record_stripe_side_effect_failure("pos_feature_purchase_webhook", event.session_id, exc)
 
             # 3. Auction Bid-Credits Purchase
             try:
