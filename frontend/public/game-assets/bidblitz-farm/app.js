@@ -234,6 +234,139 @@
     });
   }
 
+  function renderAnimals() {
+    const box = $('animals');
+    box.replaceChildren();
+    Object.values(F.ANIMALS).forEach(spec => {
+      const herd = profile.animals[spec.id];
+      const card = document.createElement('article');
+      card.className = 'farm-card';
+      const capacity = F.animalCapacity(profile, spec.id);
+      card.innerHTML =
+        '<div class="farm-card-head"><div><div class="farm-card-icon">' + spec.icon + '</div><h3>' + spec.name + '</h3></div><strong>' + herd.count + ' / ' + capacity + '</strong></div>' +
+        '<p>' + spec.product + ': ' + herd.ready + ' bereit · Produktion ' + herd.progress + ' / ' + spec.produceDays + '</p>' +
+        '<p>' + (herd.fed ? 'Gefüttert für den nächsten Tag.' : 'Futter nötig für Produktion.') + '</p>';
+
+      const actions = document.createElement('div');
+      actions.className = 'farm-card-actions';
+
+      const buy = document.createElement('button');
+      buy.type = 'button';
+      buy.className = 'primary';
+      buy.textContent = 'Kaufen · ' + spec.cost;
+      buy.disabled = herd.count >= capacity;
+      buy.addEventListener('click', () => {
+        const result = F.buyAnimal(profile, spec.id);
+        if (!result.ok) {
+          $('event').textContent = result.reason === 'coins' ? 'Nicht genug virtuelle Farm-Münzen.' : result.reason === 'capacity' ? 'Gebäude zuerst ausbauen.' : 'Tierkauf nicht möglich.';
+          return;
+        }
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+
+      const feed = document.createElement('button');
+      feed.type = 'button';
+      feed.textContent = 'Füttern';
+      feed.disabled = herd.count <= 0 || herd.fed;
+      feed.addEventListener('click', () => {
+        const result = F.feedAnimals(profile, spec.id);
+        if (!result.ok) {
+          $('event').textContent = result.reason === 'coins' ? 'Nicht genug virtuelle Farm-Münzen für Futter.' : 'Füttern nicht möglich.';
+          return;
+        }
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+
+      const collect = document.createElement('button');
+      collect.type = 'button';
+      collect.textContent = 'Einsammeln';
+      collect.disabled = herd.ready <= 0;
+      collect.addEventListener('click', () => {
+        const result = F.collectAnimalProduct(profile, spec.id);
+        if (!result.ok) return;
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+
+      actions.append(buy, feed, collect);
+      card.append(actions);
+      box.append(card);
+    });
+  }
+
+  function renderBuildings() {
+    const box = $('buildings');
+    box.replaceChildren();
+    Object.values(F.BUILDINGS).forEach(spec => {
+      const level = profile.buildings[spec.id];
+      const cost = F.buildingUpgradeCost(profile, spec.id);
+      const card = document.createElement('article');
+      card.className = 'farm-card';
+      const bonus = spec.id === 'silo' ? 'Erntebonus: +' + ((level - 1) * 5) + '%' : 'Tierkapazität: ' + (level * 3);
+      card.innerHTML =
+        '<div class="farm-card-head"><div><div class="farm-card-icon">' + spec.icon + '</div><h3>' + spec.name + '</h3></div><strong>Lv. ' + level + '</strong></div>' +
+        '<p>' + bonus + '</p>';
+
+      const actions = document.createElement('div');
+      actions.className = 'farm-card-actions';
+      const upgrade = document.createElement('button');
+      upgrade.type = 'button';
+      upgrade.className = 'primary';
+      upgrade.textContent = cost === null ? 'Maximal' : 'Ausbauen · ' + cost;
+      upgrade.disabled = cost === null;
+      upgrade.addEventListener('click', () => {
+        const result = F.upgradeBuilding(profile, spec.id);
+        if (!result.ok) {
+          $('event').textContent = result.reason === 'coins' ? 'Nicht genug virtuelle Farm-Münzen.' : 'Gebäude ist bereits maximal ausgebaut.';
+          return;
+        }
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+      actions.append(upgrade);
+      card.append(actions);
+      box.append(card);
+    });
+  }
+
+  function renderMissions() {
+    const box = $('missions');
+    box.replaceChildren();
+    F.missionStatus(profile).forEach(mission => {
+      const node = document.createElement('article');
+      node.className = 'mission';
+      const progress = Math.round((mission.value / mission.target) * 100);
+      node.innerHTML =
+        '<div class="mission-top"><span class="mission-title">' + mission.title + '</span><span class="mission-reward">+' + mission.rewardCoins + ' Münzen · +' + mission.rewardXp + ' XP</span></div>' +
+        '<div class="mission-progress"><span style="width:' + Math.min(100, progress) + '%"></span></div>';
+
+      const foot = document.createElement('div');
+      foot.className = 'mission-foot';
+      const text = document.createElement('span');
+      text.textContent = mission.value + ' / ' + mission.target + (mission.claimed ? ' · Eingelöst' : '');
+      const claim = document.createElement('button');
+      claim.type = 'button';
+      claim.textContent = mission.claimed ? 'Erledigt' : 'Belohnung';
+      claim.disabled = !mission.completed || mission.claimed;
+      claim.addEventListener('click', () => {
+        const result = F.claimMission(profile, mission.id);
+        if (!result.ok) return;
+        profile = result.profile;
+        persistAndSync();
+        render();
+      });
+      foot.append(text, claim);
+      node.append(foot);
+      box.append(node);
+    });
+  }
+
   function renderBrief() {
     const event = F.weatherEvent(profile);
     $('weather-event-icon').textContent = event?.icon || '🌿';
@@ -261,6 +394,9 @@
     renderForecast();
     renderBrief();
     renderPlots();
+    renderAnimals();
+    renderBuildings();
+    renderMissions();
   }
 
   $('next-day').addEventListener('click', () => {
@@ -296,6 +432,31 @@
     },
     harvest: plotId => {
       const result = F.harvest(profile, plotId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    buyAnimal: animalId => {
+      const result = F.buyAnimal(profile, animalId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    feedAnimals: animalId => {
+      const result = F.feedAnimals(profile, animalId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    collectAnimalProduct: animalId => {
+      const result = F.collectAnimalProduct(profile, animalId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    upgradeBuilding: buildingId => {
+      const result = F.upgradeBuilding(profile, buildingId);
+      if (result.ok) { profile = result.profile; persistAndSync(); render(); }
+      return result.ok;
+    },
+    claimMission: missionId => {
+      const result = F.claimMission(profile, missionId);
       if (result.ok) { profile = result.profile; persistAndSync(); render(); }
       return result.ok;
     },
