@@ -26,8 +26,11 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
 MAX_BYTES = 10 * 1024 * 1024  # 10MB per file
 ALLOWED_DOC_TYPES = {"national_id", "passport", "driver_license", "drivers_license"}
 
-UPLOAD_BASE = "/app/backend/uploads/kyc"
-os.makedirs(UPLOAD_BASE, exist_ok=True)
+from pathlib import Path
+
+_DEFAULT_KYC_UPLOAD_BASE = Path(__file__).resolve().parents[1] / "uploads" / "kyc"
+UPLOAD_BASE = Path(os.environ.get("KYC_UPLOAD_BASE") or _DEFAULT_KYC_UPLOAD_BASE)
+UPLOAD_BASE.mkdir(parents=True, exist_ok=True)
 MANUAL_REVIEW_THRESHOLD = 2
 
 ISSUE_MESSAGE_MAP = {
