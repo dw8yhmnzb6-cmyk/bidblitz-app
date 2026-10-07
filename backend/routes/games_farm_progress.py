@@ -24,6 +24,7 @@ ANIMAL_BUILDING = {"chicken": "coop", "cow": "barn", "sheep": "barn"}
 ANIMAL_PRODUCE_DAYS = {"chicken": 1, "cow": 2, "sheep": 2}
 BUILDING_MAX_LEVEL = {"coop": 5, "barn": 5, "silo": 5}
 MISSION_IDS = {"harvest-5", "animals-3", "buildings-5", "farm-level-5"}
+INVENTORY_IDS = {"wheat", "corn", "tomato", "carrot", "eggs", "milk", "wool"}
 
 
 def _xorshift(value: int) -> int:
@@ -76,6 +77,16 @@ class FarmAnimalsInput(BaseModel):
     sheep: FarmAnimalInput = Field(default_factory=lambda: FarmAnimalInput(count=0, fed=False, progress=0, ready=0))
 
 
+class FarmInventoryInput(BaseModel):
+    wheat: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    corn: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    tomato: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    carrot: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    eggs: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    milk: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+    wool: int = Field(default=0, strict=True, ge=0, le=1_000_000)
+
+
 class FarmBuildingsInput(BaseModel):
     coop: int = Field(default=1, strict=True, ge=1, le=5)
     barn: int = Field(default=1, strict=True, ge=1, le=5)
@@ -95,9 +106,25 @@ class FarmStateInput(BaseModel):
     unlockedPlots: int = Field(default=PLOT_COUNT, strict=True)
     animals: FarmAnimalsInput = Field(default_factory=FarmAnimalsInput)
     buildings: FarmBuildingsInput = Field(default_factory=FarmBuildingsInput)
+    inventory: FarmInventoryInput = Field(default_factory=FarmInventoryInput)
+    fulfilledOrders: list[str] = Field(default_factory=list, max_length=90)
+    completedOrders: int = Field(default=0, strict=True, ge=0, le=1_000_000)
     claimedMissions: list[str] = Field(default_factory=list, max_length=20)
     plots: list[FarmPlotInput] = Field(min_length=PLOT_COUNT, max_length=MAX_PLOTS)
     lastEvent: str = Field(default="", max_length=160)
+
+    @field_validator("fulfilledOrders")
+    @classmethod
+    def validate_orders(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("Doppelte Farm-Bestellungen")
+        for value in values:
+            if not isinstance(value, str) or not value.startswith("order-"):
+                raise ValueError("Ungültige Farm-Bestellung")
+            parts = value.split("-")
+            if len(parts) != 3 or not parts[1].isdigit() or parts[2] not in {"0", "1", "2"}:
+                raise ValueError("Ungültige Farm-Bestellung")
+        return values
 
     @field_validator("claimedMissions")
     @classmethod
