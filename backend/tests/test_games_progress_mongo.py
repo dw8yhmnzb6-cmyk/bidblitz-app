@@ -162,6 +162,22 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(after_stale_upload["best"][:3], completed.best[:3])
             self.assertEqual(after_stale_upload["stars"][:3], completed.stars[:3])
 
+    async def test_concurrent_scores_and_stars_keep_independent_maxima(self):
+        for save, read, make in (
+            (progress.save_match_progress, progress.get_match_progress, payload),
+            (progress.save_bubble_progress, progress.get_bubble_progress, bubble_payload),
+            (progress.save_runner_progress, progress.get_runner_progress, runner_payload),
+        ):
+            high_score = make(2, 2400)
+            high_score.stars[0] = 1
+            high_stars = make(2, 900)
+            high_stars.stars[0] = 3
+            await asyncio.gather(save(None, high_score), save(None, high_stars))
+            merged = await read(None)
+            self.assertEqual(merged["unlocked"], 3)
+            self.assertEqual(merged["best"][0], 2400)
+            self.assertEqual(merged["stars"][0], 3)
+
     async def test_parallel_runner_devices_merge_monotonically(self):
         one = runner_payload(4, 800)
         two = runner_payload(7, 500)
