@@ -363,6 +363,8 @@ async def create_camera_stream_session(camera_id: str, request: Request):
 
     gateway = (os.getenv("THE_EYE_MEDIA_PUBLIC_URL") or "").rstrip("/")
     stream_path = (camera.get("stream_path") or "").strip("/")
+    if not gateway or not stream_path:
+        raise HTTPException(status_code=503, detail="Camera playback is not configured")
     expires = _now_dt() + timedelta(minutes=5)
     session_id = "CSES-" + secrets.token_hex(12).upper()
     session_token = secrets.token_urlsafe(24)
