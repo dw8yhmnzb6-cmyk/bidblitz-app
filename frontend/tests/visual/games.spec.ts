@@ -1307,3 +1307,31 @@ test('Farm refuses conflict replacement when recovery backup storage fails', asy
   expect(putCalls).toBe(0);
   expect(await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().coins)).toBe(local.coins);
 });
+
+test('Farm preserves the displaced local save as a readable backup after choosing account progress', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const frame = await (await page.locator('iframe[title*="BidBlitz Farm"]').elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+  const local = await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot());
+  const remote = { ...local, coins: local.coins + 7 };
+  await page.route('**/api/games/progress/farm', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true, revision: 6, state: remote }) });
+    } else {
+      await route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
+    }
+  });
+  await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.syncProgress());
+  const actions = frame!.locator('#farm-conflict-actions');
+  await expect(actions).toBeVisible();
+  await actions.getByRole('button', { name: 'Konto-Spielstand auf diesem Gerät laden' }).click();
+  await expect(actions).toBeHidden();
+  const result = await frame!.evaluate(() => ({
+    backup: JSON.parse(localStorage.getItem('bidblitz.farm.conflict-backup.v1') || 'null'),
+    active: (window as any).BidBlitzFarmPreview.snapshot(),
+  }));
+  expect(result.backup).toEqual(local);
+  expect(result.active.coins).toBe(remote.coins);
+});
