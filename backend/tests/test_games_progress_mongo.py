@@ -122,6 +122,26 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["stars"][1], 3)
 
 
+    async def test_bubble_and_runner_progress_remain_account_isolated(self):
+        for save, read, data in (
+            (progress.save_bubble_progress, progress.get_bubble_progress, bubble_payload),
+            (progress.save_runner_progress, progress.get_runner_progress, runner_payload),
+        ):
+            await save(None, data(3, 800))
+
+            async def bob(_request):
+                return "bob"
+            progress._owner = bob
+            self.assertEqual((await read(None))["unlocked"], 1)
+            await save(None, data(1, 2000))
+
+            async def alice(_request):
+                return "alice"
+            progress._owner = alice
+            saved = await read(None)
+            self.assertEqual(saved["unlocked"], 4)
+            self.assertEqual(saved["best"][0], 800)
+
     async def test_parallel_runner_devices_merge_monotonically(self):
         one = runner_payload(4, 800)
         two = runner_payload(7, 500)
