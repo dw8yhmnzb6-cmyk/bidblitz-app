@@ -49,6 +49,8 @@ def _load_guard_functions():
     ("normal", True),
     ("read_only", False),
     ("lockdown", False),
+    ("unexpected_mode", False),
+    ("", False),
 ])
 def test_device_control_obeys_emergency_mode(mode, allowed):
     namespace = _load_guard_functions()
