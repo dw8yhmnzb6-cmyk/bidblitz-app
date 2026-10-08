@@ -94,11 +94,15 @@
         showConflict(current);
         return false; // Keep both versions intact instead of silently overwriting either.
       }
-      if (current.exists && adoptRemote(current)) {
-        // A concurrent save can win; adopting it is a successful account sync.
-        accountSync = 'account';
-        persist();
+      if (current.exists && current.state && JSON.stringify(profile) !== JSON.stringify(current.state)) {
+        // A 409 means another device saved while we were editing. A higher
+        // progress tuple does not prove that its save includes our changes.
+        // Preserve both versions and ask the player before replacing either.
+        showConflict(current);
+        return false;
       }
+      if (current.exists && !adoptRemote(current)) throw new Error('farm-progress-invalid-conflict-state');
+      if (current.exists) { accountSync = 'account'; persist(); }
       return false;
     }
     throw new Error('farm-progress-save');
