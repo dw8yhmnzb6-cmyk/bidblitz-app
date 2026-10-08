@@ -1005,7 +1005,13 @@ export default function TheEyePage({ onNavigate }) {
 
   const focusedPins = useMemo(() => {
     if (!mapFocus) return [];
-    const rows = visibleDevices.filter((d) => d?.location?.lat != null && d?.location?.lng != null);
+    const rows = visibleDevices.filter((d) => {
+      const lat = Number(d?.location?.lat);
+      const lng = Number(d?.location?.lng);
+      return d?.location?.lat != null && d?.location?.lng != null &&
+        Number.isFinite(lat) && Number.isFinite(lng) &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    });
     if (!rows.length) return [];
 
     const centerLat = mapFocus.lat ?? rows.reduce((sum, d) => sum + Number(d.location.lat), 0) / rows.length;
