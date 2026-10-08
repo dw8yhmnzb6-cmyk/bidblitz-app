@@ -358,8 +358,8 @@ async def create_camera_stream_session(camera_id: str, request: Request):
     camera = await db.the_eye_cameras.find_one(camera_query, {"_id": 0})
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
-    if camera.get("connection_status") == "offline":
-        raise HTTPException(status_code=409, detail="Camera is offline")
+    if camera.get("connection_status") not in {"online", "warning"}:
+        raise HTTPException(status_code=409, detail="Camera has no active connection")
 
     gateway = (os.getenv("THE_EYE_MEDIA_PUBLIC_URL") or "").rstrip("/")
     stream_path = (camera.get("stream_path") or "").strip("/")
