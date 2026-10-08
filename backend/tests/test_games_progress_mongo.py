@@ -142,6 +142,26 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(saved["unlocked"], 4)
             self.assertEqual(saved["best"][0], 800)
 
+    async def test_completed_levels_resume_after_reloading_all_three_games(self):
+        for save, read, make in (
+            (progress.save_match_progress, progress.get_match_progress, payload),
+            (progress.save_bubble_progress, progress.get_bubble_progress, bubble_payload),
+            (progress.save_runner_progress, progress.get_runner_progress, runner_payload),
+        ):
+            completed = make(3, 1100)
+            await save(None, completed)
+            # Simulate a new session reading its account state without device memory.
+            resumed = await read(None)
+            self.assertEqual(resumed["unlocked"], 4)
+            self.assertEqual(resumed["best"][:3], completed.best[:3])
+            self.assertEqual(resumed["stars"][:3], completed.stars[:3])
+            # A stale second device must not reset the resumed levels.
+            await save(None, make(1, 100))
+            after_stale_upload = await read(None)
+            self.assertEqual(after_stale_upload["unlocked"], 4)
+            self.assertEqual(after_stale_upload["best"][:3], completed.best[:3])
+            self.assertEqual(after_stale_upload["stars"][:3], completed.stars[:3])
+
     async def test_parallel_runner_devices_merge_monotonically(self):
         one = runner_payload(4, 800)
         two = runner_payload(7, 500)
