@@ -1195,3 +1195,50 @@ test('Games Match preview opens from catalog and remains usable on 320px', async
   await expect(recent.getByRole('button', { name: 'Weiter' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
+
+test('Farm queues edits made while the previous account save is still pending', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const frame = await (await page.locator('iframe[title*="BidBlitz Farm"]').elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+
+  let revision = 0;
+  let savedDay = 0;
+  const putDays: number[] = [];
+  let releaseFirst: (() => void) | undefined;
+  let firstStarted: (() => void) | undefined;
+  const started = new Promise<void>(resolve => { firstStarted = resolve; });
+  const blocked = new Promise<void>(resolve => { releaseFirst = resolve; });
+  await page.route('**/api/games/progress/farm', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false, revision: 0 }) });
+      return;
+    }
+    const payload = route.request().postDataJSON();
+    putDays.push(payload.state.day);
+    if (putDays.length === 1) {
+      firstStarted?.();
+      await blocked;
+    }
+    revision += 1;
+    savedDay = payload.state.day;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ revision }) });
+  });
+
+  try {
+    void frame!.evaluate(() => (window as any).BidBlitzFarmPreview.syncProgress());
+    await started;
+    const newerDay = await frame!.evaluate(() => {
+      (window as any).BidBlitzFarmPreview.nextDay();
+      return (window as any).BidBlitzFarmPreview.snapshot().day;
+    });
+    releaseFirst?.();
+    await expect.poll(() => putDays.length).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => savedDay).toBe(newerDay);
+    await expect(frame!.locator('#save-note')).toContainText('synchronisiert');
+    expect(putDays[0]).toBeLessThan(newerDay);
+  } finally {
+    releaseFirst?.();
+  }
+});
