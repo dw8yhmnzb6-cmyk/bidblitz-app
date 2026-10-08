@@ -182,7 +182,13 @@
       }
       // Keep a recovery snapshot before explicitly replacing either version.
       const backup = useLocal ? current.state : profile;
-      localStorage.setItem('bidblitz.farm.conflict-backup.v1', JSON.stringify(backup));
+      const backupKey = 'bidblitz.farm.conflict-backup.v1';
+      const backupJson = JSON.stringify(backup);
+      // Fail closed if the recovery copy cannot be durably read back.
+      localStorage.setItem(backupKey, backupJson);
+      if (localStorage.getItem(backupKey) !== backupJson) {
+        throw new Error('farm-conflict-backup-unavailable');
+      }
       if (useLocal) {
         const put = await fetch(PROGRESS_API, {
           method: 'PUT', credentials: 'include',
