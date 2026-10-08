@@ -81,6 +81,11 @@
         saveMeta();
         return pushFarmState(accountRevision, retries - 1);
       }
+      if (current.exists && current.state && S.compareProgress(profile, current.state) === 0 && JSON.stringify(profile) !== JSON.stringify(current.state)) {
+        accountSync = 'error';
+        persist();
+        return false; // Keep both versions intact instead of silently overwriting either.
+      }
       if (current.exists) adoptRemote(current);
       return false;
     }
@@ -106,6 +111,10 @@
       } else if (S.chooseNewer(profile, remote.state) === 'remote') {
         adoptRemote(remote);
         accountSync = 'account'; persist();
+      } else if (S.compareProgress(profile, remote.state) === 0 && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
+        // Equal progress does not prove equal saves; keep both until resolved.
+        accountSync = 'error';
+        persist();
       } else {
         accountRevision = remote.revision || 0;
         saveMeta();
