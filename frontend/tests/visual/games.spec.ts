@@ -1361,3 +1361,25 @@ test('Farm recovery requires confirmation and retains current save when cancelle
   expect(after).toEqual(initial);
   expect(await frame!.evaluate(() => localStorage.getItem('bidblitz.farm.before-restore.v1'))).toBeNull();
 });
+
+test('Farm confirmed recovery preserves a safety copy of the replaced save', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const frame = await (await page.locator('iframe[title*="BidBlitz Farm"]').elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+  const original = await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot());
+  const backup = { ...original, coins: original.coins + 7 };
+  await frame!.evaluate(saved => {
+    localStorage.setItem('bidblitz.farm.conflict-backup.v1', JSON.stringify(saved));
+    (window as any).BidBlitzFarmPreview.syncProgress();
+  }, backup);
+  await frame!.evaluate(() => window.dispatchEvent(new Event('online')));
+  const restore = frame!.getByRole('button', { name: 'Gesicherten Spielstand wiederherstellen' });
+  await expect(restore).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
+  await restore.click();
+  await expect.poll(async () => frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().coins)).toBe(backup.coins);
+  const safetyCopy = await frame!.evaluate(() => JSON.parse(localStorage.getItem('bidblitz.farm.before-restore.v1') || 'null'));
+  expect(safetyCopy).toEqual(original);
+});
