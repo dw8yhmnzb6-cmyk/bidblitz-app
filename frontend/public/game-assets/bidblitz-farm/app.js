@@ -125,6 +125,14 @@
     syncAccountProgress();
   }
 
+  // Retry saved progress when connectivity returns, without background polling.
+  window.addEventListener('online', () => {
+    if (accountSync === 'error' || accountSync === 'pending') syncAccountProgress();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && accountSync === 'error' && navigator.onLine !== false) syncAccountProgress();
+  });
+
   function renderOnboarding() {
     const box = $('onboarding-steps');
     box.replaceChildren();
