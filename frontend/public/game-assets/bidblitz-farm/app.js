@@ -125,12 +125,17 @@
     syncAccountProgress();
   }
 
-  // Retry saved progress when connectivity returns, without background polling.
-  window.addEventListener('online', () => {
-    if (accountSync === 'error' || accountSync === 'pending') syncAccountProgress();
+  // Reconcile when connectivity returns, including edits made while offline.
+  // Account sessions also need a refresh after restoring a cached browser tab.
+  function retryAccountSync() {
+    if (accountSync !== 'guest' && navigator.onLine !== false) syncAccountProgress();
+  }
+  window.addEventListener('online', retryAccountSync);
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) retryAccountSync();
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && accountSync === 'error' && navigator.onLine !== false) syncAccountProgress();
+    if (!document.hidden && accountSync === 'error') retryAccountSync();
   });
 
   function renderOnboarding() {
