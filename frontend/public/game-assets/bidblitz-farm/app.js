@@ -81,7 +81,13 @@
       accountRevision = body.revision || revision + 1;
       saveMeta();
       accountSync = 'account';
-      if (JSON.stringify(profile) !== submittedState) syncQueued = true;
+      if (JSON.stringify(profile) !== submittedState) {
+        // A new local action occurred during the request; synchronize it next.
+        syncQueued = true;
+      } else {
+        // The exact local snapshot was confirmed by the account server.
+        hasLocalEdits = false;
+      }
       persist();
       return true;
     }
