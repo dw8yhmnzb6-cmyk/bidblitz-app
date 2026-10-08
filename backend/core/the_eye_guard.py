@@ -56,6 +56,11 @@ async def require_the_eye_writes_allowed(
     allow_in_read_only: bool = False,
 ) -> str:
     mode = await get_the_eye_emergency_mode()
+    if mode not in {"normal", "read_only", "lockdown"}:
+        raise HTTPException(
+            status_code=423,
+            detail=f"The Eye emergency mode is invalid; action blocked: {action}",
+        )
     if mode == "lockdown":
         raise HTTPException(
             status_code=423,
