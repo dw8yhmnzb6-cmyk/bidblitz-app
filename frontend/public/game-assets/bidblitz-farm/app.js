@@ -39,6 +39,7 @@
     catch { storageOK = false; }
     if (!storageOK) $('save-note').textContent = 'Lokales Speichern ist hier nicht verfügbar.';
     else if (accountSync === 'account') $('save-note').textContent = 'Farm-Spielstand wird im BidBlitz-Konto synchronisiert. Virtuelle Farm-Münzen sind kein Wallet-Guthaben.';
+    else if (accountSync === 'conflict') $('save-note').textContent = 'Speicherkonflikt: Zwei Geräte haben unterschiedliche Farm-Spielstände. Beide bleiben erhalten; automatische Überschreibung ist gestoppt.';
     else if (accountSync === 'error') $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung ist vorübergehend nicht verfügbar.';
     else if (accountSync === 'guest') $('save-note').textContent = 'Farm-Spielstand wird nur auf diesem Gerät gespeichert. Keine Wallet-Verbindung.';
     else $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung wird geprüft.';
@@ -82,7 +83,7 @@
         return pushFarmState(accountRevision, retries - 1);
       }
       if (current.exists && current.state && S.compareProgress(profile, current.state) === 0 && JSON.stringify(profile) !== JSON.stringify(current.state)) {
-        accountSync = 'error';
+        accountSync = 'conflict';
         persist();
         return false; // Keep both versions intact instead of silently overwriting either.
       }
@@ -93,7 +94,7 @@
   }
 
   async function syncAccountProgress() {
-    if (!S) return;
+    if (!S || accountSync === 'conflict') return;
     if (syncActive) { syncQueued = true; return; }
     syncActive = true; syncQueued = false;
     try {
@@ -113,7 +114,7 @@
         accountSync = 'account'; persist();
       } else if (S.compareProgress(profile, remote.state) === 0 && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
         // Equal progress does not prove equal saves; keep both until resolved.
-        accountSync = 'error';
+        accountSync = 'conflict';
         persist();
       } else {
         accountRevision = remote.revision || 0;
