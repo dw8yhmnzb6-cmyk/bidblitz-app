@@ -79,6 +79,7 @@ export default function TheEyePage({ onNavigate }) {
   const [devices, setDevices] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [worldMapMode, setWorldMapMode] = useState(false);
+  const [worldZoom, setWorldZoom] = useState(2);
   const [loading, setLoading] = useState(true);
   const [deviceDataState, setDeviceDataState] = useState("loading");
   const [query, setQuery] = useState("");
@@ -1273,7 +1274,7 @@ export default function TheEyePage({ onNavigate }) {
             ) : (
             worldMapMode ? (
               <div className="eye-focused-map">
-                <MapContainer center={[30, 15]} zoom={2} minZoom={2} scrollWheelZoom className="eye-leaflet-map" zoomControl>
+                <MapContainer key={`world-${worldZoom}`} center={[30, 15]} zoom={worldZoom} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
                   <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   {activeLayers["BidBlitz Geräte"] && visibleDevices.filter((device) => {
                     const lat = Number(device?.location?.lat);
@@ -1316,7 +1317,7 @@ export default function TheEyePage({ onNavigate }) {
             )}
 
             <div className="eye-map-toolbar">
-              <button>+</button><button>−</button><button><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
+              <button type="button" onClick={() => { if (!mapFocus) { setWorldMapMode(true); setWorldZoom((z) => Math.min(9, z + 1)); } }} aria-label="Weltkarte vergrößern">+</button><button type="button" onClick={() => { if (!mapFocus) { setWorldMapMode(true); setWorldZoom((z) => Math.max(2, z - 1)); } }} aria-label="Weltkarte verkleinern">−</button><button type="button" onClick={() => setActiveLayers((previous) => ({ ...previous, "BidBlitz Geräte": !previous["BidBlitz Geräte"] }))} aria-label="BidBlitz Geräte auf Karte ein- oder ausblenden"><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
             </div>
 
             <div className="eye-live-clock"><span><Camera size={15} /> {liveConnected ? "Realtime" : "No Realtime"}</span><strong>{deviceDataState.toUpperCase()}</strong></div>
