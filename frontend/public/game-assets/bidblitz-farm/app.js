@@ -201,14 +201,16 @@
   // Reconcile when connectivity returns, including edits made while offline.
   // Account sessions also need a refresh after restoring a cached browser tab.
   function retryAccountSync() {
-    if (accountSync !== 'guest' && navigator.onLine !== false) syncAccountProgress();
+    // A guest may log in without reloading the farm tab. Recheck the session
+    // instead of permanently leaving this game in device-only mode.
+    if (navigator.onLine !== false) syncAccountProgress();
   }
   window.addEventListener('online', retryAccountSync);
   window.addEventListener('pageshow', event => {
     if (event.persisted) retryAccountSync();
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && accountSync === 'error') retryAccountSync();
+    if (!document.hidden && (accountSync === 'error' || accountSync === 'guest')) retryAccountSync();
   });
 
   function renderOnboarding() {
