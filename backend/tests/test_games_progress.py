@@ -211,6 +211,25 @@ class GamesProgressTest(unittest.TestCase):
             self.assertIs(type(restored["best"][0]), int)
             self.assertIs(type(restored["stars"][0]), int)
 
+    def test_malformed_persisted_unlock_values_fail_closed_for_every_game(self):
+        for reader, levels in (
+            (progress._public, 30),
+            (progress._public_bubble, 20),
+            (progress._public_runner, 15),
+        ):
+            for bad in ("not-a-level", True, -10, 2.5, None, {}):
+                result = reader({
+                    "unlocked": bad,
+                    "best": [0] * levels,
+                    "stars": [0] * levels,
+                })
+                self.assertEqual(result["unlocked"], 1)
+            self.assertEqual(reader({
+                "unlocked": levels + 20,
+                "best": [0] * levels,
+                "stars": [0] * levels,
+            })["unlocked"], levels)
+
     def test_empty_account_has_default_progress(self):
         result = asyncio.run(progress.get_match_progress(None))
         self.assertEqual(result["unlocked"], 1)
