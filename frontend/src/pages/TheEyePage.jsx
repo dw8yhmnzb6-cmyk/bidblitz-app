@@ -1300,6 +1300,7 @@ export default function TheEyePage({ onNavigate }) {
               <div className="eye-orbit orbit-a" />
               <div className="eye-orbit orbit-b" />
               <div className="eye-world-label label-eu">EUROPA</div>
+              <span className="eye-world-demo-label" title="Die dekorativen Symbole zeigen keine Echtzeitpositionen">Illustrative Ansicht · keine Live-Positionen</span>
               <div className="eye-world-label label-af">AFRIKA</div>
               <div className="eye-world-label label-as">ASIEN</div>
               <div className="eye-prishtina"><span /><strong>Prishtina</strong></div>
@@ -1317,7 +1318,7 @@ export default function TheEyePage({ onNavigate }) {
             )}
 
             <div className="eye-map-toolbar">
-              <button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.min(9, z + 1)); }} aria-label="Weltkarte vergrößern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte vergrößern"}>+</button><button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.max(2, z - 1)); }} aria-label="Weltkarte verkleinern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte verkleinern"}>−</button><button type="button" onClick={() => setActiveLayers((previous) => ({ ...previous, "BidBlitz Geräte": !previous["BidBlitz Geräte"] }))} aria-label="BidBlitz Geräte auf Karte ein- oder ausblenden"><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
+              <button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.min(9, z + 1)); }} aria-label="Weltkarte vergrößern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte vergrößern"}>+</button><button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.max(2, z - 1)); }} aria-label="Weltkarte verkleinern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte verkleinern"}>−</button><button type="button" onClick={() => { setWorldMapMode(true); setActiveLayers((previous) => ({ ...previous, "BidBlitz Geräte": !previous["BidBlitz Geräte"] })); }} aria-label="BidBlitz Geräte auf Karte ein- oder ausblenden" aria-pressed={Boolean(activeLayers["BidBlitz Geräte"])} title="Eigene Geräte auf der Karte anzeigen oder ausblenden"><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
             </div>
 
             <div className="eye-live-clock"><span><Camera size={15} /> {liveConnected ? "Realtime" : "No Realtime"}</span><strong>{deviceDataState.toUpperCase()}</strong></div>
