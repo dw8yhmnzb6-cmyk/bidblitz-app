@@ -103,6 +103,22 @@ class LaunchReadinessTest(unittest.TestCase):
         self.assertTrue(result["commercial_launch_ready"])
         self.assertEqual(result["blockers"], [])
 
+    def test_replay_gate_blocks_launch_even_when_all_other_checks_pass(self):
+        localized = sorted(code for code in readiness.SUPPORTED_LANGUAGES if code != readiness.SOURCE_LANGUAGE)
+        readiness.db.games_translation_reviews = Collection([
+            {"code": code, "reviewed": True} for code in localized
+        ])
+        readiness.PHYSICAL_DEVICE_ACCEPTED = True
+        readiness.PRODUCTION_APPROVED = True
+        readiness.BILLING_READY = True
+        readiness.REPLAY_ACCEPTED = False
+
+        result = asyncio.run(readiness.launch_readiness(None))
+        self.assertFalse(result["non_monetary_launch_ready"])
+        self.assertFalse(result["commercial_launch_ready"])
+        self.assertFalse(result["integrity"]["ready"])
+        self.assertEqual(result["blockers"], ["server_replay_acceptance"])
+
     def test_technical_preflight_failure_blocks_all_launches(self):
         async def preflight(_request):
             return {"ready": False, "scope": "games_non_monetary_preflight"}
