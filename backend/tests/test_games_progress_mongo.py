@@ -178,6 +178,21 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(merged["best"][0], 2400)
             self.assertEqual(merged["stars"][0], 3)
 
+    async def test_stale_device_after_reconnect_cannot_erase_new_levels(self):
+        for save, read, make in (
+            (progress.save_match_progress, progress.get_match_progress, payload),
+            (progress.save_bubble_progress, progress.get_bubble_progress, bubble_payload),
+            (progress.save_runner_progress, progress.get_runner_progress, runner_payload),
+        ):
+            offline_snapshot = make(1, 450)
+            await save(None, make(5, 1200))
+            await save(None, offline_snapshot)
+            resumed = await read(None)
+            self.assertEqual(resumed["unlocked"], 6)
+            self.assertGreaterEqual(resumed["best"][0], 1200)
+            self.assertGreater(resumed["best"][4], 0)
+            self.assertGreater(resumed["stars"][4], 0)
+
     async def test_parallel_runner_devices_merge_monotonically(self):
         one = runner_payload(4, 800)
         two = runner_payload(7, 500)
