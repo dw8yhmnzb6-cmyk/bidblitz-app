@@ -57,21 +57,24 @@
   }
 
   async function pushFarmState(revision, retries = 1) {
+    const submittedState = JSON.stringify(profile);
     const response = await fetch(PROGRESS_API, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ revision, state: profile }),
+      body: JSON.stringify({ revision, state: JSON.parse(submittedState) }),
     });
     const body = await response.json().catch(() => ({}));
     if (response.ok) {
       accountRevision = body.revision || revision + 1;
       saveMeta();
       accountSync = 'account';
+      if (JSON.stringify(profile) !== submittedState) syncQueued = true;
       persist();
       return true;
     }
     if (response.status === 409 && body.detail && body.detail.current) {
+      if (JSON.stringify(profile) !== submittedState) { syncQueued = true; return false; }
       const current = body.detail.current;
       if (current.exists && current.state && S.compareProgress(profile, current.state) > 0 && retries > 0) {
         accountRevision = current.revision || 0;
@@ -89,12 +92,14 @@
     if (syncActive) { syncQueued = true; return; }
     syncActive = true; syncQueued = false;
     try {
+      const stateAtLoad = JSON.stringify(profile);
       const response = await fetch(PROGRESS_API, { credentials: 'include' });
       if (response.status === 401 || response.status === 403) {
         accountSync = 'guest'; persist(); return;
       }
       if (!response.ok) throw new Error('farm-progress-load');
       const remote = await response.json();
+      if (JSON.stringify(profile) !== stateAtLoad) { syncQueued = true; return; }
 
       if (!remote.exists) {
         await pushFarmState(0);
