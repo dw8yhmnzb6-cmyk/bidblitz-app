@@ -162,8 +162,8 @@ def _public(doc: dict | None) -> dict:
     return {
         "version": 1,
         "unlocked": max(1, min(_LEVELS, int(doc.get("unlocked") or 1))),
-        "best": [int(value) if isinstance(value, int) and 0 <= value <= 1_000_000_000 else 0 for value in best],
-        "stars": [int(value) if isinstance(value, int) and 0 <= value <= 3 else 0 for value in stars],
+        "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
+        "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
     }
 
@@ -231,8 +231,8 @@ def _public_bubble(doc: dict | None) -> dict:
     return {
         "version": 1,
         "unlocked": max(1, min(_BUBBLE_LEVELS, int(doc.get("unlocked") or 1))),
-        "best": [int(value) if isinstance(value, int) and 0 <= value <= 1_000_000_000 else 0 for value in best],
-        "stars": [int(value) if isinstance(value, int) and 0 <= value <= 3 else 0 for value in stars],
+        "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
+        "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
     }
 
@@ -303,8 +303,8 @@ def _public_runner(doc: dict | None) -> dict:
     return {
         "version": 1,
         "unlocked": max(1, min(_RUNNER_LEVELS, int(doc.get("unlocked") or 1))),
-        "best": [int(value) if isinstance(value, int) and 0 <= value <= 1_000_000_000 else 0 for value in best],
-        "stars": [int(value) if isinstance(value, int) and 0 <= value <= 3 else 0 for value in stars],
+        "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
+        "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
     }
 
