@@ -1242,3 +1242,34 @@ test('Farm queues edits made while the previous account save is still pending', 
     releaseFirst?.();
   }
 });
+
+test('Farm retries account synchronization after a temporary network outage', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const frame = await (await page.locator('iframe[title*="BidBlitz Farm"]').elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+
+  let unavailable = true;
+  let uploaded = false;
+  await page.route('**/api/games/progress/farm', async route => {
+    if (unavailable) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Temporarily unavailable' }) });
+      return;
+    }
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: false, revision: 0 }) });
+      return;
+    }
+    uploaded = true;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ revision: 1 }) });
+  });
+  await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.syncProgress());
+  await expect(frame!.locator('#save-note')).toContainText('vorübergehend nicht verfügbar');
+  const localDay = await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().day);
+  unavailable = false;
+  await frame!.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect.poll(() => uploaded).toBe(true);
+  await expect(frame!.locator('#save-note')).toContainText('synchronisiert');
+  expect(await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().day)).toBe(localDay);
+});
