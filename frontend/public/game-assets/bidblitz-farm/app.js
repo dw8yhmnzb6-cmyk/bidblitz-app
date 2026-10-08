@@ -94,7 +94,11 @@
         showConflict(current);
         return false; // Keep both versions intact instead of silently overwriting either.
       }
-      if (current.exists) adoptRemote(current);
+      if (current.exists && adoptRemote(current)) {
+        // A concurrent save can win; adopting it is a successful account sync.
+        accountSync = 'account';
+        persist();
+      }
       return false;
     }
     throw new Error('farm-progress-save');
