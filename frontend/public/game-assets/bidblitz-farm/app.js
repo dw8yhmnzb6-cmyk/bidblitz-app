@@ -98,8 +98,13 @@
         showConflict(current);
         return false;
       }
-      if (current.exists && !adoptRemote(current)) throw new Error('farm-progress-invalid-conflict-state');
-      if (current.exists) { accountSync = 'account'; persist(); }
+      if (!current.exists || !adoptRemote(current)) {
+        // A revision conflict without a valid server snapshot must not
+        // masquerade as a successful save or silently drop local changes.
+        throw new Error('farm-progress-invalid-conflict-state');
+      }
+      accountSync = 'account';
+      persist();
       return false;
     }
     throw new Error('farm-progress-save');
