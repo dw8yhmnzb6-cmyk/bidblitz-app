@@ -195,6 +195,22 @@ class GamesProgressTest(unittest.TestCase):
         security.get_current_user.reset_mock()
         security.get_current_user.return_value = {"_id": "alice"}
 
+    def test_persisted_boolean_scores_and_stars_are_not_exposed_as_numbers(self):
+        for reader, levels in (
+            (progress._public, 30),
+            (progress._public_bubble, 20),
+            (progress._public_runner, 15),
+        ):
+            restored = reader({
+                "unlocked": 1,
+                "best": [True] + [0] * (levels - 1),
+                "stars": [True] + [0] * (levels - 1),
+            })
+            self.assertEqual(restored["best"][0], 0)
+            self.assertEqual(restored["stars"][0], 0)
+            self.assertIs(type(restored["best"][0]), int)
+            self.assertIs(type(restored["stars"][0]), int)
+
     def test_empty_account_has_default_progress(self):
         result = asyncio.run(progress.get_match_progress(None))
         self.assertEqual(result["unlocked"], 1)
