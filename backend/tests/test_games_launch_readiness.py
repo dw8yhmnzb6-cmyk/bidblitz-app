@@ -35,6 +35,7 @@ class LaunchReadinessTest(unittest.TestCase):
         self.old_device = readiness.PHYSICAL_DEVICE_ACCEPTED
         self.old_prod = readiness.PRODUCTION_APPROVED
         self.old_billing = readiness.BILLING_READY
+        self.old_replay = readiness.REPLAY_ACCEPTED
 
         readiness.get_current_user = AsyncMock(return_value={"_id": "admin", "role": "admin"})
 
@@ -48,6 +49,7 @@ class LaunchReadinessTest(unittest.TestCase):
         readiness.PHYSICAL_DEVICE_ACCEPTED = False
         readiness.PRODUCTION_APPROVED = False
         readiness.BILLING_READY = False
+        readiness.REPLAY_ACCEPTED = False
 
     def tearDown(self):
         readiness.get_current_user = self.old_auth
@@ -55,6 +57,7 @@ class LaunchReadinessTest(unittest.TestCase):
         readiness.PHYSICAL_DEVICE_ACCEPTED = self.old_device
         readiness.PRODUCTION_APPROVED = self.old_prod
         readiness.BILLING_READY = self.old_billing
+        readiness.REPLAY_ACCEPTED = self.old_replay
 
     def test_default_state_is_fail_closed_with_clear_blockers(self):
         result = asyncio.run(readiness.launch_readiness(None))
@@ -64,7 +67,8 @@ class LaunchReadinessTest(unittest.TestCase):
         self.assertIn("physical_device_acceptance", result["blockers"])
         self.assertIn("production_approval", result["blockers"])
         self.assertIn("billing_provider", result["blockers"])
-        self.assertTrue(result["integrity"]["ready"])
+        self.assertFalse(result["integrity"]["ready"])
+        self.assertIn("server_replay_acceptance", result["blockers"])
         self.assertFalse(result["integrity"]["public_trusted_leaderboards_enabled"])
         self.assertEqual(result["side_effects"], "none")
 
@@ -75,6 +79,7 @@ class LaunchReadinessTest(unittest.TestCase):
         ])
         readiness.PHYSICAL_DEVICE_ACCEPTED = True
         readiness.PRODUCTION_APPROVED = True
+        readiness.REPLAY_ACCEPTED = True
         readiness.BILLING_READY = False
 
         result = asyncio.run(readiness.launch_readiness(None))
@@ -90,6 +95,7 @@ class LaunchReadinessTest(unittest.TestCase):
         ])
         readiness.PHYSICAL_DEVICE_ACCEPTED = True
         readiness.PRODUCTION_APPROVED = True
+        readiness.REPLAY_ACCEPTED = True
         readiness.BILLING_READY = True
 
         result = asyncio.run(readiness.launch_readiness(None))
@@ -103,6 +109,7 @@ class LaunchReadinessTest(unittest.TestCase):
         readiness.games_preflight = preflight
         readiness.PHYSICAL_DEVICE_ACCEPTED = True
         readiness.PRODUCTION_APPROVED = True
+        readiness.REPLAY_ACCEPTED = True
         readiness.BILLING_READY = True
         localized = sorted(code for code in readiness.SUPPORTED_LANGUAGES if code != readiness.SOURCE_LANGUAGE)
         readiness.db.games_translation_reviews = Collection([
