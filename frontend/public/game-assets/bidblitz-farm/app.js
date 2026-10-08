@@ -82,7 +82,8 @@
       saveMeta();
       accountSync = 'account';
       if (JSON.stringify(profile) !== submittedState) {
-        // A new local action occurred during the request; synchronize it next.
+        // This response confirms only an older snapshot, not the latest edits.
+        accountSync = 'pending';
         syncQueued = true;
       } else {
         // The exact local snapshot was confirmed by the account server.
