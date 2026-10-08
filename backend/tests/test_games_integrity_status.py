@@ -64,6 +64,17 @@ class GamesIntegrityStatusTest(unittest.TestCase):
         for secret in ("owner_id", "email", "total_score", "best"):
             self.assertNotIn(secret, serialized)
 
+    def test_all_competitive_games_report_replay_without_claiming_full_anti_cheat(self):
+        result = asyncio.run(status.integrity_status(None))
+        by_game = {row["game_id"]: row for row in result["games"]}
+        self.assertEqual(set(by_game), {"match", "bubble", "runner", "farm"})
+        for game_id in ("match", "bubble", "runner"):
+            self.assertEqual(by_game[game_id]["mode"], "server_replay")
+            self.assertFalse(by_game[game_id]["public_trusted_leaderboard_enabled"])
+        self.assertEqual(by_game["farm"]["mode"], "no_competitive_score")
+        self.assertFalse(result["public_trusted_leaderboards_enabled"])
+        self.assertEqual(result["integrity"], "server_replay_not_full_anti_cheat")
+
     def test_super_admin_is_allowed(self):
         status.get_current_user.return_value = {"_id": "root", "role": "super_admin"}
         result = asyncio.run(status.integrity_status(None))
