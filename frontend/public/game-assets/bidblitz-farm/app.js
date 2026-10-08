@@ -23,7 +23,9 @@
   let raw = null, rawMeta = null;
   let storageOK = true;
   try { raw = localStorage.getItem(KEY); rawMeta = localStorage.getItem(META_KEY); } catch { storageOK = false; }
-  let profile = F.decode(raw) || F.initial(seed());
+  const savedLocalProfile = F.decode(raw);
+  let profile = savedLocalProfile || F.initial(seed());
+  let hasLocalEdits = Boolean(savedLocalProfile);
   let accountRevision = 0, accountSync = 'pending', syncActive = false, syncQueued = false;
   let conflictRemote = null, conflictBusy = false;
   try {
@@ -58,6 +60,7 @@
     const decoded = F.decode(JSON.stringify(remote.state));
     if (!decoded) return false;
     profile = decoded;
+    hasLocalEdits = false;
     accountRevision = Number.isInteger(remote.revision) ? remote.revision : 0;
     saveMeta();
     persist();
@@ -129,7 +132,7 @@
       } else if (S.chooseNewer(profile, remote.state) === 'remote') {
         // A genuine local save may contain edits absent from the remote state,
         // even when the remote progress counter is higher. Never discard it.
-        if (raw && F.decode(raw) && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
+        if (hasLocalEdits && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
           showConflict(remote);
         } else {
           if (!adoptRemote(remote)) throw new Error('farm-progress-invalid-remote');
@@ -210,6 +213,7 @@
   $('farm-use-account').addEventListener('click', () => resolveFarmConflict(false));
 
   function persistAndSync() {
+    hasLocalEdits = true;
     persist();
     syncAccountProgress();
   }
