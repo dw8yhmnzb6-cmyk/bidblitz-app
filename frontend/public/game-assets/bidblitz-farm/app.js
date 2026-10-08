@@ -25,6 +25,7 @@
   try { raw = localStorage.getItem(KEY); rawMeta = localStorage.getItem(META_KEY); } catch { storageOK = false; }
   let profile = F.decode(raw) || F.initial(seed());
   let accountRevision = 0, accountSync = 'pending', syncActive = false, syncQueued = false;
+  let conflictRemote = null, conflictBusy = false;
   try {
     const meta = JSON.parse(rawMeta || '{}');
     if (Number.isInteger(meta.revision) && meta.revision >= 0) accountRevision = meta.revision;
@@ -43,6 +44,13 @@
     else if (accountSync === 'error') $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung ist vorübergehend nicht verfügbar.';
     else if (accountSync === 'guest') $('save-note').textContent = 'Farm-Spielstand wird nur auf diesem Gerät gespeichert. Keine Wallet-Verbindung.';
     else $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung wird geprüft.';
+    $('farm-conflict-actions').hidden = accountSync !== 'conflict';
+  }
+
+  function showConflict(remote) {
+    conflictRemote = remote;
+    accountSync = 'conflict';
+    persist();
   }
 
   function adoptRemote(remote) {
@@ -83,8 +91,7 @@
         return pushFarmState(accountRevision, retries - 1);
       }
       if (current.exists && current.state && S.compareProgress(profile, current.state) === 0 && JSON.stringify(profile) !== JSON.stringify(current.state)) {
-        accountSync = 'conflict';
-        persist();
+        showConflict(current);
         return false; // Keep both versions intact instead of silently overwriting either.
       }
       if (current.exists) adoptRemote(current);
@@ -114,8 +121,7 @@
         accountSync = 'account'; persist();
       } else if (S.compareProgress(profile, remote.state) === 0 && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
         // Equal progress does not prove equal saves; keep both until resolved.
-        accountSync = 'conflict';
-        persist();
+        showConflict(remote);
       } else {
         accountRevision = remote.revision || 0;
         saveMeta();
@@ -129,6 +135,63 @@
       if (syncQueued) { syncQueued = false; queueMicrotask(syncAccountProgress); }
     }
   }
+
+  async function resolveFarmConflict(useLocal) {
+    if (conflictBusy || syncActive || accountSync !== 'conflict' || !conflictRemote) return;
+    conflictBusy = true;
+    $('farm-keep-local').disabled = true;
+    $('farm-use-account').disabled = true;
+    const localSnapshot = JSON.stringify(profile);
+    try {
+      const response = await fetch(PROGRESS_API, { credentials: 'include' });
+      if (!response.ok) throw new Error('farm-conflict-load');
+      const current = await response.json();
+      if (!current.exists || !F.decode(JSON.stringify(current.state))) throw new Error('farm-conflict-invalid');
+      if (current.revision !== conflictRemote.revision ||
+          JSON.stringify(current.state) !== JSON.stringify(conflictRemote.state) ||
+          JSON.stringify(profile) !== localSnapshot) {
+        showConflict(current);
+        $('save-note').textContent = 'Spielstand hat sich geändert. Bitte Auswahl erneut prüfen.';
+        return;
+      }
+      // Keep a recovery snapshot before explicitly replacing either version.
+      const backup = useLocal ? current.state : profile;
+      localStorage.setItem('bidblitz.farm.conflict-backup.v1', JSON.stringify(backup));
+      if (useLocal) {
+        const put = await fetch(PROGRESS_API, {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ revision: current.revision, state: JSON.parse(localSnapshot) }),
+        });
+        if (!put.ok) {
+          const details = await put.json().catch(() => ({}));
+          if (put.status === 409 && details.detail?.current) showConflict(details.detail.current);
+          else throw new Error('farm-conflict-save');
+          return;
+        }
+        const saved = await put.json();
+        accountRevision = saved.revision;
+        saveMeta();
+      } else {
+        if (!adoptRemote(current)) throw new Error('farm-conflict-adopt');
+      }
+      conflictRemote = null;
+      accountSync = 'account';
+      persist();
+      render();
+      if (JSON.stringify(profile) !== (useLocal ? localSnapshot : JSON.stringify(current.state))) {
+        syncAccountProgress();
+      }
+    } catch {
+      $('save-note').textContent = 'Konflikt nicht aufgelöst. Beide Spielstände bleiben unverändert; bitte später erneut versuchen.';
+    } finally {
+      conflictBusy = false;
+      $('farm-keep-local').disabled = false;
+      $('farm-use-account').disabled = false;
+    }
+  }
+  $('farm-keep-local').addEventListener('click', () => resolveFarmConflict(true));
+  $('farm-use-account').addEventListener('click', () => resolveFarmConflict(false));
 
   function persistAndSync() {
     persist();

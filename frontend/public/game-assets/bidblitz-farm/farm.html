@@ -132,7 +132,12 @@
 
     <footer>
       Nur virtuelle Farm-Münzen. Keine Einsätze, keine Auszahlung und keine Wallet-Verbindung.
-      <span id="save-note">Lokaler Spielstand.</span>
+      <span id="save-note" role="status" aria-live="polite">Lokaler Spielstand.</span>
+      <div id="farm-conflict-actions" class="farm-conflict-actions" hidden>
+        <p>Unterschiedliche Spielstände erkannt. Wähle ausdrücklich, welchen du behalten möchtest.</p>
+        <button id="farm-keep-local" type="button">Diesen Spielstand ins Konto übernehmen</button>
+        <button id="farm-use-account" type="button">Konto-Spielstand auf diesem Gerät laden</button>
+      </div>
     </footer>
   </main>
 </body>

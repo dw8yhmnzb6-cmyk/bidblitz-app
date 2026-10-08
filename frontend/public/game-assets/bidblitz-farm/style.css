@@ -224,3 +224,8 @@ button:disabled{cursor:not-allowed;opacity:.5}
 @media(prefers-reduced-motion:reduce){
   .farm-quick-nav{scroll-behavior:auto}
 }
+.farm-conflict-actions{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.farm-conflict-actions[hidden]{display:none}
+.farm-conflict-actions p{flex-basis:100%;margin:0;color:#ffe5a2}
+.farm-conflict-actions button{flex:1 1 220px;min-height:44px;border-color:#ffe5a280;overflow-wrap:anywhere}
+.farm-conflict-actions button:disabled{opacity:.5}
