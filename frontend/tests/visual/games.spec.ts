@@ -1273,3 +1273,37 @@ test('Farm retries account synchronization after a temporary network outage', as
   await expect(frame!.locator('#save-note')).toContainText('synchronisiert');
   expect(await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().day)).toBe(localDay);
 });
+
+test('Farm refuses conflict replacement when recovery backup storage fails', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+  const frame = await (await page.locator('iframe[title*="BidBlitz Farm"]').elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+  const local = await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot());
+  const remote = { ...local, coins: local.coins + 1 };
+  let putCalls = 0;
+  await page.route('**/api/games/progress/farm', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true, revision: 3, state: remote }) });
+    } else {
+      putCalls++;
+      await route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
+    }
+  });
+  await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.syncProgress());
+  const actions = frame!.locator('#farm-conflict-actions');
+  await expect(actions).toBeVisible();
+  await frame!.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key: string, value: string) {
+      if (key === 'bidblitz.farm.conflict-backup.v1') throw new DOMException('Storage full', 'QuotaExceededError');
+      return original.call(this, key, value);
+    };
+  });
+  await actions.getByRole('button', { name: 'Diesen Spielstand ins Konto übernehmen' }).click();
+  await expect(actions).toBeVisible();
+  await expect(frame!.locator('#save-note')).toContainText('Konflikt nicht aufgelöst');
+  expect(putCalls).toBe(0);
+  expect(await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().coins)).toBe(local.coins);
+});
