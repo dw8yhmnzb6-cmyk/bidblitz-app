@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/admin/game-studio", tags=["admin-games-launch-re
 SOURCE_LANGUAGE = "en"
 PHYSICAL_DEVICE_ACCEPTED = os.environ.get("GAMES_PHYSICAL_DEVICE_ACCEPTED", "false").lower() == "true"
 PRODUCTION_APPROVED = os.environ.get("GAMES_PRODUCTION_APPROVED", "false").lower() == "true"
+REPLAY_ACCEPTED = os.environ.get("GAMES_REPLAY_ACCEPTED", "false").lower() == "true"
 
 
 async def _admin(request: Request) -> dict:
@@ -47,7 +48,8 @@ async def launch_readiness(request: Request):
     translations_ready = len(reviewed_codes) == len(localized_codes)
 
     replay_games = ["match", "bubble", "runner"]
-    integrity_ready = True  # covered by dedicated server-replay regression tests
+    # Passing regression tests alone does not constitute operational acceptance.
+    integrity_ready = REPLAY_ACCEPTED
     trusted_leaderboards_disabled = True
 
     non_monetary_ready = all([
@@ -65,6 +67,8 @@ async def launch_readiness(request: Request):
         blockers.append("technical_preflight")
     if not translations_ready:
         blockers.append("human_translation_review")
+    if not integrity_ready:
+        blockers.append("server_replay_acceptance")
     if not PHYSICAL_DEVICE_ACCEPTED:
         blockers.append("physical_device_acceptance")
     if not PRODUCTION_APPROVED:
