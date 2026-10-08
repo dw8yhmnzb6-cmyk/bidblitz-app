@@ -78,6 +78,7 @@ function MetricCard({ icon: Icon, value, label, tone }) {
 export default function TheEyePage({ onNavigate }) {
   const [devices, setDevices] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [worldMapMode, setWorldMapMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deviceDataState, setDeviceDataState] = useState("loading");
   const [query, setQuery] = useState("");
@@ -1270,6 +1271,29 @@ export default function TheEyePage({ onNavigate }) {
                 </div>
               </div>
             ) : (
+            worldMapMode ? (
+              <div className="eye-focused-map">
+                <MapContainer center={[30, 15]} zoom={2} minZoom={2} scrollWheelZoom className="eye-leaflet-map" zoomControl>
+                  <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {activeLayers["BidBlitz Geräte"] && visibleDevices.filter((device) => {
+                    const lat = Number(device?.location?.lat);
+                    const lng = Number(device?.location?.lng);
+                    return device?.location?.lat != null && device?.location?.lng != null &&
+                      Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+                  }).slice(0, 500).map((device) => (
+                    <CircleMarker
+                      key={device.device_id}
+                      center={[Number(device.location.lat), Number(device.location.lng)]}
+                      radius={selectedId === device.device_id ? 9 : 6}
+                      pathOptions={{ color: device.connection_status === "online" ? "#2fe18a" : "#ffb63e", fillOpacity: 0.8 }}
+                      eventHandlers={{ click: () => setSelectedId(device.device_id) }}
+                    >
+                      <Popup>{device.name || device.device_id}</Popup>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
+              </div>
+            ) : (
             <div className="eye-globe">
               <div className="eye-globe-shine" />
               <div className="eye-orbit orbit-a" />
@@ -1289,9 +1313,10 @@ export default function TheEyePage({ onNavigate }) {
               <div className="eye-pin pin-8 green"><Cpu size={16} /></div>
             </div>
             )}
+            )}
 
             <div className="eye-map-toolbar">
-              <button>+</button><button>−</button><button><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : undefined}>{mapFocus ? "Welt" : "3D"}</button>
+              <button>+</button><button>−</button><button><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
             </div>
 
             <div className="eye-live-clock"><span><Camera size={15} /> {liveConnected ? "Realtime" : "No Realtime"}</span><strong>{deviceDataState.toUpperCase()}</strong></div>
