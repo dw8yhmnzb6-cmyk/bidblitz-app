@@ -127,9 +127,14 @@
       if (!remote.exists) {
         await pushFarmState(0);
       } else if (S.chooseNewer(profile, remote.state) === 'remote') {
-        // Never report synchronization if the remote payload cannot be decoded.
-        if (!adoptRemote(remote)) throw new Error('farm-progress-invalid-remote');
-        accountSync = 'account'; persist();
+        // A genuine local save may contain edits absent from the remote state,
+        // even when the remote progress counter is higher. Never discard it.
+        if (raw && F.decode(raw) && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
+          showConflict(remote);
+        } else {
+          if (!adoptRemote(remote)) throw new Error('farm-progress-invalid-remote');
+          accountSync = 'account'; persist();
+        }
       } else if (S.compareProgress(profile, remote.state) === 0 && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
         // Equal progress does not prove equal saves; keep both until resolved.
         showConflict(remote);
