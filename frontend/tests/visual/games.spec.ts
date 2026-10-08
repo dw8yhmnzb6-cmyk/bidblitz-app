@@ -846,6 +846,33 @@ test('BidBlitz Farm stays compact and touch-accessible on a 390px phone', async 
   expect(overflow).toBe(false);
 });
 
+
+test('Farm offers explicit choice for divergent equal-progress account saves', async ({ page }) => {
+  await openGames(page, 390, 844);
+  await page.locator('article').filter({ hasText: 'BidBlitz Farm' }).first().getByRole('button', { name: 'Details' }).click();
+  await page.getByTestId('game-detail-page').getByRole('button', { name: 'Spielvorschau öffnen' }).click();
+
+  const iframe = page.locator('iframe[title*="BidBlitz Farm"]');
+  const frame = await (await iframe.elementHandle())?.contentFrame();
+  expect(frame).not.toBeNull();
+  const local = await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot());
+  const remote = { ...local, coins: local.coins + 1 };
+  await page.route('**/api/games/progress/farm', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ exists: true, revision: 3, state: remote }) });
+    } else {
+      await route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
+    }
+  });
+  await frame!.evaluate(() => (window as any).BidBlitzFarmPreview.syncProgress());
+  const actions = frame!.locator('#farm-conflict-actions');
+  await expect(actions).toBeVisible();
+  await expect(frame!.locator('#save-note')).toContainText('Speicherkonflikt');
+  await actions.getByRole('button', { name: 'Konto-Spielstand auf diesem Gerät laden' }).click();
+  await expect(actions).toBeHidden();
+  await expect.poll(async () => frame!.evaluate(() => (window as any).BidBlitzFarmPreview.snapshot().coins)).toBe(remote.coins);
+});
+
 test('Bubble Islands detail page is first-party and opens its own preview', async ({ page }) => {
   await openGames(page, 390, 844);
 
