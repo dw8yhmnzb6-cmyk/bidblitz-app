@@ -150,6 +150,13 @@ async def _owner(request: Request) -> str:
     return str(user["_id"])
 
 
+def _safe_unlocked(value: object, maximum: int) -> int:
+    """Treat malformed stored unlock levels as level one, never as trusted progress."""
+    if type(value) is not int:
+        return 1
+    return max(1, min(maximum, value))
+
+
 def _default_progress() -> dict:
     return {"version": 1, "unlocked": 1, "best": [0] * _LEVELS, "stars": [0] * _LEVELS, "updated_at": None}
 
@@ -161,7 +168,7 @@ def _public(doc: dict | None) -> dict:
     stars = doc.get("stars") if isinstance(doc.get("stars"), list) and len(doc["stars"]) == _LEVELS else [0] * _LEVELS
     return {
         "version": 1,
-        "unlocked": max(1, min(_LEVELS, int(doc.get("unlocked") or 1))),
+        "unlocked": _safe_unlocked(doc.get("unlocked"), _LEVELS),
         "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
         "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
@@ -230,7 +237,7 @@ def _public_bubble(doc: dict | None) -> dict:
     stars = doc.get("stars") if isinstance(doc.get("stars"), list) and len(doc["stars"]) == _BUBBLE_LEVELS else [0] * _BUBBLE_LEVELS
     return {
         "version": 1,
-        "unlocked": max(1, min(_BUBBLE_LEVELS, int(doc.get("unlocked") or 1))),
+        "unlocked": _safe_unlocked(doc.get("unlocked"), _BUBBLE_LEVELS),
         "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
         "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
@@ -302,7 +309,7 @@ def _public_runner(doc: dict | None) -> dict:
     stars = doc.get("stars") if isinstance(doc.get("stars"), list) and len(doc["stars"]) == _RUNNER_LEVELS else [0] * _RUNNER_LEVELS
     return {
         "version": 1,
-        "unlocked": max(1, min(_RUNNER_LEVELS, int(doc.get("unlocked") or 1))),
+        "unlocked": _safe_unlocked(doc.get("unlocked"), _RUNNER_LEVELS),
         "best": [int(value) if type(value) is int and 0 <= value <= 1_000_000_000 else 0 for value in best],
         "stars": [int(value) if type(value) is int and 0 <= value <= 3 else 0 for value in stars],
         "updated_at": doc.get("updated_at"),
