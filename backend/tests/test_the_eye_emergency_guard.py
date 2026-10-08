@@ -24,6 +24,7 @@ def _load_guard_functions():
     assert len(selected) == 2, "The Eye guard functions must exist"
     namespace = {
         "HTTPException": HTTPException,
+        "TheEyeWriteClass": str,
         "_WRITE_METHODS": frozenset({"POST", "PUT", "PATCH", "DELETE"}),
         "_RECOVERY_PATHS": frozenset({"/api/the-eye/admin/continuity/emergency-mode"}),
         "_OBSERVATION_PATTERNS": (),
