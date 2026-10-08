@@ -47,6 +47,11 @@
     else if (accountSync === 'guest') $('save-note').textContent = 'Farm-Spielstand wird nur auf diesem Gerät gespeichert. Keine Wallet-Verbindung.';
     else $('save-note').textContent = 'Lokaler Farm-Spielstand gespeichert. Kontosynchronisierung wird geprüft.';
     $('farm-conflict-actions').hidden = accountSync !== 'conflict';
+    try {
+      $('farm-recovery-actions').hidden = !F.decode(localStorage.getItem('bidblitz.farm.conflict-backup.v1'));
+    } catch {
+      $('farm-recovery-actions').hidden = true;
+    }
   }
 
   function showConflict(remote) {
@@ -222,6 +227,36 @@
       $('farm-use-account').disabled = false;
     }
   }
+  $('farm-restore-backup').addEventListener('click', () => {
+    if (syncActive || conflictBusy || accountSync === 'conflict') {
+      $('save-note').textContent = 'Bitte erst die laufende Synchronisierung oder den Konflikt abschließen.';
+      return;
+    }
+    const backupKey = 'bidblitz.farm.conflict-backup.v1';
+    let recovered;
+    try { recovered = F.decode(localStorage.getItem(backupKey)); } catch {}
+    if (!recovered) {
+      $('save-note').textContent = 'Keine gültige lokale Sicherung gefunden.';
+      persist();
+      return;
+    }
+    if (!window.confirm('Gesicherten Farm-Spielstand auf diesem Gerät wiederherstellen? Der aktuelle Stand wird vorab lokal gesichert.')) return;
+    try {
+      const previousKey = 'bidblitz.farm.before-restore.v1';
+      const previous = JSON.stringify(profile);
+      localStorage.setItem(previousKey, previous);
+      if (localStorage.getItem(previousKey) !== previous) throw new Error('backup-write-failed');
+      profile = recovered;
+      hasLocalEdits = true;
+      accountSync = 'pending';
+      persist();
+      render();
+      $('save-note').textContent = 'Sicherung lokal wiederhergestellt. Kontosynchronisierung wird erneut geprüft.';
+      syncAccountProgress();
+    } catch {
+      $('save-note').textContent = 'Wiederherstellung gestoppt: aktueller Spielstand konnte nicht gesichert werden.';
+    }
+  });
   $('farm-keep-local').addEventListener('click', () => resolveFarmConflict(true));
   $('farm-use-account').addEventListener('click', () => resolveFarmConflict(false));
 
