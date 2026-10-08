@@ -230,6 +230,21 @@ class GamesProgressTest(unittest.TestCase):
                 "stars": [0] * levels,
             })["unlocked"], levels)
 
+    def test_higher_stars_survive_later_lower_score_updates_in_all_three_games(self):
+        for save, make in (
+            (progress.save_match_progress, payload),
+            (progress.save_bubble_progress, bubble_payload),
+            (progress.save_runner_progress, runner_payload),
+        ):
+            strong_stars = make(2, 1000)
+            strong_stars.stars[0] = 3
+            asyncio.run(save(None, strong_stars))
+            better_score = make(2, 2000)
+            better_score.stars[0] = 1
+            result = asyncio.run(save(None, better_score))
+            self.assertEqual(result["best"][0], 2000)
+            self.assertEqual(result["stars"][0], 3)
+
     def test_empty_account_has_default_progress(self):
         result = asyncio.run(progress.get_match_progress(None))
         self.assertEqual(result["unlocked"], 1)
