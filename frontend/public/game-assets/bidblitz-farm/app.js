@@ -85,11 +85,8 @@
     if (response.status === 409 && body.detail && body.detail.current) {
       if (JSON.stringify(profile) !== submittedState) { syncQueued = true; return false; }
       const current = body.detail.current;
-      if (current.exists && current.state && S.compareProgress(profile, current.state) > 0 && retries > 0) {
-        accountRevision = current.revision || 0;
-        saveMeta();
-        return pushFarmState(accountRevision, retries - 1);
-      }
+      // Do not automatically retry over a newer revision: even the locally
+      // higher-ranked game may be missing edits made on another device.
       if (current.exists && current.state && S.compareProgress(profile, current.state) === 0 && JSON.stringify(profile) !== JSON.stringify(current.state)) {
         showConflict(current);
         return false; // Keep both versions intact instead of silently overwriting either.
