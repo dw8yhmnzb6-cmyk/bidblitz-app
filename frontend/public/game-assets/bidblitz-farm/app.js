@@ -121,7 +121,8 @@
       if (!remote.exists) {
         await pushFarmState(0);
       } else if (S.chooseNewer(profile, remote.state) === 'remote') {
-        adoptRemote(remote);
+        // Never report synchronization if the remote payload cannot be decoded.
+        if (!adoptRemote(remote)) throw new Error('farm-progress-invalid-remote');
         accountSync = 'account'; persist();
       } else if (S.compareProgress(profile, remote.state) === 0 && JSON.stringify(profile) !== JSON.stringify(remote.state)) {
         // Equal progress does not prove equal saves; keep both until resolved.
