@@ -7,6 +7,7 @@ export default function TheEyeGlobe({ devices = [], selectedDeviceId = null, onS
   const host = useRef(null);
   const [globeError, setGlobeError] = useState("");
   const mapRef = useRef(null);
+  const latestGeoJSON = useRef({ type: "FeatureCollection", features: [] });
   const selectRef = useRef(onSelectDevice);
   useEffect(() => { selectRef.current = onSelectDevice; }, [onSelectDevice]);
 
@@ -63,6 +64,8 @@ export default function TheEyeGlobe({ devices = [], selectedDeviceId = null, onS
           },
         });
       }
+      const source = map.getSource("eye-devices");
+      if (source) source.setData(latestGeoJSON.current);
     };
     const onDeviceClick = (event) => {
       const id = event.features?.[0]?.properties?.device_id;
@@ -90,8 +93,6 @@ export default function TheEyeGlobe({ devices = [], selectedDeviceId = null, onS
     const map = mapRef.current;
     if (!map) return;
     const update = () => {
-      const source = map.getSource("eye-devices");
-      if (!source) return;
       const features = devices.filter((item) => {
         const lat = Number(item?.location?.lat);
         const lng = Number(item?.location?.lng);
@@ -104,7 +105,9 @@ export default function TheEyeGlobe({ devices = [], selectedDeviceId = null, onS
         geometry: { type: "Point", coordinates: [Number(item.location.lng), Number(item.location.lat)] },
         properties: { device_id: String(item.device_id), selected_id: selectedDeviceId == null ? "" : String(selectedDeviceId), status: item.connection_status || "unknown" },
       }));
-      source.setData({ type: "FeatureCollection", features });
+      latestGeoJSON.current = { type: "FeatureCollection", features };
+      const source = map.getSource("eye-devices");
+      if (source) source.setData(latestGeoJSON.current);
     };
     if (map.isStyleLoaded()) update();
     map.on("style.load", update);
