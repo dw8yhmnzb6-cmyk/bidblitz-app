@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Uses the project's existing Mapbox dependency. No additional service is created.
 export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
   const host = useRef(null);
+  const [globeError, setGlobeError] = useState("");
   const mapRef = useRef(null);
   const selectRef = useRef(onSelectDevice);
   useEffect(() => { selectRef.current = onSelectDevice; }, [onSelectDevice]);
@@ -12,7 +13,13 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
   useEffect(() => {
     const token = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
     if (!token || !host.current) return undefined;
-    const map = new mapboxgl.Map({
+    if (!mapboxgl.supported()) {
+      setGlobeError("3D-Grafik wird auf diesem Gerät nicht unterstützt. Bitte 2D-Karte verwenden.");
+      return undefined;
+    }
+    let map;
+    try {
+      map = new mapboxgl.Map({
       container: host.current,
       accessToken: token,
       style: "mapbox://styles/mapbox/dark-v11",
@@ -20,7 +27,12 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
       center: [15, 25],
       zoom: 1.5,
       attributionControl: true,
-    });
+      });
+    } catch (error) {
+      setGlobeError("3D-Karte konnte nicht gestartet werden. Bitte 2D-Karte verwenden.");
+      return undefined;
+    }
+    map.on("error", () => setGlobeError("Die 3D-Karte konnte nicht vollständig geladen werden."));
     mapRef.current = map;
     map.on("style.load", () => {
       if (!map.getSource("eye-devices")) {
@@ -81,5 +93,8 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
   }, [devices]);
 
   if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) return null;
-  return <div ref={host} className="eye-3d-globe" role="region" aria-label="Interaktiver 3D-Globus mit eigenen Geräten" />;
+  return <div className="eye-3d-globe" role="region" aria-label="Interaktiver 3D-Globus mit eigenen Geräten">
+    <div ref={host} style={{ width: "100%", height: "100%" }} />
+    {globeError ? <div role="alert" className="eye-globe-error">{globeError}</div> : null}
+  </div>;
 }
