@@ -81,5 +81,5 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
   }, [devices]);
 
   if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) return null;
-  return <div ref={host} className="eye-3d-globe" aria-label="Interaktiver 3D-Globus mit eigenen Geräten" />;
+  return <div ref={host} className="eye-3d-globe" role="region" aria-label="Interaktiver 3D-Globus mit eigenen Geräten" />;
 }
