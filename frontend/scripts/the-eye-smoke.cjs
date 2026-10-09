@@ -14,7 +14,7 @@ const index = fs.readFileSync(path.join(__dirname, "..", "build", "index.html"),
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [1440, 390]) {
+    for (const width of [1440, 768, 390, 320]) {
       const page = await browser.newPage({ viewport: { width, height: 850 } });
       const errors = [];
       page.on("pageerror", error => errors.push(error.message));
