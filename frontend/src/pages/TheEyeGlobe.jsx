@@ -1,0 +1,85 @@
+import { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+// Uses the project's existing Mapbox dependency. No additional service is created.
+export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
+  const host = useRef(null);
+  const mapRef = useRef(null);
+  const selectRef = useRef(onSelectDevice);
+  useEffect(() => { selectRef.current = onSelectDevice; }, [onSelectDevice]);
+
+  useEffect(() => {
+    const token = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+    if (!token || !host.current) return undefined;
+    const map = new mapboxgl.Map({
+      container: host.current,
+      accessToken: token,
+      style: "mapbox://styles/mapbox/dark-v11",
+      projection: "globe",
+      center: [15, 25],
+      zoom: 1.5,
+      attributionControl: true,
+    });
+    mapRef.current = map;
+    map.on("style.load", () => {
+      if (!map.getSource("eye-devices")) {
+        map.addSource("eye-devices", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "eye-device-markers",
+          type: "circle",
+          source: "eye-devices",
+          paint: {
+            "circle-radius": 5,
+            "circle-stroke-width": 1.5,
+            "circle-stroke-color": "#e0f4ff",
+            "circle-color": [
+              "match", ["get", "status"],
+              "online", "#2fe18a",
+              "warning", "#ffb63e",
+              "offline", "#ff6767",
+              "#8294a2",
+            ],
+          },
+        });
+        map.on("click", "eye-device-markers", (event) => {
+          const id = event.features?.[0]?.properties?.device_id;
+          if (id) selectRef.current?.(id);
+        });
+        map.on("mouseenter", "eye-device-markers", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "eye-device-markers", () => { map.getCanvas().style.cursor = ""; });
+      }
+    });
+    return () => { mapRef.current = null; map.remove(); };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const update = () => {
+      const source = map.getSource("eye-devices");
+      if (!source) return;
+      const features = devices.filter((item) => {
+        const lat = Number(item?.location?.lat);
+        const lng = Number(item?.location?.lng);
+        return item?.location?.lat != null && item?.location?.lng != null &&
+          Number.isFinite(lat) && Number.isFinite(lng) &&
+          lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      }).slice(0, 1000).map((item) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [Number(item.location.lng), Number(item.location.lat)] },
+        properties: { device_id: String(item.device_id), status: item.connection_status || "unknown" },
+      }));
+      source.setData({ type: "FeatureCollection", features });
+    };
+    if (map.isStyleLoaded()) update();
+    map.on("style.load", update);
+    return () => map.off("style.load", update);
+  }, [devices]);
+
+  if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) return null;
+  return <div ref={host} className="eye-3d-globe" aria-label="Interaktiver 3D-Globus mit eigenen Geräten" />;
+}
