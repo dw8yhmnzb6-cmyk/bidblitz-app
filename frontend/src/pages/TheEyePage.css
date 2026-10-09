@@ -17,3 +17,5 @@
 .eye-3d-globe{position:absolute;inset:0;width:100%;height:100%;min-height:260px}
 .eye-3d-globe .mapboxgl-canvas{outline:none}
 @media(max-width:680px){.eye-3d-globe{min-height:320px}}
+
+.eye-globe-error{position:absolute;left:12px;right:12px;bottom:16px;z-index:8;background:rgba(28,18,25,.94);border:1px solid #e78c74;border-radius:9px;color:#ffe0d7;padding:12px;font-size:13px;text-align:center;pointer-events:none}
