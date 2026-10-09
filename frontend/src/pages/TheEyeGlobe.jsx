@@ -32,7 +32,10 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
       setGlobeError("3D-Karte konnte nicht gestartet werden. Bitte 2D-Karte verwenden.");
       return undefined;
     }
-    map.on("error", () => setGlobeError("Die 3D-Karte konnte nicht vollständig geladen werden."));
+    const onMapError = () => setGlobeError("Die 3D-Karte konnte nicht vollständig geladen werden.");
+    const onMapLoad = () => setGlobeError("");
+    map.on("error", onMapError);
+    map.on("load", onMapLoad);
     mapRef.current = map;
     map.on("style.load", () => {
       if (!map.getSource("eye-devices")) {
@@ -65,7 +68,12 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
         map.on("mouseleave", "eye-device-markers", () => { map.getCanvas().style.cursor = ""; });
       }
     });
-    return () => { mapRef.current = null; map.remove(); };
+    return () => {
+      map.off("error", onMapError);
+      map.off("load", onMapLoad);
+      mapRef.current = null;
+      map.remove();
+    };
   }, []);
 
   useEffect(() => {
