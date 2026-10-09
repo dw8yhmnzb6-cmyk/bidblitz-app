@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Uses the project's existing Mapbox dependency. No additional service is created.
-export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
+export default function TheEyeGlobe({ devices = [], selectedDeviceId = null, onSelectDevice }) {
   const host = useRef(null);
   const [globeError, setGlobeError] = useState("");
   const mapRef = useRef(null);
@@ -50,7 +50,7 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
           type: "circle",
           source: "eye-devices",
           paint: {
-            "circle-radius": 5,
+            "circle-radius": ["case", ["==", ["get", "device_id"], ["get", "selected_id"]], 9, 5],
             "circle-stroke-width": 1.5,
             "circle-stroke-color": "#e0f4ff",
             "circle-color": [
@@ -102,14 +102,14 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
       }).slice(0, 1000).map((item) => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [Number(item.location.lng), Number(item.location.lat)] },
-        properties: { device_id: String(item.device_id), status: item.connection_status || "unknown" },
+        properties: { device_id: String(item.device_id), selected_id: selectedDeviceId == null ? "" : String(selectedDeviceId), status: item.connection_status || "unknown" },
       }));
       source.setData({ type: "FeatureCollection", features });
     };
     if (map.isStyleLoaded()) update();
     map.on("style.load", update);
     return () => map.off("style.load", update);
-  }, [devices]);
+  }, [devices, selectedDeviceId]);
 
   if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) return null;
   return <div className="eye-3d-globe" role="region" aria-label="Interaktiver 3D-Globus mit eigenen Geräten">
