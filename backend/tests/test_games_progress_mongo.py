@@ -193,6 +193,24 @@ class GamesProgressMongoTest(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(resumed["best"][4], 0)
             self.assertGreater(resumed["stars"][4], 0)
 
+    async def test_last_level_completion_preserves_maximum_unlock(self):
+        for save, read, make, limit in (
+            (progress.save_match_progress, progress.get_match_progress, payload, 30),
+            (progress.save_bubble_progress, progress.get_bubble_progress, bubble_payload, 20),
+            (progress.save_runner_progress, progress.get_runner_progress, runner_payload, 15),
+        ):
+            await save(None, make(limit, 1500))
+            resumed = await read(None)
+            self.assertEqual(resumed["unlocked"], limit)
+            self.assertEqual(len(resumed["best"]), limit)
+            self.assertGreater(resumed["best"][-1], 0)
+            self.assertGreater(resumed["stars"][-1], 0)
+            await save(None, make(1, 100))
+            after_old_device = await read(None)
+            self.assertEqual(after_old_device["unlocked"], limit)
+            self.assertEqual(after_old_device["best"][-1], resumed["best"][-1])
+            self.assertEqual(after_old_device["stars"][-1], resumed["stars"][-1])
+
     async def test_parallel_runner_devices_merge_monotonically(self):
         one = runner_payload(4, 800)
         two = runner_payload(7, 500)
