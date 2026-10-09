@@ -27,6 +27,7 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
+import TheEyeGlobe from "./TheEyeGlobe";
 import "./TheEyePage.css";
 
 const LAYERS = [
@@ -90,6 +91,7 @@ export default function TheEyePage({ onNavigate }) {
   const [devices, setDevices] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [worldMapMode, setWorldMapMode] = useState(false);
+  const [globe3dMode, setGlobe3dMode] = useState(false);
   const [worldZoom, setWorldZoom] = useState(2);
   const [loading, setLoading] = useState(true);
   const [deviceDataState, setDeviceDataState] = useState("loading");
@@ -1289,7 +1291,9 @@ export default function TheEyePage({ onNavigate }) {
                 </div>
               </div>
             ) : (
-            worldMapMode ? (
+            globe3dMode && process.env.REACT_APP_MAPBOX_ACCESS_TOKEN ? (
+              <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} onSelectDevice={setSelectedId} />
+            ) : worldMapMode ? (
               <div className="eye-focused-map">
                 <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
                   <WorldZoomSync zoom={worldZoom} onZoomChange={setWorldZoom} />
@@ -1336,7 +1340,7 @@ export default function TheEyePage({ onNavigate }) {
             )}
 
             <div className="eye-map-toolbar">
-              <button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.min(9, z + 1)); }} aria-label="Weltkarte vergrößern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte vergrößern"}>+</button><button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.max(2, z - 1)); }} aria-label="Weltkarte verkleinern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte verkleinern"}>−</button><button type="button" onClick={() => { setWorldMapMode(true); setActiveLayers((previous) => ({ ...previous, "BidBlitz Geräte": !previous["BidBlitz Geräte"] })); }} aria-label="BidBlitz Geräte auf Karte ein- oder ausblenden" aria-pressed={Boolean(activeLayers["BidBlitz Geräte"])} title="Eigene Geräte auf der Karte anzeigen oder ausblenden"><Layers3 size={17} /></button><button onClick={mapFocus ? resetMap : () => setWorldMapMode((current) => !current)}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>
+              <button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.min(9, z + 1)); }} aria-label="Weltkarte vergrößern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte vergrößern"}>+</button><button type="button" disabled={Boolean(mapFocus)} onClick={() => { setWorldMapMode(true); setWorldZoom((z) => Math.max(2, z - 1)); }} aria-label="Weltkarte verkleinern" title={mapFocus ? "Zoom für Standortkarte direkt auf der Karte verwenden" : "Weltkarte verkleinern"}>−</button><button type="button" onClick={() => { setWorldMapMode(true); setActiveLayers((previous) => ({ ...previous, "BidBlitz Geräte": !previous["BidBlitz Geräte"] })); }} aria-label="BidBlitz Geräte auf Karte ein- oder ausblenden" aria-pressed={Boolean(activeLayers["BidBlitz Geräte"])} title="Eigene Geräte auf der Karte anzeigen oder ausblenden"><Layers3 size={17} /></button><button type="button" onClick={mapFocus ? resetMap : () => { setGlobe3dMode(false); setWorldMapMode((current) => !current); }}>{mapFocus ? "Welt" : worldMapMode ? "Globus" : "Karte"}</button>{!mapFocus && process.env.REACT_APP_MAPBOX_ACCESS_TOKEN ? <button type="button" onClick={() => setGlobe3dMode((current) => !current)} aria-pressed={globe3dMode}>{globe3dMode ? "2D" : "3D Erde"}</button> : null}
             </div>
 
             <div className="eye-live-clock"><span><Camera size={15} /> {liveConnected ? "Realtime" : "No Realtime"}</span><strong>{deviceDataState.toUpperCase()}</strong></div>
