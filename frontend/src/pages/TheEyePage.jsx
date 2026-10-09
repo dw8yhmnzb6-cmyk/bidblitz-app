@@ -1292,7 +1292,7 @@ export default function TheEyePage({ onNavigate }) {
                       key={device.device_id}
                       center={[Number(device.location.lat), Number(device.location.lng)]}
                       radius={selectedId === device.device_id ? 9 : 6}
-                      pathOptions={{ color: device.connection_status === "online" ? "#2fe18a" : "#ffb63e", fillOpacity: 0.8 }}
+                      pathOptions={{ color: device.connection_status === "online" ? "#2fe18a" : device.connection_status === "warning" ? "#ffb63e" : "#ff6767", fillColor: device.connection_status === "online" ? "#2fe18a" : device.connection_status === "warning" ? "#ffb63e" : "#ff6767", fillOpacity: 0.8 }}
                       eventHandlers={{ click: () => setSelectedId(device.device_id) }}
                     >
                       <Popup>{device.name || device.device_id}</Popup>
