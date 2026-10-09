@@ -1530,7 +1530,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/about-bidblitz", "/pay/directory"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/about-bidblitz", "/pay/directory", "/the-eye", "/theeye"].includes(routeBase) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&
