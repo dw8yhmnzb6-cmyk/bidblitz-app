@@ -43,6 +43,8 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
+      }
+      if (!map.getLayer("eye-device-markers")) {
         map.addLayer({
           id: "eye-device-markers",
           type: "circle",
