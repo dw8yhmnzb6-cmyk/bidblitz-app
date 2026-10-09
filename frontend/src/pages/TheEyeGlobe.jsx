@@ -60,16 +60,22 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
             ],
           },
         });
-        map.on("click", "eye-device-markers", (event) => {
-          const id = event.features?.[0]?.properties?.device_id;
-          if (id) selectRef.current?.(id);
-        });
-        map.on("mouseenter", "eye-device-markers", () => { map.getCanvas().style.cursor = "pointer"; });
-        map.on("mouseleave", "eye-device-markers", () => { map.getCanvas().style.cursor = ""; });
       }
     };
+    const onDeviceClick = (event) => {
+      const id = event.features?.[0]?.properties?.device_id;
+      if (id) selectRef.current?.(id);
+    };
+    const onDeviceEnter = () => { map.getCanvas().style.cursor = "pointer"; };
+    const onDeviceLeave = () => { map.getCanvas().style.cursor = ""; };
+    map.on("click", "eye-device-markers", onDeviceClick);
+    map.on("mouseenter", "eye-device-markers", onDeviceEnter);
+    map.on("mouseleave", "eye-device-markers", onDeviceLeave);
     map.on("style.load", onStyleLoad);
     return () => {
+      map.off("click", "eye-device-markers", onDeviceClick);
+      map.off("mouseenter", "eye-device-markers", onDeviceEnter);
+      map.off("mouseleave", "eye-device-markers", onDeviceLeave);
       map.off("error", onMapError);
       map.off("load", onMapLoad);
       map.off("style.load", onStyleLoad);
