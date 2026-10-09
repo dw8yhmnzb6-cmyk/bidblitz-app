@@ -26,7 +26,12 @@ def test_globe_uses_real_device_coordinates_with_validation():
 
 def test_globe_releases_mapbox_instance_on_unmount():
     source = GLOBE.read_text(encoding="utf-8")
-    assert 'return () => { mapRef.current = null; map.remove(); };' in source
+    assert 'map.off("style.load", onStyleLoad);' in source
+    assert 'map.off("error", onMapError);' in source
+    assert 'map.off("load", onMapLoad);' in source
+    assert 'map.off("click", "eye-device-markers", onDeviceClick);' in source
+    assert 'mapRef.current = null;' in source
+    assert 'map.remove();' in source
     assert 'return () => map.off("style.load", update);' in source
 
 
