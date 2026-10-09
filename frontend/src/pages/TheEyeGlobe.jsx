@@ -37,7 +37,7 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
     map.on("error", onMapError);
     map.on("load", onMapLoad);
     mapRef.current = map;
-    map.on("style.load", () => {
+    const onStyleLoad = () => {
       if (!map.getSource("eye-devices")) {
         map.addSource("eye-devices", {
           type: "geojson",
@@ -67,10 +67,12 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
         map.on("mouseenter", "eye-device-markers", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "eye-device-markers", () => { map.getCanvas().style.cursor = ""; });
       }
-    });
+    };
+    map.on("style.load", onStyleLoad);
     return () => {
       map.off("error", onMapError);
       map.off("load", onMapLoad);
+      map.off("style.load", onStyleLoad);
       mapRef.current = null;
       map.remove();
     };
