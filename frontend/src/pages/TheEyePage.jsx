@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
+import { CircleMarker, MapContainer, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Activity,
@@ -53,6 +53,17 @@ const ICONS = {
   aion_tablet: Bot,
   sensor: Radio,
 };
+
+function WorldZoomSync({ zoom, onZoomChange }) {
+  const map = useMap();
+  useMapEvents({
+    zoomend: () => onZoomChange(map.getZoom()),
+  });
+  useEffect(() => {
+    if (map.getZoom() !== zoom) map.setZoom(zoom);
+  }, [map, zoom]);
+  return null;
+}
 
 function StatusDot({ status }) {
   const normalized = ["online", "warning", "offline"].includes(status) ? status : "unknown";
@@ -1280,7 +1291,8 @@ export default function TheEyePage({ onNavigate }) {
             ) : (
             worldMapMode ? (
               <div className="eye-focused-map">
-                <MapContainer key={`world-${worldZoom}`} center={[30, 15]} zoom={worldZoom} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
+                <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
+                  <WorldZoomSync zoom={worldZoom} onZoomChange={setWorldZoom} />
                   <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   {activeLayers["BidBlitz Geräte"] && visibleDevices.filter((device) => {
                     const lat = Number(device?.location?.lat);
