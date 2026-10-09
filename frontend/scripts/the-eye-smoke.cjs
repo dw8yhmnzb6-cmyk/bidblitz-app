@@ -22,6 +22,7 @@ const index = fs.readFileSync(path.join(__dirname, "..", "build", "index.html"),
         status: 200, contentType: "text/html", body: index,
       }));
       await page.goto(base + "/the-eye", { waitUntil: "domcontentloaded" });
+      await page.getByRole("button", { name: "Karte", exact: true }).last().waitFor({ state: "visible" });
       const hint = page.getByRole("button", { name: "3D Erde nicht verfügbar – Mapbox-Zugang fehlt" });
       if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) {
         assert.equal(await hint.count(), 1);
