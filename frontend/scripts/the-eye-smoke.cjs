@@ -35,6 +35,11 @@ const index = fs.readFileSync(path.join(__dirname, "..", "build", "index.html"),
       await layer.click();
       assert.equal(await layer.getAttribute("aria-pressed"), "false");
       assert.equal(await page.locator(".eye-leaflet-map").count(), 1);
+      await page.getByRole("button", { name: "Globus", exact: true }).click();
+      assert.equal(await page.locator(".eye-globe").count(), 1);
+      assert.equal(await page.locator(".eye-leaflet-map").count(), 0);
+      await page.getByRole("button", { name: "Karte", exact: true }).last().click();
+      assert.equal(await page.locator(".eye-leaflet-map").count(), 1);
       assert.deepEqual(errors, []);
       console.log("PASS THE EYE", width + "px");
       await page.close();
