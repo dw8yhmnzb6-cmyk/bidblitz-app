@@ -1292,7 +1292,7 @@ export default function TheEyePage({ onNavigate }) {
               </div>
             ) : (
             globe3dMode && process.env.REACT_APP_MAPBOX_ACCESS_TOKEN ? (
-              <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} onSelectDevice={setSelectedId} />
+              <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} selectedDeviceId={selectedId} onSelectDevice={setSelectedId} />
             ) : worldMapMode ? (
               <div className="eye-focused-map">
                 <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
