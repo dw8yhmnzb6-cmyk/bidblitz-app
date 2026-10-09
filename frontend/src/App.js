@@ -151,6 +151,13 @@ const TwoFactorSettingsPage = lazy(() => import("./pages/TwoFactorSettingsPage")
 const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
+const GameStudioPage = lazy(() => import("./pages/GameStudioPage"));
+const AdminGamesReviewPage = lazy(() => import("./pages/AdminGamesReviewPage"));
+const GamesPage = lazy(() => import("./pages/GamesPage"));
+const BubbleIslandsPage = lazy(() => import("./pages/BubbleIslandsPage"));
+const BlitzRunnerPage = lazy(() => import("./pages/BlitzRunnerPage"));
+const BidBlitzFarmPage = lazy(() => import("./pages/BidBlitzFarmPage"));
+const GameDetailPage = lazy(() => import("./pages/GameDetailPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const SplitBillPage = lazy(() => import("./pages/SplitBillPage"));
 const VirtualCardsPage = lazy(() => import("./pages/VirtualCardsPage"));
@@ -435,7 +442,9 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handlePopState = () => {
-      const nextPath = `${window.location.pathname}${window.location.search || ""}` || "/";
+      const nextPath = resolveBrowserPath(
+        `${window.location.pathname}${window.location.search || ""}` || "/",
+      );
       setCurrentPath(nextPath);
     };
     window.addEventListener("popstate", handlePopState);
@@ -549,6 +558,10 @@ function AppContent() {
     // Auth-required feature entry points should never fail silently back to Home.
     if (isGuest && ["/scan", "/mining", "/blitz-mine"].includes(path)) {
       requireAuth(path === "/mining" || path === "/blitz-mine" ? "Bitte anmelden, um Mining zu öffnen." : "");
+      return;
+    }
+    if (isGuest && path === "/game-studio") {
+      requireAuth("Bitte melde dich an, um dein Spiele-Studio zu öffnen.");
       return;
     }
     // Admin page requires admin role
@@ -1213,6 +1226,24 @@ function AppContent() {
         return (!user.isAuthenticated || !isAdminRole)
           ? <HomePage {...homeProps} />
           : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
+      case "/games":
+        return <GamesPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/games/match":
+        return <GamesPage preview onBack={() => handleNavigate("/games")} onNavigate={handleNavigate} />;
+      case "/games/bubble":
+        return <BubbleIslandsPage onBack={() => handleNavigate("/games")} />;
+      case "/games/runner":
+        return <BlitzRunnerPage onBack={() => handleNavigate("/games")} />;
+      case "/games/farm":
+        return <BidBlitzFarmPage onBack={() => handleNavigate("/games")} />;
+      case "/admin/game-studio":
+        return isAdminRole
+          ? <AdminGamesReviewPage onBack={() => handleNavigate("/games")} />
+          : <HomePage {...homeProps} />;
+      case "/game-studio":
+        return user.isAuthenticated
+          ? <GameStudioPage onBack={() => handleNavigate("/games")} />
+          : <HomePage {...homeProps} />;
       case "/gaming":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
@@ -1412,6 +1443,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TwoFactorSettingsPage onBack={() => handleNavigate("/settings")} />;
       
       default:
+        if (basePath.startsWith("/games/title/")) {
+          const gameId = decodeURIComponent(basePath.split("/games/title/")[1] || "");
+          return <GameDetailPage gameId={gameId} onBack={() => handleNavigate("/games")} onNavigate={handleNavigate} />;
+        }
         // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
         if (currentPath.startsWith("/admin/")) {
           if (!isAdminRole) return <HomePage {...homeProps} />;
@@ -1595,3 +1630,4 @@ function App() {
 }
 
 export default App;
+

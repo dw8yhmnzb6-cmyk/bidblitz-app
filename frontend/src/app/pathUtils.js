@@ -23,15 +23,27 @@ const KYC_RESTRICTED_PREFIXES = [
   "/marketplace-dashboard",
 ];
 
+function normalizeTrailingSlash(pathname) {
+  const raw = String(pathname || "/");
+  if (raw === "/") return "/";
+  const trimmed = raw.replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
 export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname, search }) {
   if (hasKidsReturn) return "/more";
   if (hasStripeReturn) return "/wallet";
-  return `${pathname || "/"}${search || ""}`;
+  return `${normalizeTrailingSlash(pathname)}${search || ""}`;
 }
 
 export function resolveBrowserPath(path) {
   if (!path) return "/";
-  return path.startsWith("/") ? path : `/${path}`;
+  const withLeadingSlash = path.startsWith("/") ? path : `/${path}`;
+  const queryIndex = withLeadingSlash.indexOf("?");
+  if (queryIndex === -1) return normalizeTrailingSlash(withLeadingSlash);
+  const pathname = withLeadingSlash.slice(0, queryIndex);
+  const search = withLeadingSlash.slice(queryIndex);
+  return `${normalizeTrailingSlash(pathname)}${search}`;
 }
 
 export function isKycRestrictedPath(path) {

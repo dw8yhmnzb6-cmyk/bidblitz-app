@@ -1,0 +1,242 @@
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fff8;background:#07151b}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 20% 0,#1f5f3a 0,transparent 34%),linear-gradient(180deg,#102b24,#07151b 68%);min-height:100vh}
+button,select{font:inherit}
+.farm-shell{max-width:1080px;margin:0 auto;padding:18px}
+.topbar{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.eyebrow{margin:0;color:#9df7bc;font-size:11px;font-weight:800;letter-spacing:.2em}
+h1{margin:7px 0 4px;font-size:clamp(28px,6vw,48px)}
+.sub{margin:0;color:#c9e9d3;font-size:14px}
+.money-card{min-width:150px;border:1px solid #a5f3bd33;border-radius:18px;background:#123226cc;padding:14px 16px;text-align:right}
+.money-card span,.stats span{display:block;color:#a9cdb4;font-size:11px}
+.money-card strong{font-size:26px;color:#d7ff86}
+.weather-card{margin-top:20px;border:1px solid #b8ffd02b;border-radius:28px;background:linear-gradient(135deg,#174b32dd,#163442dd);padding:20px;box-shadow:0 24px 60px #0005}
+.weather-main{display:flex;align-items:center;gap:16px}
+.weather-icon{width:78px;height:78px;border-radius:24px;display:grid;place-items:center;background:#ffffff12;font-size:42px}
+.weather-main h2{margin:2px 0;font-size:25px}
+.weather-main p{margin:0;color:#bdd7c7}
+.season{font-size:12px!important;text-transform:uppercase;letter-spacing:.12em;color:#d8ff9d!important;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.stats div{border-radius:16px;background:#ffffff0b;padding:12px}
+.stats strong{display:block;margin-top:4px;font-size:19px}
+.forecast{margin-top:18px}
+.forecast h3{font-size:13px;margin:0 0 10px;color:#c7e9d2}
+.forecast-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.forecast-day{border-radius:14px;background:#ffffff0a;padding:9px 5px;text-align:center;font-size:11px}
+.forecast-day b{display:block;font-size:18px;margin:5px 0}
+.toolbar{display:flex;justify-content:space-between;gap:14px;align-items:end;margin:18px 0}
+.toolbar label{display:block;margin-bottom:7px;color:#b9ddc4;font-size:12px}
+select,button{border:1px solid #baf8cd2e;border-radius:14px;background:#102d22;color:#fff;padding:12px 14px}
+#next-day{background:linear-gradient(90deg,#a6f98a,#72df96);color:#0b2a17;font-weight:800;border:0}
+.section-head{display:flex;justify-content:space-between;align-items:end;gap:12px}
+.section-head h2{margin:0}
+.section-head p{margin:0;color:#adc8b5;font-size:12px;text-align:right}
+.plots{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:14px}
+.plot{min-height:185px;border:1px solid #baf8cd22;border-radius:22px;background:linear-gradient(180deg,#183d2b,#102a20);padding:14px;display:flex;flex-direction:column}
+.plot.empty{background:linear-gradient(180deg,#3c2b1d,#261b14)}
+.plot.ready{outline:2px solid #d4ff82aa}
+.plot-head{display:flex;justify-content:space-between;gap:8px;color:#d9efdf;font-size:12px}
+.crop-icon{font-size:36px;margin:17px 0 8px;text-align:center}
+.crop-name{text-align:center;font-weight:800}
+.progress{height:8px;background:#ffffff12;border-radius:99px;overflow:hidden;margin-top:12px}
+.progress>span{display:block;height:100%;background:linear-gradient(90deg,#71dc8e,#dbff86);border-radius:99px}
+.health{font-size:11px;color:#b7d5c0;margin-top:7px;text-align:center}
+.plot-actions{display:flex;gap:7px;margin-top:auto;padding-top:12px}
+.plot-actions button{flex:1;padding:9px 8px;font-size:11px}
+.plot-actions button.primary{background:#8eef94;color:#0b2a17;font-weight:800}
+.plot-actions button:disabled{opacity:.4}
+footer{margin:20px 0 6px;padding:14px;border-radius:16px;background:#ffffff08;color:#9fbea9;font-size:11px;line-height:1.5}
+footer span{display:block;margin-top:5px;color:#cdf5d7}
+@media(max-width:700px){.topbar{flex-direction:column}.money-card{width:100%;text-align:left}.forecast-grid{grid-template-columns:repeat(4,1fr)}.plots{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.farm-shell{padding:12px}.plots{grid-template-columns:1fr}.forecast-grid{grid-template-columns:repeat(3,1fr)}.toolbar{align-items:stretch;flex-direction:column}.toolbar select,#next-day{width:100%}.section-head{align-items:flex-start;flex-direction:column}.section-head p{text-align:left}}
+
+.farm-brief{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0}
+.brief-card{display:flex;gap:12px;align-items:flex-start;border:1px solid #baf8cd22;border-radius:20px;background:#ffffff09;padding:14px}
+.brief-icon{font-size:28px;line-height:1}
+.brief-grow{flex:1}
+.brief-label{margin:0;color:#9ec7aa;font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.brief-card h3{margin:4px 0 3px;font-size:15px}
+.brief-card p:last-child{margin:0;color:#b8d6c1;font-size:11px;line-height:1.45}
+.task-progress{height:7px;margin:9px 0 6px;border-radius:99px;background:#ffffff12;overflow:hidden}
+.task-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#85e995,#e0ff8c);border-radius:99px}
+@media(max-width:700px){.farm-brief{grid-template-columns:1fr}}
+
+.farm-section{margin-top:24px}
+.farm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.farm-card{border:1px solid #baf8cd22;border-radius:20px;background:#ffffff08;padding:14px}
+.farm-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.farm-card-icon{font-size:30px}
+.farm-card h3{margin:3px 0;font-size:15px}
+.farm-card p{margin:3px 0;color:#b7d1bf;font-size:11px;line-height:1.45}
+.farm-card strong{color:#e5ffb2}
+.farm-card-actions{display:flex;gap:7px;margin-top:12px}
+.farm-card-actions button{flex:1;padding:9px 8px;font-size:11px}
+.farm-card-actions button.primary{background:#8eef94;color:#0b2a17;font-weight:800}
+.farm-card-actions button:disabled{opacity:.4}
+.missions{display:grid;gap:10px;margin-top:14px}
+.mission{border:1px solid #baf8cd22;border-radius:18px;background:#ffffff07;padding:14px}
+.mission-top{display:flex;justify-content:space-between;gap:12px}
+.mission-title{font-size:13px;font-weight:800}
+.mission-reward{font-size:11px;color:#dfff9d}
+.mission-progress{height:8px;margin:10px 0 7px;border-radius:99px;background:#ffffff12;overflow:hidden}
+.mission-progress span{display:block;height:100%;background:linear-gradient(90deg,#70df91,#dfff8f);border-radius:99px}
+.mission-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#aac8b3;font-size:11px}
+.mission-foot button{padding:8px 11px;font-size:11px}
+@media(max-width:700px){.farm-grid{grid-template-columns:1fr}}
+
+.market-panel{margin:18px 0;padding:16px;border:1px solid #baf8cd22;border-radius:22px;background:#ffffff08}
+.market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.market-item{border-radius:14px;background:#ffffff08;padding:10px;text-align:center}
+.market-item span{display:block;color:#a8cdb2;font-size:10px}
+.market-item strong{display:block;margin-top:4px;font-size:13px}
+.market-item.up strong{color:#dfff8d}
+.market-item.down strong{color:#ffbe9a}
+.land-panel{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:18px 0;padding:16px;border:1px solid #dfff8d22;border-radius:22px;background:linear-gradient(135deg,#253f24,#173427)}
+.land-panel h3{margin:4px 0;font-size:17px}
+.land-panel p:last-child{margin:0;color:#b4d0bc;font-size:11px}
+.land-panel button{min-width:150px;background:linear-gradient(90deg,#dfff8d,#8eed98);color:#0d2b18;border:0;font-weight:800}
+@media(max-width:700px){.market-grid{grid-template-columns:repeat(2,1fr)}.land-panel{align-items:stretch;flex-direction:column}.land-panel button{width:100%}}
+
+.orders-panel{margin:18px 0;padding:16px;border:1px solid #baf8cd22;border-radius:22px;background:#ffffff08}
+.inventory-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:12px}
+.inventory-item{border-radius:13px;background:#ffffff08;padding:9px 5px;text-align:center}
+.inventory-item span{display:block;font-size:18px}
+.inventory-item b{display:block;margin-top:4px;font-size:11px;color:#dff9e5}
+.orders-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.order-card{border:1px solid #baf8cd22;border-radius:16px;background:#112d22;padding:12px}
+.order-card.done{opacity:.65}
+.order-card h3{margin:0;font-size:13px}
+.order-card p{margin:5px 0;color:#b7d2bf;font-size:11px}
+.order-card button{width:100%;margin-top:9px;padding:9px 10px;font-size:11px}
+.order-card button.primary{background:#dfff8d;color:#0d2b18;font-weight:800}
+.order-card button:disabled{opacity:.4}
+@media(max-width:800px){.inventory-grid{grid-template-columns:repeat(4,1fr)}.orders-grid{grid-template-columns:1fr}}
+
+.order-status{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.order-status div{border-radius:14px;background:#ffffff08;padding:10px}
+.order-status span{display:block;color:#a9cdb4;font-size:10px}
+.order-status strong{display:block;margin-top:4px;font-size:13px;color:#e6ffb4}
+@media(max-width:700px){.order-status{grid-template-columns:1fr}}
+
+.level-panel{margin:18px 0;padding:16px;border:1px solid #c9ff8d22;border-radius:22px;background:linear-gradient(135deg,#203c27,#163328)}
+.level-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.level-panel-head h3{margin:4px 0 0;font-size:17px}
+.level-panel-head strong{font-size:14px;color:#e3ff9d}
+.level-progress{height:10px;margin:12px 0;border-radius:99px;background:#ffffff12;overflow:hidden}
+.level-progress span{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#71dc8e,#dfff8d)}
+.level-rewards{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.level-reward{border:1px solid #ffffff10;border-radius:13px;background:#ffffff07;padding:9px;text-align:center}
+.level-reward.unlocked{border-color:#dfff8d55;background:#dfff8d10}
+.level-reward.claimed{opacity:.58}
+.level-reward b{display:block;font-size:11px}
+.level-reward span{display:block;margin-top:3px;font-size:10px;color:#adcab5}
+.level-reward button{width:100%;margin-top:7px;padding:7px 6px;font-size:10px}
+@media(max-width:760px){.level-rewards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:430px){.level-rewards{grid-template-columns:repeat(2,1fr)}}
+
+.achievements{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.achievement{border:1px solid #ffffff10;border-radius:18px;background:#ffffff07;padding:14px}
+.achievement.achieved{border-color:#dfff8d55;background:#dfff8d10}
+.achievement-icon{font-size:28px}
+.achievement h3{margin:7px 0 4px;font-size:13px}
+.achievement p{margin:0;color:#afcbb7;font-size:11px;line-height:1.45}
+.achievement span{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 8px;background:#ffffff09;color:#a8c3af;font-size:10px}
+.achievement.achieved span{background:#dfff8d22;color:#e7ffb7}
+@media(max-width:800px){.achievements{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.achievements{grid-template-columns:1fr}}
+
+.completion-row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;font-size:11px;color:#b6cfbd}
+.completion-row strong{color:#e7ffad}
+.completion-progress{height:9px;margin:7px 0 13px;border-radius:99px;background:#ffffff12;overflow:hidden}
+.completion-progress span{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6ce59a,#8eeaff,#e3ff8d)}
+
+.onboarding-panel{margin:18px 0;padding:16px;border:1px solid #baf8cd22;border-radius:22px;background:#ffffff07}
+.onboarding-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+.onboarding-step{border:1px solid #ffffff10;border-radius:14px;background:#ffffff06;padding:10px}
+.onboarding-step.done{border-color:#8eef9455;background:#8eef9410}
+.onboarding-step b{display:block;font-size:11px}
+.onboarding-step span{display:block;margin-top:6px;font-size:10px;color:#aecab6}
+@media(max-width:800px){.onboarding-steps{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.onboarding-steps{grid-template-columns:1fr}}
+
+/* Compact touch-first Farm layout. Keep two fields per row on normal phones. */
+button{min-height:44px;touch-action:manipulation}
+button:focus-visible,select:focus-visible{outline:3px solid #dfff8d;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.5}
+.farm-shell{width:100%;min-width:0;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+.farm-card,.plot,.order-card,.mission,.market-panel,.orders-panel{min-width:0}
+.farm-card-actions{flex-wrap:wrap}
+.farm-card-actions button{flex:1 1 75px;min-width:0;overflow-wrap:anywhere}
+@media(max-width:430px){
+  .farm-shell{padding:12px}
+  .plots{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .plot{padding:10px;min-height:170px;border-radius:16px}
+  .plot-head{font-size:10px}
+  .crop-icon{font-size:29px;margin:10px 0 5px}
+  .crop-name{font-size:13px}
+  .plot-actions button{font-size:11px;min-height:44px}
+  .forecast-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .weather-card{padding:14px;border-radius:20px}
+  .weather-icon{width:60px;height:60px;font-size:32px}
+  .weather-main h2{font-size:21px}
+  .order-status{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .order-status div{padding:8px}
+  .order-status strong{font-size:11px;overflow-wrap:anywhere}
+  .inventory-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:340px){
+  .plots{grid-template-columns:1fr}
+  .forecast-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .order-status{grid-template-columns:1fr}
+}
+
+/* Fast navigation for a long Farm dashboard; horizontally scrollable on phones. */
+.farm-quick-nav{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:12px 0 8px;scroll-snap-type:x proximity}
+.farm-quick-nav a{flex:none;scroll-snap-align:start;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border:1px solid #a5f3bd38;border-radius:999px;background:#17372c;color:#e8fff0;font-size:12px;font-weight:700;text-decoration:none}
+.farm-quick-nav a:focus-visible{outline:3px solid #dfff8d;outline-offset:2px}
+#farm-fields,#farm-orders,#farm-animals,#farm-buildings,#farm-missions{scroll-margin-top:12px}
+@media(max-width:430px){.farm-quick-nav{margin-right:-12px;padding-right:12px}}
+
+/* Farm mobile ergonomics: respect notches, prevent overflow and enlarge touch targets. */
+@media(max-width:700px){
+  .farm-shell{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .topbar{gap:10px}
+  .money-card{padding:10px 14px}
+  .weather-card{margin-top:12px}
+  .farm-quick-nav{position:sticky;top:0;z-index:5;background:#102c24f2;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  #farm-fields,#farm-orders,#farm-animals,#farm-buildings,#farm-missions{scroll-margin-top:76px}
+  .farm-card-actions button,.plot-actions button,.order-card button,.mission-foot button,.level-reward button{min-height:44px}
+  .plot-actions,.farm-card-actions{flex-wrap:wrap}
+  .plot-actions button{flex:1 1 60px;min-width:0;overflow-wrap:anywhere}
+  .weather-main,.farm-card-head,.mission-top,.level-panel-head{min-width:0}
+  .weather-main>div:last-child,.farm-card-head>div,.mission-top>div{min-width:0}
+  .farm-card,.mission,.order-card,.level-reward,.forecast-day{overflow-wrap:anywhere}
+}
+@media(max-width:375px){
+  .farm-shell{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .stats{gap:6px}
+  .stats div{padding:8px}
+  .stats strong{font-size:16px}
+  .plot{padding:8px}
+  .plot-actions{gap:5px}
+  .farm-quick-nav a{padding:9px 11px}
+}
+@media(prefers-reduced-motion:reduce){
+  .farm-quick-nav{scroll-behavior:auto}
+}
+.farm-conflict-actions{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.farm-conflict-actions[hidden]{display:none}
+.farm-conflict-actions p{flex-basis:100%;margin:0;color:#ffe5a2}
+.farm-conflict-actions button{flex:1 1 220px;min-height:44px;border-color:#ffe5a280;overflow-wrap:anywhere}
+.farm-conflict-actions button:disabled{opacity:.5}
+
+/* Mobile overflow regression: grid tracks must be allowed to shrink below
+   their children's min-content widths, especially reward action labels. */
+@media(max-width:430px){
+  .farm-shell,.farm-shell > *{min-width:0;max-width:100%}
+  .level-rewards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .level-reward{min-width:0;overflow-wrap:anywhere}
+  .level-reward button{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:normal}
+  .farm-brief,.farm-grid,.orders-grid,.market-grid{min-width:0}
+  .farm-quick-nav{margin-right:0;max-width:100%}
+}

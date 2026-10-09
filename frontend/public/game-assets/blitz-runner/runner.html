@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07182c"><title>Blitz Runner · BidBlitz Games</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="app" data-testid="blitz-runner-game">
+<header><div><p class="eyebrow">BIDBLITZ ORIGINAL</p><h1>Blitz Runner</h1><p id="zone">Neon Harbor</p></div><div class="brand">B <span>GAMES</span></div></header>
+<section class="stats"><article><span>Level</span><b id="level">1</b></article><article><span>Distanz</span><b id="distance">0 / 24</b></article><article><span>Licht</span><b id="shards">0</b></article><article><span>Best</span><b id="best">—</b></article></section>
+<section class="road-card">
+<div class="road" id="road" aria-label="Dreispurige Runner-Strecke">
+<div class="lane l0"></div><div class="lane l1"></div><div class="lane l2"></div>
+<div id="runner" class="runner lane-1" aria-label="Runner">◆</div>
+<div id="segments" class="segments"></div>
+</div>
+<p id="status" class="status" role="status">Wähle deine Spur. Jeder Zug bringt dich einen Streckenabschnitt voran.</p>
+<div class="controls">
+<button id="left" aria-label="Eine Spur nach links">←<small>LINKS</small></button>
+<button id="straight" aria-label="Geradeaus">↑<small>GERADE</small></button>
+<button id="right" aria-label="Eine Spur nach rechts">→<small>RECHTS</small></button>
+</div>
+<p class="safety">Keine Einsätze · Keine Auszahlung · Keine Wallet-Verbindung</p>
+</section>
+<section id="result" class="result" hidden><div><p id="result-stars"></p><h2 id="result-title"></h2><p id="result-text"></p></div><div><button id="next">Weiter</button><button id="restart">Erneut</button></div></section>
+<section class="levels"><div><h2>Strecken</h2><span id="save-note">Fortschritt wird lokal gespeichert.</span></div><div id="level-list" class="level-list"></div></section>
+</main>
+<script src="./engine.js"></script><script src="./account-progress.js"></script><script src="./app.js"></script>
+</body></html>
