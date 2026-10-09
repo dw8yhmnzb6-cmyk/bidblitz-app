@@ -95,7 +95,8 @@ export default function TheEyeGlobe({ devices = [], onSelectDevice }) {
       const features = devices.filter((item) => {
         const lat = Number(item?.location?.lat);
         const lng = Number(item?.location?.lng);
-        return item?.location?.lat != null && item?.location?.lng != null &&
+        return item?.device_id != null && String(item.device_id).trim() !== "" &&
+          item?.location?.lat != null && item?.location?.lng != null &&
           Number.isFinite(lat) && Number.isFinite(lng) &&
           lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
       }).slice(0, 1000).map((item) => ({
