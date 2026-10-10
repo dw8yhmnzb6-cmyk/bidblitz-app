@@ -31,7 +31,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build frontend
+      # CRA treats all ESLint warnings as build errors when CI=true.
+      # Keep lint checks in the separate BidBlitz CI workflow while allowing
+      # visual regression checks to run and report actual browser failures.
+      - name: Build frontend for visual QA
+        env:
+          CI: "false"
         run: npm --workspace frontend run build
 
       - name: Prepare QA output directory
