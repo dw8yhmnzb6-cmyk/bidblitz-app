@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
+import { initializeErrorMonitoring } from "@/services/errorMonitoring";
 import { initCapacitorBridge, isNativeApp } from "@/services/capacitorBridge";
 import { purgeLegacyAuthStorage } from "@/services/authService";
 
@@ -17,6 +18,7 @@ const purgeLegacyWidgetStorage = () => {
   }
 };
 
+initializeErrorMonitoring();
 purgeLegacyAuthStorage();
 purgeLegacyWidgetStorage();
 
