@@ -1,0 +1,50 @@
+name: BidBlitz Read-Only Browser Robots
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bidblitz-robot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-robot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'false'
+      BROWSER: none
+      REACT_APP_TEST_MODE: 'false'
+      REACT_APP_TEST_MODE_FULL_ACCESS: 'false'
+      REACT_APP_DISABLE_KYC: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Read-only local browser robot checks
+        run: npx playwright test --config=playwright.robot.config.cjs
+        working-directory: frontend
+      - name: Upload robot reports even if tests fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidblitz-robot-report-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            frontend/robot-results.json
+            frontend/robot-report/
+            frontend/robot-artifacts/
