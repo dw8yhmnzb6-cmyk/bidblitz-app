@@ -71,3 +71,8 @@ jobs:
 
       - name: Run ESLint
         run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
+
+      - name: Run Sentry initialization unit tests
+        env:
+          CI: "true"
+        run: npm --workspace frontend test -- --watchAll=false --runInBand --runTestsByPath src/services/errorMonitoring.test.js
