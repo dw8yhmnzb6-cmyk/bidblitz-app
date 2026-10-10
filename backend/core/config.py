@@ -11,6 +11,10 @@ IS_PRODUCTION = APP_ENV == "production"
 DEBUG = os.environ.get("DEBUG", "true").lower() == "true" and not IS_PRODUCTION
 TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
 
+# Never allow simulated identity verification in a real production environment.
+if IS_PRODUCTION and TEST_MODE:
+    raise RuntimeError("TEST_MODE must be disabled when APP_ENV=production")
+
 # ── Database ──
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
