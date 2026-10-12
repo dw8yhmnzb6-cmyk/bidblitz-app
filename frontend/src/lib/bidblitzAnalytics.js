@@ -11,9 +11,14 @@ const EVENT_SET = new Set(ANALYTICS_EVENTS);
 const PROJECT_PATTERN = /^[a-z][a-z0-9_-]{1,39}$/;
 const LABEL_PATTERN = /^[a-z][a-z0-9_-]{0,59}$/;
 const SAFE_ROUTE = /^\/(?:[a-z][a-z0-9_-]*\/?)*$/;
-export function createBidBlitzAnalytics({ project, endpoint, hasConsent, fetchImpl } = {}) {
+export function createBidBlitzAnalytics({ project, endpoint, hasConsent, allowedPaths, fetchImpl } = {}) {
   if (!PROJECT_PATTERN.test(project || '')) throw new Error('Invalid analytics project');
   if (typeof hasConsent !== 'function') throw new Error('Consent callback required');
+  if (!Array.isArray(allowedPaths) || !allowedPaths.length ||
+      !allowedPaths.every(p => typeof p === 'string' && SAFE_ROUTE.test(p))) {
+    throw new Error('Trusted route allowlist required');
+  }
+  const routes = new Set(allowedPaths);
   const send = fetchImpl || (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
   if (!send) throw new Error('Fetch implementation required');
   // Relative first-party URL only: no data exfiltration to arbitrary origins.
@@ -25,7 +30,7 @@ export function createBidBlitzAnalytics({ project, endpoint, hasConsent, fetchIm
       if (!hasConsent() || !EVENT_SET.has(event)) return false;
       const cleanPath = typeof path === 'string' ? path.split(/[?#]/, 1)[0] : '/';
       // Fail closed: do not turn customer IDs, emails or unknown routes into analytics data.
-      if (cleanPath.length > 160 || !SAFE_ROUTE.test(cleanPath)) return false;
+      if (cleanPath.length > 160 || !SAFE_ROUTE.test(cleanPath) || !routes.has(cleanPath)) return false;
       const safePath = cleanPath;
       const payload = { project, event, path: safePath, timestamp: new Date().toISOString() };
       if (typeof label === 'string' && LABEL_PATTERN.test(label)) payload.label = label;
