@@ -4,7 +4,7 @@
  */
 import { getCookieConsent } from '../components/CookieBanner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const getApiUrl = () => process.env.REACT_APP_BACKEND_URL;
 const EVENTS = new Set(['guest_visit','guest_register_click','register_complete','first_payment','feature_click','demo_start','demo_exit','cta_click','page_view']);
 const SAFE_TOKEN = /^[a-zA-Z0-9_-]{1,64}$/;
 const allowedMeta = {
@@ -28,6 +28,7 @@ function sanitized(event, meta = {}) {
 function fire(event, meta) {
   if (!consented() || !EVENTS.has(event)) return false;
   try {
+    const API_URL = getApiUrl();
     if (!API_URL || !/^https?:\/\//.test(API_URL)) return false;
     const body = JSON.stringify({ event, meta: sanitized(event, meta) });
     // Fetch instead of beacon so network failures don't throw into UI flows.
