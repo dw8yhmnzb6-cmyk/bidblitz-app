@@ -20,15 +20,13 @@ class AnalyticsProjectRegistry:
                 raise ValueError("Duplicate origin")
             self._entries[key] = project
 
-    def resolve(self, origin, request_host):
+    def resolve(self, origin):
         parsed = urlparse(origin or "")
         if parsed.scheme not in ("https", "http") or parsed.path not in ("", "/"):
             raise ValueError("Invalid origin")
         if parsed.query or parsed.fragment or parsed.username or parsed.password:
             raise ValueError("Invalid origin")
         key = (parsed.scheme, parsed.netloc.lower())
-        if not request_host or parsed.netloc.lower() != request_host.lower():
-            raise ValueError("Origin/host mismatch")
         project = self._entries.get(key)
         if project is None:
             raise ValueError("Origin not registered")
