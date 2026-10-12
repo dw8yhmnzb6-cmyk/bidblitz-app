@@ -4,7 +4,7 @@ const setup = (consent = true, response = { ok: true }) => {
   const fetchImpl = jest.fn().mockResolvedValue(response);
   const analytics = createBidBlitzAnalytics({
     project: 'bidblitz_main',
-    endpoint: '/api/analytics/track',
+    endpoint: '/api/analytics/track', allowedPaths: ['/', '/home', '/pricing'],
     hasConsent: () => consent,
     fetchImpl,
   });
@@ -47,7 +47,7 @@ describe('shared analytics privacy contract', () => {
   test('rejects unsafe destinations', () => {
     for (const endpoint of ['https://tracker.example', '//tracker.example/x', '/api/events?token=x']) {
       expect(() => createBidBlitzAnalytics({
-        project: 'bidblitz_main', endpoint, hasConsent: () => true, fetchImpl: jest.fn(),
+        project: 'bidblitz_main', endpoint, allowedPaths: ['/'], hasConsent: () => true, fetchImpl: jest.fn(),
       })).toThrow();
     }
   });
@@ -55,7 +55,7 @@ describe('shared analytics privacy contract', () => {
   test('network errors never interrupt customer flow', async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error('offline'));
     const analytics = createBidBlitzAnalytics({
-      project: 'trade', endpoint: '/api/analytics/track', hasConsent: () => true, fetchImpl,
+      project: 'trade', endpoint: '/api/analytics/track', allowedPaths: ['/', '/home', '/pricing'], hasConsent: () => true, fetchImpl,
     });
     expect(await analytics.track('signup_started')).toBe(false);
   });
@@ -76,11 +76,17 @@ describe('shared analytics privacy contract', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  test('rejects unregistered but syntactically valid customer slugs', async () => {
+    const { analytics, fetchImpl } = setup();
+    expect(await analytics.track('page_view', { path: '/users/alice' })).toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   test('revoked consent blocks subsequent events', async () => {
     let consent = true;
     const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
     const analytics = createBidBlitzAnalytics({
-      project: 'trade', endpoint: '/api/analytics/track',
+      project: 'trade', endpoint: '/api/analytics/track', allowedPaths: ['/', '/home', '/pricing'],
       hasConsent: () => consent, fetchImpl,
     });
     expect(await analytics.track('page_view')).toBe(true);
