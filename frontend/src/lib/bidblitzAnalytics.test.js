@@ -63,4 +63,30 @@ describe('shared analytics privacy contract', () => {
   test('all documented event types are unique', () => {
     expect(new Set(ANALYTICS_EVENTS).size).toBe(ANALYTICS_EVENTS.length);
   });
+  test('rejects paths with dynamic identifiers and private text', async () => {
+    const { analytics, fetchImpl } = setup();
+    expect(await analytics.track('page_view', { path: '/users/12345' })).toBe(false);
+    expect(await analytics.track('page_view', { path: '/user/name@example.com' })).toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  test('browser cannot report a completed payment', async () => {
+    const { analytics, fetchImpl } = setup();
+    expect(await analytics.track('checkout_completed')).toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  test('revoked consent blocks subsequent events', async () => {
+    let consent = true;
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+    const analytics = createBidBlitzAnalytics({
+      project: 'trade', endpoint: '/api/analytics/track',
+      hasConsent: () => consent, fetchImpl,
+    });
+    expect(await analytics.track('page_view')).toBe(true);
+    consent = false;
+    expect(await analytics.track('page_view')).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
 });
