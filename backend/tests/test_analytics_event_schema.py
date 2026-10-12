@@ -21,3 +21,18 @@ def test_invalid(field, value):
 def test_extra_fields_rejected():
     with pytest.raises(ValidationError):
         AnalyticsEventV1(**dict(BASE, unexpected="value"))
+
+def test_timezone_is_required():
+    with pytest.raises(ValidationError):
+        AnalyticsEventV1(**dict(BASE, timestamp="2026-10-12T13:00:00"))
+
+def test_client_cannot_confirm_payment():
+    with pytest.raises(ValidationError):
+        AnalyticsEventV1(**dict(BASE, event="checkout_completed"))
+
+def test_project_binding():
+    from core.analytics_event_schema import validated_project
+    event = AnalyticsEventV1(**BASE)
+    assert validated_project(event, "bidblitz_main") == "bidblitz_main"
+    with pytest.raises(ValueError):
+        validated_project(event, "trade")
