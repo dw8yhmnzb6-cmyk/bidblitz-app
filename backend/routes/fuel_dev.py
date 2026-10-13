@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query
 
+from services.dkv_enterprise import CAPABILITY_STATUS as DKV_CAPABILITY_STATUS, PROFILE as DKV_PROFILE
 from services.fuel_core import (
     FuelProduct, FuelPump, FuelStationRecord, Provider, PumpStatus,
     SimulatorCatalog, StationCapabilities,
@@ -117,6 +118,31 @@ async def fuel_status():
         "payments_enabled": False,
         "external_networks_enabled": False,
         "provider": "simulator",
+    }
+
+
+@router.get("/providers/status")
+async def provider_status():
+    return {
+        "providers": [
+            {
+                "provider": "simulator",
+                "status": "active_dev",
+                "station_discovery": "synthetic_only",
+                "payments": "blocked",
+            },
+            {
+                "provider": "dkv",
+                "status": "onboarding_required",
+                "enterprise_api": DKV_CAPABILITY_STATUS.enterprise_data_api,
+                "multi_customer_platform": DKV_CAPABILITY_STATUS.multi_customer_platform,
+                "public_sandbox": DKV_CAPABILITY_STATUS.public_sandbox,
+                "pay_at_pump_api": DKV_CAPABILITY_STATUS.pay_at_pump_api,
+                "revenue_share": DKV_CAPABILITY_STATUS.revenue_share,
+                "split_settlement": DKV_CAPABILITY_STATUS.split_settlement,
+                "monthly_api_price_eur": DKV_PROFILE.monthly_price_eur,
+            },
+        ]
     }
 
 

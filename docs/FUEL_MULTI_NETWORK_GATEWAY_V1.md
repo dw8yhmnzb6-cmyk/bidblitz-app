@@ -113,3 +113,24 @@ Verification:
 - 27/27 pure Fuel core/gateway/finance tests PASS;
 - Python compile PASS;
 - JSX/JS parser checks PASS for Fuel pages, service and route file.
+
+
+## DKV Enterprise API onboarding model (2026-10-13)
+Added a fail-closed DKV Enterprise API capability model based on the written reply from DKV API Management.
+
+Confirmed and encoded:
+- REST/JSON Enterprise API;
+- EUR 69.90/month API access offer;
+- customer-specific onboarding and authorization;
+- one BidBlitz software platform may serve multiple separately onboarded DKV customers;
+- no separate public sandbox; production access follows onboarding;
+- six confirmed data products: invoice, unsettled, consumption, online authorization, service card master data and toll product master data.
+
+Deliberately NOT claimed/implemented:
+- pay-at-pump API;
+- station discovery/price API;
+- revenue share;
+- white-label fueling;
+- split settlement.
+
+A DKV tenant cannot become ACTIVE without production approval and technical-user configuration. Even an ACTIVE DEV tenant still cannot make outbound production calls because the client remains a blocking stub until official onboarding/credentials and integration review are complete.
