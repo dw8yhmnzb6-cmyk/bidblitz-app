@@ -204,3 +204,27 @@ Verification:
 - 48/48 Fuel tests PASS;
 - Python compile PASS;
 - Fuel admin/service JS parse PASS.
+
+
+## Persistent repository + DKV read scaffold + provider detail (2026-10-13)
+Implemented:
+- FuelRepository for the existing BidBlitz Mongo database;
+- idempotent insert, optimistic locking and station-history reads;
+- no second database introduced;
+- DKV read-adapter scaffold with request planning and structural response normalization;
+- DKV execution remains blocked until official onboarding, credentials and endpoint documentation are configured;
+- secret-like query parameters are rejected;
+- provider onboarding detail endpoint;
+- Admin provider detail page showing capability, contract, credential and readiness flags;
+- Admin onboarding matrix rows link to provider details.
+
+Verification:
+- 58/58 Fuel tests PASS;
+- Python compile PASS;
+- Admin Fuel JS/JSX parse PASS.
+
+Still intentionally disabled:
+- outbound DKV production calls;
+- real PSP execution;
+- real pump release;
+- live provider discovery without contract/credentials.

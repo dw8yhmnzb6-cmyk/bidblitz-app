@@ -15,7 +15,7 @@ from services.fuel_core import (
     SimulatorCatalog, StationCapabilities,
 )
 from services.fuel_simulator_sessions import STORE as FUEL_SIM_STORE
-from services.fuel_provider_onboarding import provider_matrix
+from services.fuel_provider_onboarding import provider_by_name, provider_matrix
 from services.fuel_payment_bridge import FuelPaymentReleaseGate
 
 router = APIRouter(prefix="/api/fuel", tags=["fuel-dev"])
@@ -154,6 +154,17 @@ async def provider_onboarding_matrix():
     return {
         "mode": "development",
         "providers": [item.payload() for item in provider_matrix()],
+    }
+
+
+@router.get("/providers/onboarding/{provider_name}")
+async def provider_onboarding_detail(provider_name: str):
+    item = provider_by_name(provider_name)
+    if not item:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    return {
+        "mode": "development",
+        "provider": item.payload(),
     }
 
 

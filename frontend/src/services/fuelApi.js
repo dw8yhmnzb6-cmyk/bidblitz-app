@@ -92,3 +92,9 @@ export async function getFuelPaymentReleaseGates() {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, live_ready: false, missing: [], error: data?.detail || "Payment release gates unavailable" };
 }
+
+export async function getFuelProviderOnboardingDetail(providerName) {
+  const res = await fetch(API + "/api/fuel/providers/onboarding/" + encodeURIComponent(providerName), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Provider detail unavailable" };
+}

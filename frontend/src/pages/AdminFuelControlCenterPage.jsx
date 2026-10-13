@@ -125,7 +125,7 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
               <div>Provider</div><div>Stage</div><div>Discovery</div><div>Fueling</div>
             </div>
             {onboarding.map((provider) => (
-              <div key={provider.provider} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+              <button key={provider.provider} onClick={() => onNavigate?.("/admin/fuel/provider/" + provider.provider)} className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 text-left last:border-0 hover:bg-white/[0.03]">
                 <div>
                   <div className="font-bold uppercase">{provider.provider}</div>
                   <div className="mt-1 max-w-xl text-xs text-slate-500">{provider.notes}</div>
@@ -133,7 +133,7 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
                 <div className="text-xs font-bold text-slate-300">{provider.stage}</div>
                 <div className={provider.can_enable_discovery ? "text-emerald-300" : "text-amber-200"}>{provider.can_enable_discovery ? "READY" : "BLOCKED"}</div>
                 <div className={provider.can_enable_fueling ? "text-emerald-300" : "text-red-300"}>{provider.can_enable_fueling ? "READY" : "BLOCKED"}</div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
