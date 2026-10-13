@@ -50,3 +50,33 @@ export async function prepareFuelPump(stationId, pumpId) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Pump unavailable" };
 }
+
+export async function createFuelSimulatorSession({ stationId, pumpId, fuelCode }) {
+  const qs = new URLSearchParams({ station_id: stationId, pump_id: pumpId, fuel_code: fuelCode });
+  const res = await fetch(API + "/api/fuel/simulator/sessions?" + qs.toString(), { method: "POST", credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Simulator session could not be created" };
+}
+
+export async function getFuelSimulatorSession(sessionId) {
+  const res = await fetch(API + "/api/fuel/simulator/sessions/" + encodeURIComponent(sessionId), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Simulator session unavailable" };
+}
+
+export async function advanceFuelSimulatorSession(sessionId, action, options = {}) {
+  const allowed = new Set(["authorize", "start", "complete"]);
+  if (!allowed.has(action)) return { ok: false, error: "Unsupported simulator action" };
+  const qs = new URLSearchParams();
+  if (action === "complete" && options.demoLiters) qs.set("demo_liters", String(options.demoLiters));
+  const suffix = qs.toString() ? "?" + qs.toString() : "";
+  const res = await fetch(API + "/api/fuel/simulator/sessions/" + encodeURIComponent(sessionId) + "/" + action + suffix, { method: "POST", credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Simulator action failed" };
+}
+
+export async function getFuelSimulatorReceipt(sessionId) {
+  const res = await fetch(API + "/api/fuel/simulator/sessions/" + encodeURIComponent(sessionId) + "/receipt", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Receipt unavailable" };
+}

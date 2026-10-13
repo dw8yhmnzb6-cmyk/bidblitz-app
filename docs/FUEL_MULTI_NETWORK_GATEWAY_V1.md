@@ -155,3 +155,27 @@ Still blocked by design:
 - external provider credentials/calls;
 - fiscal receipt issuance;
 - live operator settlement.
+
+
+## End-to-end simulator session flow (2026-10-13)
+Added a synthetic DEV-only end-to-end fueling flow:
+- create session from approved simulator station/pump/fuel product;
+- simulated authorization step (no PSP/network I/O);
+- simulated fueling state;
+- deterministic completion using demo litres;
+- closed session with history;
+- non-fiscal operator receipt generation;
+- frontend session flow at `/fuel/simulator/{session_id}`;
+- Fuel landing now enters the simulator flow instead of pretending to launch BidBlitz Pay.
+
+Safety invariants:
+- `real_payment_executed=false` throughout;
+- `real_pump_released=false` throughout;
+- simulator data is process-local and DEV-only;
+- no production persistence, PSP call or provider command;
+- receipt remains explicitly non-fiscal and operator-issued.
+
+Verification:
+- 39/39 Fuel tests PASS;
+- Python compile PASS;
+- JSX/JS parser checks PASS for all Fuel pages/services/routes.

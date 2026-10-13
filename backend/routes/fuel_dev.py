@@ -14,6 +14,7 @@ from services.fuel_core import (
     FuelProduct, FuelPump, FuelStationRecord, Provider, PumpStatus,
     SimulatorCatalog, StationCapabilities,
 )
+from services.fuel_simulator_sessions import STORE as FUEL_SIM_STORE
 
 router = APIRouter(prefix="/api/fuel", tags=["fuel-dev"])
 
@@ -257,4 +258,117 @@ async def prepare_fuel_session(station_id: str, pump_id: str):
         "station_id": station.station_id,
         "pump_id": pump.pump_id,
         "message": "DEV simulator only. No payment authorization or pump release executed.",
+    }
+
+
+@router.post("/simulator/sessions")
+async def create_simulator_session(
+    station_id: str = Query(..., min_length=1, max_length=150),
+    pump_id: str = Query(..., min_length=1, max_length=150),
+    fuel_code: str = Query(..., min_length=1, max_length=50),
+):
+    station = CATALOG.get_station(station_id)
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+    pump = next((p for p in station.pumps if p.pump_id == pump_id), None)
+    if not pump:
+        raise HTTPException(status_code=404, detail="Pump not found")
+    if pump.status != PumpStatus.FREE:
+        raise HTTPException(status_code=409, detail="Pump is not available")
+    if fuel_code not in pump.product_codes:
+        raise HTTPException(status_code=409, detail="Fuel product unavailable at pump")
+    product = next((p for p in station.products if p.code == fuel_code), None)
+    if not product:
+        raise HTTPException(status_code=404, detail="Fuel product not found")
+
+    item = FUEL_SIM_STORE.create(
+        station_id=station.station_id,
+        station_name=station.name,
+        operator_name="BidBlitz Fuel Simulator Operator",
+        pump_id=pump.pump_id,
+        pump_number=pump.number,
+        fuel_code=product.code,
+        fuel_name=product.name,
+        unit_price=product.unit_price,
+        currency=product.currency,
+    )
+    return item.payload()
+
+
+@router.get("/simulator/sessions")
+async def list_simulator_sessions():
+    return {
+        "simulated": True,
+        "sessions": [item.payload() for item in FUEL_SIM_STORE.list()],
+    }
+
+
+@router.get("/simulator/sessions/{session_id}")
+async def get_simulator_session(session_id: str):
+    item = FUEL_SIM_STORE.get(session_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return item.payload()
+
+
+@router.post("/simulator/sessions/{session_id}/authorize")
+async def authorize_simulator_session(session_id: str):
+    try:
+        return FUEL_SIM_STORE.authorize_demo(session_id).payload()
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Session not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/simulator/sessions/{session_id}/start")
+async def start_simulator_session(session_id: str):
+    try:
+        return FUEL_SIM_STORE.start_demo_fueling(session_id).payload()
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Session not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/simulator/sessions/{session_id}/complete")
+async def complete_simulator_session(
+    session_id: str,
+    demo_liters: Decimal = Query(Decimal("31.700"), gt=Decimal("0"), le=Decimal("150")),
+):
+    try:
+        return FUEL_SIM_STORE.complete_demo_fueling(
+            session_id,
+            liters=demo_liters,
+        ).payload()
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Session not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/simulator/sessions/{session_id}/receipt")
+async def get_simulator_receipt(session_id: str):
+    item = FUEL_SIM_STORE.get(session_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not item.receipt:
+        raise HTTPException(status_code=409, detail="Receipt not available")
+    receipt = item.receipt
+    return {
+        "simulated": True,
+        "fiscal_document": False,
+        "issuer_role": receipt.issuer_role,
+        "receipt": {
+            "receipt_id": receipt.receipt_id,
+            "transaction_id": receipt.transaction_id,
+            "station_name": receipt.station_name,
+            "operator_name": receipt.operator_name,
+            "pump_number": receipt.pump_number,
+            "fuel_name": receipt.fuel_name,
+            "unit_price": str(receipt.unit_price),
+            "liters": str(receipt.liters),
+            "gross_amount": str(receipt.gross_amount),
+            "currency": receipt.currency,
+        },
     }

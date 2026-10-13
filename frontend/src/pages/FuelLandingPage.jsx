@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Fuel, MapPin, Search, ShieldCheck, WalletCards, Gift, Gauge, ChevronRight, X, CheckCircle2, AlertTriangle } from "lucide-react";
-import { getFuelStations, prepareFuelPump } from "../services/fuelApi";
+import { createFuelSimulatorSession, getFuelStations } from "../services/fuelApi";
 
 const gold = "#F4B942";
 const navy = "#07111F";
@@ -75,11 +75,20 @@ export default function FuelLandingPage({ onNavigate }) {
 
   const prepare = async () => {
     if (!selected || !selectedPump) return;
-    const result = await prepareFuelPump(selected.station_id, selectedPump.pump_id);
+    const fuelCode = selectedPump.product_codes?.[0] || selected.products?.[0]?.code;
+    if (!fuelCode) {
+      setMessage("Für diese Zapfsäule ist kein Kraftstoffprodukt verfügbar.");
+      return;
+    }
+    const result = await createFuelSimulatorSession({
+      stationId: selected.station_id,
+      pumpId: selectedPump.pump_id,
+      fuelCode,
+    });
     if (result.ok) {
-      setMessage("DEV-Simulator bereit. BidBlitz Pay bleibt bis zur PSP- und Partnerfreigabe absichtlich gesperrt.");
+      onNavigate?.("/fuel/simulator/" + result.session_id);
     } else {
-      setMessage(result.error || "Zapfsäule ist nicht verfügbar.");
+      setMessage(result.error || "Simulator-Session konnte nicht erstellt werden.");
     }
   };
 
@@ -262,7 +271,7 @@ export default function FuelLandingPage({ onNavigate }) {
               className="mt-5 w-full rounded-2xl bg-amber-400 py-4 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
               data-testid="fuel-prepare-payment"
             >
-              Mit BidBlitz Pay fortfahren
+              Demo-Tankvorgang starten
             </button>
             <p className="mt-3 text-center text-[11px] text-slate-500">DEV: Es wird weder eine Karte autorisiert noch eine Zapfsäule freigegeben.</p>
           </div>
