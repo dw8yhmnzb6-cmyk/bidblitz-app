@@ -57,6 +57,25 @@ class TestFuelCommercialPreviewAPI(unittest.TestCase):
         self.assertFalse(payload["payments_enabled"])
         self.assertEqual(payload["percentage_model"]["commission_before_cost"], "200.00")
 
+    def test_network_portfolio_quote_remains_read_only(self):
+        response = self.client.post(
+            self.url,
+            json={"monthly_turnover": "100000", "station_count": "100", "percent_rate": "0.2"},
+            headers={"x-test-role": "admin"},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["payments_enabled"])
+        self.assertEqual(payload["station_count"], 100)
+        self.assertEqual(payload["portfolio_projection"]["monthly_turnover_gross"], "10000000.00")
+        self.assertEqual(payload["portfolio_projection"]["percentage_model"]["monthly_commission_before_cost"], "20000.00")
+
+    def test_noninteger_station_count_rejected(self):
+        response = self.client.post(
+            self.url, json={"station_count": "1.5"}, headers={"x-test-role": "admin"},
+        )
+        self.assertEqual(response.status_code, 422)
+
     def test_invalid_input_is_rejected(self):
         response = self.client.post(
             self.url,
