@@ -1,0 +1,48 @@
+name: THE EYE development checks
+
+on:
+  push:
+    branches:
+      - feature/the-eye-device-hub-v1
+    paths:
+      - "backend/routes/the_eye_providers.py"
+      - "backend/tests/test_the_eye_*.py"
+      - "frontend/src/pages/TheEyePage.jsx"
+      - "frontend/src/pages/TheEyeGlobe.jsx"
+      - "frontend/src/pages/TheEyePage.css"
+      - "frontend/scripts/the-eye-smoke.cjs"
+      - ".github/workflows/the-eye-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  usgs-feed-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Check backend syntax and offline USGS tests
+        run: |
+          python -m py_compile backend/routes/the_eye_providers.py
+          python -m unittest discover -s backend/tests -p "test_the_eye_usgs_feed.py" -v
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile THE EYE dashboard within the existing frontend
+        env:
+          CI: "false"
+        run: npm --workspace frontend run build
