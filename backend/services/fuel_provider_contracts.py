@@ -44,8 +44,8 @@ class ProviderCommercialTerms:
     def __post_init__(self) -> None:
         for name in ("percentage", "per_liter", "per_transaction", "monthly_fee"):
             value = Decimal(str(getattr(self, name)))
-            if value < 0:
-                raise ValueError(f"{name} cannot be negative")
+            if not value.is_finite() or value < 0:
+                raise ValueError(f"{name} must be finite and non-negative")
             object.__setattr__(self, name, value)
         if self.percentage > 100:
             raise ValueError("percentage cannot exceed 100")

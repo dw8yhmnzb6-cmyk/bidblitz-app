@@ -19,6 +19,7 @@ from services.fuel_provider_contract_repository import (
 )
 from services.fuel_provider_onboarding import provider_by_name
 from services.fuel_provider_activation import evaluate_provider_activation
+from services.fuel_discovery_preflight import discovery_preflight
 from services.fuel_provider_contracts import unsigned_template
 from services.fuel_repository import FuelRepository
 from services.fuel_reconciliation import FuelReconciliationRepository, ReconciliationStatus, build_case
@@ -83,6 +84,23 @@ async def get_provider_activation(provider_name: str, request: Request):
         "activation": status.payload(),
         "message": "Readiness only. No provider or payment execution was enabled.",
     }
+
+
+@router.get("/providers/{provider_name}/discovery-preview")
+async def preview_provider_discovery(provider_name: str, request: Request, country: str = "DE"):
+    """Admin-only, no network call; checks a country against stored DEV contract data."""
+    await _admin(request)
+    onboarding = provider_by_name(provider_name)
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    repo = FuelProviderContractRepository(db)
+    row = await repo.get(onboarding.provider)
+    try:
+        contract = contract_from_payload(onboarding.provider, row) if row else unsigned_template(onboarding.provider)
+        result = discovery_preflight(onboarding, contract, country=country)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid provider contract or country") from exc
+    return {"ok": True, "preflight": result}
 
 
 @router.get("/contracts/{provider_name}")

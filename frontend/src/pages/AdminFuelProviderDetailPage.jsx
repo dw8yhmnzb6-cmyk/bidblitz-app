@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Fuel, ShieldCheck, XCircle } from "lucide-react";
 import { getFuelAdminContract, getFuelProviderActivation, getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
+import FuelDiscoveryPreflightPanel from "../components/FuelDiscoveryPreflightPanel";
 
 function Flag({ label, value }) {
   return (
@@ -82,6 +83,8 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
             </section>
 
             <div className="mt-8 flex flex-wrap justify-end gap-3">{providerName === "dkv" && <button onClick={() => onNavigate?.("/admin/fuel/dkv-preview")} className="rounded-2xl border border-white/15 px-5 py-3 font-bold">DKV Request-Preview</button>}<button onClick={() => onNavigate?.("/admin/fuel/provider/" + providerName + "/edit")} className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-slate-950">Vertragskonfiguration bearbeiten</button></div>
+
+            <FuelDiscoveryPreflightPanel providerName={providerName} />
 
             {activation && (
               <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5">

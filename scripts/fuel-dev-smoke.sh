@@ -20,7 +20,9 @@ if [[ ! -f "$deps/react/package.json" || ! -f "$deps/@babel/core/package.json" ]
 fi
 
 echo "Fuel frontend smoke: React + Babel + server render + API mocks"
-NODE_PATH="$deps${NODE_PATH:+:$NODE_PATH}" node --test frontend/tests/fuel-commercial-preview.test.cjs
+NODE_PATH="$deps${NODE_PATH:+:$NODE_PATH}" node --test \
+  frontend/tests/fuel-commercial-preview.test.cjs \
+  frontend/tests/fuel-discovery-preflight.test.cjs
 
 if [[ -n "${FUEL_PYTHON:-}" ]]; then
   python_exec="$FUEL_PYTHON"

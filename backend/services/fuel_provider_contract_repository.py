@@ -6,7 +6,7 @@ explicitly forbidden and belong in the existing secret/env infrastructure.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from services.fuel_finance import FeeOwner, MerchantRole
 from services.fuel_provider_contracts import (
@@ -19,7 +19,8 @@ from services.fuel_provider_contracts import (
 
 SENSITIVE_KEYS = {
     "password", "secret", "token", "api_key", "apikey", "authorization",
-    "client_secret", "private_key", "access_token", "refresh_token",
+    "client_secret", "clientsecret", "private_key", "access_token", "refresh_token",
+    "bearer_token", "secret_key", "auth_header", "authorization_header",
 }
 
 
@@ -27,10 +28,28 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _right(value, name: str) -> bool:
+    """Rights must be real booleans, never truthy strings like 'false'."""
+    if type(value) is not bool:
+        raise ValueError(f"{name} must be a boolean")
+    return value
+
+
+def _rate(value, name: str) -> Decimal:
+    try:
+        number = Decimal(str(value if value is not None and value != "" else "0"))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(f"{name} must be a valid amount") from exc
+    if not number.is_finite():
+        raise ValueError(f"{name} must be finite")
+    return number
+
+
 def _reject_sensitive(obj) -> None:
     if isinstance(obj, dict):
         for key, value in obj.items():
-            if str(key).lower() in SENSITIVE_KEYS:
+            normalized_key = str(key).strip().lower().replace("-", "_").replace(" ", "_")
+            if normalized_key in SENSITIVE_KEYS:
                 raise ValueError("provider contract documents must not contain secrets")
             _reject_sensitive(value)
     elif isinstance(obj, (list, tuple)):
@@ -44,10 +63,10 @@ def contract_from_payload(provider: str, payload: dict) -> ProviderContractConfi
     rights = payload.get("rights") or {}
     terms = ProviderCommercialTerms(
         revenue_model=RevenueModel(commercial.get("revenue_model") or "none"),
-        percentage=Decimal(str(commercial.get("percentage") or "0")),
-        per_liter=Decimal(str(commercial.get("per_liter") or "0")),
-        per_transaction=Decimal(str(commercial.get("per_transaction") or "0")),
-        monthly_fee=Decimal(str(commercial.get("monthly_fee") or "0")),
+        percentage=_rate(commercial.get("percentage"), "percentage"),
+        per_liter=_rate(commercial.get("per_liter"), "per_liter"),
+        per_transaction=_rate(commercial.get("per_transaction"), "per_transaction"),
+        monthly_fee=_rate(commercial.get("monthly_fee"), "monthly_fee"),
         payment_fee_owner=FeeOwner(commercial.get("payment_fee_owner") or "operator"),
         merchant_of_record=MerchantRole(commercial.get("merchant_of_record") or "operator"),
         supplier_of_record=MerchantRole(commercial.get("supplier_of_record") or "operator"),
@@ -57,13 +76,13 @@ def contract_from_payload(provider: str, payload: dict) -> ProviderContractConfi
         provider=provider,
         state=ProviderContractState(payload.get("state") or "draft"),
         territories=frozenset(payload.get("territories") or ()),
-        station_discovery_rights=bool(rights.get("station_discovery")),
-        fueling_rights=bool(rights.get("fueling")),
-        white_label_rights=bool(rights.get("white_label")),
-        api_rights=bool(rights.get("api")),
-        payment_rights=bool(rights.get("payment")),
-        split_settlement_rights=bool(rights.get("split_settlement")),
-        receipt_responsibility_confirmed=bool(rights.get("receipt_responsibility_confirmed")),
+        station_discovery_rights=_right(rights.get("station_discovery", False), "station_discovery"),
+        fueling_rights=_right(rights.get("fueling", False), "fueling"),
+        white_label_rights=_right(rights.get("white_label", False), "white_label"),
+        api_rights=_right(rights.get("api", False), "api"),
+        payment_rights=_right(rights.get("payment", False), "payment"),
+        split_settlement_rights=_right(rights.get("split_settlement", False), "split_settlement"),
+        receipt_responsibility_confirmed=_right(rights.get("receipt_responsibility_confirmed", False), "receipt_responsibility_confirmed"),
         commercial_terms=terms,
         contract_reference=(payload.get("contract_reference") or "").strip(),
         effective_from=(payload.get("effective_from") or "").strip(),

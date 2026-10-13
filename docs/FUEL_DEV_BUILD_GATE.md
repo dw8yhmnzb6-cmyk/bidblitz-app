@@ -42,4 +42,18 @@ CI=true GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true \
 
 The full CRA build is much heavier than the fast smoke test. Build-generated changes to tracked `backend/build_info.json` and `frontend/public/version.json` were inspected and restored after the DEV build; they are **not** deployment evidence. The root `node_modules` symlink is ignored by Git and is local to this DEV worktree. Before any production build, install validated locked dependencies in a clean environment rather than relying on a manually linked development installation.
 
+## Country-specific partner preflight (DEV)
+
+Administrators can inspect `GET /api/fuel/admin-config/providers/{provider}/discovery-preview?country=DE`.
+
+The response evaluates the stored non-secret contract configuration against:
+- strict boolean API/discovery rights, signed-state metadata and provider onboarding facts;
+- country-specific territory rights;
+- the contract effective start date, optional end date and malformed/reversed dates;
+- an explicit *credential readiness flag*, never an API key.
+
+It always includes `external_request_executed=false`, `network_discovery_enabled=false`, `payments_enabled=false`, and `pump_release_enabled=false`. Even when `discovery_conditions_met=true`, that is **not** confirmation of partner approval, real station availability, a signed contract's authenticity or production activation.
+
+The Fuel Provider Detail admin view has a country selector and a list of missing prerequisites. No public station discovery route was added. The existing MongoDB remains the sole contract configuration store; no second database was created.
+
 Before any Fuel release, separately verify a completed frontend build, full backend dependencies, permission checks, approved partner credentials and contracts, PSP and receipt integrations, reconciliation, idempotency, and explicit production sign-off. Until then: external networks off, payment execution off, no real pump release.
