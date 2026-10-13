@@ -179,3 +179,28 @@ Verification:
 - 39/39 Fuel tests PASS;
 - Python compile PASS;
 - JSX/JS parser checks PASS for all Fuel pages/services/routes.
+
+
+## Provider onboarding + BidBlitz Pay bridge preparation (2026-10-13)
+Implemented:
+- provider onboarding matrix for DKV, PACE, Shell, UTA, Radius, Circle K, Eurowag, Logos, Moveyou, HUTH, Hectronic and DFS/Tokheim;
+- explicit capability flags for API, station discovery, fueling, payment, revenue share, split settlement, sandbox, contract and credentials;
+- fail-closed discovery/fueling readiness calculation;
+- Fuel Payment Release Gates for provider contract, provider payment approval, PSP approval, split settlement, merchant role, reconciliation and verified webhooks;
+- deterministic Fuel payment idempotency keys;
+- Fuel-scoped BidBlitz Pay request builder (no execution);
+- canonical durable Fuel session document shape for the existing BidBlitz Mongo database;
+- required unique indexes for session ID and idempotency;
+- optimistic-locking version contract;
+- Admin Fuel Control Center now shows provider onboarding and missing payment release gates.
+
+Safety:
+- no live BidBlitz Pay call is executed;
+- no provider can be marked Fueling READY without every required gate;
+- DKV remains data-API confirmed only, with fueling/revenue-share/split-settlement unconfirmed;
+- no second database introduced.
+
+Verification:
+- 48/48 Fuel tests PASS;
+- Python compile PASS;
+- Fuel admin/service JS parse PASS.

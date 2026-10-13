@@ -80,3 +80,15 @@ export async function getFuelSimulatorReceipt(sessionId) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, error: data?.detail || "Receipt unavailable" };
 }
+
+export async function getFuelProviderOnboarding() {
+  const res = await fetch(API + "/api/fuel/providers/onboarding", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, providers: [], error: data?.detail || "Provider onboarding unavailable" };
+}
+
+export async function getFuelPaymentReleaseGates() {
+  const res = await fetch(API + "/api/fuel/payments/release-gates", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, live_ready: false, missing: [], error: data?.detail || "Payment release gates unavailable" };
+}

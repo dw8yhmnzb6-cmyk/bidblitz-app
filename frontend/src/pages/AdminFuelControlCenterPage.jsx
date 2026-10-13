@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Building2, Fuel, Gauge, Network, ShieldCheck, WalletCards, ArrowLeft } from "lucide-react";
-import { getFuelAdminOverview } from "../services/fuelApi";
+import { getFuelAdminOverview, getFuelPaymentReleaseGates, getFuelProviderOnboarding } from "../services/fuelApi";
 
 function Card({ label, value, icon: Icon, hint }) {
   return (
@@ -16,14 +16,22 @@ function Card({ label, value, icon: Icon, hint }) {
 
 export default function AdminFuelControlCenterPage({ onNavigate }) {
   const [data, setData] = useState(null);
+  const [onboarding, setOnboarding] = useState([]);
+  const [paymentGates, setPaymentGates] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const result = await getFuelAdminOverview();
+      const [result, onboardingResult, gateResult] = await Promise.all([
+        getFuelAdminOverview(),
+        getFuelProviderOnboarding(),
+        getFuelPaymentReleaseGates(),
+      ]);
       if (mounted) {
         setData(result.ok ? result : null);
+        setOnboarding(onboardingResult.ok ? onboardingResult.providers || [] : []);
+        setPaymentGates(gateResult.ok ? gateResult : null);
         setLoading(false);
       }
     })();
@@ -104,6 +112,38 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
                 )}
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-center gap-2">
+            <Network size={20} className="text-amber-300" />
+            <h2 className="text-2xl font-black">Provider Onboarding Matrix</h2>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-white/10 bg-white/[0.05] px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div>Provider</div><div>Stage</div><div>Discovery</div><div>Fueling</div>
+            </div>
+            {onboarding.map((provider) => (
+              <div key={provider.provider} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+                <div>
+                  <div className="font-bold uppercase">{provider.provider}</div>
+                  <div className="mt-1 max-w-xl text-xs text-slate-500">{provider.notes}</div>
+                </div>
+                <div className="text-xs font-bold text-slate-300">{provider.stage}</div>
+                <div className={provider.can_enable_discovery ? "text-emerald-300" : "text-amber-200"}>{provider.can_enable_discovery ? "READY" : "BLOCKED"}</div>
+                <div className={provider.can_enable_fueling ? "text-emerald-300" : "text-red-300"}>{provider.can_enable_fueling ? "READY" : "BLOCKED"}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+          <div className="flex items-center gap-2"><WalletCards className="text-amber-300" /><h2 className="text-xl font-black">Fuel Payment Release Gates</h2></div>
+          <p className="mt-2 text-sm text-slate-400">LIVE bleibt gesperrt, bis alle Freigaben bestätigt sind.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(paymentGates?.missing || []).map((gate) => <span key={gate} className="rounded-full bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300">{gate}</span>)}
+            {paymentGates?.live_ready && <span className="rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300">LIVE READY</span>}
           </div>
         </section>
 

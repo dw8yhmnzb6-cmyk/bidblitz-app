@@ -15,6 +15,8 @@ from services.fuel_core import (
     SimulatorCatalog, StationCapabilities,
 )
 from services.fuel_simulator_sessions import STORE as FUEL_SIM_STORE
+from services.fuel_provider_onboarding import provider_matrix
+from services.fuel_payment_bridge import FuelPaymentReleaseGate
 
 router = APIRouter(prefix="/api/fuel", tags=["fuel-dev"])
 
@@ -144,6 +146,25 @@ async def provider_status():
                 "monthly_api_price_eur": DKV_PROFILE.monthly_price_eur,
             },
         ]
+    }
+
+
+@router.get("/providers/onboarding")
+async def provider_onboarding_matrix():
+    return {
+        "mode": "development",
+        "providers": [item.payload() for item in provider_matrix()],
+    }
+
+
+@router.get("/payments/release-gates")
+async def fuel_payment_release_gates():
+    gate = FuelPaymentReleaseGate()
+    return {
+        "mode": "development",
+        "live_ready": gate.live_ready,
+        "missing": list(gate.missing()),
+        "message": "Fuel payments remain fail-closed until all release gates are explicitly approved.",
     }
 
 
