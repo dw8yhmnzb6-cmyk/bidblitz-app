@@ -32,9 +32,14 @@ It uses `NODE_PATH` **for the test process only** and does not rewrite shared de
 ## Full application build — separate release gate
 
 ```bash
-CI=true npm run build --workspace=frontend
+# In a DEV worktree with an intact root node_modules installation:
+CI=true GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true \
+  NODE_OPTIONS=--max-old-space-size=4096 \
+  npm run build --workspace=frontend
 ```
 
-The full CRA build is substantially heavier than the targeted smoke test and is **not** replaced by it. The isolated diagnostic build previously reached `Creating an optimized production build...` after dependency resolution was corrected, but did not complete during the diagnostic run and was deliberately stopped to avoid continued high CPU usage. Therefore there is **no passing full-build proof yet**.
+**Verified on 2026-10-13:** after providing the Fuel worktree with a root `node_modules` link to the existing main-worktree installation, the CRA build completed with **`Compiled successfully.`** and produced `frontend/build/index.html`, `frontend/build/asset-manifest.json`, and JavaScript/CSS assets. An independent manifest check confirmed the manifest and its entrypoints. **No deploy was performed.** The flags above disabled source maps and the ESLint Webpack plugin for this build; a release must also run independent lint and environment-specific checks.
+
+The full CRA build is much heavier than the fast smoke test. Build-generated changes to tracked `backend/build_info.json` and `frontend/public/version.json` were inspected and restored after the DEV build; they are **not** deployment evidence. The root `node_modules` symlink is ignored by Git and is local to this DEV worktree. Before any production build, install validated locked dependencies in a clean environment rather than relying on a manually linked development installation.
 
 Before any Fuel release, separately verify a completed frontend build, full backend dependencies, permission checks, approved partner credentials and contracts, PSP and receipt integrations, reconciliation, idempotency, and explicit production sign-off. Until then: external networks off, payment execution off, no real pump release.
