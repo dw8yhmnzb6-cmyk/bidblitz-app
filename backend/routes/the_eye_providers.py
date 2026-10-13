@@ -334,7 +334,7 @@ async def provider_overview(request: Request):
 USGS_EARTHQUAKE_FEED = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
 _EARTHQUAKE_TTL_SECONDS = 180
 _EARTHQUAKE_STALE_SECONDS = 1800
-_earthquake_lock = asyncio.Lock()
+_earthquake_lock: Optional[asyncio.Lock] = None
 _earthquake_cache: Optional[dict] = None
 _earthquake_cache_monotonic = 0.0
 
@@ -398,11 +398,14 @@ async def live_earthquakes(request: Request):
         request,
         {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
     )
-    global _earthquake_cache, _earthquake_cache_monotonic
+    global _earthquake_cache, _earthquake_cache_monotonic, _earthquake_lock
     now = time.monotonic()
     if _earthquake_cache is not None and now - _earthquake_cache_monotonic < _EARTHQUAKE_TTL_SECONDS:
         return {**_earthquake_cache, "status": "cached"}
 
+    # Lazy creation also supports Python 3.9, where asyncio.Lock needs an active loop.
+    if _earthquake_lock is None:
+        _earthquake_lock = asyncio.Lock()
     async with _earthquake_lock:
         now = time.monotonic()
         if _earthquake_cache is not None and now - _earthquake_cache_monotonic < _EARTHQUAKE_TTL_SECONDS:
