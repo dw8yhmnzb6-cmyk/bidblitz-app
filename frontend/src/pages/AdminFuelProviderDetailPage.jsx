@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Fuel, ShieldCheck, XCircle } from "lucide-react";
-import { getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
+import { getFuelAdminContract, getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
 
 function Flag({ label, value }) {
   return (
@@ -19,19 +19,22 @@ function Flag({ label, value }) {
 export default function AdminFuelProviderDetailPage({ providerName, onNavigate }) {
   const [provider, setProvider] = useState(null);
   const [contract, setContract] = useState(null);
+  const [storedContract, setStoredContract] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [result, contractResult] = await Promise.all([
+      const [result, contractResult, storedResult] = await Promise.all([
         getFuelProviderOnboardingDetail(providerName),
         getFuelProviderContractTemplate(providerName),
+        getFuelAdminContract(providerName),
       ]);
       if (!mounted) return;
       if (result.ok) setProvider(result.provider);
       else setError(result.error);
       if (contractResult.ok) setContract(contractResult.contract);
+      if (storedResult.ok) setStoredContract(storedResult.contract || null);
     })();
     return () => { mounted = false; };
   }, [providerName]);
@@ -89,6 +92,23 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
                 </div>
               </div>
             </section>
+
+            {storedContract && (
+              <section className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5">
+                <h2 className="text-xl font-black text-emerald-300">Gespeicherte Vertragskonfiguration</h2>
+                <p className="mt-1 text-xs text-emerald-100/60">Admin-DB-Konfiguration; Secrets werden hier nicht gespeichert.</p>
+                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>Status: <b>{storedContract.state}</b></div>
+                  <div>Referenz: <b>{storedContract.contract_reference || "—"}</b></div>
+                  <div>Revenue Model: <b>{storedContract.commercial?.revenue_model}</b></div>
+                  <div>Provision %: <b>{storedContract.commercial?.percentage}</b></div>
+                  <div>Payment Fee Owner: <b>{storedContract.commercial?.payment_fee_owner}</b></div>
+                  <div>Merchant of Record: <b>{storedContract.commercial?.merchant_of_record}</b></div>
+                  <div>Discovery Ready: <b>{storedContract.discovery_ready ? "JA" : "NEIN"}</b></div>
+                  <div>Fueling Ready: <b>{storedContract.fueling_ready ? "JA" : "NEIN"}</b></div>
+                </div>
+              </section>
+            )}
 
             {contract && (
               <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5">

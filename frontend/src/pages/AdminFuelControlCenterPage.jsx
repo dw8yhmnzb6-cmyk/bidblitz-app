@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Building2, Fuel, Gauge, Network, ShieldCheck, WalletCards, ArrowLeft } from "lucide-react";
-import { getFuelAdminOverview, getFuelPaymentReleaseGates, getFuelProviderOnboarding } from "../services/fuelApi";
+import { getFuelAdminOverview, getFuelAdminSessions, getFuelPaymentReleaseGates, getFuelPersistenceStatus, getFuelProviderOnboarding } from "../services/fuelApi";
 
 function Card({ label, value, icon: Icon, hint }) {
   return (
@@ -18,20 +18,26 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
   const [data, setData] = useState(null);
   const [onboarding, setOnboarding] = useState([]);
   const [paymentGates, setPaymentGates] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [persistence, setPersistence] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [result, onboardingResult, gateResult] = await Promise.all([
+      const [result, onboardingResult, gateResult, sessionResult, persistenceResult] = await Promise.all([
         getFuelAdminOverview(),
         getFuelProviderOnboarding(),
         getFuelPaymentReleaseGates(),
+        getFuelAdminSessions({ limit: 25 }),
+        getFuelPersistenceStatus(),
       ]);
       if (mounted) {
         setData(result.ok ? result : null);
         setOnboarding(onboardingResult.ok ? onboardingResult.providers || [] : []);
         setPaymentGates(gateResult.ok ? gateResult : null);
+        setSessions(sessionResult.ok ? sessionResult.sessions || [] : []);
+        setPersistence(persistenceResult.ok ? persistenceResult : null);
         setLoading(false);
       }
     })();
@@ -171,6 +177,28 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
               </div>
             ))}
             {!loading && !(data?.incidents || []).length && <div className="p-6 text-sm text-slate-500">Keine offenen Incidents.</div>}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-center gap-2">
+            <Activity size={20} className="text-amber-300" />
+            <h2 className="text-2xl font-black">Persistierte Fuel Sessions</h2>
+          </div>
+          <p className="mt-2 text-sm text-slate-500">Persistenz: <b className={persistence?.enabled ? "text-emerald-300" : "text-amber-200"}>{persistence?.enabled ? "AKTIV" : "AUS"}</b> · bestehende BidBlitz MongoDB · Collection fuel_sessions</p>
+          <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
+            <div className="grid grid-cols-[1.2fr_1fr_auto_auto] gap-3 border-b border-white/10 bg-white/[0.05] px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div>Session</div><div>Station</div><div>Status</div><div>Version</div>
+            </div>
+            {sessions.map((session) => (
+              <div key={session.session_id} className="grid grid-cols-[1.2fr_1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+                <div className="min-w-0"><div className="truncate font-bold">{session.session_id}</div><div className="mt-1 truncate text-xs text-slate-500">{session.provider}</div></div>
+                <div className="truncate text-sm text-slate-300">{session.station_id}</div>
+                <div className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300">{session.state}</div>
+                <div className="text-xs text-slate-500">v{session.version}</div>
+              </div>
+            ))}
+            {!loading && !sessions.length && <div className="p-6 text-sm text-slate-500">Noch keine persistierten Fuel-Sessions vorhanden.</div>}
           </div>
         </section>
 

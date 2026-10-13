@@ -250,3 +250,25 @@ Safety:
 - persistence does not enable payments;
 - all provider contract defaults are unsigned/not ready;
 - no real provider call, pump release or PSP execution is enabled.
+
+
+## Admin contract storage + persisted session history (2026-10-13)
+Implemented:
+- admin-only Fuel contract configuration routes protected by existing BidBlitz admin auth;
+- provider contract persistence in existing Mongo collection fuel_provider_contracts;
+- sensitive key rejection: API keys, secrets, tokens and credentials cannot be stored in contract documents;
+- admin read/list/save contract configuration;
+- admin persisted Fuel-session history;
+- admin-only DKV request-plan preview that performs zero outbound calls;
+- Fuel Control Center now shows DEV persistence status and persisted session history;
+- Provider Detail now shows stored contract configuration separately from the unsigned template.
+
+Verification:
+- 70/70 Fuel tests PASS;
+- Python compile PASS;
+- Fuel Admin JS/JSX parse PASS.
+
+Safety:
+- saving a contract config does not configure credentials;
+- DKV request plan is preview-only;
+- provider/payment execution remains fail-closed.

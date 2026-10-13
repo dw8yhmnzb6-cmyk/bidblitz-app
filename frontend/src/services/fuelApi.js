@@ -110,3 +110,45 @@ export async function getFuelProviderContractTemplate(providerName) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Provider contract template unavailable" };
 }
+
+export async function getFuelAdminContracts() {
+  const res = await fetch(API + "/api/fuel/admin-config/contracts", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, contracts: [], error: data?.detail || "Fuel contracts unavailable" };
+}
+
+export async function getFuelAdminContract(providerName) {
+  const res = await fetch(API + "/api/fuel/admin-config/contracts/" + encodeURIComponent(providerName), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Fuel contract unavailable" };
+}
+
+export async function saveFuelAdminContract(providerName, payload) {
+  const res = await fetch(API + "/api/fuel/admin-config/contracts/" + encodeURIComponent(providerName), {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Fuel contract save failed" };
+}
+
+export async function getFuelAdminSessions({ stationId = "", limit = 100 } = {}) {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  if (stationId) qs.set("station_id", stationId);
+  const res = await fetch(API + "/api/fuel/admin-config/sessions?" + qs.toString(), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, sessions: [], error: data?.detail || "Fuel session history unavailable" };
+}
+
+export async function previewDkvRequestPlan(payload) {
+  const res = await fetch(API + "/api/fuel/admin-config/dkv/request-plan", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "DKV request preview failed" };
+}
