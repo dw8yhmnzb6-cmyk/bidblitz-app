@@ -88,6 +88,8 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
           <Card label="Offene Incidents" value={m.open_incidents ?? 0} icon={AlertTriangle} />
         </div>
 
+        <FuelCommercialPreviewPanel />
+
         <section className="mt-10">
           <div className="flex items-center gap-2">
             <Network size={20} className="text-amber-300" />

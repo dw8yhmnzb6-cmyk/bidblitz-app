@@ -246,6 +246,7 @@ def register_all_routers(app):
         ("routes.ev_charging", "router"),
         ("routes.fuel_dev", "router"),
         ("routes.fuel_admin_config", "router"),
+        ("routes.fuel_commercial_preview", "router"),
         
         # Support
         ("routes.kyc", "router"),
