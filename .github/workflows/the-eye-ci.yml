@@ -11,6 +11,7 @@ on:
       - "frontend/src/pages/TheEyeGlobe.jsx"
       - "frontend/src/pages/TheEyePage.css"
       - "frontend/scripts/the-eye-smoke.cjs"
+      - "frontend/scripts/the-eye-earthquakes-smoke.cjs"
       - ".github/workflows/the-eye-ci.yml"
   workflow_dispatch:
 
@@ -46,3 +47,18 @@ jobs:
         env:
           CI: "false"
         run: npm --workspace frontend run build
+      - name: Install Chromium for local-only browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Run THE EYE desktop, mobile and earthquake smoke tests
+        shell: bash
+        run: |
+          python3 -m http.server 18739 --bind 127.0.0.1 --directory frontend/build > /tmp/the-eye-smoke.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" || true' EXIT
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:18739/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18739/ >/dev/null
+          THE_EYE_TEST_URL=http://127.0.0.1:18739 node frontend/scripts/the-eye-smoke.cjs
+          THE_EYE_TEST_URL=http://127.0.0.1:18739 node frontend/scripts/the-eye-earthquakes-smoke.cjs
