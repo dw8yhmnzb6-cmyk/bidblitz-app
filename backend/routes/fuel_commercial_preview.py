@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/fuel/admin-config", tags=["fuel-admin-config"])
 
 class FuelCommercialPreviewRequest(BaseModel):
     monthly_turnover: str = Field(default="100000", max_length=30)
+    station_count: str = Field(default="1", max_length=12)
     price_per_liter: str = Field(default="2.20", max_length=30)
     percent_rate: str = Field(default="0.20", max_length=30)
     cent_per_liter: str = Field(default="0.50", max_length=30)
