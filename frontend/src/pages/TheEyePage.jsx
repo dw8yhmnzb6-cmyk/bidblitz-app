@@ -1260,7 +1260,7 @@ export default function TheEyePage({ onNavigate }) {
                     zoom={mapFocus.zoom === "device" || mapFocus.zoom === "site" || mapFocus.zoom === "street" ? 16 : 13}
                     scrollWheelZoom
                     className="eye-leaflet-map"
-                    zoomControl={false}
+                    zoomControl={false} zoomAnimation={false} fadeAnimation={false} markerZoomAnimation={false}
                   >
                     <TileLayer
                       attribution="&copy; OpenStreetMap contributors"
@@ -1325,7 +1325,7 @@ export default function TheEyePage({ onNavigate }) {
               <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} earthquakes={activeLayers["Erdbeben"] ? earthquakeFeed.events : []} earthquakesStale={earthquakeFeed.status === "stale"} selectedDeviceId={selectedId} onSelectDevice={setSelectedId} />
             ) : worldMapMode ? (
               <div className="eye-focused-map">
-                <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false}>
+                <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false} zoomAnimation={false} fadeAnimation={false} markerZoomAnimation={false}>
                   <WorldZoomSync zoom={worldZoom} onZoomChange={setWorldZoom} />
                   <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   {activeLayers["BidBlitz Geräte"] && visibleDevices.filter((device) => {
