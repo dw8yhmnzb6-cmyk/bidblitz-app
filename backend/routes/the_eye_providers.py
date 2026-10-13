@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import secrets
+import asyncio
+import math
+import time
+import httpx
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
@@ -323,3 +327,106 @@ async def provider_overview(request: Request):
         "monthly_cost": monthly_cost,
         "providers": risky,
     }
+
+
+# Fixed upstream, never accept a client-supplied URL (avoid an open proxy/SSRF).
+# Magnitude 2.5+ for the last 24 hours; USGS refreshes feeds regularly.
+USGS_EARTHQUAKE_FEED = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
+_EARTHQUAKE_TTL_SECONDS = 180
+_EARTHQUAKE_STALE_SECONDS = 1800
+_earthquake_lock = asyncio.Lock()
+_earthquake_cache: Optional[dict] = None
+_earthquake_cache_monotonic = 0.0
+
+
+def _valid_float(value: Any, minimum: float, maximum: float) -> Optional[float]:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) and minimum <= number <= maximum else None
+
+
+def _normalize_earthquakes(payload: Any) -> list[dict]:
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
+        raise ValueError("Invalid USGS GeoJSON feed")
+    features = payload.get("features")
+    if not isinstance(features, list):
+        raise ValueError("Invalid USGS feature list")
+    results: list[dict] = []
+    for feature in features[:1000]:
+        if not isinstance(feature, dict):
+            continue
+        properties = feature.get("properties") or {}
+        geometry = feature.get("geometry") or {}
+        if not isinstance(properties, dict) or not isinstance(geometry, dict):
+            continue
+        if properties.get("type") not in (None, "earthquake"):
+            continue
+        coordinates = geometry.get("coordinates")
+        if not isinstance(coordinates, list) or len(coordinates) < 2:
+            continue
+        lng = _valid_float(coordinates[0], -180, 180)
+        lat = _valid_float(coordinates[1], -90, 90)
+        magnitude = _valid_float(properties.get("mag"), -2, 10)
+        try:
+            event_ms = int(properties.get("time"))
+            event_time = datetime.fromtimestamp(event_ms / 1000, tz=timezone.utc).isoformat()
+        except (TypeError, ValueError, OverflowError, OSError):
+            continue
+        if lat is None or lng is None or magnitude is None or magnitude < 2.5:
+            continue
+        event_id = str(feature.get("id") or "").strip()[:96]
+        if not event_id:
+            continue
+        results.append({
+            "id": event_id,
+            "lat": lat,
+            "lng": lng,
+            "magnitude": magnitude,
+            "place": str(properties.get("place") or "Unbekannter Ort")[:180],
+            "occurred_at": event_time,
+        })
+    results.sort(key=lambda entry: entry["occurred_at"], reverse=True)
+    return results[:250]
+
+
+@router.get("/admin/live/earthquakes")
+async def live_earthquakes(request: Request):
+    """Read-only USGS M2.5+ feed. Never mislabel stale/failed responses as live."""
+    await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
+    )
+    global _earthquake_cache, _earthquake_cache_monotonic
+    now = time.monotonic()
+    if _earthquake_cache is not None and now - _earthquake_cache_monotonic < _EARTHQUAKE_TTL_SECONDS:
+        return {**_earthquake_cache, "status": "cached"}
+
+    async with _earthquake_lock:
+        now = time.monotonic()
+        if _earthquake_cache is not None and now - _earthquake_cache_monotonic < _EARTHQUAKE_TTL_SECONDS:
+            return {**_earthquake_cache, "status": "cached"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=False) as client:
+                response = await client.get(USGS_EARTHQUAKE_FEED, headers={"Accept": "application/geo+json"})
+                response.raise_for_status()
+                rows = _normalize_earthquakes(response.json())
+            snapshot = {
+                "ok": True,
+                "status": "live",
+                "source": "USGS",
+                "window": "24h",
+                "min_magnitude": 2.5,
+                "as_of": datetime.now(timezone.utc).isoformat(),
+                "count": len(rows),
+                "events": rows,
+            }
+            _earthquake_cache = snapshot
+            _earthquake_cache_monotonic = time.monotonic()
+            return snapshot
+        except (httpx.HTTPError, ValueError, TypeError):
+            if (_earthquake_cache is not None
+                    and time.monotonic() - _earthquake_cache_monotonic < _EARTHQUAKE_STALE_SECONDS):
+                return {**_earthquake_cache, "status": "stale"}
+            raise HTTPException(status_code=503, detail="USGS earthquake feed unavailable")
