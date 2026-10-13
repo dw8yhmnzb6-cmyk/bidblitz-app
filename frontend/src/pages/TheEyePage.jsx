@@ -107,6 +107,7 @@ export default function TheEyePage({ onNavigate }) {
   const [mapFocus, setMapFocus] = useState(null);
   const [cameras, setCameras] = useState([]);
   const [earthquakeFeed, setEarthquakeFeed] = useState({ status: "unavailable", events: [], count: 0, as_of: null });
+  const [wildfireFeed, setWildfireFeed] = useState({ status: "unavailable", events: [], count: 0, as_of: null });
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [streamSession, setStreamSession] = useState(null);
   const [streamMessage, setStreamMessage] = useState("");
@@ -252,6 +253,37 @@ export default function TheEyePage({ onNavigate }) {
     loadEarthquakes();
     const poll = setInterval(loadEarthquakes, 180000);
     return () => { cancelled = true; clearInterval(poll); };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadWildfires = async () => {
+      try {
+        const response = await fetch("/api/the-eye/admin/live/wildfires", { credentials: "include" });
+        if (!response.ok) throw new Error("EONET feed unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data?.events) || !["live", "cached", "stale"].includes(data.status)) {
+          throw new Error("Invalid wildfire response");
+        }
+        if (!cancelled) {
+          setWildfireFeed({
+            status: data.status,
+            count: data.events.length,
+            events: data.events.filter((item) =>
+              item.id && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) &&
+              Number(item.lat) >= -90 && Number(item.lat) <= 90 &&
+              Number(item.lng) >= -180 && Number(item.lng) <= 180
+            ).slice(0, 100),
+            as_of: data.as_of || null,
+          });
+        }
+      } catch {
+        if (!cancelled) setWildfireFeed({ status: "unavailable", events: [], count: 0, as_of: null });
+      }
+    };
+    loadWildfires();
+    const interval = setInterval(loadWildfires, 600000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -1073,6 +1105,7 @@ export default function TheEyePage({ onNavigate }) {
   const layerCountFor = (name) => {
     if (name === "Kameras") return cameras.length;
     if (name === "Erdbeben") return earthquakeFeed.status === "unavailable" ? null : earthquakeFeed.count;
+    if (name === "Feuer") return wildfireFeed.status === "unavailable" ? null : wildfireFeed.events.length;
     if (name === "BidBlitz Geräte") return visibleDevices.length;
     return null;
   };
@@ -1322,7 +1355,7 @@ export default function TheEyePage({ onNavigate }) {
               </div>
             ) : (
             globe3dMode && process.env.REACT_APP_MAPBOX_ACCESS_TOKEN ? (
-              <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} earthquakes={activeLayers["Erdbeben"] ? earthquakeFeed.events : []} earthquakesStale={earthquakeFeed.status === "stale"} selectedDeviceId={selectedId} onSelectDevice={setSelectedId} />
+              <TheEyeGlobe devices={activeLayers["BidBlitz Geräte"] ? visibleDevices : []} earthquakes={activeLayers["Erdbeben"] ? earthquakeFeed.events : []} earthquakesStale={earthquakeFeed.status === "stale"} wildfires={activeLayers["Feuer"] ? wildfireFeed.events : []} wildfiresStale={wildfireFeed.status === "stale"} selectedDeviceId={selectedId} onSelectDevice={setSelectedId} />
             ) : worldMapMode ? (
               <div className="eye-focused-map">
                 <MapContainer center={[30, 15]} zoom={2} minZoom={2} maxZoom={9} scrollWheelZoom className="eye-leaflet-map" zoomControl={false} zoomAnimation={false} fadeAnimation={false} markerZoomAnimation={false}>
@@ -1342,6 +1375,25 @@ export default function TheEyePage({ onNavigate }) {
                       eventHandlers={{ click: () => setSelectedId(device.device_id) }}
                     >
                       <Popup>{device.name || device.device_id}</Popup>
+                    </CircleMarker>
+                  ))}
+                  {activeLayers["Feuer"] && wildfireFeed.events.map((fire) => (
+                    <CircleMarker
+                      key={fire.id}
+                      center={[fire.lat, fire.lng]}
+                      radius={7}
+                      pathOptions={{
+                        color: wildfireFeed.status === "stale" ? "#8896a5" : "#ff5757",
+                        fillColor: wildfireFeed.status === "stale" ? "#8896a5" : "#ff5757",
+                        fillOpacity: 0.7,
+                        weight: 2,
+                      }}
+                    >
+                      <Popup>
+                        <strong>NASA EONET · offene Waldbrandmeldung</strong>
+                        <div>{fire.title}</div>
+                        <small>{fire.observed_at} · {fire.approximate ? "ungefähre Position" : "gemeldete Position"} · {wildfireFeed.status === "stale" ? "Daten veraltet" : "keine Echtzeit-Brandbestätigung"}</small>
+                      </Popup>
                     </CircleMarker>
                   ))}
                   {activeLayers["Erdbeben"] && earthquakeFeed.events.map((quake) => (
@@ -1399,7 +1451,7 @@ export default function TheEyePage({ onNavigate }) {
             <MetricCard icon={Plane} value="—" label="Flüge · keine Quelle" tone="blue" />
             <MetricCard icon={Ship} value="—" label="Schiffe · keine Quelle" tone="amber" />
             <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
-            <MetricCard icon={Flame} value="—" label="Feuer · keine Quelle" tone="red" />
+            <MetricCard icon={Flame} value={wildfireFeed.status === "unavailable" ? "—" : wildfireFeed.events.length.toLocaleString("de-DE")} label={wildfireFeed.status === "unavailable" ? "Waldbrände · Quelle nicht verfügbar" : wildfireFeed.status === "stale" ? "Waldbrandmeldungen · veraltet" : "Waldbrandmeldungen · NASA EONET"} tone="red" />
             <MetricCard icon={Activity} value={earthquakeFeed.status === "unavailable" ? "—" : earthquakeFeed.count.toLocaleString("de-DE")} label={earthquakeFeed.status === "unavailable" ? "Erdbeben · Quelle nicht verfügbar" : earthquakeFeed.status === "stale" ? "Erdbeben M2,5+ · veraltet" : "Erdbeben M2,5+ · USGS 24 h"} tone="orange" />
           </section>
 
