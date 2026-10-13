@@ -33,6 +33,7 @@ const FuelOperatorDashboardPage = lazy(() => import("../pages/FuelOperatorDashbo
 const FuelSimulatorSessionPage = lazy(() => import("../pages/FuelSimulatorSessionPage"));
 const AdminFuelControlCenterPage = lazy(() => import("../pages/AdminFuelControlCenterPage"));
 const AdminFuelProviderDetailPage = lazy(() => import("../pages/AdminFuelProviderDetailPage"));
+const AdminFuelContractEditorPage = lazy(() => import("../pages/AdminFuelContractEditorPage"));
 const AdminEVOverviewPage = lazy(() => import("../pages/AdminEVOverviewPage"));
 const AdminEVOperatorsPage = lazy(() => import("../pages/AdminEVOperatorsPage"));
 const AdminEVHardwareVendorsPage = lazy(() => import("../pages/AdminEVHardwareVendorsPage"));
@@ -140,6 +141,10 @@ export function renderSpecialRoutes({
   if (basePath === "/admin/fuel" || basePath === "/admin/fuel/overview") {
     if (user?.role !== "admin") return null;
     return <AdminFuelControlCenterPage onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/admin/fuel/provider/") && basePath.endsWith("/edit")) {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelContractEditorPage providerName={basePath.split("/")[4]} onNavigate={handleNavigate} />;
   }
   if (basePath.startsWith("/admin/fuel/provider/")) {
     if (user?.role !== "admin") return null;

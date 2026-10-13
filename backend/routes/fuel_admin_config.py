@@ -19,6 +19,7 @@ from services.fuel_provider_contract_repository import (
 )
 from services.fuel_provider_onboarding import provider_by_name
 from services.fuel_repository import FuelRepository
+from services.fuel_reconciliation import FuelReconciliationRepository, build_case
 
 router = APIRouter(prefix="/api/fuel/admin-config", tags=["fuel-admin-config"])
 
@@ -131,4 +132,35 @@ async def preview_dkv_request_plan(body: DkvPlanRequest, request: Request):
             "content_type": plan.content_type,
         },
         "message": "Preview only. No outbound DKV request was executed.",
+    }
+
+
+@router.get("/reconciliation")
+async def list_reconciliation_cases(request: Request, limit: int = 100):
+    await _admin(request)
+    repo = FuelReconciliationRepository(db)
+    rows = await repo.list_open(limit=limit)
+    return {"cases": rows}
+
+
+@router.post("/reconciliation/demo-seed")
+async def seed_demo_reconciliation_case(request: Request):
+    user = await _admin(request)
+    case = build_case(
+        case_id="fuel-demo-recon-001",
+        transaction_id="tx-fuel-demo-001",
+        station_id="sim-de-wuppertal-001",
+        operator_id="op-simulator",
+        provider="simulator",
+        pos_amount="52.34",
+        psp_amount="51.84",
+        bidblitz_amount="52.34",
+    )
+    repo = FuelReconciliationRepository(db)
+    actor = user.get("email") or str(user.get("_id") or "admin")
+    saved = await repo.upsert(case, actor=actor)
+    return {
+        "ok": True,
+        "case": saved,
+        "message": "Synthetic DEV reconciliation case only; no financial correction executed.",
     }

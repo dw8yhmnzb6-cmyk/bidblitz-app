@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Building2, Fuel, Gauge, WalletCards, AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { getFuelOperatorOverview } from "../services/fuelApi";
+import { getFuelOperatorOverview, getFuelOperatorSessions } from "../services/fuelApi";
 
 function Metric({ label, value, hint, icon: Icon }) {
   return (
@@ -17,14 +17,19 @@ function Metric({ label, value, hint, icon: Icon }) {
 
 export default function FuelOperatorDashboardPage({ onNavigate }) {
   const [data, setData] = useState(null);
+  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const result = await getFuelOperatorOverview();
+      const [result, sessionResult] = await Promise.all([
+        getFuelOperatorOverview(),
+        getFuelOperatorSessions(),
+      ]);
       if (mounted) {
         setData(result.ok ? result : null);
+        setSessions(sessionResult.ok ? sessionResult.sessions || [] : []);
         setLoading(false);
       }
     })();
@@ -111,6 +116,27 @@ export default function FuelOperatorDashboardPage({ onNavigate }) {
             {!loading && !(data?.stations || []).length && (
               <div className="p-6 text-sm text-slate-500">Keine Stationen vorhanden.</div>
             )}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-amber-300">Session History</p>
+            <h2 className="mt-2 text-2xl font-black">Tankvorgänge im Simulator</h2>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
+            <div className="grid grid-cols-[1.2fr_1fr_auto_auto] gap-3 border-b border-white/10 bg-white/[0.05] px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div>Session</div><div>Station</div><div>Status</div><div>Betrag</div>
+            </div>
+            {sessions.slice(0, 25).map((session) => (
+              <div key={session.session_id} className="grid grid-cols-[1.2fr_1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+                <div className="min-w-0"><div className="truncate font-bold">{session.session_id}</div><div className="mt-1 text-xs text-slate-500">Pumpe {session.pump_number}</div></div>
+                <div className="truncate text-sm text-slate-300">{session.station_name}</div>
+                <div className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300">{session.state}</div>
+                <div className="text-sm font-bold text-slate-300">{session.gross_amount ? session.gross_amount + " " + session.currency : "—"}</div>
+              </div>
+            ))}
+            {!loading && !sessions.length && <div className="p-6 text-sm text-slate-500">Noch keine Simulator-Tankvorgänge vorhanden.</div>}
           </div>
         </section>
 

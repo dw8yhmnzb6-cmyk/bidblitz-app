@@ -341,6 +341,9 @@ async def create_indexes():
     await safe_create_index(db.fuel_sessions, [("state", 1), ("updated_at", -1)])
     await safe_create_index(db.fuel_provider_contracts, "provider", unique=True)
     await safe_create_index(db.fuel_provider_contracts, [("state", 1), ("updated_at", -1)])
+    await safe_create_index(db.fuel_reconciliation_cases, "case_id", unique=True)
+    await safe_create_index(db.fuel_reconciliation_cases, [("status", 1), ("updated_at", -1)])
+    await safe_create_index(db.fuel_reconciliation_cases, [("station_id", 1), ("updated_at", -1)])
     
     logger.info("Database indexes created/verified")
 

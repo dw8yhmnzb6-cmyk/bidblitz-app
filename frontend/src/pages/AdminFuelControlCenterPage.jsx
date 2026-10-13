@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Building2, Fuel, Gauge, Network, ShieldCheck, WalletCards, ArrowLeft } from "lucide-react";
-import { getFuelAdminOverview, getFuelAdminSessions, getFuelPaymentReleaseGates, getFuelPersistenceStatus, getFuelProviderOnboarding } from "../services/fuelApi";
+import { getFuelAdminOverview, getFuelAdminSessions, getFuelPaymentReleaseGates, getFuelPersistenceStatus, getFuelProviderOnboarding, getFuelReconciliationCases } from "../services/fuelApi";
 
 function Card({ label, value, icon: Icon, hint }) {
   return (
@@ -20,17 +20,19 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
   const [paymentGates, setPaymentGates] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [persistence, setPersistence] = useState(null);
+  const [reconciliation, setReconciliation] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [result, onboardingResult, gateResult, sessionResult, persistenceResult] = await Promise.all([
+      const [result, onboardingResult, gateResult, sessionResult, persistenceResult, reconciliationResult] = await Promise.all([
         getFuelAdminOverview(),
         getFuelProviderOnboarding(),
         getFuelPaymentReleaseGates(),
         getFuelAdminSessions({ limit: 25 }),
         getFuelPersistenceStatus(),
+        getFuelReconciliationCases(50),
       ]);
       if (mounted) {
         setData(result.ok ? result : null);
@@ -38,6 +40,7 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
         setPaymentGates(gateResult.ok ? gateResult : null);
         setSessions(sessionResult.ok ? sessionResult.sessions || [] : []);
         setPersistence(persistenceResult.ok ? persistenceResult : null);
+        setReconciliation(reconciliationResult.ok ? reconciliationResult.cases || [] : []);
         setLoading(false);
       }
     })();
@@ -177,6 +180,28 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
               </div>
             ))}
             {!loading && !(data?.incidents || []).length && <div className="p-6 text-sm text-slate-500">Keine offenen Incidents.</div>}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={20} className="text-amber-300" />
+            <h2 className="text-2xl font-black">Payment Reconciliation Inbox</h2>
+          </div>
+          <p className="mt-2 text-sm text-slate-500">Abweichungen zwischen POS/Forecourt, PSP und BidBlitz werden hier zur manuellen Prüfung gesammelt.</p>
+          <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
+            <div className="grid grid-cols-[1.1fr_1fr_auto_auto] gap-3 border-b border-white/10 bg-white/[0.05] px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div>Case / Transaction</div><div>Station</div><div>Differenz</div><div>Status</div>
+            </div>
+            {reconciliation.map((item) => (
+              <div key={item.case_id} className="grid grid-cols-[1.1fr_1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+                <div className="min-w-0"><div className="truncate font-bold">{item.case_id}</div><div className="mt-1 truncate text-xs text-slate-500">{item.transaction_id}</div></div>
+                <div className="truncate text-sm text-slate-300">{item.station_id}</div>
+                <div className={item.severity === "high" ? "font-black text-red-300" : "font-black text-amber-200"}>{item.difference} EUR</div>
+                <div className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300">{item.status}</div>
+              </div>
+            ))}
+            {!loading && !reconciliation.length && <div className="p-6 text-sm text-slate-500">Keine offenen Reconciliation-Fälle.</div>}
           </div>
         </section>
 

@@ -299,6 +299,15 @@ async def operator_overview():
     }
 
 
+@router.get("/operator/sessions")
+async def operator_simulator_sessions():
+    return {
+        "mode": "simulator",
+        "payments_enabled": False,
+        "sessions": [item.payload() for item in reversed(FUEL_SIM_STORE.list())],
+    }
+
+
 @router.post("/stations/{station_id}/pumps/{pump_id}/prepare")
 async def prepare_fuel_session(station_id: str, pump_id: str):
     station = CATALOG.get_station(station_id)

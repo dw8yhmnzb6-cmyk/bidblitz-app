@@ -152,3 +152,16 @@ export async function previewDkvRequestPlan(payload) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "DKV request preview failed" };
 }
+
+export async function getFuelOperatorSessions() {
+  const res = await fetch(API + "/api/fuel/operator/sessions", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, sessions: [], error: data?.detail || "Operator Fuel sessions unavailable" };
+}
+
+export async function getFuelReconciliationCases(limit = 100) {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(API + "/api/fuel/admin-config/reconciliation?" + qs.toString(), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, cases: [], error: data?.detail || "Fuel reconciliation unavailable" };
+}

@@ -272,3 +272,25 @@ Safety:
 - saving a contract config does not configure credentials;
 - DKV request plan is preview-only;
 - provider/payment execution remains fail-closed.
+
+
+## Admin contract editor + operator history + reconciliation inbox (2026-10-13)
+Implemented:
+- admin Fuel provider contract editor with status, territories, rights and commercial terms;
+- editor saves only non-secret contract configuration through admin-authenticated routes;
+- operator dashboard simulator session history;
+- Fuel reconciliation domain for POS/Forecourt vs PSP vs BidBlitz amount comparison;
+- reconciliation severity and manual-review inbox;
+- admin reconciliation API and Control Center inbox;
+- database indexes for Fuel reconciliation cases.
+
+Safety:
+- contract editing still does not enable credentials or live execution;
+- reconciliation never auto-corrects money;
+- operator history remains simulator-only;
+- real PSP/provider/pump execution stays fail-closed.
+
+Verification:
+- 73/73 Fuel tests PASS;
+- Python compile PASS;
+- Fuel Admin/Operator JS/JSX parse PASS.
