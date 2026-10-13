@@ -29,6 +29,7 @@ def _decimal(value, name: str, *, positive: bool = False, max_value=None) -> Dec
 def preview_fuel_commercial_offer(
     *,
     monthly_turnover="100000",
+    station_count="1",
     price_per_liter="2.20",
     percent_rate="0.20",
     cent_per_liter="0.50",
@@ -45,6 +46,10 @@ def preview_fuel_commercial_offer(
     if payment_fee_owner not in ("operator", "bidblitz", "shared"):
         raise ValueError("invalid payment_fee_owner")
 
+    stations_value = _decimal(station_count, "station_count", positive=True, max_value=Decimal("10000"))
+    if stations_value != stations_value.to_integral_value():
+        raise ValueError("station_count must be a whole number")
+    stations = int(stations_value)
     turnover = _decimal(monthly_turnover, "monthly_turnover", max_value=Decimal("1000000000"))
     pump_price = _decimal(price_per_liter, "price_per_liter", positive=True, max_value=Decimal("100"))
     percent = _decimal(percent_rate, "percent_rate", max_value=Decimal("100"))
@@ -82,8 +87,29 @@ def preview_fuel_commercial_offer(
         if volume else Decimal("0")
     )
 
+    def _portfolio_model(commission: Decimal) -> dict:
+        monthly = money(commission * stations)
+        monthly_after_psp = money((commission - bidblitz_psp_cost) * stations)
+        return {
+            "monthly_commission_before_cost": str(monthly),
+            "monthly_after_allocated_psp_cost": str(monthly_after_psp),
+            "annual_commission_before_cost": str(money(monthly * 12)),
+            "annual_after_allocated_psp_cost": str(money(monthly_after_psp * 12)),
+        }
+
     return {
         "mode": "dev_quote_only",
+        "station_count": stations,
+        "portfolio_projection": {
+            "assumption": "all_stations_have_identical_monthly_turnover_and_fee_terms",
+            "monthly_turnover_gross": str(money(turnover * stations)),
+            "monthly_liters": str(volume * stations),
+            "monthly_transactions": transaction_count * stations,
+            "monthly_psp_cost": str(money(psp_cost * stations)),
+            "monthly_bidblitz_psp_cost": str(money(bidblitz_psp_cost * stations)),
+            "percentage_model": _portfolio_model(percentage_revenue),
+            "per_liter_model": _portfolio_model(liter_revenue),
+        },
         "payments_enabled": False,
         "currency": "EUR",
         "monthly_turnover_gross": str(money(turnover)),
