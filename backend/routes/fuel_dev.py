@@ -174,6 +174,43 @@ async def get_fuel_station(station_id: str):
     }
 
 
+@router.get("/admin/overview")
+async def admin_overview():
+    stations = CATALOG.list_stations("DE")
+    provider_payload = (await provider_status())["providers"]
+    total_pumps = sum(len(s.pumps) for s in stations)
+    free_pumps = sum(1 for s in stations for p in s.pumps if p.status == PumpStatus.FREE)
+    unavailable_pumps = sum(1 for s in stations for p in s.pumps if p.status in (PumpStatus.OUT_OF_ORDER, PumpStatus.OFFLINE))
+    return {
+        "mode": "simulator",
+        "payments_enabled": False,
+        "external_networks_enabled": False,
+        "metrics": {
+            "stations": len(stations),
+            "pumps": total_pumps,
+            "free_pumps": free_pumps,
+            "unavailable_pumps": unavailable_pumps,
+            "live_sessions": 0,
+            "payment_failures": 0,
+            "open_incidents": unavailable_pumps,
+        },
+        "providers": provider_payload,
+        "incidents": [
+            {
+                "incident_id": f"fuel-dev-{p.pump_id}",
+                "station_id": s.station_id,
+                "station_name": s.name,
+                "pump_id": p.pump_id,
+                "severity": "high" if p.status == PumpStatus.OUT_OF_ORDER else "medium",
+                "reason": p.status.value,
+                "automatic_action": "mobile_payment_disabled_for_pump",
+            }
+            for s in stations for p in s.pumps
+            if p.status in (PumpStatus.OUT_OF_ORDER, PumpStatus.OFFLINE)
+        ],
+    }
+
+
 @router.get("/operator/overview")
 async def operator_overview():
     stations = CATALOG.list_stations("DE")

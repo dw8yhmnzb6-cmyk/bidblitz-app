@@ -30,6 +30,7 @@ const EVChargingMapPage = lazy(() => import("../pages/EVChargingMapPage"));
 const EVChargingHistoryPage = lazy(() => import("../pages/EVChargingHistoryPage"));
 const FuelLandingPage = lazy(() => import("../pages/FuelLandingPage"));
 const FuelOperatorDashboardPage = lazy(() => import("../pages/FuelOperatorDashboardPage"));
+const AdminFuelControlCenterPage = lazy(() => import("../pages/AdminFuelControlCenterPage"));
 const AdminEVOverviewPage = lazy(() => import("../pages/AdminEVOverviewPage"));
 const AdminEVOperatorsPage = lazy(() => import("../pages/AdminEVOperatorsPage"));
 const AdminEVHardwareVendorsPage = lazy(() => import("../pages/AdminEVHardwareVendorsPage"));
@@ -130,6 +131,10 @@ export function renderSpecialRoutes({
   if (basePath === "/operator/fuel" || basePath === "/operator/fuel/dashboard") {
     if (isGuest) return null;
     return <FuelOperatorDashboardPage onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/admin/fuel" || basePath === "/admin/fuel/overview") {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelControlCenterPage onNavigate={handleNavigate} />;
   }
   if (basePath === "/ev" || basePath === "/ev/map") {
     return <EVChargingMapPage onNavigate={handleNavigate} />;

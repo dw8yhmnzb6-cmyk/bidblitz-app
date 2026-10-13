@@ -24,6 +24,18 @@ export async function getFuelStation(stationId) {
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Station unavailable" };
 }
 
+export async function getFuelAdminOverview() {
+  const res = await fetch(`${API}/api/fuel/admin/overview`, { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Fuel admin overview unavailable" };
+}
+
+export async function getFuelProviderStatus() {
+  const res = await fetch(`${API}/api/fuel/providers/status`, { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, providers: [], error: data?.detail || "Provider status unavailable" };
+}
+
 export async function getFuelOperatorOverview() {
   const res = await fetch(`${API}/api/fuel/operator/overview`, { credentials: "include" });
   const data = await readJson(res);

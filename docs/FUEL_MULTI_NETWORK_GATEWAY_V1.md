@@ -134,3 +134,24 @@ Deliberately NOT claimed/implemented:
 - split settlement.
 
 A DKV tenant cannot become ACTIVE without production approval and technical-user configuration. Even an ACTIVE DEV tenant still cannot make outbound production calls because the client remains a blocking stub until official onboarding/credentials and integration review are complete.
+
+
+## Fuel Control Center + receipt separation (2026-10-13)
+Implemented additional DEV-only Fuel controls:
+- Admin Fuel Control Center at `/admin/fuel`;
+- provider capability/status overview including DKV confirmed vs unconfirmed capabilities;
+- synthetic incident feed for offline/out-of-order simulator pumps;
+- operator-issued fuel receipt model separated from BidBlitz platform earning records;
+- 3-decimal unit-price precision for fuel receipts;
+- explicit rule that V1 fuel receipts remain operator-issued, not BidBlitz-issued.
+
+Verification:
+- 35/35 Fuel core/gateway/finance/DKV/receipt tests PASS;
+- Python compile PASS;
+- JSX/JS parser checks PASS for Fuel pages/services/routes.
+
+Still blocked by design:
+- real PSP execution;
+- external provider credentials/calls;
+- fiscal receipt issuance;
+- live operator settlement.

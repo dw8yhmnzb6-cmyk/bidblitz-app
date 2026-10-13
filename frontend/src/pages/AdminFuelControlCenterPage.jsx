@@ -1,0 +1,157 @@
+import React, { useEffect, useState } from "react";
+import { Activity, AlertTriangle, Building2, Fuel, Gauge, Network, ShieldCheck, WalletCards, ArrowLeft } from "lucide-react";
+import { getFuelAdminOverview } from "../services/fuelApi";
+
+function Card({ label, value, icon: Icon, hint }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+      <div className="flex items-center justify-between text-slate-400">
+        <span className="text-sm">{label}</span><Icon size={20} className="text-amber-300" />
+      </div>
+      <div className="mt-3 text-3xl font-black text-white">{value}</div>
+      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+    </div>
+  );
+}
+
+export default function AdminFuelControlCenterPage({ onNavigate }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const result = await getFuelAdminOverview();
+      if (mounted) {
+        setData(result.ok ? result : null);
+        setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const m = data?.metrics || {};
+
+  return (
+    <div className="min-h-screen bg-[#06101D] text-white">
+      <header className="border-b border-white/10 bg-[#06101D]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4">
+          <button onClick={() => onNavigate?.("/admin")} className="rounded-xl bg-white/5 p-2 hover:bg-white/10">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400 text-slate-950">
+            <Fuel size={22} />
+          </div>
+          <div>
+            <div className="font-black">Fuel Control Center</div>
+            <div className="text-xs text-slate-500">BidBlitz Fuel Network · DEV SAFE MODE</div>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">Network Operations</p>
+            <h1 className="mt-2 text-4xl font-black">Fuel Network Übersicht</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Simulator, Provider-Onboarding, Pumpenstatus und Incidents zentral überwachen. Keine echten Zahlungen oder Auszahlungen in diesem Branch.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300">
+            <ShieldCheck size={15} /> DEV FAIL-CLOSED
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card label="Stationen" value={loading ? "…" : m.stations ?? 0} icon={Building2} />
+          <Card label="Zapfsäulen" value={loading ? "…" : m.pumps ?? 0} icon={Gauge} hint={String(m.free_pumps ?? 0) + " frei"} />
+          <Card label="Live Sessions" value={m.live_sessions ?? 0} icon={Activity} hint="echte Fuel-Sessions noch gesperrt" />
+          <Card label="Offene Incidents" value={m.open_incidents ?? 0} icon={AlertTriangle} />
+        </div>
+
+        <section className="mt-10">
+          <div className="flex items-center gap-2">
+            <Network size={20} className="text-amber-300" />
+            <h2 className="text-2xl font-black">Provider Status</h2>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {(data?.providers || []).map((provider) => (
+              <div key={provider.provider} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-black uppercase">{provider.provider}</div>
+                    <div className="mt-1 text-xs text-slate-500">{provider.status}</div>
+                  </div>
+                  <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + (
+                    provider.status === "active_dev"
+                      ? "bg-emerald-400/10 text-emerald-300"
+                      : "bg-amber-300/10 text-amber-200"
+                  )}>
+                    {provider.status === "active_dev" ? "DEV AKTIV" : "ONBOARDING"}
+                  </span>
+                </div>
+                {provider.provider === "dkv" && (
+                  <div className="mt-5 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+                    <div>Enterprise API: <b>{provider.enterprise_api}</b></div>
+                    <div>Multi-Customer: <b>{provider.multi_customer_platform}</b></div>
+                    <div>Sandbox: <b>{provider.public_sandbox}</b></div>
+                    <div>Pay-at-Pump: <b>{provider.pay_at_pump_api}</b></div>
+                    <div>Revenue Share: <b>{provider.revenue_share}</b></div>
+                    <div>Split Settlement: <b>{provider.split_settlement}</b></div>
+                    <div>API Preis: <b>{provider.monthly_api_price_eur} €/Monat</b></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={20} className="text-amber-300" />
+            <h2 className="text-2xl font-black">Incidents</h2>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-white/10 bg-white/[0.05] px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div>Station / Pumpe</div><div>Grund</div><div>Aktion</div>
+            </div>
+            {(data?.incidents || []).map((incident) => (
+              <div key={incident.incident_id} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+                <div>
+                  <div className="font-bold">{incident.station_name}</div>
+                  <div className="mt-1 text-xs text-slate-500">{incident.pump_id}</div>
+                </div>
+                <div className={"rounded-full px-2.5 py-1 text-xs font-bold " + (
+                  incident.severity === "high" ? "bg-red-400/10 text-red-300" : "bg-amber-300/10 text-amber-200"
+                )}>
+                  {incident.reason}
+                </div>
+                <div className="text-right text-xs text-slate-400">Payment für Pumpe aus</div>
+              </div>
+            ))}
+            {!loading && !(data?.incidents || []).length && <div className="p-6 text-sm text-slate-500">Keine offenen Incidents.</div>}
+          </div>
+        </section>
+
+        <section className="mt-10 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+            <WalletCards className="text-amber-300" />
+            <h3 className="mt-4 font-black">Payment</h3>
+            <p className="mt-2 text-sm text-slate-400">BidBlitz Pay/PSP bleibt bis zu Partner-, PSP- und Vertragsfreigaben deaktiviert.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+            <Network className="text-amber-300" />
+            <h3 className="mt-4 font-black">Multi-Network</h3>
+            <p className="mt-2 text-sm text-slate-400">Jeder Provider wird separat onboarded und nur mit bestätigten Fähigkeiten freigeschaltet.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+            <ShieldCheck className="text-amber-300" />
+            <h3 className="mt-4 font-black">Fail Closed</h3>
+            <p className="mt-2 text-sm text-slate-400">Unklare Payment- oder Pumpenzustände werden nicht automatisch erneut ausgeführt.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
