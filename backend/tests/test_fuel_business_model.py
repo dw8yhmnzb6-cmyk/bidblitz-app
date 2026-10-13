@@ -57,6 +57,41 @@ class TestFuelCommercialQuote(unittest.TestCase):
         self.assertEqual(q["estimated_psp_cost"], "0.00")
         self.assertEqual(q["estimated_liters"], "0.000")
 
+    def test_100_station_projection_is_not_conflated_with_per_station_revenue(self):
+        quote = preview_fuel_commercial_offer(
+            monthly_turnover="100000",
+            station_count="100",
+            price_per_liter="2.2",
+            percent_rate="0.5",
+            cent_per_liter="1",
+            psp_percent="1.5",
+            psp_fixed="0.25",
+            payment_fee_owner="bidblitz",
+        )
+        projection = quote["portfolio_projection"]
+        self.assertEqual(quote["station_count"], 100)
+        self.assertEqual(quote["percentage_model"]["commission_before_cost"], "500.00")
+        self.assertEqual(projection["monthly_turnover_gross"], "10000000.00")
+        self.assertEqual(projection["monthly_transactions"], 200000)
+        self.assertEqual(projection["monthly_psp_cost"], "200000.00")
+        self.assertEqual(projection["percentage_model"]["monthly_commission_before_cost"], "50000.00")
+        self.assertEqual(projection["percentage_model"]["monthly_after_allocated_psp_cost"], "-150000.00")
+        self.assertEqual(projection["percentage_model"]["annual_commission_before_cost"], "600000.00")
+        self.assertEqual(projection["per_liter_model"]["monthly_commission_before_cost"], "45455.00")
+        self.assertEqual(projection["assumption"], "all_stations_have_identical_monthly_turnover_and_fee_terms")
+
+    def test_default_one_station_projection(self):
+        quote = preview_fuel_commercial_offer(percent_rate="0.2")
+        projection = quote["portfolio_projection"]
+        self.assertEqual(quote["station_count"], 1)
+        self.assertEqual(projection["percentage_model"]["monthly_commission_before_cost"], "200.00")
+        self.assertEqual(projection["percentage_model"]["annual_commission_before_cost"], "2400.00")
+
+    def test_station_count_must_be_whole_and_bounded(self):
+        for invalid_count in ("0", "-1", "1.5", "10001", "NaN", "Infinity", "nope"):
+            with self.subTest(station_count=invalid_count), self.assertRaises(ValueError):
+                preview_fuel_commercial_offer(station_count=invalid_count)
+
     def test_invalid_values_fail_closed(self):
         invalid = [
             dict(price_per_liter="0"),
