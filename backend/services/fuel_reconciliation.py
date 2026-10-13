@@ -98,6 +98,19 @@ def build_case(
     )
 
 
+_STATUS_TRANSITIONS = {
+    ReconciliationStatus.OPEN: {ReconciliationStatus.REVIEWING, ReconciliationStatus.RESOLVED, ReconciliationStatus.IGNORED},
+    ReconciliationStatus.REVIEWING: {ReconciliationStatus.RESOLVED, ReconciliationStatus.IGNORED},
+    ReconciliationStatus.RESOLVED: set(),
+    ReconciliationStatus.IGNORED: set(),
+}
+
+
+def validate_status_transition(current: ReconciliationStatus, target: ReconciliationStatus) -> None:
+    if target not in _STATUS_TRANSITIONS[current]:
+        raise ValueError(f"invalid reconciliation transition {current.value}->{target.value}")
+
+
 class FuelReconciliationRepository:
     def __init__(self, database) -> None:
         self.collection = database.fuel_reconciliation_cases
@@ -116,6 +129,11 @@ class FuelReconciliationRepository:
         await self.collection.update_one({"case_id": case.case_id}, {"$set": doc}, upsert=True)
         return doc
 
+    async def get(self, case_id: str) -> dict | None:
+        if not case_id.strip():
+            raise ValueError("case_id required")
+        return await self.collection.find_one({"case_id": case_id}, {"_id": 0})
+
     async def list_open(self, *, limit: int = 100) -> list[dict]:
         if not 1 <= limit <= 500:
             raise ValueError("limit out of range")
@@ -124,3 +142,22 @@ class FuelReconciliationRepository:
             {"_id": 0},
         ).sort("updated_at", -1).limit(limit)
         return await cursor.to_list(limit)
+
+    async def transition(self, case_id: str, target: ReconciliationStatus, *, actor: str, note: str = "") -> dict:
+        if not actor.strip():
+            raise ValueError("actor required")
+        current = await self.get(case_id)
+        if not current:
+            raise KeyError("reconciliation case not found")
+        current_status = ReconciliationStatus(current.get("status") or "open")
+        validate_status_transition(current_status, target)
+        now = datetime.now(timezone.utc).isoformat()
+        update = {
+            "status": target.value,
+            "note": note[:500],
+            "updated_at": now,
+            "updated_by": actor,
+        }
+        await self.collection.update_one({"case_id": case_id}, {"$set": update})
+        current.update(update)
+        return current

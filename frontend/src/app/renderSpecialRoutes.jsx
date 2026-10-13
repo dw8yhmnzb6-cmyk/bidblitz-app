@@ -34,6 +34,8 @@ const FuelSimulatorSessionPage = lazy(() => import("../pages/FuelSimulatorSessio
 const AdminFuelControlCenterPage = lazy(() => import("../pages/AdminFuelControlCenterPage"));
 const AdminFuelProviderDetailPage = lazy(() => import("../pages/AdminFuelProviderDetailPage"));
 const AdminFuelContractEditorPage = lazy(() => import("../pages/AdminFuelContractEditorPage"));
+const AdminFuelReconciliationDetailPage = lazy(() => import("../pages/AdminFuelReconciliationDetailPage"));
+const AdminFuelDkvPreviewPage = lazy(() => import("../pages/AdminFuelDkvPreviewPage"));
 const AdminEVOverviewPage = lazy(() => import("../pages/AdminEVOverviewPage"));
 const AdminEVOperatorsPage = lazy(() => import("../pages/AdminEVOperatorsPage"));
 const AdminEVHardwareVendorsPage = lazy(() => import("../pages/AdminEVHardwareVendorsPage"));
@@ -141,6 +143,14 @@ export function renderSpecialRoutes({
   if (basePath === "/admin/fuel" || basePath === "/admin/fuel/overview") {
     if (user?.role !== "admin") return null;
     return <AdminFuelControlCenterPage onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/admin/fuel/dkv-preview") {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelDkvPreviewPage onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/admin/fuel/reconciliation/")) {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelReconciliationDetailPage caseId={basePath.split("/")[4]} onNavigate={handleNavigate} />;
   }
   if (basePath.startsWith("/admin/fuel/provider/") && basePath.endsWith("/edit")) {
     if (user?.role !== "admin") return null;

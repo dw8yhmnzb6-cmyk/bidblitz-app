@@ -165,3 +165,20 @@ export async function getFuelReconciliationCases(limit = 100) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, cases: [], error: data?.detail || "Fuel reconciliation unavailable" };
 }
+
+export async function getFuelReconciliationCase(caseId) {
+  const res = await fetch(API + "/api/fuel/admin-config/reconciliation/" + encodeURIComponent(caseId), { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Reconciliation case unavailable" };
+}
+
+export async function updateFuelReconciliationCase(caseId, action, note = "") {
+  const res = await fetch(API + "/api/fuel/admin-config/reconciliation/" + encodeURIComponent(caseId) + "/action", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, note }),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Reconciliation update failed" };
+}

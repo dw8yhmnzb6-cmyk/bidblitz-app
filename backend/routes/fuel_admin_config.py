@@ -19,7 +19,7 @@ from services.fuel_provider_contract_repository import (
 )
 from services.fuel_provider_onboarding import provider_by_name
 from services.fuel_repository import FuelRepository
-from services.fuel_reconciliation import FuelReconciliationRepository, build_case
+from services.fuel_reconciliation import FuelReconciliationRepository, ReconciliationStatus, build_case
 
 router = APIRouter(prefix="/api/fuel/admin-config", tags=["fuel-admin-config"])
 
@@ -32,6 +32,11 @@ class ContractSaveRequest(BaseModel):
     contract_reference: str = Field("", max_length=200)
     effective_from: str = Field("", max_length=80)
     effective_until: str = Field("", max_length=80)
+
+
+class ReconciliationActionRequest(BaseModel):
+    action: str = Field(..., min_length=1, max_length=40)
+    note: str = Field("", max_length=500)
 
 
 class DkvPlanRequest(BaseModel):
@@ -141,6 +146,34 @@ async def list_reconciliation_cases(request: Request, limit: int = 100):
     repo = FuelReconciliationRepository(db)
     rows = await repo.list_open(limit=limit)
     return {"cases": rows}
+
+
+@router.get("/reconciliation/{case_id}")
+async def get_reconciliation_case(case_id: str, request: Request):
+    await _admin(request)
+    repo = FuelReconciliationRepository(db)
+    row = await repo.get(case_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Reconciliation case not found")
+    return {"case": row}
+
+
+@router.post("/reconciliation/{case_id}/action")
+async def update_reconciliation_case(case_id: str, body: ReconciliationActionRequest, request: Request):
+    user = await _admin(request)
+    try:
+        target = ReconciliationStatus(body.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Unsupported reconciliation action") from exc
+    actor = user.get("email") or str(user.get("_id") or "admin")
+    repo = FuelReconciliationRepository(db)
+    try:
+        row = await repo.transition(case_id, target, actor=actor, note=body.note)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Reconciliation case not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"ok": True, "case": row, "financial_correction_executed": False}
 
 
 @router.post("/reconciliation/demo-seed")

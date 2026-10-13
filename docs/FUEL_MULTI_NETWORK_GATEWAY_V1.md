@@ -294,3 +294,26 @@ Verification:
 - 73/73 Fuel tests PASS;
 - Python compile PASS;
 - Fuel Admin/Operator JS/JSX parse PASS.
+
+
+## Reconciliation workflow + DKV request preview (2026-10-13)
+Implemented:
+- reconciliation case detail page;
+- admin-only status transitions: OPEN -> REVIEWING/RESOLVED/IGNORED, REVIEWING -> RESOLVED/IGNORED;
+- terminal reconciliation states are final;
+- reconciliation notes and audit actor tracking;
+- financial correction remains explicitly false for status updates;
+- clickable reconciliation inbox in Fuel Control Center;
+- DKV Enterprise API request-plan preview page for the six confirmed datasets;
+- DKV preview requires customer onboarding flags before a plan can be produced;
+- no outbound DKV execution is performed.
+
+Verification:
+- 76/76 Fuel tests PASS;
+- Python compile PASS;
+- Fuel Admin JS/JSX parse PASS.
+
+Safety:
+- reconciliation workflow never executes a payment/refund automatically;
+- DKV preview remains read-plan only;
+- provider/payment/pump LIVE execution remains fail-closed.

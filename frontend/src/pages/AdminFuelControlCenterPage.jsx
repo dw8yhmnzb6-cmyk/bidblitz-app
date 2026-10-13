@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Activity, AlertTriangle, Building2, Fuel, Gauge, Network, ShieldCheck, WalletCards, ArrowLeft } from "lucide-react";
 import { getFuelAdminOverview, getFuelAdminSessions, getFuelPaymentReleaseGates, getFuelPersistenceStatus, getFuelProviderOnboarding, getFuelReconciliationCases } from "../services/fuelApi";
+import FuelCommercialPreviewPanel from "../components/FuelCommercialPreviewPanel";
 
 function Card({ label, value, icon: Icon, hint }) {
   return (
@@ -194,12 +195,12 @@ export default function AdminFuelControlCenterPage({ onNavigate }) {
               <div>Case / Transaction</div><div>Station</div><div>Differenz</div><div>Status</div>
             </div>
             {reconciliation.map((item) => (
-              <div key={item.case_id} className="grid grid-cols-[1.1fr_1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 last:border-0">
+              <button key={item.case_id} onClick={() => onNavigate?.("/admin/fuel/reconciliation/" + item.case_id)} className="grid w-full grid-cols-[1.1fr_1fr_auto_auto] items-center gap-3 border-b border-white/5 px-4 py-4 text-left last:border-0 hover:bg-white/[0.03]">
                 <div className="min-w-0"><div className="truncate font-bold">{item.case_id}</div><div className="mt-1 truncate text-xs text-slate-500">{item.transaction_id}</div></div>
                 <div className="truncate text-sm text-slate-300">{item.station_id}</div>
                 <div className={item.severity === "high" ? "font-black text-red-300" : "font-black text-amber-200"}>{item.difference} EUR</div>
                 <div className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300">{item.status}</div>
-              </div>
+              </button>
             ))}
             {!loading && !reconciliation.length && <div className="p-6 text-sm text-slate-500">Keine offenen Reconciliation-Fälle.</div>}
           </div>

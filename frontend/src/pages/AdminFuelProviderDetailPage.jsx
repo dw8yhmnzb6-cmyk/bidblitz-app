@@ -78,7 +78,7 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
               <Flag label="Credentials konfiguriert" value={provider.credentials_configured} />
             </section>
 
-            <div className="mt-8 flex justify-end"><button onClick={() => onNavigate?.("/admin/fuel/provider/" + providerName + "/edit")} className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-slate-950">Vertragskonfiguration bearbeiten</button></div>
+            <div className="mt-8 flex flex-wrap justify-end gap-3">{providerName === "dkv" && <button onClick={() => onNavigate?.("/admin/fuel/dkv-preview")} className="rounded-2xl border border-white/15 px-5 py-3 font-bold">DKV Request-Preview</button>}<button onClick={() => onNavigate?.("/admin/fuel/provider/" + providerName + "/edit")} className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-slate-950">Vertragskonfiguration bearbeiten</button></div>
 
             <section className="mt-8 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
