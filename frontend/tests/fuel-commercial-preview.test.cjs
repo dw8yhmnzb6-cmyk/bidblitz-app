@@ -46,6 +46,7 @@ test("Fuel quote panel renders readable inputs and a DEV-only warning", () => {
   const output = renderToStaticMarkup(react.createElement(panel.default));
   assert.match(output, /Tankstellen-Provisionsrechner/);
   assert.match(output, /Monatlicher Brutto-Tankumsatz/);
+  assert.match(output, /Anzahl gleich großer Tankstellen/);
   assert.match(output, /Provision auf Umsatz/);
   assert.match(output, /Provision je Liter/);
   assert.match(output, /Kartengebühren/);
@@ -65,13 +66,14 @@ test("Fuel quote API uses authenticated DEV preview only", async () => {
     assert.equal(opts.headers["Content-Type"], "application/json");
     const payload = JSON.parse(opts.body);
     assert.equal(payload.monthly_turnover, "100000");
+    assert.equal(payload.station_count, "100");
     return {
       ok: true,
       json: async () => ({ ok: true, payments_enabled: false, percentage_model: { commission_before_cost: "200.00" } }),
     };
   };
   try {
-    const response = await api.previewFuelCommercialOffer({ monthly_turnover: "100000" });
+    const response = await api.previewFuelCommercialOffer({ monthly_turnover: "100000", station_count: "100" });
     assert.equal(calls, 1);
     assert.equal(response.payments_enabled, false);
     assert.equal(response.percentage_model.commission_before_cost, "200.00");
