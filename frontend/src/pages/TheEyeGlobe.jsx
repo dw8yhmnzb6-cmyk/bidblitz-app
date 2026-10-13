@@ -3,12 +3,13 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Uses the project's existing Mapbox dependency. No additional service is created.
-export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquakesStale = false, selectedDeviceId = null, onSelectDevice }) {
+export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquakesStale = false, wildfires = [], wildfiresStale = false, selectedDeviceId = null, onSelectDevice }) {
   const host = useRef(null);
   const [globeError, setGlobeError] = useState("");
   const mapRef = useRef(null);
   const latestGeoJSON = useRef({ type: "FeatureCollection", features: [] });
   const latestEarthquakes = useRef({ type: "FeatureCollection", features: [] });
+  const latestWildfires = useRef({ type: "FeatureCollection", features: [] });
   const selectRef = useRef(onSelectDevice);
   useEffect(() => { selectRef.current = onSelectDevice; }, [onSelectDevice]);
 
@@ -89,6 +90,25 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
       }
       const earthquakeSource = map.getSource("eye-earthquakes");
       if (earthquakeSource) earthquakeSource.setData(latestEarthquakes.current);
+      if (!map.getSource("eye-wildfires")) {
+        map.addSource("eye-wildfires", { type: "geojson", data: latestWildfires.current });
+      }
+      if (!map.getLayer("eye-wildfire-markers")) {
+        map.addLayer({
+          id: "eye-wildfire-markers",
+          type: "circle",
+          source: "eye-wildfires",
+          paint: {
+            "circle-radius": 6,
+            "circle-color": ["case", ["get", "stale"], "#8896a5", "#ff5757"],
+            "circle-opacity": 0.7,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "#ffe5d9",
+          },
+        }, "eye-device-markers");
+      }
+      const wildfireSource = map.getSource("eye-wildfires");
+      if (wildfireSource) wildfireSource.setData(latestWildfires.current);
     };
     const onQuakeClick = (event) => {
       const feature = event.features?.[0];
@@ -99,6 +119,13 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
       new mapboxgl.Popup().setLngLat(event.lngLat).setText(label).addTo(map);
     };
     map.on("click", "eye-earthquake-markers", onQuakeClick);
+    const onWildfireClick = (event) => {
+      const feature = event.features?.[0];
+      if (!feature || !event.lngLat) return;
+      const label = "NASA EONET · offene Waldbrandmeldung: " + (feature.properties?.title || "Unbekannt");
+      new mapboxgl.Popup().setLngLat(event.lngLat).setText(label).addTo(map);
+    };
+    map.on("click", "eye-wildfire-markers", onWildfireClick);
     const onDeviceClick = (event) => {
       const id = event.features?.[0]?.properties?.device_id;
       if (id) selectRef.current?.(id);
@@ -110,6 +137,7 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
     map.on("mouseleave", "eye-device-markers", onDeviceLeave);
     map.on("style.load", onStyleLoad);
     return () => {
+      map.off("click", "eye-wildfire-markers", onWildfireClick);
       map.off("click", "eye-earthquake-markers", onQuakeClick);
       map.off("click", "eye-device-markers", onDeviceClick);
       map.off("mouseenter", "eye-device-markers", onDeviceEnter);
@@ -162,6 +190,25 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
     const source = mapRef.current?.getSource("eye-earthquakes");
     if (source) source.setData(latestEarthquakes.current);
   }, [earthquakes, earthquakesStale]);
+
+  useEffect(() => {
+    const features = (Array.isArray(wildfires) ? wildfires : []).filter((event) => {
+      const lat = Number(event?.lat);
+      const lng = Number(event?.lng);
+      return event?.id && Number.isFinite(lat) && Number.isFinite(lng) &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    }).slice(0, 100).map((event) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [Number(event.lng), Number(event.lat)] },
+      properties: {
+        id: String(event.id), title: String(event.title || ""),
+        stale: wildfiresStale, approximate: Boolean(event.approximate),
+      },
+    }));
+    latestWildfires.current = { type: "FeatureCollection", features };
+    const source = mapRef.current?.getSource("eye-wildfires");
+    if (source) source.setData(latestWildfires.current);
+  }, [wildfires, wildfiresStale]);
 
   if (!process.env.REACT_APP_MAPBOX_ACCESS_TOKEN) return null;
   return <div className="eye-3d-globe" role="region" aria-label="Interaktiver 3D-Globus mit eigenen Geräten">
