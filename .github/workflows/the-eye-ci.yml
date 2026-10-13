@@ -12,6 +12,7 @@ on:
       - "frontend/src/pages/TheEyePage.css"
       - "frontend/scripts/the-eye-smoke.cjs"
       - "frontend/scripts/the-eye-earthquakes-smoke.cjs"
+      - "frontend/scripts/the-eye-wildfires-smoke.cjs"
       - "frontend/scripts/the-eye-earthquakes-smoke.cjs"
       - ".github/workflows/the-eye-ci.yml"
   workflow_dispatch:
@@ -62,6 +63,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:18739/ > /dev/null
           node frontend/scripts/the-eye-smoke.cjs
           node frontend/scripts/the-eye-earthquakes-smoke.cjs
+          node frontend/scripts/the-eye-wildfires-smoke.cjs
       - name: Install Chromium for local-only browser tests
         run: npx playwright install --with-deps chromium
       - name: Run THE EYE desktop, mobile and earthquake smoke tests
