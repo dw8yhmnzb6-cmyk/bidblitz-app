@@ -12,6 +12,7 @@ on:
       - "frontend/src/pages/TheEyePage.css"
       - "frontend/scripts/the-eye-smoke.cjs"
       - "frontend/scripts/the-eye-earthquakes-smoke.cjs"
+      - "frontend/scripts/the-eye-earthquakes-smoke.cjs"
       - ".github/workflows/the-eye-ci.yml"
   workflow_dispatch:
 
@@ -47,6 +48,20 @@ jobs:
         env:
           CI: "false"
         run: npm --workspace frontend run build
+      - name: Install headless Chromium for local UI smoke tests
+        run: npx playwright install --with-deps chromium
+      - name: Verify THE EYE map and simulated earthquake states
+        env:
+          THE_EYE_TEST_URL: http://127.0.0.1:18739
+        run: |
+          python3 -m http.server 18739 --bind 127.0.0.1 --directory frontend/build > /tmp/the-eye-test-server.log 2>&1 &
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18739/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18739/ > /dev/null
+          node frontend/scripts/the-eye-smoke.cjs
+          node frontend/scripts/the-eye-earthquakes-smoke.cjs
       - name: Install Chromium for local-only browser tests
         run: npx playwright install --with-deps chromium
       - name: Run THE EYE desktop, mobile and earthquake smoke tests
