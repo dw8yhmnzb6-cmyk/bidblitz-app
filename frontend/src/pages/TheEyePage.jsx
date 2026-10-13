@@ -106,6 +106,7 @@ export default function TheEyePage({ onNavigate }) {
   const [scopedDevices, setScopedDevices] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
   const [cameras, setCameras] = useState([]);
+  const [earthquakeFeed, setEarthquakeFeed] = useState({ status: "unavailable", events: [], count: 0, as_of: null });
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [streamSession, setStreamSession] = useState(null);
   const [streamMessage, setStreamMessage] = useState("");
@@ -224,6 +225,31 @@ export default function TheEyePage({ onNavigate }) {
     },
     recent_briefs: [],
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEarthquakes = async () => {
+      try {
+        const response = await fetch("/api/the-eye/admin/live/earthquakes", { credentials: "include" });
+        if (!response.ok) throw new Error("USGS feed unavailable");
+        const data = await response.json();
+        if (!cancelled && Array.isArray(data?.events) && ["live", "cached", "stale"].includes(data?.status)) {
+          setEarthquakeFeed({
+            status: data.status,
+            events: data.events.slice(0, 250),
+            count: Number(data.count) || 0,
+            as_of: data.as_of || null,
+          });
+        }
+      } catch {
+        // When upstream or THE EYE API is unavailable, never claim live data.
+        if (!cancelled) setEarthquakeFeed({ status: "unavailable", events: [], count: 0, as_of: null });
+      }
+    };
+    loadEarthquakes();
+    const poll = setInterval(loadEarthquakes, 180000);
+    return () => { cancelled = true; clearInterval(poll); };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1043,6 +1069,7 @@ export default function TheEyePage({ onNavigate }) {
 
   const layerCountFor = (name) => {
     if (name === "Kameras") return cameras.length;
+    if (name === "Erdbeben") return earthquakeFeed.status === "unavailable" ? null : earthquakeFeed.count;
     if (name === "BidBlitz Geräte") return visibleDevices.length;
     return null;
   };
@@ -1314,6 +1341,25 @@ export default function TheEyePage({ onNavigate }) {
                       <Popup>{device.name || device.device_id}</Popup>
                     </CircleMarker>
                   ))}
+                  {activeLayers["Erdbeben"] && earthquakeFeed.events.map((quake) => (
+                    <CircleMarker
+                      key={quake.id}
+                      center={[quake.lat, quake.lng]}
+                      radius={Math.min(12, Math.max(4, Number(quake.magnitude) * 1.5))}
+                      pathOptions={{
+                        color: earthquakeFeed.status === "stale" ? "#8896a5" : "#ff9f43",
+                        fillColor: earthquakeFeed.status === "stale" ? "#8896a5" : "#ff9f43",
+                        fillOpacity: 0.75,
+                        weight: 2,
+                      }}
+                    >
+                      <Popup>
+                        <strong>Erdbeben M{Number(quake.magnitude).toFixed(1)}</strong>
+                        <div>{quake.place}</div>
+                        <small>USGS · {quake.occurred_at} · {earthquakeFeed.status === "stale" ? "Daten veraltet" : "Letzte 24 h"}</small>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
                 </MapContainer>
               </div>
             ) : (
@@ -1351,7 +1397,7 @@ export default function TheEyePage({ onNavigate }) {
             <MetricCard icon={Ship} value="—" label="Schiffe · keine Quelle" tone="amber" />
             <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
             <MetricCard icon={Flame} value="—" label="Feuer · keine Quelle" tone="red" />
-            <MetricCard icon={Activity} value="—" label="Erdbeben · keine Quelle" tone="orange" />
+            <MetricCard icon={Activity} value={earthquakeFeed.status === "unavailable" ? "—" : earthquakeFeed.count.toLocaleString("de-DE")} label={earthquakeFeed.status === "unavailable" ? "Erdbeben · Quelle nicht verfügbar" : earthquakeFeed.status === "stale" ? "Erdbeben M2,5+ · veraltet" : "Erdbeben M2,5+ · USGS 24 h"} tone="orange" />
           </section>
 
           <section className="eye-incident-strip">
