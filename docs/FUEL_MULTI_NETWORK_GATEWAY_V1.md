@@ -88,3 +88,28 @@ Still deliberately disabled:
 
 Verification:
 `python3 -m unittest backend.tests.test_fuel_core_v1 backend.tests.test_fuel_gateway_v1 -v` -> 21/21 PASS.
+
+
+## Operator settlement expansion (2026-10-13)
+Added DEV-only operator finance and dashboard foundations.
+
+Implemented:
+- operator contract model with signed-contract gate;
+- Merchant/Supplier-of-Record role fields;
+- configurable fee ownership (operator, BidBlitz, shared);
+- split-settlement allocation math without moving money;
+- reconciliation model for POS vs PSP vs BidBlitz amounts;
+- synthetic operator overview endpoint;
+- Fuel operator dashboard route at `/operator/fuel`;
+- operator metrics and station health remain simulator-only.
+
+Safety:
+- settlement remains calculation/reporting only;
+- no PSP transfers, real payouts or merchant onboarding execution;
+- no unsigned contract can enable settlement;
+- real provider/payment execution is still blocked.
+
+Verification:
+- 27/27 pure Fuel core/gateway/finance tests PASS;
+- Python compile PASS;
+- JSX/JS parser checks PASS for Fuel pages, service and route file.

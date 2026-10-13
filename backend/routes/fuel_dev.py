@@ -148,6 +148,36 @@ async def get_fuel_station(station_id: str):
     }
 
 
+@router.get("/operator/overview")
+async def operator_overview():
+    stations = CATALOG.list_stations("DE")
+    online = sum(1 for s in stations if any(p.status != PumpStatus.OFFLINE for p in s.pumps))
+    return {
+        "mode": "simulator",
+        "payments_enabled": False,
+        "operator": {"operator_id": "op-simulator", "name": "BidBlitz Fuel Simulator"},
+        "metrics": {
+            "stations": len(stations),
+            "online_stations": online,
+            "transactions_today": 0,
+            "gross_today": "0.00",
+            "bidblitz_commission_today": "0.00",
+            "operator_net_today": "0.00",
+            "currency": "EUR",
+        },
+        "stations": [
+            {
+                "station_id": s.station_id,
+                "name": s.name,
+                "pump_count": len(s.pumps),
+                "available_pumps": sum(1 for p in s.pumps if p.status == PumpStatus.FREE),
+                "status": "online" if any(p.status != PumpStatus.OFFLINE for p in s.pumps) else "offline",
+            }
+            for s in stations
+        ],
+    }
+
+
 @router.post("/stations/{station_id}/pumps/{pump_id}/prepare")
 async def prepare_fuel_session(station_id: str, pump_id: str):
     station = CATALOG.get_station(station_id)
