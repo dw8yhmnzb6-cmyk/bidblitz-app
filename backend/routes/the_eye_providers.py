@@ -433,3 +433,139 @@ async def live_earthquakes(request: Request):
                     and time.monotonic() - _earthquake_cache_monotonic < _EARTHQUAKE_STALE_SECONDS):
                 return {**_earthquake_cache, "status": "stale"}
             raise HTTPException(status_code=503, detail="USGS earthquake feed unavailable")
+
+
+# NASA EONET: curated OPEN wildfire event reports, NOT a real-time fire alarm.
+# The URL is fixed in code to avoid user-directed network requests.
+NASA_EONET_WILDFIRE_FEED = "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&category=wildfires&limit=100"
+_WILDFIRE_TTL_SECONDS = 600
+_WILDFIRE_STALE_SECONDS = 3600
+_wildfire_lock: Optional[asyncio.Lock] = None
+_wildfire_cache: Optional[dict] = None
+_wildfire_cache_monotonic = 0.0
+
+
+def _wildfire_coordinates(geometry: Any) -> Optional[tuple[float, float, bool]]:
+    if not isinstance(geometry, dict):
+        return None
+    kind = geometry.get("type")
+    coords = geometry.get("coordinates")
+    if kind == "Point" and isinstance(coords, list) and len(coords) >= 2:
+        lng = _valid_float(coords[0], -180, 180)
+        lat = _valid_float(coords[1], -90, 90)
+        if lat is not None and lng is not None:
+            return lat, lng, False
+    if kind == "Polygon" and isinstance(coords, list) and coords:
+        first_ring = coords[0]
+        if not isinstance(first_ring, list):
+            return None
+        points: list[tuple[float, float]] = []
+        for point in first_ring[:300]:
+            if not isinstance(point, list) or len(point) < 2:
+                continue
+            lng = _valid_float(point[0], -180, 180)
+            lat = _valid_float(point[1], -90, 90)
+            if lat is not None and lng is not None:
+                points.append((lat, lng))
+        if len(points) >= 3:
+            # Approximate display location; never present this as an exact fire point.
+            if points[0] == points[-1]:
+                points.pop()
+            lat = sum(point[0] for point in points) / len(points)
+            lng = sum(point[1] for point in points) / len(points)
+            return lat, lng, True
+    return None
+
+
+def _normalize_wildfires(payload: Any) -> list[dict]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
+        raise ValueError("Invalid NASA EONET events response")
+    rows: list[dict] = []
+    for event in payload["events"][:250]:
+        if not isinstance(event, dict) or event.get("closed") is not None:
+            continue
+        categories = event.get("categories") or []
+        if not isinstance(categories, list) or not any(
+            isinstance(category, dict) and category.get("id") == "wildfires"
+            for category in categories
+        ):
+            continue
+        event_id = str(event.get("id") or "").strip()[:100]
+        if not event_id:
+            continue
+        observations = event.get("geometry") or []
+        if not isinstance(observations, list):
+            continue
+        candidates = []
+        for item in observations[:100]:
+            position = _wildfire_coordinates(item)
+            if position is None:
+                continue
+            observed = str(item.get("date") or "").strip()[:40]
+            if not observed:
+                continue
+            try:
+                date = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+                if date.tzinfo is None:
+                    continue
+            except ValueError:
+                continue
+            candidates.append((date, position))
+        if not candidates:
+            continue
+        last_date, (lat, lng, approximate) = max(candidates, key=lambda item: item[0])
+        rows.append({
+            "id": event_id,
+            "title": str(event.get("title") or "Waldbrandmeldung")[:180],
+            "lat": lat,
+            "lng": lng,
+            "approximate": approximate,
+            "observed_at": last_date.astimezone(timezone.utc).isoformat(),
+        })
+    rows.sort(key=lambda row: row["observed_at"], reverse=True)
+    return rows[:100]
+
+
+@router.get("/admin/live/wildfires")
+async def live_wildfires(request: Request):
+    """Authenticated, read-only, cached NASA EONET wildfire observations."""
+    await require_the_eye_access(
+        request,
+        {"super_admin", "admin", "project_admin", "site_manager", "technician", "customer", "partner"},
+    )
+    global _wildfire_cache, _wildfire_cache_monotonic, _wildfire_lock
+    now = time.monotonic()
+    if _wildfire_cache is not None and now - _wildfire_cache_monotonic < _WILDFIRE_TTL_SECONDS:
+        return {**_wildfire_cache, "status": "cached"}
+
+    if _wildfire_lock is None:
+        _wildfire_lock = asyncio.Lock()
+    async with _wildfire_lock:
+        now = time.monotonic()
+        if _wildfire_cache is not None and now - _wildfire_cache_monotonic < _WILDFIRE_TTL_SECONDS:
+            return {**_wildfire_cache, "status": "cached"}
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+                response = await client.get(
+                    NASA_EONET_WILDFIRE_FEED, headers={"Accept": "application/json"}
+                )
+                response.raise_for_status()
+                events = _normalize_wildfires(response.json())
+            snapshot = {
+                "ok": True,
+                "status": "live",
+                "source": "NASA EONET",
+                "scope": "reported_open_events",
+                "as_of": datetime.now(timezone.utc).isoformat(),
+                "count": len(events),
+                "events": events,
+                "notice": "NASA EONET reports; not a live emergency alert or exhaustive fire detection feed.",
+            }
+            _wildfire_cache = snapshot
+            _wildfire_cache_monotonic = time.monotonic()
+            return snapshot
+        except (httpx.HTTPError, ValueError, TypeError):
+            if (_wildfire_cache is not None
+                    and time.monotonic() - _wildfire_cache_monotonic < _WILDFIRE_STALE_SECONDS):
+                return {**_wildfire_cache, "status": "stale"}
+            raise HTTPException(status_code=503, detail="NASA EONET wildfire feed unavailable")
