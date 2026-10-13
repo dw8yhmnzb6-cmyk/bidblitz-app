@@ -182,3 +182,9 @@ export async function updateFuelReconciliationCase(caseId, action, note = "") {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Reconciliation update failed" };
 }
+
+export async function getFuelProviderActivation(providerName) {
+  const res = await fetch(API + "/api/fuel/admin-config/providers/" + encodeURIComponent(providerName) + "/activation", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Provider activation status unavailable" };
+}

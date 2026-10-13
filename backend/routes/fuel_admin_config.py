@@ -18,6 +18,8 @@ from services.fuel_provider_contract_repository import (
     contract_from_payload,
 )
 from services.fuel_provider_onboarding import provider_by_name
+from services.fuel_provider_activation import evaluate_provider_activation
+from services.fuel_provider_contracts import unsigned_template
 from services.fuel_repository import FuelRepository
 from services.fuel_reconciliation import FuelReconciliationRepository, ReconciliationStatus, build_case
 
@@ -61,6 +63,26 @@ async def list_provider_contracts(request: Request):
     repo = FuelProviderContractRepository(db)
     rows = await repo.list(limit=200)
     return {"contracts": rows}
+
+
+@router.get("/providers/{provider_name}/activation")
+async def get_provider_activation(provider_name: str, request: Request):
+    await _admin(request)
+    onboarding = provider_by_name(provider_name)
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    repo = FuelProviderContractRepository(db)
+    row = await repo.get(provider_name)
+    try:
+        contract = contract_from_payload(provider_name, row) if row else unsigned_template(provider_name)
+        status = evaluate_provider_activation(onboarding, contract)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "provider": provider_name,
+        "activation": status.payload(),
+        "message": "Readiness only. No provider or payment execution was enabled.",
+    }
 
 
 @router.get("/contracts/{provider_name}")

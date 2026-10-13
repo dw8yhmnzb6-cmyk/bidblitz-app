@@ -317,3 +317,23 @@ Safety:
 - reconciliation workflow never executes a payment/refund automatically;
 - DKV preview remains read-plan only;
 - provider/payment/pump LIVE execution remains fail-closed.
+
+
+## Provider activation readiness checklist (2026-10-13)
+Implemented:
+- provider activation evaluator combining signed contract rights, confirmed provider capabilities and a separate non-secret credential-ready flag;
+- admin-only provider activation endpoint;
+- explicit discovery/fueling READY vs BLOCKED evaluation;
+- detailed missing-gate lists for both discovery and fueling;
+- provider detail page now shows activation readiness and missing gates;
+- credential readiness is represented only by FUEL_<PROVIDER>_CREDENTIALS_CONFIGURED boolean metadata; no API key or secret value is read or exposed.
+
+Verification:
+- 88/88 Fuel tests PASS, including commercial quote comparison and activation checks;
+- Python compile PASS;
+- Provider Detail / Fuel API JS/JSX parse PASS.
+
+Safety:
+- readiness status alone never enables live execution;
+- provider capability confirmation remains required in addition to contract rights;
+- DKV remains blocked for fueling because station discovery/fueling/payment/split-settlement are not confirmed.

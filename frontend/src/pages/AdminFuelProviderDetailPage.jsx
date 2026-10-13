@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Fuel, ShieldCheck, XCircle } from "lucide-react";
-import { getFuelAdminContract, getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
+import { getFuelAdminContract, getFuelProviderActivation, getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
 
 function Flag({ label, value }) {
   return (
@@ -20,21 +20,24 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
   const [provider, setProvider] = useState(null);
   const [contract, setContract] = useState(null);
   const [storedContract, setStoredContract] = useState(null);
+  const [activation, setActivation] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [result, contractResult, storedResult] = await Promise.all([
+      const [result, contractResult, storedResult, activationResult] = await Promise.all([
         getFuelProviderOnboardingDetail(providerName),
         getFuelProviderContractTemplate(providerName),
         getFuelAdminContract(providerName),
+        getFuelProviderActivation(providerName),
       ]);
       if (!mounted) return;
       if (result.ok) setProvider(result.provider);
       else setError(result.error);
       if (contractResult.ok) setContract(contractResult.contract);
       if (storedResult.ok) setStoredContract(storedResult.contract || null);
+      if (activationResult.ok) setActivation(activationResult.activation || null);
     })();
     return () => { mounted = false; };
   }, [providerName]);
@@ -79,6 +82,31 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
             </section>
 
             <div className="mt-8 flex flex-wrap justify-end gap-3">{providerName === "dkv" && <button onClick={() => onNavigate?.("/admin/fuel/dkv-preview")} className="rounded-2xl border border-white/15 px-5 py-3 font-bold">DKV Request-Preview</button>}<button onClick={() => onNavigate?.("/admin/fuel/provider/" + providerName + "/edit")} className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-slate-950">Vertragskonfiguration bearbeiten</button></div>
+
+            {activation && (
+              <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black">Activation Readiness</h2>
+                    <p className="mt-1 text-xs text-slate-500">Kombiniert Vertrag, bestätigte Provider-Funktionen und einen separaten Credential-Ready-Flag.</p>
+                  </div>
+                  <span className={"rounded-full px-3 py-1.5 text-xs font-bold " + (activation.fueling_ready ? "bg-emerald-400/10 text-emerald-300" : "bg-red-400/10 text-red-300")}>{activation.fueling_ready ? "FUELING READY" : "FUELING BLOCKED"}</span>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="text-sm font-bold">Discovery</div>
+                    <div className={"mt-2 text-2xl font-black " + (activation.discovery_ready ? "text-emerald-300" : "text-red-300")}>{activation.discovery_ready ? "READY" : "BLOCKED"}</div>
+                    {!activation.discovery_ready && <div className="mt-3 flex flex-wrap gap-2">{(activation.missing_discovery || []).map((item) => <span key={item} className="rounded-full bg-red-400/10 px-2.5 py-1 text-[11px] text-red-300">{item}</span>)}</div>}
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="text-sm font-bold">Fueling</div>
+                    <div className={"mt-2 text-2xl font-black " + (activation.fueling_ready ? "text-emerald-300" : "text-red-300")}>{activation.fueling_ready ? "READY" : "BLOCKED"}</div>
+                    {!activation.fueling_ready && <div className="mt-3 flex flex-wrap gap-2">{(activation.missing_fueling || []).map((item) => <span key={item} className="rounded-full bg-red-400/10 px-2.5 py-1 text-[11px] text-red-300">{item}</span>)}</div>}
+                  </div>
+                </div>
+                <div className="mt-4 text-xs text-slate-500">Credentials Ready: <b className={activation.credentials_ready ? "text-emerald-300" : "text-amber-200"}>{activation.credentials_ready ? "JA" : "NEIN"}</b> · es wird nur ein Boolean-Flag ausgewertet, niemals ein Secret angezeigt.</div>
+              </section>
+            )}
 
             <section className="mt-8 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
