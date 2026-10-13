@@ -98,3 +98,15 @@ export async function getFuelProviderOnboardingDetail(providerName) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Provider detail unavailable" };
 }
+
+export async function getFuelPersistenceStatus() {
+  const res = await fetch(API + "/api/fuel/persistence/status", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, enabled: false, error: data?.detail || "Fuel persistence status unavailable" };
+}
+
+export async function getFuelProviderContractTemplate(providerName) {
+  const res = await fetch(API + "/api/fuel/providers/onboarding/" + encodeURIComponent(providerName) + "/contract-template", { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Provider contract template unavailable" };
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Fuel, ShieldCheck, XCircle } from "lucide-react";
-import { getFuelProviderOnboardingDetail } from "../services/fuelApi";
+import { getFuelProviderContractTemplate, getFuelProviderOnboardingDetail } from "../services/fuelApi";
 
 function Flag({ label, value }) {
   return (
@@ -18,15 +18,20 @@ function Flag({ label, value }) {
 
 export default function AdminFuelProviderDetailPage({ providerName, onNavigate }) {
   const [provider, setProvider] = useState(null);
+  const [contract, setContract] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const result = await getFuelProviderOnboardingDetail(providerName);
+      const [result, contractResult] = await Promise.all([
+        getFuelProviderOnboardingDetail(providerName),
+        getFuelProviderContractTemplate(providerName),
+      ]);
       if (!mounted) return;
       if (result.ok) setProvider(result.provider);
       else setError(result.error);
+      if (contractResult.ok) setContract(contractResult.contract);
     })();
     return () => { mounted = false; };
   }, [providerName]);
@@ -84,6 +89,24 @@ export default function AdminFuelProviderDetailPage({ providerName, onNavigate }
                 </div>
               </div>
             </section>
+
+            {contract && (
+              <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+                <h2 className="text-xl font-black">Vertrags-Template</h2>
+                <p className="mt-1 text-xs text-slate-500">Nur Vorlage – keine Kondition gilt als vereinbart.</p>
+                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>Status: <b>{contract.state}</b></div>
+                  <div>Revenue Model: <b>{contract.commercial?.revenue_model}</b></div>
+                  <div>Payment Fee Owner: <b>{contract.commercial?.payment_fee_owner}</b></div>
+                  <div>Merchant of Record: <b>{contract.commercial?.merchant_of_record}</b></div>
+                  <div>Supplier of Record: <b>{contract.commercial?.supplier_of_record}</b></div>
+                  <div>Währung: <b>{contract.commercial?.currency}</b></div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(contract.territories || []).length ? contract.territories.map((country) => <span key={country} className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-slate-300">{country}</span>) : <span className="text-xs text-slate-500">Noch keine Vertragsgebiete hinterlegt.</span>}
+                </div>
+              </section>
+            )}
 
             <div className="mt-8 rounded-3xl border border-amber-300/20 bg-amber-300/10 p-5">
               <div className="flex items-start gap-3">

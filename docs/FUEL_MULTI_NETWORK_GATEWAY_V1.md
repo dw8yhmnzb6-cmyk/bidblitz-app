@@ -228,3 +228,25 @@ Still intentionally disabled:
 - real PSP execution;
 - real pump release;
 - live provider discovery without contract/credentials.
+
+
+## Existing-DB persistence + provider contract model (2026-10-13)
+Implemented:
+- opt-in DEV persistence bridge for simulator sessions using the existing BidBlitz Mongo database;
+- FUEL_DEV_PERSISTENCE=true explicitly enables simulator-session persistence; default remains OFF;
+- simulator create/authorize/start/complete transitions can persist with optimistic locking;
+- Fuel indexes added to the existing create_indexes() flow; no second database;
+- provider contract model with territories, commercial terms, Merchant/Supplier of Record, fee ownership, white-label, API, payment, split-settlement and receipt-responsibility rights;
+- unsigned provider contract templates stay blocked by default;
+- provider detail page now displays the unsigned contract template;
+- DKV read scaffold remains outbound-blocked until official credentials and endpoint documentation exist.
+
+Verification:
+- 64/64 Fuel tests PASS;
+- Python compile PASS;
+- Provider-detail/service JS/JSX parse PASS.
+
+Safety:
+- persistence does not enable payments;
+- all provider contract defaults are unsigned/not ready;
+- no real provider call, pump release or PSP execution is enabled.

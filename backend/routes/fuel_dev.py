@@ -17,6 +17,8 @@ from services.fuel_core import (
 from services.fuel_simulator_sessions import STORE as FUEL_SIM_STORE
 from services.fuel_provider_onboarding import provider_by_name, provider_matrix
 from services.fuel_payment_bridge import FuelPaymentReleaseGate
+from services.fuel_runtime_persistence import persistence_enabled, persist_simulator_session
+from services.fuel_provider_contracts import unsigned_template
 
 router = APIRouter(prefix="/api/fuel", tags=["fuel-dev"])
 
@@ -165,6 +167,29 @@ async def provider_onboarding_detail(provider_name: str):
     return {
         "mode": "development",
         "provider": item.payload(),
+    }
+
+
+@router.get("/persistence/status")
+async def fuel_persistence_status():
+    return {
+        "mode": "development",
+        "enabled": persistence_enabled(),
+        "database": "existing_bidblitz_mongo",
+        "collection": "fuel_sessions",
+        "payments_enabled": False,
+    }
+
+
+@router.get("/providers/onboarding/{provider_name}/contract-template")
+async def provider_contract_template(provider_name: str):
+    item = provider_by_name(provider_name)
+    if not item:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    return {
+        "mode": "development",
+        "contract": unsigned_template(item.provider).payload(),
+        "message": "Unsigned template only. No commercial term is treated as agreed until contract evidence is recorded.",
     }
 
 
@@ -324,7 +349,9 @@ async def create_simulator_session(
         unit_price=product.unit_price,
         currency=product.currency,
     )
-    return item.payload()
+    payload = item.payload()
+    payload["persistence"] = await persist_simulator_session(item)
+    return payload
 
 
 @router.get("/simulator/sessions")
@@ -346,7 +373,10 @@ async def get_simulator_session(session_id: str):
 @router.post("/simulator/sessions/{session_id}/authorize")
 async def authorize_simulator_session(session_id: str):
     try:
-        return FUEL_SIM_STORE.authorize_demo(session_id).payload()
+        item = FUEL_SIM_STORE.authorize_demo(session_id)
+        payload = item.payload()
+        payload["persistence"] = await persist_simulator_session(item)
+        return payload
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Session not found") from exc
     except ValueError as exc:
@@ -356,7 +386,10 @@ async def authorize_simulator_session(session_id: str):
 @router.post("/simulator/sessions/{session_id}/start")
 async def start_simulator_session(session_id: str):
     try:
-        return FUEL_SIM_STORE.start_demo_fueling(session_id).payload()
+        item = FUEL_SIM_STORE.start_demo_fueling(session_id)
+        payload = item.payload()
+        payload["persistence"] = await persist_simulator_session(item)
+        return payload
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Session not found") from exc
     except ValueError as exc:
@@ -369,10 +402,13 @@ async def complete_simulator_session(
     demo_liters: Decimal = Query(Decimal("31.700"), gt=Decimal("0"), le=Decimal("150")),
 ):
     try:
-        return FUEL_SIM_STORE.complete_demo_fueling(
+        item = FUEL_SIM_STORE.complete_demo_fueling(
             session_id,
             liters=demo_liters,
-        ).payload()
+        )
+        payload = item.payload()
+        payload["persistence"] = await persist_simulator_session(item)
+        return payload
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Session not found") from exc
     except ValueError as exc:

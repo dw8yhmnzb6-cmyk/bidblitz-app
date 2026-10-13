@@ -331,6 +331,16 @@ async def create_indexes():
     await safe_create_index(db.monitoring_alert_notifications, "alert_key", unique=True)
     await safe_create_index(db.monitoring_daily_reports, "report_key", unique=True)
     await safe_create_index(db.monitoring_telegram_deliveries, [("created_at", -1), ("notification_type", 1)])
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # BIDBLITZ FUEL (DEV/feature branch foundation)
+    # ═══════════════════════════════════════════════════════════════════════════
+    await safe_create_index(db.fuel_sessions, "session_id", unique=True)
+    await safe_create_index(db.fuel_sessions, "idempotency_key", unique=True)
+    await safe_create_index(db.fuel_sessions, [("station_id", 1), ("created_at", -1)])
+    await safe_create_index(db.fuel_sessions, [("state", 1), ("updated_at", -1)])
+    await safe_create_index(db.fuel_provider_contracts, "provider", unique=True)
+    await safe_create_index(db.fuel_provider_contracts, [("state", 1), ("updated_at", -1)])
     
     logger.info("Database indexes created/verified")
 
