@@ -65,3 +65,26 @@ python -m unittest discover -s backend/tests -p test_fuel_gateway_v1.py -v
 - No outbound network calls unless the application explicitly instantiates and configures an approved adapter.
 - No real money operations in this module.
 - Existing production app, routes and infrastructure are not modified by this branch.
+
+
+## Core domain expansion (2026-10-13)
+Added a provider-neutral DEV-only fuel domain in `backend/services/fuel_core.py`.
+
+Implemented:
+- normalized provider enum for simulator, PACE, Shell, DKV, UTA, Radius, Circle K, Eurowag, Logos, Moveyou, HUTH, Hectronic, DFS/Tokheim, OpenFSC, IFSF and direct stations;
+- station capabilities so UI/API can expose only functions actually supported by a station;
+- typed fuel products, pump records and pump status;
+- deterministic simulator catalog for frontend/API development before partner credentials exist;
+- commission rules for percentage, per-litre, per-transaction and hybrid contracts using Decimal arithmetic;
+- fail-closed fuel-session state machine;
+- UNKNOWN/TIMEOUT paths cannot resume financial execution automatically and can only move to manual review.
+
+Still deliberately disabled:
+- public Fuel routes;
+- external provider calls;
+- real payment authorization/capture/refund;
+- production deployment;
+- automatic settlement.
+
+Verification:
+`python3 -m unittest backend.tests.test_fuel_core_v1 backend.tests.test_fuel_gateway_v1 -v` -> 21/21 PASS.
