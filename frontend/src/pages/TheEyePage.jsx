@@ -233,7 +233,10 @@ export default function TheEyePage({ onNavigate }) {
         const response = await fetch("/api/the-eye/admin/live/earthquakes", { credentials: "include" });
         if (!response.ok) throw new Error("USGS feed unavailable");
         const data = await response.json();
-        if (!cancelled && Array.isArray(data?.events) && ["live", "cached", "stale"].includes(data?.status)) {
+        if (!Array.isArray(data?.events) || !["live", "cached", "stale"].includes(data?.status)) {
+          throw new Error("Invalid earthquake feed response");
+        }
+        if (!cancelled) {
           setEarthquakeFeed({
             status: data.status,
             events: data.events.slice(0, 250),
