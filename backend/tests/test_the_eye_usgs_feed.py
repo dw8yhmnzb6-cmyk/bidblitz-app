@@ -89,7 +89,7 @@ def load_isolated():
         "Any": Any, "Optional": Optional, "math": math, "datetime": datetime,
         "timezone": timezone, "asyncio": asyncio, "time": time,
         "httpx": type("HTTPX", (), {"AsyncClient": FakeClient, "HTTPError": FakeHTTPError}),
-        "HTTPException": FakeHTTPException, "require_the_eye_access": allow,
+        "HTTPException": FakeHTTPException, "Request": object, "require_the_eye_access": allow,
         "USGS_EARTHQUAKE_FEED": FEED, "_earthquake_lock": asyncio.Lock(),
         "_EARTHQUAKE_TTL_SECONDS": 180, "_EARTHQUAKE_STALE_SECONDS": 1800,
         "_earthquake_cache": None, "_earthquake_cache_monotonic": 0.0,
