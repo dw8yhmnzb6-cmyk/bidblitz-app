@@ -20,7 +20,9 @@ def build_project_dashboard(events, verified_ledger_rows, project, period, now=N
 
 def build_portfolio_dashboard(events, verified_ledger_rows, projects, period, now=None):
     # Project list MUST be determined from server-side RBAC, not a browser filter.
-    if not isinstance(projects, (list, tuple)) or len(projects) != len(set(projects)):
+    if (not isinstance(projects, (list, tuple)) or
+            not all(isinstance(project, str) and project for project in projects) or
+            len(projects) != len(set(projects))):
         raise ValueError("Expected unique authorized projects")
     return {
         "period": period,
