@@ -19,3 +19,17 @@
 @media(max-width:680px){.eye-3d-globe{min-height:320px}}
 
 .eye-globe-error{position:absolute;left:12px;right:12px;bottom:16px;z-index:8;background:rgba(28,18,25,.94);border:1px solid #e78c74;border-radius:9px;color:#ffe0d7;padding:12px;font-size:13px;text-align:center;pointer-events:none}
+
+
+/* Provenance and freshness: observation age is distinct from feed fetch time. */
+.eye-source-transparency{margin-top:10px;padding:11px 12px;background:#06141f;border:1px solid #173c55;border-radius:14px;color:#bed7ea}
+.eye-source-transparency-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.eye-source-transparency-head strong{font-size:10px;letter-spacing:.09em;color:#77d2ff}
+.eye-source-transparency-head small,.eye-source-transparency>small{font-size:10px;color:#849eb1;line-height:1.5}
+.eye-source-transparency-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:9px}
+.eye-source-transparency-grid>div{padding:9px;border:1px solid #17384f;border-radius:10px;background:#081b29;min-width:0}
+.eye-source-transparency-grid strong,.eye-source-transparency-grid span,.eye-source-transparency-grid small{display:block}
+.eye-source-transparency-grid strong{font-size:11px;color:#e0f1fc}
+.eye-source-transparency-grid span{font-size:10px;color:#8ed7ff;margin-top:5px}
+.eye-source-transparency-grid small{font-size:9px;color:#91aabc;margin-top:5px;line-height:1.5}
+@media(max-width:680px){.eye-source-transparency-grid{grid-template-columns:1fr}.eye-source-transparency-head{align-items:flex-start;flex-direction:column}}
