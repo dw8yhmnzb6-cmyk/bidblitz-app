@@ -30,3 +30,8 @@ def test_portfolio_contains_only_authorized_projects():
 def test_duplicate_authorized_project_rejected():
     with pytest.raises(ValueError):
         build_portfolio_dashboard(EVENTS, LEDGER, ["trade", "trade"], "today", NOW)
+
+@pytest.mark.parametrize("projects", [None, "trade", ["trade", ""], [123], ["trade", "trade"]])
+def test_invalid_scope_is_rejected(projects):
+    with pytest.raises(ValueError):
+        build_portfolio_dashboard(EVENTS, LEDGER, projects, "today", NOW)
