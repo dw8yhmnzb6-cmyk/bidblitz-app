@@ -14,8 +14,8 @@ const fixture = (status) => ({
   ok: true, status, source: "NASA EONET", scope: "reported_open_events",
   as_of: "2026-10-13T09:00:00Z", count: 2,
   events: [
-    { id: "fake-fire-1", lat: 42.34, lng: -114.1, title: "Test wildfire A", observed_at: "2026-10-12T12:00:00Z", approximate: false },
-    { id: "fake-fire-2", lat: 35.4, lng: -120.5, title: "Test wildfire B", observed_at: "2026-10-12T08:00:00Z", approximate: true },
+    { id: "fake-fire-1", lat: 42.34, lng: -114.1, title: "Test wildfire A", observed_at: new Date(Date.now() - 36 * 3600000).toISOString(), approximate: false },
+    { id: "fake-fire-2", lat: 35.4, lng: -120.5, title: "Test wildfire B", observed_at: new Date(Date.now() - 120 * 3600000).toISOString(), approximate: true },
   ],
 });
 
@@ -39,6 +39,12 @@ async function check(width, state) {
     const label = state === "unavailable" ? "Waldbrände · Quelle nicht verfügbar" :
       state === "stale" ? "Waldbrandmeldungen · veraltet" : "Waldbrandmeldungen · NASA EONET";
     await page.getByText(label).waitFor({ state: "visible", timeout: 15000 });
+    const sources = page.getByRole("region", { name: "Datenquellen und Aktualität" });
+    await sources.waitFor({ state: "visible" });
+    assert.equal(await sources.getByText("NASA EONET · Waldbrandmeldungen").count(), 1);
+    if (state !== "unavailable") {
+      assert.equal(await sources.getByText(/bis 72 h: 1 · älter: 1/).count(), 1);
+    }
     await page.getByRole("button", { name: "Karte", exact: true }).last().click();
     const markers = page.locator(".eye-leaflet-map .leaflet-overlay-pane path.leaflet-interactive");
     await page.waitForTimeout(600);
