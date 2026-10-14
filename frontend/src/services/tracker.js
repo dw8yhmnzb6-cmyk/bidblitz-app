@@ -1,90 +1,66 @@
-/**
- * BidBlitz Conversion Tracker
- * Lightweight event tracking — fires and forgets.
+/** Legacy conversion API adapter. Consent-gated and field-allowlisted.
+ * This keeps compatibility with backend/routes/analytics.py's TrackEvent schema.
+ * Successful payments are reported authoritatively by the backend, not this browser tracker.
  */
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { getCookieConsent } from '../components/CookieBanner';
 
-function getSessionId() {
-  let sid = sessionStorage.getItem("bb_sid");
-  if (!sid) {
-    sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    sessionStorage.setItem("bb_sid", sid);
-  }
-  return sid;
+const getApiUrl = () => process.env.REACT_APP_BACKEND_URL;
+const EVENTS = new Set(['guest_visit','guest_register_click','register_complete','first_payment','feature_click','demo_start','demo_exit','cta_click','page_view']);
+const SAFE_TOKEN = /^[a-zA-Z0-9_-]{1,64}$/;
+const allowedMeta = {
+  guest_register_click: ['source'],
+  register_complete: ['role'],
+  first_payment: ['type'],
+  feature_click: ['feature'],
+  cta_click: ['cta','page'],
+  page_view: ['page'],
+};
+function consented() {
+  try { return getCookieConsent()?.analytics === true; } catch { return false; }
 }
-
+function sanitized(event, meta = {}) {
+  const output = {};
+  for (const key of allowedMeta[event] || []) {
+    if (typeof meta?.[key] === 'string' && SAFE_TOKEN.test(meta[key])) output[key] = meta[key];
+  }
+  return output;
+}
 function fire(event, meta) {
+  if (!consented() || !EVENTS.has(event)) return false;
   try {
-    const body = JSON.stringify({
-      event,
-      session_id: getSessionId(),
-      meta: meta || {},
-    });
-    // Use sendBeacon for reliability, fallback to fetch
-    if (navigator.sendBeacon) {
-      const blob = new Blob([body], { type: "application/json" });
-      navigator.sendBeacon(`${API_URL}/api/analytics/track`, blob);
-    } else {
-      fetch(`${API_URL}/api/analytics/track`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-        credentials: "include",
-        keepalive: true,
-      }).catch(() => {});
-    }
+    const API_URL = getApiUrl();
+    if (!API_URL || !/^https?:\/\//.test(API_URL)) return false;
+    const body = JSON.stringify({ event, meta: sanitized(event, meta) });
+    // Fetch instead of beacon so network failures don't throw into UI flows.
+    fetch(`${API_URL.replace(/\/$/, '')}/api/analytics/track`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body, credentials: 'include', keepalive: true,
+    }).catch(() => {});
+    return true;
+  } catch { return false; }
+}
+function once(event, meta, scope) {
+  if (!consented()) return false; // No analytics storage before consent.
+  try {
+    const storage = scope === 'ever' ? localStorage : sessionStorage;
+    const key = `bb_ev_${event}`;
+    if (storage.getItem(key)) return false;
+    if (!fire(event, meta)) return false;
+    storage.setItem(key, '1');
+    return true;
   } catch {
-    // Silent fail — tracking should never break UX
+    return fire(event, meta);
   }
 }
-
-/** Track once per session for a given key */
-function fireOnce(event, meta) {
-  const key = `bb_ev_${event}`;
-  if (sessionStorage.getItem(key)) return;
-  sessionStorage.setItem(key, "1");
-  fire(event, meta);
-}
-
-/** Track once ever (localStorage) for a given key */
-function fireOnceEver(event, meta) {
-  const key = `bb_ev_${event}`;
-  try {
-    if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, "1");
-  } catch {
-    // Fallback to session
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-  }
-  fire(event, meta);
-}
-
 export const tracker = {
-  /** Guest landed on homepage (once per session) */
-  guestVisit: () => fireOnce("guest_visit"),
-
-  /** Guest clicked register (every time) */
-  guestRegisterClick: (source) => fire("guest_register_click", { source }),
-
-  /** Registration completed (once ever) */
-  registerComplete: (role) => fireOnceEver("register_complete", { role }),
-
-  /** First payment made (once ever) */
-  firstPayment: (amount, type) => fireOnceEver("first_payment", { amount, type }),
-
-  /** Feature/product card clicked */
-  featureClick: (feature) => fire("feature_click", { feature }),
-
-  /** Demo mode started */
-  demoStart: () => fire("demo_start"),
-
-  /** Demo mode exited */
-  demoExit: () => fire("demo_exit"),
-
-  /** CTA button clicked */
-  ctaClick: (cta, page) => fire("cta_click", { cta, page }),
-
-  /** Page viewed */
-  pageView: (page) => fire("page_view", { page }),
+  guestVisit: () => once('guest_visit', {}, 'session'),
+  guestRegisterClick: (source) => fire('guest_register_click', { source }),
+  registerComplete: (role) => once('register_complete', { role }, 'ever'),
+  // Kept for existing UI hooks; not an authoritative revenue event.
+  firstPayment: (amount, type) => once('first_payment', { type }, 'ever'),
+  featureClick: (feature) => fire('feature_click', { feature }),
+  demoStart: () => fire('demo_start'),
+  demoExit: () => fire('demo_exit'),
+  ctaClick: (cta, page) => fire('cta_click', { cta, page }),
+  pageView: (page) => fire('page_view', { page }),
 };

@@ -279,3 +279,57 @@ async def _top_features(since: str):
     ]
     results = await db.conversion_events.aggregate(pipeline).to_list(10)
     return [{"feature": r["_id"], "clicks": r["clicks"]} for r in results if r["_id"]]
+
+
+# Enterprise V1: read-only project reporting.
+# Legacy conversion events without project metadata are intentionally excluded.
+# This route does not activate event collection or change existing records.
+@router.get("/v1/projects/{project}/overview")
+async def project_analytics_overview(
+    project: str,
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    await require_admin(request)
+    from core.analytics_event_schema import ProjectName
+    from pydantic import TypeAdapter, ValidationError
+    try:
+        project = TypeAdapter(ProjectName).validate_python(project)
+    except ValidationError:
+        raise HTTPException(status_code=404, detail="Unknown project")
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days)).isoformat()
+    # Group in MongoDB; do not expose raw events, sessions, IPs or user identifiers.
+    pipeline = [
+        {"$match": {
+            "schema_version": 1,
+            "project": project,
+            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "event": {"$in": [
+                "page_view", "cta_click", "signup_started", "signup_completed",
+                "checkout_started", "checkout_completed", "flow_abandoned",
+            ]},
+        }},
+        {"$group": {
+            "_id": {"day": {"$substrBytes": ["$received_at", 0, 10]}, "event": "$event"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.day": 1, "_id.event": 1}},
+    ]
+    records = await db.conversion_events.aggregate(pipeline).to_list(length=700)
+    totals = {}
+    daily = {}
+    for record in records:
+        event = record["_id"]["event"]
+        day = record["_id"]["day"]
+        count = int(record["count"])
+        totals[event] = totals.get(event, 0) + count
+        daily.setdefault(day, {})[event] = count
+    return {
+        "project": project,
+        "period_days": days,
+        "totals": totals,
+        "daily": daily,
+        "verified_revenue_included": False,
+        "data_scope": "v1_project_events_only",
+    }
