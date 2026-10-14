@@ -35,3 +35,16 @@ def test_duplicate_authorized_project_rejected():
 def test_invalid_scope_is_rejected(projects):
     with pytest.raises(ValueError):
         build_portfolio_dashboard(EVENTS, LEDGER, projects, "today", NOW)
+
+def test_business_activity_is_filtered_by_project():
+    actions = [
+        dict(project="trade", action="payment_confirmed", verified=True, occurred_at=NOW,
+             customer_email="must-not-appear"),
+        dict(project="eyes", action="subscription_activated", verified=True, occurred_at=NOW),
+    ]
+    report = build_portfolio_dashboard(EVENTS, LEDGER, ["trade"], "today",
+                                       NOW+timedelta(seconds=1), actions)
+    feed = report["projects"][0]["recent_business_actions"]
+    assert len(feed) == 1
+    assert feed[0]["project"] == "trade"
+    assert "customer_email" not in feed[0]
