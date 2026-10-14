@@ -55,7 +55,7 @@ def revenue_by_project(rows, period, now=None):
         if type(amount) is not int or type(fee) is not int or amount < 0 or fee < 0 or fee > amount:
             raise ValueError("Invalid minor-unit amounts")
         when = timestamp.astimezone(timezone.utc)
-        if not start <= when < end and not (period != "yesterday" and when == end):
+        if not start <= when < end:
             continue
         record = totals[(project, currency)]
         if status == "captured":
