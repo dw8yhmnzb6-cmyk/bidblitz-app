@@ -106,7 +106,7 @@ export default function FuelLandingPage({ onNavigate }) {
           <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
             <a href="#stations" className="hover:text-white">Tankstellen</a>
             <a href="#how" className="hover:text-white">So funktioniert's</a>
-            <a href="#business" className="hover:text-white">Für Betreiber</a>
+            <a href="/fuel-partner.html" className="hover:text-white">Partner werden</a>
           </div>
           <button onClick={() => onNavigate?.("/pay")} className="rounded-xl border border-amber-300/40 px-4 py-2 text-sm font-bold text-amber-200 hover:bg-amber-300/10">
             BidBlitz Pay
@@ -128,7 +128,7 @@ export default function FuelLandingPage({ onNavigate }) {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#stations" className="rounded-2xl bg-amber-400 px-6 py-3 font-black text-slate-950 hover:bg-amber-300">Tankstelle finden</a>
-              <button onClick={() => onNavigate?.("/pay")} className="rounded-2xl border border-white/15 px-6 py-3 font-bold text-white hover:bg-white/5">BidBlitz Pay öffnen</button>
+              <a href="/fuel-partner.html" className="rounded-2xl border border-white/15 px-6 py-3 font-bold text-white hover:bg-white/5">Für Tankstellenpartner</a>
             </div>
           </div>
 
@@ -136,8 +136,8 @@ export default function FuelLandingPage({ onNavigate }) {
             {[
               [Search, "Preise vergleichen", "Einheitliches Stations- und Preisformat"],
               [WalletCards, "BidBlitz Pay", "Payment bleibt zentral und provider-neutral"],
-              [Gift, "Cashback", "Provisionen flexibel nach Vertrag"],
-              [Gauge, "Multi-Network", "PACE, Shell, DKV, HUTH, Hectronic, DFS u. a."],
+              [Gift, "Cashback-Konzept", "Optionale Aktionen nur nach Partnervereinbarung"],
+              [Gauge, "Multi-Network", "Verschiedene Anbieter in Prüfung, noch nicht live verbunden"],
             ].map(([Icon, title, desc]) => (
               <div key={title} className="rounded-3xl border border-white/10 bg-white/[0.05] p-5">
                 <Icon size={24} style={{ color: gold }} />
@@ -154,7 +154,7 @@ export default function FuelLandingPage({ onNavigate }) {
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">Fuel Simulator</p>
                 <h2 className="mt-2 text-3xl font-black">Tankstellen & Zapfsäulen</h2>
-                <p className="mt-2 text-sm text-slate-400">Nur synthetische DEV-Daten. Keine externen Anbieter werden aufgerufen.</p>
+                <p className="mt-2 text-sm text-slate-400">Demo mit künstlichen Stationen und Preisen. Keine realen Anbieter oder Zahlungen verbunden.</p>
               </div>
               <div className="relative w-full md:w-96">
                 <Search className="absolute left-3 top-3.5 text-slate-500" size={18} />
@@ -222,9 +222,9 @@ export default function FuelLandingPage({ onNavigate }) {
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">Für Betreiber</p>
                 <h2 className="mt-2 text-3xl font-black">Teil des BidBlitz Fuel Network werden</h2>
-                <p className="mt-3 max-w-3xl text-slate-300">POS/Forecourt anbinden, direkte Betreiber-Auszahlung über PSP, BidBlitz erhält nur die vertraglich vereinbarte Plattformprovision.</p>
+                <p className="mt-3 max-w-3xl text-slate-300">Unser Partnerprogramm wird vorbereitet: POS/Forecourt-Anbindung, transparente Provisionen und Betreiber-Auszahlungen über zugelassene PSP sind geplante Funktionen und setzen gesonderte Verträge und Freigaben voraus.</p>
               </div>
-              <button className="rounded-2xl bg-white px-6 py-3 font-black text-slate-950">Partner werden</button>
+              <a href="/fuel-partner.html" className="rounded-2xl bg-white px-6 py-3 text-center font-black text-slate-950" data-testid="fuel-partner-link">Partnerprogramm ansehen</a>
             </div>
           </div>
         </section>
