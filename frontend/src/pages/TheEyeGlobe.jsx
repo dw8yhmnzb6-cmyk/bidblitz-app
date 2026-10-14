@@ -100,7 +100,7 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
           source: "eye-wildfires",
           paint: {
             "circle-radius": 6,
-            "circle-color": ["case", ["get", "stale"], "#8896a5", "#ff5757"],
+            "circle-color": ["case", ["any", ["get", "stale"], ["get", "old"]], "#8896a5", "#ff5757"],
             "circle-opacity": 0.7,
             "circle-stroke-width": 1,
             "circle-stroke-color": "#ffe5d9",
@@ -122,7 +122,7 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
     const onWildfireClick = (event) => {
       const feature = event.features?.[0];
       if (!feature || !event.lngLat) return;
-      const label = "NASA EONET · offene Waldbrandmeldung: " + (feature.properties?.title || "Unbekannt");
+      const label = "NASA EONET · offene Waldbrandmeldung (nicht in Echtzeit bestätigt): " + (feature.properties?.title || "Unbekannt") + (feature.properties?.old ? " · Beobachtung älter als 72 h" : "");
       new mapboxgl.Popup().setLngLat(event.lngLat).setText(label).addTo(map);
     };
     map.on("click", "eye-wildfire-markers", onWildfireClick);
@@ -202,7 +202,7 @@ export default function TheEyeGlobe({ devices = [], earthquakes = [], earthquake
       geometry: { type: "Point", coordinates: [Number(event.lng), Number(event.lat)] },
       properties: {
         id: String(event.id), title: String(event.title || ""),
-        stale: wildfiresStale, approximate: Boolean(event.approximate),
+        stale: wildfiresStale, old: !Number.isFinite(Date.parse(event.observed_at || "")) || Date.now() - Date.parse(event.observed_at) > 72 * 3600000 || Date.parse(event.observed_at) > Date.now() + 300000, approximate: Boolean(event.approximate),
       },
     }));
     latestWildfires.current = { type: "FeatureCollection", features };
