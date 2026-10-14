@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="BidBlitz Fuel: Partnerprogramm für Tankstellen, Betreiber und Netzwerke. Digitale Tankprozesse, Kundenbindung und transparente Plattformmodelle – derzeit in der Pilotvorbereitung.">
+  <title>Partner werden | BidBlitz Fuel</title>
+  <style>
+    :root { color-scheme:dark; --bg:#07111f; --panel:#101d2d; --panel2:#142438; --line:rgba(255,255,255,.12); --text:#f6f8fc; --muted:#afbbce; --gold:#f4b942; --gold2:#ffd57c; --radius:22px; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.55; }
+    a { color:inherit; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    a:focus-visible { outline:3px solid var(--gold); outline-offset:4px; }
+    .container { max-width:1190px; margin:auto; padding-left:24px; padding-right:24px; }
+    .header { position:sticky; top:0; z-index:20; backdrop-filter:blur(16px); background:rgba(7,17,31,.92); border-bottom:1px solid var(--line); }
+    .header-inner { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:22px; }
+    .brand { text-decoration:none; display:flex; gap:13px; align-items:center; font-size:20px; font-weight:850; letter-spacing:-.6px; }
+    .brand-symbol { display:grid; place-items:center; width:42px; height:42px; border-radius:14px; background:var(--gold); color:#0a1627; font-size:21px; }
+    .brand b { color:var(--gold); } .brand small { font-size:10px; display:block; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
+    .nav { display:flex; align-items:center; gap:26px; } .nav a { text-decoration:none; color:#c4cfdf; font-size:14px; font-weight:650; } .nav a:hover {color:white;}
+    .btn { min-height:46px; display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 21px; border-radius:13px; text-decoration:none; text-align:center; font-weight:800; border:1px solid transparent; transition:transform .15s,background .15s; }
+    .btn:hover { transform:translateY(-2px); } .btn.primary { background:var(--gold); color:#081425; } .btn.primary:hover {background:var(--gold2);}
+    .btn.outline { border-color:rgba(255,255,255,.26); background:rgba(255,255,255,.045); color:#fff; }
+    .btn.light { background:white; color:#081425; }
+    .eyebrow { text-transform:uppercase; font-size:12px; letter-spacing:3px; font-weight:800; color:var(--gold); }
+    .pill { display:inline-flex; align-items:center; gap:9px; padding:8px 13px; font-weight:750; font-size:12px; border:1px solid rgba(244,185,66,.35); border-radius:99px; background:rgba(244,185,66,.11); color:#ffe0a1; }
+    .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--gold); }
+    h1,h2,h3,p { margin-top:0; }
+    h1,h2,h3 { letter-spacing:-.045em; line-height:1.12; }
+    h1 { font-size:clamp(44px,6.6vw,79px); margin:22px 0 20px; max-width:810px; }
+    h2 { font-size:clamp(31px,4vw,48px); margin:12px 0 16px; }
+    h3 { font-size:21px; margin-bottom:9px; }
+    .lead { color:#c4cedd; font-size:clamp(17px,1.8vw,21px); line-height:1.75; max-width:670px; }
+    .hero { position:relative; overflow:hidden; padding:95px 0 91px; background:radial-gradient(ellipse at 88% 40%,rgba(244,185,66,.13),transparent 41%), radial-gradient(ellipse at 2% 98%,rgba(52,95,167,.12),transparent 43%); }
+    .hero-grid { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr); align-items:center; gap:56px; }
+    .hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:32px; }
+    .fineprint { color:#8f9db1; font-size:13px; margin-top:19px; }
+    .preview { border:1px solid rgba(244,185,66,.26); border-radius:30px; padding:24px; background:linear-gradient(150deg,#18283b,#0d1828); box-shadow:0 24px 80px rgba(0,0,0,.28); transform:rotate(1deg); }
+    .preview-top { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#b9c6d9; font-size:12px; padding:0 1px 17px; border-bottom:1px solid var(--line); }
+    .preview-top strong {color:white;font-size:14px;}
+    .preview-label { margin-top:25px; font-size:12px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+    .preview-number { font-size:clamp(35px,4vw,52px); font-weight:850; letter-spacing:-2px; margin:2px 0 3px; }
+    .preview-number span { font-size:17px; color:var(--gold); letter-spacing:0; }
+    .preview-mini { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:20px; }
+    .mini { padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.035); }
+    .mini strong { display:block; font-size:19px; } .mini span { font-size:12px; color:var(--muted); }
+    .bars { display:flex; align-items:end; gap:7px; margin-top:24px; height:78px; border-bottom:1px solid var(--line); }
+    .bars i { flex:1; border-radius:5px 5px 0 0; background:linear-gradient(var(--gold),#8e6728); opacity:.82; }
+    section.content-section { padding:85px 0; }
+    .section-intro { max-width:720px; color:var(--muted); font-size:17px; margin-bottom:34px; }
+    .features { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:17px; }
+    .feature { padding:29px; border:1px solid var(--line); background:var(--panel); border-radius:var(--radius); }
+    .feature .icon { display:grid; place-items:center; width:47px; height:47px; border-radius:14px; margin-bottom:22px; color:var(--gold); background:rgba(244,185,66,.12); font-size:22px; }
+    .feature p { margin-bottom:0; font-size:15px; color:var(--muted); }
+    .stripe { background:#0d1929; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+    .model { padding:31px; border:1px solid var(--line); background:#142336; border-radius:24px; }
+    .model.highlight { border-color:rgba(244,185,66,.44); background:linear-gradient(140deg,#28301f,#172333); }
+    .model .count { font-size:44px; font-weight:850; letter-spacing:-2px; color:var(--gold); }
+    .model p { color:var(--muted); font-size:15px; }
+    .model small { display:block; color:#93a0b5; }
+    .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+    .step { border-top:2px solid #55667a; padding-top:19px; }
+    .step strong { display:grid; place-items:center; height:35px; width:35px; background:var(--gold); color:#07111f; border-radius:50%; margin-bottom:22px; }
+    .step p { color:var(--muted); font-size:14px; }
+    .notice { border:1px solid rgba(244,185,66,.27); background:rgba(244,185,66,.07); padding:23px 27px; border-radius:17px; font-size:15px; color:#dce3ec; margin-top:38px; }
+    .contact { padding:70px 0; background:linear-gradient(125deg,rgba(244,185,66,.15),rgba(244,185,66,.02) 65%); border-top:1px solid rgba(244,185,66,.22); }
+    .contact-layout { display:flex; justify-content:space-between; align-items:center; gap:30px; }
+    .contact p { color:#c6d0de; max-width:620px; margin-bottom:0; }
+    .contact .actions { display:flex; flex-wrap:wrap; gap:12px; }
+    footer { padding:29px 0; border-top:1px solid var(--line); color:#90a0b4; font-size:12px; }
+    .footer-inner { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    @media (max-width:900px) { .nav { display:none; } .hero-grid { grid-template-columns:1fr; gap:36px; } .hero { padding:67px 0; } .preview { transform:none; max-width:580px; } .features {grid-template-columns:repeat(2,minmax(0,1fr));} .steps {grid-template-columns:repeat(2,1fr);} .contact-layout {align-items:flex-start; flex-direction:column;} }
+    @media (max-width:570px) { .container { padding-left:18px; padding-right:18px; } .header-inner {min-height:70px;} .header .header-cta { padding:10px 12px; min-height:40px; font-size:12px; } .brand {font-size:17px;} .brand-symbol {width:36px;height:36px;} h1 {font-size:43px;} .features,.split,.steps {grid-template-columns:1fr;} section.content-section {padding:62px 0;} .preview {padding:19px;} .hero-actions .btn,.contact .btn {width:100%;} .contact .actions {width:100%;} }
+    @media (prefers-reduced-motion:reduce) { html {scroll-behavior:auto;} .btn {transition:none;} }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="#top" aria-label="BidBlitz Fuel Partner – Start">
+        <span class="brand-symbol" aria-hidden="true">◆</span>
+        <span>BidBlitz <b>FUEL</b><small>Partner Network</small></span>
+      </a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a href="#vorteile">Lösung</a><a href="#modell">Geschäftsmodell</a><a href="#ablauf">Zusammenarbeit</a>
+      </nav>
+      <a class="btn primary header-cta" href="#kontakt">Partner werden ↗</a>
+    </div>
+  </header>
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="pill">Partnerprogramm · Pilotphase in Vorbereitung</span>
+          <h1>Mehr Kunden. <span style="color:var(--gold)">Einfacher tanken.</span> Gemeinsam wachsen.</h1>
+          <p class="lead">BidBlitz Fuel entwickelt eine digitale Plattform für Tankstellenbetreiber, Tankstellennetze und technische Partner. Eine gemeinsame Oberfläche für die Suche, digitale Tankprozesse und attraktive Kundenerlebnisse.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#kontakt">Kooperation anfragen <span aria-hidden="true">↗</span></a>
+            <a class="btn outline" href="#vorteile">Konzept ansehen <span aria-hidden="true">↓</span></a>
+          </div>
+          <p class="fineprint">Deutschland und Europa als erste Zielmärkte · Kosovo als weitere Ausbauphase.</p>
+        </div>
+        <div class="preview" role="img" aria-label="Illustrative Partner-Dashboard-Vorschau mit Konzeptfunktionen, keine echten Geschäftszahlen">
+          <div class="preview-top"><strong>Fuel Partner Dashboard</strong><span>Konzeptvorschau</span></div>
+          <div class="preview-label">Eine Oberfläche für Ihre Standorte</div>
+          <div class="preview-number">01 <span>Plattform</span></div>
+          <div style="color:#b6c2d1;font-size:14px">Ein zentraler Einstieg für Netzwerk, Stationen und Transaktionen.</div>
+          <div class="preview-mini">
+            <div class="mini"><strong>Standorte</strong><span>Verwaltung geplant</span></div>
+            <div class="mini"><strong>Belege</strong><span>Digitale Prozesse geplant</span></div>
+            <div class="mini"><strong>Abrechnung</strong><span>Partnerabhängig</span></div>
+            <div class="mini"><strong>Kundenbindung</strong><span>Aktionsmodelle</span></div>
+          </div>
+          <div class="bars" aria-hidden="true">
+            <i style="height:36%"></i><i style="height:55%"></i><i style="height:45%"></i><i style="height:68%"></i><i style="height:51%"></i><i style="height:81%"></i><i style="height:74%"></i><i style="height:95%"></i>
+          </div>
+          <div style="color:#8699b2;font-size:11px;margin-top:10px">Illustration – keine Live-Daten, keine Umsatzprognose.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vorteile" class="content-section">
+      <div class="container">
+        <span class="eyebrow">Die Plattform</span>
+        <h2>Eine digitale Erweiterung für Ihr Tankstellengeschäft</h2>
+        <p class="section-intro">Unsere Module werden schrittweise mit zugelassenen Zahlungsdienstleistern und vertraglich angebundenen Netzwerken aufgebaut. Umfang und Freigabe hängen vom jeweiligen Partner ab.</p>
+        <div class="features">
+          <article class="feature"><div class="icon" aria-hidden="true">⌖</div><h3>Tankstellen entdecken</h3><p>Standorte, Verfügbarkeit und Kraftstoffinformationen in einer zentralen Kundensicht – bei entsprechendem Datenzugang.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true">▣</div><h3>Mobiles Bezahlen</h3><p>Digitale Bezahlabläufe über genehmigte Partner- und PSP-Schnittstellen. Echte Zahlungen sind derzeit nicht aktiviert.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true">↗</div><h3>Kundenbindung</h3><p>Optionale Aktionen, Rabatte und Cashback-Modelle auf Basis individuell vereinbarter Konditionen.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true">≋</div><h3>Digitale Belege</h3><p>Klare Zuordnung von Tankvorgängen und Belegen zu dem verantwortlichen Betreiber.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true">▤</div><h3>Partnerverwaltung</h3><p>Vertragsübersicht, Statusprüfungen und nachvollziehbare Provisionsmodelle im Verwaltungsbereich.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true">◎</div><h3>Netzwerkübergreifend</h3><p>Technisch für unterschiedliche Partner vorbereitet – Anbindungen erfolgen erst nach Vertrags- und Sicherheitsfreigabe.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="modell" class="content-section stripe">
+      <div class="container">
+        <span class="eyebrow">Transparentes Geschäftsmodell</span>
+        <h2>Flexible Zusammenarbeit statt starrer Standardgebühren</h2>
+        <p class="section-intro">Die kommerziellen Konditionen werden individuell vereinbart. Zahlungsabwicklungsgebühren und Plattformvergütung sollen nachvollziehbar getrennt werden.</p>
+        <div class="split">
+          <article class="model highlight">
+            <div class="eyebrow">Modell A</div><h3 style="margin-top:15px">Prozentuale Provision</h3>
+            <div class="count">%</div>
+            <p>Eine vertraglich definierte Vergütung auf den vereinbarten Umsatzanteil, der über BidBlitz Fuel abgewickelt wird.</p>
+            <small>Die Berechnungsbasis und der Gebührenträger werden vertraglich festgelegt.</small>
+          </article>
+          <article class="model">
+            <div class="eyebrow">Modell B</div><h3 style="margin-top:15px">Betrag je Liter</h3>
+            <div class="count">ct/L</div>
+            <p>Eine feste Vergütung je erfasstem Liter, mit transparenter Abrechnung und kalkulierbaren Beträgen.</p>
+            <small>Alternative Modelle sind möglich; keine Konditionen gelten ohne Vertrag.</small>
+          </article>
+        </div>
+        <div class="notice"><strong>Wichtig:</strong> Wir versprechen keine zusätzlichen Umsätze oder garantierte Marge. Die tatsächliche Wirtschaftlichkeit hängt unter anderem von Zahlungsverfahren, Betreiberstruktur und gemeinsam vereinbarten Leistungen ab.</div>
+      </div>
+    </section>
+
+    <section id="ablauf" class="content-section">
+      <div class="container">
+        <span class="eyebrow">Gemeinsam starten</span>
+        <h2>Vom Erstgespräch zum Pilotstandort</h2>
+        <p class="section-intro">Wir suchen Betreiber, Netzwerke und Integrationspartner, mit denen wir einen klar abgegrenzten, technisch kontrollierten Piloten vereinbaren können.</p>
+        <div class="steps">
+          <div class="step"><strong>1</strong><h3>Kennenlernen</h3><p>Geschäftsmodell, Regionen, Zahl der Standorte und gemeinsame Ziele besprechen.</p></div>
+          <div class="step"><strong>2</strong><h3>Technik prüfen</h3><p>POS, Forecourt-System, API-Rechte, Zahlungsdienstleister und Datenschutz abstimmen.</p></div>
+          <div class="step"><strong>3</strong><h3>Pilot vereinbaren</h3><p>Vertragsbedingungen, Gebühren, Verantwortlichkeiten und Testumfang festlegen.</p></div>
+          <div class="step"><strong>4</strong><h3>Kontrolliert testen</h3><p>Erst Sandbox, dann Freigabeprüfungen und gegebenenfalls begrenzter Echtbetrieb.</p></div>
+        </div>
+      </div>
+    </section>
+    <section id="kontakt" class="contact">
+      <div class="container contact-layout">
+        <div><span class="eyebrow">Kontakt für Geschäftspartner</span><h2>Interesse an einer Zusammenarbeit?</h2><p>Wir freuen uns auf Gespräche mit Tankstellenbetreibern, Mineralölgesellschaften, Zahlungsdienstleistern und Integrationsanbietern. Rufen Sie unser Büro an und vereinbaren Sie einen Gesprächstermin.</p></div>
+        <div class="actions"><a class="btn primary" href="tel:+4920243047726">☎ +49 202 43047726</a><a class="btn outline" href="https://bidblitz.ae" rel="noopener noreferrer">BidBlitz ansehen ↗</a></div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="container footer-inner"><span>© BidBlitz Fuel · Partnerinformation</span><span>Konzept- und Pilotphase · Keine Live-Tankzahlung · Keine zugesagten Partnerschaften</span></div></footer>
+</body>
+</html>
