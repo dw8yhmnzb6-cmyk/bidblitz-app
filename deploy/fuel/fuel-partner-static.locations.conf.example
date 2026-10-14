@@ -1,0 +1,41 @@
+# BidBlitz Fuel — STATIC-ONLY Nginx location template (NOT an active config)
+#
+# Use ONLY after inspecting the existing Nginx server block for fuel.bidblitz.ae
+# and its existing location matches, DNS, certificates and document root.
+# This is a template for a dedicated static partner hostname, not a second app.
+# Insert into the correct existing TLS server{} after resolving any overlapping
+# location rules. Do NOT include blindly. Back up the active config first.
+# Never point this server at the backend, CRM, full source tree or /api.
+#
+# A verified TLS server{}, certificate, HTTP-to-HTTPS redirect and DNS record
+# MUST already be in place. Do not use a guessed IP or certificate location.
+
+location = / {
+    return 302 /fuel-partner.html;
+}
+
+location = /fuel-partner.html {
+    # Replace with the verified absolute path to the single RELEASED HTML file.
+    # Copy only frontend/public/fuel-partner.html from the approved Git commit.
+    alias /REPLACE_WITH_VERIFIED_PUBLIC_DIRECTORY/fuel-partner.html;
+
+    limit_except GET HEAD { deny all; }
+    default_type text/html;
+    charset utf-8;
+    add_header Cache-Control "public, max-age=300" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Content-Security-Policy "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'" always;
+}
+
+# For this dedicated host, DO NOT expose internal app routes.
+# Existing server blocks might already define these locations: reconcile
+# collisions during review; do not add duplicate prefix locations.
+location ^~ /api/ { return 404; }
+location ^~ /admin/ { return 404; }
+location ^~ /fuel/ { return 404; }
+location ^~ /. { return 404; }
+
+# No SPA fallback, proxy_pass, autoindex or root directory serving.
+location / { return 404; }
