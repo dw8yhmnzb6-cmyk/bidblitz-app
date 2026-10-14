@@ -42,6 +42,21 @@ const LAYERS = [
   ["BidBlitz Geräte", Cpu, null, "green"],
 ];
 
+
+// Feed retrieval being recent does not mean each NASA EONET event is recent.
+const OLD_OBSERVATION_HOURS = 72;
+function observationIsOld(timestamp, now = Date.now()) {
+  const observed = Date.parse(timestamp || "");
+  return !Number.isFinite(observed) || observed > now + 300000 ||
+    now - observed > OLD_OBSERVATION_HOURS * 3600000;
+}
+function sourceUpdatedLabel(timestamp) {
+  const date = Date.parse(timestamp || "");
+  return Number.isFinite(date)
+    ? new Date(date).toLocaleString("de-DE", { timeZone: "UTC", dateStyle: "short", timeStyle: "short" }) + " UTC"
+    : "unbekannt";
+}
+
 const ICONS = {
   camera: Camera,
   power_station: Zap,
@@ -108,6 +123,7 @@ export default function TheEyePage({ onNavigate }) {
   const [cameras, setCameras] = useState([]);
   const [earthquakeFeed, setEarthquakeFeed] = useState({ status: "unavailable", events: [], count: 0, as_of: null });
   const [wildfireFeed, setWildfireFeed] = useState({ status: "unavailable", events: [], count: 0, as_of: null });
+  const [sourceClock, setSourceClock] = useState(() => Date.now());
   const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [streamSession, setStreamSession] = useState(null);
   const [streamMessage, setStreamMessage] = useState("");
@@ -284,6 +300,11 @@ export default function TheEyePage({ onNavigate }) {
     loadWildfires();
     const interval = setInterval(loadWildfires, 600000);
     return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  useEffect(() => {
+    const tick = setInterval(() => setSourceClock(Date.now()), 60000);
+    return () => clearInterval(tick);
   }, []);
 
   useEffect(() => {
@@ -1110,6 +1131,13 @@ export default function TheEyePage({ onNavigate }) {
     return null;
   };
 
+  const wildfireObservedDates = wildfireFeed.events
+    .map((fire) => fire.observed_at)
+    .filter((timestamp) => Number.isFinite(Date.parse(timestamp || "")))
+    .sort((a, b) => Date.parse(b) - Date.parse(a));
+  const recentWildfires = wildfireFeed.events.filter((event) => !observationIsOld(event.observed_at, sourceClock)).length;
+  const olderWildfires = wildfireFeed.events.length - recentWildfires;
+
   const dataTrustLabel = dataQuality.overall_trust == null
     ? "UNKNOWN"
     : `${Number(dataQuality.overall_trust).toFixed(1)} / 100 Trust`;
@@ -1383,8 +1411,8 @@ export default function TheEyePage({ onNavigate }) {
                       center={[fire.lat, fire.lng]}
                       radius={7}
                       pathOptions={{
-                        color: wildfireFeed.status === "stale" ? "#8896a5" : "#ff5757",
-                        fillColor: wildfireFeed.status === "stale" ? "#8896a5" : "#ff5757",
+                        color: wildfireFeed.status === "stale" || observationIsOld(fire.observed_at, sourceClock) ? "#8896a5" : "#ff5757",
+                        fillColor: wildfireFeed.status === "stale" || observationIsOld(fire.observed_at, sourceClock) ? "#8896a5" : "#ff5757",
                         fillOpacity: 0.7,
                         weight: 2,
                       }}
@@ -1392,7 +1420,7 @@ export default function TheEyePage({ onNavigate }) {
                       <Popup>
                         <strong>NASA EONET · offene Waldbrandmeldung</strong>
                         <div>{fire.title}</div>
-                        <small>{fire.observed_at} · {fire.approximate ? "ungefähre Position" : "gemeldete Position"} · {wildfireFeed.status === "stale" ? "Daten veraltet" : "keine Echtzeit-Brandbestätigung"}</small>
+                        <small>{fire.observed_at} · {fire.approximate ? "ungefähre Position" : "gemeldete Position"} · {wildfireFeed.status === "stale" ? "Feed veraltet" : observationIsOld(fire.observed_at, sourceClock) ? "Beobachtung älter als 72 h" : "keine Echtzeit-Brandbestätigung"}</small>
                       </Popup>
                     </CircleMarker>
                   ))}
@@ -1453,6 +1481,26 @@ export default function TheEyePage({ onNavigate }) {
             <MetricCard icon={Cpu} value={visibleDevices.length.toLocaleString("de-DE")} label={mapFocus ? "Geräte im Bereich" : "Eigene Geräte"} tone="green" />
             <MetricCard icon={Flame} value={wildfireFeed.status === "unavailable" ? "—" : wildfireFeed.events.length.toLocaleString("de-DE")} label={wildfireFeed.status === "unavailable" ? "Waldbrände · Quelle nicht verfügbar" : wildfireFeed.status === "stale" ? "Waldbrandmeldungen · veraltet" : "Waldbrandmeldungen · NASA EONET"} tone="red" />
             <MetricCard icon={Activity} value={earthquakeFeed.status === "unavailable" ? "—" : earthquakeFeed.count.toLocaleString("de-DE")} label={earthquakeFeed.status === "unavailable" ? "Erdbeben · Quelle nicht verfügbar" : earthquakeFeed.status === "stale" ? "Erdbeben M2,5+ · veraltet" : "Erdbeben M2,5+ · USGS 24 h"} tone="orange" />
+          </section>
+
+          <section className="eye-source-transparency" aria-label="Datenquellen und Aktualität">
+            <div className="eye-source-transparency-head">
+              <strong>DATENQUELLEN & AKTUALITÄT</strong>
+              <small>Abfragezeit ≠ Beobachtungszeit</small>
+            </div>
+            <div className="eye-source-transparency-grid">
+              <div>
+                <strong>USGS · Erdbeben M2,5+</strong>
+                <span>{earthquakeFeed.status === "unavailable" ? "Quelle nicht verfügbar" : earthquakeFeed.status === "stale" ? "Zwischenspeicher veraltet" : "Feed abrufbar"}</span>
+                <small>Zeitraum: vergangene 24 Stunden · Abruf: {sourceUpdatedLabel(earthquakeFeed.as_of)}</small>
+              </div>
+              <div>
+                <strong>NASA EONET · Waldbrandmeldungen</strong>
+                <span>{wildfireFeed.status === "unavailable" ? "Quelle nicht verfügbar" : wildfireFeed.status === "stale" ? "Zwischenspeicher veraltet" : "Offene Ereignisse (nicht Echtzeit)"}</span>
+                <small>Letzte Beobachtung: {sourceUpdatedLabel(wildfireObservedDates[0])} · bis 72 h: {recentWildfires} · älter: {olderWildfires}</small>
+              </div>
+            </div>
+            <small>NASA EONET: „offen“ bedeutet nicht, dass ein Brand aktuell bestätigt ist. Graue Markierungen kennzeichnen ältere Beobachtungen oder einen veralteten Feed.</small>
           </section>
 
           <section className="eye-incident-strip">
