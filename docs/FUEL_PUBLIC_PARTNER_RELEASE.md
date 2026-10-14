@@ -34,7 +34,26 @@ Bevor ein bestehender Serverblock geändert wird, seine Konfiguration und etwaig
 
 Die konkreten Pfade und Serverblöcke müssen anhand der tatsächlichen Serverkonfiguration gewählt werden, nicht aus Beispieldaten geraten.
 
+## Statische Host-Isolation & Freigabeschranken
+
+Eine geprüfte Nginx-Locations-Vorlage liegt unter `deploy/fuel/fuel-partner-static.locations.conf.example`. Sie dient nur als **Konfigurationsvorlage** im bestehenden Webserver. Ohne Verifikation des tatsächlichen Nginx-Serverblocks, DNS, TLS-Zertifikats und öffentlichen Dateipfads darf sie nicht eingebunden werden.
+
+Es darf ausschließlich die freigegebene `fuel-partner.html` veröffentlicht werden. Kein `proxy_pass` zu Backend, Admin, CRM, Simulator oder Zahlungsdiensten. Die Konfiguration muss nach einer lokalen Sicherung mit `nginx -t` validiert werden; erst danach käme ein kontrolliertes Reload in Betracht.
+
+Ein automatischer GitHub-QA-Workflow `.github/workflows/fuel-partner-public-qa.yml` prüft Quelltexte und die Schutzprüfungen, **ohne** zu deployen.
+
 ## Prüfungen nach der Veröffentlichung
+
+Nach **tatsächlich erfolgter, genehmigter** Veröffentlichung im Repository-Stamm ausführen:
+
+```bash
+python3 scripts/fuel_partner_public_gate.py \
+  --origin https://fuel.bidblitz.ae \
+  --html frontend/public/fuel-partner.html
+```
+
+Das Skript kontrolliert TLS/HTTPS, Startseite und statische Datei (inklusive exaktem Inhalt), Kontakt/Pilot-Hinweise sowie die Nichterreichbarkeit von `/api/fuel/status`, `/admin/fuel`, `/.env` und `/.git/config`. Bei jeder Abweichung gibt es einen Fehlerstatus statt einer falschen Erfolgsmeldung. Der Check ersetzt keine vollständige Sicherheitsprüfung.
+
 
 - `https://fuel.bidblitz.ae/` zeigt die Partnerseite und kein DEV- oder Admin-Dashboard.
 - `https://fuel.bidblitz.ae/fuel-partner.html` liefert HTTP 200, HTML und korrektes UTF-8.
