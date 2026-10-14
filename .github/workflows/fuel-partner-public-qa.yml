@@ -1,0 +1,42 @@
+name: Fuel Partner Public QA
+
+on:
+  push:
+    branches:
+      - work/fuel-multi-network-gateway-v1
+    paths:
+      - 'frontend/public/fuel-partner.html'
+      - 'frontend/tests/fuel-partner-public.test.cjs'
+      - 'scripts/fuel_partner_public_gate.py'
+      - 'backend/tests/test_fuel_partner_public_gate.py'
+      - 'deploy/fuel/**'
+      - '.github/workflows/fuel-partner-public-qa.yml'
+  pull_request:
+    paths:
+      - 'frontend/public/fuel-partner.html'
+      - 'frontend/tests/fuel-partner-public.test.cjs'
+      - 'scripts/fuel_partner_public_gate.py'
+      - 'backend/tests/test_fuel_partner_public_gate.py'
+      - 'deploy/fuel/**'
+
+permissions:
+  contents: read
+
+jobs:
+  public-safe-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout existing BidBlitz repository
+        uses: actions/checkout@v4
+      - name: Check static partner page
+        run: node --test frontend/tests/fuel-partner-public.test.cjs
+      - name: Check fail-closed deployment gate
+        run: python3 -m unittest discover -s backend/tests -p 'test_fuel_partner_public_gate.py' -v
+      - name: Verify no accidental runtime dependencies
+        run: |
+          if grep -iE '<script|<form' frontend/public/fuel-partner.html; then
+            echo "Partner public HTML must remain static and without forms." >&2
+            exit 1
+          fi
+# No deployment, no credentials, no GitHub release and no production writes.

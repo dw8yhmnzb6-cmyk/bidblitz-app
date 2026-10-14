@@ -28,6 +28,14 @@ const EVStartChargingPage = lazy(() => import("../pages/EVStartChargingPage"));
 const EVLiveSessionPage = lazy(() => import("../pages/EVLiveSessionPage"));
 const EVChargingMapPage = lazy(() => import("../pages/EVChargingMapPage"));
 const EVChargingHistoryPage = lazy(() => import("../pages/EVChargingHistoryPage"));
+const FuelLandingPage = lazy(() => import("../pages/FuelLandingPage"));
+const FuelOperatorDashboardPage = lazy(() => import("../pages/FuelOperatorDashboardPage"));
+const FuelSimulatorSessionPage = lazy(() => import("../pages/FuelSimulatorSessionPage"));
+const AdminFuelControlCenterPage = lazy(() => import("../pages/AdminFuelControlCenterPage"));
+const AdminFuelProviderDetailPage = lazy(() => import("../pages/AdminFuelProviderDetailPage"));
+const AdminFuelContractEditorPage = lazy(() => import("../pages/AdminFuelContractEditorPage"));
+const AdminFuelReconciliationDetailPage = lazy(() => import("../pages/AdminFuelReconciliationDetailPage"));
+const AdminFuelDkvPreviewPage = lazy(() => import("../pages/AdminFuelDkvPreviewPage"));
 const AdminEVOverviewPage = lazy(() => import("../pages/AdminEVOverviewPage"));
 const AdminEVOperatorsPage = lazy(() => import("../pages/AdminEVOperatorsPage"));
 const AdminEVHardwareVendorsPage = lazy(() => import("../pages/AdminEVHardwareVendorsPage"));
@@ -121,6 +129,36 @@ export function renderSpecialRoutes({
   }
   if (basePath.startsWith("/pay/") && !basePath.startsWith("/pay/checkout/") && !basePath.startsWith("/pay/merchant/") && basePath !== "/pay/docs" && basePath !== "/pay/directory" && basePath !== "/pay/for-business") {
     return <PublicInvoicePaymentPage token={basePath.split("/")[2]} onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/fuel" || basePath === "/fuel/") {
+    return <FuelLandingPage onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/fuel/simulator/")) {
+    return <FuelSimulatorSessionPage sessionId={basePath.split("/")[3]} onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/operator/fuel" || basePath === "/operator/fuel/dashboard") {
+    if (isGuest) return null;
+    return <FuelOperatorDashboardPage onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/admin/fuel" || basePath === "/admin/fuel/overview") {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelControlCenterPage onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/admin/fuel/dkv-preview") {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelDkvPreviewPage onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/admin/fuel/reconciliation/")) {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelReconciliationDetailPage caseId={basePath.split("/")[4]} onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/admin/fuel/provider/") && basePath.endsWith("/edit")) {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelContractEditorPage providerName={basePath.split("/")[4]} onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/admin/fuel/provider/")) {
+    if (user?.role !== "admin") return null;
+    return <AdminFuelProviderDetailPage providerName={basePath.split("/")[4]} onNavigate={handleNavigate} />;
   }
   if (basePath === "/ev" || basePath === "/ev/map") {
     return <EVChargingMapPage onNavigate={handleNavigate} />;
