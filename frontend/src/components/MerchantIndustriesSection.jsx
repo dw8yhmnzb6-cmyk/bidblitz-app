@@ -22,7 +22,6 @@ const INDUSTRIES = [
       "merchant.industry.gastro.feature_4",
       "merchant.industry.gastro.feature_5",
     ],
-    saving: { from: 380, to: 47, labelKey: "merchant.industry.gastro.saving_label" },
     ctaKey: "merchant.industry.gastro.cta",
   },
   {
@@ -38,7 +37,6 @@ const INDUSTRIES = [
       "merchant.industry.retail.feature_4",
       "merchant.industry.retail.feature_5",
     ],
-    saving: { from: 210, to: 29, labelKey: "merchant.industry.retail.saving_label" },
     ctaKey: "merchant.industry.retail.cta",
   },
   {
@@ -54,7 +52,6 @@ const INDUSTRIES = [
       "merchant.industry.service.feature_4",
       "merchant.industry.service.feature_5",
     ],
-    saving: { from: 165, to: 35, labelKey: "merchant.industry.service.saving_label" },
     ctaKey: "merchant.industry.service.cta",
   },
   {
@@ -70,7 +67,6 @@ const INDUSTRIES = [
       "merchant.industry.fitness.feature_4",
       "merchant.industry.fitness.feature_5",
     ],
-    saving: { from: 89, to: 19, labelKey: "merchant.industry.fitness.saving_label" },
     ctaKey: "merchant.industry.fitness.cta",
   },
   {
@@ -86,7 +82,6 @@ const INDUSTRIES = [
       "merchant.industry.fuel.feature_4",
       "merchant.industry.fuel.feature_5",
     ],
-    saving: { from: 420, to: 65, labelKey: "merchant.industry.fuel.saving_label" },
     ctaKey: "merchant.industry.fuel.cta",
   },
   {
@@ -102,7 +97,6 @@ const INDUSTRIES = [
       "merchant.industry.bakery.feature_4",
       "merchant.industry.bakery.feature_5",
     ],
-    saving: { from: 145, to: 25, labelKey: "merchant.industry.bakery.saving_label" },
     ctaKey: "merchant.industry.bakery.cta",
   },
 ];
@@ -244,12 +238,14 @@ const TableQRFlow = () => {
 };
 
 // ─── TESTIMONIAL STATS STRIP ────────────────────────────────────────────────
-const StatsStrip = () => (
+const StatsStrip = () => {
+  const { t } = useI18n();
+  return (
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
     {[
       { value: "142+", label: "Aktive Händler", icon: Users, color: "#00E0FF" },
       { value: "8.2K", label: "Tx pro Tag", icon: TrendingUp, color: "#00E89D" },
-      { value: "0.29%", label: "Niedrigste Gebühr", icon: Percent, color: "#FFB800" },
+      { value: t("merchant.commission_from"), label: t("merchant.commission_label"), icon: Percent, color: "#FFB800" },
       { value: "3 Min", label: "Ø Onboarding", icon: Zap, color: "#FF6B6B" },
     ].map((s, i) => (
       <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
@@ -261,7 +257,8 @@ const StatsStrip = () => (
       </motion.div>
     ))}
   </div>
-);
+  );
+};
 
 // ─── INDUSTRY CARDS GRID ───────────────────────────────────────────────────
 const IndustryCards = ({ onRegister }) => {
@@ -318,14 +315,9 @@ const IndustryCards = ({ onRegister }) => {
           <div className="grid grid-cols-[1fr,auto] gap-4 items-center rounded-2xl p-4"
             style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.03)" }}>
             <div>
-              <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: ind.color, opacity: 0.7 }}>Kostenrechnung</p>
-              <p className="text-[11px] text-white/40 mt-0.5">{t(ind.saving.labelKey) || ind.saving.labelKey}</p>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-[12px] text-red-400/60 line-through">{ind.saving.from}€/Mo</span>
-                <span className="text-2xl font-black" style={{ color: ind.color }}>{ind.saving.to}€</span>
-                <span className="text-[10px] text-white/30">{t("merchant.industry.per_month") || "/Monat"}</span>
-              </div>
-              <p className="text-[10px] mt-1" style={{ color: ind.color }}>{t("merchant.industry.saving_line", { value: Math.round((1 - ind.saving.to / ind.saving.from) * 100) }) || `Spart ${Math.round((1 - ind.saving.to / ind.saving.from) * 100)}% gegenüber klassischem Kassensystem`}</p>
+              <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: ind.color, opacity: 0.7 }}>{t("merchant.commission_label")}</p>
+              <p className="text-2xl font-black mt-1.5" style={{ color: ind.color }}>{t("merchant.commission_from")}</p>
+              <p className="text-[11px] text-white/50 mt-2">{t("merchant.commission_terms")}</p>
             </div>
             <motion.button whileTap={{ scale: 0.95 }} onClick={onRegister}
               className="px-4 py-3 rounded-xl text-[11px] font-black flex items-center gap-1.5 shrink-0"

@@ -5,7 +5,7 @@
  * Flow: load station detail → show tariff → confirm → POST /api/ev/start →
  * navigate to /ev/session/:session_id (live view).
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ export default function EVStartChargingPage({ chargePointId, connectorId, onNavi
   const [maxAmount, setMaxAmount] = useState(50);
   const [walletBalance, setWalletBalance] = useState(null);
   const [error, setError] = useState(null);
+  const startAttemptKeyRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -44,21 +45,32 @@ export default function EVStartChargingPage({ chargePointId, connectorId, onNavi
   }, [chargePointId]);
 
   const startCharging = async () => {
+    if (!startAttemptKeyRef.current) {
+      startAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `ev-start-${crypto.randomUUID()}`
+        : `ev-start-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = startAttemptKeyRef.current;
     setStarting(true);
     setError(null);
     try {
       const res = await fetch(`${API}/api/ev/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         credentials: "include",
         body: JSON.stringify({
           charge_point_id: chargePointId,
           connector_id: Number(connectorId) || 1,
           max_amount: Number(maxAmount),
+          idempotency_key: idempotencyKey,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Start fehlgeschlagen");
+      startAttemptKeyRef.current = null;
       toast.success("Ladevorgang gestartet");
       onNavigate(`/ev/session/${data.session_id}`);
     } catch (e) {

@@ -9,20 +9,32 @@ Endpoints (admin-only):
 - GET  /api/admin/wallet/transactions    → list admin-initiated transactions
 """
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import hashlib
+import hmac
+import json
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import credit_wallet, debit_wallet, sync_wallet_balance, TransactionType
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.security import verify_password
+from core.canonical_wallet_service import request_hash_for
+from core.money import to_minor, from_minor
+from core.performance import invalidate_user_cache
 
 router = APIRouter(prefix="/api/admin/wallet", tags=["admin-wallet"])
+
+
+def _hash_admin_stepup_otp(code: str) -> str:
+    return hashlib.sha256(f"admin-wallet-stepup:{code}".encode("utf-8")).hexdigest()
 
 
 async def _require_admin(request: Request):
@@ -33,22 +45,38 @@ async def _require_admin(request: Request):
 
 
 async def _verify_admin_step_up(admin: dict, password: str, otp_code: Optional[str] = None):
-    admin_db = await db.users.find_one({"_id": admin["_id"]}, {"password_hash": 1, "password": 1, "two_factor_enabled": 1})
-    password_hash = ((admin_db or {}).get("password_hash") or (admin_db or {}).get("password") or "").strip()
-    if not password or not password_hash or not verify_password(password, password_hash):
+    admin_db = await db.users.find_one({"_id": admin["_id"]}) or {}
+    if admin_db.get("role") not in {"admin", "super_admin"}:
+        raise HTTPException(403, "Admin-Rechte erforderlich.")
+    password_hash = (admin_db.get("password_hash") or admin_db.get("password") or "").strip()
+    try:
+        password_ok = bool(password and password_hash and verify_password(password, password_hash))
+    except (ValueError, TypeError):
+        password_ok = False
+    if not password_ok:
         raise HTTPException(403, "Admin-Passwort ungültig.")
 
-    if (admin_db or {}).get("two_factor_enabled"):
+    if admin_db.get("two_factor_enabled"):
         if not otp_code:
             raise HTTPException(403, "2FA-Code erforderlich.")
-        otp_doc = await db.otp_codes.find_one({
-            "user_id": str(admin["_id"]),
-            "purpose": "wallet_repair_stepup",
+        # Consume one attempt atomically, then consume the matching OTP once.
+        otp_doc = await db.otp_codes.find_one_and_update({
+            "user_id": str(admin["_id"]), "purpose": "wallet_repair_stepup",
             "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
-        })
-        if not otp_doc or otp_doc.get("code") != otp_code:
-            raise HTTPException(403, "2FA-Code ungültig.")
-        await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+            "attempts": {"$lt": 3},
+        }, {"$inc": {"attempts": 1}}, return_document=ReturnDocument.AFTER)
+        if not otp_doc:
+            raise HTTPException(403, "2FA-Code ungültig oder abgelaufen.")
+        stored_hash = str(otp_doc.get("code_hash") or "")
+        if stored_hash:
+            otp_ok = hmac.compare_digest(stored_hash, _hash_admin_stepup_otp(str(otp_code)))
+        else:
+            otp_ok = hmac.compare_digest(str(otp_doc.get("code") or ""), str(otp_code))
+        if not otp_ok:
+            raise HTTPException(403, "2FA-Code ungültig oder abgelaufen.")
+        consumed = await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+        if consumed.deleted_count != 1:
+            raise HTTPException(403, "2FA-Code wurde bereits verwendet.")
 
 
 async def _build_repair_context(user_id: str):
@@ -68,16 +96,6 @@ async def _canonical_admin_balances() -> tuple[float, float]:
     canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
     balance = float((canonical_admin or {}).get("balance", 0) or 0)
     balance_blz = float((canonical_admin or {}).get("balance_blz", 0) or 0)
-    if round(balance, 2) == 2622000000.00 and round(balance_blz, 2) == 0.0:
-        audit_row = await db.audit_log.find_one(
-            {
-                "user_id": "69cface7afddbc3de2cabb39",
-                "details.new_balance": {"$lt": 1000000},
-            },
-            sort=[("created_at", -1)],
-        )
-        if audit_row:
-            balance = float((audit_row.get("details") or {}).get("new_balance", balance) or balance)
     return (
         balance,
         balance_blz,
@@ -499,171 +517,214 @@ async def user_login_history(user_id: str, request: Request, limit: int = 20):
     }
 
 
-class CreditReq(BaseModel):
-    user_id: str = Field(..., description="Target user _id (string)")
-    amount_eur: float = 0
-    amount_blz: float = 0
+class AdminWalletAmounts(BaseModel):
+    amount_eur: float = Field(default=0, ge=0, le=100000, allow_inf_nan=False)
+    amount_blz: float = Field(default=0, ge=0, le=100000, allow_inf_nan=False)
     reason: str = Field(..., min_length=3, max_length=240)
     idempotency_key: Optional[str] = None
+    admin_password: str = Field(default="", max_length=200, repr=False)
+    otp_code: Optional[str] = Field(default=None, max_length=10, repr=False)
+
+    @model_validator(mode="after")
+    def validate_amounts(self):
+        # These are distinct assets: one command settles exactly one asset.
+        if (self.amount_eur > 0) == (self.amount_blz > 0):
+            raise ValueError("Bitte genau einen Betrag angeben: EUR oder BLZ.")
+        self.amount_eur = from_minor(to_minor(self.amount_eur))
+        self.amount_blz = from_minor(to_minor(self.amount_blz))
+        if max(self.amount_eur, self.amount_blz) < 0.01:
+            raise ValueError("Mindestbetrag: 0,01.")
+        self.reason = self.reason.strip()
+        if len(self.reason) < 3:
+            raise ValueError("Ein nachvollziehbarer Buchungsgrund ist erforderlich.")
+        return self
 
 
-class DebitReq(BaseModel):
+class CreditReq(AdminWalletAmounts):
     user_id: str
-    amount_eur: float = 0
-    amount_blz: float = 0
-    reason: str = Field(..., min_length=3, max_length=240)
-    idempotency_key: Optional[str] = None
 
 
-class SelfTopupReq(BaseModel):
-    amount_eur: float = 0
-    amount_blz: float = 0
-    reason: str = Field(..., min_length=3, max_length=240)
-    idempotency_key: Optional[str] = None
+class DebitReq(CreditReq):
+    pass
 
 
-async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
-    """BLZ uses users.balance_blz, same source as mining/rewards UI."""
-    if amount <= 0:
-        return
-    query = {"id": user_id}
-    try:
-        query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
-    except Exception:
-        pass
-    await db.users.update_one(query, {"$inc": {"balance_blz": amount}})
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "admin_credit_blz",
-        "amount_blz": amount,
-        "amount_eur": 0.0,
-        "description": reason,
-        "admin_id": admin_id,
+class SelfTopupReq(AdminWalletAmounts):
+    pass
+
+
+def _required_idempotency_key(request: Request, supplied: Optional[str], operation: str) -> str:
+    header = (request.headers.get("Idempotency-Key") or "").strip()
+    key = (supplied or header).strip()
+    if not key or len(key) > 200:
+        raise HTTPException(400, f"Gültiger Idempotency-Key für {operation} erforderlich (max. 200 Zeichen).")
+    if header and header != key:
+        raise HTTPException(400, "Idempotency-Keys stimmen nicht überein.")
+    return key
+
+
+async def _target_user(user_id: str):
+    target = await db.users.find_one({"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id})
+    if not target:
+        target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(404, "User nicht gefunden.")
+    return target
+
+
+async def _claim_blz_operation(key: str, operation: str, payload: dict, user_id: str):
+    request_hash = request_hash_for(operation, {"payload": json.dumps(payload, sort_keys=True)})
+    doc = {"_id": key, "idempotency_key": key, "operation": operation,
+           "request_hash": request_hash, "user_id": user_id, "status": "pending",
+           "created_at": datetime.now(timezone.utc).isoformat(), "admin_blz_version": 2}
+    existing = await db.payment_idempotency.find_one({"idempotency_key": key})
+    if not existing:
+        try:
+            await db.payment_idempotency.insert_one(doc)
+            return doc, True
+        except DuplicateKeyError:
+            existing = await db.payment_idempotency.find_one({"idempotency_key": key})
+    if not existing or existing.get("request_hash") != request_hash:
+        raise HTTPException(409, "Idempotency-Key wurde bereits mit anderen Daten verwendet.")
+    if existing.get("status") == "failed":
+        raise HTTPException(409, "Diese Buchung ist fehlgeschlagen; zuerst den Buchungsstatus prüfen.")
+    return existing, False
+
+
+async def _mutate_blz(user_id: str, amount: float, admin_id: str, reason: str,
+                      idempotency_key: str, direction: str, audit_metadata: Optional[dict] = None):
+    """Use the existing per-user marker pattern for the separate BLZ counter.
+
+    Write the intent before the counter. Only the claimant may apply the delta;
+    retries with a persisted marker can finish the journal after an interrupted write.
+    An ambiguous pre-marker crash remains blocked for manual investigation.
+    """
+    target = await _target_user(user_id)
+    user_id = str(target["_id"])
+    amount = from_minor(to_minor(amount))
+    payload = {"user_id": user_id, "amount": amount, "admin_id": admin_id, "reason": reason}
+    claim, claimed_now = await _claim_blz_operation(idempotency_key, f"admin_wallet_blz_{direction}", payload, user_id)
+    if claim.get("status") == "completed":
+        return claim["response"]
+    marker = "ADMIN-BLZ-" + hashlib.sha256(idempotency_key.encode()).hexdigest()
+    marker_field = "admin_grant_markers"
+    applied = marker in (target.get(marker_field) or [])
+    if not claimed_now and not applied:
+        raise HTTPException(409, "BLZ-Buchung noch offen. Gleichen Auftrag erneut prüfen; keinen neuen Auftrag anlegen.")
+    tx = {"_id": marker, "id": marker, "user_id": user_id, "type": f"admin_{direction}_blz",
+          "amount_blz": amount if direction == "credit" else -amount, "amount_eur": 0.0,
+          "currency": "BLZ", "direction": direction, "description": reason, "admin_id": admin_id,
+          "idempotency_key": idempotency_key, "status": "pending", "created_at": claim["created_at"],
+          "metadata": audit_metadata or {}}
+    await db.transactions.update_one({"_id": marker}, {"$setOnInsert": tx}, upsert=True)
+    if not applied:
+        selector = {"_id": target["_id"], marker_field: {"$ne": marker}}
+        if direction == "debit":
+            selector["balance_blz"] = {"$gte": amount}
+        result = await db.users.update_one(selector, {
+            "$inc": {"balance_blz": amount if direction == "credit" else -amount},
+            "$addToSet": {marker_field: marker},
+        })
+        if result.modified_count != 1:
+            # Only the original claimant reaches this branch. No retry can spend
+            # newly arriving funds after this operation has been declined.
+            await db.transactions.update_one({"_id": marker}, {"$set": {"status": "failed"}})
+            await db.payment_idempotency.update_one({"idempotency_key": idempotency_key}, {"$set": {"status": "failed"}})
+            raise HTTPException(400, "BLZ-Buchung fehlgeschlagen: Guthaben oder Empfänger prüfen.")
+    latest = await db.users.find_one({"_id": target["_id"]})
+    response = {"transaction_id": marker, "new_balance": float(latest.get("balance_blz", 0)), "status": "completed"}
+    await db.transactions.update_one({"_id": marker}, {"$set": {"status": "completed"}})
+    await db.payment_idempotency.update_one({"idempotency_key": idempotency_key}, {
+        "$set": {"status": "completed", "response": response, "completed_at": datetime.now(timezone.utc).isoformat()}})
+    invalidate_user_cache(target.get("email", ""))
+    return response
+
+
+async def _queue_admin_credit(admin, target, req, key, reference, metadata):
+    """Reuse the existing repair approval queue for large manual EUR credits."""
+    repair_id = "ADMIN-CREDIT-" + hashlib.sha256(key.encode()).hexdigest()
+    payload = {"user_id": str(target["_id"]), "amount_eur": req.amount_eur, "reason": req.reason}
+    doc = {"_id": repair_id, "repair_id": repair_id, "user_id": str(target["_id"]),
+           "action_type": "create_adjustment_entry", "request_kind": "admin_wallet_credit",
+           "requested_by": str(admin["_id"]), "requested_by_email": admin.get("email", ""),
+           "recipient_email": target.get("email", ""), "reason": req.reason,
+           "before_users_balance": float(target.get("balance", 0)),
+           "after_users_balance": float(target.get("balance", 0)) + req.amount_eur,
+           "status": "pending_approval", "approved_at": None, "approved_by": None,
+           "created_at": datetime.now(timezone.utc).isoformat(), "request_payload": payload,
+           "audit_metadata": {**metadata, "adjustment_amount": req.amount_eur,
+                              "settlement_key": key, "reference": reference}}
+    await db.wallet_repair_actions.update_one({"_id": repair_id}, {"$setOnInsert": doc}, upsert=True)
+    saved = await db.wallet_repair_actions.find_one({"_id": repair_id})
+    if saved.get("request_payload") != payload:
+        raise HTTPException(409, "Idempotency-Key wurde bereits mit anderen Daten verwendet.")
+    return {"ok": True, "pending_approval": saved["status"] != "approved", "repair_id": repair_id,
+            "message": "Gutschrift zur unabhängigen Admin-Freigabe gespeichert.", "status": saved["status"]}
+
+
+async def _execute_admin_mutation(req, request: Request, operation: str, admin=None):
+    admin = admin or await _require_admin(request)
+    key = _required_idempotency_key(request, req.idempotency_key, operation)
+    await _verify_admin_step_up(admin, req.admin_password, req.otp_code)
+    target = await _target_user(str(admin["_id"]) if operation == "self_topup" else req.user_id)
+    user_id, admin_id = str(target["_id"]), str(admin["_id"])
+    idem_key = f"admin_wallet:{admin_id}:" + hashlib.sha256(key.encode()).hexdigest()
+    ip, ua = get_client_info(request)
+    metadata = {"admin_id": admin_id, "admin_email": admin.get("email", ""),
+                "audit_metadata": {"route": f"admin_wallet.{operation}", "ip": ip, "user_agent": ua}}
+    # Bind all intent fields, including reason and asset, before any money moves.
+    payload = {"user_id": user_id, "operation": operation, "amount_eur": req.amount_eur,
+               "amount_blz": req.amount_blz, "reason": req.reason}
+    reference = "ADMIN-" + request_hash_for("admin_wallet", {"payload": json.dumps(payload, sort_keys=True)})
+    intent_key = f"admin_intent:{idem_key}"
+    await db.payment_idempotency.update_one({"_id": intent_key}, {"$setOnInsert": {
+        "_id": intent_key, "idempotency_key": intent_key, "operation": "admin_intent",
+        "status": "reserved", "user_id": admin_id, "request_payload": payload,
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-
-
-async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str):
-    if amount <= 0:
-        return
-    query = {"id": user_id}
-    try:
-        query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
-    except Exception:
-        pass
-    user = await db.users.find_one(query, {"_id": 1, "balance_blz": 1})
-    if not user or (user.get("balance_blz", 0) or 0) < amount:
-        raise HTTPException(400, "Nutzer hat nicht genug BLZ.")
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "admin_debit_blz",
-        "amount_blz": -amount,
-        "amount_eur": 0.0,
-        "description": reason,
-        "admin_id": admin_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }}, upsert=True)
+    intent = await db.payment_idempotency.find_one({"_id": intent_key})
+    if intent.get("request_payload") != payload:
+        raise HTTPException(409, "Idempotency-Key wurde bereits mit anderen Daten verwendet.")
+    direction = "debit" if operation == "debit" else "credit"
+    if req.amount_eur > 0:
+        from routes.wallet import ADMIN_APPROVAL_AMOUNT
+        # Queue decisions remain authoritative even if a retry changes the amount.
+        queued = await db.wallet_repair_actions.find_one({"_id": "ADMIN-CREDIT-" + hashlib.sha256(idem_key.encode()).hexdigest()})
+        if queued or (direction == "credit" and req.amount_eur > ADMIN_APPROVAL_AMOUNT):
+            if direction != "credit":
+                raise HTTPException(409, "Idempotency-Key gehört bereits zu einer Gutschrift.")
+            return await _queue_admin_credit(admin, target, req, idem_key, reference, metadata)
+        fn = debit_wallet if direction == "debit" else credit_wallet
+        result = await fn(user_id=user_id, amount=req.amount_eur,
+                          tx_type=TransactionType.ADMIN_DEBIT if direction == "debit" else TransactionType.ADMIN_CREDIT,
+                          description=req.reason, reference=reference, metadata=metadata, idempotency_key=idem_key)
+        if not result.success:
+            raise HTTPException(409 if str(getattr(result.status, "value", result.status)) in {"pending", "reconciliation_required"} else 400,
+                                result.error or "Buchung fehlgeschlagen.")
+        tx_id = result.transaction_id
+    else:
+        result = await _mutate_blz(user_id, req.amount_blz, admin_id, req.reason, idem_key, direction, metadata)
+        tx_id = result["transaction_id"]
+    invalidate_user_cache(target.get("email", ""))
+    fresh = await db.users.find_one({"_id": target["_id"]})
+    return {"ok": True, "tx_id": tx_id, "transaction_id": tx_id, "user_email": target.get("email"),
+            f"{'debited' if direction == 'debit' else 'credited'}_eur": req.amount_eur,
+            f"{'debited' if direction == 'debit' else 'credited'}_blz": req.amount_blz,
+            "balance_eur": float(fresh.get("balance", 0)), "balance_blz": float(fresh.get("balance_blz", 0))}
 
 
 @router.post("/credit")
 async def credit_user(req: CreditReq, request: Request):
-    admin = await _require_admin(request)
-    admin_id = str(admin.get("_id") or admin.get("id"))
-
-    if req.amount_eur <= 0 and req.amount_blz <= 0:
-        raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
-
-    # Validate user exists
-    from bson import ObjectId
-    uq = {"$or": [{"id": req.user_id}]}
-    try:
-        uq["$or"].append({"_id": ObjectId(req.user_id)})
-    except Exception:
-        pass
-    target = await db.users.find_one(uq, {"_id": 1, "email": 1, "username": 1})
-    if not target:
-        raise HTTPException(404, "User nicht gefunden.")
-
-    eur_result = None
-    if req.amount_eur > 0:
-        eur_result = await credit_wallet(
-            user_id=req.user_id,
-            amount=req.amount_eur,
-            tx_type=TransactionType.ADMIN_CREDIT,
-            description=req.reason,
-            metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.credit"}},
-            idempotency_key=req.idempotency_key,
-        )
-        if not eur_result.success:
-            raise HTTPException(400, eur_result.error or "Credit fehlgeschlagen.")
-
-    if req.amount_blz > 0:
-        await _credit_blz(req.user_id, req.amount_blz, admin_id, req.reason)
-
-    return {
-        "ok": True,
-        "credited_eur": req.amount_eur,
-        "credited_blz": req.amount_blz,
-        "user_email": target.get("email"),
-        "tx_id": eur_result.transaction_id if eur_result else None,
-    }
+    return await _execute_admin_mutation(req, request, "credit")
 
 
 @router.post("/debit")
 async def debit_user(req: DebitReq, request: Request):
-    admin = await _require_admin(request)
-    admin_id = str(admin.get("_id") or admin.get("id"))
-
-    if req.amount_eur <= 0 and req.amount_blz <= 0:
-        raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
-
-    if req.amount_eur > 0:
-        res = await debit_wallet(
-            user_id=req.user_id,
-            amount=req.amount_eur,
-            tx_type=TransactionType.ADMIN_DEBIT,
-            description=f"Abzug: {req.reason}",
-            metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.debit"}},
-            idempotency_key=req.idempotency_key,
-        )
-        if not res.success:
-            raise HTTPException(400, res.error or "Debit fehlgeschlagen.")
-
-    if req.amount_blz > 0:
-        await _debit_blz(req.user_id, req.amount_blz, admin_id, f"Abzug: {req.reason}")
-
-    return {"ok": True, "debited_eur": req.amount_eur, "debited_blz": req.amount_blz}
+    return await _execute_admin_mutation(req, request, "debit")
 
 
 @router.post("/self-topup")
 async def self_topup(req: SelfTopupReq, request: Request):
-    admin = await _require_admin(request)
-    admin_id = str(admin.get("_id") or admin.get("id"))
-
-    if req.amount_eur <= 0 and req.amount_blz <= 0:
-        raise HTTPException(400, "Bitte EUR- oder BLZ-Betrag angeben.")
-
-    if req.amount_eur > 0:
-        await credit_wallet(
-            user_id=admin_id,
-            amount=req.amount_eur,
-            tx_type=TransactionType.ADMIN_CREDIT,
-            description=req.reason,
-            metadata={"self_topup": True, "audit_metadata": {"route": "admin_wallet.self_topup"}},
-            idempotency_key=req.idempotency_key,
-        )
-
-    if req.amount_blz > 0:
-        await _credit_blz(admin_id, req.amount_blz, admin_id, req.reason)
-
-    # Return new balance from canonical user wallet fields
-    fresh_admin = await db.users.find_one({"_id": ObjectId(admin_id)}, {"_id": 0, "balance": 1, "balance_blz": 1}) or {}
-    return {
-        "ok": True,
-        "balance_eur": float(fresh_admin.get("balance", 0) or 0),
-        "balance_blz": float(fresh_admin.get("balance_blz", 0) or 0),
-    }
+    return await _execute_admin_mutation(req, request, "self_topup")
 
 
 @router.get("/transactions")
@@ -839,7 +900,7 @@ class RepairPreviewReq(BaseModel):
     user_id: str
     action_type: str = Field(..., min_length=2, max_length=80)
     reason: str = Field(..., min_length=3, max_length=400)
-    adjustment_amount: float = 0
+    adjustment_amount: float = Field(default=0, ge=-100000, le=100000, allow_inf_nan=False)
     target_wallet_id: Optional[str] = None
 
 
@@ -886,7 +947,7 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
         "before_users_balance": row["users_balance"],
         "before_wallets_balance": row["wallets_balance"],
         "after_users_balance": (
-            round(row["transactions_sum"] + row["wallet_transactions_sum"], 2)
+            row["users_balance"]
             if req.action_type == "sync_displayed_balance_to_canonical_users_balance"
             else row["users_balance"] if req.action_type != "create_adjustment_entry"
             else round(row["users_balance"] + float(req.adjustment_amount or 0), 2)
@@ -894,7 +955,9 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
         "after_wallets_balance": row["wallets_balance"],
         "delta": row["delta"],
         "reason": req.reason,
-        "approved_by": admin.get("email", "admin@bidblitz.ae"),
+        "requested_by": str(admin["_id"]),
+        "requested_by_email": admin.get("email", ""),
+        "approved_by": None,
         "approved_at": None,
         "status": "pending_approval",
         "audit_metadata": {
@@ -906,7 +969,7 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
             "user_agent": ua,
             "target_wallet_id": req.target_wallet_id,
             "adjustment_amount": float(req.adjustment_amount or 0),
-            "target_balance": round(row["transactions_sum"] + row["wallet_transactions_sum"], 2),
+            "target_balance": row["users_balance"],
         },
     }
     pending_response = {**pending}
@@ -926,25 +989,33 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
 @router.post("/reconciliation/repair/request-2fa")
 async def repair_request_2fa(request: Request):
     admin = await _require_admin(request)
-    if not admin.get("two_factor_enabled"):
+    # Read current security settings rather than trusting a serialized user.
+    current = await db.users.find_one({"_id": admin["_id"]}) or {}
+    if not current.get("two_factor_enabled"):
         return {"ok": True, "two_factor_required": False}
     from routes.two_factor import generate_otp, send_otp_email, OTP_EXPIRY_MINUTES
-
-    otp = generate_otp()
     now = datetime.now(timezone.utc)
-    expires = now.isoformat()
-    expires_at = (now.replace() + __import__('datetime').timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+    recent = await db.otp_codes.find_one({
+        "user_id": str(admin["_id"]), "purpose": "wallet_repair_stepup",
+        "created_at": {"$gt": (now - timedelta(seconds=60)).isoformat()},
+    })
+    if recent:
+        raise HTTPException(429, "Bitte vor dem nächsten Code 60 Sekunden warten.")
+    otp = generate_otp()
     await db.otp_codes.delete_many({"user_id": str(admin["_id"]), "purpose": "wallet_repair_stepup"})
     await db.otp_codes.insert_one({
         "user_id": str(admin["_id"]),
-        "code": otp,
+        "code_hash": _hash_admin_stepup_otp(otp),
         "purpose": "wallet_repair_stepup",
         "attempts": 0,
-        "created_at": expires,
-        "expires_at": expires_at,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
     })
     sent = await send_otp_email(admin.get("email", ""), otp, "wallet_repair", admin.get("name", ""))
-    return {"ok": True, "two_factor_required": True, "email_sent": sent, "_test_otp": otp if not sent else None}
+    if not sent:
+        raise HTTPException(503, "2FA-Code konnte nicht zugestellt werden. Bitte später erneut versuchen.")
+    return {"ok": True, "two_factor_required": True, "email_sent": True}
+
 
 
 @router.post("/reconciliation/repair/approve")
@@ -953,14 +1024,30 @@ async def approve_repair(req: RepairApproveReq, request: Request):
     repair = await db.wallet_repair_actions.find_one({"repair_id": req.repair_id})
     if not repair:
         raise HTTPException(404, "Repair nicht gefunden.")
-    if repair.get("status") != "pending_approval":
-        raise HTTPException(400, "Repair ist nicht mehr freigabebereit.")
+    await _verify_admin_step_up(admin, req.admin_password, req.otp_code)
+    if repair.get("status") == "approved":
+        repair.pop("_id", None)
+        return {"ok": True, "repair": repair, "idempotent_replay": True}
+    if repair.get("status") not in {"pending_approval", "approval_processing"}:
+        raise HTTPException(409, "Repair ist nicht mehr freigabebereit.")
     if not req.reason.strip():
         raise HTTPException(400, "Grund erforderlich.")
-
-    await _verify_admin_step_up(admin, req.admin_password, req.otp_code)
-
     action_type = repair.get("action_type")
+    from routes.wallet import ADMIN_APPROVAL_AMOUNT
+    amount = float((repair.get("audit_metadata") or {}).get("adjustment_amount") or 0)
+    if action_type == "create_adjustment_entry" and abs(amount) > ADMIN_APPROVAL_AMOUNT:
+        requester = repair.get("requested_by") or repair.get("approved_by")
+        if not requester or requester in {str(admin["_id"]), admin.get("email")} or repair["user_id"] == str(admin["_id"]):
+            raise HTTPException(403, "Größere Anpassungen benötigen einen unabhängigen zweiten Admin.")
+    if repair.get("status") == "pending_approval":
+        claimed = await db.wallet_repair_actions.update_one(
+            {"repair_id": req.repair_id, "status": "pending_approval"},
+            {"$set": {"status": "approval_processing", "processing_by": str(admin["_id"])}},
+        )
+        if claimed.modified_count != 1:
+            raise HTTPException(409, "Freigabe wird bereits verarbeitet.")
+    elif repair.get("processing_by") != str(admin["_id"]):
+        raise HTTPException(409, "Freigabe wird bereits von einem anderen Admin verarbeitet.")
     if action_type == "create_adjustment_entry":
         amount = float((repair.get("audit_metadata") or {}).get("adjustment_amount") or 0)
         if amount == 0:
@@ -972,7 +1059,7 @@ async def approve_repair(req: RepairApproveReq, request: Request):
                 user_id=repair["user_id"],
                 amount=amount,
                 tx_type=TransactionType.ADMIN_CREDIT,
-                description=f"Wallet Repair Adjustment: {req.reason}",
+                description=f"Wallet Repair Adjustment: {repair['reason']}",
                 source="wallet_repair_adjustment",
                 metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.approve"}},
                 idempotency_key=f"repair:{req.repair_id}",
@@ -982,7 +1069,7 @@ async def approve_repair(req: RepairApproveReq, request: Request):
                 user_id=repair["user_id"],
                 amount=abs(amount),
                 tx_type=TransactionType.ADMIN_DEBIT,
-                description=f"Wallet Repair Adjustment: {req.reason}",
+                description=f"Wallet Repair Adjustment: {repair['reason']}",
                 metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.approve"}},
                 idempotency_key=f"repair:{req.repair_id}",
             )
@@ -991,17 +1078,8 @@ async def approve_repair(req: RepairApproveReq, request: Request):
     elif action_type == "ignore_legacy_wallet":
         await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"legacy_ignored": True, "legacy_ignored_at": datetime.now(timezone.utc).isoformat(), "legacy_ignored_by": admin.get("email", "")}})
     elif action_type == "sync_displayed_balance_to_canonical_users_balance":
-        target_balance = float((repair.get("audit_metadata") or {}).get("target_balance") or repair.get("after_users_balance") or repair.get("before_users_balance") or 0)
-        sync_result = await sync_wallet_balance(
-            user_id=repair["user_id"],
-            target_balance=target_balance,
-            description=f"Wallet Reconciliation Sync: {req.reason}",
-            reference=f"SYNC-{req.repair_id}",
-            metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.sync"}},
-            idempotency_key=f"repair-sync:{req.repair_id}",
-        )
-        if not sync_result.success:
-            raise HTTPException(400, sync_result.error or "Sync fehlgeschlagen.")
+        # A display repair must never mint/burn EUR from incomplete legacy sums.
+        # Monetary corrections require an explicit create_adjustment_entry amount.
         await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"display_source": "users.balance", "display_sync_reviewed_at": datetime.now(timezone.utc).isoformat(), "display_sync_reviewed_by": admin.get("email", "")}})
     elif action_type == "merge_duplicate_wallet":
         target_wallet_id = (repair.get("audit_metadata") or {}).get("target_wallet_id")
@@ -1030,6 +1108,8 @@ async def approve_repair(req: RepairApproveReq, request: Request):
         details={"action": "wallet_repair_approved", "repair_id": req.repair_id, "action_type": action_type, "target_user_id": repair["user_id"]},
         severity="warn" if action_type in {"create_adjustment_entry", "merge_duplicate_wallet"} else "info",
     )
+    target = await _target_user(repair["user_id"])
+    invalidate_user_cache(target.get("email", ""))
     updated = await db.wallet_repair_actions.find_one({"repair_id": req.repair_id}, {"_id": 0})
     return {"ok": True, "repair": updated, "automatic_changes_performed": "NO" if action_type != "create_adjustment_entry" else "NO_AUTO_ONLY_MANUAL_APPROVED"}
 

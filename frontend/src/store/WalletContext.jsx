@@ -75,7 +75,7 @@ function normalizeTxn(t) {
     id: t.id,
     type: t.type,
     amount: t.amount,
-    status: t.status || 'completed',
+    status: t.status ? String(t.status).toLowerCase() : 'unknown',
     date: t.created_at || t.date || new Date().toISOString(),
     merchantName: t.merchant_name || t.merchantName || t.description || '',
     category: t.category || t.type || 'payment',
@@ -83,6 +83,11 @@ function normalizeTxn(t) {
     reference: t.reference || '',
     description: t.description || '',
   };
+}
+
+function normalizePositiveAmount(amount) {
+  const value = Number(amount);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 const WalletContext = createContext(null);
@@ -120,8 +125,13 @@ export function WalletProvider({ children }) {
   }, []);
 
   const addMoney = useCallback(async (amount, paymentMethod = 'card') => {
+    const safeAmount = normalizePositiveAmount(amount);
+    if (safeAmount === null) {
+      return { success: false, error: 'Ungültiger Betrag. Aufladung wurde nicht ausgeführt.' };
+    }
+
     try {
-      const result = await api.topUp({ amount, payment_method: paymentMethod });
+      const result = await api.topUp({ amount: safeAmount, payment_method: paymentMethod });
       dispatch({ type: ACTIONS.UPDATE_BALANCE, payload: result.new_balance });
       if (result.transaction) {
         dispatch({ type: ACTIONS.ADD_TRANSACTION, payload: result.transaction });
@@ -133,8 +143,22 @@ export function WalletProvider({ children }) {
   }, []);
 
   const pay = useCallback(async (amount, merchantName, merchantId) => {
+    const safeAmount = normalizePositiveAmount(amount);
+    if (safeAmount === null) {
+      return { success: false, error: 'Ungültiger Betrag. Zahlung wurde nicht ausgeführt.' };
+    }
+
+    const safeMerchantId = String(merchantId || '').trim();
+    if (!safeMerchantId) {
+      return { success: false, error: 'Händler-ID fehlt. Zahlung wurde nicht ausgeführt.' };
+    }
+
     try {
-      const result = await api.pay({ amount, merchant_id: merchantId || 'default', description: `Payment to ${merchantName}` });
+      const result = await api.pay({
+        amount: safeAmount,
+        merchant_id: safeMerchantId,
+        description: `Payment to ${merchantName || safeMerchantId}`,
+      });
       dispatch({ type: ACTIONS.UPDATE_BALANCE, payload: result.new_balance });
       if (result.transaction) {
         dispatch({ type: ACTIONS.ADD_TRANSACTION, payload: result.transaction });
@@ -150,8 +174,18 @@ export function WalletProvider({ children }) {
   }, []);
 
   const sendMoney = useCallback(async (amount, recipientEmail, description) => {
+    const safeAmount = normalizePositiveAmount(amount);
+    if (safeAmount === null) {
+      return { success: false, error: 'Ungültiger Betrag. Überweisung wurde nicht ausgeführt.' };
+    }
+
+    const safeRecipientEmail = String(recipientEmail || '').trim();
+    if (!safeRecipientEmail) {
+      return { success: false, error: 'Empfänger fehlt. Überweisung wurde nicht ausgeführt.' };
+    }
+
     try {
-      const result = await api.send({ amount, recipient_email: recipientEmail, description });
+      const result = await api.send({ amount: safeAmount, recipient_email: safeRecipientEmail, description });
       dispatch({ type: ACTIONS.UPDATE_BALANCE, payload: result.new_balance });
       if (result.transaction) {
         dispatch({ type: ACTIONS.ADD_TRANSACTION, payload: result.transaction });

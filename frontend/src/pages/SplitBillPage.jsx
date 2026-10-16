@@ -1,33 +1,47 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, Plus, Loader2, Check, Euro, UserPlus, Trash2 } from "lucide-react";
-import { useI18n } from "../store/I18nContext";
+import { ArrowLeft, Users, Plus, Loader2, Check, UserPlus, Trash2 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const SplitBillPage = ({ onBack }) => {
-  const { t } = useI18n();
   const [bills, setBills] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", total: "", participants: [""] });
   const [creating, setCreating] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadBills = async () => {
+      try {
+        const res = await fetch(`${API}/api/split/my-bills`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setBills([...(data.created || []), ...(data.participating || [])]);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadBills();
+    return () => { cancelled = true; };
+  }, []);
+
   const addParticipant = () => setForm(f => ({ ...f, participants: [...f.participants, ""] }));
   const updateParticipant = (i, v) => setForm(f => ({ ...f, participants: f.participants.map((p, idx) => idx === i ? v : p) }));
   const removeParticipant = (i) => setForm(f => ({ ...f, participants: f.participants.filter((_, idx) => idx !== i) }));
 
-  const perPerson = form.total && form.participants.length > 0 
-    ? (parseFloat(form.total) / (form.participants.filter(p => p).length || 1)).toFixed(2)
+  const perPerson = form.total && form.participants.length > 0
+    ? (parseFloat(form.total) / (form.participants.filter(p => p).length + 1)).toFixed(2)
     : "0.00";
 
   const handleCreate = async () => {
     if (!form.title || !form.total) return;
     setCreating(true);
     try {
-      const res = await fetch(`${API}/api/split-bill/create`, {
+      const res = await fetch(`${API}/api/split/create`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: form.title, total: parseFloat(form.total), participants: form.participants.filter(p => p) }),
+        body: JSON.stringify({ title: form.title, total_amount: parseFloat(form.total), participants: form.participants.filter(p => p) }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -104,9 +118,9 @@ const SplitBillPage = ({ onBack }) => {
               <p className="text-sm text-[#666] mt-2">Teile Rechnungen mit Freunden — fair und einfach.</p>
             </div>
           ) : bills.map((b, i) => (
-            <div key={i} className="bg-[#111118] rounded-2xl p-4 border border-white/5 mb-3">
+            <div key={b.split_id || i} className="bg-[#111118] rounded-2xl p-4 border border-white/5 mb-3">
               <p className="font-semibold">{b.title}</p>
-              <p className="text-sm text-[#00C2FF] font-bold">€{b.total?.toFixed(2)}</p>
+              <p className="text-sm text-[#00C2FF] font-bold">€{Number(b.total_amount || 0).toFixed(2)}</p>
             </div>
           ))}
         </div>

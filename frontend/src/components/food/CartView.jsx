@@ -21,23 +21,28 @@ export default function CartView({ cart, cartTotal, deliveryFee, serviceFee, sma
         <>
           <div className="space-y-3">
             {cart.map((item) => (
-              <div key={item.item_id} className="p-4 bg-[#111] rounded-xl border border-white/10 flex items-center justify-between">
+              <div key={item.cart_key || item.item_id} className="p-4 bg-[#111] rounded-xl border border-white/10 flex items-center justify-between">
                 <div>
                   <p className="font-medium">{item.name}</p>
+                  {(item.size_detail || item.extras_detail) && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {[item.size_detail, item.extras_detail].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                   <p className="text-orange-400 font-bold">€{(item.price * item.quantity).toFixed(2)}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    data-testid={`food-cart-minus-${item.item_id}`}
-                    onClick={() => onUpdateQty(item.item_id, -1)}
+                    data-testid={`food-cart-minus-${item.cart_key || item.item_id}`}
+                    onClick={() => onUpdateQty(item.cart_key || item.item_id, -1)}
                     className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center"
                   >
                     -
                   </button>
                   <span className="font-bold w-6 text-center">{item.quantity}</span>
                   <button
-                    data-testid={`food-cart-plus-${item.item_id}`}
-                    onClick={() => onUpdateQty(item.item_id, 1)}
+                    data-testid={`food-cart-plus-${item.cart_key || item.item_id}`}
+                    onClick={() => onUpdateQty(item.cart_key || item.item_id, 1)}
                     className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-black"
                   >
                     +

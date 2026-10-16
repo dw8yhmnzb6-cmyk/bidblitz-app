@@ -1,0 +1,36 @@
+name: Wallet Balance Recovery
+
+on:
+  push:
+    branches:
+      - work/cache-update-hardening
+  pull_request:
+
+concurrency:
+  group: bidblitz-wallet-recovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wallet-balance-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install focused test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pymongo motor python-dotenv
+
+      - name: Run wallet balance crash recovery regression tests
+        env:
+          PYTHONPATH: backend
+          MONGO_URL: mongodb://localhost:27017
+          DB_NAME: bidblitz_ci
+          JWT_SECRET: wallet-recovery-ci-only
+          ADMIN_EMAIL: ci-admin@example.invalid
+          ADMIN_PASSWORD: ci-only-not-a-production-password
+        run: pytest -q backend/tests/test_wallet_balance_crash_recovery.py

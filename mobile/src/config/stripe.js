@@ -1,6 +1,14 @@
-// Replace with your actual Stripe Publishable Key
-export const STRIPE_PUBLISHABLE_KEY = 'pk_live_51QUYF218nRp2RQgs...';
+const runtimeKey =
+  (typeof process !== 'undefined' && process?.env?.STRIPE_PUBLISHABLE_KEY) ||
+  (typeof global !== 'undefined' && global.__BIDBLITZ_STRIPE_PUBLISHABLE_KEY__) ||
+  '';
 
-// Note: This should match the key from backend/.env STRIPE_API_KEY
-// The backend uses the SECRET key (sk_live_...)
-// The mobile app uses the PUBLISHABLE key (pk_live_...)
+export const STRIPE_PUBLISHABLE_KEY = String(runtimeKey || '').trim();
+
+export const STRIPE_NATIVE_ENABLED =
+  /^pk_(test|live)_[A-Za-z0-9]+$/.test(STRIPE_PUBLISHABLE_KEY) &&
+  !STRIPE_PUBLISHABLE_KEY.includes('...');
+
+// Native Stripe must receive a publishable key (pk_*), never the backend secret key.
+// If no valid key is injected at build/runtime, the app falls back to the WebView
+// wallet top-up flow instead of initializing Stripe with an invalid placeholder.

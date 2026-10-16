@@ -5,10 +5,7 @@ import { useI18n } from "../store";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 
-const API = process.env.REACT_APP_BACKEND_URL;
-const WHATSAPP_URL = "https://wa.me/?text=Hallo%20BidBlitz%2C%20ich%20interessiere%20mich%20f%C3%BCr%20eure%20Bitcoin-Mining-Infrastruktur.";
-const TELEGRAM_URL = "https://t.me/share/url?url=https://bidblitz.ae/mining-trust&text=Ich%20interessiere%20mich%20f%C3%BCr%20eure%20Mining-Infrastruktur";
-const PHONE_URL = "tel:+971000000000";
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 const trustMedia = {
   dubai: "https://static.prod-images.emergentagent.com/jobs/2ac12b59-b16f-458d-9088-1c735ced669e/images/1cf85ab6d62f2971e243a0c551a8310646f1846376968d6a79dabb151cfe5b91.png",
@@ -20,7 +17,7 @@ const copy = {
   de: {
     badge: "Mining Infrastruktur",
     title: "Unsere Bitcoin-Mining-Server",
-    subtitle: "Transparenz schafft Vertrauen: Wir zeigen unsere Mining-Infrastruktur, unsere ASIC-Systeme und unsere Standorte in Dubai und Abu Dhabi.",
+    subtitle: "Echte Originalaufnahmen unserer Mining-Infrastruktur. Live-Hashrate, Uptime und Betriebsdaten werden erst nach verifizierter Provider-Anbindung als Live-Daten angezeigt.",
     ctaPrimary: "Zum Mining",
     ctaSecondary: "Kontakt anfragen",
     leadTitle: "Investor / Kunde anfragen",
@@ -43,12 +40,12 @@ const copy = {
     advisorName: "Mining Advisory Desk",
     advisorRole: "Investor & Infrastruktur Beratung",
     advisorText: "Für Investoren, Partner und Hosting-Kunden: schneller Erstkontakt, klare Antworten und direkte Einordnung des passenden Angebots.",
-    advisorResponse: "Antwort meist in unter 30 Minuten",
+    advisorResponse: "Antwortzeit wird nicht zugesichert",
     advisorPrimary: "Mit Berater sprechen",
     audienceTitle: "Für wen ist unser Mining gedacht?",
     audiences: [
       { title: "Für Investoren", text: "Für Kunden, die seriöse Infrastruktur, Standort-Proof und einen direkten Einstieg in Mining-Modelle suchen." },
-      { title: "Für Partner", text: "Für strategische Partner, Vermittler oder Business-Netzwerke, die auf echte Infrastruktur setzen wollen." },
+      { title: "Für Partner", text: "Für strategische Partner, Vermittler oder Business-Netzwerke, die nach verifizierter Anbindung mit dokumentierter Infrastruktur arbeiten wollen." },
       { title: "Für Hosting-Kunden", text: "Für Kunden mit Fokus auf laufenden Betrieb, Monitoring, Standort-Vertrauen und Mining-Service." },
     ],
     offersTitle: "Klare Angebotskarten",
@@ -60,64 +57,64 @@ const copy = {
     ],
     faqTitle: "Häufige Fragen",
     faqs: [
-      { q: "Wo stehen die Server?", a: "Aktuell zeigen wir Dubai und Abu Dhabi als sichtbare Infrastruktur-Standorte auf der Mining-Trust-Seite." },
+      { q: "Wo stehen die Server?", a: "Die gezeigten Originalaufnahmen stammen aus Dubai und Abu Dhabi. Live-Kennzahlen und laufender Betriebsstatus werden separat über den Provider verifiziert." },
       { q: "Kann ich die Infrastruktur sehen?", a: "Ja. Fotos, Videos und Proof-Elemente werden direkt auf der Seite gezeigt, damit Kunden Vertrauen aufbauen können." },
       { q: "Wie schnell erhalte ich eine Antwort?", a: "Anfragen aus dem Formular oder über die Schnellkontakte können direkt im Lead-CRM bearbeitet werden." },
       { q: "Kann ich einen Standortbesuch anfragen?", a: "Ja. Nutze einfach die Schnell-Auswahl „Standortbesuch“ oder sende eine kurze Anfrage." },
     ],
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
-    mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
+    mapText: "Dubai und Abu Dhabi werden mit echten Originalaufnahmen unserer Mining-Infrastruktur gezeigt. Live-Kennzahlen und Betriebsstatus werden separat über den Provider verifiziert.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Standorte aufgebaut", text: "Mining-Infrastruktur in Dubai und Abu Dhabi als sichtbare Vertrauensbasis positioniert." },
-      { title: "ASIC-Betrieb aktiv", text: "Professionelle Bitcoin-Mining-Hardware mit Fokus auf Dauerbetrieb und Monitoring." },
+      { title: "Originalaufnahmen vorhanden", text: "Dubai und Abu Dhabi werden mit echten Aufnahmen unserer Mining-Infrastruktur dargestellt." },
+      { title: "ASIC-Hardware dokumentiert", text: "Echte ASIC-Hardware ist auf den Originalaufnahmen dokumentiert. Live-Betriebsdaten folgen aus der verifizierten Provider-Anbindung." },
       { title: "Video Proof bereit", text: "Die Seite ist vorbereitet, eure echten Standort-Videos direkt einzubinden." },
     ],
     metricsLiveTitle: "Live Mining Kennzahlen",
     metricsLive: [
-      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "sichtbarer Infrastruktur-Score" },
-      { label: "Uptime Ziel", value: "99.4%", note: "Betriebs- und Monitoringfokus" },
-      { label: "Cooling Status", value: "Stabil", note: "aktive Kühlung & Heatflow" },
-      { label: "Monitoring", value: "24/7", note: "Operations Team & Alerts" },
+      { label: "Hashrate Cluster", value: "Nicht verifiziert", note: "wird erst nach Live-Proof angezeigt" },
+      { label: "Uptime", value: "Nicht verifiziert", note: "keine Live-Uptime ohne Provider-Proof" },
+      { label: "Cooling Status", value: "Nicht verifiziert", note: "keine Hardware-Bestätigung vorhanden" },
+      { label: "Monitoring", value: "Nicht verifiziert", note: "wird erst nach Live-Anbindung bestätigt" },
     ],
     footerEyebrow: "Bitcoin Mining Transparenz",
     footerTitle: "Zeig Infrastruktur. Gewinne Vertrauen.",
-    footerText: "Diese Seite ist dafür gebaut, Kundinnen und Kunden echte Server, echte ASIC-Hardware und eure echten Standort-Videos sichtbar zu machen.",
+    footerText: "Diese Seite zeigt echte Originalaufnahmen der Mining-Infrastruktur. Live-Kennzahlen und laufende Betriebsdaten werden nach verifizierter Provider-Anbindung ergänzt.",
     footerServices: "Alle Services",
     stats: [
       { label: "Server-Standorte", value: "Dubai · Abu Dhabi" },
-      { label: "Betriebsmodell", value: "24/7 Infrastruktur" },
-      { label: "Systemtyp", value: "ASIC Bitcoin Server" },
-      { label: "Status", value: "Aktive Kühlung & Monitoring" },
+      { label: "Betriebsmodell", value: "Mining-Infrastruktur" },
+      { label: "Systemtyp", value: "ASIC Mining" },
+      { label: "Status", value: "Originalaufnahmen · Live-Daten ausstehend" },
     ],
     sections: {
-      proof: "Visueller Nachweis unserer Hardware",
-      dubai: "Dubai Serverhalle",
-      dubaiText: "Skalierbare Reihen aus Bitcoin-Minern mit professioneller Strom- und Kühlungsinfrastruktur.",
-      abuDhabi: "Abu Dhabi Infrastruktur",
-      abuDhabiText: "Industrielle Rack-Strukturen für laufenden Mining-Betrieb mit Fokus auf Stabilität und Vertrauen.",
+      proof: "Echte Aufnahmen unserer Mining-Hardware",
+      dubai: "Dubai – Originalaufnahme",
+      dubaiText: "Echte Originalaufnahme unserer Mining-Infrastruktur in Dubai. Live-Betriebsdaten werden separat über den Provider verifiziert.",
+      abuDhabi: "Abu Dhabi – Originalaufnahme",
+      abuDhabiText: "Echte Originalaufnahme unserer Mining-Infrastruktur in Abu Dhabi. Live-Betriebsdaten werden separat über den Provider verifiziert.",
       asic: "ASIC Detailaufnahme",
-      asicText: "Nahaufnahme echter Mining-Hardware zur Darstellung von Technik, Kühlung und Betriebsqualität.",
+      asicText: "Echte Detailaufnahme der eingesetzten ASIC-Mining-Hardware. Live-Leistungsdaten werden separat über den Provider verifiziert.",
       video: "Videos aus Dubai & Abu Dhabi",
-      videoText: "Hier platzieren wir eure echten Videos aus Dubai und Abu Dhabi, damit Kunden sehen, dass die Server real laufen.",
+      videoText: "Hier werden erst nach Prüfung echte Standort-Videos eingebunden. Platzhalter sind keine Bestätigung eines laufenden Servers.",
       metric: "Vertrauensmetriken",
     },
     metrics: [
       { icon: Server, title: "Enterprise Server", text: "Professionelle Mining-Racks statt unklarer Marketingversprechen." },
       { icon: Shield, title: "Vertrauen & Transparenz", text: "Klare Sicht auf Infrastruktur, Technik und operative Seriosität." },
-      { icon: Clock3, title: "24/7 Betrieb", text: "Ausgelegt auf laufenden Betrieb mit Kühlung, Monitoring und Wartungsroutine." },
+      { icon: Clock3, title: "24/7 Betriebskonzept", text: "Mining-Infrastruktur mit Kühlung, Monitoring und Wartungsroutine; Live-Kennzahlen werden über die Provider-Anbindung bestätigt." },
       { icon: Bitcoin, title: "Bitcoin Fokus", text: "Sichtbar auf Bitcoin-Mining und ASIC-Hardware spezialisiert." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Echtes Rechenzentrum / Servergang" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Container / Rack-Setup / Kühlung" },
+      { city: "Dubai", label: "Video Slot 01", note: "Video folgt nach Prüfung · nicht verifiziert" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Video folgt nach Prüfung · nicht verifiziert" },
     ],
   },
   en: {
     badge: "Mining Infrastructure",
     title: "Our Bitcoin Mining Servers",
-    subtitle: "Transparency creates trust: we show our mining infrastructure, ASIC systems, and our locations in Dubai and Abu Dhabi.",
+    subtitle: "Authentic original images of our mining infrastructure. Live hashrate, uptime, and operating data are shown after verified provider integration.",
     ctaPrimary: "Open Mining",
     ctaSecondary: "Request Contact",
     leadTitle: "Investor / Client Inquiry",
@@ -140,12 +137,12 @@ const copy = {
     advisorName: "Mining Advisory Desk",
     advisorRole: "Investor & Infrastructure Advisory",
     advisorText: "For investors, partners, and hosting clients: fast first contact, clear answers, and direct qualification into the right offer.",
-    advisorResponse: "Usually replies within 30 minutes",
+    advisorResponse: "Response time is not guaranteed",
     advisorPrimary: "Talk to Advisor",
     audienceTitle: "Who is our mining for?",
     audiences: [
       { title: "For Investors", text: "For clients seeking serious infrastructure, location proof, and a direct entry into mining models." },
-      { title: "For Partners", text: "For strategic partners, intermediaries, or business networks that want to build on real infrastructure." },
+      { title: "For Partners", text: "For strategic partners, intermediaries, or business networks that want to work with verified infrastructure once live proof is available." },
       { title: "For Hosting Clients", text: "For clients focused on ongoing operations, monitoring, location trust, and mining as a service." },
     ],
     offersTitle: "Clear Offer Cards",
@@ -157,58 +154,58 @@ const copy = {
     ],
     faqTitle: "Frequently Asked Questions",
     faqs: [
-      { q: "Where are the servers located?", a: "We currently show Dubai and Abu Dhabi as visible infrastructure locations on the mining trust page." },
+      { q: "Where are the servers located?", a: "The original images shown are from Dubai and Abu Dhabi. Live metrics and operating status are verified separately through the provider." },
       { q: "Can I see the infrastructure?", a: "Yes. Photos, videos, and proof elements are shown directly on the page to build trust." },
       { q: "How fast will I get a response?", a: "Inquiries from the form or quick contact options can be processed directly in the lead CRM." },
       { q: "Can I request a site visit?", a: "Yes. Simply use the quick option 'Site Visit' or send a short inquiry." },
     ],
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
-    mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
+    mapText: "Dubai and Abu Dhabi are shown with authentic original images of our mining infrastructure. Live metrics and operating status are verified separately through the provider.",
     timelineTitle: "Proof of Infrastructure",
     timeline: [
-      { title: "Locations established", text: "Mining infrastructure in Dubai and Abu Dhabi positioned as visible trust anchors." },
-      { title: "ASIC operations active", text: "Professional bitcoin mining hardware focused on continuous operation and monitoring." },
+      { title: "Original images available", text: "Dubai and Abu Dhabi are presented with authentic images of our mining infrastructure." },
+      { title: "ASIC hardware documented", text: "Authentic ASIC hardware is documented in the original images. Live operating data follows from the verified provider integration." },
       { title: "Video proof ready", text: "The page is prepared to embed your real location videos directly." },
     ],
     metricsLiveTitle: "Live Mining Metrics",
     metricsLive: [
-      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "visible infrastructure score" },
-      { label: "Uptime Target", value: "99.4%", note: "operations and monitoring focus" },
-      { label: "Cooling Status", value: "Stable", note: "active cooling & heatflow" },
-      { label: "Monitoring", value: "24/7", note: "operations team & alerts" },
+      { label: "Hashrate Cluster", value: "Not verified", note: "shown only after live proof" },
+      { label: "Uptime", value: "Not verified", note: "no live uptime without provider proof" },
+      { label: "Cooling Status", value: "Not verified", note: "no hardware confirmation available" },
+      { label: "Monitoring", value: "Not verified", note: "confirmed only after live integration" },
     ],
     footerEyebrow: "Bitcoin Mining Transparency",
     footerTitle: "Show infrastructure. Build trust.",
-    footerText: "This page is designed to show customers real servers, real ASIC hardware, and your real location videos clearly and professionally.",
+    footerText: "This page shows authentic original images of the mining infrastructure. Live metrics and operating data are added after verified provider integration.",
     footerServices: "All Services",
     stats: [
       { label: "Server Locations", value: "Dubai · Abu Dhabi" },
-      { label: "Operating Model", value: "24/7 Infrastructure" },
-      { label: "System Type", value: "ASIC Bitcoin Servers" },
-      { label: "Status", value: "Active Cooling & Monitoring" },
+      { label: "Operating Model", value: "Mining Infrastructure" },
+      { label: "System Type", value: "ASIC Mining" },
+      { label: "Status", value: "Original images · live data pending" },
     ],
     sections: {
-      proof: "Visual proof of our hardware",
-      dubai: "Dubai Server Hall",
-      dubaiText: "Scalable rows of bitcoin miners with professional power and cooling infrastructure.",
-      abuDhabi: "Abu Dhabi Infrastructure",
-      abuDhabiText: "Industrial rack structures for running mining operations with a focus on stability and trust.",
+      proof: "Authentic images of our mining hardware",
+      dubai: "Dubai – Original Image",
+      dubaiText: "Authentic original image of our mining infrastructure in Dubai. Live operating data is verified separately through the provider.",
+      abuDhabi: "Abu Dhabi – Original Image",
+      abuDhabiText: "Authentic original image of our mining infrastructure in Abu Dhabi. Live operating data is verified separately through the provider.",
       asic: "ASIC Close-up",
       asicText: "Close-up mining hardware detail to show technology, cooling, and operational quality.",
       video: "Videos from Dubai & Abu Dhabi",
-      videoText: "This is where your real Dubai and Abu Dhabi videos will be placed so customers can see the servers are real.",
+      videoText: "Verified site videos will be placed here after review. Placeholders do not confirm that any server is currently running.",
       metric: "Trust Metrics",
     },
     metrics: [
       { icon: Server, title: "Enterprise Servers", text: "Professional mining racks instead of vague marketing claims." },
       { icon: Shield, title: "Trust & Transparency", text: "Clear visibility into infrastructure, technology, and operating credibility." },
-      { icon: Clock3, title: "24/7 Operation", text: "Designed for continuous operation with cooling, monitoring, and maintenance routines." },
+      { icon: Clock3, title: "24/7 Operating Concept", text: "Mining infrastructure with cooling, monitoring, and maintenance routines; live metrics are confirmed through the provider integration." },
       { icon: Bitcoin, title: "Bitcoin Focus", text: "Clearly specialized in bitcoin mining and ASIC hardware." },
     ],
     placeholders: [
-      { city: "Dubai", label: "Video Slot 01", note: "Real data-center / server corridor" },
-      { city: "Abu Dhabi", label: "Video Slot 02", note: "Container / rack setup / cooling" },
+      { city: "Dubai", label: "Video Slot 01", note: "Video pending review · not verified" },
+      { city: "Abu Dhabi", label: "Video Slot 02", note: "Video pending review · not verified" },
     ],
   },
 };
@@ -284,6 +281,11 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
   const [proofData, setProofData] = useState(null);
   const [leadForm, setLeadForm] = useState({ name: "", email: "", topic: "", company: "", message: "" });
   const [sending, setSending] = useState(false);
+  const proofVerified = proofData?.proof_verified_live === true;
+  const proofMetrics = proofVerified && proofData?.proof_metrics && Array.isArray(proofData.proof_metrics.locations) ? proofData.proof_metrics : null;
+  const proofTitle = proofVerified
+    ? c.title
+    : ((lang || "").startsWith("de") ? "Mining Infrastruktur" : "Mining Infrastructure");
 
   useEffect(() => {
     const load = async () => {
@@ -352,13 +354,19 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
         </div>
 
+        {!proofVerified && (
+          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100/80" data-testid="mining-trust-unverified-banner">
+            Keine verifizierte Live-Hashrate oder Provider-Bestätigung. Live-Werte bleiben bis zur Verifizierung deaktiviert.
+          </div>
+        )}
+
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold text-white/70" data-testid="mining-trust-investor-badge">
               <Building2 size={13} /> {c.investorBadge}
             </div>
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl" data-testid="mining-trust-title">
-              {c.title}
+              {proofTitle}
             </h1>
             <p className="mt-4 max-w-3xl text-sm text-white/68 sm:text-base" data-testid="mining-trust-subtitle">
               {c.subtitle}
@@ -375,11 +383,11 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2" data-testid="mining-trust-stats-grid">
-            {(proofData ? [
-              { label: c.stats[0].label, value: proofData.proof_metrics.locations.map((x) => x.city).join(" · ") },
-              { label: c.stats[1].label, value: `${proofData.network.active_miners} aktive Miner` },
-              { label: c.stats[2].label, value: `${proofData.network.registered_hashrate_phs} PH/s registriert` },
-              { label: c.stats[3].label, value: `${proofData.proof_metrics.monitoring}` },
+            {(proofMetrics ? [
+              { label: c.stats[0].label, value: proofMetrics.locations.map((x) => x.city).join(" · ") },
+              { label: c.stats[1].label, value: `${proofData?.network?.active_miners ?? 0} aktive Miner` },
+              { label: c.stats[2].label, value: `${proofData?.network?.registered_hashrate_phs ?? 0} PH/s registriert` },
+              { label: c.stats[3].label, value: `${proofMetrics.monitoring}` },
             ] : c.stats).map((item, index) => (
               <div key={`${item.label}-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={`mining-trust-stat-${index}`}>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">{item.label}</p>
@@ -413,12 +421,12 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <Clock3 size={13} /> {c.advisorResponse}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-advisor-whatsapp">
+              <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-advisor-whatsapp">
                 <MessageCircle size={16} /> {c.advisorPrimary}
-              </a>
-              <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-advisor-call">
+              </button>
+              <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-advisor-call">
                 <Phone size={16} /> {c.callBack}
-              </a>
+              </button>
             </div>
           </div>
 
@@ -478,7 +486,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {[Gauge, Activity, Waves, BarChart3].map((Icon, index) => {
                 const fallback = c.metricsLive[index];
-                const metrics = proofData?.proof_metrics;
+                const metrics = proofMetrics;
                 const item = metrics ? [
                   { label: c.metricsLive[0].label, value: `${metrics.hashrate_cluster_phs} PH/s`, note: fallback.note },
                   { label: c.metricsLive[1].label, value: `${metrics.uptime_percent}%`, note: fallback.note },
@@ -521,9 +529,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
                 <p className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">{c.quickContactTitle}</p>
                 <p className="mt-2 text-xs text-emerald-100/70">{c.quickContactText}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-bold text-black" data-testid="mining-trust-whatsapp-button"><MessageCircle size={14} /> WhatsApp</a>
-                  <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-4 py-2 text-xs font-bold text-white" data-testid="mining-trust-telegram-button"><Send size={14} /> Telegram</a>
-                  <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white" data-testid="mining-trust-callback-button"><Phone size={14} /> {c.callBack}</a>
+                  <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 text-xs font-bold text-black" data-testid="mining-trust-whatsapp-button"><MessageCircle size={14} /> Kontakt</button>
+                  <button type="button" onClick={() => chooseOffer("Partnerschaft", "Bitte über einen verifizierten BidBlitz-Kontaktkanal zur Partnerschaft zurückmelden.")} className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-xs font-bold text-white" data-testid="mining-trust-telegram-button"><Send size={14} /> Partner</button>
+                  <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white" data-testid="mining-trust-callback-button"><Phone size={14} /> {c.callBack}</button>
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mining-trust-lead-fast-box">
@@ -653,9 +661,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
       <div className="fixed bottom-4 left-1/2 z-[60] w-[calc(100%-1.25rem)] max-w-xl -translate-x-1/2" data-testid="mining-trust-sticky-contact-bar">
         <div className="rounded-full border border-white/10 bg-black/80 backdrop-blur-xl px-3 py-3 shadow-[0_16px_36px_rgba(0,0,0,0.35)]">
           <div className="grid grid-cols-3 gap-2">
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-3 py-3 text-[11px] font-bold text-black" data-testid="mining-trust-sticky-whatsapp"><MessageCircle size={14} />WhatsApp</a>
-            <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#229ED9] px-3 py-3 text-[11px] font-bold text-white" data-testid="mining-trust-sticky-telegram"><Send size={14} />Telegram</a>
-            <a href={PHONE_URL} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-3 text-[11px] font-semibold text-white" data-testid="mining-trust-sticky-call"><Phone size={14} />Call</a>
+            <button type="button" onClick={() => chooseOffer(c.advisorPrimary, "Bitte über einen verifizierten BidBlitz-Kontaktkanal zurückmelden.")} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-400 px-3 py-3 text-[11px] font-bold text-black" data-testid="mining-trust-sticky-whatsapp"><MessageCircle size={14} />Kontakt</button>
+            <button type="button" onClick={() => chooseOffer("Partnerschaft", "Bitte über einen verifizierten BidBlitz-Kontaktkanal zur Partnerschaft zurückmelden.")} className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-500 px-3 py-3 text-[11px] font-bold text-white" data-testid="mining-trust-sticky-telegram"><Send size={14} />Partner</button>
+            <button type="button" onClick={() => chooseOffer(c.callBack, "Bitte Rückruf/Kontakt über einen verifizierten BidBlitz-Kanal organisieren.")} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-3 text-[11px] font-semibold text-white" data-testid="mining-trust-sticky-call"><Phone size={14} />Kontakt</button>
           </div>
         </div>
       </div>

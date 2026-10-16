@@ -11,50 +11,92 @@ const BarcodeModal = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(0);
-  const timerRef = useRef(null);
+  const expiresAtRef = useRef(0);
+  const openRef = useRef(false);
+  const requestRef = useRef(0);
+  const pendingRef = useRef(false);
   const { t } = useI18n();
 
-  const fetchBarcode = useCallback(async () => {
+  const fetchBarcode = useCallback(async (rotate = false) => {
+    if (!openRef.current || pendingRef.current) return;
+    pendingRef.current = true;
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError(null);
+    // Rotation invalidates the old code on the server. Never keep showing it.
+    setBarcode(null);
+    setCountdown(0);
+    setCopied(false);
     try {
-      const data = await api.getMyBarcode();
+      const data = rotate ? await api.refreshBarcode() : await api.getMyBarcode();
+      if (!openRef.current || requestId !== requestRef.current) return;
+      const seconds = data?.seconds_remaining ?? data?.expires_in;
+      const ttl = seconds == null
+        ? (Date.parse(data?.expires_at) - Date.now()) / 1000
+        : Number(seconds);
+      if (typeof data?.barcode !== "string" || !data.barcode.trim()
+          || !Number.isFinite(ttl) || ttl <= 0) {
+        throw new Error("Payment code is unavailable or expired. Please refresh.");
+      }
+      expiresAtRef.current = Date.now() + ttl * 1000;
       setBarcode(data);
-      setCountdown(data.expires_in || 300);
+      setCountdown(Math.ceil(ttl));
     } catch (e) {
-      setError(e.message || "Failed to load QR code");
+      if (openRef.current && requestId === requestRef.current) {
+        setError(e?.message || "Failed to load QR code");
+      }
     } finally {
-      setLoading(false);
+      if (openRef.current && requestId === requestRef.current) {
+        pendingRef.current = false;
+        setLoading(false);
+      }
     }
   }, []);
 
-  // Fetch on open
   useEffect(() => {
+    openRef.current = isOpen;
     if (isOpen) {
       fetchBarcode();
     } else {
       setBarcode(null);
       setCountdown(0);
+      setLoading(false);
+      setError(null);
     }
+    return () => {
+      openRef.current = false;
+      requestRef.current += 1;
+      pendingRef.current = false;
+    };
   }, [isOpen, fetchBarcode]);
 
-  // Countdown timer + auto-refresh
+  // Wall-clock expiry also catches up after the browser suspends timers.
   useEffect(() => {
     if (!isOpen || !barcode) return;
-    timerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          fetchBarcode();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
+    let expired = false;
+    const tick = () => {
+      if (expired) return;
+      const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+      setCountdown(remaining);
+      if (remaining === 0) {
+        expired = true;
+        fetchBarcode(true);
+      }
+    };
+    const interval = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [isOpen, barcode, fetchBarcode]);
 
   const handleCopy = async () => {
     if (!barcode) return;
+    if (Date.now() >= expiresAtRef.current) {
+      fetchBarcode(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(barcode.barcode);
     } catch {
@@ -75,7 +117,8 @@ const BarcodeModal = ({ isOpen, onClose }) => {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const pct = barcode ? (countdown / (barcode.rotation_seconds || 300)) * 100 : 0;
+  const rotationSeconds = Number(barcode?.rotation_seconds) || countdown;
+  const pct = rotationSeconds > 0 ? Math.min(100, Math.max(0, countdown / rotationSeconds * 100)) : 0;
 
   if (!isOpen) return null;
 
@@ -126,7 +169,8 @@ const BarcodeModal = ({ isOpen, onClose }) => {
             <div className="text-center py-8">
               <p className="text-sm text-red-400">{error}</p>
               <motion.button
-                onClick={fetchBarcode}
+                onClick={() => fetchBarcode(true)}
+                disabled={loading}
                 className="mt-4 px-4 py-2 bg-white/[0.04] rounded-lg text-sm text-white"
                 whileTap={{ scale: 0.97 }}
               >
@@ -165,7 +209,8 @@ const BarcodeModal = ({ isOpen, onClose }) => {
                     </span>
                     <motion.button
                       data-testid="barcode-refresh-btn"
-                      onClick={fetchBarcode}
+                      onClick={() => fetchBarcode(true)}
+                      disabled={loading}
                       className="w-6 h-6 rounded-full bg-white/[0.04] flex items-center justify-center"
                       whileTap={{ scale: 0.85 }}
                     >
@@ -207,7 +252,7 @@ const BarcodeModal = ({ isOpen, onClose }) => {
               <div className="flex items-center gap-2 mt-4">
                 <ShieldCheck size={12} className="text-[#00C2FF]/40" />
                 <p className="text-[10px] text-[#444]">
-                  {t("barcode.dynamic_hint") || "QR code changes every 5 min for your security"}
+                  {t("barcode.refreshes_in") || "Refreshes in"}: {formatCountdown(countdown)}
                 </p>
               </div>
             </div>

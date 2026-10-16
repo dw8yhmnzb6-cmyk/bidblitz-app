@@ -89,8 +89,9 @@ class DriverLocationUpdate(BaseModel):
 
 class AddTipRequest(BaseModel):
     order_id: str
-    amount: float = Field(..., gt=0, le=50)  # Max €50 tip
+    amount: float = Field(..., gt=0, le=50)
     message: Optional[str] = Field(None, max_length=200)
+    idempotency_key: Optional[str] = None
 
 
 class UpdateStatusRequest(BaseModel):
@@ -308,19 +309,18 @@ async def update_order_status_internal(order_id: str, new_status: str, actor_id:
     
     now = datetime.now(timezone.utc)
     
-    # Update status
-    update_data = {
-        "status": new_status,
-        "updated_at": now.isoformat(),
-    }
-    
     if new_status == "delivered":
-        update_data["delivered_at"] = now.isoformat()
-    
-    await db.food_orders.update_one(
-        {"order_id": order_id},
-        {"$set": update_data},
-    )
+        from routes.food import _settle_food_delivery
+        await _settle_food_delivery(order_id)
+    else:
+        update_data = {
+            "status": new_status,
+            "updated_at": now.isoformat(),
+        }
+        await db.food_orders.update_one(
+            {"order_id": order_id, "status": old_status},
+            {"$set": update_data},
+        )
     
     # Log status change
     await db.food_order_status_log.insert_one({
@@ -359,17 +359,41 @@ async def update_order_status(req: UpdateStatusRequest, request: Request):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Permission check
-    is_driver = order.get("driver_id") == user_id
-    is_restaurant = order.get("restaurant_id") in (user.get("restaurant_ids", []) or [])
-    is_admin = role == "admin"
+    # Permission check against canonical Food ownership fields.
+    is_driver = (order.get("courier") or {}).get("user_id") == user_id
+    restaurant = await db.food_restaurants.find_one(
+        {"restaurant_id": order.get("restaurant_id")},
+        {"_id": 0, "owner_id": 1, "user_id": 1},
+    )
+    is_restaurant = user_id in {
+        str((restaurant or {}).get("owner_id") or ""),
+        str((restaurant or {}).get("user_id") or ""),
+    }
+    is_admin = role in {"admin", "super_admin"}
     
     if not (is_driver or is_restaurant or is_admin):
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    old_status = order.get("status")
+    allowed_transitions = {
+        "pending": {"preparing"},
+        "confirmed": {"preparing"},
+        "preparing": {"ready"},
+        "picked_up": {"nearby", "delivered"},
+        "nearby": {"delivered"},
+    }
+    if req.status not in allowed_transitions.get(old_status, set()):
+        if old_status == req.status:
+            return {"ok": True, "new_status": req.status, "replayed": True}
+        raise HTTPException(status_code=409, detail=f"Ungültiger Statuswechsel: {old_status} → {req.status}")
+
+    if req.status in {"preparing", "ready"} and not (is_restaurant or is_admin):
+        raise HTTPException(status_code=403, detail="Nur Restaurant/Admin darf diesen Status setzen")
+    if req.status in {"nearby", "delivered"} and not (is_driver or is_admin):
+        raise HTTPException(status_code=403, detail="Nur Fahrer/Admin darf diesen Status setzen")
     
     await update_order_status_internal(req.order_id, req.status, user_id)
-    
-    return {"ok": True, "new_status": req.status}
+    return {"ok": True, "new_status": req.status, "replayed": False}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -378,113 +402,101 @@ async def update_order_status(req: UpdateStatusRequest, request: Request):
 
 @router.post("/orders/{order_id}/tip")
 async def add_tip(order_id: str, tip_req: AddTipRequest, request: Request):
-    """
-    Add tip to order (up to 24h after delivery, card payments only).
-    Tip goes 100% to driver.
-    """
+    """Send one post-delivery wallet tip directly to the assigned courier."""
+    from core.payment_engine import transfer_between_wallets, TransactionType
+    import hashlib
+
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Find order
     order = await db.food_orders.find_one({"order_id": order_id})
-    if not order:
+    if not order or order.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Order not found")
-    
-    # Verify ownership
-    if order.get("user_id") != user_id:
-        raise HTTPException(status_code=403, detail="Not your order")
-    
-    # Check if already tipped
-    existing = await db.food_tips.find_one({"order_id": order_id, "user_id": user_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Tip already added")
-    
-    # Check eligibility
     if order.get("status") != "delivered":
         raise HTTPException(status_code=400, detail="Order not delivered yet")
-    
+
     delivered_at = order.get("delivered_at")
     if not delivered_at:
         raise HTTPException(status_code=400, detail="Delivery time unknown")
-    
-    # Check 24h window
-    now = datetime.now(timezone.utc)
     try:
-        delivered_dt = datetime.fromisoformat(delivered_at.replace("Z", "+00:00"))
+        delivered_dt = datetime.fromisoformat(str(delivered_at).replace("Z", "+00:00"))
         if delivered_dt.tzinfo is None:
             delivered_dt = delivered_dt.replace(tzinfo=timezone.utc)
-        hours_since = (now - delivered_dt).total_seconds() / 3600
-        if hours_since > 24:
+        if (datetime.now(timezone.utc) - delivered_dt).total_seconds() > 24 * 3600:
             raise HTTPException(status_code=400, detail="Tipping period expired (24h limit)")
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid delivery timestamp")
-    
-    # Check payment method (card only)
-    payment_method = order.get("payment_method", "")
-    if "card" not in payment_method.lower() and "stripe" not in payment_method.lower():
-        raise HTTPException(status_code=400, detail="Tipping only available for card payments")
-    
-    # Check wallet balance
-    balance = user.get("balance", 0)
-    if balance < tip_req.amount:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. Need €{tip_req.amount:.2f}")
-    
-    # Deduct from user wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -tip_req.amount}},
+
+    courier_id = str((order.get("courier") or {}).get("user_id") or "")
+    if not courier_id:
+        raise HTTPException(status_code=400, detail="Für diese Bestellung ist kein Fahrer zugeordnet")
+
+    raw_key = (tip_req.idempotency_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw_key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    idempotency_key = f"food-tip:{user_id}:{order_id}:{raw_key}"
+    tip_id = f"TIP-{hashlib.sha256(idempotency_key.encode('utf-8')).hexdigest()[:20]}"
+
+    existing = await db.food_tips.find_one({"order_id": order_id, "user_id": user_id}, {"_id": 0})
+    if existing:
+        if existing.get("idempotency_key") == idempotency_key:
+            fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+            return {
+                "ok": True,
+                "tip_amount": float(existing.get("amount") or 0),
+                "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=400, detail="Tip already added")
+
+    amount = round(float(tip_req.amount), 2)
+    result = await transfer_between_wallets(
+        from_user_id=user_id,
+        to_user_id=courier_id,
+        amount=amount,
+        tx_type=TransactionType.TRANSFER,
+        description=f"Trinkgeld für Food-Fahrer ({order_id})",
+        reference=tip_id,
+        metadata={"order_id": order_id, "kind": "food_tip"},
+        idempotency_key=idempotency_key,
     )
-    
-    # Add to driver wallet (100% to driver)
-    driver_id = order.get("driver_id")
-    if driver_id:
-        await db.users.update_one(
-            {"_id": ObjectId(driver_id)},
-            {"$inc": {"balance": tip_req.amount}},
-        )
-    
-    # Log tip
-    tip_id = secrets.token_hex(8)
-    await db.food_tips.insert_one({
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Trinkgeld konnte nicht gesendet werden")
+
+    now = datetime.now(timezone.utc)
+    tip_doc = {
         "tip_id": tip_id,
         "order_id": order_id,
         "user_id": user_id,
-        "driver_id": driver_id,
-        "amount": tip_req.amount,
+        "driver_id": courier_id,
+        "amount": amount,
         "message": tip_req.message,
+        "idempotency_key": idempotency_key,
+        "wallet_transaction_id": result.transaction_id,
         "created_at": now.isoformat(),
-    })
-    
-    # Create transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "tip",
-        "amount": -tip_req.amount,
-        "description": f"Trinkgeld für Fahrer ({order_id})",
-        "category": "food",
-        "reference": f"TIP-{tip_id}",
-        "created_at": now.isoformat(),
-    })
-    
-    # Send push to driver
-    if driver_id:
-        try:
-            asyncio.create_task(send_push_to_user(
-                driver_id,
-                title="💰 Trinkgeld erhalten!",
-                body=f"€{tip_req.amount:.2f} Trinkgeld von {user.get('name', 'Kunde')}",
-                data={"type": "tip_received", "order_id": order_id, "amount": tip_req.amount},
-            ))
-        except Exception:
-            pass
-    
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-    
+    }
+    await db.food_tips.update_one(
+        {"order_id": order_id, "user_id": user_id},
+        {"$setOnInsert": tip_doc},
+        upsert=True,
+    )
+
+    try:
+        asyncio.create_task(send_push_to_user(
+            courier_id,
+            title="💰 Trinkgeld erhalten!",
+            body=f"€{amount:.2f} Trinkgeld von {user.get('name', 'Kunde')}",
+            data={"type": "tip_received", "order_id": order_id, "amount": amount},
+        ))
+    except Exception:
+        pass
+
     return {
         "ok": True,
-        "tip_amount": tip_req.amount,
-        "new_balance": updated_user.get("balance", 0),
+        "tip_amount": amount,
+        "new_balance": result.new_balance,
+        "replayed": bool(result.idempotent_replay),
     }
 
 
@@ -503,13 +515,12 @@ async def get_tip_status(order_id: str, request: Request):
     can_tip = False
     hours_remaining = 0
     
-    if order.get("status") == "delivered" and not tip:
+    if order.get("status") == "delivered" and not tip and (order.get("courier") or {}).get("user_id"):
         delivered_at = order.get("delivered_at")
-        payment_method = order.get("payment_method", "")
-        if delivered_at and "card" in payment_method.lower():
+        if delivered_at:
             try:
                 now = datetime.now(timezone.utc)
-                delivered_dt = datetime.fromisoformat(delivered_at.replace("Z", "+00:00"))
+                delivered_dt = datetime.fromisoformat(str(delivered_at).replace("Z", "+00:00"))
                 if delivered_dt.tzinfo is None:
                     delivered_dt = delivered_dt.replace(tzinfo=timezone.utc)
                 hours_since = (now - delivered_dt).total_seconds() / 3600

@@ -57,6 +57,28 @@ class VoiceParseRequest(BaseModel):
     transcript: str
 
 
+VOICE_ALLOWED_ACTIONS = [
+    "book_taxi", "open_food", "search_food", "open_scooter", "open_wallet",
+    "go_back", "open_split_pay", "open_group_order", "open_loyalty",
+    "open_safety", "schedule_taxi",
+]
+
+
+@router.get("/admin/status")
+async def voice_admin_status(user=Depends(get_current_user)):
+    """Expose parser capability status without exposing provider credentials."""
+    if (user.get("role") or "") not in {"admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Admin-Rechte erforderlich")
+    return {
+        "configured": bool(EMERGENT_LLM_KEY),
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "language": "de-DE",
+        "allowed_actions": VOICE_ALLOWED_ACTIONS,
+        "mode": "live_parser" if EMERGENT_LLM_KEY else "unavailable",
+    }
+
+
 @router.post("/parse")
 async def voice_parse(req: VoiceParseRequest, user=Depends(get_current_user)):
     """Parse German voice transcript into structured intent array."""
@@ -88,12 +110,8 @@ async def voice_parse(req: VoiceParseRequest, user=Depends(get_current_user)):
         if not isinstance(intents, list):
             intents = []
         # Filter to known actions only
-        ALLOWED = {
-            "book_taxi", "open_food", "search_food", "open_scooter", "open_wallet",
-            "go_back", "open_split_pay", "open_group_order", "open_loyalty",
-            "open_safety", "schedule_taxi",
-        }
-        intents = [i for i in intents if isinstance(i, dict) and i.get("action") in ALLOWED]
+        allowed = set(VOICE_ALLOWED_ACTIONS)
+        intents = [i for i in intents if isinstance(i, dict) and i.get("action") in allowed]
         return {"intents": intents, "raw": text}
     except json.JSONDecodeError as e:
         logger.warning("voice_parse json decode failed: %s | raw=%r", e, raw if 'raw' in locals() else None)

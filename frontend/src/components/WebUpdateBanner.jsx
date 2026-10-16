@@ -7,17 +7,6 @@ import { isNativeApp } from "../services/capacitorBridge";
 const VERSION_URL = "/version.json";
 
 
-async function getCurrentBuildId() {
-  try {
-    const response = await fetch(`${VERSION_URL}?self=${Date.now()}`, { cache: "no-store" });
-    const data = await response.json();
-    return data?.build_id || data?.frontend_version || "";
-  } catch (_error) {
-    return "";
-  }
-}
-
-
 async function clearOutdatedCachesSafely() {
   if (typeof window === "undefined" || !("caches" in window)) return;
   const keepPrefixes = ["bidblitz-static-v16", "bidblitz-api-v16", "push-sw"];
@@ -41,8 +30,11 @@ export default function WebUpdateBanner() {
   const [expandedMobile, setExpandedMobile] = useState(false);
 
   const currentVersion = useMemo(() => {
+    // Compare against this loaded bundle, never a second request to the server.
+    const bundledVersion = String(process.env.REACT_APP_BUILD_ID || "").trim();
+    if (bundledVersion) return bundledVersion;
     if (typeof document === "undefined") return "";
-    return document.querySelector('meta[name="bidblitz-build-version"]')?.getAttribute("content") || "";
+    return document.querySelector('meta[name="bidblitz-build-version"]')?.getAttribute("content")?.trim() || "";
   }, []);
 
   useEffect(() => {
@@ -52,7 +44,7 @@ export default function WebUpdateBanner() {
     let cancelled = false;
 
     const showUpdate = (version, worker = null) => {
-      if (cancelled) return;
+      if (cancelled || (version && version === currentVersion)) return;
       setNextVersion(version || "neu");
       setWaitingWorker(worker);
       setExpandedMobile(false);
@@ -61,12 +53,13 @@ export default function WebUpdateBanner() {
 
     const checkRemoteVersion = async () => {
       try {
-        const selfVersion = await getCurrentBuildId();
+        if (!currentVersion) return;
         const response = await fetch(`${VERSION_URL}?ts=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) return;
         const data = await response.json();
-        const activeVersion = selfVersion || currentVersion;
-        if (!cancelled && data?.build_id && activeVersion && data.build_id !== activeVersion) {
-          showUpdate(data.build_id);
+        const remoteVersion = String(data?.build_id || data?.frontend_version || "").trim();
+        if (remoteVersion && remoteVersion !== currentVersion) {
+          showUpdate(remoteVersion);
         }
       } catch (_error) {
         void _error;
@@ -75,7 +68,7 @@ export default function WebUpdateBanner() {
 
     const onSwMessage = (event) => {
       if (event?.data?.type === "SW_UPDATED") {
-        showUpdate(event?.data?.version || "neu");
+        showUpdate(event?.data?.buildId || event?.data?.version || "neu");
       }
     };
 

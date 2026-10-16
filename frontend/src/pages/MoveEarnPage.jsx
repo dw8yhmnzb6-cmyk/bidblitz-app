@@ -62,6 +62,7 @@ const COPY = {
     noHistory: "Noch keine Reward-Historie",
     suspicious: "Auffällig",
     activeToday: "Heute aktiv",
+    valueRewardsUnavailable: "Wert-Rewards sind in Production deaktiviert, bis eine verifizierte Schrittquelle angebunden ist.",
   },
   en: {
     title: "Move & Earn",
@@ -91,6 +92,7 @@ const COPY = {
     noHistory: "No reward history yet",
     suspicious: "Suspicious",
     activeToday: "Active today",
+    valueRewardsUnavailable: "Value rewards are disabled in production until a verified step source is connected.",
   },
   sq: {
     title: "Move & Earn",
@@ -120,6 +122,7 @@ const COPY = {
     noHistory: "Ende pa histori rewards",
     suspicious: "E dyshimtë",
     activeToday: "Aktiv sot",
+    valueRewardsUnavailable: "Shpërblimet me vlerë janë të çaktivizuara në production derisa të lidhet një burim i verifikuar i hapave.",
   },
 };
 
@@ -322,6 +325,7 @@ export default function MoveEarnPage({ onBack }) {
   const topBoard = leaderboard?.leaderboard || [];
   const rewardCards = status?.claim_cards || [];
   const dailyCheckin = status?.daily_checkin || {};
+  const valueRewardsEnabled = status?.value_rewards_enabled === true;
   const scoring = daily?.scoring || {};
 
   const sectionCards = useMemo(() => [
@@ -481,6 +485,11 @@ export default function MoveEarnPage({ onBack }) {
 
         <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
           <section className={`${panel} p-5`} data-testid="move-earn-reward-section">
+            {!valueRewardsEnabled && (
+              <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100" data-testid="move-value-rewards-unavailable">
+                {ui.valueRewardsUnavailable}
+              </div>
+            )}
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black">{ui.stats}</h2>
@@ -498,7 +507,7 @@ export default function MoveEarnPage({ onBack }) {
                   <div className="text-sm text-white/55">{card.unlock_steps} Steps · {card.energy_cost} Energy</div>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="text-xs text-white/45">{card.claimed ? "bereits geholt" : card.unlocked ? "verfügbar" : "gesperrt"}</div>
-                    <button onClick={() => claimReward(card.reward_code)} disabled={!card.unlocked || card.claimed} data-testid={`move-earn-claim-${card.reward_code.replace(/[:]/g, '-')}`} className="rounded-xl bg-white text-[#04110C] px-3 py-2 text-xs font-black disabled:opacity-40">
+                    <button onClick={() => claimReward(card.reward_code)} disabled={!valueRewardsEnabled || !card.unlocked || card.claimed} data-testid={`move-earn-claim-${card.reward_code.replace(/[:]/g, '-')}`} className="rounded-xl bg-white text-[#04110C] px-3 py-2 text-xs font-black disabled:opacity-40">
                       {ui.claim}
                     </button>
                   </div>
@@ -536,7 +545,7 @@ export default function MoveEarnPage({ onBack }) {
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="text-xs text-white/55">{mission.reward?.label}</div>
-                    <button onClick={() => claimReward(mission.claim_code)} disabled={!mission.completed || mission.claimed} data-testid={`move-earn-mission-claim-${mission.mission_id}`} className="rounded-xl border border-white/12 bg-white px-3 py-2 text-xs font-black text-[#04110C] disabled:opacity-40">
+                    <button onClick={() => claimReward(mission.claim_code)} disabled={!valueRewardsEnabled || !mission.completed || mission.claimed} data-testid={`move-earn-mission-claim-${mission.mission_id}`} className="rounded-xl border border-white/12 bg-white px-3 py-2 text-xs font-black text-[#04110C] disabled:opacity-40">
                       {ui.claim}
                     </button>
                   </div>

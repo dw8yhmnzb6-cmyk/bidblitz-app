@@ -27,6 +27,10 @@ function isMobilityShellPath(path) {
     || path.startsWith("/ev/session/");
 }
 
+function isImmersiveMobilityMapPath(path) {
+  return path === "/mobility-map";
+}
+
 function isStaffEmployeeShellPath(path) {
   return path === "/staff/mobile"
     || path === "/staff/invite"
@@ -56,19 +60,26 @@ function isMerchantPosPath(path) {
   return path.startsWith("/merchant/pos");
 }
 
+function isAdminShellPath(path) {
+  return path === "/admin" || path.startsWith("/admin/");
+}
+
 export function getAppShellFlags(currentPath, isDesktopViewport) {
-  const isCheckout = isCheckoutPath(currentPath);
-  const isPublicInvoicePayment = isPublicInvoicePaymentPath(currentPath);
-  const isQrOrder = isQrOrderPath(currentPath);
-  const isRestaurantTableGuest = isRestaurantTableGuestPath(currentPath);
-  const isInvoicePay = isInvoicePayPath(currentPath);
-  const isMobilityShell = isMobilityShellPath(currentPath);
-  const isStaffEmployeeShell = isStaffEmployeeShellPath(currentPath);
-  const isFullScreenStaffMgr = isFullScreenStaffManagerPath(currentPath);
-  const isFullscreenCommerce = isFullscreenCommercePath(currentPath);
-  const isDating = isDatingPath(currentPath);
-  const isMerchantPos = isMerchantPosPath(currentPath);
-  const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
+  const path = (currentPath || "/").split("?")[0];
+  const isCheckout = isCheckoutPath(path);
+  const isPublicInvoicePayment = isPublicInvoicePaymentPath(path);
+  const isQrOrder = isQrOrderPath(path);
+  const isRestaurantTableGuest = isRestaurantTableGuestPath(path);
+  const isInvoicePay = isInvoicePayPath(path);
+  const isMobilityShell = isMobilityShellPath(path);
+  const isImmersiveMobilityMap = isImmersiveMobilityMapPath(path);
+  const isStaffEmployeeShell = isStaffEmployeeShellPath(path);
+  const isFullScreenStaffMgr = isFullScreenStaffManagerPath(path);
+  const isFullscreenCommerce = isFullscreenCommercePath(path);
+  const isDating = isDatingPath(path);
+  const isMerchantPos = isMerchantPosPath(path);
+  const isAdminShell = isAdminShellPath(path);
+  const isHomePath = path === "/" || path === "/home" || path === "/landing";
 
   return {
     isCheckout,
@@ -80,22 +91,25 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
     isStaffEmployeeShell,
     isFullScreenStaffMgr,
     isFullscreenCommerce,
+    isAdminShell,
     showBottomNav: !isDesktopViewport
       && !isCheckout
       && !isPublicInvoicePayment
       && !isQrOrder
       && !isRestaurantTableGuest
       && !isInvoicePay
+      && !isImmersiveMobilityMap
       && !isStaffEmployeeShell
       && !isFullScreenStaffMgr
       && !isDating
       && !isMerchantPos
+      && !isAdminShell
       && !isFullscreenCommerce
-      && !currentPath.startsWith("/pay/merchant/")
-      && currentPath !== "/merchant-landing"
-      && currentPath !== "/pay/directory"
-      && currentPath !== "/design-system"
-      && currentPath !== "/scan",
+      && !path.startsWith("/pay/merchant/")
+      && path !== "/merchant-landing"
+      && path !== "/pay/directory"
+      && path !== "/design-system"
+      && path !== "/scan",
     showBackToHome: !isHomePath
       && !isCheckout
       && !isPublicInvoicePayment
@@ -103,12 +117,14 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isRestaurantTableGuest
       && !isInvoicePay
       && !isMobilityShell
+      && !isImmersiveMobilityMap
       && !isStaffEmployeeShell
       && !isDating
       && !isMerchantPos
+      && !isAdminShell
       && !isFullscreenCommerce
-      && !currentPath.startsWith("/pay/merchant/")
-      && currentPath !== "/merchant-landing",
+      && !path.startsWith("/pay/merchant/")
+      && path !== "/merchant-landing",
     isDating,
   };
 }

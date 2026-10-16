@@ -5,8 +5,11 @@ import { printReceipt } from "../../utils/escposPrinter";
 import { POSVoucherSale, POSWalletTopUp } from "./POSVoucherComponents";
 import { POSSecurePaymentPanel } from "./POSSecurePaymentPanel";
 import { POSBioPayPanel } from "./POSBioPayPanel";
+import { TEST_MODE } from "../../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const EXTERNAL_CARD_CERTIFIED = TEST_MODE && String(process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED || "").trim().toLowerCase() === "true";
+const NFC_CERTIFIED = String(process.env.REACT_APP_POS_NFC_CERTIFIED || "").trim().toLowerCase() === "true";
 
 async function apiCall(path, { method = "GET", body } = {}) {
   const res = await fetch(`${API}${path}`, {
@@ -44,7 +47,7 @@ function PayBtn({ icon: Icon, label, active, onClick, testid }) {
   );
 }
 
-function SaleCompleteCard({ sale, onClose }) {
+function SaleCompleteCard({ sale, onClose, offline = false }) {
   const [printing, setPrinting] = useState(false);
   const print = async () => {
     setPrinting(true);
@@ -59,19 +62,26 @@ function SaleCompleteCard({ sale, onClose }) {
   };
   const btSupported = "bluetooth" in navigator;
   return (
-    <Card title="✓ Zahlung erfolgreich" testid="pos-sale-success">
+    <Card title={offline ? "✓ Offline-Verkauf gespeichert" : "✓ Zahlung erfolgreich"} testid="pos-sale-success">
       <div className="text-center py-3">
         <Check size={36} className="text-[#10B981] mx-auto mb-2" />
         <p className="text-2xl font-black mb-1">€{sale.total.toFixed(2)}</p>
-        <p className="text-[11px] text-white/60">Beleg: {sale.receipt_id}</p>
+        <p className="text-[11px] text-white/60">
+          {offline ? "Lokale Referenz" : "Beleg"}: {sale.receipt_id}
+        </p>
+        {offline && (
+          <p className="mt-2 text-[10px] text-amber-300">
+            Noch nicht mit dem Server synchronisiert. Nicht erneut als neuen Verkauf erfassen.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2 mt-3">
-          <a href={`${API}/api/pos/receipts/${sale.receipt_id}/pdf`} target="_blank" rel="noopener noreferrer"
+          {!offline && <a href={`${API}/api/pos/receipts/${sale.receipt_id}/pdf`} target="_blank" rel="noopener noreferrer"
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1">
             <Download size={12} /> PDF
-          </a>
-          <button onClick={print} disabled={!btSupported || printing}
+          </a>}
+          <button onClick={print} disabled={offline || !btSupported || printing}
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-30"
-            title={btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt"}
+            title={offline ? "Nach Synchronisierung drucken" : (btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt")}
             data-testid="pos-print-bt">
             {printing ? <Loader2 size={12} className="animate-spin" /> : "🖨 BT"}
           </button>
@@ -124,11 +134,19 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
       try {
         const c = await apiCall("/api/pos/cart/create", {
           method: "POST",
-          body: { register_id: q.register_id, items: q.items, discount_pct: q.discount_pct || 0 },
+          body: {
+            register_id: q.register_id,
+            items: q.items,
+            discount_pct: q.discount_pct || 0,
+            client_sale_id: q.offline_sale_id,
+            captured_shift_id: q.shift_id,
+            offline_captured_at: q.captured_at || q.queued_at,
+            expected_total: q.total,
+          },
         });
         await apiCall("/api/pos/payment/create", {
           method: "POST",
-          body: { cart_id: c.cart.cart_id, method: "cash", cash_received: q.total },
+          body: { cart_id: c.cart.cart_id, method: "cash", cash_received: q.cash_received ?? q.total },
         });
         synced++;
       } catch {
@@ -155,11 +173,23 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   };
 
   const totals = useMemo(() => {
-    const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-    const disc = sub * (discountPct / 100);
-    const voucherTotal = appliedVouchers.reduce((s, v) => s + (v.applied || 0), 0);
-    const grand = Math.max(0, sub - disc - voucherTotal);
-    return { subtotal: sub, discount: disc, voucher: voucherTotal, total: grand };
+    const grossBeforeLineDiscounts = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    const lineDiscount = cart.reduce((sum, item) => {
+      const lineGross = Number(item.price || 0) * Number(item.quantity || 0);
+      const pct = Math.min(100, Math.max(0, Number(item.discount_pct || 0)));
+      return sum + (lineGross * pct / 100);
+    }, 0);
+    const subtotal = Math.max(0, grossBeforeLineDiscounts - lineDiscount);
+    const cartDiscount = subtotal * (Number(discountPct || 0) / 100);
+    const voucherTotal = appliedVouchers.reduce((sum, voucher) => sum + Number(voucher.applied || 0), 0);
+    const grand = Math.max(0, subtotal - cartDiscount - voucherTotal);
+    return {
+      subtotal,
+      lineDiscount,
+      discount: cartDiscount,
+      voucher: voucherTotal,
+      total: grand,
+    };
   }, [cart, discountPct, appliedVouchers]);
 
   useEffect(() => { if (shift && scanRef.current) scanRef.current.focus(); }, [shift]);
@@ -242,6 +272,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   }));
 
   const checkVoucher = async () => {
+    if (!TEST_MODE) return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");
     if (!voucherPayCode.trim()) return toast.error("Code eingeben");
     setVoucherChecking(true);
     try {
@@ -264,20 +295,43 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
   const pay = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
+    if (paymentMethod === "card_external" && !EXTERNAL_CARD_CERTIFIED) {
+      return toast.error("Externe Kartenzahlung ist ohne zertifizierten Terminal-Provider deaktiviert.");
+    }
+    if (!TEST_MODE && appliedVouchers.length > 0) {
+      return toast.error("Gutschein-Zahlung ist in Production bis zum kanonischen Cart-Settlement deaktiviert.");
+    }
 
-    // Offline-Modus: Cash-Verkauf in Queue speichern
+    // Offline-Modus: Cash-Verkauf lokal erfassen und später exakt einmal synchronisieren.
     if (!online) {
       if (paymentMethod !== "cash") return toast.error("Offline nur Bar möglich");
+      if (!shift?.shift_id) return toast.error("Offline-Verkauf braucht eine geöffnete Schicht");
+      if (appliedVouchers.length > 0) {
+        return toast.error("Gutscheine können offline nicht sicher eingelöst werden. Bitte online synchronisieren.");
+      }
+      const received = cashReceived === "" ? totals.total : Number(cashReceived);
+      if (!Number.isFinite(received) || received < totals.total) {
+        return toast.error(`Bargeld zu wenig (€${totals.total.toFixed(2)} nötig)`);
+      }
+      const offlineSaleId = typeof crypto?.randomUUID === "function"
+        ? `OFF-${crypto.randomUUID()}`
+        : `OFF-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const capturedAt = new Date().toISOString();
       queueOfflineSale({
+        offline_sale_id: offlineSaleId,
+        shift_id: shift.shift_id,
         register_id: registerId,
         items: buildItems(),
         discount_pct: discountPct,
         total: totals.total,
+        cash_received: received,
+        captured_at: capturedAt,
         cart_snapshot: cart,
       });
       const fakeSale = {
-        receipt_id: `OFFLINE-${Date.now().toString(36).toUpperCase()}`,
+        receipt_id: offlineSaleId,
         total: totals.total,
+        offline_pending_sync: true,
       };
       setCart([]); setDiscountPct(0); setAppliedVouchers([]); setCashReceived("");
       setActivePayment({ status: "paid", sale: fakeSale, is_offline: true });
@@ -320,7 +374,14 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
       const body = { cart_id, method: paymentMethod };
       if (paymentMethod === "cash") body.cash_received = parseFloat(cashReceived || totals.total);
-      if (paymentMethod === "card_external") body.card_reference = cardRef || `CARD-${Date.now()}`;
+      if (paymentMethod === "card_external") {
+        const providerReference = cardRef.trim();
+        if (!providerReference) {
+          toast.error("Bitte die echte Referenz des zertifizierten Kartenterminals eingeben.");
+          return;
+        }
+        body.card_reference = providerReference;
+      }
       if (paymentMethod === "barcode" && customerBarcode) body.customer_barcode = customerBarcode;
 
       const p = await apiCall("/api/pos/payment/create", { method: "POST", body });
@@ -363,6 +424,9 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   };
 
   const startNFC = async () => {
+    if (!NFC_CERTIFIED) {
+      return toast.error("NFC ist noch nicht für Production zertifiziert.");
+    }
     if (cart.length === 0) return toast.error("Cart leer");
     try {
       const c = await apiCall("/api/pos/cart/create", {
@@ -457,7 +521,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   }
 
   if (activePayment && activePayment.status === "paid" && activePayment.sale) {
-    return <SaleCompleteCard sale={activePayment.sale} onClose={() => setActivePayment(null)} />;
+    return <SaleCompleteCard sale={activePayment.sale} offline={Boolean(activePayment.is_offline)} onClose={() => setActivePayment(null)} />;
   }
 
   return (
@@ -608,22 +672,34 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
           </div>
 
           {/* Gutschein einlösen */}
-          <div className="flex gap-1 mb-3">
-            <input value={voucherPayCode} onChange={(e) => setVoucherPayCode(e.target.value)}
-              placeholder="Gutschein-Code (GS-XXXXXX)" className="flex-1 px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-[11px] font-mono"
-              data-testid="pos-voucher-code-input" />
-            <button onClick={checkVoucher} disabled={voucherChecking}
-              className="px-3 py-2 rounded-lg bg-[#FF4060]/20 text-[#FF4060] text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-              data-testid="pos-voucher-apply">
-              <Ticket size={11} /> Anwenden
-            </button>
-          </div>
+          {TEST_MODE ? (
+            <div className="flex gap-1 mb-3">
+              <input value={voucherPayCode} onChange={(e) => setVoucherPayCode(e.target.value)}
+                placeholder="Gutschein-Code (GS-XXXXXX)" className="flex-1 px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-[11px] font-mono"
+                data-testid="pos-voucher-code-input" />
+              <button onClick={checkVoucher} disabled={voucherChecking}
+                className="px-3 py-2 rounded-lg bg-[#FF4060]/20 text-[#FF4060] text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+                data-testid="pos-voucher-apply">
+                <Ticket size={11} /> Anwenden
+              </button>
+            </div>
+          ) : (
+            <div data-testid="pos-voucher-preview-disabled" className="mb-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2 text-[10px] leading-relaxed text-amber-100/70">
+              Gutschein-Zahlung Preview · in Production bis zum kanonischen Cart-Settlement deaktiviert.
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 mb-3">
             <PayBtn icon={QrCode} label="QR Wallet" active={paymentMethod === "wallet_qr"} onClick={() => setPaymentMethod("wallet_qr")} testid="pos-pay-qr" />
             <PayBtn icon={Smartphone} label="Kunden-Barcode" active={paymentMethod === "barcode"} onClick={() => setPaymentMethod("barcode")} testid="pos-pay-barcode" />
             <PayBtn icon={Banknote} label="Bar" active={paymentMethod === "cash"} onClick={() => setPaymentMethod("cash")} testid="pos-pay-cash" />
-            <PayBtn icon={CreditCard} label="Karte ext." active={paymentMethod === "card_external"} onClick={() => setPaymentMethod("card_external")} testid="pos-pay-card" />
+            {EXTERNAL_CARD_CERTIFIED ? (
+              <PayBtn icon={CreditCard} label="Karte ext." active={paymentMethod === "card_external"} onClick={() => setPaymentMethod("card_external")} testid="pos-pay-card" />
+            ) : (
+              <div data-testid="pos-card-preview-disabled" className="py-2.5 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-[9px] leading-tight text-amber-100/70 flex items-center justify-center text-center px-2">
+                Karte Preview · Terminal nicht zertifiziert
+              </div>
+            )}
           </div>
 
           {paymentMethod === "barcode" && (
@@ -643,10 +719,16 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
             <button onClick={pay} className="py-3 rounded-xl bg-[#00C2FF] text-black font-black text-[13px]" data-testid="pos-pay-btn">
               Bezahlen €{totals.total.toFixed(2)}
             </button>
-            <button onClick={startNFC} className="py-3 rounded-xl bg-white/10 text-white font-bold text-[12px] flex items-center justify-center gap-1.5"
-              data-testid="pos-nfc-btn">
-              <Smartphone size={13} /> NFC starten
-            </button>
+            {NFC_CERTIFIED ? (
+              <button onClick={startNFC} className="py-3 rounded-xl bg-white/10 text-white font-bold text-[12px] flex items-center justify-center gap-1.5"
+                data-testid="pos-nfc-btn">
+                <Smartphone size={13} /> NFC starten
+              </button>
+            ) : (
+              <div data-testid="pos-nfc-preview-disabled" className="py-3 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-[9px] leading-tight text-amber-100/70 flex items-center justify-center text-center px-2">
+                NFC Preview · Provider/Hardware nicht verifiziert
+              </div>
+            )}
           </div>
         </Card>
       )}

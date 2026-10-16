@@ -31,44 +31,22 @@ async def get_saved_payment_methods(request: Request):
 
 
 class SavePaymentMethod(BaseModel):
-    card_number: str  # Verschlüsselt oder tokenisiert speichern (Stripe Token)
-    card_holder: str
-    expiry: str  # MM/YY
-    card_type: str  # visa, mastercard, amex
+    stripe_payment_method_id: str
     is_default: bool = False
 
 
 @router.post("/payment-methods")
 async def save_payment_method(req: SavePaymentMethod, request: Request):
-    """Neue Zahlungsmethode speichern."""
-    user = await get_current_user(request)
-    
-    # Falls default, alle anderen auf non-default setzen
-    if req.is_default:
-        await db.saved_payment_methods.update_many(
-            {"user_id": str(user["_id"])},
-            {"$set": {"is_default": False}}
-        )
-    
-    # Maskierte Kartennummer (nur letzte 4 Ziffern sichtbar)
-    last4 = req.card_number[-4:]
-    masked = f"**** **** **** {last4}"
-    
-    method = {
-        "id": str(uuid4()),
-        "user_id": str(user["_id"]),
-        "card_holder": req.card_holder,
-        "card_number_masked": masked,
-        "card_last4": last4,
-        "expiry": req.expiry,
-        "card_type": req.card_type,
-        "is_default": req.is_default,
-        "created_at": _now(),
-        "deleted": False,
-    }
-    await db.saved_payment_methods.insert_one(method)
-    method.pop("_id", None)
-    return {"ok": True, "payment_method": method}
+    """Legacy endpoint: raw PAN storage is forbidden. Use tokenized Stripe route."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "error": "tokenized_payment_method_required",
+            "message": "Rohe Kartendaten werden nicht akzeptiert. Nutze /api/express-checkout/stripe/save-payment-method mit Stripe Payment Method.",
+            "stripe_payment_method_id": req.stripe_payment_method_id,
+        },
+    )
 
 
 @router.delete("/payment-methods/{method_id}")
@@ -191,62 +169,13 @@ class ExpressCheckoutRequest(BaseModel):
 @router.post("/quick-buy")
 @router.post("/init")
 async def express_checkout(req: ExpressCheckoutRequest, request: Request):
-    """1-Klick-Checkout mit gespeicherten Daten. Alias: /init (kompatibel zur Roadmap)."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Payment Method
-    if req.use_default_payment:
-        payment = await db.saved_payment_methods.find_one(
-            {"user_id": user_id, "is_default": True, "deleted": {"$ne": True}}
-        )
-    elif req.payment_method_id:
-        payment = await db.saved_payment_methods.find_one(
-            {"id": req.payment_method_id, "user_id": user_id, "deleted": {"$ne": True}}
-        )
-    else:
-        payment = None
-    
-    if not payment:
-        raise HTTPException(400, "Keine Zahlungsmethode gefunden")
-    
-    # Address
-    if req.use_default_address:
-        address = await db.saved_addresses.find_one(
-            {"user_id": user_id, "is_default": True, "deleted": {"$ne": True}}
-        )
-    elif req.address_id:
-        address = await db.saved_addresses.find_one(
-            {"id": req.address_id, "user_id": user_id, "deleted": {"$ne": True}}
-        )
-    else:
-        address = None
-    
-    if not address:
-        raise HTTPException(400, "Keine Lieferadresse gefunden")
-    
-    # Create Order
-    order = {
-        "order_id": f"EXP-{uuid4().hex[:12].upper()}",
-        "user_id": user_id,
-        "product_id": req.product_id,
-        "auction_id": req.auction_id,
-        "amount": req.amount,
-        "quantity": req.quantity,
-        "payment_method_id": payment["id"],
-        "address_id": address["id"],
-        "status": "pending_payment",
-        "express_checkout": True,
-        "created_at": _now(),
-    }
-    await db.orders.insert_one(order)
-    order.pop("_id", None)
-    
-    # TODO: Trigger Stripe Payment Intent
-    # TODO: Send to fulfillment
-    
-    return {
-        "ok": True,
-        "order": order,
-        "message": "Bestellung erfolgreich aufgegeben! Du erhältst eine Bestätigungs-E-Mail."
-    }
+    """Legacy route intentionally fails closed until server-priced provider settlement is used."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "error": "canonical_checkout_required",
+            "message": "Dieser alte Express-Checkout ist deaktiviert, weil Preis und Zahlungsabschluss nicht serverseitig verifiziert wurden. Nutze den kanonischen Marketplace-/Stripe-Checkout.",
+        },
+    )
+

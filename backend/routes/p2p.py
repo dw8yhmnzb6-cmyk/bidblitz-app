@@ -12,6 +12,7 @@ from typing import Optional
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
 from core.rate_limit import limiter
 from core.payment_engine import transfer_between_wallets, TransactionType
 from core.audit import log_audit, AuditEvent, get_client_info
@@ -35,10 +36,32 @@ class P2PSendRequest(BaseModel):
     recipient_handle: str = Field(..., min_length=3, max_length=20)
     amount: float = Field(..., gt=0, le=5000)
     note: Optional[str] = Field(default="", max_length=140)
+    idempotency_key: Optional[str] = Field(default=None, max_length=200)
 
 
 def _normalize(h: str) -> str:
     return h.strip().lstrip("@").lstrip("$").lower()
+
+
+def _ensure_wallet_write_allowed(user: dict):
+    if TEST_MODE or user.get("role") == "admin":
+        return
+    if user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um Geld zu senden.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
+
+
+def _require_idempotency_key(req_key: Optional[str], request: Request) -> str:
+    key = (req_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return key
 
 
 @router.get("/handle/me")
@@ -50,8 +73,20 @@ async def my_handle(request: Request):
     handle = _normalize((doc or {}).get("handle") or (doc or {}).get("username") or "")
     if handle and (doc or {}).get("handle") != handle:
         await db.users.update_one({"_id": user["_id"]}, {"$set": {"handle": handle}})
-    received = await db.transactions.count_documents({"user_id": user_id, "type": "p2p_receive"})
-    sent = await db.transactions.count_documents({"user_id": user_id, "type": "p2p_send"})
+    received = await db.transactions.count_documents({
+        "user_id": user_id,
+        "$or": [
+            {"type": "p2p_receive"},
+            {"type": "transfer", "direction": "credit"},
+        ],
+    })
+    sent = await db.transactions.count_documents({
+        "user_id": user_id,
+        "$or": [
+            {"type": "p2p_send"},
+            {"type": "transfer", "direction": "debit"},
+        ],
+    })
     return {
         "handle": handle or None,
         "name": (doc or {}).get("name"),
@@ -114,8 +149,10 @@ async def lookup_handle(handle: str, request: Request):
 async def p2p_send(req: P2PSendRequest, request: Request):
     """Transfer money to another user by handle. Atomic debit/credit via payment_engine."""
     user = await get_current_user(request)
+    _ensure_wallet_write_allowed(user)
     sender_id = str(user["_id"])
     h = _normalize(req.recipient_handle)
+    idempotency_key = _require_idempotency_key(req.idempotency_key, request)
 
     recipient = await db.users.find_one({"handle": h}, {"_id": 1, "name": 1, "handle": 1})
     if not recipient:
@@ -132,7 +169,8 @@ async def p2p_send(req: P2PSendRequest, request: Request):
             amount=req.amount,
             tx_type=TransactionType.TRANSFER,
             description=f"P2P → @{h}: {req.note or 'No message'}",
-            reference=f"P2P-{h}-{int(datetime.now(timezone.utc).timestamp())}",
+            reference=f"P2P-{h}-{idempotency_key[:24]}",
+            idempotency_key=idempotency_key,
             metadata={
                 "recipient_handle": h,
                 "sender_handle": (await db.users.find_one({"_id": user["_id"]}, {"handle": 1}) or {}).get("handle"),

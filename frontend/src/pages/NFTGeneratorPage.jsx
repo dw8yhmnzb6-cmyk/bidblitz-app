@@ -3,7 +3,7 @@
  * Generate AI NFT images with Wallet or Mining balance
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Sparkles, Wallet, Bitcoin, Image, Loader2,
@@ -42,6 +42,8 @@ const NFTGeneratorPage = ({ onNavigate }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [marketplace, setMarketplace] = useState([]);
+  const generateAttemptKeyRef = useRef(null);
+  const buyAttemptKeysRef = useRef({});
 
   useEffect(() => {
     loadData();
@@ -79,19 +81,28 @@ const NFTGeneratorPage = ({ onNavigate }) => {
   const generateNFT = async () => {
     if (!selectedStyle || generating) return;
     
+    if (!generateAttemptKeyRef.current) {
+      generateAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `nft-generate-${crypto.randomUUID()}`
+        : `nft-generate-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = generateAttemptKeyRef.current;
     setGenerating(true);
     setError(null);
     
     try {
       const res = await api("/api/nft/generate", {
         method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           style_id: selectedStyle,
           tier: selectedTier,
           payment_method: paymentMethod,
+          idempotency_key: idempotencyKey,
         }),
       });
       
+      generateAttemptKeyRef.current = null;
       setGeneratedNFT(res.nft);
       setBalances({
         wallet_eur: res.new_wallet_balance,
@@ -103,6 +114,9 @@ const NFTGeneratorPage = ({ onNavigate }) => {
       const collectionRes = await api("/api/nft/collection");
       setCollection(collectionRes.nfts || []);
     } catch (err) {
+      if (err?.status === 400 || String(err?.message || "").includes("neuen Idempotency-Key")) {
+        generateAttemptKeyRef.current = null;
+      }
       setError(err.message || "Generierung fehlgeschlagen");
     } finally {
       setGenerating(false);
@@ -110,13 +124,26 @@ const NFTGeneratorPage = ({ onNavigate }) => {
   };
 
   const buyNFT = async (nftId, price) => {
+    if (!buyAttemptKeysRef.current[nftId]) {
+      buyAttemptKeysRef.current[nftId] = typeof crypto?.randomUUID === "function"
+        ? `nft-buy-${crypto.randomUUID()}`
+        : `nft-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = buyAttemptKeysRef.current[nftId];
     try {
-      const res = await api(`/api/nft/buy/${nftId}`, { method: "POST" });
+      const res = await api(`/api/nft/buy/${nftId}`, {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+      });
+      delete buyAttemptKeysRef.current[nftId];
       setSuccess(res.message);
       setBalances(prev => ({ ...prev, wallet_eur: res.new_balance }));
       loadMarketplace();
       loadData();
     } catch (err) {
+      if (err?.status === 400 || String(err?.message || "").includes("neuen Idempotency-Key")) {
+        delete buyAttemptKeysRef.current[nftId];
+      }
       setError(err.message);
     }
   };
@@ -333,17 +360,18 @@ const NFTGeneratorPage = ({ onNavigate }) => {
                       </div>
                     </motion.button>
                     <motion.button
-                      onClick={() => setPaymentMethod("mining")}
-                      className="p-4 rounded-xl flex flex-col items-center gap-2 transition-all"
+                      onClick={() => config?.mining_payment_enabled && setPaymentMethod("mining")}
+                      disabled={!config?.mining_payment_enabled}
+                      className="p-4 rounded-xl flex flex-col items-center gap-2 transition-all disabled:opacity-40"
                       style={{
                         background: paymentMethod === "mining" ? "rgba(247,147,26,0.15)" : "rgba(255,255,255,0.02)",
                         border: paymentMethod === "mining" ? "1px solid rgba(247,147,26,0.4)" : panelBorder,
                       }}
-                      whileTap={{ scale: 0.97 }}>
+                      whileTap={{ scale: config?.mining_payment_enabled ? 0.97 : 1 }}>
                       <Bitcoin size={24} className={paymentMethod === "mining" ? "text-orange-400" : "text-white/30"} />
                       <div className="text-center">
                         <p className={`text-[12px] font-semibold ${paymentMethod === "mining" ? "text-orange-400" : "text-white/50"}`}>Mining</p>
-                        <p className="text-[10px] text-white/30">{balances.mining_btc.toFixed(5)} BTC</p>
+                        <p className="text-[10px] text-white/30">{config?.mining_payment_enabled ? `${balances.mining_btc.toFixed(5)} BTC` : "Nicht verfügbar"}</p>
                       </div>
                     </motion.button>
                   </div>

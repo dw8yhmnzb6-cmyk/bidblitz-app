@@ -5,7 +5,7 @@ import {
   Trash2, Settings, BarChart3, TrendingUp, Users, RefreshCw,
   Calendar, Bot, Zap, Package, ChevronRight, Check, X,
   Timer, DollarSign, Target, Layers, AlertCircle, Activity,
-  Sliders, Power, Eye, Edit3, Save
+  Sliders, Power, Eye, Edit3, Save, Truck, Crown
 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store";
@@ -18,7 +18,13 @@ async function api(path, opts = {}) {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
-  return r.json();
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const error = new Error(typeof data.detail === "string" ? data.detail : data.message || "Request failed");
+    error.detail = data.detail;
+    throw error;
+  }
+  return data;
 }
 
 const AuctionAdminPage = ({ onBack }) => {
@@ -28,10 +34,36 @@ const AuctionAdminPage = ({ onBack }) => {
   const [stats, setStats] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [config, setConfig] = useState(null);
+  const botControlsEffective = config?.bot_controls_effective === true;
+  const [orders, setOrders] = useState([]);
+  const [fulfillmentDrafts, setFulfillmentDrafts] = useState({});
+  const [updatingOrder, setUpdatingOrder] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState({
+    featured: false,
+    bidValue: 0.50,
+    increment: 0.01,
+    revenueTarget: 50.00,
+    productCost: 0.00,
+    shippingCost: 0.00,
+    otherCosts: 0.00,
+    targetNetProfit: 50.00,
+    duration: 48,
+  });
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
   const [botConfig, setBotConfig] = useState({ enabled: true, target: 0, minSeconds: 60 });
+  const [showEngineModal, setShowEngineModal] = useState(null);
+  const [engineConfig, setEngineConfig] = useState({
+    featured: false,
+    bidValue: 0.50,
+    increment: 0.01,
+    revenueTarget: 50.00,
+    productCost: 0.00,
+    shippingCost: 0.00,
+    otherCosts: 0.00,
+    targetNetProfit: 50.00,
+  });
   const [showImageModal, setShowImageModal] = useState(null); // auction object or null
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
@@ -39,17 +71,31 @@ const AuctionAdminPage = ({ onBack }) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [auctionsRes, statsRes, catalogRes, configRes] = await Promise.all([
+      const [auctionsRes, statsRes, catalogRes, configRes, ordersRes] = await Promise.all([
         api("/api/auctions/admin/list"),
         api("/api/auctions/admin/stats/overview"),
         api("/api/auctions/admin/catalog"),
         api("/api/auctions/admin/automation/config"),
+        api("/api/auctions/admin/orders"),
       ]);
       
       setAuctions(auctionsRes.auctions || []);
       setStats(statsRes);
       setCatalog(catalogRes.catalog || []);
       setConfig(configRes);
+      setOrders(ordersRes.orders || []);
+      setFulfillmentDrafts((prev) => {
+        const next = { ...prev };
+        for (const order of (ordersRes.orders || [])) {
+          if (!next[order.order_id]) {
+            next[order.order_id] = {
+              carrier: order.carrier || "",
+              tracking_number: order.tracking_number || "",
+            };
+          }
+        }
+        return next;
+      });
     } catch (err) {
       toast.error("Fehler beim Laden");
     }
@@ -62,8 +108,39 @@ const AuctionAdminPage = ({ onBack }) => {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  const updateFulfillment = async (order, status) => {
+    const orderId = order.order_id;
+    const draft = fulfillmentDrafts[orderId] || {};
+    setUpdatingOrder(orderId);
+    try {
+      const body = { status };
+      if (status === "shipped") {
+        body.carrier = String(draft.carrier || "").trim();
+        body.tracking_number = String(draft.tracking_number || "").trim();
+        if (!body.carrier || body.tracking_number.length < 4) {
+          toast.error("Carrier und echte Trackingnummer erforderlich");
+          setUpdatingOrder(null);
+          return;
+        }
+      }
+      await api(`/api/auctions/admin/orders/${orderId}/fulfillment`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      toast.success(status === "processing" ? "Fulfillment gestartet" : status === "shipped" ? "Als versendet markiert" : "Als zugestellt markiert");
+      await loadData();
+    } catch (err) {
+      toast.error(err?.detail || err?.message || "Fulfillment konnte nicht aktualisiert werden");
+    }
+    setUpdatingOrder(null);
+  };
+
   // ─── Bot Actions ───
   const openBotConfig = (auction) => {
+    if (!botControlsEffective && !auction?.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     setBotConfig({
       enabled: auction.bot_enabled || false,
       target: auction.bot_target_price || Math.round(auction.retail_price * 0.15),
@@ -74,6 +151,10 @@ const AuctionAdminPage = ({ onBack }) => {
 
   const saveBotConfig = async () => {
     if (!showBotModal) return;
+    if (!botControlsEffective && !showBotModal.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     const res = await api("/api/auctions/admin/bot-config", {
       method: "POST",
       body: JSON.stringify({
@@ -93,6 +174,10 @@ const AuctionAdminPage = ({ onBack }) => {
   };
 
   const toggleBotQuick = async (auction) => {
+    if (!botControlsEffective && !auction?.bot_only) {
+      toast.info("Production-Bots sind für normale Kundenauktionen deaktiviert.");
+      return;
+    }
     const res = await api("/api/auctions/admin/bot-config", {
       method: "POST",
       body: JSON.stringify({
@@ -108,8 +193,55 @@ const AuctionAdminPage = ({ onBack }) => {
     }
   };
 
+  // ─── Auction Engine ───
+  const openEngineConfig = (auction) => {
+    setEngineConfig({
+      featured: Boolean(auction.featured),
+      bidValue: Number(auction.bid_value_eur ?? 0.50),
+      increment: Number(auction.price_increment ?? 0.01),
+      revenueTarget: Number(auction.revenue_target_eur ?? 50.00),
+      productCost: Number(auction.product_cost_eur ?? 0),
+      shippingCost: Number(auction.shipping_cost_eur ?? 0),
+      otherCosts: Number(auction.other_costs_eur ?? 0),
+      targetNetProfit: Number(auction.target_net_profit_eur ?? 50.00),
+    });
+    setShowEngineModal(auction);
+  };
+
+  const saveEngineConfig = async () => {
+    if (!showEngineModal) return;
+    try {
+      await api(`/api/auctions/admin/auction/${showEngineModal.auction_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          featured: Boolean(engineConfig.featured),
+          bid_value_eur: Number(engineConfig.bidValue),
+          price_increment: Number(engineConfig.increment),
+          revenue_target_eur: Number(engineConfig.revenueTarget),
+          product_cost_eur: Number(engineConfig.productCost),
+          shipping_cost_eur: Number(engineConfig.shippingCost),
+          other_costs_eur: Number(engineConfig.otherCosts),
+          target_net_profit_eur: Number(engineConfig.targetNetProfit),
+        }),
+      });
+      toast.success("Auktions-Engine gespeichert");
+      setShowEngineModal(null);
+      await loadData();
+    } catch (err) {
+      toast.error(err?.detail || err?.message || "Engine-Einstellungen konnten nicht gespeichert werden");
+    }
+  };
+
   // ─── Image Edit ───
   const openImageEditor = (auction) => {
+    const realBidCount = Math.max(
+      0,
+      Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0),
+    );
+    if (auction.status === "ended" || auction.winner_id || realBidCount > 0) {
+      toast.error("Produktdaten sind nach dem ersten echten Gebot gesperrt.");
+      return;
+    }
     setImageUrlInput(auction.image_url || "");
     setShowImageModal(auction);
   };
@@ -201,18 +333,30 @@ const AuctionAdminPage = ({ onBack }) => {
     }
   };
 
-  const handleSchedule = async (productIndex, options = {}) => {
+  const handleSchedule = async (productIndex, options = scheduleConfig) => {
     const res = await api("/api/auctions/admin/auction/schedule", {
       method: "POST",
       body: JSON.stringify({
         product_index: productIndex,
-        duration_hours: options.duration || 48,
-        bot_enabled: true,
-        featured: false,
+        duration_hours: Number(options.duration || 48),
+        bot_enabled: false,
+        featured: Boolean(options.featured),
+        bid_value_eur: Number(options.bidValue || 0.50),
+        price_increment: Number(options.increment || 0.01),
+        revenue_target_eur: Number(options.revenueTarget || 0),
+        product_cost_eur: Number(options.productCost || 0),
+        shipping_cost_eur: Number(options.shippingCost || 0),
+        other_costs_eur: Number(options.otherCosts || 0),
+        target_net_profit_eur: Number(options.targetNetProfit || 0),
       }),
     });
     if (res.ok) {
-      toast.success(`"${res.auction.title}" gestartet mit Bot-Ziel €${res.auction.bot_target_price}`);
+      const botNote = res.auction?.bot_enabled
+        ? ` · Bot-Ziel €${res.auction.bot_target_price}`
+        : res.bot_policy === "test_only"
+          ? " · Production-Bots deaktiviert"
+          : "";
+      toast.success(`"${res.auction.title}" gestartet${botNote}`);
       setShowScheduleModal(false);
       loadData();
     } else {
@@ -239,7 +383,7 @@ const AuctionAdminPage = ({ onBack }) => {
     return `${s}s`;
   };
 
-  const activeAuctions = auctions.filter(a => a.status === "active");
+  const activeAuctions = auctions.filter(a => ["active", "paused"].includes(a.status));
   const botEnabledAuctions = auctions.filter(a => a.bot_enabled && a.status === "active");
 
   return (
@@ -277,8 +421,10 @@ const AuctionAdminPage = ({ onBack }) => {
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {[
             { id: "overview", label: "Übersicht", icon: <BarChart3 size={14} /> },
+            { id: "engine", label: "Auktions-Engine", icon: <Target size={14} /> },
             { id: "bots", label: "Bot-System", icon: <Bot size={14} /> },
-            { id: "active", label: `Aktiv (${activeAuctions.length})`, icon: <Play size={14} /> },
+            { id: "active", label: `Aktiv/Pausiert (${activeAuctions.length})`, icon: <Play size={14} /> },
+            { id: "orders", label: `Bestellungen (${orders.length})`, icon: <Truck size={14} /> },
             { id: "catalog", label: "Katalog", icon: <Package size={14} /> },
           ].map((tab) => (
             <motion.button
@@ -339,7 +485,7 @@ const AuctionAdminPage = ({ onBack }) => {
               ) : (
                 <div className="space-y-2">
                   {activeAuctions.slice(0, 5).map((a) => (
-                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} onImageClick={() => openImageEditor(a)} />
+                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} onImageClick={() => openImageEditor(a)} onEngineClick={() => openEngineConfig(a)} />
                   ))}
                 </div>
               )}
@@ -347,9 +493,159 @@ const AuctionAdminPage = ({ onBack }) => {
           </div>
         )}
 
+        {/* ═══ AUCTION ENGINE TAB ═══ */}
+        {activeTab === "engine" && (
+          <div className="space-y-3" data-testid="auction-admin-engine">
+            <Card title="Auktions-Engine" icon={<Target size={16} className="text-cyan-400" />}>
+              <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.06] p-3 text-xs leading-relaxed text-cyan-100/70">
+                Pro Angebot steuerst du Produktkosten, Versand, sonstige Kosten und dein Nettoziel. Der Gewinnziel-Schutz zählt nur tatsächlich bezahlten Credit-Wert; Gratis-/Bonus-Credits zählen als 0,00 €. Ist das Mindestziel beim Timer-Ende offen, kann die Auktion transparent verlängert werden.
+              </div>
+            </Card>
+            {activeAuctions.length === 0 ? (
+              <EmptyState icon={<Target size={32} />} text="Keine aktiven oder pausierten Auktionen" />
+            ) : activeAuctions.map((auction) => {
+              const bidValue = Number(auction.bid_value_eur ?? 0.50);
+              const increment = Number(auction.price_increment ?? 0.01);
+              const target = Number(auction.revenue_target_eur ?? 0);
+              const costs = Number(auction.product_cost_eur ?? 0) + Number(auction.shipping_cost_eur ?? 0) + Number(auction.other_costs_eur ?? 0);
+              const netTarget = Number(auction.target_net_profit_eur ?? 0);
+              const currentPrice = Number(auction.current_price || 0);
+              const guard = auction.profit_guard || {};
+              const actualBidRevenue = Math.max(0, Number(guard.real_bid_revenue_eur ?? 0));
+              const minPaidCredit = Math.max(0.01, Number(guard.minimum_paid_credit_value_eur ?? 0.25));
+              const guardRemaining = Math.max(0, Number(guard.estimated_real_bids_remaining ?? 0));
+              const bidsForRevenue = target > actualBidRevenue
+                ? Math.ceil((target - actualBidRevenue) / minPaidCredit)
+                : 0;
+              const bidsNeeded = Math.max(guardRemaining, bidsForRevenue);
+              const visibleEnd = currentPrice + bidsNeeded * increment;
+              const estimatedBidRevenue = actualBidRevenue + (bidsNeeded * minPaidCredit);
+              const estimatedContribution = estimatedBidRevenue + visibleEnd - costs;
+              return (
+                <div key={auction.auction_id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                      {auction.featured ? <Crown size={18} className="text-yellow-400" /> : <Gavel size={18} className="text-cyan-400" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold">{auction.title}</p>
+                        {auction.featured && <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black text-yellow-300">PREMIUM</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/40">
+                        <span>Listenwert: €{bidValue.toFixed(2)}</span>
+                        <span>Preis +€{increment.toFixed(2)}</span>
+                        <span>Echter Gebotsumsatz: €{actualBidRevenue.toFixed(2)}</span>
+                        <span>Nettoziel: €{netTarget.toFixed(2)}</span>
+                      </div>
+                      {bidsNeeded > 0 && (
+                        <p className="mt-1 text-[10px] text-cyan-300/70">
+                          ≈ {bidsNeeded} weitere bezahlte Gebote bei mindestens €{minPaidCredit.toFixed(2)} · sichtbarer Preis ≈ €{visibleEnd.toFixed(2)} · Deckungsbeitrag ≈ €{estimatedContribution.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                    <motion.button
+                      onClick={() => openEngineConfig(auction)}
+                      className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[10px] font-black text-cyan-300"
+                      whileTap={{ scale: 0.96 }}
+                      data-testid={`auction-engine-open-${auction.auction_id}`}
+                    >
+                      Konfigurieren
+                    </motion.button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ═══ FULFILLMENT TAB ═══ */}
+        {activeTab === "orders" && (
+          <div className="space-y-3" data-testid="auction-admin-orders">
+            {orders.length === 0 ? (
+              <Card title="Gewinner-Bestellungen" icon={<Truck size={16} className="text-cyan-400" />}>
+                <p className="py-5 text-center text-sm text-white/40">Noch keine bezahlten Gewinner-Bestellungen.</p>
+              </Card>
+            ) : orders.map((order) => {
+              const status = order.fulfillment_status || "pending";
+              const draft = fulfillmentDrafts[order.order_id] || {};
+              const busy = updatingOrder === order.order_id;
+              return (
+                <div key={order.order_id} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4" data-testid={`auction-order-${order.order_id}`}>
+                  <div className="flex items-start gap-3">
+                    {order.image_url ? <img src={order.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5"><Package size={18} /></div>}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{order.product_title}</p>
+                      <p className="mt-1 text-xs text-white/40">{order.order_id} · €{Number(order.final_price || 0).toFixed(2)}</p>
+                      <p className="mt-1 text-[11px] text-cyan-300">Fulfillment: {status}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/6 bg-black/20 p-3 text-xs text-white/55">
+                    <p className="font-semibold text-white/75">{order.shipping_address?.full_name}</p>
+                    <p>{order.shipping_address?.address_line1}{order.shipping_address?.address_line2 ? `, ${order.shipping_address.address_line2}` : ""}</p>
+                    <p>{order.shipping_address?.postal_code} {order.shipping_address?.city} · {order.shipping_address?.country}</p>
+                  </div>
+
+                  {status === "processing" && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <input
+                        value={draft.carrier || ""}
+                        onChange={(e) => setFulfillmentDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), carrier: e.target.value } }))}
+                        placeholder="Carrier, z. B. DHL"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs outline-none focus:border-cyan-400/40"
+                        data-testid={`auction-carrier-${order.order_id}`}
+                      />
+                      <input
+                        value={draft.tracking_number || ""}
+                        onChange={(e) => setFulfillmentDrafts((prev) => ({ ...prev, [order.order_id]: { ...(prev[order.order_id] || {}), tracking_number: e.target.value } }))}
+                        placeholder="Echte Sendungsnummer"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs outline-none focus:border-cyan-400/40"
+                        data-testid={`auction-tracking-${order.order_id}`}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    {status === "pending" && (
+                      <button onClick={() => updateFulfillment(order, "processing")} disabled={busy} className="flex-1 rounded-xl bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 disabled:opacity-40">
+                        Vorbereitung
+                      </button>
+                    )}
+                    {status === "processing" && (
+                      <button onClick={() => updateFulfillment(order, "shipped")} disabled={busy} className="flex-1 rounded-xl bg-cyan-500/10 py-2 text-xs font-semibold text-cyan-300 disabled:opacity-40">
+                        {busy ? "Speichert…" : "Versendet"}
+                      </button>
+                    )}
+                    {status === "shipped" && (
+                      <button onClick={() => updateFulfillment(order, "delivered")} disabled={busy} className="flex-1 rounded-xl bg-green-500/10 py-2 text-xs font-semibold text-green-300 disabled:opacity-40">
+                        {busy ? "Speichert…" : "Zugestellt"}
+                      </button>
+                    )}
+                  </div>
+
+                  {order.tracking_number && (
+                    <div className="mt-2 text-[11px] text-white/45">
+                      {order.carrier}: <span className="font-mono text-white/70">{order.tracking_number}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ═══ BOT SYSTEM TAB ═══ */}
         {activeTab === "bots" && (
           <div className="space-y-4">
+            {!botControlsEffective && (
+              <div
+                className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-200"
+                data-testid="auction-bot-production-policy"
+              >
+                Production: Bot-Steuerung ist für normale Kundenauktionen deaktiviert. Nur klar markierte bot_only Demo-/Testauktionen dürfen Bot-Funktionen verwenden.
+              </div>
+            )}
             {/* Bot Stats Card */}
             <Card title="Bot-Statistiken" icon={<Activity size={16} className="text-purple-400" />}>
               <div className="grid grid-cols-2 gap-4">
@@ -409,11 +705,14 @@ const AuctionAdminPage = ({ onBack }) => {
                     max="100"
                     step="5"
                     value={config?.customer_win_rate_percent ?? 20}
+                    disabled={!botControlsEffective}
                     onChange={(e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       setConfig((c) => ({ ...(c || {}), customer_win_rate_percent: v }));
                     }}
                     onMouseUp={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -426,6 +725,7 @@ const AuctionAdminPage = ({ onBack }) => {
                       }
                     }}
                     onTouchEnd={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -437,7 +737,7 @@ const AuctionAdminPage = ({ onBack }) => {
                         toast.error("Speichern fehlgeschlagen");
                       }
                     }}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400 disabled:cursor-not-allowed disabled:opacity-35"
                     data-testid="winrate-slider"
                   />
                   <div className="flex justify-between text-[10px] text-white/40 mt-1">
@@ -469,7 +769,9 @@ const AuctionAdminPage = ({ onBack }) => {
                 </div>
 
                 <p className="text-[10px] text-white/40 italic">
-                  💡 Diese Einstellung wirkt in den letzten 5 Min jeder Auktion: wenn ein echter Kunde führt und das "Kunde gewinnt"-Los gezogen wurde, halten sich die Bots zurück.
+                  {botControlsEffective
+                    ? 'Diese Einstellung gilt nur im freigeschalteten Bot-Testmodus.'
+                    : 'Production-Kundenauktionen werden nicht über eine Win-Rate-Steuerung beeinflusst.'}
                 </p>
               </div>
             </Card>
@@ -490,11 +792,14 @@ const AuctionAdminPage = ({ onBack }) => {
                     max="100"
                     step="5"
                     value={config?.bot_aggression_level ?? 50}
+                    disabled={!botControlsEffective}
                     onChange={(e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       setConfig((c) => ({ ...(c || {}), bot_aggression_level: v }));
                     }}
                     onMouseUp={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -507,6 +812,7 @@ const AuctionAdminPage = ({ onBack }) => {
                       }
                     }}
                     onTouchEnd={async (e) => {
+                      if (!botControlsEffective) return;
                       const v = Number(e.target.value);
                       try {
                         await api("/api/auctions/admin/automation/config", {
@@ -518,7 +824,7 @@ const AuctionAdminPage = ({ onBack }) => {
                         toast.error("Speichern fehlgeschlagen");
                       }
                     }}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-35"
                     data-testid="aggression-slider"
                   />
                   <div className="flex justify-between text-[10px] text-white/40 mt-1">
@@ -528,7 +834,9 @@ const AuctionAdminPage = ({ onBack }) => {
                   </div>
                 </div>
                 <p className="text-[10px] text-white/40 italic">
-                  💡 Bei <span className="text-cyan-400">100</span> bieten Bots fast in jeder Sekunde — User hat keine Chance zu überlegen. Bei <span className="text-cyan-400">0</span> warten Bots 8-15 s zwischen Bids → Kunde hat viel Reaktionszeit.
+                  {botControlsEffective
+                    ? 'Bot-Aggressivität gilt nur im freigeschalteten Bot-Testmodus.'
+                    : 'Production-Kundenauktionen nutzen keine Bot-Aggressivitätssteuerung.'}
                 </p>
               </div>
             </Card>
@@ -536,7 +844,10 @@ const AuctionAdminPage = ({ onBack }) => {
             {/* Global Bot Settings */}
             <Card title="Globale Bot-Einstellungen" icon={<Settings size={16} className="text-white/40" />}>
               <div className="space-y-3">
-                <SettingRow label="Standard Bot aktiv" value={config?.bot_default_enabled ? "Ja" : "Nein"} />
+                <SettingRow
+                  label="Standard Bot aktiv"
+                  value={config?.bot_policy === "test_only" ? "Production: deaktiviert" : (config?.bot_default_enabled ? "Ja" : "Nein")}
+                />
                 <SettingRow label="Standard Zielpreis" value={`${config?.bot_default_target_percent || 15}% vom UVP`} />
                 <SettingRow label="Mindestzeit vor Bid" value="60 Sekunden" />
                 <SettingRow label="Bid-Wahrscheinlichkeit" value="30-40%" />
@@ -561,6 +872,7 @@ const AuctionAdminPage = ({ onBack }) => {
                   onEnd={handleEnd}
                   onDelete={handleDelete}
                   onBotConfig={() => openBotConfig(a)}
+                  onEngineConfig={() => openEngineConfig(a)}
                 />
               ))
             )}
@@ -602,6 +914,100 @@ const AuctionAdminPage = ({ onBack }) => {
       <AnimatePresence>
         {showScheduleModal && (
           <Modal onClose={() => setShowScheduleModal(false)} title="Neue Auktion starten">
+            <div className="mb-4 space-y-3 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.05] p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Engine-Voreinstellungen</p>
+                  <p className="text-[10px] text-white/40">Diese Werte gelten für das ausgewählte Angebot.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScheduleConfig(v => ({ ...v, featured: !v.featured }))}
+                  className={`rounded-full px-3 py-1 text-[10px] font-black ${scheduleConfig.featured ? "bg-yellow-400 text-black" : "bg-white/10 text-white/50"}`}
+                >
+                  {scheduleConfig.featured ? "PREMIUM AN" : "Premium"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Gebotswert €</span>
+                  <input type="number" min="0.01" max="10" step="0.01" value={scheduleConfig.bidValue}
+                    onChange={e => setScheduleConfig(v => ({ ...v, bidValue: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-cyan-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Preis-Schritt €</span>
+                  <input type="number" min="0.01" max="1" step="0.01" value={scheduleConfig.increment}
+                    onChange={e => setScheduleConfig(v => ({ ...v, increment: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-cyan-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Gebotsumsatz-Ziel €</span>
+                  <input type="number" min="0" max="100000" step="1" value={scheduleConfig.revenueTarget}
+                    onChange={e => setScheduleConfig(v => ({ ...v, revenueTarget: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-yellow-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Nettoziel €</span>
+                  <input data-testid="auction-schedule-net-profit" type="number" min="0" max="100000" step="1" value={scheduleConfig.targetNetProfit}
+                    onChange={e => setScheduleConfig(v => ({ ...v, targetNetProfit: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-emerald-300 outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Produktkosten €</span>
+                  <input type="number" min="0" max="100000" step="1" value={scheduleConfig.productCost}
+                    onChange={e => setScheduleConfig(v => ({ ...v, productCost: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Versand €</span>
+                  <input type="number" min="0" max="10000" step="1" value={scheduleConfig.shippingCost}
+                    onChange={e => setScheduleConfig(v => ({ ...v, shippingCost: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Sonstige Kosten €</span>
+                  <input type="number" min="0" max="10000" step="1" value={scheduleConfig.otherCosts}
+                    onChange={e => setScheduleConfig(v => ({ ...v, otherCosts: e.target.value }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none" />
+                </label>
+                <label className="rounded-xl border border-white/5 bg-black/10 p-2.5">
+                  <span className="text-[9px] uppercase tracking-wider text-white/35">Dauer Stunden</span>
+                  <select value={scheduleConfig.duration}
+                    onChange={e => setScheduleConfig(v => ({ ...v, duration: Number(e.target.value) }))}
+                    className="mt-1 w-full bg-transparent text-base font-black text-white outline-none">
+                    <option value={48} className="bg-[#0a0a0a]">48</option>
+                    <option value={72} className="bg-[#0a0a0a]">72</option>
+                  </select>
+                </label>
+              </div>
+              {(() => {
+                const bidValue = Math.max(0.01, Number(scheduleConfig.bidValue) || 0.50);
+                const increment = Math.max(0.01, Number(scheduleConfig.increment) || 0.01);
+                const revenueTarget = Math.max(0, Number(scheduleConfig.revenueTarget) || 0);
+                const costs = Math.max(0, Number(scheduleConfig.productCost) || 0)
+                  + Math.max(0, Number(scheduleConfig.shippingCost) || 0)
+                  + Math.max(0, Number(scheduleConfig.otherCosts) || 0);
+                const netTarget = Math.max(0, Number(scheduleConfig.targetNetProfit) || 0);
+                const minPaidCredit = 0.25;
+                const startPrice = 0.01;
+                const bidsForRevenue = revenueTarget > 0 ? Math.ceil(revenueTarget / minPaidCredit) : 0;
+                const bidsForNet = netTarget > 0
+                  ? Math.max(0, Math.ceil((costs + netTarget - startPrice) / (minPaidCredit + increment)))
+                  : 0;
+                const bids = Math.max(bidsForRevenue, bidsForNet);
+                const visiblePrice = startPrice + (bids * increment);
+                const bidRevenue = bids * minPaidCredit;
+                const contribution = bidRevenue + visiblePrice - costs;
+                return (
+                  <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3 text-[10px] text-white/55">
+                    <p><span className="font-black text-emerald-300">{bids} bezahlte Gebote</span> · konservativer Gebotsumsatz ≈ €{bidRevenue.toFixed(2)} · sichtbarer Preis ≈ €{visiblePrice.toFixed(2)}</p>
+                    <p className="mt-1">Geschätzter Deckungsbeitrag ≈ <span className="font-black text-emerald-300">€{contribution.toFixed(2)}</span> bei Kosten von €{costs.toFixed(2)}.</p>
+                    <p className="mt-1 text-white/35">Rechnung mit günstigstem bezahlten Credit €0,25. Gratis-/Bonus-Credits zählen als €0,00 Gebotsumsatz. Listenwert aktuell €{bidValue.toFixed(2)}.</p>
+                  </div>
+                );
+              })()}
+            </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {catalog.map((product, idx) => (
                 <motion.button
@@ -617,6 +1023,197 @@ const AuctionAdminPage = ({ onBack }) => {
                   <ChevronRight size={18} className="text-white/30" />
                 </motion.button>
               ))}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ AUCTION ENGINE MODAL ═══ */}
+      <AnimatePresence>
+        {showEngineModal && (
+          <Modal onClose={() => setShowEngineModal(null)} title="Auktions-Engine konfigurieren">
+            <div className="space-y-4" data-testid="auction-engine-modal">
+              <div className="rounded-xl border border-white/5 bg-white/[0.025] p-3">
+                <p className="text-sm font-semibold">{showEngineModal.title}</p>
+                <p className="mt-1 text-xs text-white/40">Vor dem ersten echten Gebot editierbar.</p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-yellow-400/15 bg-yellow-400/[0.05] p-3">
+                <div>
+                  <p className="text-sm font-semibold text-yellow-200">Premium-Auktion</p>
+                  <p className="text-[10px] text-white/40">Als große Top-Deal-Karte hervorheben</p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={() => setEngineConfig(v => ({ ...v, featured: !v.featured }))}
+                  className={`flex h-7 w-12 items-center rounded-full px-1 ${engineConfig.featured ? "bg-yellow-400" : "bg-white/10"}`}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div className="h-5 w-5 rounded-full bg-white" animate={{ x: engineConfig.featured ? 20 : 0 }} />
+                </motion.button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Gebotswert</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-bid-value"
+                      type="number"
+                      min="0.01"
+                      max="10"
+                      step="0.01"
+                      value={engineConfig.bidValue}
+                      onChange={e => setEngineConfig(v => ({ ...v, bidValue: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-cyan-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Preis-Schritt</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-increment"
+                      type="number"
+                      min="0.01"
+                      max="1"
+                      step="0.01"
+                      value={engineConfig.increment}
+                      onChange={e => setEngineConfig(v => ({ ...v, increment: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-cyan-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+                <label className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Gebotsumsatz-Ziel</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      data-testid="auction-engine-revenue-target"
+                      type="number"
+                      min="0"
+                      max="100000"
+                      step="1"
+                      value={engineConfig.revenueTarget}
+                      onChange={e => setEngineConfig(v => ({ ...v, revenueTarget: e.target.value }))}
+                      className="w-full bg-transparent text-lg font-black text-yellow-300 outline-none"
+                    />
+                    <span className="text-sm text-white/40">€</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ["Produktkosten", "productCost", 100000],
+                  ["Versand", "shippingCost", 10000],
+                  ["Sonstige Kosten", "otherCosts", 10000],
+                  ["Nettoziel", "targetNetProfit", 100000],
+                ].map(([label, key, max]) => (
+                  <label key={key} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/35">{label}</span>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        data-testid={`auction-engine-${key}`}
+                        type="number"
+                        min="0"
+                        max={max}
+                        step="1"
+                        value={engineConfig[key]}
+                        onChange={e => setEngineConfig(v => ({ ...v, [key]: e.target.value }))}
+                        className={`w-full bg-transparent text-base font-black outline-none ${key === "targetNetProfit" ? "text-emerald-300" : "text-white"}`}
+                      />
+                      <span className="text-sm text-white/40">€</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {(() => {
+                const bidValue = Math.max(0.01, Number(engineConfig.bidValue) || 0.50);
+                const increment = Math.max(0.01, Number(engineConfig.increment) || 0.01);
+                const revenueTarget = Math.max(0, Number(engineConfig.revenueTarget) || 0);
+                const costs = Math.max(0, Number(engineConfig.productCost) || 0)
+                  + Math.max(0, Number(engineConfig.shippingCost) || 0)
+                  + Math.max(0, Number(engineConfig.otherCosts) || 0);
+                const netTarget = Math.max(0, Number(engineConfig.targetNetProfit) || 0);
+                const currentPrice = Math.max(0.01, Number(showEngineModal.current_price || 0.01));
+                const realPaidBids = Math.max(
+                  0,
+                  Number(showEngineModal.profit_guard?.real_paid_bids ?? showEngineModal.real_paid_bids ?? 0),
+                );
+                const currentBidRevenue = Math.max(
+                  0,
+                  Number(showEngineModal.profit_guard?.real_bid_revenue_eur ?? 0),
+                );
+                const minPaidCredit = Math.max(
+                  0.01,
+                  Number(showEngineModal.profit_guard?.minimum_paid_credit_value_eur ?? 0.25),
+                );
+                const currentNetProfit = currentBidRevenue + currentPrice - costs;
+                const additionalForRevenue = revenueTarget > currentBidRevenue
+                  ? Math.ceil((revenueTarget - currentBidRevenue) / minPaidCredit)
+                  : 0;
+                const missingNet = Math.max(0, netTarget - currentNetProfit);
+                const additionalForNet = netTarget > 0
+                  ? Math.ceil(missingNet / (minPaidCredit + increment))
+                  : 0;
+                const additionalBids = Math.max(additionalForRevenue, additionalForNet);
+                const estimatedEnd = currentPrice + (additionalBids * increment);
+                const estimatedBidRevenue = currentBidRevenue + (additionalBids * minPaidCredit);
+                const estimatedNetProfit = estimatedBidRevenue + estimatedEnd - costs;
+                const targetReached = additionalBids === 0;
+                return (
+                  <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-4" data-testid="auction-profit-guard-summary">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Gewinnziel-Schutz</p>
+                        <p className="mt-1 text-xs text-white/55">Nur echte bezahlte Kundengebote zählen.</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-black ${targetReached ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-300"}`}>
+                        {targetReached ? "ZIEL ERREICHT" : "ZIEL OFFEN"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-5">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Echte Gebote</p>
+                        <p className="mt-1 text-lg font-black text-white">{realPaidBids}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Noch benötigt</p>
+                        <p className="mt-1 text-lg font-black text-amber-300">{additionalBids}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Echter Gebotsumsatz</p>
+                        <p className="mt-1 text-lg font-black text-cyan-300">€{currentBidRevenue.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Netto aktuell</p>
+                        <p className={`mt-1 text-lg font-black ${currentNetProfit >= 0 ? "text-emerald-300" : "text-red-300"}`}>€{currentNetProfit.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-white/35">Netto am Ziel</p>
+                        <p className="mt-1 text-lg font-black text-emerald-300">€{estimatedNetProfit.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[10px] leading-relaxed text-white/40">
+                      Ziel: €{netTarget.toFixed(2)} Netto-Gewinn · Kosten: €{costs.toFixed(2)} · erwarteter Auktionspreis am Ziel: €{estimatedEnd.toFixed(2)}.
+                      Schätzung mit günstigstem bezahlten Credit €{minPaidCredit.toFixed(2)}. Gratis-/Bonus-Credits zählen €0,00 Gebotsumsatz. Solange das Mindestziel nicht erreicht ist, wird die Auktion transparent verlängert. Bot-Gebote zählen nicht als Umsatz.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <motion.button
+                type="button"
+                data-testid="auction-engine-save"
+                onClick={saveEngineConfig}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 py-3 font-black text-[#03131A]"
+                whileTap={{ scale: 0.98 }}
+              >
+                <Save size={17} /> Engine speichern
+              </motion.button>
             </div>
           </Modal>
         )}
@@ -859,13 +1456,24 @@ const ActionBtn = ({ icon, label, onClick, color }) => (
   </motion.button>
 );
 
-const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
+const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick, onEngineClick }) => (
   <div className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
     {/* Thumbnail (click to edit) */}
     <button
       onClick={onImageClick}
-      className="relative w-12 h-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-cyan-400 shrink-0 group"
-      title="Bild bearbeiten"
+      disabled={
+        auction.status === "ended" ||
+        Boolean(auction.winner_id) ||
+        Math.max(0, Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0)) > 0
+      }
+      className="relative w-12 h-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-cyan-400 shrink-0 group disabled:cursor-not-allowed disabled:opacity-40"
+      title={
+        auction.status === "ended" ||
+        Boolean(auction.winner_id) ||
+        Math.max(0, Number(auction.total_bids || 0) - Number(auction.bot_bids_placed || 0)) > 0
+          ? "Produktdaten nach echtem Gebot gesperrt"
+          : "Bild bearbeiten"
+      }
       data-testid={`edit-image-${auction.auction_id}`}
     >
       {auction.image_url ? (
@@ -891,6 +1499,14 @@ const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
     </div>
     <div className="flex items-center gap-2">
       <span className="text-xs text-yellow-400 font-mono">{formatTime(auction.remaining_seconds)}</span>
+      <motion.button
+        onClick={onEngineClick}
+        className="p-1.5 rounded-lg bg-cyan-500/10"
+        whileTap={{ scale: 0.9 }}
+        title="Auktions-Engine"
+      >
+        <Target size={14} className="text-cyan-400" />
+      </motion.button>
       <motion.button 
         onClick={onBotClick} 
         className={`p-1.5 rounded-lg ${auction.bot_enabled ? "bg-purple-500/20" : "bg-white/5"}`}
@@ -936,7 +1552,7 @@ const BotAuctionRow = ({ auction, formatTime, onToggle, onConfigure }) => (
   </div>
 );
 
-const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDelete, onBotConfig }) => (
+const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDelete, onBotConfig, onEngineConfig }) => (
   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }} layout>
     <div className="flex items-start gap-3 mb-3">
       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] flex items-center justify-center flex-shrink-0">
@@ -987,6 +1603,9 @@ const AuctionFullCard = ({ auction, formatTime, onPause, onResume, onEnd, onDele
           <Play size={12} className="inline mr-1" /> Weiter
         </motion.button>
       )}
+      <motion.button onClick={onEngineConfig} className="flex-1 py-2 rounded-lg bg-cyan-500/10 text-cyan-400 text-xs font-medium" whileTap={{ scale: 0.97 }}>
+        <Target size={12} className="inline mr-1" /> Engine
+      </motion.button>
       <motion.button onClick={onBotConfig} className="flex-1 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-medium" whileTap={{ scale: 0.97 }}>
         <Bot size={12} className="inline mr-1" /> Bot
       </motion.button>

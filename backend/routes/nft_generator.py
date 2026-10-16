@@ -12,15 +12,43 @@ Features:
 from datetime import datetime, timezone
 from typing import Optional, List
 import secrets
+import hashlib
+import os
 import random
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from core.config import TEST_MODE
+from core.payment_engine import debit_wallet, credit_wallet, transfer_between_wallets, TransactionType
 from services.nft_ai_generator import get_nft_generator
 
 router = APIRouter(prefix="/api/nft", tags=["nft"])
+
+
+def _require_nft_value_mode() -> None:
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="NFT-Erzeugung, Minting und Handel sind in Production deaktiviert, bis ein verifizierter Mint-/Custody-/Marketplace-Provider live verbunden ist.",
+        )
+
+
+def _require_nft_idempotency_key(body_key: Optional[str], request: Request, action: str) -> str:
+    raw = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(raw) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"nft:{action}:{hashlib.sha256(raw.encode('utf-8')).hexdigest()[:24]}"
+
+
+async def _nft_platform_user_id() -> str:
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae").strip().lower()
+    platform = await db.users.find_one({"email": email}, {"_id": 1})
+    if not platform:
+        raise HTTPException(status_code=503, detail="NFT Plattform-Wallet ist nicht konfiguriert")
+    return str(platform["_id"])
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # NFT CONFIGURATION
@@ -105,6 +133,7 @@ class GenerateNFTRequest(BaseModel):
     tier: str = Field(default="basic", pattern="^(basic|premium|ultimate)$")
     payment_method: str = Field(default="wallet", pattern="^(wallet|mining)$")
     custom_prompt: Optional[str] = Field(None, max_length=200)
+    idempotency_key: Optional[str] = None
 
 
 class ListNFTRequest(BaseModel):
@@ -221,7 +250,15 @@ async def get_nft_config():
     return {
         "styles": NFT_STYLES,
         "rarity": NFT_RARITY,
-        "prices": NFT_PRICES,
+        "prices": NFT_PRICES if TEST_MODE else {},
+        "value_actions_enabled": bool(TEST_MODE),
+        "wallet_payment_enabled": bool(TEST_MODE),
+        "mining_payment_enabled": False,
+        "live_nft_provider_connected": False,
+        "production_message": (
+            None if TEST_MODE else
+            "NFT-Erzeugung, Minting und Handel sind noch nicht live verbunden."
+        ),
     }
 
 
@@ -232,23 +269,24 @@ async def get_nft_balance(request: Request):
     user_id = str(user["_id"])
     
     wallet_balance = user.get("balance", 0)
-    mining_balance = await get_mining_balance(user_id)
+    mining_balance = 0
     
     return {
         "wallet_eur": round(wallet_balance, 2),
         "mining_btc": round(mining_balance, 8),
+        "value_actions_enabled": bool(TEST_MODE),
         "can_afford": {
             "basic": {
-                "wallet": wallet_balance >= NFT_PRICES["basic"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["basic"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["basic"]["eur"]),
+                "mining": False,
             },
             "premium": {
-                "wallet": wallet_balance >= NFT_PRICES["premium"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["premium"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["premium"]["eur"]),
+                "mining": False,
             },
             "ultimate": {
-                "wallet": wallet_balance >= NFT_PRICES["ultimate"]["eur"],
-                "mining": mining_balance >= NFT_PRICES["ultimate"]["btc"],
+                "wallet": bool(TEST_MODE and wallet_balance >= NFT_PRICES["ultimate"]["eur"]),
+                "mining": False,
             },
         }
     }
@@ -256,141 +294,225 @@ async def get_nft_balance(request: Request):
 
 @router.post("/generate")
 async def generate_nft(req: GenerateNFTRequest, request: Request):
-    """Generate a new NFT image."""
+    _require_nft_value_mode()
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Validate style
+
+    if req.payment_method != "wallet":
+        raise HTTPException(
+            status_code=503,
+            detail="NFT-Zahlung mit Mining-BTC ist deaktiviert, bis ein kanonischer Mining-/Custody-Pfad verbunden ist.",
+        )
+
     style = next((s for s in NFT_STYLES if s["id"] == req.style_id), None)
     if not style:
         raise HTTPException(status_code=400, detail="Ungültiger Style")
-    
-    # Get price
     price_info = NFT_PRICES.get(req.tier)
     if not price_info:
         raise HTTPException(status_code=400, detail="Ungültiges Tier")
-    
-    # Check and deduct payment
-    if req.payment_method == "wallet":
-        if user.get("balance", 0) < price_info["eur"]:
-            raise HTTPException(status_code=400, detail="Nicht genug Wallet-Guthaben")
-        
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": -price_info["eur"]}}
-        )
-        payment_amount = price_info["eur"]
-        payment_currency = "EUR"
-    else:  # mining
-        mining_balance = await get_mining_balance(user_id)
-        if mining_balance < price_info["btc"]:
-            raise HTTPException(status_code=400, detail="Nicht genug Mining-Guthaben")
-        
-        await deduct_mining_balance(user_id, price_info["btc"])
-        payment_amount = price_info["btc"]
-        payment_currency = "BTC"
-    
-    now = datetime.now(timezone.utc)
-    
-    # Determine rarity
-    rarity = determine_rarity(req.tier)
-    rarity_info = NFT_RARITY[rarity]
-    
-    # Generate NFT name
-    nft_name = generate_nft_name(req.style_id, rarity)
-    
-    # ✨ AI Image Generation with Gemini Nano Banana ✨
-    try:
-        nft_id_temp = secrets.token_hex(8)
-        ai_generator = get_nft_generator()
-        
-        # Generate unique NFT artwork
-        generation_result = await ai_generator.generate_nft_image(
-            style_id=req.style_id,
-            rarity=rarity,
-            custom_prompt=req.custom_prompt
-        )
-        
-        if not generation_result.get("success"):
-            # Fallback to Unsplash if AI generation fails
-            style_images = NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"])
-            image_url = random.choice(style_images)
-        else:
-            # Save AI-generated image
-            image_url = await ai_generator.save_image_to_storage(
-                generation_result["image_base64"],
-                nft_id_temp
-            )
-    except Exception as e:
-        # Fallback to Unsplash on any error
-        style_images = NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"])
-        image_url = random.choice(style_images)
-    
-    # Create NFT record
-    nft = {
-        "nft_id": secrets.token_hex(8),
-        "token_id": f"BLTZ-{secrets.token_hex(4).upper()}",
+
+    idem = _require_nft_idempotency_key(req.idempotency_key, request, "generate")
+    op_hash = hashlib.sha256(f"{user_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    operation_id = f"NFTGEN-{op_hash.upper()}"
+    nft_id = f"nft_{op_hash}"
+    payload = {
         "user_id": user_id,
-        "name": nft_name,
-        "description": req.custom_prompt or f"{style['name']} NFT - {rarity_info['name']}",
-        "image_url": image_url,
         "style_id": req.style_id,
-        "style_name": style["name"],
-        "rarity": rarity,
-        "rarity_name": rarity_info["name"],
-        "rarity_color": rarity_info["color"],
         "tier": req.tier,
         "payment_method": req.payment_method,
-        "payment_amount": payment_amount,
-        "payment_currency": payment_currency,
-        "is_listed": False,
-        "list_price": None,
-        "created_at": now.isoformat(),
-        "minted_at": now.isoformat(),
+        "custom_prompt": req.custom_prompt or "",
     }
-    
-    await db.nfts.insert_one(nft)
-    
-    # Create transaction record
-    await db.transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "NFT_PURCHASE",
-        "amount": -payment_amount if payment_currency == "EUR" else 0,
-        "btc_amount": -payment_amount if payment_currency == "BTC" else 0,
-        "description": f"NFT generiert: {nft_name}",
-        "reference": nft["nft_id"],
-        "created_at": now.isoformat(),
-    })
-    
-    # Update user stats
-    await db.nft_stats.update_one(
-        {"user_id": user_id},
-        {
-            "$inc": {
-                "total_generated": 1,
-                f"rarity_{rarity}": 1,
-                "total_spent_eur": payment_amount if payment_currency == "EUR" else 0,
-                "total_spent_btc": payment_amount if payment_currency == "BTC" else 0,
-            },
-            "$setOnInsert": {"created_at": now.isoformat()}
-        },
-        upsert=True
+
+    existing_op = await db.nft_operations.find_one({"_id": operation_id}, {"_id": 0})
+    if existing_op and existing_op.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen NFT-Daten verwendet")
+    if existing_op and existing_op.get("status") == "completed":
+        existing_nft = await db.nfts.find_one({"nft_id": nft_id}, {"_id": 0}) or {}
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "nft": existing_nft,
+            "message": "NFT bereits generiert.",
+            "new_wallet_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "new_mining_balance": 0,
+            "replayed": True,
+        }
+    if existing_op and existing_op.get("status") == "failed_refunded":
+        raise HTTPException(status_code=409, detail="Fehlgeschlagene NFT-Generierung benötigt einen neuen Idempotency-Key")
+    if existing_op and existing_op.get("status") in {"processing", "reconciliation_required"}:
+        existing_nft = await db.nfts.find_one({"nft_id": nft_id}, {"_id": 0})
+        if existing_nft:
+            await db.nft_operations.update_one(
+                {"_id": operation_id},
+                {"$set": {"status": "completed", "recovered_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+            return {
+                "ok": True,
+                "nft": existing_nft,
+                "message": "NFT bereits generiert.",
+                "new_wallet_balance": round(float(fresh_user.get("balance") or 0), 2),
+                "new_mining_balance": 0,
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="NFT-Generierung wird verarbeitet oder benötigt Abstimmung")
+
+    await db.nft_operations.update_one(
+        {"_id": operation_id},
+        {"$setOnInsert": {
+            "_id": operation_id,
+            "payload": payload,
+            "nft_id": nft_id,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
     )
-    
-    nft.pop("_id", None)
-    
-    # Get updated balances
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-    new_mining_balance = await get_mining_balance(user_id)
-    
-    return {
-        "ok": True,
-        "nft": nft,
-        "message": f"🎉 {rarity_info['name']} NFT generiert!",
-        "new_wallet_balance": round(updated_user.get("balance", 0), 2),
-        "new_mining_balance": round(new_mining_balance, 8),
-    }
+    claimed = await db.nft_operations.update_one(
+        {"_id": operation_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if claimed.modified_count != 1:
+        raise HTTPException(status_code=409, detail="NFT-Generierung wird bereits verarbeitet")
+
+    payment = await debit_wallet(
+        user_id=user_id,
+        amount=price_info["eur"],
+        tx_type=TransactionType.PAYMENT,
+        description=f"NFT Preview Generierung ({req.tier})",
+        reference=operation_id,
+        metadata={"nft_id": nft_id, "style_id": req.style_id, "tier": req.tier, "preview": True},
+        idempotency_key=f"nft-generate:{operation_id}:payment",
+    )
+    if not payment.success:
+        await db.nft_operations.update_one(
+            {"_id": operation_id},
+            {"$set": {"status": "failed", "error": payment.error or "wallet_debit_failed"}},
+        )
+        raise HTTPException(status_code=400, detail=payment.error or "Nicht genug Wallet-Guthaben")
+
+    now = datetime.now(timezone.utc)
+    try:
+        rarity = determine_rarity(req.tier)
+        rarity_info = NFT_RARITY[rarity]
+        nft_name = generate_nft_name(req.style_id, rarity)
+
+        try:
+            ai_generator = get_nft_generator()
+            generation_result = await ai_generator.generate_nft_image(
+                style_id=req.style_id,
+                rarity=rarity,
+                custom_prompt=req.custom_prompt,
+            )
+            if generation_result.get("success"):
+                image_url = await ai_generator.save_image_to_storage(
+                    generation_result["image_base64"],
+                    nft_id,
+                )
+            else:
+                image_url = random.choice(NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"]))
+        except Exception:
+            image_url = random.choice(NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"]))
+
+        nft = {
+            "nft_id": nft_id,
+            "token_id": f"BLTZ-{op_hash[:8].upper()}",
+            "user_id": user_id,
+            "name": nft_name,
+            "description": req.custom_prompt or f"{style['name']} NFT - {rarity_info['name']}",
+            "image_url": image_url,
+            "style_id": req.style_id,
+            "style_name": style["name"],
+            "rarity": rarity,
+            "rarity_name": rarity_info["name"],
+            "rarity_color": rarity_info["color"],
+            "tier": req.tier,
+            "payment_method": "wallet",
+            "payment_amount": price_info["eur"],
+            "payment_currency": "EUR",
+            "payment_transaction_id": payment.transaction_id,
+            "is_listed": False,
+            "list_price": None,
+            "created_at": now.isoformat(),
+            "minted_at": now.isoformat(),
+        }
+        await db.nfts.update_one({"nft_id": nft_id}, {"$setOnInsert": nft}, upsert=True)
+        persisted = await db.nfts.find_one({"nft_id": nft_id}, {"_id": 0})
+        if not persisted:
+            raise RuntimeError("nft_persist_failed")
+
+        await db.transactions.update_one(
+            {"_id": f"{operation_id}:tx"},
+            {"$setOnInsert": {
+                "_id": f"{operation_id}:tx",
+                "tx_id": f"{operation_id}:tx",
+                "user_id": user_id,
+                "type": "NFT_PURCHASE",
+                "amount": -price_info["eur"],
+                "description": f"NFT generiert: {persisted.get('name', nft_name)}",
+                "reference": nft_id,
+                "wallet_transaction_id": payment.transaction_id,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+        stats_marker = f"generation_markers.{op_hash}"
+        await db.nft_stats.update_one(
+            {"user_id": user_id, stats_marker: {"$exists": False}},
+            {
+                "$inc": {
+                    "total_generated": 1,
+                    f"rarity_{persisted.get('rarity', rarity)}": 1,
+                    "total_spent_eur": price_info["eur"],
+                },
+                "$set": {stats_marker: {"nft_id": nft_id, "created_at": now.isoformat()}},
+                "$setOnInsert": {"created_at": now.isoformat()},
+            },
+            upsert=True,
+        )
+
+        response = {
+            "ok": True,
+            "nft": persisted,
+            "message": f"🎉 {persisted.get('rarity_name', rarity_info['name'])} NFT generiert!",
+            "new_wallet_balance": round(float(payment.new_balance or 0), 2),
+            "new_mining_balance": 0,
+        }
+        await db.nft_operations.update_one(
+            {"_id": operation_id, "status": "processing"},
+            {"$set": {
+                "status": "completed",
+                "response": response,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return {**response, "replayed": bool(payment.idempotent_replay)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=price_info["eur"],
+            tx_type=TransactionType.REFUND,
+            description="NFT Preview Generierung zurückgebucht",
+            reference=f"{operation_id}-ROLLBACK",
+            source="nft_preview_rollback",
+            metadata={"nft_id": nft_id, "operation_id": operation_id},
+            idempotency_key=f"nft-generate:{operation_id}:rollback",
+        )
+        await db.nft_operations.update_one(
+            {"_id": operation_id},
+            {"$set": {
+                "status": "failed_refunded" if rollback.success else "reconciliation_required",
+                "error": str(exc)[:300],
+                "rollback_transaction_id": rollback.transaction_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="NFT-Generierung benötigt Abstimmung")
+        raise HTTPException(status_code=500, detail="NFT-Generierung fehlgeschlagen. Wallet wurde zurückgebucht")
+
 
 
 @router.get("/collection")
@@ -456,6 +578,7 @@ async def get_nft_details(nft_id: str, request: Request):
 
 @router.post("/list")
 async def list_nft_for_sale(req: ListNFTRequest, request: Request):
+    _require_nft_value_mode()
     """List an NFT for sale on the marketplace."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -491,6 +614,7 @@ async def list_nft_for_sale(req: ListNFTRequest, request: Request):
 
 @router.post("/unlist/{nft_id}")
 async def unlist_nft(nft_id: str, request: Request):
+    _require_nft_value_mode()
     """Remove NFT from marketplace."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -547,91 +671,203 @@ async def get_marketplace(limit: int = 50, rarity: Optional[str] = None, style: 
 
 @router.post("/buy/{nft_id}")
 async def buy_nft(nft_id: str, request: Request):
-    """Buy an NFT from the marketplace."""
+    _require_nft_value_mode()
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Find listed NFT
-    nft = await db.nfts.find_one({
-        "nft_id": nft_id,
-        "is_listed": True
-    })
-    
+    buyer_id = str(user["_id"])
+    idem = _require_nft_idempotency_key(None, request, "buy")
+    purchase_hash = hashlib.sha256(f"{buyer_id}:{nft_id}:{idem}".encode("utf-8")).hexdigest()[:24]
+    purchase_id = f"NFTBUY-{purchase_hash.upper()}"
+
+    existing_purchase = await db.nft_operations.find_one({"_id": purchase_id}, {"_id": 0})
+    if existing_purchase and existing_purchase.get("nft_id") != nft_id:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit einem anderen NFT verwendet")
+    if existing_purchase and existing_purchase.get("status") == "completed":
+        return {**existing_purchase["response"], "replayed": True}
+    if existing_purchase and existing_purchase.get("status") in {"processing", "reconciliation_required"}:
+        raise HTTPException(status_code=409, detail="NFT-Kauf wird verarbeitet oder benötigt Abstimmung")
+    if existing_purchase and existing_purchase.get("status") == "failed_refunded":
+        raise HTTPException(status_code=409, detail="Fehlgeschlagener NFT-Kauf benötigt einen neuen Idempotency-Key")
+
+    nft = await db.nfts.find_one({"nft_id": nft_id, "is_listed": True})
     if not nft:
         raise HTTPException(status_code=404, detail="NFT nicht gefunden oder nicht zum Verkauf")
-    
-    if nft.get("user_id") == user_id:
+    seller_id = str(nft.get("user_id") or "")
+    if seller_id == buyer_id:
         raise HTTPException(status_code=400, detail="Kannst dein eigenes NFT nicht kaufen")
-    
-    price = nft.get("list_price", 0)
-    
-    if user.get("balance", 0) < price:
-        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
-    
-    seller_id = nft.get("user_id")
-    now = datetime.now(timezone.utc)
-    
-    # Transfer funds
-    # Deduct from buyer
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -price}}
+    price = round(float(nft.get("list_price") or 0), 2)
+    if price <= 0:
+        raise HTTPException(status_code=409, detail="Ungültiger NFT-Verkaufspreis")
+
+    platform_user_id = await _nft_platform_user_id()
+    if platform_user_id in {buyer_id, seller_id}:
+        raise HTTPException(status_code=503, detail="NFT Plattform-Wallet ist ungültig konfiguriert")
+
+    payload = {"buyer_id": buyer_id, "seller_id": seller_id, "nft_id": nft_id, "price": price}
+    await db.nft_operations.update_one(
+        {"_id": purchase_id},
+        {"$setOnInsert": {
+            "_id": purchase_id,
+            "nft_id": nft_id,
+            "payload": payload,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
     )
-    
-    # Add to seller (with 5% marketplace fee)
-    seller_amount = round(price * 0.95, 2)
-    from bson import ObjectId
-    try:
-        await db.users.update_one(
-            {"_id": ObjectId(seller_id)},
-            {"$inc": {"balance": seller_amount}}
+    op = await db.nft_operations.find_one({"_id": purchase_id}, {"_id": 0}) or {}
+    if op.get("payload") != payload:
+        raise HTTPException(status_code=409, detail="Idempotency-Key wurde mit anderen Kaufdaten verwendet")
+
+    lock = await db.nfts.update_one(
+        {
+            "nft_id": nft_id,
+            "is_listed": True,
+            "user_id": seller_id,
+            "$or": [
+                {"purchase_lock": {"$exists": False}},
+                {"purchase_lock": None},
+                {"purchase_lock": purchase_id},
+            ],
+        },
+        {"$set": {"purchase_lock": purchase_id, "purchase_locked_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if lock.modified_count != 1:
+        current = await db.nfts.find_one({"nft_id": nft_id}, {"_id": 0}) or {}
+        if current.get("user_id") == buyer_id and current.get("last_purchase_id") == purchase_id:
+            saved = await db.nft_operations.find_one({"_id": purchase_id}, {"_id": 0}) or {}
+            if saved.get("response"):
+                return {**saved["response"], "replayed": True}
+        raise HTTPException(status_code=409, detail="NFT wird bereits gekauft oder ist nicht mehr verfügbar")
+
+    await db.nft_operations.update_one(
+        {"_id": purchase_id, "status": "pending"},
+        {"$set": {"status": "processing", "processing_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    buyer_payment = await transfer_between_wallets(
+        from_user_id=buyer_id,
+        to_user_id=platform_user_id,
+        amount=price,
+        tx_type=TransactionType.RESALE_PURCHASE,
+        description=f"NFT Preview Kauf: {nft.get('name', nft_id)}",
+        reference=purchase_id,
+        metadata={"nft_id": nft_id, "seller_id": seller_id, "preview": True},
+        idempotency_key=f"nft-buy:{purchase_id}:escrow",
+    )
+    if not buyer_payment.success:
+        await db.nfts.update_one(
+            {"nft_id": nft_id, "purchase_lock": purchase_id},
+            {"$set": {"purchase_lock": None}, "$unset": {"purchase_locked_at": ""}},
         )
-    except:
-        pass
-    
-    # Transfer NFT ownership
-    await db.nfts.update_one(
-        {"nft_id": nft_id},
+        await db.nft_operations.update_one(
+            {"_id": purchase_id},
+            {"$set": {"status": "failed", "error": buyer_payment.error or "buyer_payment_failed"}},
+        )
+        raise HTTPException(status_code=400, detail=buyer_payment.error or "NFT-Zahlung fehlgeschlagen")
+
+    seller_amount = round(price * 0.95, 2)
+    seller_payout = await transfer_between_wallets(
+        from_user_id=platform_user_id,
+        to_user_id=seller_id,
+        amount=seller_amount,
+        tx_type=TransactionType.RESALE_SALE,
+        description=f"NFT Preview Verkauf: {nft.get('name', nft_id)}",
+        reference=f"{purchase_id}-SELLER",
+        metadata={"nft_id": nft_id, "buyer_id": buyer_id, "platform_fee": round(price - seller_amount, 2)},
+        idempotency_key=f"nft-buy:{purchase_id}:seller",
+    )
+    if not seller_payout.success:
+        refund = await transfer_between_wallets(
+            from_user_id=platform_user_id,
+            to_user_id=buyer_id,
+            amount=price,
+            tx_type=TransactionType.REFUND,
+            description="NFT Preview Kauf Rückzahlung",
+            reference=f"{purchase_id}-REFUND",
+            metadata={"nft_id": nft_id, "reason": "seller_payout_failed"},
+            idempotency_key=f"nft-buy:{purchase_id}:refund",
+        )
+        await db.nfts.update_one(
+            {"nft_id": nft_id, "purchase_lock": purchase_id},
+            {"$set": {"purchase_lock": None}, "$unset": {"purchase_locked_at": ""}},
+        )
+        await db.nft_operations.update_one(
+            {"_id": purchase_id},
+            {"$set": {
+                "status": "failed_refunded" if refund.success else "reconciliation_required",
+                "error": seller_payout.error or "seller_payout_failed",
+                "refund_transaction_id": refund.transaction_id,
+            }},
+        )
+        if not refund.success:
+            raise HTTPException(status_code=500, detail="NFT-Kauf benötigt Abstimmung")
+        raise HTTPException(status_code=409, detail="NFT-Kauf fehlgeschlagen. Käufer wurde zurückgezahlt")
+
+    now = datetime.now(timezone.utc)
+    finalized = await db.nfts.update_one(
+        {"nft_id": nft_id, "purchase_lock": purchase_id, "user_id": seller_id, "is_listed": True},
         {"$set": {
-            "user_id": user_id,
+            "user_id": buyer_id,
             "is_listed": False,
             "list_price": None,
             "listed_at": None,
+            "purchase_lock": None,
+            "last_purchase_id": purchase_id,
             "last_sale_price": price,
             "last_sale_at": now.isoformat(),
-        }}
+        }, "$unset": {"purchase_locked_at": ""}},
     )
-    
-    # Create transactions
-    await db.transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "NFT_BUY",
-        "amount": -price,
-        "description": f"NFT gekauft: {nft.get('name')}",
-        "reference": nft_id,
-        "created_at": now.isoformat(),
-    })
-    
-    await db.transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
-        "user_id": seller_id,
-        "type": "NFT_SALE",
-        "amount": seller_amount,
-        "description": f"NFT verkauft: {nft.get('name')} (5% Gebühr)",
-        "reference": nft_id,
-        "created_at": now.isoformat(),
-    })
-    
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-    
-    return {
+    if finalized.modified_count != 1:
+        await db.nft_operations.update_one(
+            {"_id": purchase_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "buyer_transaction_id": buyer_payment.transaction_id,
+                "seller_transaction_id": seller_payout.transaction_id,
+                "error": "ownership_finalize_failed",
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Zahlung erfolgt; NFT-Eigentumswechsel benötigt Abstimmung")
+
+    for tx_id, tx_user, tx_type, amount, description, wallet_tx_id in [
+        (f"{purchase_id}:buyer", buyer_id, "NFT_BUY", -price, f"NFT gekauft: {nft.get('name')}", buyer_payment.transaction_id),
+        (f"{purchase_id}:seller", seller_id, "NFT_SALE", seller_amount, f"NFT verkauft: {nft.get('name')} (5% Gebühr)", seller_payout.transaction_id),
+    ]:
+        await db.transactions.update_one(
+            {"_id": tx_id},
+            {"$setOnInsert": {
+                "_id": tx_id,
+                "tx_id": tx_id,
+                "user_id": tx_user,
+                "type": tx_type,
+                "amount": amount,
+                "description": description,
+                "reference": nft_id,
+                "wallet_transaction_id": wallet_tx_id,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+
+    response = {
         "ok": True,
         "nft_name": nft.get("name"),
         "price_paid": price,
-        "new_balance": round(updated_user.get("balance", 0), 2),
+        "new_balance": round(float(buyer_payment.new_balance or 0), 2),
         "message": f"🎉 NFT '{nft.get('name')}' gekauft!",
     }
+    await db.nft_operations.update_one(
+        {"_id": purchase_id},
+        {"$set": {
+            "status": "completed",
+            "response": response,
+            "buyer_transaction_id": buyer_payment.transaction_id,
+            "seller_transaction_id": seller_payout.transaction_id,
+            "completed_at": now.isoformat(),
+        }},
+    )
+    return {**response, "replayed": bool(buyer_payment.idempotent_replay and seller_payout.idempotent_replay)}
+
 
 
 @router.get("/leaderboard")

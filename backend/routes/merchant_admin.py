@@ -15,8 +15,15 @@ router = APIRouter(prefix="/api/admin/merchants", tags=["admin-merchants"])
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
+    return user
+
+
+async def require_merchant_or_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") not in {"merchant", "admin", "super_admin"}:
+        raise HTTPException(status_code=403, detail="Merchant access required")
     return user
 
 
@@ -210,7 +217,7 @@ class ErrorLogRequest(BaseModel):
 
 @router.post("/log-error")
 async def log_merchant_error(req: ErrorLogRequest, request: Request):
-    user = await get_current_user(request)
+    user = await require_merchant_or_admin(request)
     await db.merchant_errors.insert_one({
         "merchant_email": user.get("email", ""),
         "type": "client_error",
@@ -231,7 +238,7 @@ class HeartbeatRequest(BaseModel):
 
 @router.post("/heartbeat")
 async def merchant_heartbeat(req: HeartbeatRequest, request: Request):
-    user = await get_current_user(request)
+    user = await require_merchant_or_admin(request)
     now = datetime.now(timezone.utc).isoformat()
 
     await db.merchant_sessions.update_one(

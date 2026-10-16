@@ -1,11 +1,13 @@
 import json
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from core.config import STRIPE_API_KEY
 from core.database import db
@@ -1062,7 +1064,18 @@ async def _record_hardware_event(device_type: str, adapter_type: str, status: st
 
 
 async def _issue_ticket_from_transaction(tx: dict) -> dict:
-    existing = await db.pool_tickets.find_one({"session_id": tx.get("session_id")}, {"_id": 0})
+    session_id = str(tx.get("session_id") or "")
+    if not session_id:
+        raise HTTPException(status_code=409, detail="Payment-Session ohne stabile Session-ID")
+
+    digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
+    ticket_id = f"PTK-{digest[:16].upper()}"
+    ticket_code = f"POOL-{digest[16:26].upper()}"
+
+    existing = await db.pool_tickets.find_one(
+        {"_id": ticket_id},
+        {"_id": 0},
+    )
     if existing:
         return existing
 
@@ -1071,15 +1084,17 @@ async def _issue_ticket_from_transaction(tx: dict) -> dict:
     pricing_snapshot = tx.get("pricing_snapshot") or {}
     if package_id and package_id not in POOL_PACKAGES and package_id not in PACKAGE_COMPATIBILITY_MAP:
         raise HTTPException(status_code=400, detail="Ticketpaket im Payment ungültig")
+
     extras = _parse_extras_json(metadata.get("extras_json"))
     quantity = max(1, int(metadata.get("quantity", 1)))
-    ticket_code = _short_id("POOL", 10)
     now_iso = _now_iso()
     package = POOL_PACKAGES.get(package_id) if package_id else None
     package_label_de = pricing_snapshot.get("duration_label_de") or (package or {}).get("label_de") or "Pool Ticket"
     package_label_en = pricing_snapshot.get("duration_label_en") or (package or {}).get("label_en") or "Pool ticket"
+
     ticket_doc = {
-        "ticket_id": _short_id("PTK", 10),
+        "_id": ticket_id,
+        "ticket_id": ticket_id,
         "ticket_code": ticket_code,
         "facility_id": FACILITY_ID,
         "package_id": package_id,
@@ -1094,7 +1109,7 @@ async def _issue_ticket_from_transaction(tx: dict) -> dict:
         "customer_email": tx.get("customer_email") or metadata.get("customer_email"),
         "source": "online",
         "payment_method": "stripe",
-        "session_id": tx.get("session_id"),
+        "session_id": session_id,
         "wristband_id": None,
         "locker_id": None,
         "duration_id": pricing_snapshot.get("duration_id"),
@@ -1113,27 +1128,60 @@ async def _issue_ticket_from_transaction(tx: dict) -> dict:
         "created_at": now_iso,
         "updated_at": now_iso,
     }
-    await db.pool_tickets.insert_one(ticket_doc)
+
+    try:
+        await db.pool_tickets.update_one(
+            {"_id": ticket_id},
+            {"$setOnInsert": ticket_doc},
+            upsert=True,
+        )
+    except DuplicateKeyError:
+        # Concurrent webhook/status-poll raced on the same deterministic ticket.
+        pass
+
+    persisted = await db.pool_tickets.find_one({"_id": ticket_id}, {"_id": 0})
+    if not persisted:
+        raise HTTPException(status_code=500, detail="Bezahltes Pool-Ticket benötigt Abstimmung")
+
     await db.payment_transactions.update_one(
-        {"session_id": tx.get("session_id")},
-        {"$set": {"ticket_code": ticket_code, "updated_at": now_iso}},
+        {"session_id": session_id, "type": "pool_ticket"},
+        {"$set": {
+            "ticket_id": ticket_id,
+            "ticket_code": ticket_code,
+            "ticket_issued": True,
+            "status": "credited",
+            "payment_status": "paid",
+            "updated_at": _now_iso(),
+        }},
     )
-    return ticket_doc
+    return persisted
 
 
 async def handle_pool_ticket_webhook(session_id: str):
-    tx = await db.payment_transactions.find_one({"session_id": session_id, "type": "pool_ticket"}, {"_id": 0})
+    """Converge webhook and status-poll settlement on one deterministic ticket."""
+    tx = await db.payment_transactions.find_one(
+        {"session_id": session_id, "type": "pool_ticket"},
+        {"_id": 0},
+    )
     if not tx:
         return None
-    lock = await db.payment_transactions.find_one_and_update(
-        {"session_id": session_id, "type": "pool_ticket", "ticket_issued": {"$ne": True}},
-        {"$set": {"ticket_issued": True, "status": "credited", "payment_status": "paid", "updated_at": _now_iso()}},
-        projection={"_id": 0},
-        return_document=ReturnDocument.BEFORE,
-    )
-    if lock:
-        return await _issue_ticket_from_transaction(lock)
-    return await db.pool_tickets.find_one({"session_id": session_id}, {"_id": 0})
+
+    existing = await db.pool_tickets.find_one({"session_id": session_id}, {"_id": 0})
+    if existing:
+        await db.payment_transactions.update_one(
+            {"session_id": session_id, "type": "pool_ticket"},
+            {"$set": {
+                "ticket_id": existing.get("ticket_id"),
+                "ticket_code": existing.get("ticket_code"),
+                "ticket_issued": True,
+                "status": "credited",
+                "payment_status": "paid",
+                "updated_at": _now_iso(),
+            }},
+        )
+        return existing
+
+    return await _issue_ticket_from_transaction(tx)
 
 
 async def _build_public_overview() -> dict:
@@ -1219,7 +1267,7 @@ async def create_pool_checkout(req: PoolCheckoutRequest, request: Request):
         "customer_email": req.customer_email or "",
     }
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     session = await stripe_checkout.create_checkout_session(
         CheckoutSessionRequest(
             amount=float(total),
@@ -1268,7 +1316,7 @@ async def get_pool_checkout_status(session_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Checkout-Session nicht gefunden")
 
     host_url = str(request.base_url).rstrip("/")
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/stripe/webhook")
     checkout_status = await stripe_checkout.get_checkout_status(session_id)
     new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
     await db.payment_transactions.update_one(

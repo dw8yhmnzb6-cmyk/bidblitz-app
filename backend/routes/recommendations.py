@@ -4,6 +4,7 @@ Personalisierte Karussells auf der Startseite
 """
 from fastapi import APIRouter, HTTPException, Request
 from core.database import db
+from core.product_images import normalize_insurance_product_image
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
@@ -82,7 +83,7 @@ async def get_home_recommendations(request: Request):
             "title": "Versicherungs-Deals",
             "subtitle": "Günstige Absicherung",
             "type": "insurance",
-            "items": insurance,
+            "items": [normalize_insurance_product_image(product) for product in insurance],
         })
 
     # 6. Popular Flights

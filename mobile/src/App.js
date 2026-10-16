@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './context/AuthContext';
-import { STRIPE_PUBLISHABLE_KEY } from './config/stripe';
+import { STRIPE_NATIVE_ENABLED, STRIPE_PUBLISHABLE_KEY } from './config/stripe';
 import PushNotificationService from './services/PushNotificationService';
 import SplashScreen from 'react-native-splash-screen';
 
@@ -22,16 +22,22 @@ const App = () => {
     }, 1000);
   }, []);
 
+  const appContent = (
+    <AuthProvider>
+      <NavigationContainer>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <AppNavigator />
+      </NavigationContainer>
+    </AuthProvider>
+  );
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-        <AuthProvider>
-          <NavigationContainer>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            <AppNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </StripeProvider>
+      {STRIPE_NATIVE_ENABLED ? (
+        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+          {appContent}
+        </StripeProvider>
+      ) : appContent}
     </GestureHandlerRootView>
   );
 };

@@ -613,68 +613,157 @@ async def create_nfc_session(req: NfcSessionCreate, request: Request):
 
 @router.post("/nfc/session/confirm")
 async def confirm_nfc_session(req: NfcSessionConfirm, request: Request):
-    """
-    Customer confirms (server-side) the NFC tap by calling this endpoint
-    from the BidBlitz mobile app. No fake hardware confirmations are accepted.
-    """
+    """Customer confirms an NFC/QR fallback session exactly once."""
     user = await get_current_user(request)
+    user_id = str(user["_id"])
+
     sess = await db.pos_nfc_sessions.find_one({"session_id": req.session_id})
     if not sess:
         raise HTTPException(status_code=404, detail="Session nicht gefunden")
-    if sess["status"] != PAYMENT_STATUS_PENDING:
-        raise HTTPException(status_code=400, detail=f"Status {sess['status']}")
 
-    # Expiry check
+    if sess.get("status") == PAYMENT_STATUS_PAID:
+        if sess.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Session gehört einem anderen Nutzer")
+        return {
+            "ok": True,
+            "session_id": req.session_id,
+            "amount": float(sess["amount"]),
+            "status": PAYMENT_STATUS_PAID,
+            "merchant_received": float(sess.get("net_to_merchant") or 0),
+            "fee": float(sess.get("fee") or 0),
+            "replayed": True,
+        }
+    if sess.get("status") not in {PAYMENT_STATUS_PENDING, "processing"}:
+        raise HTTPException(status_code=400, detail=f"Status {sess.get('status')}")
+
     try:
         if datetime.fromisoformat(sess["expires_at"]) < datetime.now(timezone.utc):
             await db.pos_nfc_sessions.update_one(
-                {"session_id": req.session_id}, {"$set": {"status": PAYMENT_STATUS_EXPIRED}}
+                {"session_id": req.session_id, "status": PAYMENT_STATUS_PENDING},
+                {"$set": {"status": PAYMENT_STATUS_EXPIRED}},
             )
             raise HTTPException(status_code=400, detail="Session abgelaufen")
     except (KeyError, ValueError):
         pass
 
-    amount = float(sess["amount"])
-    # Atomic wallet debit (uses payment_engine)
+    claim = await db.pos_nfc_sessions.update_one(
+        {"session_id": req.session_id, "status": PAYMENT_STATUS_PENDING},
+        {"$set": {"status": "processing", "user_id": user_id, "processing_at": now_iso()}},
+    )
+    if claim.modified_count != 1:
+        fresh = await db.pos_nfc_sessions.find_one({"session_id": req.session_id}) or {}
+        if fresh.get("status") == PAYMENT_STATUS_PAID and fresh.get("user_id") == user_id:
+            return {
+                "ok": True,
+                "session_id": req.session_id,
+                "amount": float(fresh["amount"]),
+                "status": PAYMENT_STATUS_PAID,
+                "merchant_received": float(fresh.get("net_to_merchant") or 0),
+                "fee": float(fresh.get("fee") or 0),
+                "replayed": True,
+            }
+        raise HTTPException(status_code=409, detail="Session wird bereits verarbeitet")
+
+    amount = round(float(sess["amount"]), 2)
     debit = await debit_wallet(
-        user_id=str(user["_id"]),
+        user_id=user_id,
         amount=amount,
         tx_type=TransactionType.MERCHANT_PAYMENT,
         description=f"NFC POS — {sess['register_id']}",
         reference=sess["session_id"],
         metadata={"session_id": sess["session_id"], "store_id": sess["store_id"]},
+        idempotency_key=f"pos-nfc-debit:{sess['session_id']}",
     )
     if not debit.success:
         await db.pos_nfc_sessions.update_one(
-            {"session_id": req.session_id},
+            {"session_id": req.session_id, "status": "processing"},
             {"$set": {"status": "failed", "error": debit.error}},
         )
-        raise HTTPException(status_code=400, detail=debit.error)
+        raise HTTPException(status_code=400, detail=debit.error or "Zahlung fehlgeschlagen")
 
     merchant = await db.pos_merchants.find_one({"merchant_id": sess["merchant_id"]})
-    fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE)) if merchant else DEFAULT_MERCHANT_FEE
+    if not merchant or not merchant.get("owner_id"):
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.REFUND,
+            description=f"NFC Rollback {sess['session_id']}",
+            reference=f"NFC-RB-{sess['session_id']}",
+            source="pos_inventory.nfc.rollback",
+            metadata={"session_id": sess["session_id"], "reason": "merchant_missing"},
+            idempotency_key=f"pos-nfc-rollback:{sess['session_id']}",
+        )
+        await db.pos_nfc_sessions.update_one(
+            {"session_id": req.session_id},
+            {"$set": {
+                "status": "failed",
+                "error": "merchant_missing",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+            }},
+        )
+        raise HTTPException(status_code=500, detail="Händlerkonto nicht abrechenbar")
+
+    fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE))
     fee = round(amount * fee_rate, 2)
     net = round(amount - fee, 2)
-    if merchant:
-        await db.users.update_one(
-            {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": net}}
-        )
-        await db.pos_merchants.update_one(
-            {"merchant_id": sess["merchant_id"]},
-            {"$inc": {"settlement_balance": net, "lifetime_volume": amount}},
-        )
 
+    credit = await credit_wallet(
+        user_id=str(merchant["owner_id"]),
+        amount=net,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"NFC Merchant Settlement {sess['session_id']}",
+        reference=f"NFC-SETTLE-{sess['session_id']}",
+        source="pos_inventory.nfc",
+        metadata={"session_id": sess["session_id"], "merchant_id": sess["merchant_id"], "store_id": sess["store_id"]},
+        idempotency_key=f"pos-nfc-credit:{sess['session_id']}",
+    )
+    if not credit.success:
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=amount,
+            tx_type=TransactionType.REFUND,
+            description=f"NFC Rollback {sess['session_id']}",
+            reference=f"NFC-RB-{sess['session_id']}",
+            source="pos_inventory.nfc.rollback",
+            metadata={"session_id": sess["session_id"], "reason": "merchant_credit_failed"},
+            idempotency_key=f"pos-nfc-rollback:{sess['session_id']}",
+        )
+        await db.pos_nfc_sessions.update_one(
+            {"session_id": req.session_id},
+            {"$set": {
+                "status": "failed",
+                "error": credit.error or "merchant_credit_failed",
+                "rollback_transaction_id": rollback.transaction_id if rollback.success else None,
+                "reconciliation_required": not rollback.success,
+            }},
+        )
+        if rollback.success:
+            raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde zurückgebucht.")
+        raise HTTPException(status_code=500, detail="NFC-Zahlung benötigt manuelle Abstimmung")
+
+    settlement_marker = f"settlement_markers.{sess['session_id'].replace('.', '_')}"
+    await db.pos_merchants.update_one(
+        {"merchant_id": sess["merchant_id"], settlement_marker: {"$exists": False}},
+        {
+            "$inc": {"settlement_balance": net, "lifetime_volume": amount},
+            "$set": {settlement_marker: {"amount": net, "gross": amount, "created_at": now_iso()}},
+        },
+    )
+
+    paid_at = now_iso()
     await db.pos_nfc_sessions.update_one(
-        {"session_id": req.session_id},
+        {"session_id": req.session_id, "status": "processing", "user_id": user_id},
         {"$set": {
             "status": PAYMENT_STATUS_PAID,
-            "user_id": str(user["_id"]),
             "fee": fee,
             "net_to_merchant": net,
-            "confirmed_at": now_iso(),
+            "confirmed_at": paid_at,
+            "customer_debit_transaction_id": debit.transaction_id,
+            "merchant_credit_transaction_id": credit.transaction_id,
         }},
     )
-    await _audit(str(user["_id"]), "nfc.confirm", {"session_id": req.session_id, "amount": amount})
+    await _audit(user_id, "nfc.confirm", {"session_id": req.session_id, "amount": amount})
 
     return {
         "ok": True,
@@ -683,6 +772,7 @@ async def confirm_nfc_session(req: NfcSessionConfirm, request: Request):
         "status": PAYMENT_STATUS_PAID,
         "merchant_received": net,
         "fee": fee,
+        "replayed": False,
     }
 
 
@@ -846,42 +936,36 @@ class ItemReturnRequest(BaseModel):
 
 @router.post("/refund/items")
 async def refund_with_items(req: ItemReturnRequest, request: Request):
-    """Partial / item-level refund with optional stock return."""
+    """Partial/item refund through the canonical refund engine with idempotent restock."""
     user = await get_current_user(request)
     payment = await db.pos_payments.find_one({"payment_id": req.payment_id})
     if not payment:
         raise HTTPException(status_code=404, detail="Zahlung nicht gefunden")
     if payment["status"] not in {PAYMENT_STATUS_PAID, "partial_refund"}:
         raise HTTPException(status_code=400, detail="Zahlung nicht erstattbar")
+
     await _require_store_access(user, payment["store_id"], {"merchant_admin", "store_manager", "accountant"})
-
     refund_total = round(sum(float(i.get("refund_amount", 0)) for i in req.items), 2)
-    if refund_total <= 0 or refund_total > float(payment["amount"]):
-        raise HTTPException(status_code=400, detail="Erstattungsbetrag ungültig")
+    remaining = round(float(payment.get("amount") or 0) - float(payment.get("refunded_total") or 0), 2)
+    if refund_total <= 0 or refund_total > remaining:
+        raise HTTPException(status_code=400, detail=f"Erstattungsbetrag ungültig. Verfügbar: €{max(0, remaining):.2f}")
 
-    refund_id = short_id("RFD", 10)
+    from services.pos_security import get_actor_context, execute_refund_action
+    actor = await get_actor_context(user, payment["store_id"], payment.get("register_id", ""))
+    refund_doc = await execute_refund_action(
+        {
+            "payment_id": req.payment_id,
+            "amount": refund_total,
+            "reason": req.reason or "",
+            "idempotency_key": request.headers.get("Idempotency-Key") or "",
+        },
+        actor,
+        request=request,
+    )
+    refund_id = refund_doc["refund_id"]
 
-    # Wallet reverse if BidBlitz wallet payment
-    if payment["method"] in ("wallet_qr", "barcode") and payment.get("customer_id"):
-        merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
-        if merchant:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": -refund_total}}
-            )
-            await db.pos_merchants.update_one(
-                {"merchant_id": payment["merchant_id"]},
-                {"$inc": {"settlement_balance": -refund_total}},
-            )
-        await credit_wallet(
-            user_id=payment["customer_id"],
-            amount=refund_total,
-            tx_type=TransactionType.REFUND,
-            description=f"POS Item-Refund {payment['payment_id']}",
-            reference=refund_id,
-        )
-
-    # Restock items + log movement
     if req.restock:
+        refund_marker = refund_id.replace(".", "_")
         for it in req.items:
             pid = it.get("product_id")
             qty = float(it.get("quantity", 0) or 0)
@@ -890,37 +974,52 @@ async def refund_with_items(req: ItemReturnRequest, request: Request):
             product = await db.pos_products.find_one({"product_id": pid})
             if not product:
                 continue
+
+            marker_field = f"return_markers.{refund_marker}"
             before = float(product.get("stock", 0))
-            after = round(before + qty, 3)
-            await db.pos_products.update_one(
-                {"product_id": pid}, {"$set": {"stock": after, "updated_at": now_iso()}}
+            stock_update = await db.pos_products.update_one(
+                {"product_id": pid, marker_field: {"$exists": False}},
+                {
+                    "$inc": {"stock": qty},
+                    "$set": {marker_field: {"quantity": qty, "refund_id": refund_id}, "updated_at": now_iso()},
+                },
             )
-            await _record_movement(
-                product=product, store_id=payment["store_id"], merchant_id=payment["merchant_id"],
-                type_="return", qty=qty, before=before, after=after,
-                reference_id=refund_id, actor_id=str(user["_id"]),
-                note=f"Refund {payment['payment_id']}",
+            if stock_update.modified_count != 1:
+                continue
+            fresh_product = await db.pos_products.find_one({"product_id": pid}, {"stock": 1, "_id": 0}) or {}
+            after = float(fresh_product.get("stock", before + qty))
+            movement_id = f"MOV-{refund_id}-{pid}"
+            await db.pos_stock_movements.update_one(
+                {"movement_id": movement_id},
+                {"$setOnInsert": {
+                    "movement_id": movement_id,
+                    "product_id": pid,
+                    "product_name": product["name"],
+                    "merchant_id": payment["merchant_id"],
+                    "store_id": payment["store_id"],
+                    "type": "return",
+                    "quantity": qty,
+                    "before_stock": before,
+                    "after_stock": after,
+                    "reference_id": refund_id,
+                    "created_by": str(user["_id"]),
+                    "note": f"Refund {payment['payment_id']}",
+                    "created_at": now_iso(),
+                }},
+                upsert=True,
             )
 
-    await db.pos_refunds.insert_one({
-        "refund_id": refund_id,
-        "payment_id": payment["payment_id"],
-        "store_id": payment["store_id"],
-        "merchant_id": payment["merchant_id"],
-        "amount": refund_total,
-        "items": req.items,
-        "method": payment["method"],
-        "reason": req.reason,
-        "restocked": req.restock,
-        "issued_by": str(user["_id"]),
-        "issued_at": now_iso(),
-    })
-    new_status = "refunded" if refund_total >= float(payment["amount"]) else "partial_refund"
-    await db.pos_payments.update_one(
-        {"payment_id": payment["payment_id"]},
-        {"$set": {"status": new_status}, "$inc": {"refunded_total": refund_total}},
+    await db.pos_refunds.update_one(
+        {"refund_id": refund_id},
+        {"$set": {"items": req.items, "restocked": bool(req.restock)}},
     )
-    return {"ok": True, "refund_id": refund_id, "amount": refund_total, "status": new_status}
+    return {
+        "ok": True,
+        "refund_id": refund_id,
+        "amount": refund_doc["amount"],
+        "status": "refunded" if float(refund_doc.get("refunded_total_after") or 0) >= float(payment.get("amount") or 0) else "partial_refund",
+        "replayed": bool(await db.pos_refunds.count_documents({"refund_id": refund_id}) and False),
+    }
 
 
 # ───────────────────────────────────────────────────────────────────────

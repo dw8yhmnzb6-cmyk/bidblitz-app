@@ -138,6 +138,30 @@ export default function AudiTicketSalesPage({ onBack, onNavigate }) {
     );
   }
 
+  if (overview?.provider_live === false || overview?.purchase_enabled === false) {
+    return (
+      <div className="min-h-screen bg-[#F7F1EF] text-[#161616]" data-testid="audi-ticket-provider-unavailable">
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+          <button onClick={onBack} className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E7D9D5] bg-white shadow-sm" data-testid="audi-ticket-back-button">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="mt-8 rounded-[32px] border border-[#E7D9D5] bg-white p-7 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5F5] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#B11226]">
+              <ShieldCheck size={16} /> Provider noch nicht live
+            </div>
+            <h1 className="mt-5 text-3xl font-black tracking-tight">Audi Tickets sind derzeit nur Preview</h1>
+            <p className="mt-3 text-sm leading-6 text-[#5F5B5A]">
+              {overview?.production_message || "Der verifizierte Event-/Ticketprovider ist noch nicht verbunden. Es werden keine Wallet-Zahlungen ausgeführt und keine echten QR-Tickets erzeugt."}
+            </p>
+            <div className="mt-5 rounded-2xl bg-[#FAF3F1] p-4 text-sm font-semibold text-[#342F2E]">
+              Keine Wallet-Belastung · keine Fake-Tickets · Checkout bleibt bis zur Live-Provider-Anbindung deaktiviert.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F1EF] text-[#161616]" data-testid="audi-ticket-page">
       <section className="relative overflow-hidden border-b border-[#E7D9D5] bg-white">

@@ -12,14 +12,37 @@ export default function SuperchargerPage({ onBack }) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [capabilities, setCapabilities] = useState({
+    live_staking_provider_connected: false,
+    deposit_available: false,
+    message: "",
+  });
 
   useEffect(() => {
-    fetch(`${API}/api/supercharger/pools`).then(r => r.json()).then(d => setPools(d.pools || [])).catch(() => {});
+    fetch(`${API}/api/supercharger/pools`)
+      .then(r => r.json())
+      .then(d => {
+        setPools(d.pools || []);
+        setCapabilities(prev => ({
+          ...prev,
+          live_staking_provider_connected: !!d.live_staking_provider_connected,
+          deposit_available: !!d.deposit_available,
+        }));
+      })
+      .catch(() => {});
+    fetch(`${API}/api/supercharger/capabilities`)
+      .then(r => r.json())
+      .then(d => setCapabilities(d))
+      .catch(() => {});
     fetch(`${API}/api/supercharger/my-stakes`, { credentials: "include" }).then(r => r.json()).then(d => setStakes(d.stakes || [])).catch(() => {});
   }, []);
 
   const stake = async () => {
     if (!selected || !amount) return;
+    if (!capabilities.deposit_available) {
+      setMsg(capabilities.message || "Staking-Provider ist noch nicht live verbunden.");
+      return;
+    }
     setLoading(true);
     try {
       const r = await fetch(`${API}/api/supercharger/deposit`, {
@@ -45,7 +68,7 @@ export default function SuperchargerPage({ onBack }) {
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center" data-testid="sc-back-btn"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="text-base font-bold flex items-center gap-2"><Zap size={18} className="text-cyan-400" /> Supercharger</h1>
-            <p className="text-[10px] text-cyan-400">BLZ staken, Rewards verdienen</p>
+            <p className="text-[10px] text-cyan-400">Staking-Pools · Aktivierung nach Live-Provider</p>
           </div>
         </div>
         <div className="flex gap-2 mt-3">
@@ -57,6 +80,14 @@ export default function SuperchargerPage({ onBack }) {
       </div>
 
       <div className="px-4 pt-4 space-y-3">
+        {!capabilities.live_staking_provider_connected && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="supercharger-provider-unavailable">
+            <p className="text-sm font-bold text-amber-300">Staking noch nicht live</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
+              {capabilities.message || "Ein verifizierter Staking-/Custody-Provider muss zuerst verbunden werden."}
+            </p>
+          </div>
+        )}
         {tab === "pools" && !selected && pools.map((p, i) => (
           <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
             onClick={() => setSelected(p)}
@@ -95,9 +126,9 @@ export default function SuperchargerPage({ onBack }) {
               {amount && <p className="text-[11px] text-gray-500 mt-2">Geschaetzte Rewards: <span className="text-cyan-400 font-bold">{(parseFloat(amount || 0) * selected.apy_est / 100 / 12).toFixed(4)} {selected.reward_coin}/Monat</span></p>}
               <div className="flex gap-2 mt-4">
                 <button onClick={() => setSelected(null)} className="flex-1 py-3 bg-white/5 rounded-xl text-sm">Abbrechen</button>
-                <button onClick={stake} disabled={loading || !amount}
+                <button onClick={stake} disabled={loading || !amount || !capabilities.deposit_available}
                   className="flex-1 py-3 bg-cyan-500 text-black rounded-xl text-sm font-bold disabled:opacity-50" data-testid="sc-stake-btn">
-                  {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Staken"}
+                  {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : capabilities.deposit_available ? "Test-Stake" : "Noch nicht verfügbar"}
                 </button>
               </div>
             </div>

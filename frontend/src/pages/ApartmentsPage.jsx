@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Home, Search, MapPin, Star } from 'lucide-react';
 import { CityAutocomplete } from "../components/search";
@@ -28,20 +28,48 @@ export default function ApartmentsPage({ onNavigate }) {
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(1);
   const [bookMsg, setBookMsg] = useState(null);
+  const bookingAttemptKeyRef = useRef(null);
+
+  useEffect(() => {
+    bookingAttemptKeyRef.current = null;
+  }, [selected?.apartment_id, checkIn, checkOut, guests]);
 
   const book = async () => {
     if (!selected || !checkIn || !checkOut) return;
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+        ? `apartment-${crypto.randomUUID()}`
+        : `apartment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBookMsg(null);
     try {
       const r = await fetch(`${API}/api/apartments/book`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apartment_id: selected.apartment_id, check_in: new Date(checkIn).toISOString(), check_out: new Date(checkOut).toISOString(), guests }),
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          apartment_id: selected.apartment_id,
+          check_in: new Date(checkIn).toISOString(),
+          check_out: new Date(checkOut).toISOString(),
+          guests,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await r.json();
-      if (r.ok) setBookMsg({ ok: true, text: `Gebucht! €${d.total} · ${d.nights} Nächte` });
-      else setBookMsg({ ok: false, text: d.detail || 'Fehler' });
-    } catch { setBookMsg({ ok: false, text: 'Netzwerkfehler' }); }
+      if (r.ok) {
+        bookingAttemptKeyRef.current = null;
+        setBookMsg({ ok: true, text: `Gebucht! €${d.total} · ${d.nights} Nächte` });
+      } else {
+        if (r.status < 500 && r.status !== 409) bookingAttemptKeyRef.current = null;
+        setBookMsg({ ok: false, text: typeof d.detail === 'string' ? d.detail : 'Fehler' });
+      }
+    } catch {
+      setBookMsg({ ok: false, text: 'Netzwerkfehler' });
+    }
   };
 
   return (

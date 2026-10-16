@@ -6,6 +6,7 @@ Plans: basic, premium, pro with different benefits.
 
 import secrets
 import logging
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -111,6 +112,7 @@ class BuySubscriptionRequest(BaseModel):
     plan: str = Field(..., description="basic, premium, or pro")
     billing_cycle: str = Field(default="monthly", description="monthly or yearly")
     auto_renew: bool = Field(default=True)
+    idempotency_key: Optional[str] = None
 
 
 class CancelSubscriptionRequest(BaseModel):
@@ -125,6 +127,50 @@ class ChangeSubscriptionRequest(BaseModel):
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _require_subscription_idempotency_key(body_key: Optional[str], request: Request) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"subscription:{key}"
+
+
+async def _record_subscription_revenue_once(subscription_id: str, amount: float, now: datetime) -> None:
+    if amount <= 0:
+        return
+    date_key = now.strftime("%Y-%m-%d")
+    existing = await db.platform_revenue.find_one(
+        {"date": date_key},
+        {"_id": 0, "subscription_ids": 1},
+    )
+    if existing and subscription_id in (existing.get("subscription_ids") or []):
+        return
+    if existing:
+        await db.platform_revenue.update_one(
+            {"date": date_key, "subscription_ids": {"$ne": subscription_id}},
+            {
+                "$inc": {"total": amount, "by_source.subscriptions": amount},
+                "$addToSet": {"subscription_ids": subscription_id},
+            },
+        )
+        return
+    try:
+        await db.platform_revenue.insert_one({
+            "date": date_key,
+            "total": amount,
+            "by_source": {"subscriptions": amount},
+            "subscription_ids": [subscription_id],
+            "created_at": now.isoformat(),
+        })
+    except Exception:
+        await db.platform_revenue.update_one(
+            {"date": date_key, "subscription_ids": {"$ne": subscription_id}},
+            {
+                "$inc": {"total": amount, "by_source.subscriptions": amount},
+                "$addToSet": {"subscription_ids": subscription_id},
+            },
+        )
+
 
 async def get_user_subscription(user_id: str) -> Optional[dict]:
     """Get user's active subscription."""
@@ -228,162 +274,206 @@ async def get_subscription_plans():
 
 @router.post("/buy")
 async def buy_subscription(req: BuySubscriptionRequest, request: Request):
-    """
-    Purchase or upgrade a subscription.
-    Deducts from wallet and activates plan.
-    """
+    """Purchase or upgrade one subscription exactly once."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Validate plan
+
     if req.plan not in SUBSCRIPTION_PLANS:
         raise HTTPException(status_code=400, detail=f"Ungültiger Plan. Verfügbar: {', '.join(SUBSCRIPTION_PLANS.keys())}")
-    
-    plan = SUBSCRIPTION_PLANS[req.plan]
-    
-    # Determine price based on billing cycle
-    if req.billing_cycle == "yearly":
-        price = plan["price_yearly"]
-        duration_days = 365
-    else:
-        price = plan["price_monthly"]
-        duration_days = 30
-    
-    # Check for existing active subscription
-    existing = await get_user_subscription(user_id)
-    if existing:
-        # Check if upgrading
-        current_plan = existing.get("plan")
-        plan_order = list(SUBSCRIPTION_PLANS.keys())
-        
-        if plan_order.index(req.plan) <= plan_order.index(current_plan):
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Du hast bereits {SUBSCRIPTION_PLANS[current_plan]['name']}. Upgrade auf einen höheren Plan möglich."
-            )
-        
-        # Calculate pro-rata credit for remaining time
-        expires = datetime.fromisoformat(existing["expires_at"].replace("Z", "+00:00"))
-        now = datetime.now(timezone.utc)
-        remaining_days = max(0, (expires - now).days)
-        
-        if remaining_days > 0:
-            # Give partial credit
-            old_price = (
-                SUBSCRIPTION_PLANS[current_plan]["price_yearly"] / 365 
-                if existing.get("billing_cycle") == "yearly" 
-                else SUBSCRIPTION_PLANS[current_plan]["price_monthly"] / 30
-            )
-            credit = round(old_price * remaining_days, 2)
-            price = max(0, price - credit)
-            logger.info(f"Subscription upgrade: {user_id} gets €{credit:.2f} credit for {remaining_days} remaining days")
-    
-    # Check wallet balance
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}"
-        )
-    
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=duration_days)
-    subscription_id = secrets.token_hex(8)
-    
-    # Deduct payment
-    payment_result = await debit_wallet(
-        user_id=user_id,
-        amount=price,
-        tx_type=TransactionType.PAYMENT,
-        description=f"Subscription: {plan['name']} ({req.billing_cycle})",
-        reference=f"SUB-{subscription_id[:8].upper()}",
-        metadata={
-            "subscription_id": subscription_id,
-            "plan": req.plan,
-            "billing_cycle": req.billing_cycle,
-            "duration_days": duration_days,
-        }
-    )
-    
-    if not payment_result.success:
-        raise HTTPException(status_code=400, detail=payment_result.error)
-    
-    # Deactivate old subscription if exists
-    if existing:
-        await db.subscriptions.update_one(
-            {"subscription_id": existing["subscription_id"]},
-            {"$set": {
-                "status": "upgraded",
-                "upgraded_to": subscription_id,
-                "upgraded_at": now.isoformat(),
-            }}
-        )
-    
-    # Create new subscription
-    subscription = {
-        "subscription_id": subscription_id,
-        "user_id": user_id,
-        "plan": req.plan,
-        "plan_name": plan["name"],
-        "billing_cycle": req.billing_cycle,
-        "price_paid": price,
-        "auto_renew": req.auto_renew,
-        "status": "active",
-        "started_at": now.isoformat(),
-        "expires_at": expires_at.isoformat(),
-        "next_billing_at": expires_at.isoformat() if req.auto_renew else None,
-        "benefits": plan["benefits"],
-        "transaction_id": payment_result.transaction_id,
-        "created_at": now.isoformat(),
-    }
-    
-    await db.subscriptions.insert_one(subscription)
-    subscription.pop("_id", None)
-    
-    # Apply benefits to user
-    await apply_subscription_to_user(user_id, subscription)
-    
-    # Grant free monthly boosts if applicable
-    free_boosts = plan["benefits"].get("free_boosts", 0)
-    if free_boosts > 0:
-        await db.user_subscription_perks.update_one(
-            {"user_id": user_id, "month": now.strftime("%Y-%m")},
-            {"$set": {
-                "free_boosts_remaining": free_boosts,
-                "free_transfers_remaining": plan["benefits"].get("free_transfers", 0),
-                "updated_at": now.isoformat(),
-            }},
-            upsert=True
-        )
-    
-    # Record platform revenue
-    await db.platform_revenue.update_one(
-        {"date": now.strftime("%Y-%m-%d")},
-        {"$inc": {"total": price, "by_source.subscriptions": price}},
-        upsert=True
-    )
-    
-    # Send notification
-    await db.notifications.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "subscription_activated",
-        "title": f"{plan['name']} aktiviert!",
-        "message": f"Dein {plan['name']}-Abo ist jetzt aktiv bis {expires_at.strftime('%d.%m.%Y')}",
-        "data": {"subscription_id": subscription_id, "plan": req.plan},
-        "read": False,
-        "created_at": now.isoformat(),
-    })
+    if req.billing_cycle not in {"monthly", "yearly"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Abrechnungszeitraum")
 
-    
-    logger.info(f"Subscription purchased: {subscription_id} - {req.plan} ({req.billing_cycle}) by {user_id}")
-    
-    return {
-        "ok": True,
-        "subscription": subscription,
-        "new_balance": payment_result.new_balance,
-        "message": f"{plan['name']}-Abo erfolgreich aktiviert!",
-    }
+    idempotency_key = _require_subscription_idempotency_key(req.idempotency_key, request)
+    key_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    subscription_id = f"SUB-{key_hash.upper()}"
+
+    existing_same = await db.subscriptions.find_one(
+        {"subscription_id": subscription_id, "user_id": user_id},
+        {"_id": 0},
+    )
+    if existing_same and existing_same.get("status") == "active":
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "subscription": existing_same,
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": f"{existing_same.get('plan_name', req.plan)}-Abo bereits aktiviert",
+            "replayed": True,
+        }
+
+    lock_token = secrets.token_hex(8)
+    lock = await db.users.update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"subscription_purchase_lock": {"$exists": False}},
+                {"subscription_purchase_lock": None},
+                {"subscription_purchase_lock": False},
+            ],
+        },
+        {"$set": {
+            "subscription_purchase_lock": lock_token,
+            "subscription_purchase_lock_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if lock.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Eine Abo-Anfrage wird bereits verarbeitet")
+
+    try:
+        # Re-check the same idempotent purchase after acquiring the user lock.
+        existing_same = await db.subscriptions.find_one(
+            {"subscription_id": subscription_id, "user_id": user_id},
+            {"_id": 0},
+        )
+        if existing_same and existing_same.get("status") == "active":
+            fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+            return {
+                "ok": True,
+                "subscription": existing_same,
+                "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+                "message": f"{existing_same.get('plan_name', req.plan)}-Abo bereits aktiviert",
+                "replayed": True,
+            }
+
+        plan = SUBSCRIPTION_PLANS[req.plan]
+        if req.billing_cycle == "yearly":
+            price = float(plan["price_yearly"])
+            duration_days = 365
+        else:
+            price = float(plan["price_monthly"])
+            duration_days = 30
+
+        existing = await get_user_subscription(user_id)
+        if existing and existing.get("subscription_id") != subscription_id:
+            current_plan = existing.get("plan")
+            plan_order = list(SUBSCRIPTION_PLANS.keys())
+            if current_plan not in plan_order or plan_order.index(req.plan) <= plan_order.index(current_plan):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Du hast bereits {SUBSCRIPTION_PLANS.get(current_plan, {}).get('name', current_plan)}. Upgrade auf einen höheren Plan möglich.",
+                )
+
+            expires = datetime.fromisoformat(existing["expires_at"].replace("Z", "+00:00"))
+            now_credit = datetime.now(timezone.utc)
+            remaining_days = max(0, (expires - now_credit).days)
+            if remaining_days > 0:
+                old_price = (
+                    SUBSCRIPTION_PLANS[current_plan]["price_yearly"] / 365
+                    if existing.get("billing_cycle") == "yearly"
+                    else SUBSCRIPTION_PLANS[current_plan]["price_monthly"] / 30
+                )
+                price = max(0.0, round(price - (old_price * remaining_days), 2))
+
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=duration_days)
+
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=price,
+            tx_type=TransactionType.SUBSCRIPTION,
+            description=f"Subscription: {plan['name']} ({req.billing_cycle})",
+            reference=f"SUBPAY-{key_hash[:12].upper()}",
+            metadata={
+                "subscription_id": subscription_id,
+                "plan": req.plan,
+                "billing_cycle": req.billing_cycle,
+                "duration_days": duration_days,
+            },
+            idempotency_key=idempotency_key,
+        )
+        if not payment_result.success:
+            raise HTTPException(status_code=400, detail=payment_result.error or "Abo-Zahlung fehlgeschlagen")
+
+        subscription = {
+            "subscription_id": subscription_id,
+            "user_id": user_id,
+            "plan": req.plan,
+            "plan_name": plan["name"],
+            "billing_cycle": req.billing_cycle,
+            "price_paid": price,
+            "auto_renew": req.auto_renew,
+            "status": "pending_activation",
+            "started_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "next_billing_at": expires_at.isoformat() if req.auto_renew else None,
+            "benefits": plan["benefits"],
+            "transaction_id": payment_result.transaction_id,
+            "idempotency_key": idempotency_key,
+            "created_at": now.isoformat(),
+        }
+        await db.subscriptions.update_one(
+            {"subscription_id": subscription_id, "user_id": user_id},
+            {"$setOnInsert": subscription},
+            upsert=True,
+        )
+
+        if existing and existing.get("subscription_id") != subscription_id:
+            await db.subscriptions.update_one(
+                {"subscription_id": existing["subscription_id"], "user_id": user_id, "status": "active"},
+                {"$set": {
+                    "status": "upgraded",
+                    "upgraded_to": subscription_id,
+                    "upgraded_at": now.isoformat(),
+                }},
+            )
+
+        await db.subscriptions.update_one(
+            {"subscription_id": subscription_id, "user_id": user_id},
+            {"$set": {"status": "active", "activated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        active_subscription = await db.subscriptions.find_one(
+            {"subscription_id": subscription_id, "user_id": user_id},
+            {"_id": 0},
+        ) or {**subscription, "status": "active"}
+
+        await apply_subscription_to_user(user_id, active_subscription)
+
+        free_boosts = int(plan["benefits"].get("free_boosts", 0) or 0)
+        if free_boosts > 0:
+            await db.user_subscription_perks.update_one(
+                {"user_id": user_id, "month": now.strftime("%Y-%m")},
+                {"$set": {
+                    "free_boosts_remaining": free_boosts,
+                    "free_transfers_remaining": int(plan["benefits"].get("free_transfers", 0) or 0),
+                    "subscription_id": subscription_id,
+                    "updated_at": now.isoformat(),
+                }},
+                upsert=True,
+            )
+
+        await _record_subscription_revenue_once(subscription_id, price, now)
+
+        await db.notifications.update_one(
+            {"id": f"SUB-ACT-{key_hash}", "user_id": user_id},
+            {"$setOnInsert": {
+                "id": f"SUB-ACT-{key_hash}",
+                "user_id": user_id,
+                "type": "subscription_activated",
+                "title": f"{plan['name']} aktiviert!",
+                "message": f"Dein {plan['name']}-Abo ist jetzt aktiv bis {expires_at.strftime('%d.%m.%Y')}",
+                "data": {"subscription_id": subscription_id, "plan": req.plan},
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
+
+        logger.info("Subscription purchased: %s - %s (%s) by %s", subscription_id, req.plan, req.billing_cycle, user_id)
+        return {
+            "ok": True,
+            "subscription": active_subscription,
+            "new_balance": payment_result.new_balance,
+            "message": f"{plan['name']}-Abo erfolgreich aktiviert!",
+            "replayed": payment_result.idempotent_replay,
+        }
+    finally:
+        await db.users.update_one(
+            {"_id": user["_id"], "subscription_purchase_lock": lock_token},
+            {"$set": {
+                "subscription_purchase_lock": None,
+                "subscription_purchase_lock_released_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -823,7 +913,6 @@ async def process_subscription_renewals():
         "status": "active",
         "auto_renew": True,
         "expires_at": {"$lte": renewal_window.isoformat()},
-        "renewed_for_period": {"$ne": now.strftime("%Y-%m")}  # Prevent double renewal
     }).to_list(100)
     
     renewed_count = 0
@@ -864,33 +953,60 @@ async def process_subscription_renewals():
             failed_count += 1
             continue
         
-        # Process payment
+        # Bind one renewal payment to the subscription's current expiry period.
+        old_expires = sub["expires_at"]
+        renewal_key = hashlib.sha256(
+            f"{sub['subscription_id']}:{old_expires}".encode("utf-8")
+        ).hexdigest()[:24]
         payment_result = await debit_wallet(
             user_id=user_id,
             amount=price,
-            tx_type=TransactionType.PAYMENT,
+            tx_type=TransactionType.SUBSCRIPTION_RENEWAL,
             description=f"Abo-Verlängerung: {plan['name']}",
-            reference=f"RENEWAL-{sub['subscription_id'][:8].upper()}",
-            metadata={"subscription_id": sub["subscription_id"], "renewal": True}
+            reference=f"RENEWAL-{sub['subscription_id'][:8].upper()}-{renewal_key[:8].upper()}",
+            metadata={
+                "subscription_id": sub["subscription_id"],
+                "renewal": True,
+                "renewal_key": renewal_key,
+                "old_expires_at": old_expires,
+            },
+            idempotency_key=f"subscription-renewal:{renewal_key}",
         )
         
         if not payment_result.success:
             failed_count += 1
             continue
         
-        # Extend subscription
-        new_expires = datetime.fromisoformat(sub["expires_at"].replace("Z", "+00:00")) + timedelta(days=duration_days)
-        
-        await db.subscriptions.update_one(
-            {"subscription_id": sub["subscription_id"]},
+        # Extend exactly once from the expiry that was actually paid for.
+        new_expires = datetime.fromisoformat(old_expires.replace("Z", "+00:00")) + timedelta(days=duration_days)
+        extended = await db.subscriptions.update_one(
+            {
+                "subscription_id": sub["subscription_id"],
+                "status": "active",
+                "expires_at": old_expires,
+                "last_renewal_key": {"$ne": renewal_key},
+            },
             {"$set": {
                 "expires_at": new_expires.isoformat(),
                 "next_billing_at": new_expires.isoformat(),
                 "last_renewed_at": now.isoformat(),
                 "renewed_for_period": now.strftime("%Y-%m"),
-                "renewal_count": sub.get("renewal_count", 0) + 1,
-            }}
+                "last_renewal_key": renewal_key,
+                "last_renewal_transaction_id": payment_result.transaction_id,
+            }, "$inc": {"renewal_count": 1}}
         )
+        if extended.modified_count != 1:
+            current = await db.subscriptions.find_one(
+                {"subscription_id": sub["subscription_id"]},
+                {"_id": 0, "last_renewal_key": 1, "expires_at": 1},
+            ) or {}
+            if current.get("last_renewal_key") != renewal_key:
+                logger.error(
+                    "Subscription renewal payment completed but extension needs reconciliation: %s",
+                    sub["subscription_id"],
+                )
+                failed_count += 1
+                continue
         
         # Update user subscription info
         await apply_subscription_to_user(user_id, {
@@ -909,24 +1025,29 @@ async def process_subscription_renewals():
             upsert=True
         )
         
-        # Record revenue
-        await db.platform_revenue.update_one(
-            {"date": now.strftime("%Y-%m-%d")},
-            {"$inc": {"total": price, "by_source.subscription_renewals": price}},
-            upsert=True
+        # Record each paid renewal exactly once.
+        await _record_subscription_revenue_once(
+            f"renewal:{sub['subscription_id']}:{renewal_key}",
+            price,
+            now,
         )
         
-        # Notify user
-        await db.notifications.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "subscription_renewed",
-            "title": "Abo verlängert!",
-            "message": f"Dein {plan['name']}-Abo wurde bis {new_expires.strftime('%d.%m.%Y')} verlängert",
-            "data": {"subscription_id": sub["subscription_id"]},
-            "read": False,
-            "created_at": now.isoformat(),
-        })
+        # Notify user exactly once for this renewal period.
+        await db.notifications.update_one(
+            {"_id": f"subscription-renewed:{sub['subscription_id']}:{renewal_key}"},
+            {"$setOnInsert": {
+                "_id": f"subscription-renewed:{sub['subscription_id']}:{renewal_key}",
+                "id": f"subscription-renewed-{renewal_key}",
+                "user_id": user_id,
+                "type": "subscription_renewed",
+                "title": "Abo verlängert!",
+                "message": f"Dein {plan['name']}-Abo wurde bis {new_expires.strftime('%d.%m.%Y')} verlängert",
+                "data": {"subscription_id": sub["subscription_id"], "renewal_key": renewal_key},
+                "read": False,
+                "created_at": now.isoformat(),
+            }},
+            upsert=True,
+        )
         
         renewed_count += 1
         logger.info(f"Subscription renewed: {sub['subscription_id']} for {user_id}")

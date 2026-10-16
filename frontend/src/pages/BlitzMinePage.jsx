@@ -8,25 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { usePushNotifications } from "../components/PushNotifications";
+import { request as api } from "../services/api";
+import { useUser } from "../store";
 import {
   ChevronLeft, Zap, Users, Lock, Trophy, TrendingUp, Plus, X,
   Flame, Sparkles, Share2, Shield, Clock, Check, Loader2,
   ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy, Gift, Bell, Target, TimerReset,
 } from "lucide-react";
-
-const API = process.env.REACT_APP_BACKEND_URL;
-
-async function api(path, opts = {}) {
-  const r = await fetch(`${API}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  let d = {};
-  try { d = await r.clone().json(); } catch (error) { void error; }
-  if (!r.ok) throw new Error(d.detail || d.message || `Error ${r.status}`);
-  return d;
-}
 
 const ROLE_META = {
   pioneer:     { label: "Pioneer",     color: "#94A3B8", icon: Star,    desc: "Starter-Rolle. Tippe täglich, um PI zu verdienen." },
@@ -55,6 +43,55 @@ const fmtDate = (isoString) => {
   }
 };
 const getWindowOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+
+function blitzAttemptStorageKey(ownerId, kind) {
+  return `bidblitz:blitzmine-attempt:${ownerId || "unknown"}:${kind}`;
+}
+
+function loadBlitzAttemptMap(ownerId, kind) {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(blitzAttemptStorageKey(ownerId, kind));
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([scope, key]) => typeof scope === "string" && typeof key === "string" && key.length >= 8)
+    );
+  } catch {
+    return {};
+  }
+}
+
+function persistBlitzAttemptMap(ownerId, kind, map) {
+  if (typeof window === "undefined") return;
+  try {
+    const storageKey = blitzAttemptStorageKey(ownerId, kind);
+    if (Object.keys(map).length) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(map));
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+}
+
+function getOrCreateBlitzAttemptKey(ref, ownerId, kind, scope, prefix) {
+  if (!ref.current[scope]) {
+    ref.current[scope] = typeof crypto?.randomUUID === "function"
+      ? `${prefix}-${crypto.randomUUID()}`
+      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    persistBlitzAttemptMap(ownerId, kind, ref.current);
+  }
+  return ref.current[scope];
+}
+
+function clearBlitzAttemptKey(ref, ownerId, kind, scope) {
+  if (ref.current[scope]) {
+    delete ref.current[scope];
+    persistBlitzAttemptMap(ownerId, kind, ref.current);
+  }
+}
 const writeClipboardSafe = async (value) => {
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return false;
   try {
@@ -97,7 +134,7 @@ const MissionCard = ({ quest, onAction }) => {
   );
 };
 
-const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQuests, onShare, onOpenLeaderboard }) => {
+const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQuests, onShare, onOpenLeaderboard, valueActionsEnabled }) => {
   const sessionReady = !!data?.session?.ready_to_claim;
   const quickReady = !!quickBonus?.available;
   const gap = competition?.gap_to_next_rank_blz || 0;
@@ -114,8 +151,14 @@ const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQues
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.24em] text-white/55 font-black">Heute für dich</p>
-          <h2 className="text-[22px] sm:text-[26px] font-black text-white leading-tight mt-1">Mehr öffnen. Mehr tippen. Mehr BLZ.</h2>
-          <p className="text-[12px] text-white/65 mt-2 max-w-[520px]">Sofort sichtbare Belohnungen, kurze Bonus-Zyklen und Wettbewerb sorgen dafür, dass Nutzer öfter zurückkommen.</p>
+          <h2 className="text-[22px] sm:text-[26px] font-black text-white leading-tight mt-1">
+            {valueActionsEnabled ? "Mehr öffnen. Mehr tippen. Mehr BLZ." : "BlitzMine Preview"}
+          </h2>
+          <p className="text-[12px] text-white/65 mt-2 max-w-[520px]">
+            {valueActionsEnabled
+              ? "Sofort sichtbare Belohnungen, kurze Bonus-Zyklen und Wettbewerb sorgen dafür, dass Nutzer öfter zurückkommen."
+              : "Belohnungen und Claims bleiben deaktiviert, bis ein verifizierter Mining-/Settlement-Provider live verbunden ist."}
+          </p>
         </div>
         <div className="rounded-2xl px-3 py-2 bg-black/25 border border-white/10" data-testid="blitz-rank-chip">
           <p className="text-[9px] uppercase tracking-[0.2em] text-white/40">Ranking</p>
@@ -144,7 +187,14 @@ const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQues
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button data-testid="blitz-open-quests-cta" onClick={onOpenQuests} className="rounded-2xl py-3 px-3 bg-white text-black text-[12px] font-black flex items-center justify-center gap-2"><Target size={14}/> Missionen</button>
-        <button data-testid="blitz-quick-claim-cta" onClick={onQuickClaim} className="rounded-2xl py-3 px-3 bg-[#FFD700] text-black text-[12px] font-black flex items-center justify-center gap-2"><Gift size={14}/> Bonus holen</button>
+        <button
+          data-testid="blitz-quick-claim-cta"
+          onClick={onQuickClaim}
+          disabled={!valueActionsEnabled}
+          className="rounded-2xl py-3 px-3 bg-[#FFD700] text-black text-[12px] font-black flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <Gift size={14}/> {valueActionsEnabled ? "Bonus holen" : "Preview"}
+        </button>
         <button data-testid="blitz-share-cta" onClick={onShare} className="rounded-2xl py-3 px-3 bg-[#A855F7] text-white text-[12px] font-black flex items-center justify-center gap-2"><Users size={14}/> Freunde holen</button>
         <button data-testid="blitz-open-board-cta" onClick={onOpenLeaderboard} className="rounded-2xl py-3 px-3 bg-[#00C2FF] text-black text-[12px] font-black flex items-center justify-center gap-2"><Trophy size={14}/> Ranking</button>
       </div>
@@ -219,7 +269,7 @@ const QuickBonusWidget = ({ quickBonus, onClaim, busy }) => {
   );
 };
 
-const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTest }) => {
+const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTest, allowTestPush }) => {
   if (!reminders) return null;
   const rows = [
     { key: "claim_ready_enabled", label: "Claim Reminder", desc: "Push, wenn deine Session fertig ist." },
@@ -255,9 +305,11 @@ const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTes
           </div>
         ))}
       </div>
-      <button data-testid="blitz-test-reminder-btn" onClick={() => onTest("claim_ready")} className="w-full rounded-xl py-2.5 bg-white/8 border border-white/10 text-[12px] font-bold text-white">
-        Test-Reminder senden
-      </button>
+      {allowTestPush && (
+        <button data-testid="blitz-test-reminder-btn" onClick={() => onTest("claim_ready")} className="w-full rounded-xl py-2.5 bg-white/8 border border-white/10 text-[12px] font-bold text-white">
+          Test-Reminder senden
+        </button>
+      )}
     </div>
   );
 };
@@ -497,7 +549,7 @@ const SecurityCircleWidget = ({ circle, onAdd, onRemove }) => {
 };
 
 // ── Lockup Widget ──
-const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
+const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease, valueActionsEnabled }) => {
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [duration, setDuration] = useState(365);
@@ -555,18 +607,28 @@ const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
                 +{(l.bonus_rate * 100).toFixed(0)}% · bis {fmtDate(l.ends_at)}
               </p>
             </div>
-            <button
-              data-testid={`lockup-release-${i}`}
-              onClick={() => onRelease(l._id || l.id)}
-              className="text-[10px] text-red-400 hover:text-red-300"
-            >
-              <Unlock size={14} />
-            </button>
+            {valueActionsEnabled ? (
+              <button
+                data-testid={`lockup-release-${i}`}
+                onClick={() => onRelease(l._id || l.id)}
+                className="text-[10px] text-red-400 hover:text-red-300"
+              >
+                <Unlock size={14} />
+              </button>
+            ) : (
+              <span className="rounded-lg border border-amber-400/15 bg-amber-400/[0.06] px-2 py-1 text-[8px] font-semibold text-amber-200/70">
+                Preview
+              </span>
+            )}
           </div>
         ))}
       </div>
 
-      {!showForm ? (
+      {!valueActionsEnabled ? (
+        <div data-testid="lockup-preview-disabled" className="w-full rounded-xl border border-amber-400/15 bg-amber-400/[0.06] px-3 py-2.5 text-center text-[10px] leading-relaxed text-amber-100/70">
+          Lockup Preview · Erstellen und Auflösen bleiben ohne verifizierten Mining-/Settlement-Provider deaktiviert.
+        </div>
+      ) : !showForm ? (
         <motion.button
           data-testid="lockup-new-btn"
           whileTap={{ scale: 0.96 }}
@@ -963,6 +1025,7 @@ const LeaderboardWidget = ({ items }) => {
 
 // ── Main Page ──
 const BlitzMinePage = ({ onBack, onNavigate }) => {
+  const user = useUser();
   const [data, setData] = useState(null);
   const [circle, setCircle] = useState(null);
   const [lockups, setLockups] = useState([]);
@@ -979,6 +1042,12 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [boostBusy, setBoostBusy] = useState(false);
   const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
+  const attemptOwnerId = user?.id || user?.email || "unknown";
+  const tapAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "tap"));
+  const boostAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "boost-tap"));
+  const lockupAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "lockup"));
+  const quickBonusAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "quick-bonus"));
+  const claimAttemptKeysRef = useRef(loadBlitzAttemptMap(attemptOwnerId, "claim"));
   const push = usePushNotifications();
 
   const questRouteMap = {
@@ -1026,20 +1095,59 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     return () => clearInterval(iv);
   }, [load]);
 
+  const valueActionsEnabled = !!data?.capabilities?.value_actions_enabled;
+  const requireValueAction = () => {
+    if (valueActionsEnabled) return true;
+    toast.error(data?.capabilities?.production_message || "BlitzMine ist noch nicht live verbunden.");
+    return false;
+  };
+  const shouldKeepBlitzAttemptKey = (error) =>
+    !!error?.retryable || ["timeout", "network", "server", "unknown"].includes(error?.code);
+
+  useEffect(() => {
+    if (data?.session?.started_at) {
+      clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", "start");
+    }
+  }, [data?.session?.started_at, attemptOwnerId]);
+
   const onTap = async () => {
+    if (!requireValueAction()) return;
+    const tapScope = "start";
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      tapAttemptKeysRef, attemptOwnerId, "tap", tapScope, "blitz-tap"
+    );
     setLoading(true);
     try {
-      const res = await api("/api/blitz-mine/tap", { method: "POST" });
+      const res = await api("/api/blitz-mine/tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", tapScope);
       toast.success(res.message);
       await load();
-    } catch (e) { toast.error(e.message); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (!shouldKeepBlitzAttemptKey(e)) {
+        clearBlitzAttemptKey(tapAttemptKeysRef, attemptOwnerId, "tap", tapScope);
+      }
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onClaim = async () => {
+    if (!requireValueAction()) return;
     setLoading(true);
     try {
-      const res = await api("/api/blitz-mine/claim", { method: "POST" });
+      const claimScope = data?.session?.started_at || "current";
+      const idempotencyKey = getOrCreateBlitzAttemptKey(
+        claimAttemptKeysRef, attemptOwnerId, "claim", claimScope, "blitz-claim"
+      );
+      const res = await api("/api/blitz-mine/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(claimAttemptKeysRef, attemptOwnerId, "claim", claimScope);
       toast.success(`+${fmt(res.amount_blz, 4)} BLZ gesammelt! 🎉`);
       if (res.milestone_hit) {
         setMilestoneModal(res);
@@ -1065,14 +1173,22 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onCreateLockup = async (amount, duration_days) => {
+    if (!requireValueAction()) return;
+    const lockupScope = `${Number(amount).toFixed(4)}:${duration_days}`;
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      lockupAttemptKeysRef, attemptOwnerId, "lockup", lockupScope, "blitz-lockup"
+    );
     await api("/api/blitz-mine/lockup", {
       method: "POST",
-      body: JSON.stringify({ amount, duration_days }),
+      headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ amount, duration_days, idempotency_key: idempotencyKey }),
     });
+    clearBlitzAttemptKey(lockupAttemptKeysRef, attemptOwnerId, "lockup", lockupScope);
     await load();
   };
 
   const onReleaseLockup = async (id) => {
+    if (!requireValueAction()) return;
     if (!id) return;
     if (typeof window !== "undefined" && !window.confirm("Lockup jetzt auflösen? Es kann eine Strafe anfallen.")) return;
     try {
@@ -1083,19 +1199,44 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const onBoostTap = async () => {
+    if (!requireValueAction()) return;
+    const boost = data?.session?.boost || {};
+    const boostScope = `${data?.session?.started_at || "session"}:${boost.completed_rounds || 0}:${boost.current_round_taps || 0}`;
+    const idempotencyKey = getOrCreateBlitzAttemptKey(
+      boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope, "blitz-boost"
+    );
     setBoostBusy(true);
     try {
-      const res = await api("/api/blitz-mine/boost-tap", { method: "POST" });
+      const res = await api("/api/blitz-mine/boost-tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope);
       if (res.unlocked_round) toast.success(`Turbo-Runde fertig! +${fmt(res.boost.reward_per_round_blz, 2)} BLZ`);
       await load();
-    } catch (e) { toast.error(e.message); }
-    finally { setBoostBusy(false); }
+    } catch (e) {
+      if (!shouldKeepBlitzAttemptKey(e)) {
+        clearBlitzAttemptKey(boostAttemptKeysRef, attemptOwnerId, "boost-tap", boostScope);
+      }
+      toast.error(e.message);
+    } finally {
+      setBoostBusy(false);
+    }
   };
 
   const onQuickClaim = async () => {
+    if (!requireValueAction()) return;
     setQuickBusy(true);
     try {
-      const res = await api("/api/blitz-mine/quick-bonus/claim", { method: "POST" });
+      const quickScope = String(data?.quick_bonus?.total_claims || 0);
+      const idempotencyKey = getOrCreateBlitzAttemptKey(
+        quickBonusAttemptKeysRef, attemptOwnerId, "quick-bonus", quickScope, "blitz-quick"
+      );
+      const res = await api("/api/blitz-mine/quick-bonus/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      });
+      clearBlitzAttemptKey(quickBonusAttemptKeysRef, attemptOwnerId, "quick-bonus", quickScope);
       toast.success(`Quick Bonus: +${fmt(res.reward_blz, 2)} BLZ`);
       await load();
     } catch (e) { toast.error(e.message); }
@@ -1119,6 +1260,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   };
 
   const sendReminderTest = async (kind) => {
+    if (!requireValueAction()) return;
     try {
       await api("/api/blitz-mine/reminders/test", { method: "POST", body: JSON.stringify({ kind }) });
       toast.success("Test-Push gesendet");
@@ -1134,8 +1276,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onShare = () => {
     const text = referralCode
-      ? `Mine kostenlos BLZ auf BidBlitz! Nutze meinen Code: ${referralCode}`
-      : "Mine kostenlos BLZ auf BidBlitz!";
+      ? `BlitzMine Preview auf BidBlitz – mein Code: ${referralCode}`
+      : "BlitzMine Preview auf BidBlitz";
     if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({ title: "BlitzMine", text, url: refLink }).catch((error) => { void error; });
     } else {
@@ -1168,7 +1310,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         </motion.button>
         <div className="flex-1">
           <p className="text-[11px] text-white/50 uppercase tracking-[0.2em] font-bold">BlitzMine</p>
-          <p className="text-[16px] font-bold">Tap-to-Earn</p>
+          <p className="text-[16px] font-bold">{valueActionsEnabled ? "Tap-to-Earn" : "Preview"}</p>
         </div>
         <div className="text-right">
           <p className="text-[9px] text-white/40 uppercase">Balance</p>
@@ -1177,6 +1319,14 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
       </div>
 
       <div className="px-5 pb-24 space-y-5">
+        {!valueActionsEnabled && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4" data-testid="blitzmine-provider-unavailable">
+            <p className="text-[13px] font-bold text-amber-300">BlitzMine nur als Preview</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-amber-100/70">
+              {data?.capabilities?.production_message || "Tap, Claim, Bonus und Lockup werden erst nach Live-Anbindung eines verifizierten Mining-/Settlement-Providers freigeschaltet."}
+            </p>
+          </div>
+        )}
         <RewardCtaCard
           data={data}
           quickBonus={data?.quick_bonus}
@@ -1184,20 +1334,25 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           onQuickClaim={onQuickClaim}
           onOpenQuests={() => onNavigate?.("/quests")}
           onShare={onShare}
+          valueActionsEnabled={valueActionsEnabled}
           onOpenLeaderboard={() => {
             if (typeof document === "undefined") return;
             document.querySelector('[data-testid="blitz-leaderboard-widget"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
           }}
         />
 
-        {/* Tap button */}
-        <div className="flex flex-col items-center pt-4 pb-2">
-          <TapButton data={data} onTap={onTap} onClaim={onClaim} loading={loading} />
-        </div>
+        {valueActionsEnabled ? (
+          <>
+            {/* Tap button */}
+            <div className="flex flex-col items-center pt-4 pb-2">
+              <TapButton data={data} onTap={onTap} onClaim={onClaim} loading={loading} />
+            </div>
 
-        <QuickBonusWidget quickBonus={data?.quick_bonus} onClaim={onQuickClaim} busy={quickBusy} />
+            <QuickBonusWidget quickBonus={data?.quick_bonus} onClaim={onQuickClaim} busy={quickBusy} />
 
-        <TurboTapWidget boost={data?.session?.boost} onTap={onBoostTap} busy={boostBusy} />
+            <TurboTapWidget boost={data?.session?.boost} onTap={onBoostTap} busy={boostBusy} />
+          </>
+        ) : null}
 
         {topQuests.length > 0 && (
           <div data-testid="blitz-missions-widget" className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -1273,6 +1428,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           }}
           onToggle={updateReminder}
           onTest={sendReminderTest}
+          allowTestPush={valueActionsEnabled}
         />
 
         {/* Lockup */}
@@ -1282,6 +1438,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           balance={data?.balance_blz || 0}
           onCreate={onCreateLockup}
           onRelease={onReleaseLockup}
+          valueActionsEnabled={valueActionsEnabled}
         />
 
         {/* Leaderboard */}

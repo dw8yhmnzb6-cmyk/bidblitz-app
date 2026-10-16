@@ -70,7 +70,7 @@ export default function AdminScootersTab({
                     setNewScooter({ device_id: "", qr_code: "", model: "Ninebot Max G30", lat: 52.52, lng: 13.405, battery: 100 });
                     setShowAdd(false);
                     reload();
-                  } catch (e) { setError(e); }
+                  } catch (e) { setError(e?.message || String(e)); }
                   setSaving(false);
                 }}
                 className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:opacity-50 flex items-center justify-center gap-2">
@@ -100,6 +100,10 @@ export default function AdminScootersTab({
               : scooter.status === "in_use" ? "#FFB800"
               : scooter.status === "offline" ? "#FF4757" : "#666";
             const batteryColor = scooter.battery >= 50 ? "#00D26A" : scooter.battery >= 20 ? "#FFB800" : "#FF4757";
+            const lifecycleLocked = Boolean(
+              scooter.current_ride_id ||
+              ["in_use", "unlocking", "reserved"].includes(scooter.status)
+            );
 
             return (
               <motion.div key={scooter.scooter_id}
@@ -129,23 +133,27 @@ export default function AdminScootersTab({
                     </div>
                   </div>
                   <div className="flex gap-1.5">
-                    <motion.button data-testid={`scooter-edit-${scooter.scooter_id}`} whileTap={{ scale: 0.9 }}
+                    <motion.button data-testid={`scooter-edit-${scooter.scooter_id}`} whileTap={{ scale: lifecycleLocked ? 1 : 0.9 }}
+                      disabled={lifecycleLocked}
+                      title={lifecycleLocked ? "Aktiver Scooter-Lifecycle – Status gesperrt" : "Status ändern"}
                       onClick={async () => {
                         const newStatus = scooter.status === "available" ? "maintenance" : "available";
                         try { await adminApi(`/api/scooter/admin/${scooter.scooter_id}`, { method: "PUT", body: JSON.stringify({ status: newStatus }) }); reload(); }
-                        catch { /* noop */ }
+                        catch (e) { setError(e?.message || String(e)); }
                       }}
-                      className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#00C2FF]">
+                      className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#00C2FF] disabled:cursor-not-allowed disabled:opacity-30">
                       <Settings size={14} />
                     </motion.button>
-                    <motion.button data-testid={`scooter-delete-${scooter.scooter_id}`} whileTap={{ scale: 0.9 }}
+                    <motion.button data-testid={`scooter-delete-${scooter.scooter_id}`} whileTap={{ scale: lifecycleLocked ? 1 : 0.9 }}
+                      disabled={lifecycleLocked}
+                      title={lifecycleLocked ? "Aktiver Scooter-Lifecycle – Löschen gesperrt" : "Scooter löschen"}
                       onClick={async () => {
                         if (window.confirm(`Scooter ${scooter.scooter_id} wirklich löschen?`)) {
                           try { await adminApi(`/api/scooter/admin/${scooter.scooter_id}`, { method: "DELETE" }); reload(); }
-                          catch { /* noop */ }
+                          catch (e) { setError(e?.message || String(e)); }
                         }
                       }}
-                      className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#FF4757]">
+                      className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#FF4757] disabled:cursor-not-allowed disabled:opacity-30">
                       <X size={14} />
                     </motion.button>
                   </div>

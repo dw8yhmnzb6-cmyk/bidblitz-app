@@ -3,7 +3,7 @@
  * - Tab: Anbieter | Meine Termine | Mein Business (wenn Provider Owner)
  * - Flow: Provider → Service → Datum (7 Tage vorwärts) → freie Slots → Buchung
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -14,10 +14,11 @@ import {
 const API = process.env.REACT_APP_BACKEND_URL;
 
 async function api(path, opts = {}) {
+  const { headers = {}, ...rest } = opts;
   const r = await fetch(`${API}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
+    ...rest,
+    headers: { "Content-Type": "application/json", ...headers },
   });
   let d = {};
   try { d = await r.clone().json(); } catch {}
@@ -43,6 +44,11 @@ const ProviderFlow = ({ provider, onDone, onBack }) => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [form, setForm] = useState({ customer_name: "", customer_phone: "", notes: "" });
   const [booking, setBooking] = useState(false);
+  const bookingAttemptKeyRef = useRef(null);
+
+  useEffect(() => {
+    bookingAttemptKeyRef.current = null;
+  }, [provider.id, service?.service_id, date, selectedSlot, form.customer_name, form.customer_phone, form.notes]);
 
   useEffect(() => {
     if (!service) return;
@@ -56,18 +62,27 @@ const ProviderFlow = ({ provider, onDone, onBack }) => {
 
   const book = async () => {
     if (!service || !selectedSlot) return;
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `appointment-${crypto.randomUUID()}`
+        : `appointment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBooking(true);
     try {
       const res = await api("/api/bookings/book", {
         method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           provider_id: provider.id,
           service_id: service.service_id,
           date,
           time: selectedSlot,
+          idempotency_key: idempotencyKey,
           ...form,
         }),
       });
+      bookingAttemptKeyRef.current = null;
       toast.success(res.message || "Termin gebucht!");
       onDone();
     } catch (e) {

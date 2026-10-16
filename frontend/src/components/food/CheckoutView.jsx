@@ -28,15 +28,14 @@ export default function CheckoutView({
   const handlePromoClick = async () => {
     if (promoApplied) { onRemovePromo(); return; }
     try {
-      const r = await fetch(`${API}/api/extras/promo/redeem`, {
-        method: 'POST',
+      const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+      const params = new URLSearchParams({ code: promoCode, subtotal: subtotal.toFixed(2) });
+      const r = await fetch(`${API}/api/food/promo/validate?${params.toString()}`, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: promoCode }),
       });
       const d = await r.json();
-      if (r.ok) onApplyPromo({ code: promoCode, benefit: d.benefit });
-      else onSetError(d.detail || 'Code ungültig');
+      if (r.ok && d.valid) onApplyPromo({ code: d.code, discount: Number(d.discount || 0), label: d.label || '' });
+      else onSetError(d.message || d.detail || 'Code ungültig');
     } catch {
       onSetError('Netzwerkfehler');
     }
@@ -121,7 +120,7 @@ export default function CheckoutView({
         <p className="font-semibold mb-3">{selectedRestaurant?.name}</p>
         <div className="space-y-2 text-sm">
           {cart.map((item) => (
-            <div key={item.item_id} className="flex justify-between text-gray-400">
+            <div key={item.cart_key || item.item_id} className="flex justify-between text-gray-400">
               <span>{item.quantity}x {item.name}</span>
               <span>€{(item.price * item.quantity).toFixed(2)}</span>
             </div>
@@ -153,7 +152,7 @@ export default function CheckoutView({
           </button>
         </div>
         {promoApplied && (
-          <p className="text-[10px] text-green-400 mt-1.5">✓ {promoApplied.code}: +€{promoApplied.benefit?.toFixed(2)} Guthaben!</p>
+          <p className="text-[10px] text-green-400 mt-1.5">✓ {promoApplied.code}: −€{Number(promoApplied.discount || 0).toFixed(2)} Rabatt</p>
         )}
       </div>
 
