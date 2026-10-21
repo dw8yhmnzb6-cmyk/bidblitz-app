@@ -200,8 +200,16 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
         "charge_point_id": charge_point_id,
         "connector_id": connector_id,
         "id_tag": id_tag,
-        "status": {"$in": ["authorized", "starting"]},
+        "status": {"$in": ["authorized", "starting", "reserved", "reserving"]},
     }, sort=[("created_at", -1)])
+    if not session:
+        # OCPI/OCPP 1.6 reservation with connectorId=0 means "any connector".
+        session = await db.ev_charging_sessions.find_one({
+            "charge_point_id": charge_point_id,
+            "connector_id": 0,
+            "id_tag": id_tag,
+            "status": {"$in": ["reserved", "reserving"]},
+        }, sort=[("created_at", -1)])
 
     update = {
         "status": "active",
@@ -232,6 +240,49 @@ async def handle_StartTransaction(charge_point_id: str, payload: Dict[str, Any])
         })
 
     return {"transactionId": transaction_id, "idTagInfo": {"status": "Accepted"}}
+
+
+def _live_session_cost(sess: Dict[str, Any], kwh: float, ts: Optional[str]) -> float:
+    tariff = sess.get("tariff") or {}
+    energy = kwh * float(tariff.get("price_per_kwh", 0))
+    session_fee = float(tariff.get("session_fee", 0))
+    per_minute = float(tariff.get("price_per_minute", 0))
+    minimum_fee = float(tariff.get("minimum_fee", 0))
+    duration_min = 0.0
+    if sess.get("started_at"):
+        try:
+            t0 = datetime.fromisoformat(str(sess["started_at"]).replace("Z", "+00:00"))
+            t1 = datetime.fromisoformat(str(ts or _utcnow_iso()).replace("Z", "+00:00"))
+            duration_min = max(0.0, (t1 - t0).total_seconds() / 60.0)
+        except Exception:
+            pass
+    return round(max(minimum_fee, energy + session_fee + duration_min * per_minute), 2)
+
+
+async def _remote_stop_at_cap(charge_point_id: str, transaction_id: int, session_id: str) -> None:
+    try:
+        result = await remote_stop(charge_point_id, transaction_id)
+        status = (result or {}).get("status")
+        accepted = not status or status in ("Accepted", "Scheduled")
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "stopping" if accepted else "stop_failed",
+                "cap_stop_command_status": status or "sent",
+                "cap_stop_error": None if accepted else f"Station returned {status}",
+                "cap_stop_command_at": _utcnow_iso(),
+            }},
+        )
+    except Exception as exc:
+        await db.ev_charging_sessions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "status": "stop_failed",
+                "cap_stop_command_status": "failed",
+                "cap_stop_error": str(exc)[:300],
+                "cap_stop_command_at": _utcnow_iso(),
+            }},
+        )
 
 
 async def handle_MeterValues(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -273,10 +324,7 @@ async def handle_MeterValues(charge_point_id: str, payload: Dict[str, Any]) -> D
         sess = await db.ev_charging_sessions.find_one({"ocpp_transaction_id": transaction_id})
         if sess:
             kwh = max(0.0, (latest_wh - float(sess.get("meter_start_wh", 0))) / 1000.0)
-            tariff = sess.get("tariff") or {}
-            price_per_kwh = float(tariff.get("price_per_kwh", 0))
-            session_fee = float(tariff.get("session_fee", 0))
-            current_cost = round(kwh * price_per_kwh + session_fee, 2)
+            current_cost = _live_session_cost(sess, kwh, latest_ts)
             await db.ev_charging_sessions.update_one(
                 {"session_id": sess["session_id"]},
                 {"$set": {
@@ -286,6 +334,26 @@ async def handle_MeterValues(charge_point_id: str, payload: Dict[str, Any]) -> D
                     "last_meter_at": latest_ts,
                 }},
             )
+
+            cap = round(float(sess.get("reserved_amount") or 0), 2)
+            if cap > 0 and current_cost >= cap:
+                claimed = await db.ev_charging_sessions.find_one_and_update(
+                    {
+                        "session_id": sess["session_id"],
+                        "status": "active",
+                        "cap_stop_requested_at": {"$exists": False},
+                    },
+                    {"$set": {
+                        "status": "stopping",
+                        "cap_stop_requested_at": _utcnow_iso(),
+                        "cap_stop_reason": "reservation_limit",
+                    }},
+                    return_document=True,
+                )
+                if claimed:
+                    asyncio.create_task(
+                        _remote_stop_at_cap(charge_point_id, transaction_id, sess["session_id"])
+                    )
     return {}
 
 
@@ -428,6 +496,35 @@ async def remote_stop(charge_point_id: str, transaction_id: int) -> Dict[str, An
     if not sess:
         raise RuntimeError(f"Charge point {charge_point_id} is offline")
     return await sess.send_call("RemoteStopTransaction", {"transactionId": transaction_id})
+
+
+async def reserve_now(
+    charge_point_id: str,
+    connector_id: int,
+    expiry_date: str,
+    id_tag: str,
+    reservation_id: int,
+    parent_id_tag: Optional[str] = None,
+) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline")
+    payload: Dict[str, Any] = {
+        "connectorId": int(connector_id),
+        "expiryDate": expiry_date,
+        "idTag": id_tag,
+        "reservationId": int(reservation_id),
+    }
+    if parent_id_tag:
+        payload["parentIdTag"] = parent_id_tag
+    return await sess.send_call("ReserveNow", payload)
+
+
+async def cancel_reservation(charge_point_id: str, reservation_id: int) -> Dict[str, Any]:
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline")
+    return await sess.send_call("CancelReservation", {"reservationId": int(reservation_id)})
 
 
 async def change_availability(charge_point_id: str, connector_id: int, mode: str) -> Dict[str, Any]:
