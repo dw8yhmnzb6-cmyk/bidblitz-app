@@ -161,6 +161,7 @@ const CryptoWalletPage = lazy(() => import("./pages/CryptoWalletPage"));
 const BudgetPlannerPage = lazy(() => import("./pages/BudgetPlannerPage"));
 const AdminCreditPage = lazy(() => import("./pages/AdminCreditPage"));
 const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
+const AdminProjectsPage = lazy(() => import("./pages/AdminProjectsPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const AdminQrManagementPage = lazy(() => import("./pages/AdminQrManagementPage"));
@@ -746,6 +747,10 @@ function AppContent() {
       case "/admin":
         return user.role === "admin"
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/projects":
+        return user.role === "admin"
+          ? <AdminProjectsPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/admin/monitoring":
         return user.role === "admin"

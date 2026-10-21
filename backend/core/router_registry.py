@@ -41,6 +41,8 @@ def register_all_routers(app):
         ("routes.stripe", "router"),
         ("routes.payout", "router"),
         ("routes.admin", "router"),
+        ("routes.admin_projects", "router"),
+        ("routes.admin_sso", "router"),
         ("routes.feature_flags", "router"),
         ("routes.admin_customer_intelligence", "router"),
         ("routes.admin_biopay", "router"),
