@@ -12,9 +12,21 @@ const number = (value) => new Intl.NumberFormat("de-DE").format(value);
 const MAX_CSV_BYTES = 2 * 1024 * 1024; // Maximum for a 90-day, 10-project event-only export.
 const TREND_LABELS = {
   page_view: "Seitenaufrufe",
+  cta_click: "Klicks",
   signup_started: "Registrierungen begonnen",
   signup_completed: "Registrierungen abgeschlossen",
   checkout_started: "Bezahlvorgänge gestartet",
+  checkout_completed: "Bezahlvorgänge abgeschlossen (Ereignisse)",
+  flow_abandoned: "Abbrüche",
+};
+const SORT_LABELS = {
+  registry: "Projektkatalog",
+  page_view: "Seitenaufrufe",
+  cta_click: "Klicks",
+  signup_started: "Registrierungen begonnen",
+  signup_completed: "Registrierungen abgeschlossen",
+  checkout_started: "Bezahlvorgänge gestartet",
+  checkout_completed: "Bezahlvorgänge abgeschlossen",
   flow_abandoned: "Abbrüche",
 };
 
@@ -27,8 +39,14 @@ const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+
 function isUtcTimestamp(value) {
   if (typeof value !== "string" || !UTC_TIMESTAMP.test(value)) return false;
   const parsed = Date.parse(value);
-  return Number.isFinite(parsed) &&
-    new Date(parsed).toISOString().slice(0, 10) === value.slice(0, 10);
+  if (!Number.isFinite(parsed)) return false;
+  // Date.parse normalizes some invalid wall-clock timestamps: validate every
+  // supplied UTC component instead of checking only the calendar day.
+  const actual = new Date(parsed).toISOString();
+  const expected = value.replace(/(?:Z|\+00:00)$/, "");
+  const [whole, fraction = ""] = expected.split(".");
+  return actual.slice(0, 19) === whole &&
+    actual.slice(20, 23) === (fraction + "000").slice(0, 3);
 }
 
 function checkedReports(data, days) {
@@ -142,6 +160,8 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const [days, setDays] = useState(7);
   const [selected, setSelected] = useState("");
   const [trendEvent, setTrendEvent] = useState("page_view");
+  const [sortEvent, setSortEvent] = useState("registry");
+  const [sortDirection, setSortDirection] = useState("desc");
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState({ loading: true, data: null, error: "" });
   const [exporting, setExporting] = useState(false);
@@ -255,6 +275,13 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
 
   const reports = state.data?.projects || [];
   const visible = selected ? reports.filter((report) => report.project === selected) : reports;
+  // Rank only validated, authorized reports; avoid large-number subtraction.
+  const ranked = sortEvent === "registry" ? visible : [...visible].sort((left, right) => {
+    const a = left.totals[sortEvent] ?? 0;
+    const b = right.totals[sortEvent] ?? 0;
+    if (a !== b) return (a < b ? -1 : 1) * (sortDirection === "asc" ? 1 : -1);
+    return PROJECT_LABELS[left.project].localeCompare(PROJECT_LABELS[right.project], "de");
+  });
   const total = (event) => selected
     ? visible.reduce((sum, report) => sum + (report.totals[event] || 0), 0)
     : (state.data?.summary.totals[event] ?? 0);
@@ -312,6 +339,24 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
                 <option key={event} value={event}>{label}</option>)}
             </select>
           </label>
+          <label className="text-xs text-slate-400 flex flex-col gap-2">
+            Vergleich sortieren
+            <select aria-label="Vergleich sortieren" value={sortEvent}
+              onChange={(event) => setSortEvent(event.target.value)}
+              className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
+              {Object.entries(SORT_LABELS).map(([event, label]) =>
+                <option key={event} value={event}>{label}</option>)}
+            </select>
+          </label>
+          {sortEvent !== "registry" && <label className="text-xs text-slate-400 flex flex-col gap-2">
+            Sortierrichtung
+            <select aria-label="Sortierrichtung" value={sortDirection}
+              onChange={(event) => setSortDirection(event.target.value)}
+              className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
+              <option value="desc">Höchste zuerst</option>
+              <option value="asc">Niedrigste zuerst</option>
+            </select>
+          </label>}
           <button onClick={() => { cancelExport(); setAttempt((value) => value + 1); }}
             disabled={state.loading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold disabled:opacity-50">Aktualisieren</button>
@@ -339,6 +384,10 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
             {metrics.map(([label, value]) => <article key={label} className="rounded-xl border border-slate-800 bg-slate-900 p-5">
               <p className="text-xs text-slate-400">{label}</p>
               <p className="text-3xl font-bold text-blue-300 mt-3">{number(value)}</p>
+              {label === "Gestartete Bezahlvorgänge" &&
+                <p className="text-xs text-slate-400 mt-2">
+                  Abgeschlossen (Ereignisse): {number(total("checkout_completed"))} · kein Zahlungsnachweis
+                </p>}
             </article>)}
             <article className="rounded-xl border border-slate-800 bg-slate-900 p-5">
               <p className="text-xs text-slate-400">Verifizierter Umsatz</p>
@@ -380,11 +429,11 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Aufgezeichnete Ereignisse je Projekt im ausgewählten Zeitraum</caption>
                 <thead className="text-slate-400 border-y border-slate-800"><tr>
-                  {["Projekt", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
+                  {["Projekt", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Bezahlvorgang abgeschlossen (Ereignisse)", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
                 </tr></thead>
-                <tbody>{visible.map((report) => <tr key={report.project} className="border-b border-slate-800 last:border-0">
+                <tbody>{ranked.map((report) => <tr key={report.project} className="border-b border-slate-800 last:border-0">
                   <th scope="row" className="p-4 font-medium whitespace-nowrap">{PROJECT_LABELS[report.project]}</th>
-                  {["page_view", "cta_click", "signup_started", "signup_completed", "checkout_started", "flow_abandoned"].map((event) => <td key={event} className="p-4 tabular-nums">{number(report.totals[event] || 0)}</td>)}
+                  {["page_view", "cta_click", "signup_started", "signup_completed", "checkout_started", "checkout_completed", "flow_abandoned"].map((event) => <td key={event} className="p-4 tabular-nums">{number(report.totals[event] || 0)}</td>)}
                 </tr>)}</tbody>
               </table>
             </div>
