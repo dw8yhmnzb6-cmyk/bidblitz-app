@@ -797,6 +797,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   }
 
   const accountMenu = [
+    { id: "customer-analytics", icon: BarChart3, label: "Website-Statistik", desc: "Deine Websites und ihre aufgezeichneten Ereignisse", color: "#00C2FF", action: gatedAction(() => onNavigate("/analytics")) },
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("profile")) },
     { id: "notifications-settings", icon: Bell, label: t("more.push_notifications") || "Push-Benachrichtigungen", desc: t("more.push_notifications_desc") || "Echtzeit-Updates für SOS & mehr", color: "#FFB800", action: gatedAction(() => setSubPage("push-settings")) },
     { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7", action: gatedAction(() => {}) },

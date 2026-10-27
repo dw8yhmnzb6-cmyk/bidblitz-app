@@ -209,6 +209,7 @@ const ChargeMerchantDetailPage = lazy(() => import("./pages/ChargeMerchantDetail
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
+const CustomerAnalyticsPage = lazy(() => import("./pages/CustomerAnalyticsPage"));
 const ExpressCheckoutPage = lazy(() => import("./pages/ExpressCheckoutPage"));
 const StaffGPSPage = lazy(() => import("./pages/StaffGPSPage"));
 const HotelSabreSearchPage = lazy(() => import("./pages/HotelSabreSearchPage"));
@@ -901,6 +902,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/analytics":
         return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/analytics":
+        return <CustomerAnalyticsPage key={isGuest ? "guest" : (user.id || user.user_id)} accountId={isGuest ? null : (user.id || user.user_id)} onBack={() => handleNavigate("/more")} onLogin={() => setShowFullAuth("login")} />;
       case "/admin/deployment-info":
         return user.role === "admin" ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
@@ -1514,3 +1517,4 @@ function App() {
 }
 
 export default App;
+
