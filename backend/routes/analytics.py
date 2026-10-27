@@ -336,13 +336,16 @@ async def analytics_portfolio_overview(
     await require_admin(request)
     from typing import get_args
     from core.analytics_event_schema import ProjectName
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
     projects = get_args(ProjectName)
     now = datetime.now(timezone.utc)
+    reports = await _v1_project_reports(projects, days, now)
     return {
         "period_days": days,
         "as_of": now.isoformat(),
         "timezone": "UTC",
-        "projects": await _v1_project_reports(projects, days, now),
+        "projects": reports,
+        "summary": summarize_v1_event_portfolio(reports),
         "verified_revenue_included": False,
         "data_scope": "v1_project_events_only",
     }

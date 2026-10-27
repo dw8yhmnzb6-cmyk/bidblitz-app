@@ -50,3 +50,36 @@ def summarize_portfolio(project_reports):
         "online_sessions_5m": None,  # Cross-project sessions are NOT unique.
         "net_profit_available": False,  # Fees are revenue, not net profit.
     }
+
+
+# V1 reports use event kinds that differ from the newer dashboard counter names.
+# Keep this rollup event-only until an independently verified revenue source is wired.
+_V1_EVENT_COUNTERS = (
+    "page_view", "cta_click", "signup_started", "signup_completed",
+    "checkout_started", "checkout_completed", "flow_abandoned",
+)
+
+
+def summarize_v1_event_portfolio(project_reports):
+    """Summarize server-authorized V1 reports without raw events or revenue claims.
+
+    Each input report is already scoped to a project by the admin API. Browser
+    checkout events do not prove payments; event totals are not unique people.
+    """
+    totals = {}
+    project_count = 0
+    for report in project_reports:
+        project_count += 1
+        counters = report["totals"]
+        for event in _V1_EVENT_COUNTERS:
+            count = counters.get(event, 0)
+            if count:
+                totals[event] = totals.get(event, 0) + count
+    return {
+        "project_count": project_count,
+        "totals": totals,
+        "verified_revenue_included": False,
+        "unique_visitors": None,
+        "net_profit_available": False,
+        "data_scope": "v1_project_events_only",
+    }

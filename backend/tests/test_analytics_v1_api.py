@@ -142,3 +142,25 @@ def test_max_window_has_room_for_every_calendar_bucket(api):
     body = client.get("/api/analytics/v1/portfolio?days=90").json()
     assert sum(sum(p["totals"].values()) for p in body["projects"]) == len(state.rows)
     assert state.limits == [len(state.rows)]
+
+
+def test_v1_portfolio_exposes_safe_summary_without_extra_database_reads(api):
+    client, state = api
+    state.rows = [bucket("trade", "page_view", count=4),
+                  bucket("eyes", "page_view", count=7),
+                  bucket("trade", "signup_completed", count=2),
+                  {"_id": {"project": "unregistered", "event": "page_view",
+                           "day": "2026-10-27"}, "count": 999,
+                   "customer_email": "private@example.invalid"}]
+    response = client.get("/api/analytics/v1/portfolio?days=7")
+    assert response.status_code == 200
+    assert response.json()["summary"] == {
+        "project_count": len(get_args(ProjectName)),
+        "totals": {"page_view": 11, "signup_completed": 2},
+        "verified_revenue_included": False,
+        "unique_visitors": None,
+        "net_profit_available": False,
+        "data_scope": "v1_project_events_only",
+    }
+    assert "private@example.invalid" not in response.text
+    assert len(state.pipelines) == 1

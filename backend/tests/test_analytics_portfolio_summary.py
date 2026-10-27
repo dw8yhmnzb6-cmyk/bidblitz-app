@@ -105,3 +105,33 @@ def test_empty_scope_has_no_data_and_does_not_read_records():
 def test_invalid_period_rejected_even_without_projects():
     with pytest.raises(ValueError):
         build_portfolio_dashboard([], [], [], "tomorrow", NOW)
+
+
+def test_v1_summary_excludes_unknown_counters_and_personal_data():
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+
+    reports = [
+        {"project": "trade", "totals": {"page_view": 2, "checkout_completed": 1,
+                                       "private_email": "private@example.invalid"}},
+        {"project": "eyes", "totals": {"page_view": 4, "cta_click": 3}},
+    ]
+    summary = summarize_v1_event_portfolio(reports)
+    assert summary == {
+        "project_count": 2,
+        "totals": {"page_view": 6, "cta_click": 3, "checkout_completed": 1},
+        "verified_revenue_included": False,
+        "unique_visitors": None,
+        "net_profit_available": False,
+        "data_scope": "v1_project_events_only",
+    }
+    assert "private@example.invalid" not in repr(summary)
+
+
+def test_v1_summary_empty_portfolio_has_no_invented_events():
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+
+    summary = summarize_v1_event_portfolio(())
+    assert summary["project_count"] == 0
+    assert summary["totals"] == {}
+    assert summary["unique_visitors"] is None
+    assert summary["verified_revenue_included"] is False
