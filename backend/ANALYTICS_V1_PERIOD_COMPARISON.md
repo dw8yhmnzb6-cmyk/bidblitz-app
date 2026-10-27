@@ -38,3 +38,45 @@ PYTHONPATH=backend /srv/bidblitz-dev/main-app-testenv/bin/python -m pytest backe
 ```
 
 The tests use a fake database and fake authentication. The browser dashboard currently **does not consume this new endpoint**; an independent UI integration with real authorization tests remains an open task. No merge or deployment is included.
+
+## Read-only comparison CSV export (DEV)
+
+`GET /api/analytics/v1/portfolio/period-compare/export.csv?days=7`
+
+The CSV endpoint uses the **same admin authorization and two bounded, disjoint
+database aggregate queries** as the JSON comparison. The server fixes the
+project catalog; user-supplied headers or project IDs cannot expand scope.
+Only periods of 1–90 days are accepted. Unauthorized requests are denied
+before any analytics database read.
+
+The download `bidblitz-v1-period-comparison.csv` contains exactly 10 registered
+projects × 7 event types plus 7 portfolio summary rows. It reports current
+and previous **recorded event counts**, signed count changes, recorded UTC-day
+counts (project rows), and the precise adjacent UTC window boundaries.
+Only server-owned project IDs and event names enter the CSV. No raw events,
+customer IDs, IP addresses, emails, sessions or payment amounts are included.
+
+Each row sets `data_scope=v1_project_events_only`,
+`verified_revenue_included=false` and `collection_health_verified=false`.
+A zero count means **no V1 events recorded**, not zero visitors, customers,
+orders or revenue. `checkout_completed` is not a confirmed payment.
+Verified financial metrics require a separate audited, authorized source.
+
+The renderer verifies the complete fixed project and event catalogs,
+non-overlapping UTC windows, JavaScript-safe integer counts, recording-day
+coverage, all signed deltas and cross-project sums. Malformed results fail
+closed with HTTP 503. No untrusted spreadsheet-formula fields are exported.
+Responses have `Cache-Control: private, no-store` and
+`X-Content-Type-Options: nosniff` headers.
+
+### DEV tests (fake database and authentication; no production credentials)
+
+```sh
+PYTHONPATH=backend /srv/bidblitz-dev/main-app-testenv/bin/python -m pytest \
+  backend/tests/test_analytics_v1_period_comparison_csv.py \
+  backend/tests/test_analytics_v1_period_comparison.py \
+  backend/tests/test_analytics_v1_api.py -q
+```
+
+This backend-only package does not add a frontend CSV button. Browser E2E
+and full CI are still open. No production change, merge or deployment.
