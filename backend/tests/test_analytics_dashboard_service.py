@@ -48,3 +48,56 @@ def test_business_activity_is_filtered_by_project():
     assert len(feed) == 1
     assert feed[0]["project"] == "trade"
     assert "customer_email" not in feed[0]
+
+
+def test_portfolio_reuses_one_shot_inputs_for_every_authorized_project():
+    actions = [
+        dict(project="trade", action="payment_confirmed", verified=True, occurred_at=NOW),
+        dict(project="eyes", action="subscription_activated", verified=True, occurred_at=NOW),
+        dict(project="fuel", action="payment_confirmed", verified=True, occurred_at=NOW),
+    ]
+    expected = build_portfolio_dashboard(
+        EVENTS, LEDGER, ["trade", "eyes"], "today", NOW + timedelta(seconds=1), actions)
+    actual = build_portfolio_dashboard(
+        iter(EVENTS), iter(LEDGER), ["trade", "eyes"], "today",
+        NOW + timedelta(seconds=1), iter(actions))
+    assert actual == expected
+    assert [p["traffic"]["page_views"] for p in actual["projects"]] == [1, 1]
+    assert [p["revenue"][0]["gross_minor"] for p in actual["projects"]] == [1000, 3000]
+    assert [p["recent_business_actions"][0]["project"]
+            for p in actual["projects"]] == ["trade", "eyes"]
+
+
+def test_invalid_scope_does_not_consume_inputs():
+    def unavailable():
+        raise AssertionError("Input consumed before scope validation")
+        yield
+    with pytest.raises(ValueError):
+        build_portfolio_dashboard(unavailable(), unavailable(), ["trade", "trade"],
+                                  "today", NOW, unavailable())
+
+
+def test_empty_scope_does_not_consume_inputs():
+    def unavailable():
+        raise AssertionError("Empty portfolio must not read input streams")
+        yield
+    assert build_portfolio_dashboard(unavailable(), unavailable(), [], "today",
+                                     NOW, unavailable()) == {"period": "today", "projects": []}
+
+
+def test_default_clock_is_shared_by_all_project_sections(monkeypatch):
+    import core.analytics_dashboard_service as service
+    class Clock:
+        calls = 0
+        @classmethod
+        def now(cls, tz):
+            cls.calls += 1
+            return NOW + timedelta(seconds=1)
+    monkeypatch.setattr(service, "datetime", Clock, raising=False)
+    actual = service.build_portfolio_dashboard(
+        EVENTS, LEDGER, ["trade", "eyes"], "today")
+    expected = service.build_portfolio_dashboard(
+        EVENTS, LEDGER, ["trade", "eyes"], "today", NOW + timedelta(seconds=1))
+    assert actual == expected
+    assert Clock.calls == 1
+
