@@ -11,6 +11,11 @@ const portfolio = (days = 7) => ({
     { project: 'eyes', period_days: days, totals: {page_view: 5, checkout_started: 3},
       data_scope: 'v1_project_events_only', verified_revenue_included: false },
   ],
+  summary: {
+    project_count: 2, totals: { page_view: 17, signup_completed: 2, checkout_started: 3 },
+    data_scope: 'v1_project_events_only', verified_revenue_included: false,
+    unique_visitors: null, net_profit_available: false,
+  },
 });
 const ok = (body) => ({ok:true, status:200, json:async()=>body});
 let container, root, originalFetch;
@@ -46,7 +51,7 @@ test.each([[401,'Bitte erneut anmelden'],[403,'Adminrechte'],[404,'noch nicht ve
 });
 
 test('empty event storage has an explicit coverage warning',async()=>{
-  const data=portfolio();data.projects.forEach(p=>p.totals={});
+  const data=portfolio();data.projects.forEach(p=>p.totals={});data.summary.totals={};
   global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
   expect(container.querySelector('[role="status"]').textContent).toContain('Keine aufgezeichneten V1-Ereignisse');
   expect(container.textContent).toContain('keine eindeutigen Besucher');
@@ -94,5 +99,29 @@ test.each(['duplicate','negative','unknown','noninteger'])('rejects %s project c
   if(kind==='noninteger')data.projects[0].totals.page_view=1.5;
   global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test.each(['missing','mismatch','unknown','negative','revenue','badCount','unverified'])('rejects %s summaries rather than displaying misleading portfolio totals',async(kind)=>{
+  const data=portfolio();
+  if(kind==='missing')delete data.summary;
+  if(kind==='mismatch')data.summary.totals.page_view=18;
+  if(kind==='unknown')data.summary.totals.personal_email=1;
+  if(kind==='negative')data.summary.totals.page_view=-1;
+  if(kind==='revenue')data.summary.verified_revenue_included=true;
+  if(kind==='badCount')data.summary.project_count=3;
+  if(kind==='unverified')data.summary.unique_visitors=123;
+  global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test('rejects unsafe portfolio sums that exceed JavaScript safe integers',async()=>{
+  const data=portfolio();
+  data.projects[0].totals.page_view=Number.MAX_SAFE_INTEGER;
+  data.projects[1].totals.page_view=1;
+  data.summary.totals.page_view=Number.MAX_SAFE_INTEGER;
+  global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('ungültige Ereigniszähler');
   expect(container.querySelector('article')).toBeNull();
 });

@@ -17,6 +17,7 @@ function checkedReports(data, days) {
     throw new Error("Die API hat kein gültiges Portfolio geliefert.");
   }
   const seen = new Set();
+  const expected = Object.fromEntries(EVENTS.map((event) => [event, 0]));
   for (const report of data.projects) {
     if (!report || !Object.hasOwn(PROJECT_LABELS, report.project) || seen.has(report.project) ||
         report.period_days !== days || report.data_scope !== "v1_project_events_only" ||
@@ -26,10 +27,28 @@ function checkedReports(data, days) {
     }
     seen.add(report.project);
     for (const [event, count] of Object.entries(report.totals)) {
-      if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0) {
+      if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
+          expected[event] > Number.MAX_SAFE_INTEGER - count) {
         throw new Error("Die API hat ungültige Ereigniszähler geliefert.");
       }
+      expected[event] += count;
     }
+  }
+  const summary = data.summary;
+  if (!summary || summary.project_count !== seen.size ||
+      summary.data_scope !== "v1_project_events_only" ||
+      summary.verified_revenue_included !== false || summary.unique_visitors !== null ||
+      summary.net_profit_available !== false || !summary.totals ||
+      typeof summary.totals !== "object" || Array.isArray(summary.totals)) {
+    throw new Error("Die API hat keine gültige Gesamtübersicht geliefert.");
+  }
+  for (const [event, count] of Object.entries(summary.totals)) {
+    if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0) {
+      throw new Error("Die API hat ungültige Gesamtzähler geliefert.");
+    }
+  }
+  if (EVENTS.some((event) => (summary.totals[event] ?? 0) !== expected[event])) {
+    throw new Error("Die Gesamtübersicht stimmt nicht mit den Projektwerten überein.");
   }
   return data;
 }
@@ -73,7 +92,9 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
 
   const reports = state.data?.projects || [];
   const visible = selected ? reports.filter((report) => report.project === selected) : reports;
-  const total = (event) => visible.reduce((sum, report) => sum + (report.totals[event] || 0), 0);
+  const total = (event) => selected
+    ? visible.reduce((sum, report) => sum + (report.totals[event] || 0), 0)
+    : (state.data?.summary.totals[event] ?? 0);
   const metrics = [
     ["Seitenaufrufe", total("page_view")],
     ["Abgeschlossene Registrierungen", total("signup_completed")],
