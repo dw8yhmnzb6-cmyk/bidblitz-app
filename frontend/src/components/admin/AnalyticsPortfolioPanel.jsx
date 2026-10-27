@@ -233,11 +233,11 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Aufgezeichnete Ereignisse je Projekt im ausgewählten Zeitraum</caption>
                 <thead className="text-slate-400 border-y border-slate-800"><tr>
-                  {["Projekt", "Seitenaufrufe", "Klicks", "Registrierungen", "Bezahlvorgang gestartet"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
+                  {["Projekt", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
                 </tr></thead>
                 <tbody>{visible.map((report) => <tr key={report.project} className="border-b border-slate-800 last:border-0">
                   <th scope="row" className="p-4 font-medium whitespace-nowrap">{PROJECT_LABELS[report.project]}</th>
-                  {["page_view", "cta_click", "signup_completed", "checkout_started"].map((event) => <td key={event} className="p-4 tabular-nums">{number(report.totals[event] || 0)}</td>)}
+                  {["page_view", "cta_click", "signup_started", "signup_completed", "checkout_started", "flow_abandoned"].map((event) => <td key={event} className="p-4 tabular-nums">{number(report.totals[event] || 0)}</td>)}
                 </tr>)}</tbody>
               </table>
             </div>

@@ -227,3 +227,40 @@ test('accepts the complete authorized project catalog regardless of response ord
   expect(container.querySelectorAll('tbody tr')).toHaveLength(10);
   expect(container.querySelector('article').textContent).toContain('17');
 });
+
+test('project comparison shows signup starts and workflow abandonment as event counts', async () => {
+  const data = portfolio();
+  data.projects[0].totals.signup_started = 6;
+  data.projects[0].daily['2026-10-27'].signup_started = 6;
+  data.projects[1].totals.flow_abandoned = 4;
+  data.projects[1].daily['2026-10-27'].flow_abandoned = 4;
+  data.summary.totals.signup_started = 6;
+  data.summary.totals.flow_abandoned = 4;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  const headings = [...container.querySelectorAll('thead th')].map(node => node.textContent);
+  expect(headings).toContain('Registrierungen begonnen (Ereignisse)');
+  expect(headings).toContain('Abbrüche (Ereignisse)');
+  const rows = container.querySelectorAll('tbody tr');
+  expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
+    ['12', '0', '6', '2', '0', '0']);
+  expect([...rows[1].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
+    ['5', '0', '0', '0', '3', '4']);
+  expect(container.textContent).toContain('Nicht angebunden');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('project selector limits the new event columns to the selected project', async () => {
+  const data = portfolio();
+  data.projects[0].totals.signup_started = 6;
+  data.projects[0].daily['2026-10-27'].signup_started = 6;
+  data.summary.totals.signup_started = 6;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  await select('Projekt', 'eyes');
+  const rows = container.querySelectorAll('tbody tr');
+  expect(rows).toHaveLength(1);
+  expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
+    ['5', '0', '0', '0', '3', '0']);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
