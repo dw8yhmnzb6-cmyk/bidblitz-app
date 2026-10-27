@@ -629,3 +629,68 @@ test('rejects zero-only days instead of inventing recording coverage', async () 
   expect(container.querySelector('[role="alert"]').textContent).toContain('leere Tagesaufzeichnungen');
   expect(container.querySelectorAll('tbody tr')).toHaveLength(0);
 });
+
+test('A/B project comparison reports all seven event totals and signed differences with one authorized request', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  expect(container.querySelector('[aria-label="Projekt-Ereignisvergleich"]')).toBeNull();
+  await select('Projekt A', 'trade');
+  await select('Projekt B', 'eyes');
+  const table = container.querySelector('[aria-label="Projekt-Ereignisvergleich"]');
+  expect(table).not.toBeNull();
+  expect(table.querySelectorAll('tbody tr')).toHaveLength(7);
+  const views = [...table.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Seitenaufrufe'));
+  expect([...views.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['12', '5', '+7']);
+  const checkout = [...table.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Bezahlvorgänge gestartet'));
+  expect([...checkout.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['0', '3', '-3']);
+  expect(container.querySelector('[aria-label="Direkter Projektvergleich"]').textContent).toContain('keine verifizierten Zahlungen');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('A/B project comparison stays independent of the main filter and swaps projects without requests', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Projekt', 'fuel');
+  await select('Projekt A', 'eyes');
+  await select('Projekt B', 'trade');
+  const table = container.querySelector('[aria-label="Projekt-Ereignisvergleich"]');
+  expect(table.querySelector('thead').textContent).toContain('The Eye');
+  const views = [...table.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Seitenaufrufe'));
+  expect([...views.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['5', '12', '-7']);
+  expect(container.querySelectorAll('tbody tr')).not.toHaveLength(0);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('A/B day comparison uses validated UTC buckets and distinguishes missing days from recorded zeros', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Projekt A', 'trade');
+  await select('Projekt B', 'eyes');
+  const rows = () => [...container.querySelectorAll('[aria-label="Tagesvergleich zweier Projekte"] tbody tr')];
+  expect(rows().map(row => row.querySelector('th').textContent)).toEqual(['2026-10-27', '2026-10-26']);
+  expect([...rows()[1].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['4', '—']);
+  await select('Tagesmetrik', 'checkout_started');
+  expect([...rows()[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['0', '3']);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('A/B same project is rejected and two unrecorded projects never imply verified zero activity', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Projekt A', 'trade');
+  await select('Projekt B', 'trade');
+  expect(container.querySelector('[aria-label="Projekt-Ereignisvergleich"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Direkter Projektvergleich"] [role="status"]').textContent).toContain('unterschiedliche');
+  await select('Projekt A', 'power');
+  await select('Projekt B', 'verify');
+  expect(container.querySelector('[aria-label="Projekt-Ereignisvergleich"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Tagesvergleich zweier Projekte"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Direkter Projektvergleich"]').textContent).toContain('Nullaktivität ist nicht nachgewiesen');
+});
+
+test('A/B comparison does not render data after an unauthorized response', async () => {
+  global.fetch = jest.fn().mockResolvedValue({ok: false, status: 403});
+  await mount();
+  expect(container.querySelector('[aria-label="Direkter Projektvergleich"]')).toBeNull();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
+});
