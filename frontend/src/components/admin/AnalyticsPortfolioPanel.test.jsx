@@ -253,9 +253,9 @@ test('project comparison shows signup starts and workflow abandonment as event c
   expect(headings).toContain('Abbrüche (Ereignisse)');
   const rows = container.querySelectorAll('tbody tr');
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['12', '0', '6', '2', '0', '0']);
+    ['12', '0', '6', '2', '0', '0', '0']);
   expect([...rows[1].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['5', '0', '0', '0', '3', '4']);
+    ['5', '0', '0', '0', '3', '0', '4']);
   expect(container.textContent).toContain('Nicht angebunden');
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
@@ -272,7 +272,7 @@ test('project selector limits the new event columns to the selected project', as
   const rows = container.querySelectorAll('tbody tr');
   expect(rows).toHaveLength(1);
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['5', '0', '0', '0', '3', '0']);
+    ['5', '0', '0', '0', '3', '0', '0']);
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -473,4 +473,105 @@ test('empty V1 response displays zero recorded coverage but never zero customer 
   expect(container.querySelector('[aria-label="Datenabdeckung"]').textContent).toContain('0 von 10');
   expect(container.textContent).toContain('Die Datenanbindung muss gesondert geprüft werden.');
   expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
+});
+
+test.each([
+  '2026-10-27T25:30:00+00:00',
+  '2026-10-27T01:61:00+00:00',
+  '2026-10-27T01:30:61+00:00',
+  '2026-10-27T01:30:00.1234567+00:00',
+  '2026-10-27T01:30:00+01:00',
+  '2026-10-27T01:30:00',
+  '2026-02-30T01:30:00+00:00',
+])('rejects invalid or non-UTC as_of %s instead of rendering analytics', async (as_of) => {
+  const data = portfolio();
+  data.as_of = as_of;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test.each([
+  '2026-10-27T01:30:00.1Z',
+  '2026-10-27T01:30:00.123456+00:00',
+])('accepts valid UTC timestamps with fractions: %s', async (as_of) => {
+  const data = portfolio();
+  data.as_of = as_of;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelectorAll('article')).toHaveLength(4);
+});
+
+test('shows completed checkout events without mislabeling them as verified revenue', async () => {
+  const data = portfolio();
+  data.projects[1].totals.checkout_completed = 2;
+  data.projects[1].daily['2026-10-27'].checkout_completed = 2;
+  data.summary.totals.checkout_completed = 2;
+  data.summary.daily['2026-10-27'].checkout_completed = 2;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  const articles = [...container.querySelectorAll('article')];
+  expect(articles).toHaveLength(4);
+  expect(articles[2].textContent).toContain('Abgeschlossen (Ereignisse): 2');
+  expect(articles[2].textContent).toContain('kein Zahlungsnachweis');
+  expect(articles[3].textContent).toContain('Nicht angebunden');
+  const headings = [...container.querySelectorAll('thead th')].map(th => th.textContent);
+  const completedIndex = headings.indexOf('Bezahlvorgang abgeschlossen (Ereignisse)');
+  expect(completedIndex).toBeGreaterThan(0);
+  const eyes = [...container.querySelectorAll('tbody tr')].find(row => row.textContent.includes('The Eye'));
+  expect(eyes.querySelectorAll('td')[completedIndex - 1].textContent).toBe('2');
+  await select('Projekt', 'trade');
+  expect([...container.querySelectorAll('article')][2].textContent).toContain('Abgeschlossen (Ereignisse): 0');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily chart supports clicks and completed checkout event totals without new requests', async () => {
+  const data = portfolio();
+  data.projects[0].totals.cta_click = 4;
+  data.projects[0].daily['2026-10-27'].cta_click = 4;
+  data.summary.totals.cta_click = 4;
+  data.summary.daily['2026-10-27'].cta_click = 4;
+  data.projects[1].totals.checkout_completed = 2;
+  data.projects[1].daily['2026-10-27'].checkout_completed = 2;
+  data.summary.totals.checkout_completed = 2;
+  data.summary.daily['2026-10-27'].checkout_completed = 2;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  await select('Tagesmetrik', 'checkout_completed');
+  let chart = container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.textContent).toContain('Bezahlvorgänge abgeschlossen (Ereignisse) nach Tag');
+  expect(chart.textContent).toContain('2');
+  await select('Tagesmetrik', 'cta_click');
+  chart = container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.textContent).toContain('Klicks nach Tag');
+  expect(chart.textContent).toContain('4');
+  await select('Projekt', 'eyes');
+  expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('sortable project comparison ranks validated event counts and respects project filter', async () => {
+  const data = portfolio();
+  data.projects[1].totals.checkout_completed = 2;
+  data.projects[1].daily['2026-10-27'].checkout_completed = 2;
+  data.summary.totals.checkout_completed = 2;
+  data.summary.daily['2026-10-27'].checkout_completed = 2;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  const names = () => [...container.querySelectorAll('tbody tr th')].map(th => th.textContent);
+  expect(names()[0]).toBe('Trade');
+  await select('Vergleich sortieren', 'checkout_completed');
+  expect(names()[0]).toBe('The Eye');
+  await select('Sortierrichtung', 'asc');
+  expect(names()[0]).not.toBe('The Eye');
+  expect(names().at(-1)).toBe('The Eye');
+  await select('Projekt', 'trade');
+  expect(names()).toEqual(['Trade']);
+  await select('Projekt', '');
+  await select('Vergleich sortieren', 'registry');
+  expect(names()[0]).toBe('Trade');
+  expect(container.querySelector('[aria-label="Sortierrichtung"]')).toBeNull();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });
