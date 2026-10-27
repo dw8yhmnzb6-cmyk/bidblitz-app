@@ -10,6 +10,9 @@ const EVENTS = ["page_view", "cta_click", "signup_started", "signup_completed",
   "checkout_started", "checkout_completed", "flow_abandoned"];
 const number = (value) => new Intl.NumberFormat("de-DE").format(value);
 
+// Only fixed, application-owned errors are displayed to admins.
+class DisplayableAnalyticsError extends Error {}
+
 // Python API emits an ISO-8601 UTC timestamp (+00:00). Reject timezone-free,
 // non-UTC or normalized invalid dates before using its date for UTC buckets.
 const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/;
@@ -24,7 +27,7 @@ function checkedReports(data, days) {
   if (!data || data.period_days !== days || !Array.isArray(data.projects) ||
       data.data_scope !== "v1_project_events_only" || data.timezone !== "UTC" ||
       data.verified_revenue_included !== false || !isUtcTimestamp(data.as_of)) {
-    throw new Error("Die API hat kein gültiges Portfolio geliefert.");
+    throw new DisplayableAnalyticsError("Die API hat kein gültiges Portfolio geliefert.");
   }
   const seen = new Set();
   const expected = Object.fromEntries(EVENTS.map((event) => [event, 0]));
@@ -33,13 +36,13 @@ function checkedReports(data, days) {
         report.period_days !== days || report.data_scope !== "v1_project_events_only" ||
         report.verified_revenue_included !== false || !report.totals ||
         typeof report.totals !== "object" || Array.isArray(report.totals)) {
-      throw new Error("Die API hat ungültige Projektwerte geliefert.");
+      throw new DisplayableAnalyticsError("Die API hat ungültige Projektwerte geliefert.");
     }
     seen.add(report.project);
     for (const [event, count] of Object.entries(report.totals)) {
       if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
           expected[event] > Number.MAX_SAFE_INTEGER - count) {
-        throw new Error("Die API hat ungültige Ereigniszähler geliefert.");
+        throw new DisplayableAnalyticsError("Die API hat ungültige Ereigniszähler geliefert.");
       }
       expected[event] += count;
     }
@@ -48,7 +51,7 @@ function checkedReports(data, days) {
     const daily = report.daily;
     if (!daily || typeof daily !== "object" || Array.isArray(daily) ||
         Object.keys(daily).length > days + 1) {
-      throw new Error("Die API hat ungültige Tagesdaten geliefert.");
+      throw new DisplayableAnalyticsError("Die API hat ungültige Tagesdaten geliefert.");
     }
     const dailyTotals = Object.fromEntries(EVENTS.map((event) => [event, 0]));
     const earliest = new Date(Date.parse(data.as_of) - days * 86400000).toISOString().slice(0, 10);
@@ -58,25 +61,25 @@ function checkedReports(data, days) {
           new Date(day + "T00:00:00Z").toISOString().slice(0, 10) !== day ||
           day < earliest || day > data.as_of.slice(0, 10) ||
           !counts || typeof counts !== "object" || Array.isArray(counts)) {
-        throw new Error("Die API hat ungültige Tagesdaten geliefert.");
+        throw new DisplayableAnalyticsError("Die API hat ungültige Tagesdaten geliefert.");
       }
       for (const [event, count] of Object.entries(counts)) {
         if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
             dailyTotals[event] > Number.MAX_SAFE_INTEGER - count) {
-          throw new Error("Die API hat ungültige Tageszähler geliefert.");
+          throw new DisplayableAnalyticsError("Die API hat ungültige Tageszähler geliefert.");
         }
         dailyTotals[event] += count;
       }
     }
     if (EVENTS.some((event) => dailyTotals[event] !== (report.totals[event] ?? 0))) {
-      throw new Error("Die Tagesdaten stimmen nicht mit den Projektwerten überein.");
+      throw new DisplayableAnalyticsError("Die Tagesdaten stimmen nicht mit den Projektwerten überein.");
     }
   }
   // The admin portfolio API returns every registered first-party project,
   // including projects with no events. A partial response must not appear as
   // a complete cross-project total, even if its own summary is consistent.
   if (seen.size !== Object.keys(PROJECT_LABELS).length) {
-    throw new Error("Die API hat nicht alle registrierten Projekte geliefert.");
+    throw new DisplayableAnalyticsError("Die API hat nicht alle registrierten Projekte geliefert.");
   }
   const summary = data.summary;
   if (!summary || summary.project_count !== seen.size ||
@@ -84,15 +87,15 @@ function checkedReports(data, days) {
       summary.verified_revenue_included !== false || summary.unique_visitors !== null ||
       summary.net_profit_available !== false || !summary.totals ||
       typeof summary.totals !== "object" || Array.isArray(summary.totals)) {
-    throw new Error("Die API hat keine gültige Gesamtübersicht geliefert.");
+    throw new DisplayableAnalyticsError("Die API hat keine gültige Gesamtübersicht geliefert.");
   }
   for (const [event, count] of Object.entries(summary.totals)) {
     if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0) {
-      throw new Error("Die API hat ungültige Gesamtzähler geliefert.");
+      throw new DisplayableAnalyticsError("Die API hat ungültige Gesamtzähler geliefert.");
     }
   }
   if (EVENTS.some((event) => (summary.totals[event] ?? 0) !== expected[event])) {
-    throw new Error("Die Gesamtübersicht stimmt nicht mit den Projektwerten überein.");
+    throw new DisplayableAnalyticsError("Die Gesamtübersicht stimmt nicht mit den Projektwerten überein.");
   }
   return data;
 }
@@ -118,15 +121,16 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
             response.status === 403 ? "Für diese Übersicht sind Adminrechte erforderlich." :
               response.status === 404 ? "Die Portfolio-API ist hier noch nicht verfügbar." :
                 "Die Analysedaten konnten nicht geladen werden.";
-          throw new Error(message);
+          throw new DisplayableAnalyticsError(message);
         }
         const data = checkedReports(await response.json(), days);
         if (active) setState({ loading: false, data, error: "" });
       } catch (error) {
-        if (active && error.name !== "AbortError") {
+        if (active && error?.name !== "AbortError") {
           setState({ loading: false, data: null,
             error: error instanceof SyntaxError ? "Die API-Antwort ist kein gültiges JSON." :
-              error.message || "Die Analysedaten konnten nicht geladen werden." });
+              error instanceof DisplayableAnalyticsError ? error.message :
+                "Die Analysedaten konnten nicht geladen werden." });
         }
       }
     }
