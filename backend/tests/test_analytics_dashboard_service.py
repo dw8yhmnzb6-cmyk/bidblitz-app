@@ -81,8 +81,12 @@ def test_empty_scope_does_not_consume_inputs():
     def unavailable():
         raise AssertionError("Empty portfolio must not read input streams")
         yield
-    assert build_portfolio_dashboard(unavailable(), unavailable(), [], "today",
-                                     NOW, unavailable()) == {"period": "today", "projects": []}
+    report = build_portfolio_dashboard(unavailable(), unavailable(), [], "today",
+                                       NOW, unavailable())
+    assert report["period"] == "today"
+    assert report["projects"] == []
+    assert report["summary"]["project_count"] == 0
+    assert report["summary"]["revenue_by_currency"] == []
 
 
 def test_default_clock_is_shared_by_all_project_sections(monkeypatch):
