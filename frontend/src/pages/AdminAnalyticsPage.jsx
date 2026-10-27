@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import AnalyticsPortfolioPanel from "../components/admin/AnalyticsPortfolioPanel";
 import {
   ChevronLeft, TrendingUp, Users, DollarSign, Activity,
   Zap, Eye, Clock, Loader2, BarChart3, PieChart,
@@ -36,6 +37,21 @@ const normalizeFeatureUsage = (topFeatures = []) => topFeatures.reduce((acc, ite
 }, {});
 
 export default function AdminAnalyticsPage({ onBack }) {
+  const [view, setView] = useState("portfolio");
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <nav aria-label="Analytics Ansichten" className="flex flex-wrap gap-2 px-4 pt-4">
+        <button aria-pressed={view === "portfolio"} onClick={() => setView("portfolio")}
+          className="rounded-lg border border-blue-700 bg-slate-900 px-4 py-2 text-sm text-blue-200">Projektvergleich V1</button>
+        <button aria-pressed={view === "legacy"} onClick={() => setView("legacy")}
+          className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200">Bisherige Übersicht</button>
+      </nav>
+      {view === "portfolio" ? <AnalyticsPortfolioPanel onBack={onBack} /> : <LegacyAnalyticsOverview onBack={onBack} />}
+    </div>
+  );
+}
+
+function LegacyAnalyticsOverview({ onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(7); // days
@@ -247,3 +263,4 @@ export default function AdminAnalyticsPage({ onBack }) {
     </div>
   );
 }
+

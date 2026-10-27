@@ -279,3 +279,226 @@ async def _top_features(since: str):
     ]
     results = await db.conversion_events.aggregate(pipeline).to_list(10)
     return [{"feature": r["_id"], "clicks": r["clicks"]} for r in results if r["_id"]]
+
+
+# Enterprise V1: read-only project reporting.
+# Neither endpoint activates collection or grants access to customer accounts.
+async def _v1_project_reports(projects, days, now):
+    """One bounded aggregate over server-authorized, registered projects."""
+    since = (now - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {
+            "schema_version": 1,
+            "project": {"$in": list(projects)},
+            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "event": {"$in": [
+                "page_view", "cta_click", "signup_started", "signup_completed",
+                "checkout_started", "checkout_completed", "flow_abandoned",
+            ]},
+        }},
+        {"$group": {
+            "_id": {"project": "$project", "day": {"$substrBytes": ["$received_at", 0, 10]},
+                    "event": "$event"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.project": 1, "_id.day": 1, "_id.event": 1}},
+    ]
+    # A rolling 90-day window can touch 91 UTC calendar dates. Seven event
+    # kinds per date and project fit below this bounded cursor length.
+    records = await db.conversion_events.aggregate(pipeline).to_list(
+        length=len(projects) * (days + 1) * 7)
+    reports = {project: {
+        "project": project,
+        "period_days": days,
+        "totals": {},
+        "daily": {},
+        "verified_revenue_included": False,
+        "data_scope": "v1_project_events_only",
+    } for project in projects}
+    for record in records:
+        dimensions = record["_id"]
+        report = reports.get(dimensions["project"])
+        if report is None:
+            continue
+        event, day = dimensions["event"], dimensions["day"]
+        count = record["count"]
+        # A grouped MongoDB event count must be a positive integer. Reject
+        # malformed/overflowing aggregates instead of silently truncating
+        # floats, turning booleans into visits, or losing JavaScript precision.
+        if (isinstance(count, bool) or not isinstance(count, int)
+                or not 1 <= count <= 2**53 - 1):
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        current = report["totals"].get(event, 0)
+        bucket = report["daily"].setdefault(day, {})
+        if event in bucket or current > (2**53 - 1) - count:
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        report["totals"][event] = current + count
+        bucket[event] = count
+    return list(reports.values())
+
+
+@router.get("/v1/portfolio")
+async def analytics_portfolio_overview(
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Admin-only catalog overview; no client-selected authorization scope."""
+    await require_admin(request)
+    from typing import get_args
+    from core.analytics_event_schema import ProjectName
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+    projects = get_args(ProjectName)
+    now = datetime.now(timezone.utc)
+    reports = await _v1_project_reports(projects, days, now)
+    return {
+        "period_days": days,
+        "as_of": now.isoformat(),
+        "timezone": "UTC",
+        "projects": reports,
+        "summary": summarize_v1_event_portfolio(reports),
+        "verified_revenue_included": False,
+        "data_scope": "v1_project_events_only",
+    }
+
+
+@router.get("/v1/portfolio/export.csv")
+async def analytics_portfolio_export_csv(
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Admin-only V1 event history CSV, never customer or payment records."""
+    await require_admin(request)
+    from typing import get_args
+    from fastapi.responses import Response
+    from core.analytics_event_schema import ProjectName
+    from core.analytics_v1_csv_export import render_v1_portfolio_daily_csv
+
+    now = datetime.now(timezone.utc)
+    try:
+        reports = await _v1_project_reports(get_args(ProjectName), days, now)
+        content = render_v1_portfolio_daily_csv(reports, days=days, as_of=now)
+    except ValueError:
+        # Malformed aggregate data must fail closed; never echo database fields.
+        raise HTTPException(status_code=503, detail="Analytics export unavailable") from None
+    except HTTPException as exc:
+        if exc.status_code != 503:
+            raise
+        raise HTTPException(status_code=503, detail="Analytics export unavailable") from None
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="bidblitz-v1-events.csv"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/v1/projects/{project}/overview")
+async def project_analytics_overview(
+    project: str,
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    await require_admin(request)
+    from core.analytics_event_schema import ProjectName
+    from pydantic import TypeAdapter, ValidationError
+    try:
+        project = TypeAdapter(ProjectName).validate_python(project)
+    except ValidationError:
+        raise HTTPException(status_code=404, detail="Unknown project")
+    reports = await _v1_project_reports((project,), days, datetime.now(timezone.utc))
+    return reports[0]
+
+
+# Customer metadata is server-owned. No endpoint in this module creates grants.
+async def _analytics_customer_identity(request):
+    from core.analytics_customer_scope import customer_user_id
+    user = await get_current_user(request)
+    try:
+        return customer_user_id(user)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Analytics account unavailable")
+
+
+@router.get("/v1/my/sites")
+async def customer_analytics_sites(request: Request):
+    """List only active, ownership-verified sites belonging to this account."""
+    from core.analytics_customer_scope import customer_site_scope
+    owner = await _analytics_customer_identity(request)
+    records = await db.analytics_sites.find({
+        "owner_user_id": owner, "status": "active", "ownership_verified": True,
+    }, {"_id": 0}).sort("site_id", 1).to_list(length=101)
+    sites = []
+    seen = set()
+    for record in records[:100]:
+        try:
+            scope = customer_site_scope(record, owner)
+        except ValueError:
+            continue
+        if scope.site_id not in seen:
+            sites.append(scope.public_summary())
+            seen.add(scope.site_id)
+    return {"sites": sites, "has_more": len(records) > 100}
+
+
+@router.get("/v1/my/sites/{site_id}/overview")
+async def customer_site_analytics_overview(
+    site_id: str,
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Owner-scoped aggregates; unbound legacy events are never customer data."""
+    from core.analytics_customer_scope import canonical_site_id, customer_site_scope
+    owner = await _analytics_customer_identity(request)
+    try:
+        site_id = canonical_site_id(site_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Site not available")
+    records = await db.analytics_sites.find({
+        "site_id": site_id, "owner_user_id": owner,
+        "status": "active", "ownership_verified": True,
+    }, {"_id": 0}).to_list(length=2)
+    # Ambiguous metadata is not a grant. A unique site_id index belongs to the
+    # separately reviewed provisioning/migration step, never a request handler.
+    if len(records) != 1:
+        raise HTTPException(status_code=404, detail="Site not available")
+    try:
+        scope = customer_site_scope(records[0], owner)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Site not available")
+    if scope.site_id != site_id:
+        raise HTTPException(status_code=404, detail="Site not available")
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {
+            "schema_version": 1, "tenant_id": scope.tenant_id, "site_id": scope.site_id,
+            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "event": {"$in": [
+                "page_view", "cta_click", "signup_started", "signup_completed",
+                "checkout_started", "flow_abandoned",
+            ]},
+        }},
+        {"$group": {
+            "_id": {"day": {"$substrBytes": ["$received_at", 0, 10]}, "event": "$event"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.day": 1, "_id.event": 1}},
+    ]
+    records = await db.conversion_events.aggregate(pipeline).to_list(length=(days + 1) * 6)
+    totals, daily = {}, {}
+    for record in records:
+        event, day = record["_id"]["event"], record["_id"]["day"]
+        count = int(record["count"])
+        totals[event] = totals.get(event, 0) + count
+        daily.setdefault(day, {})[event] = count
+    return {
+        **scope.public_summary(), "period_days": days,
+        "as_of": now.isoformat(), "timezone": "UTC",
+        "totals": totals, "daily": daily, "has_recorded_events": bool(records),
+        "verified_revenue_included": False,
+        "data_scope": "tenant_site_v1_events_only",
+    }
