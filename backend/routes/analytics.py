@@ -379,20 +379,8 @@ async def analytics_portfolio_overview(
     }
 
 
-@router.get("/v1/portfolio/period-compare")
-async def analytics_portfolio_period_comparison(
-    request: Request,
-    response: Response,
-    days: int = Query(default=7, ge=1, le=90),
-):
-    """Admin-only adjacent UTC-window comparison of recorded event counts.
-
-    No customer-selected project scope, identity lookup, verified revenue,
-    session tracking, payment access, or claim of collector availability.
-    The current window includes its end; the prior window excludes that same
-    boundary to prevent double counting events at the exact handoff time.
-    """
-    await require_admin(request)
+async def _v1_period_comparison_report(days):
+    """Shared, bounded and server-scoped comparison for JSON and CSV."""
     from typing import get_args
     from core.analytics_event_schema import ProjectName
     from core.analytics_v1_period_comparison import compare_v1_recorded_periods
@@ -404,13 +392,54 @@ async def analytics_portfolio_period_comparison(
         projects, days, now - timedelta(days=days), end_exclusive=True
     )
     try:
-        report = compare_v1_recorded_periods(current, previous, days, now)
+        return compare_v1_recorded_periods(current, previous, days, now)
     except ValueError:
-        # Only static errors leave the API, never malformed database content.
+        # Never echo database-derived error strings to the caller.
         raise HTTPException(status_code=503, detail="Analytics comparison unavailable") from None
+
+
+@router.get("/v1/portfolio/period-compare")
+async def analytics_portfolio_period_comparison(
+    request: Request,
+    response: Response,
+    days: int = Query(default=7, ge=1, le=90),
+):
+    """Admin-only adjacent-window recorded-event comparison (not revenue)."""
+    await require_admin(request)
+    report = await _v1_period_comparison_report(days)
     response.headers["Cache-Control"] = "private, no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     return report
+
+
+@router.get("/v1/portfolio/period-compare/export.csv")
+async def analytics_portfolio_period_comparison_export(
+    request: Request,
+    days: int = Query(default=7, ge=1, le=90),
+):
+    """Admin-only CSV of recorded event-count changes; no raw identities."""
+    await require_admin(request)
+    from core.analytics_v1_period_comparison_csv import render_v1_period_comparison_csv
+
+    try:
+        report = await _v1_period_comparison_report(days)
+        content = render_v1_period_comparison_csv(report)
+    except ValueError:
+        raise HTTPException(status_code=503, detail="Analytics comparison export unavailable") from None
+    except HTTPException as exc:
+        if exc.status_code != 503:
+            raise
+        raise HTTPException(status_code=503, detail="Analytics comparison export unavailable") from None
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="bidblitz-v1-period-comparison.csv"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/v1/portfolio/export.csv")
