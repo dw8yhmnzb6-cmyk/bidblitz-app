@@ -17,15 +17,21 @@ from core.analytics_event_schema import ProjectName
 @pytest.fixture
 def api(monkeypatch):
     state = SimpleNamespace(user={"role": "admin"}, auth_error=None,
-                            rows=[], pipelines=[], limits=[])
+                            rows=[], rows_by_query=None, pipelines=[], limits=[])
     class Cursor:
+        def __init__(self, rows):
+            self.rows = rows
+
         async def to_list(self, length):
             state.limits.append(length)
-            return state.rows[:length]
+            return self.rows[:length]
     class Events:
         def aggregate(self, pipeline):
+            query_index = len(state.pipelines)
+            selected = (state.rows if state.rows_by_query is None
+                        else state.rows_by_query[query_index])
             state.pipelines.append(pipeline)
-            return Cursor()
+            return Cursor(selected)
     async def current_user(request):
         if state.auth_error:
             raise state.auth_error
@@ -381,3 +387,138 @@ def test_v1_report_keeps_valid_day_buckets_and_admin_scoping_after_validation(ap
     }
     assert response.json()["summary"]["projects_with_events"] == 1
     assert len(state.pipelines) == 1
+
+
+# V1 adjacent-period comparison: read-only server-catalog event counts.
+COMPARE_PATH = "/api/analytics/v1/portfolio/period-compare"
+
+
+@pytest.mark.parametrize("role", ["customer", "project_admin", "merchant", None])
+def test_period_comparison_denies_non_admin_before_any_read(api, role):
+    client, state = api
+    state.user = {"role": role, "analytics_projects": ["trade"], "is_admin": True}
+    response = client.get(COMPARE_PATH)
+    assert response.status_code == 403
+    assert state.pipelines == []
+
+
+def test_period_comparison_denies_unauthenticated_before_any_read(api):
+    client, state = api
+    state.auth_error = HTTPException(401, "Not authenticated")
+    assert client.get(COMPARE_PATH).status_code == 401
+    assert state.pipelines == []
+
+
+@pytest.mark.parametrize("days", [0, -1, 91, "abc"])
+def test_period_comparison_rejects_invalid_window_without_database_read(api, days):
+    client, state = api
+    assert client.get(COMPARE_PATH, params={"days": days}).status_code == 422
+    assert state.pipelines == []
+
+
+def test_period_comparison_has_exact_disjoint_utc_windows_and_safe_project_deltas(api):
+    client, state = api
+    today = datetime.now(timezone.utc).date().isoformat()
+    previous_day = (datetime.now(timezone.utc) - timedelta(days=8)).date().isoformat()
+    state.rows_by_query = [
+        [bucket("trade", "page_view", today, 7),
+         bucket("eyes", "signup_started", today, 2),
+         {**bucket("outside", "page_view", today, 999),
+          "email": "person@example.invalid"}],
+        [bucket("trade", "page_view", previous_day, 3),
+         bucket("eyes", "checkout_completed", previous_day, 1)],
+    ]
+    response = client.get(
+        COMPARE_PATH, params={"days": 7, "projects": "outside"},
+        headers={"X-Analytics-Projects": "outside"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["period_days"] == 7
+    assert result["timezone"] == "UTC"
+    assert result["data_scope"] == "v1_project_events_only"
+    assert result["verified_revenue_included"] is False
+    assert result["unique_visitors"] is None
+    assert result["net_profit_available"] is False
+    assert result["collection_health_verified"] is False
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "person@example.invalid" not in response.text
+    assert "outside" not in response.text
+    assert len(result["projects"]) == len(get_args(ProjectName))
+    by_project = {report["project"]: report for report in result["projects"]}
+    assert by_project["trade"]["current_events"]["page_view"] == 7
+    assert by_project["trade"]["previous_events"]["page_view"] == 3
+    assert by_project["trade"]["recorded_event_change"]["page_view"] == 4
+    assert by_project["trade"]["current_recorded_utc_days"] == 1
+    assert by_project["trade"]["previous_recorded_utc_days"] == 1
+    assert by_project["eyes"]["recorded_event_change"]["checkout_completed"] == -1
+    assert by_project["fuel"]["current_recorded_utc_days"] == 0
+    assert result["summary"]["current_events"]["page_view"] == 7
+    assert result["summary"]["previous_events"]["page_view"] == 3
+    assert result["summary"]["recorded_event_change"]["page_view"] == 4
+    assert result["summary"]["current_projects_with_events"] == 2
+    assert result["summary"]["previous_projects_with_events"] == 2
+
+    assert len(state.pipelines) == 2
+    expected_projects = {"$in": list(get_args(ProjectName))}
+    current_match = state.pipelines[0][0]["$match"]
+    previous_match = state.pipelines[1][0]["$match"]
+    assert current_match["project"] == previous_match["project"] == expected_projects
+    assert set(current_match["received_at"]) == {"$gte", "$lte"}
+    assert set(previous_match["received_at"]) == {"$gte", "$lt"}
+    assert previous_match["received_at"]["$lt"] == current_match["received_at"]["$gte"]
+    assert current_match["received_at"]["$lte"] == result["as_of"]
+    assert (datetime.fromisoformat(previous_match["received_at"]["$gte"]) -
+            datetime.fromisoformat(current_match["received_at"]["$gte"])) == timedelta(days=-7)
+    assert result["windows"]["current"]["start_inclusive"] == current_match["received_at"]["$gte"]
+    assert result["windows"]["previous"]["end_exclusive"] == current_match["received_at"]["$gte"]
+    assert state.limits == [len(get_args(ProjectName)) * 8 * 7] * 2
+
+
+def test_period_comparison_empty_stores_are_only_empty_recorded_events(api):
+    client, state = api
+    response = client.get(COMPARE_PATH + "?days=90")
+    assert response.status_code == 200
+    result = response.json()
+    assert set(result["summary"]["current_events"].values()) == {0}
+    assert set(result["summary"]["previous_events"].values()) == {0}
+    assert set(result["summary"]["recorded_event_change"].values()) == {0}
+    assert result["summary"]["current_projects_with_events"] == 0
+    assert result["summary"]["previous_projects_with_events"] == 0
+    assert result["collection_health_verified"] is False
+    assert result["unique_visitors"] is None
+    assert len(result["projects"]) == len(get_args(ProjectName))
+    assert state.limits == [len(get_args(ProjectName)) * 91 * 7] * 2
+
+
+@pytest.mark.parametrize("corrupt", ["bad_date", "invalid_count", "duplicate"])
+def test_period_comparison_fails_closed_on_corrupt_previous_window(api, corrupt):
+    client, state = api
+    day = (datetime.now(timezone.utc) - timedelta(days=8)).date().isoformat()
+    row = bucket("trade", "page_view", day, 3)
+    if corrupt == "bad_date":
+        row["_id"]["day"] = "=HYPERLINK(1)"
+    if corrupt == "invalid_count":
+        row["count"] = True
+    rows = [row, bucket("trade", "page_view", day, 2)] if corrupt == "duplicate" else [row]
+    state.rows_by_query = [[], rows]
+    response = client.get(COMPARE_PATH + "?days=7")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Analytics aggregate unavailable"
+    assert "HYPERLINK" not in response.text
+    assert len(state.pipelines) == 2
+
+
+def test_period_comparison_rejects_unsafe_cross_project_event_totals(api):
+    client, state = api
+    today = datetime.now(timezone.utc).date().isoformat()
+    state.rows_by_query = [
+        [bucket("trade", "page_view", today, 2**53 - 1),
+         bucket("eyes", "page_view", today, 1)],
+        [],
+    ]
+    response = client.get(COMPARE_PATH)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Analytics comparison unavailable"}
+    assert len(state.pipelines) == 2

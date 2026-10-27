@@ -5,7 +5,7 @@ and lightweight event-based conversion tracking.
 """
 
 from datetime import date, datetime, timezone, timedelta
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Response, Query
 from pydantic import BaseModel
 from typing import Optional
 from core.database import db
@@ -283,7 +283,7 @@ async def _top_features(since: str):
 
 # Enterprise V1: read-only project reporting.
 # Neither endpoint activates collection or grants access to customer accounts.
-async def _v1_project_reports(projects, days, now):
+async def _v1_project_reports(projects, days, now, *, end_exclusive=False):
     """One bounded aggregate over server-authorized, registered projects."""
     from typing import get_args
     from core.analytics_event_schema import EventName
@@ -296,7 +296,7 @@ async def _v1_project_reports(projects, days, now):
         {"$match": {
             "schema_version": 1,
             "project": {"$in": list(projects)},
-            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "received_at": {"$gte": since, "$lt" if end_exclusive else "$lte": now.isoformat()},
             "event": {"$in": list(event_names)},
         }},
         {"$group": {
@@ -377,6 +377,40 @@ async def analytics_portfolio_overview(
         "verified_revenue_included": False,
         "data_scope": "v1_project_events_only",
     }
+
+
+@router.get("/v1/portfolio/period-compare")
+async def analytics_portfolio_period_comparison(
+    request: Request,
+    response: Response,
+    days: int = Query(default=7, ge=1, le=90),
+):
+    """Admin-only adjacent UTC-window comparison of recorded event counts.
+
+    No customer-selected project scope, identity lookup, verified revenue,
+    session tracking, payment access, or claim of collector availability.
+    The current window includes its end; the prior window excludes that same
+    boundary to prevent double counting events at the exact handoff time.
+    """
+    await require_admin(request)
+    from typing import get_args
+    from core.analytics_event_schema import ProjectName
+    from core.analytics_v1_period_comparison import compare_v1_recorded_periods
+
+    projects = get_args(ProjectName)
+    now = datetime.now(timezone.utc)
+    current = await _v1_project_reports(projects, days, now)
+    previous = await _v1_project_reports(
+        projects, days, now - timedelta(days=days), end_exclusive=True
+    )
+    try:
+        report = compare_v1_recorded_periods(current, previous, days, now)
+    except ValueError:
+        # Only static errors leave the API, never malformed database content.
+        raise HTTPException(status_code=503, detail="Analytics comparison unavailable") from None
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return report
 
 
 @router.get("/v1/portfolio/export.csv")
