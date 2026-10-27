@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import AnalyticsPortfolioPanel from './AnalyticsPortfolioPanel';
 
+const EXTRA_PROJECTS = ['bidblitz_main', 'power', 'verify', 'iptv', 'games', 'fuel', 'identity', 'stack'];
 const portfolio = (days = 7) => ({
   period_days: days, as_of: '2026-10-27T01:30:00+00:00', timezone: 'UTC',
   data_scope: 'v1_project_events_only', verified_revenue_included: false,
@@ -12,9 +13,13 @@ const portfolio = (days = 7) => ({
     { project: 'eyes', period_days: days, totals: {page_view: 5, checkout_started: 3},
       daily: {'2026-10-27': {page_view: 5, checkout_started: 3}},
       data_scope: 'v1_project_events_only', verified_revenue_included: false },
+    ...EXTRA_PROJECTS.map(project => ({
+      project, period_days: days, totals: {}, daily: {},
+      data_scope: 'v1_project_events_only', verified_revenue_included: false,
+    })),
   ],
   summary: {
-    project_count: 2, totals: { page_view: 17, signup_completed: 2, checkout_started: 3 },
+    project_count: 10, totals: { page_view: 17, signup_completed: 2, checkout_started: 3 },
     data_scope: 'v1_project_events_only', verified_revenue_included: false,
     unique_visitors: null, net_profit_available: false,
   },
@@ -184,3 +189,23 @@ test.each(['2026-10-27T01:30:00Z', '2026-10-27T01:30:00.123456+00:00'])(
     expect(container.querySelectorAll('article')).toHaveLength(4);
   }
 );
+
+test('rejects an incomplete project catalog even when the API summary matches the partial set', async () => {
+  const data = portfolio();
+  data.projects = data.projects.filter(report => report.project !== 'stack');
+  data.summary.project_count = data.projects.length;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test('accepts the complete authorized project catalog regardless of response order', async () => {
+  const data = portfolio();
+  data.projects.reverse();
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelectorAll('tbody tr')).toHaveLength(10);
+  expect(container.querySelector('article').textContent).toContain('17');
+});

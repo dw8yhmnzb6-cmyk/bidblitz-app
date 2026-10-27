@@ -72,6 +72,12 @@ function checkedReports(data, days) {
       throw new Error("Die Tagesdaten stimmen nicht mit den Projektwerten überein.");
     }
   }
+  // The admin portfolio API returns every registered first-party project,
+  // including projects with no events. A partial response must not appear as
+  // a complete cross-project total, even if its own summary is consistent.
+  if (seen.size !== Object.keys(PROJECT_LABELS).length) {
+    throw new Error("Die API hat nicht alle registrierten Projekte geliefert.");
+  }
   const summary = data.summary;
   if (!summary || summary.project_count !== seen.size ||
       summary.data_scope !== "v1_project_events_only" ||
