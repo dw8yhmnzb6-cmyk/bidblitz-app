@@ -363,3 +363,94 @@ async def project_analytics_overview(
         raise HTTPException(status_code=404, detail="Unknown project")
     reports = await _v1_project_reports((project,), days, datetime.now(timezone.utc))
     return reports[0]
+
+
+# Customer metadata is server-owned. No endpoint in this module creates grants.
+async def _analytics_customer_identity(request):
+    from core.analytics_customer_scope import customer_user_id
+    user = await get_current_user(request)
+    try:
+        return customer_user_id(user)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Analytics account unavailable")
+
+
+@router.get("/v1/my/sites")
+async def customer_analytics_sites(request: Request):
+    """List only active, ownership-verified sites belonging to this account."""
+    from core.analytics_customer_scope import customer_site_scope
+    owner = await _analytics_customer_identity(request)
+    records = await db.analytics_sites.find({
+        "owner_user_id": owner, "status": "active", "ownership_verified": True,
+    }, {"_id": 0}).sort("site_id", 1).to_list(length=101)
+    sites = []
+    seen = set()
+    for record in records[:100]:
+        try:
+            scope = customer_site_scope(record, owner)
+        except ValueError:
+            continue
+        if scope.site_id not in seen:
+            sites.append(scope.public_summary())
+            seen.add(scope.site_id)
+    return {"sites": sites, "has_more": len(records) > 100}
+
+
+@router.get("/v1/my/sites/{site_id}/overview")
+async def customer_site_analytics_overview(
+    site_id: str,
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Owner-scoped aggregates; unbound legacy events are never customer data."""
+    from core.analytics_customer_scope import canonical_site_id, customer_site_scope
+    owner = await _analytics_customer_identity(request)
+    try:
+        site_id = canonical_site_id(site_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Site not available")
+    records = await db.analytics_sites.find({
+        "site_id": site_id, "owner_user_id": owner,
+        "status": "active", "ownership_verified": True,
+    }, {"_id": 0}).to_list(length=2)
+    # Ambiguous metadata is not a grant. A unique site_id index belongs to the
+    # separately reviewed provisioning/migration step, never a request handler.
+    if len(records) != 1:
+        raise HTTPException(status_code=404, detail="Site not available")
+    try:
+        scope = customer_site_scope(records[0], owner)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Site not available")
+    if scope.site_id != site_id:
+        raise HTTPException(status_code=404, detail="Site not available")
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {
+            "schema_version": 1, "tenant_id": scope.tenant_id, "site_id": scope.site_id,
+            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "event": {"$in": [
+                "page_view", "cta_click", "signup_started", "signup_completed",
+                "checkout_started", "flow_abandoned",
+            ]},
+        }},
+        {"$group": {
+            "_id": {"day": {"$substrBytes": ["$received_at", 0, 10]}, "event": "$event"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.day": 1, "_id.event": 1}},
+    ]
+    records = await db.conversion_events.aggregate(pipeline).to_list(length=(days + 1) * 6)
+    totals, daily = {}, {}
+    for record in records:
+        event, day = record["_id"]["event"], record["_id"]["day"]
+        count = int(record["count"])
+        totals[event] = totals.get(event, 0) + count
+        daily.setdefault(day, {})[event] = count
+    return {
+        **scope.public_summary(), "period_days": days,
+        "as_of": now.isoformat(), "timezone": "UTC",
+        "totals": totals, "daily": daily, "has_recorded_events": bool(records),
+        "verified_revenue_included": False,
+        "data_scope": "tenant_site_v1_events_only",
+    }
