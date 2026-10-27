@@ -52,7 +52,7 @@ test('shows recorded counters, project filter and no invented revenue',async()=>
   const values=()=>[...container.querySelectorAll('article')].map(x=>x.textContent);
   expect(values()[0]).toContain('17');expect(values()[3]).toContain('Nicht angebunden');
   await select('Projekt','trade');expect(values()[0]).toContain('12');
-  expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
+  expect(container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')).toHaveLength(1);
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(global.fetch.mock.calls[0][0]).toMatch(/\/api\/analytics\/v1\/portfolio\?days=7$/);
   expect(global.fetch.mock.calls[0][1].credentials).toBe('include');
@@ -232,7 +232,7 @@ test('accepts the complete authorized project catalog regardless of response ord
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
   expect(container.querySelector('[role="alert"]')).toBeNull();
-  expect(container.querySelectorAll('tbody tr')).toHaveLength(10);
+  expect(container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')).toHaveLength(10);
   expect(container.querySelector('article').textContent).toContain('17');
 });
 
@@ -248,10 +248,10 @@ test('project comparison shows signup starts and workflow abandonment as event c
   data.summary.daily['2026-10-27'].flow_abandoned = 4;
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
-  const headings = [...container.querySelectorAll('thead th')].map(node => node.textContent);
+  const headings = [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] thead th')].map(node => node.textContent);
   expect(headings).toContain('Registrierungen begonnen (Ereignisse)');
   expect(headings).toContain('Abbrüche (Ereignisse)');
-  const rows = container.querySelectorAll('tbody tr');
+  const rows = container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr');
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
     ['2', '2026-10-27', '12', '0', '6', '2', '0', '0', '0']);
   expect([...rows[1].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
@@ -269,7 +269,7 @@ test('project selector limits the new event columns to the selected project', as
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
   await select('Projekt', 'eyes');
-  const rows = container.querySelectorAll('tbody tr');
+  const rows = container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr');
   expect(rows).toHaveLength(1);
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
     ['1', '2026-10-27', '5', '0', '0', '0', '3', '0', '0']);
@@ -517,10 +517,10 @@ test('shows completed checkout events without mislabeling them as verified reven
   expect(articles[2].textContent).toContain('Abgeschlossen (Ereignisse): 2');
   expect(articles[2].textContent).toContain('kein Zahlungsnachweis');
   expect(articles[3].textContent).toContain('Nicht angebunden');
-  const headings = [...container.querySelectorAll('thead th')].map(th => th.textContent);
+  const headings = [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] thead th')].map(th => th.textContent);
   const completedIndex = headings.indexOf('Bezahlvorgang abgeschlossen (Ereignisse)');
   expect(completedIndex).toBeGreaterThan(0);
-  const eyes = [...container.querySelectorAll('tbody tr')].find(row => row.textContent.includes('The Eye'));
+  const eyes = [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')].find(row => row.textContent.includes('The Eye'));
   expect(eyes.querySelectorAll('td')[completedIndex - 1].textContent).toBe('2');
   await select('Projekt', 'trade');
   expect([...container.querySelectorAll('article')][2].textContent).toContain('Abgeschlossen (Ereignisse): 0');
@@ -560,7 +560,7 @@ test('sortable project comparison ranks validated event counts and respects proj
   data.summary.daily['2026-10-27'].checkout_completed = 2;
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
-  const names = () => [...container.querySelectorAll('tbody tr th')].map(th => th.textContent);
+  const names = () => [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr th')].map(th => th.textContent);
   expect(names()[0]).toBe('Trade');
   await select('Vergleich sortieren', 'checkout_completed');
   expect(names()[0]).toBe('The Eye');
@@ -580,10 +580,10 @@ test('sortable project comparison ranks validated event counts and respects proj
 test('recording footprint shows recorded UTC days without claiming collector health', async () => {
   global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
   await mount();
-  const headings = [...container.querySelectorAll('thead th')].map(th => th.textContent);
+  const headings = [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] thead th')].map(th => th.textContent);
   expect(headings).toContain('Tage mit Ereignissen');
   expect(headings).toContain('Letzter erfasster UTC-Tag');
-  const rows = [...container.querySelectorAll('tbody tr')];
+  const rows = [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')];
   const trade = rows.find(row => row.textContent.includes('Trade'));
   expect([...trade.querySelectorAll('td')].slice(0, 2).map(td => td.textContent)).toEqual(
     ['2', '2026-10-27']);
@@ -592,8 +592,8 @@ test('recording footprint shows recorded UTC days without claiming collector hea
     ['0', 'Keine Aufzeichnung']);
   expect(container.textContent).toContain('beweist weder Nullaktivität noch einen Collector-Ausfall');
   await select('Projekt', 'fuel');
-  expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
-  expect(container.querySelector('tbody tr').textContent).toContain('Keine Aufzeichnung');
+  expect(container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')).toHaveLength(1);
+  expect(container.querySelector('[aria-label="Projektvergleich Tabelle"] tbody tr').textContent).toContain('Keine Aufzeichnung');
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -608,7 +608,7 @@ test('last recorded day sorts observed dates and leaves missing dates last in ei
   data.summary.projects_without_events -= 1;
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
-  const names = () => [...container.querySelectorAll('tbody tr th')].map(th => th.textContent);
+  const names = () => [...container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr th')].map(th => th.textContent);
   await select('Vergleich sortieren', 'recorded_last_day');
   expect(names().slice(0, 3)).toEqual(['The Eye', 'Trade', 'Power']);
   await select('Sortierrichtung', 'asc');
@@ -627,7 +627,7 @@ test('rejects zero-only days instead of inventing recording coverage', async () 
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
   expect(container.querySelector('[role="alert"]').textContent).toContain('leere Tagesaufzeichnungen');
-  expect(container.querySelectorAll('tbody tr')).toHaveLength(0);
+  expect(container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')).toHaveLength(0);
 });
 
 test('A/B project comparison reports all seven event totals and signed differences with one authorized request', async () => {
@@ -657,7 +657,7 @@ test('A/B project comparison stays independent of the main filter and swaps proj
   expect(table.querySelector('thead').textContent).toContain('The Eye');
   const views = [...table.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Seitenaufrufe'));
   expect([...views.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['5', '12', '-7']);
-  expect(container.querySelectorAll('tbody tr')).not.toHaveLength(0);
+  expect(container.querySelectorAll('[aria-label="Projektvergleich Tabelle"] tbody tr')).not.toHaveLength(0);
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -692,5 +692,81 @@ test('A/B comparison does not render data after an unauthorized response', async
   global.fetch = jest.fn().mockResolvedValue({ok: false, status: 403});
   await mount();
   expect(container.querySelector('[aria-label="Direkter Projektvergleich"]')).toBeNull();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
+});
+
+test('daily project matrix compares recorded UTC buckets across all projects and seven selectable event types', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  const table = container.querySelector('[aria-label="Projekt-Tagesmatrix Tabelle"]');
+  expect(table).not.toBeNull();
+  const days = [...table.querySelectorAll('thead th')].map(cell => cell.textContent);
+  expect(days).toEqual(['Projekt', '2026-10-27', '2026-10-26']);
+  expect(table.querySelectorAll('tbody tr')).toHaveLength(10);
+  const row = (label) => [...table.querySelectorAll('tbody tr')].find(tr => tr.querySelector('th').textContent === label);
+  const cells = (element) => [...element.querySelectorAll('td')].map(td => td.textContent);
+  expect(cells(row('Trade'))).toEqual(['8', '4']);
+  expect(cells(row('The Eye'))).toEqual(['5', '—']);
+  expect(cells(table.querySelector('tfoot tr'))).toEqual(['13', '4']);
+  await select('Matrix-Metrik', 'checkout_started');
+  expect(cells(row('Trade'))).toEqual(['0', '0']);
+  expect(cells(row('The Eye'))).toEqual(['3', '—']);
+  expect(cells(table.querySelector('tfoot tr'))).toEqual(['3', '0']);
+  expect(container.querySelector('[aria-label="Projekt-Tagesmatrix"]').textContent).toContain('bestätigten Kunden oder Umsätze');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily matrix respects project filter and never invents zero activity for absent records', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Projekt', 'eyes');
+  const matrix = () => container.querySelector('[aria-label="Projekt-Tagesmatrix"]');
+  expect(matrix().querySelectorAll('tbody tr')).toHaveLength(1);
+  expect([...matrix().querySelectorAll('thead th')].map(th => th.textContent)).toEqual(
+    ['Projekt', '2026-10-27']);
+  expect(matrix().querySelector('tfoot td').textContent).toBe('5');
+  await select('Projekt', 'fuel');
+  expect(matrix().querySelector('table')).toBeNull();
+  expect(matrix().textContent).toContain('Nullaktivität ist nicht nachgewiesen');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily matrix paginates 30-day activity without new API calls and resets on metric changes', async () => {
+  const data = portfolio(30);
+  const power = data.projects.find(report => report.project === 'power');
+  for (let day = 10; day <= 25; day += 1) {
+    const date = '2026-10-' + String(day).padStart(2, '0');
+    power.daily[date] = { page_view: 1 };
+    data.summary.daily[date] = { page_view: 1 };
+  }
+  power.totals = { page_view: 16 };
+  data.summary.totals.page_view += 16;
+  data.summary.projects_with_events += 1;
+  data.summary.projects_without_events -= 1;
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio())).mockResolvedValueOnce(ok(data));
+  await mount();
+  await select('Zeitraum', '30');
+  const matrix = () => container.querySelector('[aria-label="Projekt-Tagesmatrix"]');
+  const days = () => [...matrix().querySelectorAll('thead th')].slice(1).map(th => th.textContent);
+  expect(days()).toHaveLength(14);
+  expect(days()[0]).toBe('2026-10-27');
+  expect(matrix().querySelector('[aria-label="Matrix-Seite"]').textContent).toContain('1 von 2');
+  await click('Ältere Tage');
+  expect(days()).toEqual(['2026-10-13', '2026-10-12', '2026-10-11', '2026-10-10']);
+  expect(matrix().querySelector('[aria-label="Matrix-Seite"]').textContent).toContain('2 von 2');
+  expect([...matrix().querySelectorAll('tfoot td')].map(td => td.textContent)).toEqual(['1', '1', '1', '1']);
+  await select('Matrix-Metrik', 'signup_completed');
+  expect(days()).toHaveLength(14);
+  expect(matrix().querySelector('[aria-label="Matrix-Seite"]').textContent).toContain('1 von 2');
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});
+
+test('unauthorized and malformed responses never expose a matrix of stale data', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce({ok: false, status: 403});
+  await mount();
+  expect(container.querySelector('[aria-label="Projekt-Tagesmatrix"]')).not.toBeNull();
+  await click('Aktualisieren');
+  expect(container.querySelector('[aria-label="Projekt-Tagesmatrix"]')).toBeNull();
   expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
 });
