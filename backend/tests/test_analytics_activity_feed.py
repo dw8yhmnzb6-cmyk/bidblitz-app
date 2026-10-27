@@ -25,3 +25,21 @@ def test_rejects_untrusted_project_filter():
 def test_requires_bounded_limit():
     with pytest.raises(ValueError):
         recent_business_activity([], {"trade"}, NOW, limit=10000)
+
+def test_selected_period_yesterday_filters_today():
+    yesterday = NOW - timedelta(days=1)
+    rows = [item(when=yesterday), item(when=NOW)]
+    feed = recent_business_activity(rows, {"trade"}, NOW + timedelta(seconds=1),
+                                    period="yesterday")
+    assert [x["occurred_at"] for x in feed] == [yesterday.isoformat()]
+
+def test_selected_period_today_filters_yesterday():
+    yesterday = NOW - timedelta(days=1)
+    rows = [item(when=yesterday), item(when=NOW)]
+    feed = recent_business_activity(rows, {"trade"}, NOW + timedelta(seconds=1),
+                                    period="today")
+    assert [x["occurred_at"] for x in feed] == [NOW.isoformat()]
+
+def test_invalid_selected_period_rejected():
+    with pytest.raises(ValueError):
+        recent_business_activity([], {"trade"}, NOW, period="tomorrow")
