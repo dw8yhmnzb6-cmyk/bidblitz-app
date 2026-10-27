@@ -522,3 +522,112 @@ def test_period_comparison_rejects_unsafe_cross_project_event_totals(api):
     assert response.status_code == 503
     assert response.json() == {"detail": "Analytics comparison unavailable"}
     assert len(state.pipelines) == 2
+
+
+# Admin-only CSV export of recorded adjacent-period event changes.
+COMPARE_CSV_PATH = "/api/analytics/v1/portfolio/period-compare/export.csv"
+
+
+@pytest.mark.parametrize("role", ["customer", "project_admin", "merchant", None])
+def test_period_csv_denies_non_admin_before_database_access(api, role):
+    client, state = api
+    state.user = {"role": role, "is_admin": True, "analytics_projects": ["trade"]}
+    response = client.get(COMPARE_CSV_PATH)
+    assert response.status_code == 403
+    assert state.pipelines == []
+
+
+def test_period_csv_denies_unauthenticated_before_database_access(api):
+    client, state = api
+    state.auth_error = HTTPException(401, "Not authenticated")
+    assert client.get(COMPARE_CSV_PATH).status_code == 401
+    assert state.pipelines == []
+
+
+@pytest.mark.parametrize("days", [-1, 0, 91, "abc"])
+def test_period_csv_rejects_invalid_period_before_database_access(api, days):
+    client, state = api
+    assert client.get(COMPARE_CSV_PATH, params={"days": days}).status_code == 422
+    assert state.pipelines == []
+
+
+def test_period_csv_uses_two_disjoint_reads_and_never_exports_identity_or_revenue(api):
+    client, state = api
+    now = datetime.now(timezone.utc)
+    current_day = now.date().isoformat()
+    previous_day = (now - timedelta(days=8)).date().isoformat()
+    state.rows_by_query = [
+        [bucket("trade", "page_view", current_day, 4),
+         bucket("eyes", "signup_completed", current_day, 2),
+         {**bucket("outside", "page_view", current_day, 999),
+          "user_id": "private-id", "email": "private@example.invalid"}],
+        [bucket("trade", "page_view", previous_day, 9)],
+    ]
+    response = client.get(
+        COMPARE_CSV_PATH,
+        params={"days": 7, "projects": "outside"},
+        headers={"X-Analytics-Projects": "outside"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="bidblitz-v1-period-comparison.csv"'
+    )
+    assert "private@example.invalid" not in response.text
+    assert "private-id" not in response.text
+    assert "outside" not in response.text
+    assert "unique_visitors" not in response.text
+    assert "payment_amount" not in response.text
+    rows = list(csv.DictReader(StringIO(response.text)))
+    assert len(rows) == (len(get_args(ProjectName)) + 1) * 7
+    trade = next(row for row in rows if row["project"] == "trade" and row["event"] == "page_view")
+    assert (trade["current_recorded_events"], trade["previous_recorded_events"],
+            trade["recorded_event_change"]) == ("4", "9", "-5")
+    assert trade["verified_revenue_included"] == "false"
+    assert trade["collection_health_verified"] == "false"
+    assert all(row["data_scope"] == "v1_project_events_only" for row in rows)
+    assert len(state.pipelines) == 2
+    matching = [pipeline[0]["$match"] for pipeline in state.pipelines]
+    assert matching[0]["project"] == matching[1]["project"] == {
+        "$in": list(get_args(ProjectName))
+    }
+    assert matching[1]["received_at"]["$lt"] == matching[0]["received_at"]["$gte"]
+    assert "$lte" in matching[0]["received_at"]
+    assert state.limits == [len(get_args(ProjectName)) * 8 * 7] * 2
+
+
+def test_period_csv_empty_store_is_count_only_not_claim_of_zero_visitors(api):
+    client, state = api
+    response = client.get(COMPARE_CSV_PATH, params={"days": 90})
+    assert response.status_code == 200
+    rows = list(csv.DictReader(StringIO(response.text)))
+    assert rows
+    assert all(row["current_recorded_events"] == "0" for row in rows)
+    assert all(row["previous_recorded_events"] == "0" for row in rows)
+    assert all(row["recorded_event_change"] == "0" for row in rows)
+    assert state.limits == [len(get_args(ProjectName)) * 91 * 7] * 2
+
+
+@pytest.mark.parametrize("corrupt", ["invalid_previous_day", "duplicate", "overflow"])
+def test_period_csv_fails_closed_without_revealing_bad_aggregates(api, corrupt):
+    client, state = api
+    day = (datetime.now(timezone.utc) - timedelta(days=8)).date().isoformat()
+    row = bucket("trade", "page_view", day, 3)
+    if corrupt == "invalid_previous_day":
+        row["_id"]["day"] = "=HYPERLINK(1)"
+    if corrupt == "overflow":
+        state.rows_by_query = [
+            [bucket("trade", "page_view", datetime.now(timezone.utc).date().isoformat(), 2**53-1),
+             bucket("eyes", "page_view", datetime.now(timezone.utc).date().isoformat(), 1)],
+            [],
+        ]
+    else:
+        state.rows_by_query = [[], [row, bucket("trade", "page_view", day, 2)]
+                               if corrupt == "duplicate" else [row]]
+    response = client.get(COMPARE_CSV_PATH, params={"days": 7})
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Analytics comparison export unavailable"}
+    assert "HYPERLINK" not in response.text
+    assert len(state.pipelines) == 2
