@@ -128,16 +128,16 @@ def welcome_email(user_name: str):
 </div>
 <div class="card">
   <p class="title">Deine Superapp ist startklar</p>
-  <p class="sub">Zahlungen, Mobilität, Mining, Marketplace – alles in einer App.</p>
+  <p class="sub">Zahlungen, Mobilität, Marketplace und weitere freigeschaltete Dienste – alles in einer App.</p>
   <div class="row"><span>Wallet</span><b>Bereit für Zahlungen</b></div>
-  <div class="row"><span>BlitzMine</span><b>Tippen & BLZ verdienen</b></div>
-  <div class="row"><span>Auktionen</span><b>Bis zu 95% sparen</b></div>
-  <div class="row"><span>Termine</span><b>Friseur, Arzt, Wellness</b></div>
+  <div class="row"><span>Marketplace</span><b>Kaufen & verkaufen</b></div>
+  <div class="row"><span>Auktionen</span><b>Live mitbieten</b></div>
+  <div class="row"><span>Termine</span><b>Dienstleistungen buchen</b></div>
   <p style="margin-top:20px;text-align:center"><a href="{DOMAIN}" class="btn">App öffnen</a></p>
 </div>
 <div class="card">
   <p class="title" style="font-size:14px">Tipp</p>
-  <p class="sub">Tippe täglich auf den BlitzMine-Button – nach 3 Tagen bekommst du deinen ersten Streak-Bonus (+1 BLZ + 5% Rate dauerhaft).</p>
+  <p class="sub">Prüfe deine Profil- und Sicherheitseinstellungen, bevor du Zahlungs- oder Händlerfunktionen nutzt.</p>
 </div>""")
     return subject, html
 

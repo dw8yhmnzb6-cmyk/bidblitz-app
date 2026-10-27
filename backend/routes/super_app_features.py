@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import credit_wallet, TransactionType
 from routes.pos_system import short_id
 
 router = APIRouter(prefix="/api/super-app", tags=["Super App Extensions"])
@@ -90,27 +89,12 @@ class WalletTopup(BaseModel):
 
 @router.post("/wallet/topup")
 async def wallet_topup(req: WalletTopup, request: Request):
-    """Legacy endpoint routed through canonical wallet engine."""
-    user = await get_current_user(request)
-
-    result = await credit_wallet(
-        user_id=str(user["_id"]),
-        amount=round(float(req.amount or 0), 2),
-        tx_type=TransactionType.TOPUP,
-        description=f"Legacy Top-up via {req.method}",
-        source="super_app_legacy",
-        metadata={
-            "payment_method": req.method,
-            "route": "super_app.wallet.topup",
-            "audit_metadata": {"legacy": True},
-        },
-        idempotency_key=req.idempotency_key,
+    """Retired legacy top-up path; real wallet funding must be provider-backed."""
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Dieser Legacy-Topup ist deaktiviert. Verwende den kanonischen Stripe-Topup unter /api/stripe/checkout.",
     )
-    if not result.success:
-        raise HTTPException(status_code=400, detail=result.error or "Top-up fehlgeschlagen")
-
-    log.info(f"Legacy wallet topup routed to engine: {result.transaction_id} (€{req.amount})")
-    return {"transaction_id": result.transaction_id, "status": result.status.value, "new_balance": result.new_balance, "deprecated": True}
 
 @router.get("/wallet/balance")
 async def get_wallet_balance(request: Request):
@@ -145,34 +129,12 @@ class GameSession(BaseModel):
 
 @router.post("/gaming/session")
 async def start_game_session(session: GameSession, request: Request):
-    """Start gaming session."""
-    user = await get_current_user(request)
-    
-    # Check wallet balance
-    wallet = await db.wallets.find_one({"user_id": str(user["_id"])})
-    if not wallet or wallet.get("balance", 0) < session.bet_amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
-    
-    session_id = short_id("GAME", 10)
-    
-    await db.game_sessions.insert_one({
-        "session_id": session_id,
-        "user_id": str(user["_id"]),
-        "game_type": session.game_type,
-        "bet_amount": session.bet_amount,
-        "status": "active",
-        "started_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    # Deduct bet from wallet
-    await db.wallets.update_one(
-        {"user_id": str(user["_id"])},
-        {"$inc": {"balance": -session.bet_amount}}
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Gaming-Einsätze sind deaktiviert. Verwende ausschließlich die freigegebenen Game-Center-/Rewards-Pfade.",
     )
-    
-    log.info(f"Game session started: {session_id} ({session.game_type})")
-    
-    return {"session_id": session_id, "status": "active"}
+
 
 @router.get("/gaming/leaderboard")
 async def get_gaming_leaderboard(game_type: Optional[str] = None):
@@ -236,47 +198,12 @@ async def create_subscription_tier(tier: CreatorSubscription, request: Request):
 
 @router.post("/creator/subscribe")
 async def subscribe_to_creator(creator_id: str, tier_id: str, request: Request):
-    """User abonniert Creator."""
-    user = await get_current_user(request)
-    
-    tier = await db.creator_subscription_tiers.find_one({"tier_id": tier_id})
-    if not tier:
-        raise HTTPException(status_code=404, detail="Tier not found")
-    
-    # Check wallet balance
-    wallet = await db.wallets.find_one({"user_id": str(user["_id"])})
-    if not wallet or wallet.get("balance", 0) < tier["monthly_price"]:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
-    
-    subscription_id = short_id("SUB", 10)
-    
-    await db.creator_subscriptions.insert_one({
-        "subscription_id": subscription_id,
-        "user_id": str(user["_id"]),
-        "creator_id": creator_id,
-        "tier_id": tier_id,
-        "monthly_price": tier["monthly_price"],
-        "status": "active",
-        "next_billing_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    # Deduct from wallet
-    await db.wallets.update_one(
-        {"user_id": str(user["_id"])},
-        {"$inc": {"balance": -tier["monthly_price"]}}
+    await get_current_user(request)
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy-Creator-Abo-Zahlungen sind deaktiviert. Creator-Abos müssen über den kanonischen Subscription-/Payment-Flow laufen.",
     )
-    
-    # Credit creator
-    await db.wallets.update_one(
-        {"user_id": creator_id},
-        {"$inc": {"balance": tier["monthly_price"] * 0.85}},  # 85% to creator, 15% platform fee
-        upsert=True
-    )
-    
-    log.info(f"Subscription created: {subscription_id}")
-    
-    return {"subscription_id": subscription_id, "status": "active"}
+
 
 
 # ═══════════════════════════════════════════════════════════════════════

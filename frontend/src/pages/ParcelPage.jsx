@@ -2,7 +2,7 @@
  * BidBlitz V2 - Paketversand
  * Preisvergleich + Buchung + Tracking
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Package, Truck, MapPin, Scale, Loader2, Check,
@@ -18,6 +18,8 @@ const ParcelPage = ({ onBack }) => {
   const [width, setWidth] = useState("20");
   const [height, setHeight] = useState("15");
   const [quotes, setQuotes] = useState([]);
+  const [bookingEnabled, setBookingEnabled] = useState(false);
+  const [providerMessage, setProviderMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState(null);
   const [myParcels, setMyParcels] = useState([]);
@@ -34,6 +36,7 @@ const ParcelPage = ({ onBack }) => {
   const [booking, setBooking] = useState(false);
   const [bookResult, setBookResult] = useState(null);
   const [error, setError] = useState("");
+  const bookingAttemptKeyRef = useRef(null);
 
   // Tracking
   const [trackNum, setTrackNum] = useState("");
@@ -51,23 +54,61 @@ const ParcelPage = ({ onBack }) => {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ weight: parseFloat(weight), length: parseFloat(length), width: parseFloat(width), height: parseFloat(height) }),
       });
-      if (res.ok) { const d = await res.json(); setQuotes(d.quotes || []); setView("results"); }
+      if (res.ok) {
+        const d = await res.json();
+        setQuotes(d.quotes || []);
+        setBookingEnabled(d.booking_enabled === true);
+        setProviderMessage(d.production_message || "");
+        setView("results");
+      }
     } catch {}
     setLoading(false);
   };
 
   const bookParcel = async () => {
+    if (!bookingEnabled) {
+      setError(providerMessage || "Paketbuchung ist noch nicht live mit einem Carrier verbunden.");
+      return;
+    }
     if (!selectedCarrier || !rName || !rCity) return;
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `parcel-book-${crypto.randomUUID()}`
+        : `parcel-book-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBooking(true); setError("");
     try {
       const res = await fetch(`${API}/api/parcels/book`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ carrier_id: selectedCarrier.carrier_id, weight: parseFloat(weight), sender_name: sName, sender_address: sAddr, sender_zip: sZip, sender_city: sCity, recipient_name: rName, recipient_address: rAddr, recipient_zip: rZip, recipient_city: rCity }),
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          carrier_id: selectedCarrier.carrier_id,
+          weight: parseFloat(weight),
+          sender_name: sName,
+          sender_address: sAddr,
+          sender_zip: sZip,
+          sender_city: sCity,
+          recipient_name: rName,
+          recipient_address: rAddr,
+          recipient_zip: rZip,
+          recipient_city: rCity,
+          idempotency_key: idempotencyKey,
+        }),
       });
-      const d = await res.json();
-      if (res.ok && d.ok) { setBookResult(d.parcel); setMyParcels(prev => [d.parcel, ...prev]); }
-      else setError(d.detail || "Fehler");
-    } catch { setError("Netzwerkfehler"); }
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.ok) {
+        bookingAttemptKeyRef.current = null;
+        setBookResult(d.parcel);
+        setMyParcels(prev => prev.some(item => item.parcel_id === d.parcel?.parcel_id) ? prev : [d.parcel, ...prev]);
+      } else {
+        if (res.status < 500) bookingAttemptKeyRef.current = null;
+        setError(typeof d.detail === "string" ? d.detail : d.detail?.message || "Fehler");
+      }
+    } catch {
+      setError("Netzwerkfehler");
+    }
     setBooking(false);
   };
 
@@ -131,6 +172,12 @@ const ParcelPage = ({ onBack }) => {
         <div className="p-4 space-y-3">
           <motion.button whileTap={{ scale: 0.95 }} onClick={() => setView("quote")} className="text-xs text-[#F97316] font-medium flex items-center gap-1"><ArrowLeft size={14} /> Maße ändern</motion.button>
           <p className="text-[10px] text-gray-500">{weight}kg Paket — {quotes.length} Anbieter</p>
+          {!bookingEnabled && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200" data-testid="parcel-quote-preview">
+              <p className="font-bold">Preisvergleich Preview</p>
+              <p className="mt-1 text-amber-100/70">{providerMessage || "Carrier-Preise sind Richtwerte; echte Buchung ist noch nicht verbunden."}</p>
+            </div>
+          )}
           {quotes.map((q, i) => (
             <motion.div key={q.carrier_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               onClick={() => { setSelectedCarrier(q); setView("book"); setBookResult(null); setError(""); }}
@@ -161,6 +208,12 @@ const ParcelPage = ({ onBack }) => {
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => setView("results")} className="text-xs text-[#F97316] font-medium flex items-center gap-1"><ArrowLeft size={14} /> Zurück</motion.button>
             <span className="text-sm font-bold text-[#F97316]">{selectedCarrier.carrier_name} — €{selectedCarrier.price.toFixed(2)}</span>
           </div>
+          {!bookingEnabled && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200" data-testid="parcel-provider-preview">
+              <p className="font-bold">Paketbuchung Preview</p>
+              <p className="mt-1 text-amber-100/70">{providerMessage || "Echte Carrier-/Label-API ist noch nicht verbunden."}</p>
+            </div>
+          )}
           <div className="bg-[#111118] rounded-2xl border border-white/5 p-4 space-y-2">
             <p className="text-[10px] text-gray-400 font-semibold">Absender</p>
             <input value={sName} onChange={e => setSName(e.target.value)} placeholder="Name" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" />
@@ -180,7 +233,7 @@ const ParcelPage = ({ onBack }) => {
             </div>
           </div>
           {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-          <motion.button whileTap={{ scale: 0.97 }} onClick={bookParcel} disabled={!rName || !rCity || booking}
+          <motion.button whileTap={{ scale: 0.97 }} onClick={bookParcel} disabled={!bookingEnabled || !rName || !rCity || booking}
             className="w-full py-3.5 rounded-xl bg-[#F97316] text-white font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2" data-testid="parcel-book-btn">
             {booking ? <Loader2 size={18} className="animate-spin" /> : <><Truck size={16} /> €{selectedCarrier.price.toFixed(2)} versenden</>}
           </motion.button>
@@ -191,7 +244,7 @@ const ParcelPage = ({ onBack }) => {
         <div className="p-4">
           <div className="bg-[#111118] rounded-2xl border border-[#10B981]/20 p-6 text-center">
             <div className="w-16 h-16 rounded-full bg-[#10B981]/10 border-2 border-[#10B981] flex items-center justify-center mx-auto mb-4"><Check size={32} className="text-[#10B981]" /></div>
-            <h3 className="text-lg font-bold mb-1">Paket gebucht!</h3>
+            <h3 className="text-lg font-bold mb-1">{bookResult.provider_mode === "test" ? "Test-Paket gebucht!" : "Paket gebucht!"}</h3>
             <p className="text-sm text-gray-400">{bookResult.carrier_name} — {bookResult.weight}kg</p>
             <div className="mt-2 p-3 rounded-xl bg-white/[0.03] border border-white/5"><p className="text-xs font-mono text-[#F97316]">{bookResult.tracking_number}</p><p className="text-[9px] text-gray-500">Sendungsnummer</p></div>
             <p className="text-xl font-bold text-[#F97316] mt-2">€{bookResult.price?.toFixed(2)}</p>

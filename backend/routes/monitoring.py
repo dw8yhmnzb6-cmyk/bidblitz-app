@@ -33,10 +33,29 @@ _metrics = {
 }
 
 MONITORED_FLOWS = [
-    {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/"},
-    {"key": "auth_login", "label": "Login", "method": "POST", "path": "/api/auth/login", "body": {"email": "reviewer@bidblitz.ae", "password": "BidBlitzReview2026!", "remember_me": True}, "expect_statuses": [200]},
-    {"key": "auth_register_contract", "label": "Registrierung", "method": "POST", "path": "/api/auth/register", "body": {"name": "Monitor Contract", "email": "monitor.invalid", "password": "123"}, "expect_statuses": [400, 409, 422]},
+    # Read-only probes only: monitoring must never create accounts, sessions or money movement.
+    {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/", "expect_statuses": [200]},
+    {"key": "site_version", "label": "Deployment-Version", "method": "GET", "path": "/api/system/version", "expect_statuses": [200]},
+    {"key": "features", "label": "Feature Flags", "method": "GET", "path": "/api/features/public", "expect_statuses": [200]},
+    {"key": "recommendations", "label": "Startseiten-Empfehlungen", "method": "GET", "path": "/api/recommendations/home", "expect_statuses": [200]},
+    {"key": "pro_ads", "label": "PRO Werbung", "method": "GET", "path": "/api/pro/ads/active", "expect_statuses": [200]},
+    {"key": "extras", "label": "Extras Leaderboard", "method": "GET", "path": "/api/extras/leaderboard", "expect_statuses": [200]},
+    {"key": "marketplace", "label": "Marketplace", "method": "GET", "path": "/api/marketplace/list?limit=1", "expect_statuses": [200]},
+    {"key": "auth_session", "label": "Login / Session", "method": "GET", "path": "/api/auth/me", "expect_statuses": [401]},
+    {"key": "wallet", "label": "Wallet", "method": "GET", "path": "/api/wallet/balance/total", "expect_statuses": [401]},
+    {"key": "payments", "label": "Payments / QR", "method": "GET", "path": "/api/payments/fee-info", "expect_statuses": [200]},
+    {"key": "stripe_topup", "label": "Stripe Top-Up", "method": "GET", "path": "/api/stripe/plans", "expect_statuses": [200]},
     {"key": "auctions_list", "label": "Auktionen", "method": "GET", "path": "/api/auctions/active", "expect_statuses": [200]},
+    {"key": "auction_referrals", "label": "Auktion Empfehlungen", "method": "GET", "path": "/api/auctions/referral-leaderboard", "expect_statuses": [200]},
+    {"key": "taxi", "label": "Taxi / Mobility", "method": "GET", "path": "/api/taxi/pricing", "expect_statuses": [200]},
+    {"key": "mining", "label": "Mining", "method": "GET", "path": "/api/mining/packages", "expect_statuses": [200]},
+    {"key": "watchlist", "label": "Watchlist", "method": "GET", "path": "/api/watchlist/ids", "expect_statuses": [401]},
+    {"key": "notifications", "label": "Benachrichtigungen", "method": "GET", "path": "/api/notifications/unread-count", "expect_statuses": [401]},
+    {"key": "groups", "label": "Gruppenbestellungen", "method": "GET", "path": "/api/group/my-groups", "expect_statuses": [401, 422]},
+    {"key": "chat", "label": "Chat", "method": "GET", "path": "/api/chat/unread-count", "expect_statuses": [401]},
+    {"key": "biopay", "label": "BioPay", "method": "GET", "path": "/api/biopay/me", "expect_statuses": [401]},
+    {"key": "merchant", "label": "Händler", "method": "GET", "path": "/api/merchant/dashboard", "expect_statuses": [401]},
+    {"key": "admin", "label": "Admin", "method": "GET", "path": "/api/admin/overview", "expect_statuses": [401]},
 ]
 
 
@@ -240,8 +259,7 @@ async def _ensure_critical_alert_notifications(alerts: list[dict]):
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
-    if user.get("role") != "admin":
-        from fastapi import HTTPException
+    if user.get("role") not in {"admin", "super_admin"}:
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
@@ -302,23 +320,50 @@ async def _run_probe(flow: dict) -> dict:
 
 async def _store_probe_results(results: list[dict]):
     for result in results:
+        now_iso = datetime.now(timezone.utc).isoformat()
         await db.monitoring_probes.update_one(
             {"key": result["key"]},
             {"$set": result, "$inc": {"run_count": 1}},
             upsert=True,
         )
+        incident_selector = {
+            "type": "probe_failure",
+            "key": result["key"],
+            "resolved": False,
+        }
         if result["status"] != "ok":
-            await db.monitoring_incidents.insert_one({
-                "type": "probe_failure",
-                "key": result["key"],
+            existing = await db.monitoring_incidents.find_one(incident_selector, {"_id": 1})
+            incident_fields = {
                 "label": result["label"],
                 "status": result["status"],
                 "status_code": result.get("status_code"),
                 "latency_ms": result.get("latency_ms"),
                 "error_message": result.get("error_message", ""),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "last_seen_at": now_iso,
                 "resolved": False,
-            })
+            }
+            if existing:
+                await db.monitoring_incidents.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": incident_fields, "$inc": {"failure_count": 1}},
+                )
+            else:
+                await db.monitoring_incidents.insert_one({
+                    "type": "probe_failure",
+                    "key": result["key"],
+                    **incident_fields,
+                    "failure_count": 1,
+                    "created_at": now_iso,
+                })
+        else:
+            await db.monitoring_incidents.update_many(
+                incident_selector,
+                {"$set": {
+                    "resolved": True,
+                    "resolved_at": now_iso,
+                    "resolution": "probe_recovered",
+                }},
+            )
 
 
 def get_system_stats():
@@ -568,16 +613,57 @@ async def error_center(request: Request):
     frontend_errors = await db.frontend_errors.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
     probes = await db.monitoring_probes.find({}, {"_id": 0}).to_list(50)
     incidents = await db.monitoring_incidents.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(80).to_list(80)
+    open_incidents = [item for item in incidents if item.get("resolved") is not True]
 
     api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
-    auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
+    auth_errors_1h = [
+        e for e in _metrics["requests"]
+        if e["ts"] >= since_1h_ts
+        and e.get("status", 0) >= 400
+        and ("/api/auth/login" in e.get("path", "") or "/api/auth/register" in e.get("path", ""))
+    ]
+
+    api_error_counts = defaultdict(int)
+    for item in api_errors_1h:
+        key = (
+            str(item.get("method") or ""),
+            str(item.get("path") or ""),
+            int(item.get("status") or 0),
+        )
+        api_error_counts[key] += 1
+    api_error_endpoints = [
+        {
+            "method": method,
+            "path": path,
+            "status_code": status,
+            "count": count,
+            "severity": "critical" if status >= 500 else "warning",
+        }
+        for (method, path, status), count in sorted(
+            api_error_counts.items(),
+            key=lambda pair: (-pair[1], -pair[0][2], pair[0][1]),
+        )[:20]
+    ]
 
     page_counts = defaultdict(int)
     for item in frontend_errors:
         page_counts[item.get("page") or "unknown"] += 1
     top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:8]
 
+    from core.router_registry import get_registration_state
+    router_state = get_registration_state()
+    failed_routers = list(router_state.get("failed") or [])
+
     alerts = []
+    for failed in failed_routers[:10]:
+        alerts.append({
+            "type": "router",
+            "label": f"Router nicht geladen: {failed.get('module') or 'unknown'}",
+            "key": f"router:{failed.get('module') or 'unknown'}:{failed.get('attr') or 'router'}",
+            "severity": "critical",
+            "message": failed.get("error") or failed.get("error_type") or "Router-Registrierung fehlgeschlagen",
+            "updated_at": now.isoformat(),
+        })
     for probe in probes:
       if probe.get("status") != "ok":
         alerts.append({
@@ -610,10 +696,14 @@ async def error_center(request: Request):
             "api_errors_1h": len(api_errors_1h),
             "auth_errors_1h": len(auth_errors_1h),
             "incidents_24h": len(incidents),
+            "open_incidents": len(open_incidents),
+            "failed_routers": len(failed_routers),
         },
         "alerts": alerts[:20],
         "probes": sorted(probes, key=lambda p: p.get("label", "")),
         "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
+        "api_error_endpoints": api_error_endpoints,
+        "failed_routers": failed_routers[:25],
         "frontend_errors": frontend_errors,
         "incidents": incidents,
         "daily_report": daily_report,
@@ -683,15 +773,27 @@ async def send_test_telegram(req: MonitoringTestTelegramRequest, request: Reques
 
 def record_request(path, method, status, duration_ms):
     now = time.time()
-    _metrics["requests"].append({
+    event = {
         "path": path, "method": method, "status": status,
         "duration_ms": duration_ms, "ts": now,
-    })
-    if status >= 400:
-        _metrics["errors"].append({
-            "path": path, "method": method, "status": status,
-            "duration_ms": duration_ms, "ts": now,
-        })
+    }
+    _metrics["requests"].append(event)
+
+    # Error Center is for actionable platform failures, not normal authorization
+    # denials or bad user input. Missing/wrong API routes and all 5xx remain visible.
+    ignored_scanner_paths = {
+        "/api/.env",
+        "/.env",
+        "/wp-admin",
+        "/wp-login.php",
+    }
+    actionable_http_error = (
+        status >= 500
+        or status in {404, 405}
+    ) and path not in ignored_scanner_paths
+    if actionable_http_error:
+        _metrics["errors"].append(event)
+
     if duration_ms > 500:
         _metrics["slow_endpoints"].append({
             "path": path, "method": method, "duration_ms": duration_ms, "ts": now,

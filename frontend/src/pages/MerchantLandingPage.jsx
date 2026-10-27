@@ -115,10 +115,10 @@ const MerchantLandingPage = ({ onNavigate }) => {
   ];
 
   const paymentMethods = [
-    { icon: Zap, key: "pm_wallet", fee: "0.3–0.5%", color: "#00E89D" },
-    { icon: Scan, key: "pm_barcode", fee: "0.5%", color: "#00E0FF" },
-    { icon: QrCode, key: "pm_qr", fee: "0.5%", color: "#A855F7" },
-    { icon: Smartphone, key: "pm_nfc", fee: "0.3%", color: "#FF6B6B" },
+    { icon: Zap, key: "pm_wallet", fee: t("merchant.commission_from"), color: "#00E89D" },
+    { icon: Scan, key: "pm_barcode", fee: t("merchant.commission_from"), color: "#00E0FF" },
+    { icon: QrCode, key: "pm_qr", fee: t("merchant.commission_from"), color: "#A855F7" },
+    { icon: Smartphone, key: "pm_nfc", fee: t("merchant.commission_from"), color: "#FF6B6B" },
     { icon: CreditCard, key: "pm_card", fee: "2.5%", color: "#FFB800" },
   ];
 
@@ -254,7 +254,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
               </span>
             </h1>
             <p className="text-base sm:text-lg text-white/30 max-w-xl mx-auto mb-8 leading-relaxed">
-              {t("ml.hero_desc") || "Lower fees than traditional card payments. Accept wallet, barcode, QR, and NFC-ready payments. Manage branches, staff, and registers. See live revenue and reports."}
+              {t("ml.hero_desc") || "Merchants pay a commission from 1.5% per transaction. The applicable rate depends on the payment method and agreement."}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <motion.button
@@ -290,7 +290,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
           {/* Stats */}
           <motion.div className="grid grid-cols-4 gap-3 mt-12 max-w-lg mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             {[
-              { val: "0.3%", label: t("ml.stat_fee") || "Lowest Fee" },
+              { val: t("merchant.commission_from"), label: t("ml.stat_fee") || "Merchant Commission" },
               { val: "<2s", label: t("ml.stat_speed") || "Payment Speed" },
               { val: "24/7", label: t("ml.stat_support") || "Support" },
               { val: "100K+", label: t("ml.stat_users") || "Users" },
@@ -428,7 +428,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
           <div className="text-center mb-10">
             <p className="text-[9px] text-[#00E89D]/40 uppercase tracking-[0.3em] font-bold mb-2">{t("ml.pricing_tag") || "PRICING"}</p>
             <h2 className="text-lg sm:text-xl font-bold text-white/80">{t("ml.pricing_title") || "Simple, Transparent Fees"}</h2>
-            <p className="text-[10px] text-white/20 mt-2 max-w-md mx-auto">{t("ml.pricing_desc") || "Lower fees for BidBlitz Wallet payments. Higher fees for card/contactless. No hidden charges."}</p>
+            <p className="text-[10px] text-white/20 mt-2 max-w-md mx-auto">{t("ml.pricing_desc") || "Merchants pay a commission from 1.5% per transaction. The applicable rate depends on the payment method and agreement."}</p>
           </div>
 
           {pricing?.plans ? (
@@ -465,7 +465,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
                       {plan.features.map((f, fi) => (
                         <div key={fi} className="flex items-center gap-2">
                           <Check size={9} style={{ color: c }} />
-                          <span className="text-[9px] text-white/35">{f}</span>
+                          <span className="text-[9px] text-white/35">{f.replace(/0[.,][35]% fee/g, t("merchant.commission_from"))}</span>
                         </div>
                       ))}
                     </div>
@@ -488,9 +488,9 @@ const MerchantLandingPage = ({ onNavigate }) => {
             <p className="text-[8px] text-white/15 uppercase tracking-widest font-bold mb-3">{t("ml.fee_comparison") || "FEE COMPARISON"}</p>
             <div className="space-y-2">
               {[
-                { method: "BidBlitz Wallet", fee: "0.5%", color: "#00E89D" },
-                { method: "NFC Wallet", fee: "0.3%", color: "#00E0FF" },
-                { method: "Barcode/QR", fee: "0.5%", color: "#A855F7" },
+                { method: "BidBlitz Wallet", fee: t("merchant.commission_from"), color: "#00E89D" },
+                { method: "NFC Wallet", fee: t("merchant.commission_from"), color: "#00E0FF" },
+                { method: "Barcode/QR", fee: t("merchant.commission_from"), color: "#A855F7" },
                 { method: "Card/Contactless", fee: "2.5%", color: "#FFB800" },
               ].map((f, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5">

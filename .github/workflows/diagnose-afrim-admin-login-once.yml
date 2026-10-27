@@ -1,0 +1,69 @@
+name: Diagnose Afrim Admin Login Once
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/diagnose-afrim-admin-login-once.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install SSH helper
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Inspect account mapping
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /var/www/bidblitz/backend
+          ./venv/bin/python - <<'PY'
+          import asyncio
+          from core.database import db
+
+          TARGET="afrimk@me.com"
+          CANONICAL="admin@bidblitz.ae"
+
+          async def main():
+              docs = await db.users.find(
+                  {"$or": [
+                      {"email": {"$in": [TARGET, CANONICAL]}},
+                      {"login_email": TARGET},
+                      {"canonical_email": {"$in": [TARGET, CANONICAL]}},
+                      {"email_aliases": TARGET},
+                  ]},
+                  {
+                      "_id": 1,
+                      "email": 1,
+                      "login_email": 1,
+                      "canonical_email": 1,
+                      "email_aliases": 1,
+                      "role": 1,
+                      "login_disabled": 1,
+                      "is_disabled": 1,
+                      "force_password_change": 1,
+                      "auth_version": 1,
+                  },
+              ).to_list(20)
+
+              safe=[]
+              for u in docs:
+                  safe.append({
+                      "id": str(u.get("_id")),
+                      "email": u.get("email"),
+                      "login_email": u.get("login_email"),
+                      "canonical_email": u.get("canonical_email"),
+                      "email_aliases": u.get("email_aliases") or [],
+                      "role": u.get("role"),
+                      "login_disabled": bool(u.get("login_disabled", False)),
+                      "is_disabled": bool(u.get("is_disabled", False)),
+                      "force_password_change": bool(u.get("force_password_change", False)),
+                      "auth_version": int(u.get("auth_version", 0) or 0),
+                  })
+              print(safe)
+
+          asyncio.run(main())
+          PY
+          REMOTE

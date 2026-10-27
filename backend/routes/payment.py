@@ -3,7 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
-from core.config import calculate_fee, FEES
+from core.config import calculate_fee, FEES, JWT_SECRET, TEST_MODE
 from core.rate_limit import limiter, RATE_PAYMENT
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
@@ -11,6 +11,7 @@ from core.payment_engine import TransactionType, debit_wallet, credit_wallet
 from schemas.models import PaymentRequest, SendRequest, MerchantScanPayment
 from routes.promotions import check_applicable_promotion, apply_promotion
 import secrets
+import os
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
 
@@ -78,7 +79,13 @@ async def pay(req: PaymentRequest, request: Request):
         merchant = await db.merchants.find_one({"_id": ObjectId(req.merchant_id)})
     if not merchant and req.merchant_id:
         merchant = await db.merchants.find_one({"user_id": req.merchant_id})
-    merchant_name = merchant["business_name"] if merchant else "Unknown Merchant"
+    if not merchant:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "merchant_not_found", "merchant_id": req.merchant_id, "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    merchant_name = merchant["business_name"]
 
     debit_result = await debit_wallet(
         user_id=user_id,
@@ -86,7 +93,7 @@ async def pay(req: PaymentRequest, request: Request):
         tx_type=TransactionType.PAYMENT,
         description=req.description or f"Payment to {merchant_name}",
         reference=ref,
-        merchant_id=str(merchant["_id"]) if merchant else None,
+        merchant_id=str(merchant["_id"]),
         merchant_name=merchant_name,
         metadata={
             "gross_amount": req.amount,
@@ -102,8 +109,64 @@ async def pay(req: PaymentRequest, request: Request):
 
     merchant_credit_txn = None
 
-    # Credit net amount to merchant, track fees
-    if merchant:
+    # Credit net amount to a real merchant wallet. Never debit a customer into nowhere.
+    merchant_user_id = str(merchant.get("user_id") or "")
+    if not merchant_user_id:
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=req.amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: merchant account unavailable ({merchant_name})",
+            reference=f"REF-{ref}",
+            source="payment.pay.rollback",
+            metadata={"original_reference": ref, "reason": "merchant_owner_missing"},
+            idempotency_key=f"refund:{debit_result.transaction_id}",
+        )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="Payment requires reconciliation")
+        raise HTTPException(status_code=409, detail="Merchant account unavailable")
+
+    merchant_credit_result = await credit_wallet(
+            user_id=merchant_user_id,
+            amount=net_to_merchant,
+            tx_type=TransactionType.MERCHANT_CREDIT,
+            description=f"Payment from {user['name']}",
+            reference=ref,
+            source=user_id,
+            metadata={
+                "gross_amount": req.amount,
+                "fee_amount": fee,
+                "net_amount": net_to_merchant,
+                "customer_name": user.get("name", ""),
+                "customer_email": user.get("email", ""),
+                "merchant_name": merchant_name,
+                "merchant_id": str(merchant["_id"]),
+                "audit_metadata": {"route": "payment.pay", "kind": "merchant_credit"},
+            },
+            idempotency_key=f"merchant-credit:{debit_result.transaction_id}",
+        )
+    if not merchant_credit_result.success:
+        rollback = await credit_wallet(
+            user_id=user_id,
+            amount=req.amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: payment to {merchant_name} failed",
+            reference=f"REF-{ref}",
+            source="payment.pay.rollback",
+            metadata={
+                "original_reference": ref,
+                "reason": merchant_credit_result.error or "merchant_credit_failed",
+                "audit_metadata": {"route": "payment.pay.rollback"},
+            },
+            idempotency_key=f"refund:{debit_result.transaction_id}",
+        )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="Payment requires reconciliation")
+        raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
+
+    merchant_credit_txn = await db.transactions.find_one({"id": merchant_credit_result.transaction_id}, {"_id": 0}) or {}
+
+    if not merchant_credit_result.idempotent_replay:
         await db.merchants.update_one(
             {"_id": merchant["_id"]},
             {
@@ -117,45 +180,6 @@ async def pay(req: PaymentRequest, request: Request):
             }
         )
 
-        merchant_user_id = str(merchant.get("user_id") or "")
-        if merchant_user_id:
-            merchant_credit_result = await credit_wallet(
-                user_id=merchant_user_id,
-                amount=net_to_merchant,
-                tx_type=TransactionType.MERCHANT_CREDIT,
-                description=f"Payment from {user['name']}",
-                reference=ref,
-                source=user_id,
-                metadata={
-                    "gross_amount": req.amount,
-                    "fee_amount": fee,
-                    "net_amount": net_to_merchant,
-                    "customer_name": user.get("name", ""),
-                    "customer_email": user.get("email", ""),
-                    "merchant_name": merchant_name,
-                    "merchant_id": str(merchant["_id"]),
-                    "audit_metadata": {"route": "payment.pay", "kind": "merchant_credit"},
-                },
-                idempotency_key=f"merchant-credit:{debit_result.transaction_id}",
-            )
-            if not merchant_credit_result.success:
-                await credit_wallet(
-                    user_id=user_id,
-                    amount=req.amount,
-                    tx_type=TransactionType.REFUND,
-                    description=f"Refund: payment to {merchant_name} failed",
-                    reference=f"REF-{ref}",
-                    source="payment.pay.rollback",
-                    metadata={
-                        "original_reference": ref,
-                        "reason": merchant_credit_result.error or "merchant_credit_failed",
-                        "audit_metadata": {"route": "payment.pay.rollback"},
-                    },
-                    idempotency_key=f"refund:{debit_result.transaction_id}",
-                )
-                raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
-            merchant_credit_txn = await db.transactions.find_one({"id": merchant_credit_result.transaction_id}, {"_id": 0}) or {}
-
     txn = await db.transactions.find_one({"id": debit_result.transaction_id}, {"_id": 0}) or {}
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
@@ -167,6 +191,8 @@ async def pay(req: PaymentRequest, request: Request):
 
     # Track first payment conversion
     try:
+        if debit_result.idempotent_replay:
+            raise RuntimeError("idempotent replay")
         existing_payments = await db.transactions.count_documents({"user_id": user_id, "type": "payment", "status": "completed"})
         if existing_payments <= 1:  # This is the first
             day_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -190,34 +216,39 @@ async def pay(req: PaymentRequest, request: Request):
     # ── Check for applicable promotions (cashback) ──
     promo_applied = None
     try:
-        promo = await check_applicable_promotion(user_id, "payment", req.amount)
-        if promo:
-            cashback = round(req.amount * promo["value"] / 100, 2)
-            if cashback > 0:
-                await credit_wallet(
-                    user_id=user_id,
-                    amount=cashback,
-                    tx_type=TransactionType.REWARD,
-                    description=f"Cashback: {promo['name']} ({promo['value']}%)",
-                    source="promotion",
-                    metadata={
-                        "promotion_name": promo["name"],
-                        "promotion_value": promo["value"],
-                        "reference_payment": ref,
-                        "audit_metadata": {"route": "payment.pay.cashback"},
-                    },
-                )
-                await apply_promotion(user_id, promo["name"], req.amount)
-                updated_user = await db.users.find_one({"_id": user["_id"]})
-                promo_applied = {"name": promo["name"], "cashback": cashback}
+        if not debit_result.idempotent_replay:
+            promo = await check_applicable_promotion(user_id, "payment", req.amount)
+            if promo:
+                cashback = round(req.amount * promo["value"] / 100, 2)
+                if cashback > 0:
+                    cashback_result = await credit_wallet(
+                        user_id=user_id,
+                        amount=cashback,
+                        tx_type=TransactionType.REWARD,
+                        description=f"Cashback: {promo['name']} ({promo['value']}%)",
+                        source="promotion",
+                        metadata={
+                            "promotion_name": promo["name"],
+                            "promotion_value": promo["value"],
+                            "reference_payment": debit_result.reference or ref,
+                            "audit_metadata": {"route": "payment.pay.cashback"},
+                        },
+                        idempotency_key=f"cashback:{debit_result.transaction_id}:{promo['name']}",
+                    )
+                    if cashback_result.success:
+                        await apply_promotion(user_id, promo["name"], req.amount)
+                        updated_user = await db.users.find_one({"_id": user["_id"]})
+                        promo_applied = {"name": promo["name"], "cashback": cashback}
     except Exception:
         pass
 
     # ── Loyalty / Coins reward ──
     try:
+        if debit_result.idempotent_replay:
+            raise RuntimeError("idempotent replay")
         from routes.loyalty_system import process_loyalty_rewards
         await process_loyalty_rewards(
-            user_id=user_id, source_type="payment", source_id=ref,
+            user_id=user_id, source_type="payment", source_id=debit_result.reference or ref,
             amount=req.amount, tx_id=txn["id"],
         )
     except Exception:
@@ -327,7 +358,7 @@ async def send_money(req: SendRequest, request: Request):
         idempotency_key=f"recv:{req.idempotency_key}" if req.idempotency_key else None,
     )
     if not recipient_result.success:
-        await credit_wallet(
+        rollback = await credit_wallet(
             user_id=user_id,
             amount=total_debit,
             tx_type=TransactionType.REFUND,
@@ -335,7 +366,10 @@ async def send_money(req: SendRequest, request: Request):
             reference=f"REF-{ref}",
             source="payment.send.rollback",
             metadata={"original_reference": ref, "reason": recipient_result.error or "recipient_credit_failed", "audit_metadata": {"route": "payment.send.rollback"}},
+            idempotency_key=f"refund:{sender_result.transaction_id}",
         )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="Transfer requires reconciliation")
         raise HTTPException(status_code=400, detail=recipient_result.error or "Transfer failed")
 
     sender_txn = await db.transactions.find_one({"id": sender_result.transaction_id}, {"_id": 0}) or {}
@@ -348,7 +382,7 @@ async def send_money(req: SendRequest, request: Request):
                              "recipient_email": req.recipient_email, "new_balance": updated_user["balance"]})
 
     # Record promo usage if applied
-    if promo_applied:
+    if promo_applied and not sender_result.idempotent_replay:
         try:
             await apply_promotion(user_id, promo_applied["name"], req.amount)
         except Exception:
@@ -356,9 +390,11 @@ async def send_money(req: SendRequest, request: Request):
 
     # ── Loyalty / Coins reward for transfers ──
     try:
+        if sender_result.idempotent_replay:
+            raise RuntimeError("idempotent replay")
         from routes.loyalty_system import process_loyalty_rewards
         await process_loyalty_rewards(
-            user_id=user_id, source_type="transfer", source_id=ref,
+            user_id=user_id, source_type="transfer", source_id=sender_result.reference or ref,
             amount=req.amount, tx_id=sender_txn["id"],
         )
     except Exception:
@@ -388,7 +424,8 @@ QR_ROTATION_SECONDS = 300  # 5 minutes
 def _generate_qr_token(base_barcode: str, time_slot: int) -> str:
     """Generate a time-based token for the dynamic QR code."""
     payload = f"{base_barcode}:{time_slot}".encode()
-    h = hmac.new(b"bidblitz-qr-secret", payload, hashlib.sha256).hexdigest()[:8].upper()
+    qr_key = hashlib.sha256(f"payment-qr:{JWT_SECRET}".encode("utf-8")).digest()
+    h = hmac.new(qr_key, payload, hashlib.sha256).hexdigest()[:8].upper()
     return h
 
 
@@ -462,18 +499,20 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
 
         barcode = base_barcode
     elif _BARCODE_RE.match(raw_code):
+        allow_legacy_static = TEST_MODE or os.environ.get("ALLOW_LEGACY_STATIC_PAYMENT_BARCODE", "").lower() == "true"
+        if not allow_legacy_static:
+            raise HTTPException(status_code=400, detail="scan.dynamic_qr_required")
         barcode = raw_code
     else:
         raise HTTPException(status_code=400, detail="scan.invalid_barcode_format")
 
     # ── 2. Idempotency check ──
     idem_key = req.idempotency_key
-    if idem_key:
-        existing = await db.transactions.find_one(
-            {"idempotency_key": idem_key},
-            {"_id": 0}
-        )
-        if existing:
+    existing = await db.transactions.find_one(
+        {"idempotency_key": idem_key, "direction": "debit"},
+        {"_id": 0}
+    )
+    if existing:
             existing_meta = existing.get("metadata") or {}
             # Already processed — return cached success
             return {
@@ -551,17 +590,6 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         raise HTTPException(status_code=400, detail="scan.insufficient")
 
     # ── 7. Credit merchant (only after successful deduction) ──
-    await db.merchants.update_one(
-        {"_id": merchant["_id"]},
-        {"$inc": {
-            "total_earnings": net_to_merchant,
-            "gross_earnings": req.amount,
-            "total_fees": fee,
-            "total_transactions": 1,
-            "available_payout": net_to_merchant,
-        }}
-    )
-
     merchant_credit_result = await credit_wallet(
         user_id=merchant_user_id,
         amount=net_to_merchant,
@@ -583,7 +611,7 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         idempotency_key=f"merchant-credit:{customer_debit.transaction_id}",
     )
     if not merchant_credit_result.success:
-        await credit_wallet(
+        rollback = await credit_wallet(
             user_id=customer_id,
             amount=req.amount,
             tx_type=TransactionType.REFUND,
@@ -597,7 +625,21 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
             },
             idempotency_key=f"refund:{customer_debit.transaction_id}",
         )
+        if not rollback.success:
+            raise HTTPException(status_code=500, detail="Payment requires reconciliation")
         raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
+
+    if not merchant_credit_result.idempotent_replay:
+        await db.merchants.update_one(
+            {"_id": merchant["_id"]},
+            {"$inc": {
+                "total_earnings": net_to_merchant,
+                "gross_earnings": req.amount,
+                "total_fees": fee,
+                "total_transactions": 1,
+                "available_payout": net_to_merchant,
+            }}
+        )
 
     # ── 8. Load created customer transaction ──
     customer_txn = await db.transactions.find_one({"id": customer_debit.transaction_id}, {"_id": 0}) or {}
@@ -616,26 +658,29 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
     # ── 11. Check for applicable promotions (cashback for customer) ──
     promo_applied = None
     try:
-        promo = await check_applicable_promotion(customer_id, "payment", req.amount)
-        if promo:
-            cashback = round(req.amount * promo["value"] / 100, 2)
-            if cashback > 0:
-                await credit_wallet(
-                    user_id=customer_id,
-                    amount=cashback,
-                    tx_type=TransactionType.REWARD,
-                    description=f"Cashback: {promo['name']} ({promo['value']}%)",
-                    source="promotion",
-                    metadata={
-                        "promotion_name": promo["name"],
-                        "promotion_value": promo["value"],
-                        "reference_payment": ref,
-                        "audit_metadata": {"route": "payment.merchant_scan.cashback"},
-                    },
-                )
-                await apply_promotion(customer_id, promo["name"], req.amount)
-                updated_customer = await db.users.find_one({"_id": customer["_id"]})
-                promo_applied = {"name": promo["name"], "cashback": cashback}
+        if not customer_debit.idempotent_replay:
+            promo = await check_applicable_promotion(customer_id, "payment", req.amount)
+            if promo:
+                cashback = round(req.amount * promo["value"] / 100, 2)
+                if cashback > 0:
+                    cashback_result = await credit_wallet(
+                        user_id=customer_id,
+                        amount=cashback,
+                        tx_type=TransactionType.REWARD,
+                        description=f"Cashback: {promo['name']} ({promo['value']}%)",
+                        source="promotion",
+                        metadata={
+                            "promotion_name": promo["name"],
+                            "promotion_value": promo["value"],
+                            "reference_payment": customer_debit.reference or ref,
+                            "audit_metadata": {"route": "payment.merchant_scan.cashback"},
+                        },
+                        idempotency_key=f"cashback:{customer_debit.transaction_id}:{promo['name']}",
+                    )
+                    if cashback_result.success:
+                        await apply_promotion(customer_id, promo["name"], req.amount)
+                        updated_customer = await db.users.find_one({"_id": customer["_id"]})
+                        promo_applied = {"name": promo["name"], "cashback": cashback}
     except Exception:
         pass
 

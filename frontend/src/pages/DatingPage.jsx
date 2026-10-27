@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, Star, Sparkles, MessageCircle, Crown, Edit2, SlidersH
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { DatingDiscoverSection } from "../components/dating/DatingDiscoverSection";
+import { TEST_MODE } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const emptyProfile = {
@@ -58,8 +59,41 @@ async function api(path, options = {}) {
     ...options,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || data.message || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const error = new Error(data.detail || data.message || `Request failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
   return data;
+}
+
+function newCheckoutKey(prefix) {
+  return typeof crypto?.randomUUID === "function"
+    ? `${prefix}-${crypto.randomUUID()}`
+    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getStableCheckoutKey(scope, prefix) {
+  const storageKey = `bidblitz-dating-checkout:${scope}`;
+  try {
+    let key = window.sessionStorage.getItem(storageKey);
+    if (!key) {
+      key = newCheckoutKey(prefix);
+      window.sessionStorage.setItem(storageKey, key);
+    }
+    return { key, storageKey };
+  } catch (_) {
+    return { key: newCheckoutKey(prefix), storageKey: null };
+  }
+}
+
+function clearStableCheckoutKey(storageKey) {
+  if (!storageKey) return;
+  try {
+    window.sessionStorage.removeItem(storageKey);
+  } catch (_) {
+    void _;
+  }
 }
 
 export default function DatingPage({ onBack }) {
@@ -372,37 +406,55 @@ export default function DatingPage({ onBack }) {
   }, []);
 
   const startPremiumCheckout = async (planId = null) => {
+    if (premiumCheckoutState.loading) return;
+    const chosenPlanId = planId || premiumPlans?.[0]?.plan_id || "gold_30d";
+    const attempt = getStableCheckoutKey(`premium:${chosenPlanId}`, "dating-premium");
     try {
       setPremiumCheckoutState({ loading: true, checking: false, sessionId: "" });
-      const chosenPlanId = planId || premiumPlans?.[0]?.plan_id || "gold_30d";
       const data = await api("/api/dating/premium/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan_id: chosenPlanId, origin_url: window.location.origin }),
+        headers: { "Idempotency-Key": attempt.key },
+        body: JSON.stringify({
+          plan_id: chosenPlanId,
+          origin_url: window.location.origin,
+          idempotency_key: attempt.key,
+        }),
       });
       if (data.checkout_url) {
+        clearStableCheckoutKey(attempt.storageKey);
         window.location.href = data.checkout_url;
         return;
       }
       throw new Error("Keine Checkout-URL erhalten");
     } catch (error) {
+      if (error?.status === 400) clearStableCheckoutKey(attempt.storageKey);
       toast.error(error.message);
       setPremiumCheckoutState({ loading: false, checking: false, sessionId: "" });
     }
   };
 
   const startConsumableCheckout = async (itemId) => {
+    if (packCheckoutState.loading) return;
+    const attempt = getStableCheckoutKey(`consumable:${itemId}`, "dating-consumable");
     try {
       setPackCheckoutState({ loading: itemId });
       const data = await api("/api/dating/consumables/checkout", {
         method: "POST",
-        body: JSON.stringify({ item_id: itemId, origin_url: window.location.origin }),
+        headers: { "Idempotency-Key": attempt.key },
+        body: JSON.stringify({
+          item_id: itemId,
+          origin_url: window.location.origin,
+          idempotency_key: attempt.key,
+        }),
       });
       if (data.checkout_url) {
+        clearStableCheckoutKey(attempt.storageKey);
         window.location.href = data.checkout_url;
         return;
       }
       throw new Error("Keine Checkout-URL erhalten");
     } catch (error) {
+      if (error?.status === 400) clearStableCheckoutKey(attempt.storageKey);
       toast.error(error.message);
       setPackCheckoutState({ loading: "" });
     }
@@ -1008,7 +1060,7 @@ export default function DatingPage({ onBack }) {
                   </div>
                   <div className="flex flex-wrap gap-2" data-testid="dating-profile-action-row">
                     <button onClick={activateBoost} disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)} className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${boostState.is_active ? "bg-yellow-400 text-black" : boostState.cooldown_remaining_seconds > 0 ? "bg-white/10 text-white/45" : "bg-yellow-500/15 text-yellow-200"}`} data-testid="dating-boost-button"><Zap size={14} className="inline mr-1" />{boostLabel}</button>
-                    {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
+                    {TEST_MODE && !userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Demo verifizieren</button>}
                     <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
                     {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
                   </div>

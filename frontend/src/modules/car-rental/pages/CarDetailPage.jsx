@@ -3,7 +3,7 @@
  * View car details and start booking
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Car, Fuel, Settings2, Users, MapPin, Calendar, Star,
@@ -44,6 +44,7 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState(null);
   const [bookingSuccess, setBookingSuccess] = useState(null);
+  const bookingAttemptKeyRef = useRef(null);
   
   const [activeImage, setActiveImage] = useState(0);
   const [reviews, setReviews] = useState([]);
@@ -54,6 +55,7 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
   }, [carId]);
 
   useEffect(() => {
+    bookingAttemptKeyRef.current = null;
     if (startDate && endDate && car) {
       loadPricing();
       checkAvailability();
@@ -109,6 +111,12 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
   };
 
   const handleBooking = async () => {
+    if (!bookingAttemptKeyRef.current) {
+      bookingAttemptKeyRef.current = typeof crypto?.randomUUID === "function"
+        ? `car-rental-${crypto.randomUUID()}`
+        : `car-rental-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = bookingAttemptKeyRef.current;
     setBookingLoading(true);
     setBookingError(null);
     
@@ -118,24 +126,23 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
         start_date: startDate,
         end_date: endDate,
         extras: selectedExtras,
+        idempotency_key: idempotencyKey,
       };
       
       const result = await createBooking(bookingData);
       
       if (result.ok && result.booking) {
-        // Pay for booking
         const payResult = await payBooking(result.booking.booking_id);
-        
         if (payResult.ok) {
+          bookingAttemptKeyRef.current = null;
           setBookingSuccess(result.booking);
           setShowBookingModal(false);
-        } else {
-          setBookingError(payResult.detail || "Zahlung fehlgeschlagen");
         }
-      } else {
-        setBookingError(result.detail || "Buchung fehlgeschlagen");
       }
     } catch (err) {
+      if (err?.status && err.status < 500 && err.status !== 409) {
+        bookingAttemptKeyRef.current = null;
+      }
       setBookingError(err.message || "Ein Fehler ist aufgetreten");
     }
     

@@ -1,0 +1,105 @@
+name: One-time Deploy Verified Work Branch
+
+on:
+  push:
+    branches: [work/cache-update-hardening]
+    paths: [.github/workflows/deploy-work-branch-once.yml]
+
+permissions:
+  contents: read
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Test and deploy merchant commission patch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ea1a26591a8a4787232b13143770e59966cf5036
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline payment regression tests
+        run: python -m unittest discover -s backend/tests -p test_merchant_commission_floor.py -v
+      - name: Package only the reviewed backend changes
+        run: |
+          set -euo pipefail
+          git diff f75e1f5835445f9f7c3573385774f0250365b172 ea1a26591a8a4787232b13143770e59966cf5036 -- backend/core/merchant_commission.py backend/core/payment_engine.py backend/routes/pos_payments.py backend/routes/merchant_hierarchy.py backend/tests/test_merchant_commission_floor.py > /tmp/bidblitz-commission.patch
+          test -s /tmp/bidblitz-commission.patch
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+      - name: Upload patch
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: sshpass -e scp -o StrictHostKeyChecking=no /tmp/bidblitz-commission.patch root@212.227.20.190:/tmp/bidblitz-commission.patch
+      - name: Stage, test, back up and activate patch
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@212.227.20.190 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          APP=/var/www/bidblitz/backend
+          PY="$APP/venv/bin/python"
+          test -x "$PY"
+          command -v patch >/dev/null
+          pm2 describe api >/dev/null
+          STAGE=$(mktemp -d /tmp/bidblitz-commission.XXXXXX)
+          mkdir -p "$STAGE/backend/core" "$STAGE/backend/routes" "$STAGE/backend/tests"
+          FILES="core/payment_engine.py routes/pos_payments.py routes/merchant_hierarchy.py"
+          for file in $FILES; do cp "$APP/$file" "$STAGE/backend/$file"; done
+          test ! -e "$APP/core/merchant_commission.py"
+          cd "$STAGE"
+          patch --dry-run --batch --forward --fuzz=0 -p1 < /tmp/bidblitz-commission.patch
+          patch --batch --forward --fuzz=0 -p1 < /tmp/bidblitz-commission.patch
+          "$PY" -m unittest discover -s backend/tests -p test_merchant_commission_floor.py -v
+          "$PY" -m compileall -q backend
+          BACKUP="/var/www/bidblitz/commission-backup-$(date -u +%Y%m%d%H%M%S)"
+          mkdir -p "$BACKUP/core" "$BACKUP/routes"
+          for file in $FILES; do cp -p "$APP/$file" "$BACKUP/$file"; done
+          rollback() {
+            result=$?
+            trap - ERR
+            for file in $FILES; do cp -p "$BACKUP/$file" "$APP/$file"; done
+            rm -f "$APP/core/merchant_commission.py"
+            pm2 restart api
+            echo "Commission update rolled back; backup: $BACKUP"
+            exit "$result"
+          }
+          trap rollback ERR
+          install -m 644 "$STAGE/backend/core/merchant_commission.py" "$APP/core/merchant_commission.py"
+          for file in $FILES; do cat "$STAGE/backend/$file" > "$APP/$file"; done
+          pm2 restart api
+          verified=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 10 http://127.0.0.1:8001/api/payments/pricing -o "$STAGE/live-pricing.json"; then
+              if "$PY" - "$STAGE/live-pricing.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          fees = data["fee_structure"]
+          assert all(item["rate"] >= 1.5 for item in fees.values()), fees
+          assert "0.5% fee" not in json.dumps(data)
+          assert "0.3% fee" not in json.dumps(data)
+          print("Verified live merchant fee rates:", {key: value["rate"] for key, value in fees.items()})
+          PY
+              then verified=1; break; fi
+            fi
+            sleep 2
+          done
+          test "$verified" = 1
+          curl -fsS --max-time 20 https://bidblitz.ae/api/payments/pricing -o "$STAGE/public-pricing.json"
+          "$PY" - "$STAGE/public-pricing.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          assert all(item["rate"] >= 1.5 for item in data["fee_structure"].values())
+          print("Public merchant pricing verified: minimum 1.5%")
+          PY
+          curl -fsS --max-time 20 https://bidblitz.ae/api/system/version >/dev/null
+          trap - ERR
+          echo "Merchant commission patch ea1a26591a8a4787232b13143770e59966cf5036 activated; backup: $BACKUP"
+          rm -f /tmp/bidblitz-commission.patch
+          REMOTE

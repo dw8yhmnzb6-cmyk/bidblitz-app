@@ -9,9 +9,20 @@ export default function BlitzCardPage({ onBack }) {
   const [myCard, setMyCard] = useState(null);
   const [loading, setLoading] = useState("");
   const [msg, setMsg] = useState("");
+  const [capabilities, setCapabilities] = useState({ issuer_live: false, orders_enabled: false, message: "" });
 
   useEffect(() => {
-    fetch(`${API}/api/blitzcard/tiers`).then(r => r.json()).then(d => setTiers(d.tiers || [])).catch(() => {});
+    fetch(`${API}/api/blitzcard/tiers`)
+      .then(r => r.json())
+      .then(d => {
+        setTiers(d.tiers || []);
+        setCapabilities(prev => ({ ...prev, issuer_live: !!d.issuer_live, orders_enabled: !!d.orders_enabled }));
+      })
+      .catch(() => {});
+    fetch(`${API}/api/blitzcard/capabilities`)
+      .then(r => r.json())
+      .then(d => setCapabilities(d))
+      .catch(() => {});
     fetch(`${API}/api/blitzcard/my-card`, { credentials: "include" }).then(r => r.json()).then(d => setMyCard(d)).catch(() => {});
   }, []);
 
@@ -37,7 +48,7 @@ export default function BlitzCardPage({ onBack }) {
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center" data-testid="card-back-btn"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="text-base font-bold flex items-center gap-2"><CreditCard size={18} className="text-sky-400" /> BlitzCard</h1>
-            <p className="text-[10px] text-sky-400">Visa Debit mit Crypto-Cashback</p>
+            <p className="text-[10px] text-sky-400">Kartentarife · Ausgabe erst mit Live-Issuer</p>
           </div>
         </div>
       </div>
@@ -78,6 +89,12 @@ export default function BlitzCardPage({ onBack }) {
       )}
 
       <div className="px-4 pt-4 space-y-4">
+        {!capabilities.issuer_live && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="blitzcard-issuer-unavailable">
+            <p className="font-bold">Kartenausgabe noch nicht aktiviert</p>
+            <p className="mt-1 text-xs text-amber-100/70">{capabilities.message || "Ein verifizierter Live-Issuer muss zuerst verbunden werden."}</p>
+          </div>
+        )}
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{myCard?.has_card ? "Upgrade deine Karte" : "Waehle deine Karte"}</p>
         {tiers.map((tier, i) => {
           const isActive = myCard?.card?.tier_id === tier.id;
@@ -103,10 +120,10 @@ export default function BlitzCardPage({ onBack }) {
               {isActive ? (
                 <div className="w-full py-2.5 bg-sky-500/10 rounded-xl text-center text-sky-400 text-xs font-bold">Deine aktive Karte</div>
               ) : (
-                <button onClick={() => order(tier.id)} disabled={loading === tier.id}
+                <button onClick={() => capabilities.orders_enabled && order(tier.id)} disabled={loading === tier.id || !capabilities.orders_enabled}
                   className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
                   data-testid={`order-card-${tier.id}`}>
-                  {loading === tier.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Karte bestellen"}
+                  {loading === tier.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : capabilities.orders_enabled ? "Karte bestellen" : "Noch nicht verfügbar"}
                 </button>
               )}
             </motion.div>

@@ -82,16 +82,40 @@ export default function TwoFactorSettingsPage({ onBack }) {
 
   const handleDisable = async () => {
     if (!window.confirm("2FA wirklich deaktivieren? Dein Konto wird weniger sicher.")) return;
-    
+
     try {
+      if ((status?.method || "email") === "email") {
+        const codeRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/2fa/send-disable-code`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!codeRes.ok) {
+          const err = await codeRes.json().catch(() => ({}));
+          toast.error(err.detail || "Bestätigungscode konnte nicht gesendet werden");
+          return;
+        }
+        toast.success("Bestätigungscode wurde per E-Mail gesendet");
+      }
+
+      const label = (status?.method || "email") === "totp"
+        ? "Gib deinen aktuellen Authenticator-Code oder einen Backup-Code ein:"
+        : "Gib den 6-stelligen Code aus deiner E-Mail ein:";
+      const code = window.prompt(label, "")?.trim();
+      if (!code) return;
+
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/2fa/disable`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ code }),
       });
       if (res.ok) {
-        toast.success("2FA deaktiviert");
-        fetchStatus();
+        toast.success("2FA deaktiviert. Aus Sicherheitsgründen wurden aktive Sitzungen beendet.");
         setStep("overview");
+        window.location.reload();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.detail || "2FA-Code ungültig");
       }
     } catch (err) {
       toast.error("Fehler beim Deaktivieren");

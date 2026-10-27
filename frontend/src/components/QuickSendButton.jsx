@@ -7,6 +7,7 @@ const QuickSendButton = ({ savedRecipient, onSendComplete, disabled = false, onD
   const [showAmountInput, setShowAmountInput] = useState(false);
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(null);
   
   const iconMap = {
     family: '👨‍👩‍👧',
@@ -27,6 +28,8 @@ const QuickSendButton = ({ savedRecipient, onSendComplete, disabled = false, onD
     }
 
     setSending(true);
+    const requestKey = idempotencyKey || crypto.randomUUID();
+    setIdempotencyKey(requestKey);
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/wallet/transfer-by-number`, {
         method: 'POST',
@@ -34,7 +37,8 @@ const QuickSendButton = ({ savedRecipient, onSendComplete, disabled = false, onD
         credentials: 'include',
         body: JSON.stringify({
           recipient_number: savedRecipient.recipient_number,
-          amount: parseFloat(amount)
+          amount: parseFloat(amount),
+          idempotency_key: requestKey
         })
       });
 
@@ -43,6 +47,7 @@ const QuickSendButton = ({ savedRecipient, onSendComplete, disabled = false, onD
         toast.success(`€${amount} an ${savedRecipient.nickname} gesendet! 🎉`);
         setShowAmountInput(false);
         setAmount("");
+        setIdempotencyKey(null);
         if (onSendComplete) onSendComplete(data);
       } else {
         const err = await res.json();

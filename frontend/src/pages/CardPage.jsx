@@ -7,7 +7,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 export default function CardPage({ onNavigate }) {
   const [view, setView] = useState('home');
   const [tiers, setTiers] = useState([]);
-  const [status, setStatus] = useState({ applications: [], has_virtual: false, total_waitlist: 0 });
+  const [status, setStatus] = useState({ applications: [], has_virtual: false, total_waitlist: 0, issuer_live: false });
   const [selectedTier, setSelectedTier] = useState(null);
   const [shipping, setShipping] = useState({ name: '', street: '', city: '', zip: '', country: 'DE' });
   const [consent, setConsent] = useState(false);
@@ -69,7 +69,7 @@ export default function CardPage({ onNavigate }) {
         <AnimatePresence mode="wait">
           {view === 'home' && (
             <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
-              {activeCard && (
+              {activeCard && status.has_virtual && (
                 <div data-testid="card-active" className={`relative p-6 rounded-2xl bg-gradient-to-br ${tiers.find((t) => t.id === activeCard.tier)?.gradient || 'from-cyan-500 to-blue-500'} text-white shadow-2xl overflow-hidden`}>
                   <div className="flex items-start justify-between mb-8">
                     <span className="text-xs font-bold tracking-widest uppercase opacity-80">BidBlitz {activeCard.tier_name}</span>
@@ -135,8 +135,8 @@ export default function CardPage({ onNavigate }) {
 
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <p className="text-[10px] text-white/30 leading-relaxed">
-                  💡 Diese Karten sind derzeit <span className="text-yellow-400 font-bold">DEMO</span>.
-                  Physische Karten werden verschickt sobald der BaFin-lizensierte Karten-Partner (Weavr/Railsr) in Betrieb ist.
+                  Kartenausgabe ist derzeit <span className="text-yellow-400 font-bold">Warteliste</span>.
+                  Eine echte virtuelle oder physische Karte wird erst nach Live-Anbindung eines verifizierten Karten-Issuers ausgegeben.
                   {status.total_waitlist > 0 && ` ${status.total_waitlist} Nutzer bereits auf Warteliste.`}
                 </p>
               </div>
@@ -185,7 +185,7 @@ export default function CardPage({ onNavigate }) {
 
               <label className="flex items-start gap-2 text-xs text-white/60 cursor-pointer">
                 <input data-testid="card-consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
-                <span>Ich akzeptiere die AGB + Datenschutzbestimmungen und bestätige dass BidBlitz Card Issuer Partner meine Daten an Weavr/Railsr weitergeben darf.</span>
+                <span>Ich akzeptiere die AGB + Datenschutzbestimmungen. Vor einer echten Kartenausgabe werde ich über den verbundenen Issuer und die erforderliche Datenweitergabe informiert.</span>
               </label>
 
               {applyMsg && (
@@ -198,7 +198,7 @@ export default function CardPage({ onNavigate }) {
                 className="w-full py-4 rounded-xl text-black font-bold text-lg disabled:opacity-30 flex items-center justify-center gap-2"
                 style={{ background: selectedTier.color_hex }}>
                 {applying ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
-                {selectedTier.id === 'virtual_free' ? 'Virtuelle Karte ausgeben' : 'Auf Warteliste eintragen'}
+                {status.issuer_live && selectedTier.id === 'virtual_free' ? 'Virtuelle Karte ausgeben' : 'Auf Warteliste eintragen'}
               </button>
             </motion.div>
           )}

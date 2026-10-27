@@ -7,6 +7,7 @@ import { useI18n, useUser } from "../store";
 import { useNetwork } from "../store/NetworkContext";
 import { api } from "../services/api";
 import { tracker } from "../services/tracker";
+import { TEST_MODE } from "../config/testMode";
 import { PosCartPanel } from "../components/merchant-pos/PosCartPanel";
 import { PosConnectionStatus } from "../components/merchant-pos/PosConnectionStatus";
 import { getPosCopy } from "../components/merchant-pos/posCopy";
@@ -69,6 +70,18 @@ function roleSummaryMetrics(copy, role, sales = []) {
 
 export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const user = useUser();
+  const posCartRecoveryKey = `bidblitz:merchant-pos-cart:${user?.id || user?.email || "unknown"}`;
+  const initialCartRecovery = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(posCartRecoveryKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed?.cartSession?.cartId || !Array.isArray(parsed?.cart) || !parsed.cart.length) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, [posCartRecoveryKey]);
   const { isEnabled } = useFeatureFlags();
   const { lang } = useI18n();
   const { online } = useNetwork();
@@ -80,7 +93,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const [selectedCategory, setSelectedCategory] = useState("Alle");
   const [search, setSearch] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => initialCartRecovery?.cart || []);
   const [loading, setLoading] = useState(true);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -88,7 +101,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   const [paymentState, setPaymentState] = useState({ stage: "ready", headline: copy.choosePayment, description: copy.holdCard });
   const [activePayment, setActivePayment] = useState(null);
   const [lastAttemptedMethodKey, setLastAttemptedMethodKey] = useState(null);
-  const [cartSession, setCartSession] = useState(null);
+  const [cartSession, setCartSession] = useState(() => initialCartRecovery?.cartSession || null);
   const [favourites, setFavourites] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bidblitz-pos-favourites") || "[]"); } catch { return []; }
   });
@@ -97,6 +110,22 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
   });
   const [showTraining, setShowTraining] = useState(() => !localStorage.getItem(POS_TRAINING_STORAGE_KEY));
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (cartSession?.cartId && cart.length > 0) {
+        window.localStorage.setItem(
+          posCartRecoveryKey,
+          JSON.stringify({ cartSession, cart, savedAt: new Date().toISOString() }),
+        );
+      } else {
+        window.localStorage.removeItem(posCartRecoveryKey);
+      }
+    } catch {
+      // Browser storage can be unavailable in restricted/private contexts.
+    }
+  }, [cart, cartSession, posCartRecoveryKey]);
 
   const role = useMemo(() => {
     if (user?.role === "admin" || user?.role === "merchant") return "owner";
@@ -197,8 +226,10 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       const featureKey = `merchant.pos.payment.${key === "card" ? "card" : key}`;
       const enabledByFeature = meta ? isEnabled(featureKey, user, { platform: "web", country: setup?.progress?.business_info?.country || "DE" }) : true;
       const enabledBySetup = paymentMethods[key] === "enabled" || paymentMethods[key] === true;
-      const certified = key !== "tap_to_pay";
-      const enabled = Boolean(enabledByFeature && enabledBySetup && certified);
+      const externalCardCertified = TEST_MODE && process.env.REACT_APP_POS_EXTERNAL_CARD_CERTIFIED === "true";
+      const correctlyWired = !["voucher", "invoice"].includes(key);
+      const certified = key !== "tap_to_pay" && (key !== "card" || externalCardCertified);
+      const enabled = Boolean(enabledByFeature && enabledBySetup && certified && correctlyWired);
       return { key, label: meta.label, apiMethod: meta.apiMethod, description: copy[meta.descriptionKey], enabled };
     });
   }, [copy, isEnabled, setup, user]);
@@ -317,7 +348,9 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
       const cartId = await ensureCartSession();
       const body = { cart_id: cartId, method: method.apiMethod };
       if (method.apiMethod === "cash") body.cash_received = totals.total;
-      if (method.apiMethod === "card_external") body.card_reference = `CARD-${Date.now()}`;
+      if (method.apiMethod === "card_external") {
+        throw new Error("Kartenzahlung benötigt eine verifizierte Terminal-Provider-Referenz.");
+      }
       broadcastState(method.apiMethod === "card_external" ? "processing" : "awaiting", method.apiMethod === "card_external" ? copy.processing : copy.choosePayment, method.description);
       const response = await api.createPosPayment(body);
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import secrets
+import hashlib
 from typing import Any
 
 from bson import ObjectId
@@ -7,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.payment_engine import TransactionType, credit_wallet, debit_wallet
 from core.security import get_current_user
 
@@ -15,6 +17,43 @@ router = APIRouter(prefix="/api/commerce-center", tags=["commerce-center"])
 
 PLATFORM_COMMISSION = 0.05
 FLASH_SALE_DISCOUNTS = [0.12, 0.18, 0.22, 0.15]
+
+
+def _require_flash_idempotency_key(body_key: str | None, request: Request) -> str:
+    key = (body_key or request.headers.get("Idempotency-Key") or "").strip()
+    if not 8 <= len(key) <= 200:
+        raise HTTPException(status_code=400, detail="Idempotency-Key erforderlich")
+    return f"commerce-flash:{key}"
+
+
+async def _credit_flash_revenue_once(order_id: str, amount: float, now: datetime) -> None:
+    if amount <= 0:
+        return
+    day = now.strftime("%Y-%m-%d")
+    existing = await db.platform_revenue.find_one({"date": day}, {"_id": 0, "commerce_order_ids": 1})
+    if not existing:
+        try:
+            await db.platform_revenue.insert_one({
+                "revenue_id": secrets.token_hex(8),
+                "date": day,
+                "total": amount,
+                "by_source": {"commerce_flash_sales": amount},
+                "commerce_order_ids": [order_id],
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            })
+            return
+        except Exception:
+            pass
+
+    await db.platform_revenue.update_one(
+        {"date": day, "commerce_order_ids": {"$ne": order_id}},
+        {
+            "$inc": {"total": amount, "by_source.commerce_flash_sales": amount},
+            "$addToSet": {"commerce_order_ids": order_id},
+            "$set": {"updated_at": now.isoformat()},
+        },
+    )
 
 CATEGORY_THEME = {
     "tech": {"label": "Tech", "accent": "#38bdf8"},
@@ -28,6 +67,7 @@ CATEGORY_THEME = {
 
 class FlashSalePurchaseRequest(BaseModel):
     use_shipping: bool = False
+    idempotency_key: str | None = None
 
 
 class FlashSaleCreateRequest(BaseModel):
@@ -806,211 +846,312 @@ async def track_commerce_center_event(req: CommerceEventTrackRequest, request: R
     return {"ok": True}
 
 
+async def _release_flash_claim(sale_id: str, listing_id: str, key_hash: str) -> None:
+    await db.commerce_flash_sales.update_one(
+        {"sale_id": sale_id, "reservation_key": key_hash, "status": "processing"},
+        {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""}},
+    )
+    await db.marketplace_listings.update_one(
+        {"listing_id": listing_id, "flash_purchase_key": key_hash, "status": "processing_flash"},
+        {
+            "$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()},
+            "$unset": {"flash_purchase_key": ""},
+        },
+    )
+
+
 @router.post("/flash-sales/{sale_id}/buy")
 async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: Request):
+    """Buy one flash-sale unit exactly once and resume safely after retries."""
     user = await get_current_user(request)
     buyer_id = str(user["_id"])
+    idempotency_key = _require_flash_idempotency_key(req.idempotency_key, request)
+    key_hash = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:20]
+    order_id = f"CCO-{key_hash}"
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
-    sale = await db.commerce_flash_sales.find_one(
-        {
-            "sale_id": sale_id,
-            "status": "active",
-            "ends_at": {"$gt": now_iso},
-            "remaining_units": {"$gt": 0},
-        },
+    existing_order = await db.commerce_orders.find_one(
+        {"order_id": order_id, "buyer_id": buyer_id},
         {"_id": 0},
     )
+    if existing_order and existing_order.get("status") == "completed":
+        await _credit_flash_revenue_once(order_id, float(existing_order.get("commission") or 0), datetime.fromisoformat(existing_order["created_at"]))
+        fresh_user = await db.users.find_one({"_id": user["_id"]}, {"balance": 1, "_id": 0}) or {}
+        return {
+            "ok": True,
+            "order": existing_order,
+            "new_balance": round(float(fresh_user.get("balance") or 0), 2),
+            "message": "Flash Sale bereits gekauft.",
+            "replayed": True,
+        }
+    if existing_order and existing_order.get("status") in {"refunded", "payment_failed"}:
+        raise HTTPException(status_code=409, detail="Dieser Kaufversuch wurde beendet. Bitte starte einen neuen Kauf.")
+
+    sale = await db.commerce_flash_sales.find_one({"sale_id": sale_id}, {"_id": 0})
     if not sale:
         raise HTTPException(status_code=404, detail="Flash Sale nicht verfügbar")
-
     if sale.get("seller_id") == buyer_id:
         raise HTTPException(status_code=400, detail="Du kannst deinen eigenen Flash Sale nicht kaufen")
 
-    platform_owned = not sale.get("seller_id")
-    seller = None
-    if not platform_owned:
-        seller_query = {"_id": ObjectId(sale["seller_id"])} if ObjectId.is_valid(sale.get("seller_id", "")) else {"_id": sale.get("seller_id")}
-        seller = await db.users.find_one(seller_query, {"_id": 1, "name": 1})
-        if not seller:
-            raise HTTPException(status_code=400, detail="Verkäuferkonto nicht gefunden")
-
-    sale_lock = await db.commerce_flash_sales.update_one(
-        {
-            "sale_id": sale_id,
-            "status": "active",
-            "ends_at": {"$gt": now_iso},
-            "remaining_units": {"$gt": 0},
-        },
-        {"$set": {"status": "processing", "reserved_by": buyer_id, "reserved_at": now_iso}},
-    )
-    if sale_lock.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Flash Sale wurde gerade reserviert oder verkauft")
-
-    listing = await db.marketplace_listings.find_one(
-        {"listing_id": sale["listing_id"], "status": "active"},
-        {"_id": 0},
-    )
-    if not listing:
-        await db.commerce_flash_sales.update_one(
-            {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
-            {"$set": {"status": "inactive"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+    # Claim or resume this exact sale reservation.
+    if not (
+        sale.get("status") == "processing"
+        and sale.get("reserved_by") == buyer_id
+        and sale.get("reservation_key") == key_hash
+    ):
+        lock = await db.commerce_flash_sales.update_one(
+            {
+                "sale_id": sale_id,
+                "status": "active",
+                "ends_at": {"$gt": now_iso},
+                "remaining_units": {"$gt": 0},
+            },
+            {"$set": {
+                "status": "processing",
+                "reserved_by": buyer_id,
+                "reservation_key": key_hash,
+                "reserved_at": now_iso,
+            }},
         )
+        if lock.modified_count != 1:
+            current = await db.commerce_flash_sales.find_one({"sale_id": sale_id}, {"_id": 0}) or {}
+            if not (
+                current.get("status") == "processing"
+                and current.get("reserved_by") == buyer_id
+                and current.get("reservation_key") == key_hash
+            ):
+                raise HTTPException(status_code=409, detail="Flash Sale wurde gerade reserviert oder verkauft")
+        sale = await db.commerce_flash_sales.find_one({"sale_id": sale_id}, {"_id": 0}) or sale
+
+    listing = await db.marketplace_listings.find_one({"listing_id": sale["listing_id"]}, {"_id": 0})
+    if not listing:
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
         raise HTTPException(status_code=400, detail="Produkt ist nicht mehr verfügbar")
 
-    listing_lock = await db.marketplace_listings.update_one(
-        {"listing_id": sale["listing_id"], "status": "active"},
-        {"$set": {"status": "processing_flash", "updated_at": now_iso}},
-    )
-    if listing_lock.modified_count == 0:
-        await db.commerce_flash_sales.update_one(
-            {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
-            {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+    if not (
+        listing.get("status") == "processing_flash"
+        and listing.get("flash_purchase_key") == key_hash
+    ):
+        listing_lock = await db.marketplace_listings.update_one(
+            {"listing_id": sale["listing_id"], "status": "active"},
+            {"$set": {
+                "status": "processing_flash",
+                "flash_purchase_key": key_hash,
+                "updated_at": now_iso,
+            }},
         )
-        raise HTTPException(status_code=400, detail="Produkt wird bereits gekauft")
+        if listing_lock.modified_count != 1:
+            current_listing = await db.marketplace_listings.find_one({"listing_id": sale["listing_id"]}, {"_id": 0}) or {}
+            if not (
+                current_listing.get("status") == "processing_flash"
+                and current_listing.get("flash_purchase_key") == key_hash
+            ):
+                raise HTTPException(status_code=409, detail="Produkt wird bereits gekauft")
+        listing = await db.marketplace_listings.find_one({"listing_id": sale["listing_id"]}, {"_id": 0}) or listing
 
-    shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0
+    platform_owned = not sale.get("seller_id")
+    if not platform_owned and not TEST_MODE:
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Flash-Sale-Käufe von externen Marketplace-Verkäufern sind in Production "
+                "bis zur Escrow-/Versandfreigabe deaktiviert. Es wird kein Käufergeld abgebucht."
+            ),
+        )
+    seller = None
+    if not platform_owned:
+        seller_query = {"_id": ObjectId(sale["seller_id"])} if ObjectId.is_valid(str(sale.get("seller_id") or "")) else {"_id": sale.get("seller_id")}
+        seller = await db.users.find_one(seller_query, {"_id": 1, "name": 1})
+        if not seller:
+            await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
+            raise HTTPException(status_code=400, detail="Verkäuferkonto nicht gefunden")
+
+    shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0.0
     sale_price = round(float(sale.get("sale_price") or listing.get("price") or 0), 2)
     total_price = round(sale_price + shipping_cost, 2)
     commission = round(total_price if platform_owned else sale_price * PLATFORM_COMMISSION, 2)
-    seller_amount = 0 if platform_owned else round(sale_price - commission + shipping_cost, 2)
-    order_id = f"cc_{secrets.token_hex(6)}"
-    payment_committed = False
+    seller_amount = 0.0 if platform_owned else round(sale_price - commission + shipping_cost, 2)
     seller_name = sale.get("seller_name") or (seller.get("name") if seller else "BidBlitz Deals")
 
-    try:
-        debit_result = await debit_wallet(
-            user_id=buyer_id,
-            amount=total_price,
-            tx_type=TransactionType.PAYMENT,
-            description=f"Commerce Flash Sale: {listing['title'][:50]}",
-            reference=f"FLASH-{sale_id[:10].upper()}",
-            merchant_name=seller_name,
+    order = existing_order or {
+        "order_id": order_id,
+        "sale_id": sale_id,
+        "listing_id": sale["listing_id"],
+        "buyer_id": buyer_id,
+        "buyer_name": user.get("name", ""),
+        "seller_id": sale.get("seller_id"),
+        "seller_name": seller_name,
+        "item_title": listing["title"],
+        "original_price": round(float(listing.get("price") or 0), 2),
+        "sale_price": sale_price,
+        "shipping_cost": shipping_cost,
+        "total_price": total_price,
+        "discount_pct": sale.get("discount_pct", 0),
+        "commission": commission,
+        "seller_amount": seller_amount,
+        "platform_owned": platform_owned,
+        "status": "processing",
+        "idempotency_key": idempotency_key,
+        "created_at": now_iso,
+    }
+    await db.commerce_orders.update_one(
+        {"order_id": order_id},
+        {"$setOnInsert": order},
+        upsert=True,
+    )
+
+    debit_result = await debit_wallet(
+        user_id=buyer_id,
+        amount=total_price,
+        tx_type=TransactionType.PAYMENT,
+        description=f"Commerce Flash Sale: {listing['title'][:50]}",
+        reference=f"FLASH-{key_hash[:12].upper()}",
+        merchant_name=seller_name,
+        metadata={
+            "sale_id": sale_id,
+            "listing_id": sale["listing_id"],
+            "order_id": order_id,
+            "channel": "flash_sale",
+        },
+        idempotency_key=idempotency_key,
+    )
+    if not debit_result.success:
+        await db.commerce_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {"status": "payment_failed", "failure_reason": debit_result.error, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        await _release_flash_claim(sale_id, sale["listing_id"], key_hash)
+        raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
+
+    credit_result = None
+    if not platform_owned:
+        credit_result = await credit_wallet(
+            user_id=sale["seller_id"],
+            amount=seller_amount,
+            tx_type=TransactionType.MERCHANT_CREDIT,
+            description=f"Flash Sale Verkauf: {listing['title'][:50]}",
+            reference=f"FLASH-SELL-{key_hash[:12].upper()}",
+            source="commerce_center",
             metadata={
                 "sale_id": sale_id,
                 "listing_id": sale["listing_id"],
                 "order_id": order_id,
-                "channel": "flash_sale",
+                "discount_pct": sale.get("discount_pct", 0),
+                "commission": commission,
             },
+            idempotency_key=f"flash-seller:{idempotency_key}",
         )
-        if not debit_result.success:
-            raise HTTPException(status_code=400, detail=debit_result.error)
-
-        payment_committed = True
-        credit_result = None
-        if not platform_owned:
-            credit_result = await credit_wallet(
-                user_id=sale["seller_id"],
-                amount=seller_amount,
-                tx_type=TransactionType.MERCHANT_CREDIT,
-                description=f"Flash Sale Verkauf: {listing['title'][:50]}",
-                reference=f"FLASH-SELL-{sale_id[:8].upper()}",
-                source="commerce_center",
-                metadata={
-                    "sale_id": sale_id,
-                    "listing_id": sale["listing_id"],
-                    "order_id": order_id,
-                    "discount_pct": sale.get("discount_pct", 0),
-                    "commission": commission,
-                },
+        if not credit_result.success:
+            refund = await credit_wallet(
+                user_id=buyer_id,
+                amount=total_price,
+                tx_type=TransactionType.REFUND,
+                description=f"Flash Sale Rückbuchung: {listing['title'][:50]}",
+                reference=f"FLASH-REF-{key_hash[:12].upper()}",
+                source="commerce_flash_rollback",
+                metadata={"sale_id": sale_id, "listing_id": sale["listing_id"], "order_id": order_id},
+                idempotency_key=f"flash-refund:{idempotency_key}",
             )
+            status = "refunded" if refund.success else "reconciliation_required"
+            await db.commerce_orders.update_one(
+                {"order_id": order_id},
+                {"$set": {
+                    "status": status,
+                    "buyer_payment_id": debit_result.transaction_id,
+                    "refund_payment_id": refund.transaction_id if refund.success else None,
+                    "failure_reason": credit_result.error or "seller_credit_failed",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            await db.commerce_flash_sales.update_one(
+                {"sale_id": sale_id, "reservation_key": key_hash},
+                {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""}},
+            )
+            await db.marketplace_listings.update_one(
+                {"listing_id": sale["listing_id"], "flash_purchase_key": key_hash},
+                {"$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}, "$unset": {"flash_purchase_key": ""}},
+            )
+            if not refund.success:
+                raise HTTPException(status_code=500, detail="Verkäufergutschrift und Rückbuchung fehlgeschlagen. Manuelle Prüfung erforderlich.")
+            raise HTTPException(status_code=400, detail="Verkäufergutschrift fehlgeschlagen. Käuferbetrag wurde zurückgebucht.")
 
-        order = {
-            "order_id": order_id,
-            "sale_id": sale_id,
-            "listing_id": sale["listing_id"],
-            "buyer_id": buyer_id,
-            "buyer_name": user.get("name", ""),
-            "seller_id": sale["seller_id"],
-            "seller_name": seller_name,
-            "item_title": listing["title"],
-            "original_price": round(float(listing.get("price") or 0), 2),
-            "sale_price": sale_price,
-            "shipping_cost": shipping_cost,
-            "total_price": total_price,
-            "discount_pct": sale.get("discount_pct", 0),
-            "commission": commission,
-            "seller_amount": seller_amount,
-            "platform_owned": platform_owned,
+    completed_at = datetime.now(timezone.utc).isoformat()
+    await db.commerce_orders.update_one(
+        {"order_id": order_id},
+        {"$set": {
             "status": "completed",
             "buyer_payment_id": debit_result.transaction_id,
-            "seller_payment_id": credit_result.transaction_id if credit_result and credit_result.success else None,
-            "created_at": now_iso,
-        }
-        await db.commerce_orders.insert_one(order)
-        order.pop("_id", None)
+            "seller_payment_id": credit_result.transaction_id if credit_result else None,
+            "completed_at": completed_at,
+        }},
+    )
+    listing_final = await db.marketplace_listings.update_one(
+        {"listing_id": sale["listing_id"], "flash_purchase_key": key_hash},
+        {
+            "$set": {
+                "status": "sold",
+                "sold_at": completed_at,
+                "sold_to": buyer_id,
+                "order_id": order_id,
+                "flash_sale_id": sale_id,
+                "updated_at": completed_at,
+            },
+            "$unset": {"flash_purchase_key": ""},
+        },
+    )
+    sale_final = await db.commerce_flash_sales.update_one(
+        {"sale_id": sale_id, "reservation_key": key_hash},
+        {
+            "$set": {
+                "status": "sold",
+                "sold_at": completed_at,
+                "buyer_id": buyer_id,
+                "order_id": order_id,
+            },
+            "$inc": {"remaining_units": -1},
+            "$unset": {"reserved_by": "", "reservation_key": "", "reserved_at": ""},
+        },
+    )
+    if listing_final.modified_count != 1 or sale_final.modified_count != 1:
+        await db.commerce_orders.update_one(
+            {"order_id": order_id},
+            {"$set": {
+                "status": "reconciliation_required",
+                "reconciliation_reason": "post_settlement_inventory_finalization_failed",
+                "reconciliation_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Zahlung wurde verarbeitet, aber der Produktstatus muss manuell abgestimmt werden.",
+        )
 
-        await db.marketplace_listings.update_one(
-            {"listing_id": sale["listing_id"]},
-            {
-                "$set": {
-                    "status": "sold",
-                    "sold_at": now_iso,
-                    "sold_to": buyer_id,
-                    "order_id": order_id,
-                    "flash_sale_id": sale_id,
-                    "updated_at": now_iso,
-                }
-            },
-        )
-        await db.commerce_flash_sales.update_one(
-            {"sale_id": sale_id},
-            {
-                "$set": {
-                    "status": "sold",
-                    "sold_at": now_iso,
-                    "buyer_id": buyer_id,
-                    "order_id": order_id,
-                },
-                "$inc": {"remaining_units": -1},
-                "$unset": {"reserved_by": "", "reserved_at": ""},
-            },
-        )
-        await db.platform_revenue.update_one(
-            {"date": now.strftime("%Y-%m-%d")},
-            {"$inc": {"total": commission, "by_source.commerce_flash_sales": commission}},
+    await _credit_flash_revenue_once(order_id, commission, now)
+
+    if not platform_owned:
+        await db.notifications.update_one(
+            {"id": f"FLASH-SALE-{order_id}"},
+            {"$setOnInsert": {
+                "id": f"FLASH-SALE-{order_id}",
+                "user_id": sale["seller_id"],
+                "type": "commerce_flash_sale",
+                "title": "Flash Sale verkauft!",
+                "message": f"{listing['title'][:40]} wurde im Commerce Center verkauft.",
+                "data": {"order_id": order_id, "sale_id": sale_id, "listing_id": sale["listing_id"]},
+                "read": False,
+                "created_at": completed_at,
+            }},
             upsert=True,
         )
-        if not platform_owned:
-            await db.notifications.insert_one(
-                {
-                    "id": secrets.token_hex(8),
-                    "user_id": sale["seller_id"],
-                    "type": "commerce_flash_sale",
-                    "title": "Flash Sale verkauft!",
-                    "message": f"{listing['title'][:40]} wurde im Commerce Center verkauft.",
-                    "data": {"order_id": order_id, "sale_id": sale_id, "listing_id": sale["listing_id"]},
-                    "read": False,
-                    "created_at": now_iso,
-                }
-            )
 
-        return {
-            "ok": True,
-            "order": order,
-            "new_balance": debit_result.new_balance,
-            "message": f"Flash Sale erfolgreich gekauft: €{total_price:.2f}",
-        }
-    except HTTPException:
-        if not payment_committed:
-            await db.commerce_flash_sales.update_one(
-                {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
-                {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
-            )
-            await db.marketplace_listings.update_one(
-                {"listing_id": sale["listing_id"], "status": "processing_flash"},
-                {"$set": {"status": "active", "updated_at": now_iso}},
-            )
-        raise
-    except Exception as exc:
-        if not payment_committed:
-            await db.commerce_flash_sales.update_one(
-                {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
-                {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
-            )
-            await db.marketplace_listings.update_one(
-                {"listing_id": sale["listing_id"], "status": "processing_flash"},
-                {"$set": {"status": "active", "updated_at": now_iso}},
-            )
-        raise HTTPException(status_code=500, detail=f"Flash Sale Kauf fehlgeschlagen: {exc}") from exc
+    final_order = await db.commerce_orders.find_one({"order_id": order_id}, {"_id": 0}) or order
+    return {
+        "ok": True,
+        "order": final_order,
+        "new_balance": debit_result.new_balance,
+        "message": f"Flash Sale erfolgreich gekauft: €{total_price:.2f}",
+        "replayed": debit_result.idempotent_replay,
+    }
+

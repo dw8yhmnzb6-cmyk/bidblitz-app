@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 from bson import ObjectId
@@ -5,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from services.biopay import (
     compute_fraud_summary,
@@ -47,6 +49,29 @@ from services.pos_security import (
 
 
 router = APIRouter(prefix="/api", tags=["biopay"])
+
+
+def _biopay_provider_declared() -> bool:
+    return os.environ.get("BIOPAY_PROVIDER_VERIFIED", "").strip().lower() == "true"
+
+
+def _biopay_provider_verified() -> bool:
+    # A deployment flag is not hardware/provider attestation. Until a
+    # server-side attestation verifier exists, live BioPay stays fail-closed.
+    return TEST_MODE
+
+
+def _require_verified_biopay_provider() -> None:
+    if not _biopay_provider_verified():
+        declared = _biopay_provider_declared()
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "BioPay Provider ist deklariert, aber serverseitige Hardware-Attestation ist noch nicht verifiziert."
+                if declared
+                else "BioPay ist in Production ohne verifizierte biometrische Provider-/Hardware-Attestation deaktiviert."
+            ),
+        )
 
 
 class BioPayEnrollRequest(BaseModel):
@@ -234,6 +259,7 @@ async def staff_biotime_status(request: Request):
 
 @router.post("/biopay/staff/biotime/enroll")
 async def staff_biotime_enroll(req: BioPayStaffBioTimeEnrollRequest, request: Request):
+    _require_verified_biopay_provider()
     staff_member = await _get_staff_member_from_session(request)
     profile = await upsert_profile_for_staff_member(staff_member, req.template_token, req.modality, req.nickname)
     await audit_pos_security_event(
@@ -249,6 +275,7 @@ async def staff_biotime_enroll(req: BioPayStaffBioTimeEnrollRequest, request: Re
 
 @router.post("/biopay/staff/biotime/clock")
 async def staff_biotime_clock(req: BioPayStaffBioTimeClockRequest, request: Request):
+    _require_verified_biopay_provider()
     staff_member = await _get_staff_member_from_session(request)
     modality = await validate_modality(req.modality)
     terminal = None
@@ -330,6 +357,7 @@ async def staff_biotime_clock(req: BioPayStaffBioTimeClockRequest, request: Requ
 
 @router.post("/biopay/enroll")
 async def biopay_enroll(req: BioPayEnrollRequest, request: Request):
+    _require_verified_biopay_provider()
     user = await get_current_user(request)
     profile = await upsert_profile_for_user(user, req.template_token, req.modality, req.nickname)
     await audit_pos_security_event(
@@ -345,6 +373,7 @@ async def biopay_enroll(req: BioPayEnrollRequest, request: Request):
 
 @router.post("/biopay/verify-self")
 async def biopay_verify_self(req: BioPayVerifySelfRequest, request: Request):
+    _require_verified_biopay_provider()
     user = await get_current_user(request)
     modality = await validate_modality(req.modality)
     profile, matched, score = await verify_principal_token(str(user["_id"]), req.template_token, modality, "customer")
@@ -516,6 +545,7 @@ async def biopay_facepay_readiness(store_id: str, request: Request, terminal_id:
 
 @router.post("/biopay/pay")
 async def biopay_pay(req: BioPayPayRequest, request: Request):
+    _require_verified_biopay_provider()
     user = await get_current_user(request)
     actor = await get_actor_context(user, req.store_id, req.register_id)
     require_permission(actor, "payment.collect")
@@ -619,6 +649,7 @@ async def biopay_pay(req: BioPayPayRequest, request: Request):
 
 @router.post("/biopay/staff/clock")
 async def biopay_staff_clock(req: BioPayStaffClockRequest, request: Request):
+    _require_verified_biopay_provider()
     user = await get_current_user(request)
     modality = await validate_modality(req.modality)
     staff_target = await get_staff_clock_target(user)

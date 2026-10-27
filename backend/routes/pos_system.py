@@ -8,8 +8,10 @@ Roles: merchant_admin, store_manager, cashier, accountant, bidblitz_admin
 """
 
 import secrets
+import hashlib
 import logging
 import io
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
@@ -18,6 +20,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
+from core.config import TEST_MODE
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from services.pos_auto_order import run_auto_order_for_store
@@ -46,6 +49,7 @@ PAYMENT_STATUS_PAID = "paid"
 PAYMENT_STATUS_EXPIRED = "expired"
 PAYMENT_STATUS_REFUNDED = "refunded"
 PAYMENT_STATUS_CANCELLED = "cancelled"
+PAYMENT_STATUS_RECONCILIATION = "reconciliation_required"
 
 POS_ROLES = {"merchant_admin", "store_manager", "cashier", "accountant", "bidblitz_admin"}
 
@@ -228,19 +232,24 @@ class ShiftClose(BaseModel):
 class CartItemModel(BaseModel):
     product_id: Optional[str] = None
     barcode: Optional[str] = None
-    name: Optional[str] = None      # for free-form items
-    quantity: float = 1
-    price: Optional[float] = None   # required if no product_id
-    tax_rate: Optional[float] = None
-    discount_pct: float = 0          # per-line discount %
-    discount_amount: float = 0       # absolute discount
+    name: Optional[str] = Field(default=None, max_length=160)      # for free-form items
+    quantity: float = Field(default=1, gt=0, le=10000)
+    price: Optional[float] = Field(default=None, gt=0, le=1_000_000)   # required if no product_id
+    tax_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    discount_pct: float = Field(default=0, ge=0, le=100)          # per-line discount %
+    discount_amount: float = Field(default=0, ge=0, le=1_000_000) # absolute discount
 
 
 class CartCreate(BaseModel):
     register_id: str
-    items: List[CartItemModel]
-    discount_pct: float = 0           # whole-cart discount %
-    customer_note: Optional[str] = ""
+    items: List[CartItemModel] = Field(..., min_length=1, max_length=500)
+    discount_pct: float = Field(default=0, ge=0, le=100)           # whole-cart discount %
+    customer_note: Optional[str] = Field(default="", max_length=500)
+    # Offline cash sales reuse the same durable client identity on every retry.
+    client_sale_id: Optional[str] = Field(default=None, min_length=8, max_length=100)
+    captured_shift_id: Optional[str] = Field(default=None, max_length=80)
+    offline_captured_at: Optional[str] = Field(default=None, max_length=80)
+    expected_total: Optional[float] = Field(default=None, ge=0, le=1_000_000)
 
 
 class PaymentCreate(BaseModel):
@@ -265,6 +274,94 @@ def _is_pending_payment_active(payment: dict) -> bool:
         return datetime.fromisoformat(expires_at) >= datetime.now(timezone.utc)
     except ValueError:
         return True
+
+
+POS_PAYMENT_INTENT_LEASE_SECONDS = 30
+
+
+async def _claim_pos_payment_intent(cart_id: str, method: str) -> tuple[str, Optional[dict], bool]:
+    """Serialize payment creation per cart without relying on historical unique indexes."""
+    intent_id = f"cart:{cart_id}"
+    for _ in range(4):
+        now = datetime.now(timezone.utc)
+        now_value = now.isoformat()
+        intent = await db.pos_payment_intents.find_one({"_id": intent_id})
+
+        if not intent:
+            payment_id = short_id("PAY", 12)
+            doc = {
+                "_id": intent_id,
+                "cart_id": cart_id,
+                "payment_id": payment_id,
+                "method": method,
+                "status": "creating",
+                "version": 1,
+                "lease_until": (now + timedelta(seconds=POS_PAYMENT_INTENT_LEASE_SECONDS)).isoformat(),
+                "created_at": now_value,
+                "updated_at": now_value,
+            }
+            try:
+                await db.pos_payment_intents.insert_one(doc)
+                return payment_id, None, True
+            except Exception:
+                continue
+
+        payment_id = str(intent.get("payment_id") or "")
+        payment = (
+            await db.pos_payments.find_one({"payment_id": payment_id}, {"_id": 0})
+            if payment_id
+            else None
+        )
+        if payment:
+            status = payment.get("status")
+            if status == PAYMENT_STATUS_PAID:
+                return payment_id, payment, False
+            if status == PAYMENT_STATUS_RECONCILIATION:
+                return payment_id, payment, False
+            if status == PAYMENT_STATUS_PENDING and _is_pending_payment_active(payment):
+                return payment_id, payment, False
+            if status not in {PAYMENT_STATUS_PENDING, PAYMENT_STATUS_EXPIRED, PAYMENT_STATUS_CANCELLED, PAYMENT_STATUS_REFUNDED}:
+                raise HTTPException(
+                    status_code=503,
+                    detail="POS-Zahlungszustand ist unbekannt und muss vor einem neuen Versuch abgestimmt werden.",
+                )
+
+        lease_until = str(intent.get("lease_until") or "")
+        if not payment and intent.get("status") == "creating" and lease_until > now_value:
+            raise HTTPException(
+                status_code=503,
+                detail="POS-Zahlungsversuch wird bereits erstellt. Bitte denselben Warenkorbstatus erneut prüfen.",
+            )
+
+        version = int(intent.get("version") or 1)
+        next_payment_id = short_id("PAY", 12)
+        claimed = await db.pos_payment_intents.update_one(
+            {"_id": intent_id, "version": version},
+            {
+                "$set": {
+                    "payment_id": next_payment_id,
+                    "method": method,
+                    "status": "creating",
+                    "lease_until": (now + timedelta(seconds=POS_PAYMENT_INTENT_LEASE_SECONDS)).isoformat(),
+                    "updated_at": now_value,
+                },
+                "$inc": {"version": 1},
+            },
+        )
+        if claimed.modified_count == 1:
+            return next_payment_id, None, True
+
+    raise HTTPException(
+        status_code=409,
+        detail="POS-Zahlungsversuch wurde parallel verändert. Bitte Zahlungsstatus erneut laden.",
+    )
+
+
+async def _set_pos_payment_intent_status(cart_id: str, payment_id: str, status: str) -> None:
+    await db.pos_payment_intents.update_one(
+        {"_id": f"cart:{cart_id}", "payment_id": payment_id},
+        {"$set": {"status": status, "updated_at": now_iso()}},
+    )
 
 
 class PaymentConfirm(BaseModel):
@@ -657,7 +754,11 @@ async def _resolve_cart_items(store_id: str, items: List[CartItemModel]) -> Dict
     for it in items:
         product = None
         if it.product_id:
-            product = await db.pos_products.find_one({"product_id": it.product_id, "active": True})
+            product = await db.pos_products.find_one({
+                "product_id": it.product_id,
+                "store_id": store_id,
+                "active": True,
+            })
         elif it.barcode:
             product = await db.pos_products.find_one(
                 {"store_id": store_id, "barcode": it.barcode, "active": True}
@@ -681,14 +782,16 @@ async def _resolve_cart_items(store_id: str, items: List[CartItemModel]) -> Dict
                 if stock < qty:
                     warnings.append(f"{name}: Bestand wird negativ ({stock - qty})")
         else:
-            if it.price is None or it.name is None:
+            if it.product_id:
+                raise HTTPException(status_code=404, detail="Produkt gehört nicht zu dieser Filiale oder ist nicht aktiv")
+            if it.price is None or not (it.name or "").strip():
                 raise HTTPException(status_code=400, detail="Manueller Artikel braucht Name & Preis")
-            name = it.name
+            name = it.name.strip()
             unit_price = float(it.price)
-            tax_rate = float(it.tax_rate or 0.19)
+            tax_rate = float(it.tax_rate if it.tax_rate is not None else 0.19)
             product_id = None
 
-        qty = float(it.quantity or 1)
+        qty = float(it.quantity)
         line_gross = round(unit_price * qty, 2)
         # Apply line discount
         disc_pct = float(it.discount_pct or 0)
@@ -732,7 +835,29 @@ async def create_cart(req: CartCreate, request: Request):
     if not reg:
         raise HTTPException(status_code=404, detail="Kasse nicht gefunden")
     await _require_store_access(user, reg["store_id"])
-    if not reg.get("current_shift_id"):
+
+    shift_id = reg.get("current_shift_id")
+    captured_shift = None
+    if req.client_sale_id:
+        existing_offline_cart = await db.pos_carts.find_one(
+            {"client_sale_id": req.client_sale_id, "cashier_id": str(user["_id"])},
+            {"_id": 0},
+        )
+        if existing_offline_cart:
+            return {"ok": True, "cart": existing_offline_cart, "idempotent_replay": True}
+
+        if not req.captured_shift_id:
+            raise HTTPException(status_code=400, detail="Offline-Verkauf braucht die ursprüngliche Schicht")
+        captured_shift = await db.pos_shifts.find_one({
+            "shift_id": req.captured_shift_id,
+            "register_id": req.register_id,
+            "cashier_id": str(user["_id"]),
+        })
+        if not captured_shift:
+            raise HTTPException(status_code=409, detail="Ursprüngliche Offline-Schicht konnte nicht verifiziert werden")
+        shift_id = captured_shift["shift_id"]
+
+    if not shift_id:
         raise HTTPException(status_code=400, detail="Bitte erst Schicht öffnen")
 
     if not req.items:
@@ -744,14 +869,28 @@ async def create_cart(req: CartCreate, request: Request):
     cart_disc = round(cart_total * cart_disc_pct / 100, 2)
     final_total = round(cart_total - cart_disc, 2)
 
-    cart_id = short_id("CRT", 10)
+    if req.expected_total is not None and abs(final_total - round(float(req.expected_total), 2)) > 0.01:
+        raise HTTPException(
+            status_code=409,
+            detail="Offline-Verkauf kann nicht automatisch synchronisiert werden: Preis oder Rabatt hat sich geändert.",
+        )
+
+    cart_id = (
+        f"CRT-OFF-{hashlib.sha256(req.client_sale_id.encode('utf-8')).hexdigest()[:12].upper()}"
+        if req.client_sale_id
+        else short_id("CRT", 10)
+    )
     doc = {
+        "_id": f"offline:{req.client_sale_id}" if req.client_sale_id else ObjectId(),
         "cart_id": cart_id,
         "register_id": req.register_id,
         "store_id": reg["store_id"],
         "merchant_id": reg["merchant_id"],
-        "shift_id": reg["current_shift_id"],
+        "shift_id": shift_id,
         "cashier_id": str(user["_id"]),
+        "client_sale_id": req.client_sale_id,
+        "offline_captured_at": req.offline_captured_at,
+        "offline_synced_after_shift_close": bool(req.client_sale_id and captured_shift and captured_shift.get("status") != "open"),
         "items": resolved["items"],
         "subtotal": resolved["subtotal"],
         "net_total": resolved["net_total"],
@@ -763,9 +902,19 @@ async def create_cart(req: CartCreate, request: Request):
         "customer_note": req.customer_note,
         "created_at": now_iso(),
     }
-    await db.pos_carts.insert_one(doc)
+    try:
+        await db.pos_carts.insert_one(doc)
+    except Exception:
+        if req.client_sale_id:
+            existing_offline_cart = await db.pos_carts.find_one(
+                {"_id": f"offline:{req.client_sale_id}", "cashier_id": str(user["_id"])},
+                {"_id": 0},
+            )
+            if existing_offline_cart:
+                return {"ok": True, "cart": existing_offline_cart, "idempotent_replay": True}
+        raise
     doc.pop("_id", None)
-    return {"ok": True, "cart": doc}
+    return {"ok": True, "cart": doc, "idempotent_replay": False}
 
 
 @router.get("/cart/{cart_id}")
@@ -783,12 +932,16 @@ async def get_cart(cart_id: str, request: Request):
 # ───────────────────────────────────────────────────────────────────────
 async def _finalise_sale(payment: dict, cart: dict, paid_by_user_id: str | None,
                          method: str, fee_amount: float, customer_paid: float):
-    """Common path after a payment is collected — records sale, updates shift, stock, audit."""
-    receipt_id = short_id("RCP", 10)
+    """Exactly-once sale finalisation keyed by payment_id."""
+    existing = await db.pos_sales.find_one({"payment_id": payment["payment_id"]}, {"_id": 0})
+    if existing:
+        return existing
+
+    payment_id = payment["payment_id"]
     sale = {
-        "sale_id": short_id("SAL", 10),
-        "receipt_id": receipt_id,
-        "payment_id": payment["payment_id"],
+        "sale_id": f"SAL-{payment_id}",
+        "receipt_id": f"RCP-{payment_id[-10:].upper()}",
+        "payment_id": payment_id,
         "cart_id": cart["cart_id"],
         "register_id": cart["register_id"],
         "store_id": cart["store_id"],
@@ -810,53 +963,79 @@ async def _finalise_sale(payment: dict, cart: dict, paid_by_user_id: str | None,
         "created_at": now_iso(),
         "status": "completed",
     }
-    await db.pos_sales.insert_one(sale)
-    sale.pop("_id", None)
 
-    # Update shift
-    await db.pos_shifts.update_one(
-        {"shift_id": cart["shift_id"]},
-        {"$inc": {
-            "sales_count": 1,
-            "sales_total": cart["total"],
-            f"by_method.{method}": cart["total"],
-        }},
+    write = await db.pos_sales.update_one(
+        {"payment_id": payment_id},
+        {"$setOnInsert": sale},
+        upsert=True,
     )
-    # Stock decrement + record movement
+    if write.upserted_id is None:
+        return await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0}) or sale
+
+    # Only the process that inserted the sale may mutate shift and stock.
+    shift_marker = f"sale_markers.{payment_id.replace('.', '_')}"
+    await db.pos_shifts.update_one(
+        {"shift_id": cart["shift_id"], shift_marker: {"$exists": False}},
+        {
+            "$inc": {
+                "sales_count": 1,
+                "sales_total": cart["total"],
+                f"by_method.{method}": cart["total"],
+            },
+            "$set": {shift_marker: True},
+        },
+    )
+
     for it in cart["items"]:
-        if it.get("product_id"):
-            product = await db.pos_products.find_one({"product_id": it["product_id"]})
-            if not product or not product.get("track_stock"):
-                continue
-            before = float(product.get("stock", 0))
-            after = round(before - float(it["quantity"]), 3)
-            await db.pos_products.update_one(
-                {"product_id": it["product_id"]},
-                {"$set": {"stock": after, "updated_at": now_iso()}},
-            )
-            await db.pos_stock_movements.insert_one({
-                "movement_id": short_id("MOV", 10),
+        if not it.get("product_id"):
+            continue
+        qty = float(it["quantity"])
+        product_marker = f"sale_markers.{payment_id.replace('.', '_')}"
+        product = await db.pos_products.find_one({"product_id": it["product_id"]})
+        if not product or not product.get("track_stock"):
+            continue
+        before = float(product.get("stock", 0))
+        stock_update = await db.pos_products.update_one(
+            {"product_id": it["product_id"], product_marker: {"$exists": False}},
+            {
+                "$inc": {"stock": -qty},
+                "$set": {product_marker: True, "updated_at": now_iso()},
+            },
+        )
+        if stock_update.modified_count != 1:
+            continue
+        after_doc = await db.pos_products.find_one({"product_id": it["product_id"]}, {"stock": 1, "_id": 0}) or {}
+        after = float(after_doc.get("stock", before - qty))
+        movement_id = f"MOV-{payment_id}-{it['product_id']}"
+        await db.pos_stock_movements.update_one(
+            {"movement_id": movement_id},
+            {"$setOnInsert": {
+                "movement_id": movement_id,
                 "product_id": product["product_id"],
                 "product_name": product["name"],
                 "barcode": product.get("barcode"),
                 "merchant_id": cart["merchant_id"],
                 "store_id": cart["store_id"],
                 "type": "sale",
-                "quantity": -float(it["quantity"]),
+                "quantity": -qty,
                 "before_stock": before,
                 "after_stock": after,
                 "reference_id": sale["sale_id"],
                 "created_by": cart["cashier_id"],
                 "note": f"Sale {sale['receipt_id']}",
                 "created_at": now_iso(),
-            })
+            }},
+            upsert=True,
+        )
+
     try:
         await run_auto_order_for_store(cart["store_id"], cart["merchant_id"], cart["cashier_id"], trigger="sale", force=False)
     except Exception:
         pass
-    # Mark cart paid
+
     await db.pos_carts.update_one(
-        {"cart_id": cart["cart_id"]}, {"$set": {"status": "paid"}}
+        {"cart_id": cart["cart_id"]},
+        {"$set": {"status": "paid", "payment_id": payment_id}},
     )
     return sale
 
@@ -875,6 +1054,15 @@ async def create_payment(req: PaymentCreate, request: Request):
         )
         if existing_paid:
             sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+            if not sale:
+                sale = await _finalise_sale(
+                    existing_paid,
+                    cart,
+                    existing_paid.get("customer_id"),
+                    existing_paid.get("method", "unknown"),
+                    float(existing_paid.get("fee_amount") or 0),
+                    float(cart.get("total") or 0),
+                )
             return {
                 "ok": True,
                 "payment": existing_paid,
@@ -887,13 +1075,33 @@ async def create_payment(req: PaymentCreate, request: Request):
     actor = await get_actor_context(user, cart["store_id"], cart["register_id"])
 
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant nicht gefunden")
+    require_permission(actor, "payment.collect")
     if merchant.get("status") != "approved" and req.method in ("wallet_qr", "barcode"):
         raise HTTPException(status_code=403, detail="Merchant noch nicht freigeschaltet (BidBlitz Admin Approval erforderlich)")
 
     fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE))
     total = float(cart["total"])
-    payment_id = short_id("PAY", 12)
     now = datetime.now(timezone.utc)
+
+    if req.method not in {"wallet_qr", "barcode", "cash", "card_external"}:
+        raise HTTPException(status_code=400, detail=f"Methode '{req.method}' nicht unterstützt")
+    if req.method == "cash" and (req.cash_received is None or req.cash_received < total):
+        raise HTTPException(status_code=400, detail=f"Bargeld zu wenig (€{total:.2f} nötig)")
+    if req.method == "card_external":
+        if not TEST_MODE:
+            raise HTTPException(
+                status_code=503,
+                detail="Externe Kartenzahlung bleibt in Production deaktiviert, bis die Terminal-Provider-Referenz serverseitig verifiziert wird.",
+            )
+        if os.environ.get("POS_EXTERNAL_CARD_CERTIFIED", "").lower() != "true":
+            raise HTTPException(
+                status_code=503,
+                detail="Testmodus-Terminal ist nicht als zertifizierter Simulator aktiviert.",
+            )
+        if not req.card_reference or req.card_reference.startswith("CARD-"):
+            raise HTTPException(status_code=400, detail="Verifizierte Provider-Referenz erforderlich")
 
     existing_pending = await db.pos_payments.find_one(
         {"cart_id": cart["cart_id"], "status": PAYMENT_STATUS_PENDING},
@@ -907,6 +1115,15 @@ async def create_payment(req: PaymentCreate, request: Request):
     )
     if existing_paid:
         sale = await db.pos_sales.find_one({"payment_id": existing_paid["payment_id"]}, {"_id": 0})
+        if not sale:
+            sale = await _finalise_sale(
+                existing_paid,
+                cart,
+                existing_paid.get("customer_id"),
+                existing_paid.get("method", "unknown"),
+                float(existing_paid.get("fee_amount") or 0),
+                float(cart.get("total") or 0),
+            )
         return {
             "ok": True,
             "payment": existing_paid,
@@ -929,7 +1146,6 @@ async def create_payment(req: PaymentCreate, request: Request):
         )
 
     if req.method in ("wallet_qr", "barcode"):
-        require_permission(actor, "payment.collect")
         limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
         policy = evaluate_transaction_limits(actor, "payment", total, limits)
         await audit_pos_security_event("pos_payment_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": total, "store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"]}, severity="info")
@@ -938,6 +1154,40 @@ async def create_payment(req: PaymentCreate, request: Request):
         if policy["needs_approval"]:
             approval = await request_manager_approval(actor, "secure_payment", total, {"store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"], "description": f"POS Cart {cart['cart_id']}"}, "Large payment requires manager approval")
             return {"ok": True, "status": "approval_required", "approval": approval, "message": "Zahlung wartet auf Manager-Freigabe"}
+
+    payment_id, intent_payment, intent_claimed = await _claim_pos_payment_intent(cart["cart_id"], req.method)
+    if intent_payment:
+        if intent_payment.get("status") == PAYMENT_STATUS_PAID:
+            sale = await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0})
+            if not sale:
+                sale = await _finalise_sale(
+                    intent_payment,
+                    cart,
+                    intent_payment.get("customer_id"),
+                    intent_payment.get("method", req.method),
+                    float(intent_payment.get("fee_amount") or 0),
+                    float(cart.get("total") or 0),
+                )
+            return {
+                "ok": True,
+                "payment": intent_payment,
+                "sale": sale,
+                "status": "already_paid",
+                "message": "Dieser Warenkorb wurde bereits bezahlt.",
+            }
+        if intent_payment.get("status") == PAYMENT_STATUS_RECONCILIATION:
+            raise HTTPException(
+                status_code=503,
+                detail="POS-Zahlung benötigt Abstimmung; keine neue Zahlung wird erzeugt.",
+            )
+        if intent_payment.get("status") == PAYMENT_STATUS_PENDING and _is_pending_payment_active(intent_payment):
+            return {
+                "ok": True,
+                "payment": intent_payment,
+                "awaiting_customer": intent_payment.get("method") in ("wallet_qr", "barcode"),
+                "status": "pending_existing",
+                "message": "Bestehender Zahlungsversuch wird noch geprüft.",
+            }
 
     payment_doc = {
         "payment_id": payment_id,
@@ -959,24 +1209,23 @@ async def create_payment(req: PaymentCreate, request: Request):
 
     # ─── Cash ───
     if req.method == "cash":
-        if req.cash_received is None or req.cash_received < total:
-            raise HTTPException(status_code=400, detail=f"Bargeld zu wenig (€{total:.2f} nötig)")
         payment_doc["status"] = PAYMENT_STATUS_PAID
         payment_doc["paid_at"] = now.isoformat()
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PAID)
         sale = await _finalise_sale(payment_doc, cart, None, "cash", 0, req.cash_received)
         return {"ok": True, "payment": payment_doc, "sale": sale}
 
-    # ─── Card external (terminal handles charge) ───
+    # ─── Card external ───
+    # Fail closed until a certified terminal/provider integration verifies the charge.
     if req.method == "card_external":
-        if not req.card_reference:
-            raise HTTPException(status_code=400, detail="Karten-Referenz erforderlich")
         payment_doc["status"] = PAYMENT_STATUS_PAID
         payment_doc["paid_at"] = now.isoformat()
         payment_doc["card_reference"] = req.card_reference
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PAID)
         sale = await _finalise_sale(payment_doc, cart, None, "card_external", 0, total)
         return {"ok": True, "payment": payment_doc, "sale": sale}
 
@@ -999,6 +1248,7 @@ async def create_payment(req: PaymentCreate, request: Request):
 
         await db.pos_payments.insert_one(payment_doc)
         payment_doc.pop("_id", None)
+        await _set_pos_payment_intent_status(cart["cart_id"], payment_id, PAYMENT_STATUS_PENDING)
 
         if immediate_user:
             return await _settle_wallet_payment(payment_doc, cart, immediate_user, fee_rate)
@@ -1036,35 +1286,158 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
         reference=payment["payment_id"],
         merchant_name=cart.get("merchant_name", ""),
         metadata={"payment_id": payment["payment_id"], "store_id": cart["store_id"]},
+        idempotency_key=f"pos-customer-debit:{payment['payment_id']}",
     )
     if not debit.success:
+        debit_state = str(getattr(debit.status, "value", debit.status))
+        if debit_state in {"pending", "reconciliation_required"}:
+            await db.pos_payments.update_one(
+                {"payment_id": payment["payment_id"]},
+                {"$set": {
+                    "status": PAYMENT_STATUS_RECONCILIATION,
+                    "payment_state": debit_state,
+                    "error": debit.error or "customer_debit_unconfirmed",
+                    "customer_debit_transaction_id": debit.transaction_id,
+                    "reconciliation_required": True,
+                    "updated_at": now_iso(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=debit.error or "Kundenabbuchung ist unklar; Zahlung muss vor einem neuen Versuch abgestimmt werden.",
+            )
         await db.pos_payments.update_one(
             {"payment_id": payment["payment_id"]},
-            {"$set": {"status": PAYMENT_STATUS_CANCELLED, "error": debit.error}},
+            {"$set": {
+                "status": PAYMENT_STATUS_CANCELLED,
+                "payment_state": debit_state,
+                "error": debit.error or "customer_debit_failed",
+                "updated_at": now_iso(),
+            }},
         )
-        raise HTTPException(status_code=400, detail=debit.error)
+        raise HTTPException(status_code=400, detail=debit.error or "Kundenabbuchung fehlgeschlagen")
 
-    # Compute fee, credit merchant owner wallet (net)
+    # Compute fee, credit merchant owner wallet (net).
+    # The customer has already been debited at this point, so losing the
+    # settlement target must trigger an automatic rollback instead of a paid sale.
     fee = round(total * fee_rate, 2)
     net_to_merchant = round(total - fee, 2)
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
-    if merchant:
-        credit = await credit_wallet(
-            user_id=str(merchant["owner_id"]),
-            amount=net_to_merchant,
-            tx_type=TransactionType.MERCHANT_PAYMENT,
-            description=f"POS Merchant Settlement {payment['payment_id']}",
-            reference=f"SETTLE-{payment['payment_id']}",
-            source="pos_system",
-            metadata={"payment_id": payment["payment_id"], "merchant_id": cart["merchant_id"], "store_id": cart["store_id"], "settlement_type": "merchant_net_credit"},
-            idempotency_key=f"pos-settlement:{payment['payment_id']}",
+    if not merchant or not merchant.get("owner_id"):
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Rollback {payment['payment_id']}",
+            reference=f"ROLLBACK-{payment['payment_id']}",
+            source="pos_system.rollback",
+            metadata={
+                "payment_id": payment["payment_id"],
+                "reason": "merchant_settlement_target_missing",
+                "merchant_id": cart["merchant_id"],
+            },
+            idempotency_key=f"pos-rollback:{payment['payment_id']}",
         )
-        if not credit.success:
-            raise HTTPException(status_code=400, detail=credit.error or "Merchant settlement failed")
-        await db.pos_merchants.update_one(
-            {"merchant_id": cart["merchant_id"]},
-            {"$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total}},
+        rollback_state = str(getattr(rollback.status, "value", rollback.status))
+        rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
+        await db.pos_payments.update_one(
+            {"payment_id": payment["payment_id"]},
+            {"$set": {
+                "status": rollback_status,
+                "error": "merchant_settlement_target_missing",
+                "rollback_state": rollback_state,
+                "rollback_transaction_id": rollback.transaction_id,
+                "reconciliation_required": not rollback.success,
+                "updated_at": now_iso(),
+            }},
         )
+        if rollback.success:
+            raise HTTPException(
+                status_code=409,
+                detail="Händlerkonto nicht verfügbar. Kundenbetrag wurde automatisch zurückgebucht.",
+            )
+        raise HTTPException(
+            status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500,
+            detail="Händlerkonto fehlt; Rückbuchung ist nicht bestätigt und benötigt Abstimmung.",
+        )
+
+    credit = await credit_wallet(
+        user_id=str(merchant["owner_id"]),
+        amount=net_to_merchant,
+        tx_type=TransactionType.MERCHANT_PAYMENT,
+        description=f"POS Merchant Settlement {payment['payment_id']}",
+        reference=f"SETTLE-{payment['payment_id']}",
+        source="pos_system",
+        metadata={"payment_id": payment["payment_id"], "merchant_id": cart["merchant_id"], "store_id": cart["store_id"], "settlement_type": "merchant_net_credit"},
+        idempotency_key=f"pos-settlement:{payment['payment_id']}",
+    )
+    if not credit.success:
+        credit_state = str(getattr(credit.status, "value", credit.status))
+        if credit_state in {"pending", "reconciliation_required"}:
+            await db.pos_payments.update_one(
+                {"payment_id": payment["payment_id"]},
+                {"$set": {
+                    "status": PAYMENT_STATUS_RECONCILIATION,
+                    "payment_state": credit_state,
+                    "error": credit.error or "merchant_settlement_unconfirmed",
+                    "merchant_credit_transaction_id": credit.transaction_id,
+                    "reconciliation_required": True,
+                    "updated_at": now_iso(),
+                }},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=credit.error or "Händlergutschrift ist unklar; keine automatische Rückbuchung wird ausgeführt, bis der Zustand abgestimmt ist.",
+            )
+
+        rollback = await credit_wallet(
+            user_id=customer_id,
+            amount=total,
+            tx_type=TransactionType.REFUND,
+            description=f"POS Rollback {payment['payment_id']}",
+            reference=f"ROLLBACK-{payment['payment_id']}",
+            source="pos_system.rollback",
+            metadata={
+                "payment_id": payment["payment_id"],
+                "reason": "merchant_settlement_failed",
+                "merchant_id": cart["merchant_id"],
+            },
+            idempotency_key=f"pos-rollback:{payment['payment_id']}",
+        )
+        rollback_state = str(getattr(rollback.status, "value", rollback.status))
+        rollback_status = PAYMENT_STATUS_CANCELLED if rollback.success else PAYMENT_STATUS_RECONCILIATION
+        await db.pos_payments.update_one(
+            {"payment_id": payment["payment_id"]},
+            {"$set": {
+                "status": rollback_status,
+                "payment_state": credit_state,
+                "error": credit.error or "merchant_settlement_failed",
+                "rollback_state": rollback_state,
+                "rollback_transaction_id": rollback.transaction_id,
+                "reconciliation_required": not rollback.success,
+                "updated_at": now_iso(),
+            }},
+        )
+        if rollback.success:
+            raise HTTPException(status_code=400, detail="Händlergutschrift fehlgeschlagen. Kundenbetrag wurde automatisch zurückgebucht.")
+        raise HTTPException(
+            status_code=503 if rollback_state in {"pending", "reconciliation_required"} else 500,
+            detail="Händlergutschrift fehlgeschlagen; Rückbuchung ist nicht bestätigt und benötigt Abstimmung.",
+        )
+    settlement_marker = f"settlement_markers.{payment['payment_id'].replace('.', '_')}"
+    await db.pos_merchants.update_one(
+        {"merchant_id": cart["merchant_id"], settlement_marker: {"$exists": False}},
+        {
+            "$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total},
+            "$set": {
+                settlement_marker: {
+                    "amount": net_to_merchant,
+                    "gross": total,
+                    "created_at": now_iso(),
+                }
+            },
+        },
+    )
 
     # Mark payment paid
     paid_at = now_iso()

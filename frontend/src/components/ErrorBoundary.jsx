@@ -6,6 +6,7 @@ import { Component } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const reportedResourceErrors = new Set();
 
 const getBrowserContext = () => {
   if (typeof window === "undefined") {
@@ -64,6 +65,16 @@ const serializeError = (error) => {
   } catch (serializationError) {
     void serializationError;
     return { value: String(error) };
+  }
+};
+
+const sanitizeResourceUrl = (value = "") => {
+  if (!value || typeof window === "undefined") return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return String(value).split("?")[0].split("#")[0].slice(0, 1000);
   }
 };
 
@@ -233,7 +244,7 @@ export function setupGlobalErrorHandler() {
     logErrorToBackend(payload);
   });
 
-  // Global errors
+  // Global JS errors
   window.addEventListener("error", (event) => {
     const payload = buildFrontendErrorPayload({
       error: event.error || event.message,
@@ -250,6 +261,35 @@ export function setupGlobalErrorHandler() {
     console.error("[GlobalError] Window error", payload);
     logErrorToBackend(payload);
   });
+
+  // Resource failures (images, scripts, stylesheets) do not bubble to window.
+  // Capture them explicitly so broken cards/assets become visible in System & Fehler.
+  window.addEventListener("error", (event) => {
+    const target = event?.target;
+    if (!target || target === window || event?.error) return;
+    const tag = String(target.tagName || "").toLowerCase();
+    if (!["img", "script", "link", "source", "video", "audio"].includes(tag)) return;
+
+    const resourceUrl = sanitizeResourceUrl(
+      target.currentSrc || target.src || target.href || "",
+    );
+    if (!resourceUrl) return;
+
+    const resourceKey = `${window.location.pathname}|${tag}|${resourceUrl}`;
+    if (reportedResourceErrors.has(resourceKey)) return;
+    reportedResourceErrors.add(resourceKey);
+
+    logErrorToBackend(buildFrontendErrorPayload({
+      error: `Ressource konnte nicht geladen werden: ${tag}`,
+      level: "warning",
+      boundary: "resource-error",
+      meta: {
+        source: "window.resource-error",
+        resource_tag: tag,
+        resource_url: resourceUrl,
+      },
+    }));
+  }, true);
 
   // Console errors (optional, might be noisy)
   const originalConsoleError = console.error;

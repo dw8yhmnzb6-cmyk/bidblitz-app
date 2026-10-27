@@ -15,7 +15,8 @@ from core.database import db
 from core.security import get_current_user
 from routes.pos_system import (
     _is_admin, _audit, short_id, now_iso, DEFAULT_MERCHANT_FEE,
-    PAYMENT_STATUS_PENDING, PAYMENT_QR_TTL_SECONDS,
+    PAYMENT_STATUS_PENDING, PAYMENT_STATUS_PAID, PAYMENT_QR_TTL_SECONDS,
+    _settle_wallet_payment,
 )
 
 router = APIRouter(prefix="/api/pos", tags=["POS Admin & Self-Checkout"])
@@ -220,29 +221,35 @@ async def self_cart_create(req: SelfCartCreate, request: Request):
 
 @router.post("/self/pay")
 async def self_pay(req: SelfCheckoutPay, request: Request):
-    """Customer pays their self-checkout cart from their own wallet."""
+    """Customer pays a self-checkout cart through the canonical wallet settlement."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
     cart = await db.pos_carts.find_one({"cart_id": req.cart_id})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart nicht gefunden")
-    if cart["status"] != "open":
-        raise HTTPException(status_code=400, detail=f"Cart bereits {cart['status']}")
     if cart.get("customer_id") != user_id:
         raise HTTPException(status_code=403, detail="Nicht dein Cart")
+
+    payment_id = f"SELF-{cart['cart_id']}"
+    if cart.get("status") != "open":
+        existing_payment = await db.pos_payments.find_one(
+            {"payment_id": payment_id, "status": PAYMENT_STATUS_PAID},
+            {"_id": 0},
+        )
+        existing_sale = await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0})
+        if existing_payment and existing_sale:
+            return {"ok": True, "payment": existing_payment, "sale": existing_sale, "replayed": True}
+        raise HTTPException(status_code=400, detail=f"Cart bereits {cart.get('status')}")
 
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
     if not merchant or merchant.get("status") != "approved":
         raise HTTPException(status_code=403, detail="Self-Checkout nicht aktiv")
 
     fee_rate = float(merchant.get("fee_rate", DEFAULT_MERCHANT_FEE))
-    total = float(cart["total"])
-    payment_id = short_id("PAY", 12)
+    total = round(float(cart["total"]), 2)
     now = datetime.now(timezone.utc)
-
-    # Create payment doc
-    payment = {
+    payment_doc = {
         "payment_id": payment_id,
         "cart_id": cart["cart_id"],
         "register_id": "SELF",
@@ -259,110 +266,21 @@ async def self_pay(req: SelfCheckoutPay, request: Request):
         "customer_id": user_id,
         "self_checkout": True,
     }
-    await db.pos_payments.insert_one(payment)
-    payment.pop("_id", None)
-
-    # Atomic wallet debit + merchant credit (mirror pos_system._settle_wallet_payment)
-    from core.payment_engine import debit_wallet, TransactionType
-    debit = await debit_wallet(
-        user_id=user_id,
-        amount=total,
-        tx_type=TransactionType.MERCHANT_PAYMENT,
-        description=f"Self-Checkout — {cart['store_id']}",
-        reference=payment_id,
-        metadata={"payment_id": payment_id, "store_id": cart["store_id"], "self": True},
-    )
-    if not debit.success:
-        await db.pos_payments.update_one(
-            {"payment_id": payment_id}, {"$set": {"status": "cancelled", "error": debit.error}}
-        )
-        raise HTTPException(status_code=400, detail=debit.error)
-
-    fee = round(total * fee_rate, 2)
-    net = round(total - fee, 2)
-    await db.users.update_one(
-        {"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": net}}
-    )
-    await db.pos_merchants.update_one(
-        {"merchant_id": cart["merchant_id"]},
-        {"$inc": {"settlement_balance": net, "lifetime_volume": total}},
-    )
-
-    paid_at = now_iso()
     await db.pos_payments.update_one(
         {"payment_id": payment_id},
-        {"$set": {
-            "status": "paid",
-            "paid_at": paid_at,
-            "fee_amount": fee,
-            "net_to_merchant": net,
-        }},
+        {"$setOnInsert": payment_doc},
+        upsert=True,
     )
-    payment["status"] = "paid"
-    payment["paid_at"] = paid_at
+    payment = await db.pos_payments.find_one({"payment_id": payment_id}, {"_id": 0}) or payment_doc
 
-    # Build sale + decrement stock + record movements (same as cashier flow)
-    receipt_id = short_id("RCP", 10)
-    sale = {
-        "sale_id": short_id("SAL", 10),
-        "receipt_id": receipt_id,
-        "payment_id": payment_id,
-        "cart_id": cart["cart_id"],
-        "register_id": "SELF",
-        "store_id": cart["store_id"],
-        "merchant_id": cart["merchant_id"],
-        "shift_id": "SELF",
-        "cashier_id": user_id,
-        "customer_id": user_id,
-        "items": cart["items"],
-        "subtotal": cart["subtotal"],
-        "net_total": cart["net_total"],
-        "tax_total": cart["tax_total"],
-        "discount": 0,
-        "total": cart["total"],
-        "method": "self_checkout",
-        "fee": fee,
-        "merchant_received": net,
-        "customer_paid": total,
-        "change": 0,
-        "self_checkout": True,
-        "created_at": now_iso(),
-        "status": "completed",
-    }
-    await db.pos_sales.insert_one(sale)
-    sale.pop("_id", None)
+    if payment.get("status") == PAYMENT_STATUS_PAID:
+        sale = await db.pos_sales.find_one({"payment_id": payment_id}, {"_id": 0})
+        if sale:
+            return {"ok": True, "payment": payment, "sale": sale, "replayed": True}
 
-    # Stock decrement + movement
-    for it in cart["items"]:
-        if it.get("product_id"):
-            product = await db.pos_products.find_one({"product_id": it["product_id"]})
-            if not product or not product.get("track_stock"):
-                continue
-            before = float(product.get("stock", 0))
-            after = round(before - float(it["quantity"]), 3)
-            await db.pos_products.update_one(
-                {"product_id": it["product_id"]},
-                {"$set": {"stock": after, "updated_at": now_iso()}},
-            )
-            await db.pos_stock_movements.insert_one({
-                "movement_id": short_id("MOV", 10),
-                "product_id": product["product_id"],
-                "product_name": product["name"],
-                "barcode": product.get("barcode"),
-                "merchant_id": cart["merchant_id"],
-                "store_id": cart["store_id"],
-                "type": "sale",
-                "quantity": -float(it["quantity"]),
-                "before_stock": before,
-                "after_stock": after,
-                "reference_id": sale["sale_id"],
-                "created_by": user_id,
-                "note": f"Self-Checkout {receipt_id}",
-                "created_at": now_iso(),
-            })
+    if payment.get("status") != PAYMENT_STATUS_PENDING:
+        raise HTTPException(status_code=409, detail=f"Zahlung ist im Status {payment.get('status')}")
 
-    await db.pos_carts.update_one(
-        {"cart_id": cart["cart_id"]}, {"$set": {"status": "paid"}}
-    )
+    result = await _settle_wallet_payment(payment, cart, user, fee_rate)
     await _audit(user_id, "self_checkout.paid", {"payment_id": payment_id, "store_id": cart["store_id"], "amount": total})
-    return {"ok": True, "payment": payment, "sale": sale}
+    return {**result, "replayed": False}

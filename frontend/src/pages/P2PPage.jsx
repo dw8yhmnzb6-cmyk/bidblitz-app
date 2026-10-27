@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AtSign, Send, Check, AlertCircle, Loader2, ArrowLeft, Copy, QrCode, History } from 'lucide-react';
 
@@ -17,11 +17,15 @@ export default function P2PPage({ onNavigate }) {
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState(null);
+  const sendAttemptKeyRef = useRef(null);
 
   const [history, setHistory] = useState([]);
 
   useEffect(() => { loadMe(); }, []);
   useEffect(() => { if (view === 'history') loadHistory(); }, [view]);
+  useEffect(() => {
+    sendAttemptKeyRef.current = null;
+  }, [lookup?.handle, amount, note]);
 
   const loadMe = async () => {
     try {
@@ -70,13 +74,28 @@ export default function P2PPage({ onNavigate }) {
     if (!lookup || !amount || Number(amount) <= 0) return;
     setSending(true); setSendMsg(null);
     try {
+      if (!sendAttemptKeyRef.current) {
+        sendAttemptKeyRef.current = typeof crypto?.randomUUID === 'function'
+          ? `p2p-handle-${crypto.randomUUID()}`
+          : `p2p-handle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const idempotencyKey = sendAttemptKeyRef.current;
       const r = await fetch(`${API}/api/p2p/send`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient_handle: lookup.handle, amount: Number(amount), note }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          recipient_handle: lookup.handle,
+          amount: Number(amount),
+          note,
+          idempotency_key: idempotencyKey,
+        }),
       });
       const d = await r.json();
       if (r.ok) {
+        sendAttemptKeyRef.current = null;
         setSendMsg({ ok: true, text: `€${d.amount.toFixed(2)} an @${d.recipient_handle} gesendet!` });
         setAmount(''); setNote(''); setLookup(null); setRecipient('');
         setTimeout(() => setView('home'), 1800);

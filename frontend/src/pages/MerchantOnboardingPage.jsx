@@ -35,7 +35,7 @@ const MerchantOnboardingPage = ({ onBack }) => {
 
   const benefits = [
     { icon: Zap, title: t("onboarding.fast_payments") || "Lightning-Fast Payments", desc: t("onboarding.fast_payments_desc") || "Process payments in under 2 seconds. No waiting.", color: "#00E0FF" },
-    { icon: Shield, title: t("onboarding.low_fees") || "Industry-Low Fees", desc: t("onboarding.low_fees_desc") || "Starting at just 0.3% — up to 10x less than competitors.", color: "#00E89D" },
+    { icon: Shield, title: t("onboarding.low_fees") || "Merchant Commission", desc: t("onboarding.low_fees_desc") || "Merchants pay a commission from 1.5% per transaction.", color: "#00E89D" },
     { icon: Users, title: t("onboarding.customer_growth") || "Customer Growth", desc: t("onboarding.customer_growth_desc") || "Access 100K+ BidBlitz users who prefer wallet payments.", color: "#FFB800" },
     { icon: BarChart3, title: t("onboarding.real_time") || "Real-Time Analytics", desc: t("onboarding.real_time_desc") || "Track revenue, shifts, and payments — live, on any device.", color: "#A855F7" },
     { icon: Smartphone, title: t("onboarding.any_device") || "Any Device is a Terminal", desc: t("onboarding.any_device_desc") || "Use any tablet or phone as your POS. No expensive hardware needed.", color: "#FF6B6B" },
@@ -43,15 +43,15 @@ const MerchantOnboardingPage = ({ onBack }) => {
   ];
 
   const stats = [
-    { val: "0.3%", label: t("onboarding.lowest_fee") || "Lowest Fee" },
+    { val: t("merchant.commission_from"), label: t("onboarding.lowest_fee") || "Merchant Commission" },
     { val: "<2s", label: t("onboarding.payment_speed") || "Payment Speed" },
     { val: "30", label: t("onboarding.free_trial_days") || "Free Trial Days" },
     { val: "24/7", label: t("onboarding.support") || "Support" },
   ];
 
   const paymentMethods = [
-    { icon: QrCode, label: "Barcode/QR", fee: "0.5%", color: "#00E89D" },
-    { icon: Smartphone, label: "NFC Wallet", fee: "0.3%", color: "#00E0FF" },
+    { icon: QrCode, label: "Barcode/QR", fee: t("merchant.commission_from"), color: "#00E89D" },
+    { icon: Smartphone, label: "NFC Wallet", fee: t("merchant.commission_from"), color: "#00E0FF" },
     { icon: CreditCard, label: "Card/Contactless", fee: "2.5%", color: "#FFB800" },
   ];
 
@@ -123,7 +123,7 @@ const MerchantOnboardingPage = ({ onBack }) => {
                     <div key={i} className="rounded-xl p-3 text-center" style={{ background: `${m.color}04`, border: `1px solid ${m.color}10` }}>
                       <m.icon size={20} style={{ color: m.color }} className="mx-auto mb-1" />
                       <p className="text-[9px] font-bold" style={{ color: m.color }}>{m.label}</p>
-                      <p className="text-[8px] text-white/20">{m.fee} fee</p>
+                      <p className="text-[8px] text-white/20">{m.fee}</p>
                     </div>
                   ))}
                 </div>
