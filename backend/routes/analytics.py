@@ -282,8 +282,72 @@ async def _top_features(since: str):
 
 
 # Enterprise V1: read-only project reporting.
-# Legacy conversion events without project metadata are intentionally excluded.
-# This route does not activate event collection or change existing records.
+# Neither endpoint activates collection or grants access to customer accounts.
+async def _v1_project_reports(projects, days, now):
+    """One bounded aggregate over server-authorized, registered projects."""
+    since = (now - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {
+            "schema_version": 1,
+            "project": {"$in": list(projects)},
+            "received_at": {"$gte": since, "$lte": now.isoformat()},
+            "event": {"$in": [
+                "page_view", "cta_click", "signup_started", "signup_completed",
+                "checkout_started", "checkout_completed", "flow_abandoned",
+            ]},
+        }},
+        {"$group": {
+            "_id": {"project": "$project", "day": {"$substrBytes": ["$received_at", 0, 10]},
+                    "event": "$event"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.project": 1, "_id.day": 1, "_id.event": 1}},
+    ]
+    # A rolling 90-day window can touch 91 UTC calendar dates. Seven event
+    # kinds per date and project fit below this bounded cursor length.
+    records = await db.conversion_events.aggregate(pipeline).to_list(
+        length=len(projects) * (days + 1) * 7)
+    reports = {project: {
+        "project": project,
+        "period_days": days,
+        "totals": {},
+        "daily": {},
+        "verified_revenue_included": False,
+        "data_scope": "v1_project_events_only",
+    } for project in projects}
+    for record in records:
+        dimensions = record["_id"]
+        report = reports.get(dimensions["project"])
+        if report is None:
+            continue
+        event, day = dimensions["event"], dimensions["day"]
+        count = int(record["count"])
+        report["totals"][event] = report["totals"].get(event, 0) + count
+        report["daily"].setdefault(day, {})[event] = count
+    return list(reports.values())
+
+
+@router.get("/v1/portfolio")
+async def analytics_portfolio_overview(
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Admin-only catalog overview; no client-selected authorization scope."""
+    await require_admin(request)
+    from typing import get_args
+    from core.analytics_event_schema import ProjectName
+    projects = get_args(ProjectName)
+    now = datetime.now(timezone.utc)
+    return {
+        "period_days": days,
+        "as_of": now.isoformat(),
+        "timezone": "UTC",
+        "projects": await _v1_project_reports(projects, days, now),
+        "verified_revenue_included": False,
+        "data_scope": "v1_project_events_only",
+    }
+
+
 @router.get("/v1/projects/{project}/overview")
 async def project_analytics_overview(
     project: str,
@@ -297,39 +361,5 @@ async def project_analytics_overview(
         project = TypeAdapter(ProjectName).validate_python(project)
     except ValidationError:
         raise HTTPException(status_code=404, detail="Unknown project")
-    now = datetime.now(timezone.utc)
-    since = (now - timedelta(days=days)).isoformat()
-    # Group in MongoDB; do not expose raw events, sessions, IPs or user identifiers.
-    pipeline = [
-        {"$match": {
-            "schema_version": 1,
-            "project": project,
-            "received_at": {"$gte": since, "$lte": now.isoformat()},
-            "event": {"$in": [
-                "page_view", "cta_click", "signup_started", "signup_completed",
-                "checkout_started", "checkout_completed", "flow_abandoned",
-            ]},
-        }},
-        {"$group": {
-            "_id": {"day": {"$substrBytes": ["$received_at", 0, 10]}, "event": "$event"},
-            "count": {"$sum": 1},
-        }},
-        {"$sort": {"_id.day": 1, "_id.event": 1}},
-    ]
-    records = await db.conversion_events.aggregate(pipeline).to_list(length=700)
-    totals = {}
-    daily = {}
-    for record in records:
-        event = record["_id"]["event"]
-        day = record["_id"]["day"]
-        count = int(record["count"])
-        totals[event] = totals.get(event, 0) + count
-        daily.setdefault(day, {})[event] = count
-    return {
-        "project": project,
-        "period_days": days,
-        "totals": totals,
-        "daily": daily,
-        "verified_revenue_included": False,
-        "data_scope": "v1_project_events_only",
-    }
+    reports = await _v1_project_reports((project,), days, datetime.now(timezone.utc))
+    return reports[0]
