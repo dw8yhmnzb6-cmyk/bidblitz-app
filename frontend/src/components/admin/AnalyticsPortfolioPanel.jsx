@@ -167,6 +167,8 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const [compareLeft, setCompareLeft] = useState("");
   const [compareRight, setCompareRight] = useState("");
   const [trendEvent, setTrendEvent] = useState("page_view");
+  const [matrixEvent, setMatrixEvent] = useState("page_view");
+  const [matrixPage, setMatrixPage] = useState(0);
   const [sortEvent, setSortEvent] = useState("registry");
   const [sortDirection, setSortDirection] = useState("desc");
   const [attempt, setAttempt] = useState(0);
@@ -318,6 +320,15 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
     ? [...new Set([...Object.keys(leftReport.daily), ...Object.keys(rightReport.daily)])]
         .sort((a, b) => b.localeCompare(a)).slice(0, 14)
     : [];
+  // Dates are obtained from already validated authorized project reports.
+  // Missing daily buckets must not be presented as a verified zero.
+  const matrixDays = [...new Set(visible.flatMap((report) => Object.keys(report.daily)))]
+    .sort((a, b) => b.localeCompare(a));
+  const matrixPageCount = Math.ceil(matrixDays.length / 14);
+  const matrixVisibleDays = matrixDays.slice(matrixPage * 14, (matrixPage + 1) * 14);
+  const matrixTotal = (day) => selected
+    ? (visible[0]?.daily[day]?.[matrixEvent] ?? 0)
+    : (state.data?.summary.daily[day]?.[matrixEvent] ?? 0);
 
   return (
     <section className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 sm:px-8" aria-label="Analytics Projektvergleich">
@@ -336,6 +347,7 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
             Zeitraum
             <select aria-label="Zeitraum" value={days} onChange={(event) => {
               cancelExport();
+              setMatrixPage(0);
               setDays(Number(event.target.value));
             }}
               className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
@@ -344,7 +356,7 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
           </label>
           <label className="text-xs text-slate-400 flex flex-col gap-2">
             Projekt
-            <select aria-label="Projekt" value={selected} onChange={(event) => setSelected(event.target.value)}
+            <select aria-label="Projekt" value={selected} onChange={(event) => { setMatrixPage(0); setSelected(event.target.value); }}
               className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
               <option value="">Alle Projekte</option>
               {reports.map((report) => <option key={report.project} value={report.project}>{PROJECT_LABELS[report.project]}</option>)}
@@ -377,7 +389,7 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               <option value="asc">Niedrigste zuerst</option>
             </select>
           </label>}
-          <button onClick={() => { cancelExport(); setAttempt((value) => value + 1); }}
+          <button onClick={() => { cancelExport(); setMatrixPage(0); setAttempt((value) => value + 1); }}
             disabled={state.loading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold disabled:opacity-50">Aktualisieren</button>
           <button type="button" onClick={downloadCsv}
@@ -443,6 +455,78 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
           {dailyViews.length === 0 && !empty && <p role="status" className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
             Für diese Tagesmetrik wurden keine Ereignisse aufgezeichnet. Fehlende Werte sind kein Nachweis für Nullaktivität.
           </p>}
+
+          <section aria-label="Projekt-Tagesmatrix" className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">Tagesmatrix aller Projekte</h2>
+              <p className="text-xs text-slate-400 mt-2">
+                Aufgezeichnete V1-Ereignisse nach Projekt und UTC-Tag, maximal 14 Tage je Seite.
+                „—“ bedeutet: kein Tagesdatensatz dieses Projekts. „0“ bedeutet: kein Ereignis
+                dieser Art im vorhandenen Tagesdatensatz. Beides belegt keine vollständige Erfassung.
+                Keine eindeutigen Besucher, bestätigten Kunden oder Umsätze.
+              </p>
+            </div>
+            <label className="text-xs text-slate-400 flex flex-col gap-2 sm:max-w-xs">
+              Matrix-Metrik
+              <select aria-label="Matrix-Metrik" value={matrixEvent}
+                onChange={(event) => { setMatrixEvent(event.target.value); setMatrixPage(0); }}
+                className="rounded-lg bg-slate-950 text-white border border-slate-700 px-3 py-2 text-sm">
+                {Object.entries(TREND_LABELS).map(([event, label]) =>
+                  <option key={event} value={event}>{label}</option>)}
+              </select>
+            </label>
+            {matrixDays.length === 0 ? (
+              <p role="status" className="text-sm text-amber-300">
+                Keine aufgezeichneten UTC-Tage für diese Auswahl. Nullaktivität ist nicht nachgewiesen.
+              </p>
+            ) : <>
+              <div className="flex items-center gap-3 flex-wrap text-xs">
+                <button type="button" disabled={matrixPage === 0}
+                  onClick={() => setMatrixPage((page) => Math.max(0, page - 1))}
+                  className="rounded border border-slate-700 px-3 py-2 disabled:opacity-40">
+                  Neuere Tage
+                </button>
+                <span aria-label="Matrix-Seite" className="text-slate-400">
+                  Seite {matrixPage + 1} von {matrixPageCount}
+                </span>
+                <button type="button" disabled={matrixPage + 1 >= matrixPageCount}
+                  onClick={() => setMatrixPage((page) => Math.min(matrixPageCount - 1, page + 1))}
+                  className="rounded border border-slate-700 px-3 py-2 disabled:opacity-40">
+                  Ältere Tage
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table aria-label="Projekt-Tagesmatrix Tabelle" className="w-full text-left text-xs sm:text-sm">
+                  <caption className="sr-only">Erfasste Projekt-Ereignisse je UTC-Tag für {TREND_LABELS[matrixEvent]}</caption>
+                  <thead className="border-b border-slate-700 text-slate-400">
+                    <tr>
+                      <th scope="col" className="sticky left-0 bg-slate-900 p-2">Projekt</th>
+                      {matrixVisibleDays.map((day) =>
+                        <th key={day} scope="col" className="p-2 whitespace-nowrap tabular-nums">{day}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>{visible.map((report) =>
+                    <tr key={report.project} className="border-b border-slate-800">
+                      <th scope="row" className="sticky left-0 bg-slate-900 p-2 font-medium whitespace-nowrap">
+                        {PROJECT_LABELS[report.project]}
+                      </th>
+                      {matrixVisibleDays.map((day) => <td key={day} className="p-2 text-right tabular-nums">
+                        {Object.hasOwn(report.daily, day)
+                          ? number(report.daily[day][matrixEvent] ?? 0) : "—"}
+                      </td>)}
+                    </tr>)}</tbody>
+                  <tfoot className="border-t border-slate-600 font-semibold">
+                    <tr>
+                      <th scope="row" className="sticky left-0 bg-slate-900 p-2 whitespace-nowrap">Erfasste Summe</th>
+                      {matrixVisibleDays.map((day) => <td key={day} className="p-2 text-right tabular-nums">
+                        {number(matrixTotal(day))}
+                      </td>)}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>}
+          </section>
           <section aria-label="Direkter Projektvergleich" className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
             <div>
               <h2 className="font-semibold">Zwei Projekte direkt vergleichen</h2>
@@ -519,7 +603,7 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
           <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
             <h2 className="font-semibold p-5">Projektvergleich</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table aria-label="Projektvergleich Tabelle" className="w-full text-left text-sm">
                 <caption className="sr-only">Aufgezeichnete Ereignisse je Projekt im ausgewählten Zeitraum</caption>
                 <thead className="text-slate-400 border-y border-slate-800"><tr>
                   {["Projekt", "Tage mit Ereignissen", "Letzter erfasster UTC-Tag", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Bezahlvorgang abgeschlossen (Ereignisse)", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
