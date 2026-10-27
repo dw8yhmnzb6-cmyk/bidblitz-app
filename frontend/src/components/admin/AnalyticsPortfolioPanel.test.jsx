@@ -84,6 +84,24 @@ test('network errors clear stale data on refresh',async()=>{
   expect(container.querySelector('article')).toBeNull();
 });
 
+test('unexpected transport errors never expose internal exception details',async()=>{
+  global.fetch=jest.fn().mockRejectedValue(new Error('INTERNAL_API_TOKEN_SENTINEL'));
+  await mount();
+  const alert=container.querySelector('[role="alert"]');
+  expect(alert).not.toBeNull();
+  expect(alert.textContent).toContain('Die Analysedaten konnten nicht geladen werden.');
+  expect(container.textContent).not.toContain('INTERNAL_API_TOKEN_SENTINEL');
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test('non-Error transport rejections show a safe error instead of a stuck loading screen',async()=>{
+  global.fetch=jest.fn().mockRejectedValue(null);
+  await mount();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Die Analysedaten konnten nicht geladen werden.');
+  expect(container.querySelector('[role="status"]')).toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
 test('period changes discard late responses from the previous period',async()=>{
   let finishOld;
   global.fetch=jest.fn().mockImplementationOnce(()=>new Promise(resolve=>finishOld=resolve))
