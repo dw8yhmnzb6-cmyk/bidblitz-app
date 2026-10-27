@@ -61,23 +61,37 @@ _V1_EVENT_COUNTERS = (
 
 
 def summarize_v1_event_portfolio(project_reports):
-    """Summarize server-authorized V1 reports without raw events or revenue claims.
+    """Aggregate privacy-safe V1 event totals and UTC-day counts.
 
-    Each input report is already scoped to a project by the admin API. Browser
-    checkout events do not prove payments; event totals are not unique people.
+    Daily buckets represent *recorded* events only. Missing buckets do not
+    establish zero traffic or a healthy collector. They cannot substantiate
+    unique visitors, completed payments or profit.
     """
     totals = {}
+    daily = {}
     project_count = 0
+    projects_with_events = 0
     for report in project_reports:
         project_count += 1
         counters = report["totals"]
+        if any(counters.get(event, 0) > 0 for event in _V1_EVENT_COUNTERS):
+            projects_with_events += 1
         for event in _V1_EVENT_COUNTERS:
             count = counters.get(event, 0)
             if count:
                 totals[event] = totals.get(event, 0) + count
+        for day, counts in report.get("daily", {}).items():
+            for event in _V1_EVENT_COUNTERS:
+                count = counts.get(event, 0)
+                if count:
+                    bucket = daily.setdefault(day, {})
+                    bucket[event] = bucket.get(event, 0) + count
     return {
         "project_count": project_count,
         "totals": totals,
+        "daily": dict(sorted(daily.items())),
+        "projects_with_events": projects_with_events,
+        "projects_without_events": project_count - projects_with_events,
         "verified_revenue_included": False,
         "unique_visitors": None,
         "net_profit_available": False,

@@ -119,6 +119,7 @@ def test_v1_summary_excludes_unknown_counters_and_personal_data():
     assert summary == {
         "project_count": 2,
         "totals": {"page_view": 6, "cta_click": 3, "checkout_completed": 1},
+        "daily": {}, "projects_with_events": 2, "projects_without_events": 0,
         "verified_revenue_included": False,
         "unique_visitors": None,
         "net_profit_available": False,
@@ -135,3 +136,51 @@ def test_v1_summary_empty_portfolio_has_no_invented_events():
     assert summary["totals"] == {}
     assert summary["unique_visitors"] is None
     assert summary["verified_revenue_included"] is False
+
+def test_v1_summary_combines_daily_event_counts_across_projects():
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+
+    reports = [
+        {"totals": {"page_view": 6, "signup_completed": 1},
+         "daily": {"2026-10-26": {"page_view": 2},
+                   "2026-10-27": {"page_view": 4, "signup_completed": 1}}},
+        {"totals": {"page_view": 3, "flow_abandoned": 2},
+         "daily": {"2026-10-27": {"page_view": 3, "flow_abandoned": 2}}},
+        {"totals": {}, "daily": {}},
+    ]
+    result = summarize_v1_event_portfolio(reports)
+    assert result["daily"] == {
+        "2026-10-26": {"page_view": 2},
+        "2026-10-27": {"page_view": 7, "signup_completed": 1,
+                       "flow_abandoned": 2},
+    }
+    assert result["totals"] == {
+        "page_view": 9, "signup_completed": 1, "flow_abandoned": 2,
+    }
+    assert result["projects_with_events"] == 2
+    assert result["projects_without_events"] == 1
+
+
+def test_v1_summary_daily_never_exports_personal_or_unknown_fields():
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+
+    report = {
+        "totals": {"page_view": 1, "private_email": "private@example.invalid"},
+        "daily": {"2026-10-27": {
+            "page_view": 1, "private_email": "private@example.invalid"}},
+    }
+    summary = summarize_v1_event_portfolio([report])
+    assert summary["daily"] == {"2026-10-27": {"page_view": 1}}
+    assert "private@example.invalid" not in repr(summary)
+
+
+def test_v1_summary_empty_or_legacy_daily_is_not_invented():
+    from core.analytics_portfolio_summary import summarize_v1_event_portfolio
+
+    summary = summarize_v1_event_portfolio([
+        {"totals": {"page_view": 1}}, {"totals": {}, "daily": {}}
+    ])
+    assert summary["totals"] == {"page_view": 1}
+    assert summary["daily"] == {}
+    assert summary["projects_with_events"] == 1
+    assert summary["projects_without_events"] == 1

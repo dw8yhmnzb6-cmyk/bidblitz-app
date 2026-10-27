@@ -157,10 +157,43 @@ def test_v1_portfolio_exposes_safe_summary_without_extra_database_reads(api):
     assert response.json()["summary"] == {
         "project_count": len(get_args(ProjectName)),
         "totals": {"page_view": 11, "signup_completed": 2},
+        "daily": {"2026-10-27": {"page_view": 11, "signup_completed": 2}},
+        "projects_with_events": 2,
+        "projects_without_events": len(get_args(ProjectName)) - 2,
         "verified_revenue_included": False,
         "unique_visitors": None,
         "net_profit_available": False,
         "data_scope": "v1_project_events_only",
     }
     assert "private@example.invalid" not in response.text
+    assert len(state.pipelines) == 1
+
+def test_portfolio_api_reports_cross_project_daily_trends_without_more_reads(api):
+    client, state = api
+    state.rows = [
+        bucket("eyes", "page_view", "2026-10-27", 3),
+        bucket("trade", "page_view", "2026-10-26", 2),
+        bucket("trade", "page_view", "2026-10-27", 4),
+        bucket("stack", "flow_abandoned", "2026-10-27", 1),
+    ]
+    response = client.get("/api/analytics/v1/portfolio?days=7")
+    assert response.status_code == 200
+    summary = response.json()["summary"]
+    assert summary["daily"] == {
+        "2026-10-26": {"page_view": 2},
+        "2026-10-27": {"page_view": 7, "flow_abandoned": 1},
+    }
+    assert summary["projects_with_events"] == 3
+    assert summary["projects_without_events"] == len(get_args(ProjectName)) - 3
+    assert len(state.pipelines) == 1
+
+
+def test_portfolio_api_empty_period_reports_no_recorded_daily_events(api):
+    client, state = api
+    response = client.get("/api/analytics/v1/portfolio?days=30")
+    assert response.status_code == 200
+    summary = response.json()["summary"]
+    assert summary["daily"] == {}
+    assert summary["projects_with_events"] == 0
+    assert summary["projects_without_events"] == len(get_args(ProjectName))
     assert len(state.pipelines) == 1
