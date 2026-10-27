@@ -21,6 +21,8 @@ const TREND_LABELS = {
 };
 const SORT_LABELS = {
   registry: "Projektkatalog",
+  recorded_days: "Tage mit Ereignissen",
+  recorded_last_day: "Letzter aufgezeichneter UTC-Tag",
   page_view: "Seitenaufrufe",
   cta_click: "Klicks",
   signup_started: "Registrierungen begonnen",
@@ -91,6 +93,9 @@ function checkedReports(data, days) {
           day < earliest || day > data.as_of.slice(0, 10) ||
           !counts || typeof counts !== "object" || Array.isArray(counts)) {
         throw new DisplayableAnalyticsError("Die API hat ungültige Tagesdaten geliefert.");
+      }
+      if (!Object.values(counts).some((count) => Number.isSafeInteger(count) && count > 0)) {
+        throw new DisplayableAnalyticsError("Die API hat leere Tagesaufzeichnungen geliefert.");
       }
       for (const [event, count] of Object.entries(counts)) {
         if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
@@ -276,9 +281,14 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const reports = state.data?.projects || [];
   const visible = selected ? reports.filter((report) => report.project === selected) : reports;
   // Rank only validated, authorized reports; avoid large-number subtraction.
+  const lastRecordedDay = (report) => Object.keys(report.daily).sort().slice(-1)[0] ?? "";
   const ranked = sortEvent === "registry" ? visible : [...visible].sort((left, right) => {
-    const a = left.totals[sortEvent] ?? 0;
-    const b = right.totals[sortEvent] ?? 0;
+    const a = sortEvent === "recorded_days" ? Object.keys(left.daily).length :
+      sortEvent === "recorded_last_day" ? lastRecordedDay(left) : (left.totals[sortEvent] ?? 0);
+    const b = sortEvent === "recorded_days" ? Object.keys(right.daily).length :
+      sortEvent === "recorded_last_day" ? lastRecordedDay(right) : (right.totals[sortEvent] ?? 0);
+    // A missing date never means "the oldest event": rank unknowns last.
+    if (sortEvent === "recorded_last_day" && (!a || !b) && a !== b) return a ? -1 : 1;
     if (a !== b) return (a < b ? -1 : 1) * (sortDirection === "asc" ? 1 : -1);
     return PROJECT_LABELS[left.project].localeCompare(PROJECT_LABELS[right.project], "de");
   });
@@ -429,15 +439,18 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Aufgezeichnete Ereignisse je Projekt im ausgewählten Zeitraum</caption>
                 <thead className="text-slate-400 border-y border-slate-800"><tr>
-                  {["Projekt", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Bezahlvorgang abgeschlossen (Ereignisse)", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
+                  {["Projekt", "Tage mit Ereignissen", "Letzter erfasster UTC-Tag", "Seitenaufrufe", "Klicks", "Registrierungen begonnen (Ereignisse)", "Registrierungen abgeschlossen (Ereignisse)", "Bezahlvorgang gestartet", "Bezahlvorgang abgeschlossen (Ereignisse)", "Abbrüche (Ereignisse)"].map((heading) => <th key={heading} scope="col" className="p-4 font-medium whitespace-nowrap">{heading}</th>)}
                 </tr></thead>
                 <tbody>{ranked.map((report) => <tr key={report.project} className="border-b border-slate-800 last:border-0">
                   <th scope="row" className="p-4 font-medium whitespace-nowrap">{PROJECT_LABELS[report.project]}</th>
+                  <td className="p-4 tabular-nums">{number(Object.keys(report.daily).length)}</td>
+                  <td className="p-4 tabular-nums whitespace-nowrap">{lastRecordedDay(report) || "Keine Aufzeichnung"}</td>
                   {["page_view", "cta_click", "signup_started", "signup_completed", "checkout_started", "checkout_completed", "flow_abandoned"].map((event) => <td key={event} className="p-4 tabular-nums">{number(report.totals[event] || 0)}</td>)}
                 </tr>)}</tbody>
               </table>
             </div>
           </div>
+          <p className="text-xs text-slate-400">Erfasste Tage = UTC-Tage mit mindestens einem gespeicherten V1-Ereignis. Ein fehlender Tag oder eine alte Aufzeichnung beweist weder Nullaktivität noch einen Collector-Ausfall.</p>
           <p className="text-xs text-slate-400">API-Stand: {new Date(state.data.as_of).toLocaleString("de-DE", { timeZone: "UTC" })} UTC · Quelle: V1-Projektereignisse · keine Live-Garantie</p>
         </>}
       </div>

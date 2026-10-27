@@ -4,7 +4,7 @@ Referral tracking, conversion funnel, retention metrics, campaign performance,
 and lightweight event-based conversion tracking.
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional
@@ -285,16 +285,19 @@ async def _top_features(since: str):
 # Neither endpoint activates collection or grants access to customer accounts.
 async def _v1_project_reports(projects, days, now):
     """One bounded aggregate over server-authorized, registered projects."""
+    from typing import get_args
+    from core.analytics_event_schema import EventName
+
+    earliest = (now - timedelta(days=days)).date()
+    latest = now.date()
     since = (now - timedelta(days=days)).isoformat()
+    event_names = get_args(EventName)
     pipeline = [
         {"$match": {
             "schema_version": 1,
             "project": {"$in": list(projects)},
             "received_at": {"$gte": since, "$lte": now.isoformat()},
-            "event": {"$in": [
-                "page_view", "cta_click", "signup_started", "signup_completed",
-                "checkout_started", "checkout_completed", "flow_abandoned",
-            ]},
+            "event": {"$in": list(event_names)},
         }},
         {"$group": {
             "_id": {"project": "$project", "day": {"$substrBytes": ["$received_at", 0, 10]},
@@ -306,7 +309,7 @@ async def _v1_project_reports(projects, days, now):
     # A rolling 90-day window can touch 91 UTC calendar dates. Seven event
     # kinds per date and project fit below this bounded cursor length.
     records = await db.conversion_events.aggregate(pipeline).to_list(
-        length=len(projects) * (days + 1) * 7)
+        length=len(projects) * (days + 1) * len(event_names))
     reports = {project: {
         "project": project,
         "period_days": days,
@@ -316,12 +319,27 @@ async def _v1_project_reports(projects, days, now):
         "data_scope": "v1_project_events_only",
     } for project in projects}
     for record in records:
+        # Aggregate output is database-derived. Unexpected types, fields and
+        # UTC dates must fail closed rather than corrupt dashboard/CSV totals.
+        if not isinstance(record, dict) or not isinstance(record.get("_id"), dict):
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
         dimensions = record["_id"]
-        report = reports.get(dimensions["project"])
+        project = dimensions.get("project")
+        if not isinstance(project, str):
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        report = reports.get(project)
         if report is None:
-            continue
-        event, day = dimensions["event"], dimensions["day"]
-        count = record["count"]
+            continue  # Never expose data from a project outside the server catalog.
+        event, day = dimensions.get("event"), dimensions.get("day")
+        if event not in event_names or not isinstance(day, str):
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        try:
+            parsed_day = date.fromisoformat(day)
+        except ValueError:
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable") from None
+        if parsed_day.isoformat() != day or not earliest <= parsed_day <= latest:
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        count = record.get("count")
         # A grouped MongoDB event count must be a positive integer. Reject
         # malformed/overflowing aggregates instead of silently truncating
         # floats, turning booleans into visits, or losing JavaScript precision.

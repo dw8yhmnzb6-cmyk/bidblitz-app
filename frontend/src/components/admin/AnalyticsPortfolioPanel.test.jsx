@@ -253,9 +253,9 @@ test('project comparison shows signup starts and workflow abandonment as event c
   expect(headings).toContain('Abbrüche (Ereignisse)');
   const rows = container.querySelectorAll('tbody tr');
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['12', '0', '6', '2', '0', '0', '0']);
+    ['2', '2026-10-27', '12', '0', '6', '2', '0', '0', '0']);
   expect([...rows[1].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['5', '0', '0', '0', '3', '0', '4']);
+    ['1', '2026-10-27', '5', '0', '0', '0', '3', '0', '4']);
   expect(container.textContent).toContain('Nicht angebunden');
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
@@ -272,7 +272,7 @@ test('project selector limits the new event columns to the selected project', as
   const rows = container.querySelectorAll('tbody tr');
   expect(rows).toHaveLength(1);
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
-    ['5', '0', '0', '0', '3', '0', '0']);
+    ['1', '2026-10-27', '5', '0', '0', '0', '3', '0', '0']);
   expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -574,4 +574,58 @@ test('sortable project comparison ranks validated event counts and respects proj
   expect(names()[0]).toBe('Trade');
   expect(container.querySelector('[aria-label="Sortierrichtung"]')).toBeNull();
   expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+
+test('recording footprint shows recorded UTC days without claiming collector health', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  const headings = [...container.querySelectorAll('thead th')].map(th => th.textContent);
+  expect(headings).toContain('Tage mit Ereignissen');
+  expect(headings).toContain('Letzter erfasster UTC-Tag');
+  const rows = [...container.querySelectorAll('tbody tr')];
+  const trade = rows.find(row => row.textContent.includes('Trade'));
+  expect([...trade.querySelectorAll('td')].slice(0, 2).map(td => td.textContent)).toEqual(
+    ['2', '2026-10-27']);
+  const fuel = rows.find(row => row.textContent.includes('Fuel'));
+  expect([...fuel.querySelectorAll('td')].slice(0, 2).map(td => td.textContent)).toEqual(
+    ['0', 'Keine Aufzeichnung']);
+  expect(container.textContent).toContain('beweist weder Nullaktivität noch einen Collector-Ausfall');
+  await select('Projekt', 'fuel');
+  expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
+  expect(container.querySelector('tbody tr').textContent).toContain('Keine Aufzeichnung');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('last recorded day sorts observed dates and leaves missing dates last in either direction', async () => {
+  const data = portfolio();
+  const power = data.projects.find(project => project.project === 'power');
+  power.totals.page_view = 1;
+  power.daily['2026-10-25'] = { page_view: 1 };
+  data.summary.totals.page_view += 1;
+  data.summary.daily['2026-10-25'] = { page_view: 1 };
+  data.summary.projects_with_events += 1;
+  data.summary.projects_without_events -= 1;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  const names = () => [...container.querySelectorAll('tbody tr th')].map(th => th.textContent);
+  await select('Vergleich sortieren', 'recorded_last_day');
+  expect(names().slice(0, 3)).toEqual(['The Eye', 'Trade', 'Power']);
+  await select('Sortierrichtung', 'asc');
+  expect(names()[0]).toBe('Power');
+  expect(names()[1]).toBe('The Eye');
+  expect(names().at(-1)).not.toBe('Power');
+  await select('Vergleich sortieren', 'recorded_days');
+  await select('Sortierrichtung', 'desc');
+  expect(names()[0]).toBe('Trade');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('rejects zero-only days instead of inventing recording coverage', async () => {
+  const data = portfolio();
+  data.projects[0].daily['2026-10-25'] = { page_view: 0 };
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('leere Tagesaufzeichnungen');
+  expect(container.querySelectorAll('tbody tr')).toHaveLength(0);
 });

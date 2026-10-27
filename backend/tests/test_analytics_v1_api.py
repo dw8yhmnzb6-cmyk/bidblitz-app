@@ -138,9 +138,14 @@ def test_empty_collection_is_empty_recorded_data_not_invented_metrics(api):
 
 def test_max_window_has_room_for_every_calendar_bucket(api):
     client, state = api
-    state.rows = [bucket(p, event, f"day-{day}") for p in get_args(ProjectName)
-                  for day in range(91) for event in ["page_view", "cta_click", "signup_started",
-                  "signup_completed", "checkout_started", "checkout_completed", "flow_abandoned"]]
+    today = datetime.now(timezone.utc).date()
+    state.rows = [
+        bucket(p, event, (today - timedelta(days=day)).isoformat())
+        for p in get_args(ProjectName)
+        for day in range(91)
+        for event in ["page_view", "cta_click", "signup_started", "signup_completed",
+                      "checkout_started", "checkout_completed", "flow_abandoned"]
+    ]
     body = client.get("/api/analytics/v1/portfolio?days=90").json()
     assert sum(sum(p["totals"].values()) for p in body["projects"]) == len(state.rows)
     assert state.limits == [len(state.rows)]
@@ -310,3 +315,69 @@ def test_csv_export_rejects_inconsistent_daily_totals_from_malformed_group_resul
     response = client.get("/api/analytics/v1/portfolio/export.csv?days=7")
     assert response.status_code == 503
     assert response.json()["detail"] == "Analytics export unavailable"
+
+
+@pytest.mark.parametrize("path,detail", [
+    ("/v1/portfolio", "Analytics aggregate unavailable"),
+    ("/v1/projects/trade/overview", "Analytics aggregate unavailable"),
+    ("/v1/portfolio/export.csv", "Analytics export unavailable"),
+])
+@pytest.mark.parametrize("corruption", [
+    "invalid_calendar_day", "expired_day", "future_day", "bad_day_type",
+    "bad_event", "missing_event", "missing_day", "missing_group",
+    "non_mapping_group", "bad_project_type", "bad_count_type",
+])
+def test_v1_report_fails_closed_on_corrupt_group_dimensions(api, path, detail, corruption):
+    client, state = api
+    today = datetime.now(timezone.utc).date()
+    row = bucket("trade", "page_view", today.isoformat(), 1)
+    if corruption == "invalid_calendar_day":
+        row["_id"]["day"] = "2026-02-30"
+    elif corruption == "expired_day":
+        row["_id"]["day"] = (today - timedelta(days=91)).isoformat()
+    elif corruption == "future_day":
+        row["_id"]["day"] = (today + timedelta(days=1)).isoformat()
+    elif corruption == "bad_day_type":
+        row["_id"]["day"] = {"$ne": ""}
+    elif corruption == "bad_event":
+        row["_id"]["event"] = "customer_email"
+    elif corruption == "missing_event":
+        del row["_id"]["event"]
+    elif corruption == "missing_day":
+        del row["_id"]["day"]
+    elif corruption == "missing_group":
+        del row["_id"]
+    elif corruption == "non_mapping_group":
+        row["_id"] = "private@example.invalid"
+    elif corruption == "bad_project_type":
+        row["_id"]["project"] = ["trade"]
+    elif corruption == "bad_count_type":
+        row["count"] = True
+    state.rows = [bucket("eyes", "page_view", today.isoformat(), 2), row]
+    response = client.get("/api/analytics" + path + "?days=7")
+    assert response.status_code == 503
+    assert response.json() == {"detail": detail}
+    assert "private@example.invalid" not in response.text
+    assert "customer_email" not in response.text
+    assert len(state.pipelines) == 1
+
+
+def test_v1_report_keeps_valid_day_buckets_and_admin_scoping_after_validation(api):
+    client, state = api
+    today = datetime.now(timezone.utc).date()
+    earliest = (today - timedelta(days=7)).isoformat()
+    state.rows = [
+        bucket("trade", "page_view", earliest, 2),
+        bucket("trade", "signup_completed", today.isoformat(), 1),
+        bucket("foreign", "page_view", today.isoformat(), 5000),
+    ]
+    response = client.get("/api/analytics/v1/portfolio?days=7")
+    assert response.status_code == 200
+    trade = next(row for row in response.json()["projects"] if row["project"] == "trade")
+    assert trade["totals"] == {"page_view": 2, "signup_completed": 1}
+    assert trade["daily"] == {
+        earliest: {"page_view": 2},
+        today.isoformat(): {"signup_completed": 1},
+    }
+    assert response.json()["summary"]["projects_with_events"] == 1
+    assert len(state.pipelines) == 1
