@@ -770,3 +770,23 @@ test('unauthorized and malformed responses never expose a matrix of stale data',
   expect(container.querySelector('[aria-label="Projekt-Tagesmatrix"]')).toBeNull();
   expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
 });
+
+test('parent dashboard exposes the time comparison only after valid authorized V1 portfolio data', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  expect(container.textContent).toContain('Vorperioden vergleichen');
+  expect(container.querySelector('[aria-label="Zeitraumvergleich"]')).not.toBeNull();
+  // The new comparison must not silently expand analytics reads.
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('parent revocation removes the period comparison controls and does not preserve old counters', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce({ ok: false, status: 403 });
+  await mount();
+  expect(container.textContent).toContain('Vorperioden vergleichen');
+  await click('Aktualisieren');
+  expect(container.querySelector('[aria-label="Zeitraumvergleich"]')).toBeNull();
+  expect(container.textContent).not.toContain('Vorperioden vergleichen');
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
+});
