@@ -321,9 +321,19 @@ async def _v1_project_reports(projects, days, now):
         if report is None:
             continue
         event, day = dimensions["event"], dimensions["day"]
-        count = int(record["count"])
-        report["totals"][event] = report["totals"].get(event, 0) + count
-        report["daily"].setdefault(day, {})[event] = count
+        count = record["count"]
+        # A grouped MongoDB event count must be a positive integer. Reject
+        # malformed/overflowing aggregates instead of silently truncating
+        # floats, turning booleans into visits, or losing JavaScript precision.
+        if (isinstance(count, bool) or not isinstance(count, int)
+                or not 1 <= count <= 2**53 - 1):
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        current = report["totals"].get(event, 0)
+        bucket = report["daily"].setdefault(day, {})
+        if event in bucket or current > (2**53 - 1) - count:
+            raise HTTPException(status_code=503, detail="Analytics aggregate unavailable")
+        report["totals"][event] = current + count
+        bucket[event] = count
     return list(reports.values())
 
 
@@ -349,6 +359,41 @@ async def analytics_portfolio_overview(
         "verified_revenue_included": False,
         "data_scope": "v1_project_events_only",
     }
+
+
+@router.get("/v1/portfolio/export.csv")
+async def analytics_portfolio_export_csv(
+    request: Request,
+    days: int = Query(default=30, ge=1, le=90),
+):
+    """Admin-only V1 event history CSV, never customer or payment records."""
+    await require_admin(request)
+    from typing import get_args
+    from fastapi.responses import Response
+    from core.analytics_event_schema import ProjectName
+    from core.analytics_v1_csv_export import render_v1_portfolio_daily_csv
+
+    now = datetime.now(timezone.utc)
+    try:
+        reports = await _v1_project_reports(get_args(ProjectName), days, now)
+        content = render_v1_portfolio_daily_csv(reports, days=days, as_of=now)
+    except ValueError:
+        # Malformed aggregate data must fail closed; never echo database fields.
+        raise HTTPException(status_code=503, detail="Analytics export unavailable") from None
+    except HTTPException as exc:
+        if exc.status_code != 503:
+            raise
+        raise HTTPException(status_code=503, detail="Analytics export unavailable") from None
+
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="bidblitz-v1-events.csv"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/v1/projects/{project}/overview")

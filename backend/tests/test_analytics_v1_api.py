@@ -1,5 +1,7 @@
 """HTTP contract tests with fake auth/DB; no production connections or data."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import csv
+from io import StringIO
 import importlib.util
 import sys
 from pathlib import Path
@@ -197,3 +199,114 @@ def test_portfolio_api_empty_period_reports_no_recorded_daily_events(api):
     assert summary["projects_with_events"] == 0
     assert summary["projects_without_events"] == len(get_args(ProjectName))
     assert len(state.pipelines) == 1
+
+
+def _csv_rows(response):
+    return list(csv.DictReader(StringIO(response.text)))
+
+
+def test_portfolio_csv_is_admin_only_and_skips_database_reads_for_non_admins(api):
+    client, state = api
+    state.user = {"role": "customer", "analytics_projects": ["trade"], "is_admin": True}
+    response = client.get("/api/analytics/v1/portfolio/export.csv?days=7")
+    assert response.status_code == 403
+    assert state.pipelines == []
+    state.auth_error = HTTPException(status_code=401, detail="Not authenticated")
+    assert client.get("/api/analytics/v1/portfolio/export.csv").status_code == 401
+    assert state.pipelines == []
+
+
+@pytest.mark.parametrize("days", [0, -1, 91, "all"])
+def test_csv_export_rejects_invalid_period_before_aggregation(api, days):
+    client, state = api
+    assert client.get("/api/analytics/v1/portfolio/export.csv",
+                      params={"days": days}).status_code == 422
+    assert state.pipelines == []
+
+
+def test_admin_csv_export_contains_only_registered_event_days_and_marks_unknown_coverage(api):
+    client, state = api
+    today = datetime.now(timezone.utc).date().isoformat()
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date().isoformat()
+    state.rows = [
+        {**bucket("trade", "page_view", yesterday, 4),
+         "customer_email": "private@example.invalid", "session_id": "secret"},
+        bucket("trade", "signup_completed", today, 2),
+        bucket("eyes", "page_view", today, 3),
+        bucket("outside", "page_view", today, 999),
+    ]
+    response = client.get("/api/analytics/v1/portfolio/export.csv",
+                          params={"days": 7, "projects": "outside"},
+                          headers={"X-Analytics-Projects": "outside"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv; charset=utf-8")
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="bidblitz-v1-events.csv"')
+    rows = _csv_rows(response)
+    assert len(rows) == len(get_args(ProjectName)) + 1  # Trade has two UTC days.
+    assert [(row["project"], row["utc_date"]) for row in rows if row["project"] == "trade"] == [
+        ("trade", yesterday), ("trade", today)]
+    assert [row for row in rows if row["project"] == "trade" and
+            row["utc_date"] == today][0]["signup_completed"] == "2"
+    assert [row for row in rows if row["project"] == "eyes"][0]["page_view"] == "3"
+    empty = [row for row in rows if row["project"] == "fuel"][0]
+    assert empty["utc_date"] == ""
+    assert empty["page_view"] == ""
+    assert empty["record_status"] == "no_recorded_events"
+    assert all(row["verified_revenue_included"] == "false" and
+               row["data_scope"] == "v1_project_events_only" for row in rows)
+    assert "private@example.invalid" not in response.text
+    assert "secret" not in response.text
+    assert "outside" not in response.text
+    assert len(state.pipelines) == 1
+    assert state.pipelines[0][0]["$match"]["project"] == {
+        "$in": list(get_args(ProjectName))}
+    assert state.limits == [len(get_args(ProjectName)) * 8 * 7]
+
+
+def test_csv_export_has_one_unambiguous_unknown_coverage_row_per_empty_project(api):
+    client, state = api
+    response = client.get("/api/analytics/v1/portfolio/export.csv?days=1")
+    assert response.status_code == 200
+    rows = _csv_rows(response)
+    assert [row["project"] for row in rows] == list(get_args(ProjectName))
+    assert all(row["record_status"] == "no_recorded_events" and
+               row["utc_date"] == "" for row in rows)
+    assert all(row["page_view"] == "" for row in rows)
+    assert "email" not in response.text.lower()
+    assert len(state.pipelines) == 1
+
+
+@pytest.mark.parametrize("day", ["=IMPORTXML(1)", "2026-02-30", "2020-01-01"])
+def test_csv_export_rejects_invalid_or_out_of_window_dates_without_reflecting_them(api, day):
+    client, state = api
+    state.rows = [bucket("trade", "page_view", day, 1)]
+    response = client.get("/api/analytics/v1/portfolio/export.csv?days=7")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Analytics export unavailable"
+    assert day not in response.text
+    assert len(state.pipelines) == 1
+
+
+@pytest.mark.parametrize("count", [-1, 2**53, 1.5, True])
+def test_csv_export_fails_closed_on_invalid_aggregate_counts(api, count):
+    client, state = api
+    today = datetime.now(timezone.utc).date().isoformat()
+    state.rows = [bucket("trade", "page_view", today, count)]
+    response = client.get("/api/analytics/v1/portfolio/export.csv?days=7")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Analytics export unavailable"
+
+
+def test_csv_export_rejects_inconsistent_daily_totals_from_malformed_group_results(api):
+    client, state = api
+    today = datetime.now(timezone.utc).date().isoformat()
+    # The real database groups identical dimensions; double rows signal a bad
+    # upstream aggregate and must never be silently exported as clean numbers.
+    state.rows = [bucket("trade", "page_view", today, 3),
+                  bucket("trade", "page_view", today, 2)]
+    response = client.get("/api/analytics/v1/portfolio/export.csv?days=7")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Analytics export unavailable"
