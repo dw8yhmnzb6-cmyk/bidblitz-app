@@ -164,6 +164,8 @@ function checkedReports(data, days) {
 export default function AnalyticsPortfolioPanel({ onBack }) {
   const [days, setDays] = useState(7);
   const [selected, setSelected] = useState("");
+  const [compareLeft, setCompareLeft] = useState("");
+  const [compareRight, setCompareRight] = useState("");
   const [trendEvent, setTrendEvent] = useState("page_view");
   const [sortEvent, setSortEvent] = useState("registry");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -308,6 +310,14 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
     ["Gestartete Bezahlvorgänge", total("checkout_started")],
   ];
   const empty = visible.every((report) => Object.values(report.totals).every((count) => count === 0));
+  const leftReport = reports.find((report) => report.project === compareLeft);
+  const rightReport = reports.find((report) => report.project === compareRight);
+  const canCompare = Boolean(leftReport && rightReport && compareLeft !== compareRight);
+  // This is an event comparison, never a user cohort or conversion-rate estimate.
+  const compareDays = canCompare
+    ? [...new Set([...Object.keys(leftReport.daily), ...Object.keys(rightReport.daily)])]
+        .sort((a, b) => b.localeCompare(a)).slice(0, 14)
+    : [];
 
   return (
     <section className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 sm:px-8" aria-label="Analytics Projektvergleich">
@@ -433,6 +443,79 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
           {dailyViews.length === 0 && !empty && <p role="status" className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
             Für diese Tagesmetrik wurden keine Ereignisse aufgezeichnet. Fehlende Werte sind kein Nachweis für Nullaktivität.
           </p>}
+          <section aria-label="Direkter Projektvergleich" className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">Zwei Projekte direkt vergleichen</h2>
+              <p className="text-xs text-slate-400 mt-2">
+                Nur erfasste Ereigniszähler im selben UTC-Zeitraum. Kein Nutzer-Funnel,
+                keine eindeutigen Besucher, keine verifizierten Zahlungen oder Umsätze.
+                Dieser Vergleich ist unabhängig vom obigen Projektfilter.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                ["Projekt A", compareLeft, setCompareLeft],
+                ["Projekt B", compareRight, setCompareRight],
+              ].map(([label, value, update]) => (
+                <label key={label} className="text-xs text-slate-400 flex flex-col gap-2">
+                  {label}
+                  <select aria-label={label} value={value} onChange={(event) => update(event.target.value)}
+                    className="rounded-lg bg-slate-950 text-white border border-slate-700 px-3 py-2 text-sm">
+                    <option value="">Projekt auswählen</option>
+                    {reports.map((report) =>
+                      <option key={report.project} value={report.project}>{PROJECT_LABELS[report.project]}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            {compareLeft && compareRight && compareLeft === compareRight && (
+              <p role="status" className="text-sm text-amber-300">Für einen direkten Vergleich zwei unterschiedliche Projekte auswählen.</p>
+            )}
+            {canCompare && <>
+              <div className="overflow-x-auto">
+                <table aria-label="Projekt-Ereignisvergleich" className="w-full text-left text-sm">
+                  <caption className="sr-only">Erfasste Ereignisse für zwei ausgewählte Projekte</caption>
+                  <thead><tr className="border-b border-slate-700">
+                    <th scope="col" className="p-2">Ereignis</th>
+                    <th scope="col" className="p-2">{PROJECT_LABELS[compareLeft]}</th>
+                    <th scope="col" className="p-2">{PROJECT_LABELS[compareRight]}</th>
+                    <th scope="col" className="p-2">Differenz A − B</th>
+                  </tr></thead>
+                  <tbody>{EVENTS.map((event) => {
+                    const a = leftReport.totals[event] ?? 0;
+                    const b = rightReport.totals[event] ?? 0;
+                    const diff = a - b;
+                    return <tr key={event} className="border-b border-slate-800">
+                      <th scope="row" className="p-2 font-normal">{TREND_LABELS[event]}</th>
+                      <td className="p-2 tabular-nums">{number(a)}</td>
+                      <td className="p-2 tabular-nums">{number(b)}</td>
+                      <td className="p-2 tabular-nums">{diff > 0 ? "+" : ""}{number(diff)}</td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Tagesvergleich: {TREND_LABELS[trendEvent]}</h3>
+                <p className="text-xs text-slate-400 mb-2">Bis zu 14 zuletzt aufgezeichnete UTC-Tage beider Projekte. „—“ bedeutet: kein Tagesdatensatz erfasst.</p>
+                {compareDays.length === 0 ? (
+                  <p className="text-sm text-slate-400">Keine Tagesaufzeichnungen für diese zwei Projekte. Eine Nullaktivität ist nicht nachgewiesen.</p>
+                ) : <div className="overflow-x-auto">
+                  <table aria-label="Tagesvergleich zweier Projekte" className="w-full text-left text-sm">
+                    <thead><tr className="border-b border-slate-700">
+                      <th scope="col" className="p-2">UTC-Tag</th>
+                      <th scope="col" className="p-2">{PROJECT_LABELS[compareLeft]}</th>
+                      <th scope="col" className="p-2">{PROJECT_LABELS[compareRight]}</th>
+                    </tr></thead>
+                    <tbody>{compareDays.map((day) => <tr key={day} className="border-b border-slate-800">
+                      <th scope="row" className="p-2 font-normal tabular-nums">{day}</th>
+                      <td className="p-2 tabular-nums">{Object.hasOwn(leftReport.daily, day) ? number(leftReport.daily[day][trendEvent] ?? 0) : "—"}</td>
+                      <td className="p-2 tabular-nums">{Object.hasOwn(rightReport.daily, day) ? number(rightReport.daily[day][trendEvent] ?? 0) : "—"}</td>
+                    </tr>)}</tbody>
+                  </table>
+                </div>}
+              </div>
+            </>}
+          </section>
           <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
             <h2 className="font-semibold p-5">Projektvergleich</h2>
             <div className="overflow-x-auto">
