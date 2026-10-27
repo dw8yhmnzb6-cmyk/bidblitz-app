@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import AnalyticsPeriodCompare from "./AnalyticsPeriodCompare";
+import AnalyticsWeekdayInsights from "./AnalyticsWeekdayInsights";
+import AnalyticsRecordedDayChanges from "./AnalyticsRecordedDayChanges";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 const PROJECT_LABELS = {
@@ -458,6 +460,12 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
           {dailyViews.length === 0 && !empty && <p role="status" className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
             Für diese Tagesmetrik wurden keine Ereignisse aufgezeichnet. Fehlende Werte sind kein Nachweis für Nullaktivität.
           </p>}
+
+          <AnalyticsWeekdayInsights daily={trendBuckets ?? {}} metric={trendEvent}
+            scopeLabel={selected ? PROJECT_LABELS[selected] : "Alle Projekte"} />
+          <AnalyticsRecordedDayChanges key={`${days}:${selected}:${trendEvent}:${attempt}`}
+            daily={trendBuckets ?? {}} metric={trendEvent}
+            scopeLabel={selected ? PROJECT_LABELS[selected] : "Alle Projekte"} />
 
           <section aria-label="Projekt-Tagesmatrix" className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
             <div>
