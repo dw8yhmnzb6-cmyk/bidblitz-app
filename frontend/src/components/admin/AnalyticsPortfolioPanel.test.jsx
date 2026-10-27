@@ -790,3 +790,126 @@ test('parent revocation removes the period comparison controls and does not pres
   expect(container.textContent).not.toContain('Vorperioden vergleichen');
   expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
 });
+
+test('weekday intelligence follows validated UTC metric and project filters without new requests', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  const table = () => container.querySelector('[aria-label="UTC-Wochentagsanalyse Tabelle"]');
+  const cell = (day, index) => table().querySelector('[data-weekday="' + day + '"]').querySelectorAll('td')[index].textContent;
+  expect(cell('Montag', 2)).toBe('4');
+  expect(cell('Dienstag', 2)).toBe('13');
+  expect(cell('Sonntag', 2)).toBe('—');
+  await select('Projekt', 'trade');
+  expect(cell('Dienstag', 2)).toBe('8');
+  await select('Tagesmetrik', 'signup_completed');
+  expect(cell('Montag', 2)).toBe('0');
+  expect(cell('Dienstag', 2)).toBe('2');
+  expect(container.querySelector('[aria-label="UTC-Wochentagsanalyse"]').textContent)
+    .toContain('nicht um eindeutige Besucher');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('weekday insight cannot show stale admin data after 403 or invent zeroes for missing days', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce({ ok: false, status: 403 });
+  await mount();
+  expect(container.querySelector('[aria-label="UTC-Wochentagsanalyse Tabelle"]')).not.toBeNull();
+  await click('Aktualisieren');
+  expect(container.querySelector('[aria-label="UTC-Wochentagsanalyse"]')).toBeNull();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
+});
+
+test('empty event storage disables misleading weekday CSV exports', async () => {
+  const data = portfolio();
+  data.projects.forEach(row => { row.totals = {}; row.daily = {}; });
+  data.summary.totals = {}; data.summary.daily = {};
+  data.summary.projects_with_events = 0; data.summary.projects_without_events = 10;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  const section = container.querySelector('[aria-label="UTC-Wochentagsanalyse"]');
+  expect(section.textContent).toContain('Ein Wert von null ist nicht nachgewiesen');
+  expect(section.querySelector('table')).toBeNull();
+  expect([...section.querySelectorAll('button')].find(button => button.textContent.includes('CSV')).disabled).toBe(true);
+});
+
+test('weekday export is local-only with a fixed filename and no new API calls', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  const oldCreate = URL.createObjectURL;
+  const oldRevoke = URL.revokeObjectURL;
+  const oldClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = jest.fn().mockReturnValue('blob:weekday-test');
+  URL.revokeObjectURL = jest.fn();
+  HTMLAnchorElement.prototype.click = jest.fn();
+  try {
+    await mount();
+    await click('Wochentage als CSV exportieren');
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[aria-label="UTC-Wochentagsanalyse"] [role="alert"]')).toBeNull();
+  } finally {
+    URL.createObjectURL = oldCreate;
+    URL.revokeObjectURL = oldRevoke;
+    HTMLAnchorElement.prototype.click = oldClick;
+  }
+});
+
+test('recorded-day changes use only authorized daily UTC totals and project scope', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  const section = () => container.querySelector('[aria-label="UTC-Tagesveränderungen"]');
+  const first = () => section().querySelector('tbody tr');
+  expect(section().textContent).toContain('Vergleichbare Tagespaare: 1');
+  expect(first().textContent).toContain('+9');
+  await select('Projekt', 'trade');
+  expect(first().textContent).toContain('+4');
+  await select('Tagesmetrik', 'signup_completed');
+  expect(first().textContent).toContain('+2');
+  expect(first().textContent).toContain('—'); // A recorded zero baseline has no growth rate.
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('day-change direction filter does not substitute missing records with zero', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Tagesänderung Richtung', 'down');
+  const section = container.querySelector('[aria-label="UTC-Tagesveränderungen"]');
+  expect(section.querySelector('tbody tr')).toBeNull();
+  expect(section.textContent).toContain('Für diese Richtung gibt es keine');
+  await select('Tagesänderung Richtung', 'up');
+  expect(section.querySelectorAll('tbody tr')).toHaveLength(1);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('day-change insights disappear immediately after admin permission is revoked', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce({ ok: false, status: 403 });
+  await mount();
+  expect(container.querySelector('[aria-label="UTC-Tagesveränderungen"]')).not.toBeNull();
+  await click('Aktualisieren');
+  expect(container.querySelector('[aria-label="UTC-Tagesveränderungen"]')).toBeNull();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Adminrechte');
+});
+
+test('local day-change CSV uses fixed filename without expanding API scope', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  const oldCreate = URL.createObjectURL;
+  const oldRevoke = URL.revokeObjectURL;
+  const oldClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = jest.fn().mockReturnValue('blob:daily-test');
+  URL.revokeObjectURL = jest.fn();
+  HTMLAnchorElement.prototype.click = jest.fn();
+  try {
+    await mount();
+    await select('Projekt', 'trade');
+    await click('Tagesvergleich als CSV exportieren');
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[aria-label="UTC-Tagesveränderungen"] [role="alert"]')).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  } finally {
+    URL.createObjectURL = oldCreate;
+    URL.revokeObjectURL = oldRevoke;
+    HTMLAnchorElement.prototype.click = oldClick;
+  }
+});
