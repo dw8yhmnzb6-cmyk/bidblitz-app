@@ -21,7 +21,7 @@ def build_project_dashboard(events, verified_ledger_rows, project, period, now=N
         "revenue": revenue,
         "revenue_source": "verified_server_ledger",
         "unique_visitors_available": False,
-        "recent_business_actions": recent_business_activity(business_actions, {project}, current),
+        "recent_business_actions": recent_business_activity(business_actions, {project}, current, period=period),
     }
 
 def build_portfolio_dashboard(events, verified_ledger_rows, projects, period, now=None, business_actions=()):
