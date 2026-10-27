@@ -10,6 +10,13 @@ const EVENTS = ["page_view", "cta_click", "signup_started", "signup_completed",
   "checkout_started", "checkout_completed", "flow_abandoned"];
 const number = (value) => new Intl.NumberFormat("de-DE").format(value);
 const MAX_CSV_BYTES = 2 * 1024 * 1024; // Maximum for a 90-day, 10-project event-only export.
+const TREND_LABELS = {
+  page_view: "Seitenaufrufe",
+  signup_started: "Registrierungen begonnen",
+  signup_completed: "Registrierungen abgeschlossen",
+  checkout_started: "Bezahlvorgänge gestartet",
+  flow_abandoned: "Abbrüche",
+};
 
 // Only fixed, application-owned errors are displayed to admins.
 class DisplayableAnalyticsError extends Error {}
@@ -32,6 +39,9 @@ function checkedReports(data, days) {
   }
   const seen = new Set();
   const expected = Object.fromEntries(EVENTS.map((event) => [event, 0]));
+  const expectedDaily = {};
+  let projectsWithEvents = 0;
+  const earliest = new Date(Date.parse(data.as_of) - days * 86400000).toISOString().slice(0, 10);
   for (const report of data.projects) {
     if (!report || !Object.hasOwn(PROJECT_LABELS, report.project) || seen.has(report.project) ||
         report.period_days !== days || report.data_scope !== "v1_project_events_only" ||
@@ -47,6 +57,7 @@ function checkedReports(data, days) {
       }
       expected[event] += count;
     }
+    if (EVENTS.some((event) => (report.totals[event] ?? 0) > 0)) projectsWithEvents += 1;
     // The daily buckets share the same server-scoped source as the totals.
     // Reject inconsistent or malformed history rather than drawing a false trend.
     const daily = report.daily;
@@ -55,7 +66,6 @@ function checkedReports(data, days) {
       throw new DisplayableAnalyticsError("Die API hat ungültige Tagesdaten geliefert.");
     }
     const dailyTotals = Object.fromEntries(EVENTS.map((event) => [event, 0]));
-    const earliest = new Date(Date.parse(data.as_of) - days * 86400000).toISOString().slice(0, 10);
     for (const [day, counts] of Object.entries(daily)) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day) ||
           Number.isNaN(Date.parse(day + "T00:00:00Z")) ||
@@ -70,6 +80,13 @@ function checkedReports(data, days) {
           throw new DisplayableAnalyticsError("Die API hat ungültige Tageszähler geliefert.");
         }
         dailyTotals[event] += count;
+        if (count > 0) {
+          const bucket = expectedDaily[day] ?? (expectedDaily[day] = {});
+          if ((bucket[event] ?? 0) > Number.MAX_SAFE_INTEGER - count) {
+            throw new DisplayableAnalyticsError("Die Tageszähler überschreiten den sicheren Wertebereich.");
+          }
+          bucket[event] = (bucket[event] ?? 0) + count;
+        }
       }
     }
     if (EVENTS.some((event) => dailyTotals[event] !== (report.totals[event] ?? 0))) {
@@ -98,12 +115,33 @@ function checkedReports(data, days) {
   if (EVENTS.some((event) => (summary.totals[event] ?? 0) !== expected[event])) {
     throw new DisplayableAnalyticsError("Die Gesamtübersicht stimmt nicht mit den Projektwerten überein.");
   }
+  if (!Number.isSafeInteger(summary.projects_with_events) ||
+      !Number.isSafeInteger(summary.projects_without_events) ||
+      summary.projects_with_events !== projectsWithEvents ||
+      summary.projects_without_events !== seen.size - projectsWithEvents) {
+    throw new DisplayableAnalyticsError("Die Projektabdeckung der API ist widersprüchlich.");
+  }
+  if (!summary.daily || typeof summary.daily !== "object" || Array.isArray(summary.daily) ||
+      Object.keys(summary.daily).length !== Object.keys(expectedDaily).length) {
+    throw new DisplayableAnalyticsError("Die Gesamt-Tagesdaten sind unvollständig.");
+  }
+  for (const [day, counts] of Object.entries(summary.daily)) {
+    const expectedBucket = expectedDaily[day];
+    if (!expectedBucket || !counts || typeof counts !== "object" || Array.isArray(counts) ||
+        Object.keys(counts).length !== Object.keys(expectedBucket).length ||
+        Object.entries(counts).some(([event, count]) =>
+          !EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
+          count !== expectedBucket[event])) {
+      throw new DisplayableAnalyticsError("Die Gesamt-Tagesdaten stimmen nicht mit den Projekten überein.");
+    }
+  }
   return data;
 }
 
 export default function AnalyticsPortfolioPanel({ onBack }) {
   const [days, setDays] = useState(7);
   const [selected, setSelected] = useState("");
+  const [trendEvent, setTrendEvent] = useState("page_view");
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState({ loading: true, data: null, error: "" });
   const [exporting, setExporting] = useState(false);
@@ -220,14 +258,12 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const total = (event) => selected
     ? visible.reduce((sum, report) => sum + (report.totals[event] || 0), 0)
     : (state.data?.summary.totals[event] ?? 0);
-  // Use only recorded UTC dates; do not invent missing days or unique users.
-  const viewsByDay = new Map();
-  for (const report of visible) {
-    for (const [day, counts] of Object.entries(report.daily)) {
-      viewsByDay.set(day, (viewsByDay.get(day) ?? 0) + (counts.page_view ?? 0));
-    }
-  }
-  const dailyViews = [...viewsByDay.entries()].sort(([a], [b]) => b.localeCompare(a)).slice(0, 14);
+  // Server-owned cross-project rollup; selected project uses validated buckets.
+  const trendBuckets = selected ? visible[0]?.daily : state.data?.summary.daily;
+  const dailyViews = Object.entries(trendBuckets ?? {})
+    .filter(([, counts]) => (counts[trendEvent] ?? 0) > 0)
+    .sort(([a], [b]) => b.localeCompare(a)).slice(0, 14)
+    .map(([day, counts]) => [day, counts[trendEvent]]);
   const largestDailyView = Math.max(0, ...dailyViews.map(([, count]) => count));
   const metrics = [
     ["Seitenaufrufe", total("page_view")],
@@ -267,6 +303,15 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               {reports.map((report) => <option key={report.project} value={report.project}>{PROJECT_LABELS[report.project]}</option>)}
             </select>
           </label>
+          <label className="text-xs text-slate-400 flex flex-col gap-2">
+            Tagesmetrik
+            <select aria-label="Tagesmetrik" value={trendEvent}
+              onChange={(event) => setTrendEvent(event.target.value)}
+              className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
+              {Object.entries(TREND_LABELS).map(([event, label]) =>
+                <option key={event} value={event}>{label}</option>)}
+            </select>
+          </label>
           <button onClick={() => { cancelExport(); setAttempt((value) => value + 1); }}
             disabled={state.loading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold disabled:opacity-50">Aktualisieren</button>
@@ -302,9 +347,19 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
             </article>
           </div>
 
+          {!selected && <section aria-label="Datenabdeckung" className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+            <h2 className="font-semibold">Aufzeichnungsabdeckung</h2>
+            <p className="text-sm mt-2">
+              <strong>{state.data.summary.projects_with_events} von {state.data.summary.project_count}</strong>
+              {" "}Projekten mit aufgezeichneten Ereignissen
+            </p>
+            <p className="text-xs text-slate-400 mt-2">
+              Keine Ereignisse bedeuten weder offline noch fehlerfrei. Der Collector-Status ist nicht geprüft.
+            </p>
+          </section>}
           {dailyViews.length > 0 && <section aria-label="Tagesverlauf" className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-            <h2 className="font-semibold">Seitenaufrufe nach Tag</h2>
-            <p className="text-xs text-slate-400 mt-1 mb-4">Bis zu 14 Tage mit aufgezeichneten Ereignissen · UTC · keine eindeutigen Besucher</p>
+            <h2 className="font-semibold">{TREND_LABELS[trendEvent]} nach Tag</h2>
+            <p className="text-xs text-slate-400 mt-1 mb-4">Bis zu 14 Tage mit aufgezeichneten Ereignissen dieser Metrik · UTC · keine eindeutigen Besucher</p>
             <div className="space-y-3">
               {dailyViews.map(([day, views]) => <div key={day} className="flex items-center gap-3 text-sm" data-day={day}>
                 <time dateTime={day} className="w-24 shrink-0 text-slate-300 tabular-nums">{day}</time>
@@ -316,6 +371,9 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
             </div>
           </section>}
 
+          {dailyViews.length === 0 && !empty && <p role="status" className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+            Für diese Tagesmetrik wurden keine Ereignisse aufgezeichnet. Fehlende Werte sind kein Nachweis für Nullaktivität.
+          </p>}
           <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
             <h2 className="font-semibold p-5">Projektvergleich</h2>
             <div className="overflow-x-auto">

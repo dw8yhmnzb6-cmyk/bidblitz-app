@@ -20,6 +20,11 @@ const portfolio = (days = 7) => ({
   ],
   summary: {
     project_count: 10, totals: { page_view: 17, signup_completed: 2, checkout_started: 3 },
+    daily: {
+      '2026-10-26': { page_view: 4 },
+      '2026-10-27': { page_view: 13, signup_completed: 2, checkout_started: 3 },
+    },
+    projects_with_events: 2, projects_without_events: 8,
     data_scope: 'v1_project_events_only', verified_revenue_included: false,
     unique_visitors: null, net_profit_available: false,
   },
@@ -61,6 +66,7 @@ test.each([[401,'Bitte erneut anmelden'],[403,'Adminrechte'],[404,'noch nicht ve
 
 test('empty event storage has an explicit coverage warning',async()=>{
   const data=portfolio();data.projects.forEach(p=>{p.totals={};p.daily={};});data.summary.totals={};
+  data.summary.daily={};data.summary.projects_with_events=0;data.summary.projects_without_events=10;
   global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
   expect(container.querySelector('[role="status"]').textContent).toContain('Keine aufgezeichneten V1-Ereignisse');
   expect(container.textContent).toContain('keine eindeutigen Besucher');
@@ -238,6 +244,8 @@ test('project comparison shows signup starts and workflow abandonment as event c
   data.projects[1].daily['2026-10-27'].flow_abandoned = 4;
   data.summary.totals.signup_started = 6;
   data.summary.totals.flow_abandoned = 4;
+  data.summary.daily['2026-10-27'].signup_started = 6;
+  data.summary.daily['2026-10-27'].flow_abandoned = 4;
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
   const headings = [...container.querySelectorAll('thead th')].map(node => node.textContent);
@@ -257,6 +265,7 @@ test('project selector limits the new event columns to the selected project', as
   data.projects[0].totals.signup_started = 6;
   data.projects[0].daily['2026-10-27'].signup_started = 6;
   data.summary.totals.signup_started = 6;
+  data.summary.daily['2026-10-27'].signup_started = 6;
   global.fetch = jest.fn().mockResolvedValue(ok(data));
   await mount();
   await select('Projekt', 'eyes');
@@ -376,4 +385,92 @@ test('changing time window aborts pending CSV so stale data is never downloaded'
   expect(container.querySelector('[role="alert"]')).toBeNull();
   expect(container.querySelector('[aria-label="Zeitraum"]').value).toBe('30');
   expect(global.fetch).toHaveBeenCalledTimes(3);
+});
+
+test('shows honest recorded-project coverage without claiming collector health', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  const coverage = container.querySelector('[aria-label="Datenabdeckung"]');
+  expect(coverage.textContent).toContain('2 von 10');
+  expect(coverage.textContent).toContain('nicht geprüft');
+  await select('Projekt', 'eyes');
+  expect(container.querySelector('[aria-label="Datenabdeckung"]')).toBeNull();
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily metric selector shows recorded signups and checkout starts without a second request', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Tagesmetrik', 'signup_completed');
+  let chart = container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.textContent).toContain('Registrierungen abgeschlossen nach Tag');
+  expect(chart.querySelectorAll('[data-day]')).toHaveLength(1);
+  expect(chart.querySelector('[data-day="2026-10-27"]').textContent).toContain('2');
+  await select('Tagesmetrik', 'checkout_started');
+  chart = container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.textContent).toContain('Bezahlvorgänge gestartet nach Tag');
+  expect(chart.querySelector('[data-day="2026-10-27"]').textContent).toContain('3');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily trend changes with selected project without showing events from another project', async () => {
+  global.fetch = jest.fn().mockResolvedValue(ok(portfolio()));
+  await mount();
+  await select('Tagesmetrik', 'checkout_started');
+  await select('Projekt', 'trade');
+  expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
+  expect(container.textContent).toContain('keine Ereignisse aufgezeichnet');
+  await select('Projekt', 'eyes');
+  const chart = container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.querySelector('[data-day="2026-10-27"]').textContent).toContain('3');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test.each(['missing', 'wrong_count', 'missing_day', 'extra_day', 'private_key',
+  'negative', 'fractional', 'array', 'wrong_type'])(
+  'rejects %s global daily rollups rather than showing false cross-project trends', async (kind) => {
+  const data = portfolio();
+  const daily = data.summary.daily;
+  if (kind === 'missing') delete data.summary.daily;
+  if (kind === 'wrong_count') daily['2026-10-27'].page_view = 14;
+  if (kind === 'missing_day') delete daily['2026-10-26'];
+  if (kind === 'extra_day') daily['2026-10-25'] = { page_view: 1 };
+  if (kind === 'private_key') daily['2026-10-27'].email = 1;
+  if (kind === 'negative') daily['2026-10-27'].page_view = -1;
+  if (kind === 'fractional') daily['2026-10-27'].page_view = 13.5;
+  if (kind === 'array') data.summary.daily = [];
+  if (kind === 'wrong_type') daily['2026-10-27'] = null;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test.each(['missing', 'negative', 'too_many', 'mismatch', 'fractional', 'missing_without'])(
+  'rejects %s coverage metadata rather than implying verified collection', async (kind) => {
+  const data = portfolio();
+  if (kind === 'missing') delete data.summary.projects_with_events;
+  if (kind === 'negative') data.summary.projects_with_events = -1;
+  if (kind === 'too_many') data.summary.projects_with_events = 11;
+  if (kind === 'mismatch') data.summary.projects_with_events = 3;
+  if (kind === 'fractional') data.summary.projects_with_events = 2.5;
+  if (kind === 'missing_without') delete data.summary.projects_without_events;
+  global.fetch = jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Datenabdeckung"]')).toBeNull();
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test('empty V1 response displays zero recorded coverage but never zero customer activity',async()=>{
+  const data=portfolio();
+  data.projects.forEach(project => { project.totals={}; project.daily={}; });
+  data.summary.totals={}; data.summary.daily={};
+  data.summary.projects_with_events=0; data.summary.projects_without_events=10;
+  global.fetch=jest.fn().mockResolvedValue(ok(data));
+  await mount();
+  expect(container.querySelector('[aria-label="Datenabdeckung"]').textContent).toContain('0 von 10');
+  expect(container.textContent).toContain('Die Datenanbindung muss gesondert geprüft werden.');
+  expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
 });
