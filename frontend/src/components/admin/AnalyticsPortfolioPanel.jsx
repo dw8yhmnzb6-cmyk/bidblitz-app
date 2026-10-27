@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import AnalyticsPeriodCompare from "./AnalyticsPeriodCompare";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 const PROJECT_LABELS = {
@@ -411,6 +412,8 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
         </div>}
 
         {!state.loading && state.data && <>
+          {state.data.period_days === days &&
+            <AnalyticsPeriodCompare key={`${days}:${attempt}`} days={days} selected={selected} />}
           {empty && <p role="status" className="rounded-xl border border-amber-800 bg-slate-900 p-4 text-sm text-amber-200">Keine aufgezeichneten V1-Ereignisse im gewählten Zeitraum. Die Datenanbindung muss gesondert geprüft werden.</p>}
           <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-3">
             {metrics.map(([label, value]) => <article key={label} className="rounded-xl border border-slate-800 bg-slate-900 p-5">
