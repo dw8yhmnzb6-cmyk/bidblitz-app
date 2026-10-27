@@ -37,7 +37,7 @@ Run using the existing isolated DEV Python test environment (never production cr
 PYTHONPATH=backend /srv/bidblitz-dev/main-app-testenv/bin/python -m pytest backend/tests/test_analytics_v1_api.py -q
 ```
 
-The tests use a fake database and fake authentication. The browser dashboard currently **does not consume this new endpoint**; an independent UI integration with real authorization tests remains an open task. No merge or deployment is included.
+The backend tests use a fake database and fake authentication. The isolated DEV admin dashboard now consumes this endpoint **on demand** through `AnalyticsPeriodCompare`, using the existing admin session. It validates the complete project/event catalog, disjoint UTC window boundaries and all summary totals before rendering. Frontend unit tests use mocked responses. Real browser End-to-End tests with DEV authentication are still outstanding. No merge or deployment is included.
 
 ## Read-only comparison CSV export (DEV)
 
@@ -78,5 +78,21 @@ PYTHONPATH=backend /srv/bidblitz-dev/main-app-testenv/bin/python -m pytest \
   backend/tests/test_analytics_v1_api.py -q
 ```
 
-This backend-only package does not add a frontend CSV button. Browser E2E
-and full CI are still open. No production change, merge or deployment.
+The backend CSV endpoint is read-only; the separate isolated DEV frontend integration below adds its export button without deploying it. Browser E2E and full CI remain open. No production change, merge or deployment.
+
+### Admin dashboard integration (isolated DEV branch)
+
+The time-comparison panel loads JSON only after an explicit admin click.
+Its selected-project filter changes the displayed rows, not the authorized API
+query. The CSV button is enabled only after a validated JSON comparison is
+available. It requests the full catalog CSV with existing session credentials
+and a fixed `days` parameter; no customer IDs, payment amounts or project
+filters are submitted.
+
+The browser accepts only `text/csv` responses, rejects invalid or excessive
+announced/body lengths (2 MiB bound), refuses empty bodies, and uses a fixed
+client-owned `bidblitz-v1-period-compare-{days}d.csv` filename instead of
+trusting `Content-Disposition`. Refresh, window changes and unmount abort
+pending downloads. Unauthorized/failed responses show fixed German messages
+without exposing server errors. Tests cover those paths with mocked responses;
+a real-device/browser test remains open. The server endpoint is read-only.
