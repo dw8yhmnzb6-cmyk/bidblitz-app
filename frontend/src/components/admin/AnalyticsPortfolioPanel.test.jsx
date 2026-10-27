@@ -7,8 +7,10 @@ const portfolio = (days = 7) => ({
   data_scope: 'v1_project_events_only', verified_revenue_included: false,
   projects: [
     { project: 'trade', period_days: days, totals: {page_view: 12, signup_completed: 2},
+      daily: {'2026-10-26': {page_view: 4}, '2026-10-27': {page_view: 8, signup_completed: 2}},
       data_scope: 'v1_project_events_only', verified_revenue_included: false },
     { project: 'eyes', period_days: days, totals: {page_view: 5, checkout_started: 3},
+      daily: {'2026-10-27': {page_view: 5, checkout_started: 3}},
       data_scope: 'v1_project_events_only', verified_revenue_included: false },
   ],
   summary: {
@@ -51,7 +53,7 @@ test.each([[401,'Bitte erneut anmelden'],[403,'Adminrechte'],[404,'noch nicht ve
 });
 
 test('empty event storage has an explicit coverage warning',async()=>{
-  const data=portfolio();data.projects.forEach(p=>p.totals={});data.summary.totals={};
+  const data=portfolio();data.projects.forEach(p=>{p.totals={};p.daily={};});data.summary.totals={};
   global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
   expect(container.querySelector('[role="status"]').textContent).toContain('Keine aufgezeichneten V1-Ereignisse');
   expect(container.textContent).toContain('keine eindeutigen Besucher');
@@ -119,9 +121,44 @@ test.each(['missing','mismatch','unknown','negative','revenue','badCount','unver
 test('rejects unsafe portfolio sums that exceed JavaScript safe integers',async()=>{
   const data=portfolio();
   data.projects[0].totals.page_view=Number.MAX_SAFE_INTEGER;
+  data.projects[0].daily={'2026-10-27':{page_view:Number.MAX_SAFE_INTEGER,signup_completed:2}};
   data.projects[1].totals.page_view=1;
+  data.projects[1].daily['2026-10-27'].page_view=1;
   data.summary.totals.page_view=Number.MAX_SAFE_INTEGER;
   global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
   expect(container.querySelector('[role="alert"]').textContent).toContain('ungültige Ereigniszähler');
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test('daily graph combines recorded UTC page views without additional API calls',async()=>{
+  global.fetch=jest.fn().mockResolvedValue(ok(portfolio()));await mount();
+  const chart=container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart).not.toBeNull();
+  expect(chart.querySelector('[data-day="2026-10-27"]').textContent).toContain('13');
+  expect(chart.querySelector('[data-day="2026-10-26"]').textContent).toContain('4');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('daily graph respects project filter',async()=>{
+  global.fetch=jest.fn().mockResolvedValue(ok(portfolio()));await mount();
+  await select('Projekt','trade');
+  const chart=container.querySelector('[aria-label="Tagesverlauf"]');
+  expect(chart.querySelector('[data-day="2026-10-27"]').textContent).toContain('8');
+  expect(chart.querySelector('[data-day="2026-10-26"]').textContent).toContain('4');
+});
+
+test.each(['missing','mismatch','unknown_event','bad_date','out_of_window','negative'])(
+  'rejects %s daily history rather than displaying a false chart',async(kind)=>{
+  const data=portfolio();
+  const trade=data.projects[0];
+  if(kind==='missing')delete trade.daily;
+  if(kind==='mismatch')trade.daily['2026-10-27'].page_view=7;
+  if(kind==='unknown_event')trade.daily['2026-10-27'].customer_email=1;
+  if(kind==='bad_date')trade.daily['2026-02-30']={page_view:1};
+  if(kind==='out_of_window')trade.daily['2026-01-01']={page_view:1};
+  if(kind==='negative')trade.daily['2026-10-27'].page_view=-1;
+  global.fetch=jest.fn().mockResolvedValue(ok(data));await mount();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
   expect(container.querySelector('article')).toBeNull();
 });

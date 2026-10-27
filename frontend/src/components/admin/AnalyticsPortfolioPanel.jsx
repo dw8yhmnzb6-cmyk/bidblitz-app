@@ -33,6 +33,34 @@ function checkedReports(data, days) {
       }
       expected[event] += count;
     }
+    // The daily buckets share the same server-scoped source as the totals.
+    // Reject inconsistent or malformed history rather than drawing a false trend.
+    const daily = report.daily;
+    if (!daily || typeof daily !== "object" || Array.isArray(daily) ||
+        Object.keys(daily).length > days + 1) {
+      throw new Error("Die API hat ungültige Tagesdaten geliefert.");
+    }
+    const dailyTotals = Object.fromEntries(EVENTS.map((event) => [event, 0]));
+    const earliest = new Date(Date.parse(data.as_of) - days * 86400000).toISOString().slice(0, 10);
+    for (const [day, counts] of Object.entries(daily)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+          Number.isNaN(Date.parse(day + "T00:00:00Z")) ||
+          new Date(day + "T00:00:00Z").toISOString().slice(0, 10) !== day ||
+          day < earliest || day > data.as_of.slice(0, 10) ||
+          !counts || typeof counts !== "object" || Array.isArray(counts)) {
+        throw new Error("Die API hat ungültige Tagesdaten geliefert.");
+      }
+      for (const [event, count] of Object.entries(counts)) {
+        if (!EVENTS.includes(event) || !Number.isSafeInteger(count) || count < 0 ||
+            dailyTotals[event] > Number.MAX_SAFE_INTEGER - count) {
+          throw new Error("Die API hat ungültige Tageszähler geliefert.");
+        }
+        dailyTotals[event] += count;
+      }
+    }
+    if (EVENTS.some((event) => dailyTotals[event] !== (report.totals[event] ?? 0))) {
+      throw new Error("Die Tagesdaten stimmen nicht mit den Projektwerten überein.");
+    }
   }
   const summary = data.summary;
   if (!summary || summary.project_count !== seen.size ||
@@ -95,6 +123,15 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const total = (event) => selected
     ? visible.reduce((sum, report) => sum + (report.totals[event] || 0), 0)
     : (state.data?.summary.totals[event] ?? 0);
+  // Use only recorded UTC dates; do not invent missing days or unique users.
+  const viewsByDay = new Map();
+  for (const report of visible) {
+    for (const [day, counts] of Object.entries(report.daily)) {
+      viewsByDay.set(day, (viewsByDay.get(day) ?? 0) + (counts.page_view ?? 0));
+    }
+  }
+  const dailyViews = [...viewsByDay.entries()].sort(([a], [b]) => b.localeCompare(a)).slice(0, 14);
+  const largestDailyView = Math.max(0, ...dailyViews.map(([, count]) => count));
   const metrics = [
     ["Seitenaufrufe", total("page_view")],
     ["Abgeschlossene Registrierungen", total("signup_completed")],
@@ -155,6 +192,20 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               <p className="text-xs text-slate-500 mt-2">Browser-Ereignisse bestätigen keine Zahlung.</p>
             </article>
           </div>
+
+          {dailyViews.length > 0 && <section aria-label="Tagesverlauf" className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+            <h2 className="font-semibold">Seitenaufrufe nach Tag</h2>
+            <p className="text-xs text-slate-400 mt-1 mb-4">Bis zu 14 Tage mit aufgezeichneten Ereignissen · UTC · keine eindeutigen Besucher</p>
+            <div className="space-y-3">
+              {dailyViews.map(([day, views]) => <div key={day} className="flex items-center gap-3 text-sm" data-day={day}>
+                <time dateTime={day} className="w-24 shrink-0 text-slate-300 tabular-nums">{day}</time>
+                <div className="h-3 flex-1 overflow-hidden rounded bg-slate-800" aria-hidden="true">
+                  <div className="h-full rounded bg-blue-500" style={{ width: `${largestDailyView ? views / largestDailyView * 100 : 0}%` }} />
+                </div>
+                <strong className="w-16 text-right tabular-nums">{number(views)}</strong>
+              </div>)}
+            </div>
+          </section>}
 
           <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
             <h2 className="font-semibold p-5">Projektvergleich</h2>
