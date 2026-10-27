@@ -101,3 +101,16 @@ def test_default_clock_is_shared_by_all_project_sections(monkeypatch):
     assert actual == expected
     assert Clock.calls == 1
 
+
+def test_dashboard_activity_matches_yesterday_filter():
+    yesterday = NOW - timedelta(days=1)
+    actions = [
+        dict(project="trade", action="payment_confirmed", verified=True, occurred_at=NOW),
+        dict(project="trade", action="subscription_activated", verified=True, occurred_at=yesterday),
+    ]
+    report = build_portfolio_dashboard(EVENTS, LEDGER, ["trade"], "yesterday",
+                                       NOW + timedelta(seconds=1), actions)
+    feed = report["projects"][0]["recent_business_actions"]
+    assert len(feed) == 1
+    assert feed[0]["action"] == "subscription_activated"
+    assert feed[0]["occurred_at"] == yesterday.isoformat()
