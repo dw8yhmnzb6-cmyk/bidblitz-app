@@ -36,6 +36,8 @@ afterEach(async () => {
   await act(async () => root.unmount());container.remove();
   global.fetch = originalFetch;
 });
+// This suite uses react-dom/client without Testing Library rendering helpers.
+// eslint-disable-next-line testing-library/no-unnecessary-act
 const mount = async () => {await act(async () => {root.render(<AnalyticsPortfolioPanel />);});};
 const click = async (label) => {const b=[...container.querySelectorAll('button')].find(x=>x.textContent===label);await act(async()=>b.click());};
 const select = async (label,value) => {const s=container.querySelector(`select[aria-label="${label}"]`);await act(async()=>{s.value=value;s.dispatchEvent(new Event('change',{bubbles:true}));});};
@@ -263,4 +265,115 @@ test('project selector limits the new event columns to the selected project', as
   expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent)).toEqual(
     ['5', '0', '0', '0', '3', '0']);
   expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
+const csvResponse = (overrides = {}) => ({
+  ok: true, status: 200,
+  headers: { get: name => name === 'content-type' ? 'text/csv; charset=utf-8' : null },
+  blob: async () => new Blob(['project,utc_date,record_status\r\ntrade,2026-10-27,recorded_events\r\n'], {type: 'text/csv'}),
+  ...overrides,
+});
+
+test('CSV button requires a validated portfolio and documents full-project scope', async () => {
+  let finish;
+  global.fetch = jest.fn().mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await mount();
+  const button = [...container.querySelectorAll('button')].find(x => x.textContent === 'CSV exportieren');
+  expect(button.disabled).toBe(true);
+  await act(async () => finish(ok(portfolio())));
+  expect(button.disabled).toBe(false);
+  expect(container.textContent).toContain('immer alle registrierten Projekte');
+  await select('Projekt', 'trade');
+  expect(button.disabled).toBe(false);
+});
+
+test('CSV download uses existing admin session, fixed filename and selected period, never project filter', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio())).mockResolvedValueOnce(csvResponse());
+  await mount();
+  await select('Projekt', 'trade');
+  const create = URL.createObjectURL;
+  const revoke = URL.revokeObjectURL;
+  const createMock = jest.fn(() => 'blob:csv-safe');
+  const revokeMock = jest.fn();
+  URL.createObjectURL = createMock;
+  URL.revokeObjectURL = revokeMock;
+  const clicks = [];
+  const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+    clicks.push({href: this.href, filename: this.download});
+  });
+  const timeout = jest.spyOn(window, 'setTimeout').mockImplementation(fn => { fn(); return 1; });
+  try {
+    await click('CSV exportieren');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    const [url, opts] = global.fetch.mock.calls[1];
+    expect(url).toMatch(/\/api\/analytics\/v1\/portfolio\/export\.csv\?days=7$/);
+    expect(url).not.toContain('trade');
+    expect(opts.credentials).toBe('include');
+    expect(opts.headers.Accept).toBe('text/csv');
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(clicks).toEqual([{href: 'blob:csv-safe', filename: 'bidblitz-v1-events-7d.csv'}]);
+    expect(revokeMock).toHaveBeenCalledWith('blob:csv-safe');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  } finally {
+    timeout.mockRestore(); clickSpy.mockRestore();
+    URL.createObjectURL = create; URL.revokeObjectURL = revoke;
+  }
+});
+
+test.each([
+  [401, 'Bitte erneut anmelden.'],
+  [403, 'Adminrechte'],
+  [404, 'noch nicht verfügbar'],
+  [503, 'derzeit nicht verfügbar'],
+])('CSV HTTP %s fails closed without creating a download', async (status, expected) => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce({ok: false, status});
+  await mount();
+  await click('CSV exportieren');
+  expect(container.querySelector('[role="alert"]').textContent).toContain(expected);
+  expect(container.querySelector('article')).not.toBeNull();
+});
+
+test.each([
+  ['JSON disguised as success', {headers: {get: () => 'application/json'}}, 'keine gültige CSV'],
+  ['oversized announced file', {headers: {get: name => name === 'content-type' ? 'text/csv' : '2097153'}}, 'keine gültige CSV'],
+  ['empty CSV body', {blob: async () => new Blob([])}, 'leer oder zu groß'],
+  ['oversized CSV body', {blob: async () => new Blob([new Uint8Array(2097153)])}, 'leer oder zu groß'],
+])('CSV rejects %s without starting any download', async (_kind, override, expected) => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockResolvedValueOnce(csvResponse(override));
+  await mount();
+  await click('CSV exportieren');
+  expect(container.querySelector('[role="alert"]').textContent).toContain(expected);
+});
+
+test('CSV transport failure hides internal exception text and allows retry', async () => {
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockRejectedValueOnce(new Error('SENSITIVE_TOKEN_DEBUG'))
+    .mockResolvedValueOnce({ok: false, status: 503});
+  await mount();
+  await click('CSV exportieren');
+  expect(container.querySelector('[role="alert"]').textContent).toContain('konnte nicht erstellt');
+  expect(container.textContent).not.toContain('SENSITIVE_TOKEN_DEBUG');
+  await click('CSV exportieren');
+  expect(global.fetch).toHaveBeenCalledTimes(3);
+  expect(container.querySelector('[role="alert"]').textContent).toContain('derzeit nicht verfügbar');
+});
+
+test('changing time window aborts pending CSV so stale data is never downloaded', async () => {
+  let finishCsv;
+  global.fetch = jest.fn().mockResolvedValueOnce(ok(portfolio()))
+    .mockImplementationOnce(() => new Promise(resolve => { finishCsv = resolve; }))
+    .mockResolvedValueOnce(ok(portfolio(30)));
+  await mount();
+  await click('CSV exportieren');
+  const signal = global.fetch.mock.calls[1][1].signal;
+  expect(signal.aborted).toBe(false);
+  expect(container.textContent).toContain('CSV wird vorbereitet');
+  await select('Zeitraum', '30');
+  expect(signal.aborted).toBe(true);
+  await act(async () => finishCsv(csvResponse()));
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Zeitraum"]').value).toBe('30');
+  expect(global.fetch).toHaveBeenCalledTimes(3);
 });

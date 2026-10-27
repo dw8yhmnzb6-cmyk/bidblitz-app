@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 const PROJECT_LABELS = {
@@ -9,6 +9,7 @@ const PROJECT_LABELS = {
 const EVENTS = ["page_view", "cta_click", "signup_started", "signup_completed",
   "checkout_started", "checkout_completed", "flow_abandoned"];
 const number = (value) => new Intl.NumberFormat("de-DE").format(value);
+const MAX_CSV_BYTES = 2 * 1024 * 1024; // Maximum for a 90-day, 10-project event-only export.
 
 // Only fixed, application-owned errors are displayed to admins.
 class DisplayableAnalyticsError extends Error {}
@@ -105,6 +106,82 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
   const [selected, setSelected] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState({ loading: true, data: null, error: "" });
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const exportController = useRef(null);
+
+  // Prevent any in-flight CSV from downloading after navigating away.
+  useEffect(() => () => {
+    exportController.current?.abort();
+    exportController.current = null;
+  }, []);
+
+  function cancelExport() {
+    exportController.current?.abort();
+    exportController.current = null;
+    setExporting(false);
+    setExportError("");
+  }
+
+  async function downloadCsv() {
+    // The server owns the full authorized project scope, not the UI filter.
+    if (state.loading || !state.data || state.data.period_days !== days ||
+        exportController.current) return;
+    const controller = new AbortController();
+    exportController.current = controller;
+    setExporting(true);
+    setExportError("");
+    try {
+      const response = await fetch(API + "/api/analytics/v1/portfolio/export.csv?days=" + days, {
+        credentials: "include", signal: controller.signal,
+        headers: { Accept: "text/csv" },
+      });
+      if (!response.ok) {
+        const message = response.status === 401 ? "Bitte erneut anmelden." :
+          response.status === 403 ? "Für den CSV-Export sind Adminrechte erforderlich." :
+            response.status === 404 ? "Der CSV-Export ist hier noch nicht verfügbar." :
+              "Der CSV-Export ist derzeit nicht verfügbar.";
+        throw new DisplayableAnalyticsError(message);
+      }
+      const contentType = response.headers?.get?.("content-type") ?? "";
+      const rawLength = response.headers?.get?.("content-length");
+      const announcedLength = rawLength == null ? null : Number(rawLength);
+      if (contentType.toLowerCase().split(";")[0].trim() !== "text/csv" ||
+          (announcedLength !== null &&
+           (!Number.isSafeInteger(announcedLength) ||
+            announcedLength < 0 || announcedLength > MAX_CSV_BYTES))) {
+        throw new DisplayableAnalyticsError("Die API hat keine gültige CSV-Datei geliefert.");
+      }
+      const blob = await response.blob();
+      if (controller.signal.aborted) return;
+      if (!blob || blob.size === 0 || blob.size > MAX_CSV_BYTES) {
+        throw new DisplayableAnalyticsError("Die CSV-Datei ist leer oder zu groß.");
+      }
+      const url = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        // Ignore untrusted Content-Disposition filenames.
+        anchor.download = "bidblitz-v1-events-" + days + "d.csv";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      } finally {
+        // Mobile browsers may require time to initiate the blob download.
+        window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted && exportController.current === controller) {
+        setExportError(error instanceof DisplayableAnalyticsError ? error.message :
+          "Der CSV-Export konnte nicht erstellt werden.");
+      }
+    } finally {
+      if (exportController.current === controller) {
+        exportController.current = null;
+        setExporting(false);
+      }
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -174,7 +251,10 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
         <div className="flex flex-wrap gap-3 items-end">
           <label className="text-xs text-slate-400 flex flex-col gap-2">
             Zeitraum
-            <select aria-label="Zeitraum" value={days} onChange={(event) => setDays(Number(event.target.value))}
+            <select aria-label="Zeitraum" value={days} onChange={(event) => {
+              cancelExport();
+              setDays(Number(event.target.value));
+            }}
               className="rounded-lg bg-slate-900 text-white border border-slate-700 px-3 py-2 text-sm">
               {[1, 7, 30, 90].map((value) => <option key={value} value={value}>{value === 1 ? "Letzte 24 Stunden" : `Letzte ${value} Tage`}</option>)}
             </select>
@@ -187,11 +267,20 @@ export default function AnalyticsPortfolioPanel({ onBack }) {
               {reports.map((report) => <option key={report.project} value={report.project}>{PROJECT_LABELS[report.project]}</option>)}
             </select>
           </label>
-          <button onClick={() => setAttempt((value) => value + 1)} disabled={state.loading}
+          <button onClick={() => { cancelExport(); setAttempt((value) => value + 1); }}
+            disabled={state.loading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold disabled:opacity-50">Aktualisieren</button>
+          <button type="button" onClick={downloadCsv}
+            disabled={state.loading || !state.data || state.data.period_days !== days || exporting}
+            aria-busy={exporting}
+            className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            {exporting ? "CSV wird vorbereitet …" : "CSV exportieren"}
+          </button>
         </div>
 
         <p className="text-xs leading-relaxed text-slate-400">Rollierender Zeitraum in UTC. Seitenaufrufe sind keine eindeutigen Besucher. Diese Auswertung bestätigt weder einen gesunden Collector noch vollständige Datenabdeckung.</p>
+        <p className="text-xs leading-relaxed text-slate-400">CSV-Export: immer alle registrierten Projekte im gewählten Zeitraum, unabhängig vom sichtbaren Projektfilter. Nur aufgezeichnete Ereignisse, keine Kunden- oder Umsatzdaten.</p>
+        {exportError && <p role="alert" className="rounded-lg border border-red-900 bg-red-950 p-3 text-sm">{exportError}</p>}
 
         {state.loading && <div role="status" className="rounded-xl border border-blue-900 bg-slate-900 p-6">Analysedaten werden geladen …</div>}
         {state.error && <div role="alert" className="rounded-xl border border-red-900 bg-red-950 p-5">
