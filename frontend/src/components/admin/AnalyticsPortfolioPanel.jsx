@@ -10,10 +10,20 @@ const EVENTS = ["page_view", "cta_click", "signup_started", "signup_completed",
   "checkout_started", "checkout_completed", "flow_abandoned"];
 const number = (value) => new Intl.NumberFormat("de-DE").format(value);
 
+// Python API emits an ISO-8601 UTC timestamp (+00:00). Reject timezone-free,
+// non-UTC or normalized invalid dates before using its date for UTC buckets.
+const UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/;
+function isUtcTimestamp(value) {
+  if (typeof value !== "string" || !UTC_TIMESTAMP.test(value)) return false;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) &&
+    new Date(parsed).toISOString().slice(0, 10) === value.slice(0, 10);
+}
+
 function checkedReports(data, days) {
   if (!data || data.period_days !== days || !Array.isArray(data.projects) ||
       data.data_scope !== "v1_project_events_only" || data.timezone !== "UTC" ||
-      data.verified_revenue_included !== false || !Number.isFinite(Date.parse(data.as_of))) {
+      data.verified_revenue_included !== false || !isUtcTimestamp(data.as_of)) {
     throw new Error("Die API hat kein gültiges Portfolio geliefert.");
   }
   const seen = new Set();

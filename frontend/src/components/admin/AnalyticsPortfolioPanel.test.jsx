@@ -162,3 +162,25 @@ test.each(['missing','mismatch','unknown_event','bad_date','out_of_window','nega
   expect(container.querySelector('[aria-label="Tagesverlauf"]')).toBeNull();
   expect(container.querySelector('article')).toBeNull();
 });
+
+test.each([
+  ['date-only', '2026-10-27'],
+  ['missing UTC offset', '2026-10-27T01:30:00'],
+  ['non-UTC offset', '2026-10-27T01:30:00+02:00'],
+  ['invalid calendar date', '2026-02-30T01:30:00+00:00'],
+  ['non-string timestamp', 1793064600000],
+])('rejects %s as_of metadata before drawing misleading trends', async (_kind, asOf) => {
+  const data = portfolio(); data.as_of = asOf;
+  global.fetch = jest.fn().mockResolvedValue(ok(data)); await mount();
+  expect(container.querySelector('[role="alert"]').textContent).toContain('kein gültiges Portfolio');
+  expect(container.querySelector('article')).toBeNull();
+});
+
+test.each(['2026-10-27T01:30:00Z', '2026-10-27T01:30:00.123456+00:00'])(
+  'accepts valid UTC timestamp %s from the API', async (asOf) => {
+    const data = portfolio(); data.as_of = asOf;
+    global.fetch = jest.fn().mockResolvedValue(ok(data)); await mount();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.querySelectorAll('article')).toHaveLength(4);
+  }
+);
