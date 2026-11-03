@@ -15,7 +15,7 @@ const displayLangs = [
 ];
 
 export const LanguageSwitcher = () => {
-  const { lang, setLang } = useI18n();
+  const { lang, setLang, t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -38,6 +38,8 @@ export const LanguageSwitcher = () => {
     <div ref={ref} className="relative" data-testid="language-switcher">
       <motion.button
         data-testid="language-switcher-btn"
+        aria-label={`${t("settings.language")}: ${current.label}`}
+        aria-expanded={open}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
         style={{
           background: open ? "rgba(0,194,255,0.08)" : "rgba(255,255,255,0.04)",
@@ -47,7 +49,7 @@ export const LanguageSwitcher = () => {
         onClick={() => setOpen(!open)}
       >
         <Globe size={13} strokeWidth={1.5} className={open ? "text-[#00C2FF]" : "text-white/40"} />
-        <span className="text-[14px]">{current.flag}</span>
+        <span className="text-[14px]">{current.flag || current.code.toUpperCase()}</span>
       </motion.button>
 
       <AnimatePresence>
@@ -82,7 +84,7 @@ export const LanguageSwitcher = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSelect(l.code)}
                   >
-                    <span className="text-[18px] w-7 text-center flex-shrink-0">{l.flag}</span>
+                    <span className="text-[18px] w-7 text-center flex-shrink-0">{l.flag || "🌐"}</span>
                     <span
                       className="text-[13px] font-semibold flex-1 truncate"
                       style={{ color: active ? "#00C2FF" : "rgba(255,255,255,0.8)" }}
@@ -112,7 +114,7 @@ export const LanguageSwitcher = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSelect(l.code)}
                   >
-                    <span className="text-[16px] w-7 text-center flex-shrink-0">{l.flag}</span>
+                    <span className="text-[16px] w-7 text-center flex-shrink-0">{l.flag || "🌐"}</span>
                     <span
                       className="text-[12px] font-medium flex-1 truncate"
                       style={{ color: active ? "#00C2FF" : "rgba(255,255,255,0.65)" }}
@@ -132,3 +134,4 @@ export const LanguageSwitcher = () => {
 };
 
 export default LanguageSwitcher;
+

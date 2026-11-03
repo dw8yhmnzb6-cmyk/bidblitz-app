@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>BidBlitz Farm</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js" defer></script>
+  <script src="account-sync.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="farm-shell" data-testid="bidblitz-farm-game">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BIDBLITZ ORIGINAL</p>
+        <h1>BidBlitz Farm</h1>
+        <p class="sub">Wetter planen · Felder pflegen · Ernten · Farm ausbauen</p>
+      </div>
+      <div class="money-card"><span>Virtuelle Münzen</span><strong id="coins">0</strong></div>
+    </header>
+
+    <nav class="farm-quick-nav" aria-label="Farm-Bereiche">
+      <a href="#farm-fields">🌱 Felder</a>
+      <a href="#farm-orders">📦 Aufträge</a>
+      <a href="#farm-animals">🐔 Tiere</a>
+      <a href="#farm-buildings">🏠 Gebäude</a>
+      <a href="#farm-missions">🎯 Missionen</a>
+    </nav>
+
+    <section class="weather-card">
+      <div class="weather-main">
+        <div id="weather-icon" class="weather-icon">☀️</div>
+        <div><p id="season" class="season">Frühling</p><h2 id="weather">Sonnig</h2><p>Tag <span id="day">1</span></p></div>
+      </div>
+      <div class="stats">
+        <div><span>Farm-Level</span><strong id="level">1</strong></div>
+        <div><span>XP</span><strong id="xp">0</strong></div>
+        <div><span>Ernten</span><strong id="harvests">0</strong></div>
+      </div>
+      <div class="forecast">
+        <h3>7-Tage-Vorschau</h3>
+        <div id="forecast" class="forecast-grid"></div>
+      </div>
+    </section>
+
+    <section class="onboarding-panel">
+      <div class="section-head"><h2>Nächste Schritte</h2><p>Dein Farm-Einstieg</p></div>
+      <div id="onboarding-steps" class="onboarding-steps"></div>
+    </section>
+
+    <section class="level-panel">
+      <div class="level-panel-head">
+        <div><p class="brief-label">Farm-Fortschritt</p><h3>Level <span id="level-progress-current">1</span> → <span id="level-progress-next">2</span></h3></div>
+        <strong id="level-progress-percent">0%</strong>
+      </div>
+      <div class="level-progress"><span id="level-progress-bar"></span></div>
+      <div class="completion-row"><span>Gesamtfortschritt</span><strong id="completion-percent">0%</strong></div>
+      <div class="completion-progress"><span id="completion-bar"></span></div>
+      <div id="level-rewards" class="level-rewards"></div>
+    </section>
+
+    <section class="farm-brief">
+      <article class="brief-card">
+        <span id="weather-event-icon" class="brief-icon">🌿</span>
+        <div><p class="brief-label">Wetterereignis</p><h3 id="weather-event-title">Ruhiger Farmtag</h3><p id="weather-event-text">Gute Bedingungen für Pflege und Planung.</p></div>
+      </article>
+      <article class="brief-card">
+        <span class="brief-icon">🎯</span>
+        <div class="brief-grow"><p class="brief-label">Tagesaufgabe</p><h3 id="task-title">Pflanze 2 Felder</h3><div class="task-progress"><span id="task-progress"></span></div><p id="task-text">0 / 2</p></div>
+      </article>
+    </section>
+
+    <section class="market-panel">
+      <div class="section-head"><h2>Farm-Markt</h2><p>Virtuelle Tagespreise</p></div>
+      <div id="market" class="market-grid"></div>
+    </section>
+
+    <section id="farm-orders" class="orders-panel">
+      <div class="section-head"><h2>Bestellungen</h2><p>Lagerbestand liefern · virtuelle Bonusbelohnungen</p></div>
+      <div class="order-status">
+        <div><span>Kundenstufe</span><strong id="customer-rank">Neuer Lieferant</strong></div>
+        <div><span>Liefer-Serie</span><strong><span id="order-streak">0</span> Tage</strong></div>
+        <div><span>Aufträge gesamt</span><strong id="completed-orders">0</strong></div>
+      </div>
+      <div id="inventory" class="inventory-grid"></div>
+      <div id="orders" class="orders-grid"></div>
+    </section>
+
+    <section class="land-panel">
+      <div>
+        <p class="brief-label">Farmfläche</p>
+        <h3><span id="unlocked-plots">6</span> / 12 Felder freigeschaltet</h3>
+        <p id="land-text">Weitere Felder können mit virtuellen Farm-Münzen freigeschaltet werden.</p>
+      </div>
+      <button id="expand-land" type="button">Farm erweitern</button>
+    </section>
+
+    <section class="toolbar">
+      <div>
+        <label for="crop-select">Pflanze</label>
+        <select id="crop-select"></select>
+      </div>
+      <button id="next-day" type="button">Nächster Tag</button>
+    </section>
+
+    <section id="farm-fields">
+      <div class="section-head"><h2>Deine Felder</h2><p id="event">Farm gestartet.</p></div>
+      <div id="plots" class="plots"></div>
+    </section>
+
+    <section id="farm-animals" class="farm-section">
+      <div class="section-head"><h2>Tiere</h2><p>Füttern · produzieren · einsammeln</p></div>
+      <div id="animals" class="farm-grid"></div>
+    </section>
+
+    <section id="farm-buildings" class="farm-section">
+      <div class="section-head"><h2>Gebäude & Ausbau</h2><p>Mehr Kapazität und bessere Ernteerlöse</p></div>
+      <div id="buildings" class="farm-grid"></div>
+    </section>
+
+    <section id="farm-missions" class="farm-section">
+      <div class="section-head"><h2>Missionen</h2><p>Nur virtuelle Farm-Belohnungen</p></div>
+      <div id="missions" class="missions"></div>
+    </section>
+
+    <section class="farm-section">
+      <div class="section-head"><h2>Erfolge</h2><p>Langzeitziele für deinen Hof</p></div>
+      <div id="achievements" class="achievements"></div>
+    </section>
+
+    <footer>
+      Nur virtuelle Farm-Münzen. Keine Einsätze, keine Auszahlung und keine Wallet-Verbindung.
+      <span id="save-note" role="status" aria-live="polite">Lokaler Spielstand.</span>
+      <div class="farm-conflict-actions" id="farm-recovery-actions" hidden>
+        <p>Eine lokale Sicherung eines früheren Spielstands ist vorhanden.</p>
+        <button id="farm-restore-backup" type="button">Gesicherten Spielstand wiederherstellen</button>
+      </div>
+      <div id="farm-conflict-actions" class="farm-conflict-actions" hidden>
+        <p>Unterschiedliche Spielstände erkannt. Wähle ausdrücklich, welchen du behalten möchtest.</p>
+        <button id="farm-keep-local" type="button">Diesen Spielstand ins Konto übernehmen</button>
+        <button id="farm-use-account" type="button">Konto-Spielstand auf diesem Gerät laden</button>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

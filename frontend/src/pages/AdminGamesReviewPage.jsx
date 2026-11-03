@@ -1,0 +1,401 @@
+import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, CheckCircle2, ExternalLink, FileArchive, Loader2, RefreshCw, Rocket, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
+import { resolveLocale } from "../config/languagePolicy.mjs";
+import AdminGameDeveloperPlanCard from "../components/AdminGameDeveloperPlanCard";
+import AdminGameReviewsPanel from "../components/AdminGameReviewsPanel";
+import GamesTranslationReadinessCard from "../components/GamesTranslationReadinessCard";
+import GamesFinanceSandboxCard from "../components/GamesFinanceSandboxCard";
+import AdminGamesIntegrityCard from "../components/AdminGamesIntegrityCard";
+import AdminGamesLaunchReadinessCard from "../components/AdminGamesLaunchReadinessCard";
+
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+const API = `${BACKEND}/api/admin/game-studio/versions`;
+const PREFLIGHT_API = `${BACKEND}/api/admin/game-studio/preflight`;
+const DIAGNOSTICS_API = `${BACKEND}/api/admin/game-studio/diagnostics`;
+const RELEASE_HEALTH_API = `${BACKEND}/api/admin/game-studio/release-health`;
+const COPY = {
+  de: {
+    back: "Zurück", eyebrow: "BIDBLITZ GAMES · ADMIN-PRÜFUNG", title: "Spielversionen prüfen.",
+    subtitle: "Archive prüfen und den nächsten Schritt freigeben. Fremder Code wird hier weder ausgeführt noch veröffentlicht.",
+    submitted: "Eingereicht", approved: "Archiv akzeptiert", previewApproved: "Preview akzeptiert", changes: "Änderungen erforderlich", rejected: "Abgelehnt",
+    empty: "Keine Versionen in diesem Status.", loadError: "Prüfliste konnte nicht geladen werden.", retry: "Neu laden",
+    files: "Dateien", packed: "ZIP", unpacked: "entpackt", hash: "SHA-256", note: "Prüfnotiz",
+    notePlaceholder: "Begründung für Änderungen oder Ablehnung…", approve: "Archiv akzeptieren",
+    requestChanges: "Änderungen verlangen", reject: "Ablehnen", saveError: "Prüfentscheidung konnte nicht gespeichert werden.",
+    blocked: "Ausführung bleibt isoliert", game: "Spiel", languages: "Sprachen", category: "Kategorie", prepare: "Vorschau vorbereiten", prepared: "Vorschau vorbereitet", prepareError: "Vorschau konnte nicht vorbereitet werden.", openPreview: "Private Vorschau öffnen", previewError: "Preview-Link konnte nicht erzeugt werden.", approvePreview: "Preview freigeben", publish: "Im Katalog veröffentlichen", rollback: "Diese Version aktivieren", unpublish: "Veröffentlichung stoppen", publishError: "Veröffentlichungsstatus konnte nicht geändert werden.", published: "Veröffentlicht",
+    preflightTitle: "Games Launch-Preflight", preflightReady: "Sicher für nicht-monetäre Staging-Tests", preflightBlocked: "Konfiguration noch nicht bereit", preflightLoadError: "Preflight konnte nicht geladen werden.", publicOrigin: "Public-Origin", previewOrigin: "Preview-Origin", storageSafety: "Private Speicher", billingGuard: "Billing-Sperre", safe: "Sicher", unsafe: "Prüfen", billingOff: "Gesperrt", billingOn: "Aktiv",
+    diagnosticsTitle: "Games Betrieb", diagnosticsSubtitle: "Live-Snapshot der Games-Pipeline ohne private Pfade oder Kundendaten.", diagnosticsLoadError: "Games-Diagnose konnte nicht geladen werden.", drafts: "Entwürfe", versions: "Versionen", publicationEvents: "Publikationsereignisse", publicationLocks: "Aktive Locks", unpublished: "Offline", reviewsVisible: "Reviews sichtbar", reviewsHidden: "Reviews ausgeblendet", reviewModerationEvents: "Review-Moderationen", operational: "Betrieb OK", attention: "Prüfung erforderlich",
+    releaseHealthTitle: "Release Health", releaseHealthSubtitle: "Prüft veröffentlichte Community-Spiele, ohne fremden Code auszuführen oder Serverpfade offenzulegen.", releaseHealthLoadError: "Release-Status konnte nicht geladen werden.", healthy: "Gesund", releaseBusy: "Änderung läuft", degraded: "Fehlerhaft", noPublishedGames: "Keine veröffentlichten Community-Spiele.",
+  },
+  en: {
+    back: "Back", eyebrow: "BIDBLITZ GAMES · ADMIN REVIEW", title: "Review game versions.",
+    subtitle: "Review archives and advance the workflow. Third-party code is neither executed nor published here.",
+    submitted: "Submitted", approved: "Archive approved", previewApproved: "Preview approved", changes: "Changes requested", rejected: "Rejected",
+    empty: "No versions in this status.", loadError: "Could not load review queue.", retry: "Reload",
+    files: "Files", packed: "ZIP", unpacked: "unpacked", hash: "SHA-256", note: "Review note",
+    notePlaceholder: "Reason for changes or rejection…", approve: "Approve archive",
+    requestChanges: "Request changes", reject: "Reject", saveError: "Could not save review decision.",
+    blocked: "Execution remains isolated", game: "Game", languages: "Languages", category: "Category", prepare: "Prepare preview", prepared: "Preview prepared", prepareError: "Could not prepare preview.", openPreview: "Open private preview", previewError: "Could not create preview link.", approvePreview: "Approve preview", publish: "Publish to catalog", rollback: "Make this version active", unpublish: "Stop publication", publishError: "Could not change publication status.", published: "Published",
+    preflightTitle: "Games launch preflight", preflightReady: "Safe for non-monetary staging tests", preflightBlocked: "Configuration not ready yet", preflightLoadError: "Could not load preflight.", publicOrigin: "Public origin", previewOrigin: "Preview origin", storageSafety: "Private storage", billingGuard: "Billing guard", safe: "Safe", unsafe: "Check", billingOff: "Locked", billingOn: "Enabled",
+    diagnosticsTitle: "Games operations", diagnosticsSubtitle: "Live Games pipeline snapshot without private paths or customer data.", diagnosticsLoadError: "Could not load Games diagnostics.", drafts: "Drafts", versions: "Versions", publicationEvents: "Publication events", publicationLocks: "Active locks", unpublished: "Offline", reviewsVisible: "Reviews visible", reviewsHidden: "Reviews hidden", reviewModerationEvents: "Review moderation", operational: "Operations OK", attention: "Needs attention",
+    releaseHealthTitle: "Release health", releaseHealthSubtitle: "Checks published community games without executing third-party code or exposing server paths.", releaseHealthLoadError: "Could not load release health.", healthy: "Healthy", releaseBusy: "Change in progress", degraded: "Degraded", noPublishedGames: "No published community games.",
+  },
+  sq: {
+    back: "Kthehu", eyebrow: "BIDBLITZ GAMES · KONTROLLI ADMIN", title: "Kontrollo versionet e lojërave.",
+    subtitle: "Kontrollo arkivat dhe vazhdo procesin. Kodi i palës së tretë nuk ekzekutohet dhe nuk publikohet këtu.",
+    submitted: "Dërguar", approved: "Arkivi u pranua", previewApproved: "Prova u pranua", changes: "Kërkohen ndryshime", rejected: "Refuzuar",
+    empty: "Nuk ka versione në këtë status.", loadError: "Lista e kontrollit nuk u ngarkua.", retry: "Ringarko",
+    files: "Skedarë", packed: "ZIP", unpacked: "i shpaketuar", hash: "SHA-256", note: "Shënimi i kontrollit",
+    notePlaceholder: "Arsyeja për ndryshime ose refuzim…", approve: "Prano arkivin",
+    requestChanges: "Kërko ndryshime", reject: "Refuzo", saveError: "Vendimi nuk u ruajt.",
+    blocked: "Ekzekutimi mbetet i izoluar", game: "Loja", languages: "Gjuhët", category: "Kategoria", prepare: "Përgatit provën", prepared: "Prova u përgatit", prepareError: "Prova nuk u përgatit.", openPreview: "Hap provën private", previewError: "Linku i provës nuk u krijua.", approvePreview: "Prano provën", publish: "Publiko në katalog", rollback: "Aktivizo këtë version", unpublish: "Ndalo publikimin", publishError: "Statusi i publikimit nuk u ndryshua.", published: "Publikuar",
+    preflightTitle: "Kontrolli para publikimit", preflightReady: "I sigurt për testim pa pagesa", preflightBlocked: "Konfigurimi ende nuk është gati", preflightLoadError: "Kontrolli nuk u ngarkua.", publicOrigin: "Origjina publike", previewOrigin: "Origjina e provës", storageSafety: "Ruajtja private", billingGuard: "Bllokimi i pagesave", safe: "Sigurt", unsafe: "Kontrollo", billingOff: "Bllokuar", billingOn: "Aktiv",
+    diagnosticsTitle: "Operimi i Games", diagnosticsSubtitle: "Pamje e pipeline-it të Games pa shtigje private ose të dhëna klientësh.", diagnosticsLoadError: "Diagnostika e Games nuk u ngarkua.", drafts: "Drafte", versions: "Versione", publicationEvents: "Ngjarje publikimi", publicationLocks: "Bllokime aktive", unpublished: "Offline", reviewsVisible: "Vlerësime të dukshme", reviewsHidden: "Vlerësime të fshehura", reviewModerationEvents: "Moderime vlerësimesh", operational: "Operimi OK", attention: "Kërkon kontroll",
+    releaseHealthTitle: "Gjendja e publikimeve", releaseHealthSubtitle: "Kontrollon lojërat e publikuara pa ekzekutuar kod të palëve të treta ose pa zbuluar shtigje serveri.", releaseHealthLoadError: "Gjendja e publikimeve nuk u ngarkua.", healthy: "Në rregull", releaseBusy: "Ndryshim në proces", degraded: "Me problem", noPublishedGames: "Nuk ka lojëra komunitare të publikuara.",
+  },
+};
+
+const FILTERS = [
+  ["submitted", "submitted"],
+  ["archive_approved", "approved"],
+  ["preview_approved", "previewApproved"],
+  ["changes_requested", "changes"],
+  ["rejected", "rejected"],
+];
+
+function bytes(value) {
+  const n = Number(value || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function read(response) {
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Request failed");
+  return body;
+}
+
+export default function AdminGamesReviewPage({ onBack }) {
+  const { lang } = useI18n();
+  const locale = resolveLocale(lang, Object.keys(COPY));
+  const c = COPY[locale];
+  const [status, setStatus] = useState("submitted");
+  const [versions, setVersions] = useState([]);
+  const [notes, setNotes] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [preflight, setPreflight] = useState(null);
+  const [preflightLoading, setPreflightLoading] = useState(true);
+  const [preflightError, setPreflightError] = useState("");
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
+  const [diagnosticsError, setDiagnosticsError] = useState("");
+  const [releaseHealth, setReleaseHealth] = useState(null);
+  const [releaseHealthLoading, setReleaseHealthLoading] = useState(true);
+  const [releaseHealthError, setReleaseHealthError] = useState("");
+
+  const loadReleaseHealth = useCallback(async () => {
+    setReleaseHealthLoading(true);
+    setReleaseHealthError("");
+    try {
+      const response = await fetch(RELEASE_HEALTH_API, { credentials: "include" });
+      const body = await read(response);
+      setReleaseHealth(body);
+    } catch (loadError) {
+      setReleaseHealth(null);
+      setReleaseHealthError(loadError?.message || c.releaseHealthLoadError);
+    } finally {
+      setReleaseHealthLoading(false);
+    }
+  }, [c.releaseHealthLoadError]);
+
+  const loadDiagnostics = useCallback(async () => {
+    setDiagnosticsLoading(true);
+    setDiagnosticsError("");
+    try {
+      const response = await fetch(DIAGNOSTICS_API, { credentials: "include" });
+      const body = await read(response);
+      setDiagnostics(body);
+    } catch (loadError) {
+      setDiagnostics(null);
+      setDiagnosticsError(loadError?.message || c.diagnosticsLoadError);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  }, [c.diagnosticsLoadError]);
+
+  const loadPreflight = useCallback(async () => {
+    setPreflightLoading(true);
+    setPreflightError("");
+    try {
+      const response = await fetch(PREFLIGHT_API, { credentials: "include" });
+      const body = await read(response);
+      setPreflight(body);
+    } catch (loadError) {
+      setPreflight(null);
+      setPreflightError(loadError?.message || c.preflightLoadError);
+    } finally {
+      setPreflightLoading(false);
+    }
+  }, [c.preflightLoadError]);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const response = await fetch(`${API}?review_status=${encodeURIComponent(status)}&limit=100`, { credentials: "include" });
+      const body = await read(response);
+      setVersions(Array.isArray(body.versions) ? body.versions : []);
+    } catch (loadError) {
+      setError(loadError?.message || c.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, [status, c.loadError]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadPreflight(); }, [loadPreflight]);
+  useEffect(() => { loadDiagnostics(); }, [loadDiagnostics]);
+  useEffect(() => { loadReleaseHealth(); }, [loadReleaseHealth]);
+
+  const prepare = async (versionId) => {
+    setBusy(versionId); setError("");
+    try {
+      const response = await fetch(`${API}/${encodeURIComponent(versionId)}/prepare-preview`, {
+        method: "POST", credentials: "include",
+      });
+      await read(response);
+      await Promise.all([load(), loadDiagnostics()]);
+    } catch (prepareError) {
+      setError(prepareError?.message || c.prepareError);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const openPrivatePreview = async (versionId) => {
+    setBusy(versionId); setError("");
+    try {
+      const response = await fetch(`${API}/${encodeURIComponent(versionId)}/preview-link`, {
+        method: "POST", credentials: "include",
+      });
+      const body = await read(response);
+      if (!body.url) throw new Error(c.previewError);
+      const opened = window.open(body.url, "_blank", "noopener,noreferrer");
+      if (opened) opened.opener = null;
+    } catch (previewError) {
+      setError(previewError?.message || c.previewError);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const changePublication = async (version, action) => {
+    setBusy(version.id); setError("");
+    try {
+      let url;
+      if (action === "publish") url = `${API}/${encodeURIComponent(version.id)}/publish`;
+      else if (action === "rollback") url = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/games/${encodeURIComponent(version.draft_id)}/rollback/${encodeURIComponent(version.id)}`;
+      else url = `${process.env.REACT_APP_BACKEND_URL || ""}/api/admin/game-studio/games/${encodeURIComponent(version.draft_id)}/unpublish`;
+      const response = await fetch(url, { method: "POST", credentials: "include" });
+      await read(response);
+      await Promise.all([load(), loadDiagnostics(), loadReleaseHealth()]);
+    } catch (publishError) {
+      setError(publishError?.message || c.publishError);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const decide = async (versionId, action) => {
+    const note = (notes[versionId] || "").trim();
+    if ((action === "request_changes" || action === "reject") && note.length < 5) {
+      setError(c.notePlaceholder); return;
+    }
+    setBusy(versionId); setError("");
+    try {
+      const response = await fetch(`${API}/${encodeURIComponent(versionId)}/review`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      });
+      await read(response);
+      setNotes((current) => ({ ...current, [versionId]: "" }));
+      await Promise.all([load(), loadDiagnostics()]);
+    } catch (saveError) {
+      setError(saveError?.message || c.saveError);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  return (
+    <main lang={locale} className="min-h-screen bg-[#061329] pb-24 text-white" data-testid="admin-games-review-page">
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-7">
+        <header className="flex items-center justify-between gap-3">
+          <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10"><ArrowLeft size={17} />{c.back}</button>
+          <div className="flex items-center gap-2 text-sm font-black tracking-[.15em]"><span className="rounded-xl bg-cyan-300 px-2 py-1 text-[#061329]">B</span>BIDBLITZ <span className="text-cyan-300">GAMES</span></div>
+        </header>
+
+        <section className="mt-8 rounded-[30px] border border-cyan-200/15 bg-gradient-to-br from-[#113d73] via-[#14294c] to-[#091c35] p-6 sm:p-9">
+          <p className="text-[11px] font-bold tracking-[.2em] text-cyan-200">{c.eyebrow}</p>
+          <h1 className="mt-4 text-3xl font-black sm:text-5xl">{c.title}</h1>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-sky-100/70 sm:text-base">{c.subtitle}</p>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-200/5 px-4 py-2 text-xs text-amber-100"><ShieldCheck size={15} />{c.blocked}</div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-diagnostics-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.diagnosticsTitle}</h2>
+              <p className="mt-1 text-xs text-white/50">{c.diagnosticsSubtitle}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {diagnostics && <span className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${diagnostics.status === "ok" ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100" : "border-amber-300/25 bg-amber-300/10 text-amber-100"}`}>{diagnostics.status === "ok" ? c.operational : c.attention}</span>}
+              <button onClick={loadDiagnostics} disabled={diagnosticsLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+                <RefreshCw size={14} className={diagnosticsLoading ? "animate-spin" : ""} />{c.retry}
+              </button>
+            </div>
+          </div>
+          {diagnosticsError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{diagnosticsError}</p>}
+          {diagnostics && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              [c.drafts, diagnostics.counts?.drafts],
+              [c.versions, diagnostics.counts?.versions],
+              [c.submitted, diagnostics.counts?.submitted],
+              [c.approved, diagnostics.counts?.archive_approved],
+              [c.previewApproved, diagnostics.counts?.preview_approved],
+              [c.published, diagnostics.counts?.published],
+              [c.unpublished, diagnostics.counts?.unpublished],
+              [c.publicationEvents, diagnostics.counts?.publication_events],
+              [c.publicationLocks, diagnostics.counts?.publication_locks],
+              [c.reviewsVisible, diagnostics.counts?.reviews_visible],
+              [c.reviewsHidden, diagnostics.counts?.reviews_hidden],
+              [c.reviewModerationEvents, diagnostics.counts?.review_moderation_events],
+            ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+              <p className="text-[11px] text-white/45">{label}</p>
+              <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
+            </div>)}
+          </div>}
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-release-health-card">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.releaseHealthTitle}</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">{c.releaseHealthSubtitle}</p>
+            </div>
+            <button onClick={loadReleaseHealth} disabled={releaseHealthLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+              <RefreshCw size={14} className={releaseHealthLoading ? "animate-spin" : ""} />{c.retry}
+            </button>
+          </div>
+          {releaseHealthError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{releaseHealthError}</p>}
+          {releaseHealth && <>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                [c.healthy, releaseHealth.summary?.healthy],
+                [c.releaseBusy, releaseHealth.summary?.busy],
+                [c.degraded, releaseHealth.summary?.degraded],
+              ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                <p className="text-[10px] text-white/45">{label}</p>
+                <p className="mt-2 text-2xl font-black text-white">{Number(value || 0).toLocaleString(locale)}</p>
+              </div>)}
+            </div>
+            {Array.isArray(releaseHealth.games) && releaseHealth.games.length > 0 ? <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {releaseHealth.games.map((game) => <article key={game.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">{game.title || game.id}</p>
+                    <p className="mt-1 text-[10px] text-white/40">v{Number(game.version_number || 0)} · {game.id}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${game.status === "ok" ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100" : game.status === "busy" ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100" : "border-rose-300/20 bg-rose-300/10 text-rose-100"}`}>
+                    {game.status === "ok" ? c.healthy : game.status === "busy" ? c.releaseBusy : c.degraded}
+                  </span>
+                </div>
+                {Array.isArray(game.issues) && game.issues.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">
+                  {game.issues.map((issue) => <code key={issue} className="rounded-lg border border-rose-300/15 bg-rose-300/5 px-2 py-1 text-[10px] text-rose-100/80">{String(issue).replaceAll("_", " ")}</code>)}
+                </div>}
+              </article>)}
+            </div> : <p className="mt-4 rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-white/45">{c.noPublishedGames}</p>}
+          </>}
+        </section>
+
+        <GamesTranslationReadinessCard locale={locale} />
+        <AdminGamesIntegrityCard locale={locale} />
+        <AdminGamesLaunchReadinessCard locale={locale} />
+        <GamesFinanceSandboxCard locale={locale} mode="admin" />
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-[#0a1d36] p-5" data-testid="games-preflight-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{c.preflightTitle}</h2>
+              <p className="mt-1 text-xs text-white/50">
+                {preflightLoading ? "…" : preflight?.ready ? c.preflightReady : c.preflightBlocked}
+              </p>
+            </div>
+            <button onClick={loadPreflight} disabled={preflightLoading} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 disabled:opacity-50">
+              <RefreshCw size={14} className={preflightLoading ? "animate-spin" : ""} />{c.retry}
+            </button>
+          </div>
+          {preflightError && <p role="alert" className="mt-3 rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-xs text-rose-100">{preflightError}</p>}
+          {preflight && <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              [c.publicOrigin, preflight.checks?.public_origin_safe, preflight.public_origin?.host || "—"],
+              [c.previewOrigin, preflight.checks?.preview_origin_safe && preflight.checks?.origins_isolated, preflight.preview_origin?.host || "—"],
+              [c.storageSafety, preflight.checks?.upload_storage_safe && preflight.checks?.preview_storage_safe && preflight.checks?.release_storage_safe && preflight.checks?.storage_roots_distinct, c.safe],
+              [c.billingGuard, preflight.billing?.fail_closed, preflight.billing?.enabled ? c.billingOn : c.billingOff],
+            ].map(([label, ok, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-white/50">{label}</p>
+                {ok ? <CheckCircle2 size={16} className="text-emerald-300" /> : <XCircle size={16} className="text-amber-300" />}
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold text-white/85" title={String(value)}>{value}</p>
+              <p className={`mt-1 text-[11px] ${ok ? "text-emerald-200/70" : "text-amber-200/70"}`}>{ok ? c.safe : c.unsafe}</p>
+            </div>)}
+          </div>}
+        </section>
+
+        <AdminGameReviewsPanel locale={locale} />
+
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {FILTERS.map(([value, key]) => <button key={value} onClick={() => setStatus(value)} aria-pressed={status === value} className={`rounded-full border px-4 py-2 text-sm font-semibold ${status === value ? "border-cyan-300 bg-cyan-300 text-[#061329]" : "border-white/15 bg-white/5 text-white/70"}`}>{c[key]}</button>)}
+          <button onClick={load} disabled={loading} className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/70 disabled:opacity-50"><RefreshCw size={15} className={loading ? "animate-spin" : ""} />{c.retry}</button>
+        </div>
+
+        {error && <p role="alert" className="mt-4 rounded-xl border border-rose-300/25 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</p>}
+
+        {loading ? <div className="mt-8 flex items-center gap-3 text-white/60"><Loader2 size={20} className="animate-spin" />{c.submitted}…</div>
+          : versions.length === 0 ? <div className="mt-6 rounded-3xl border border-dashed border-white/15 px-6 py-12 text-center text-white/50">{c.empty}</div>
+            : <div className="mt-6 grid gap-5 lg:grid-cols-2">{versions.map((version) => {
+              const game = version.game || {};
+              const pending = status === "submitted";
+              const archiveApproved = status === "archive_approved";
+              const previewApproved = status === "preview_approved";
+              return <article key={version.id} className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#15345a] to-[#0b1e37] p-5 shadow-xl">
+                <div className="flex items-start gap-4"><div className="rounded-2xl bg-cyan-300/10 p-4 text-cyan-200"><FileArchive size={30} /></div><div className="min-w-0"><p className="text-xs uppercase tracking-wider text-cyan-200">{c.game}</p><h2 className="truncate text-xl font-bold">{game.title || version.draft_id}</h2><p className="mt-1 text-xs text-white/45">{c.category}: {game.category || "—"} · {c.languages}: {(game.languages || []).length}</p></div></div>
+                <div className="mt-5 grid grid-cols-2 gap-3 text-xs text-white/55 sm:grid-cols-4"><div><b className="block text-white/85">{version.file_count || 0}</b>{c.files}</div><div><b className="block text-white/85">{bytes(version.archive_bytes)}</b>{c.packed}</div><div><b className="block text-white/85">{bytes(version.unpacked_bytes)}</b>{c.unpacked}</div><div><b className="block truncate text-white/85">{String(version.sha256 || "").slice(0, 10)}…</b>{c.hash}</div></div>
+                {pending && <><label className="mt-5 block text-xs font-semibold text-white/70">{c.note}<textarea value={notes[version.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [version.id]: event.target.value }))} maxLength={1000} rows={3} placeholder={c.notePlaceholder} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-[#06182d] p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300/60" /></label><div className="mt-4 grid gap-2 sm:grid-cols-3"><button onClick={() => decide(version.id, "approve_archive")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-300 px-3 py-2 text-xs font-bold text-[#06231c] disabled:opacity-50"><CheckCircle2 size={15} />{c.approve}</button><button onClick={() => decide(version.id, "request_changes")} disabled={Boolean(busy)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50">{c.requestChanges}</button><button onClick={() => decide(version.id, "reject")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.reject}</button></div></>}
+                {!pending && version.review_note && <p className="mt-5 rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-relaxed text-white/60">{version.review_note}</p>}
+                {archiveApproved && <>
+                  <button onClick={() => prepare(version.id)} disabled={Boolean(busy) || version.preview_status === "prepared"} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-xs font-semibold text-cyan-100 disabled:opacity-50"><ShieldCheck size={15} />{version.preview_status === "prepared" ? c.prepared : c.prepare}</button>
+                  {version.preview_status === "prepared" && <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <button onClick={() => openPrivatePreview(version.id)} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs font-semibold text-white/80 disabled:opacity-50"><ExternalLink size={15} />{c.openPreview}</button>
+                    <button onClick={() => decide(version.id, "approve_preview")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 py-3 text-xs font-bold text-[#06231c] disabled:opacity-50"><CheckCircle2 size={15} />{c.approvePreview}</button>
+                  </div>}
+                  {version.preview_status === "prepared" && <><label className="mt-3 block text-xs font-semibold text-white/70">{c.note}<textarea value={notes[version.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [version.id]: event.target.value }))} maxLength={1000} rows={2} placeholder={c.notePlaceholder} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-[#06182d] p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-cyan-300/60" /></label><div className="mt-2 grid gap-2 sm:grid-cols-2"><button onClick={() => decide(version.id, "request_changes")} disabled={Boolean(busy)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 disabled:opacity-50">{c.requestChanges}</button><button onClick={() => decide(version.id, "reject")} disabled={Boolean(busy)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.reject}</button></div></>}
+                </>}
+                {previewApproved && <><AdminGameDeveloperPlanCard draftId={version.draft_id} locale={locale} /><div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-xs text-emerald-100"><CheckCircle2 size={14} />{version.publication_status === "published" ? c.published : c.previewApproved}</div>
+                  {version.publication_status === "published"
+                    ? <button onClick={() => changePublication(version, "unpublish")} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/25 bg-rose-300/10 px-4 py-3 text-xs font-semibold text-rose-100 disabled:opacity-50"><XCircle size={15} />{c.unpublish}</button>
+                    : <button onClick={() => changePublication(version, version.publication_status === "inactive" ? "rollback" : "publish")} disabled={Boolean(busy)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-xs font-bold text-[#061329] disabled:opacity-50">{version.publication_status === "inactive" ? <RotateCcw size={15} /> : <Rocket size={15} />}{version.publication_status === "inactive" ? c.rollback : c.publish}</button>}
+                </div></>}
+              </article>;
+            })}</div>}
+      </div>
+    </main>
+  );
+}

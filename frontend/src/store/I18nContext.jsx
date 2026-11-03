@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import extraTranslations from "./translations_extra";
+import gamesLanguages from "../config/gamesLanguages.json";
+import { resolveLocale, readStoredLocale, persistLocale } from "../config/languagePolicy.mjs";
 
 const STORAGE_KEY = "bidblitz_lang";
 const DEFAULT_LANG = "de";
 
-export const LANGUAGES = [
+const LEGACY_LANGUAGES = [
   { code: "de", label: "Deutsch", flag: "\ud83c\udde9\ud83c\uddea" },
   { code: "en", label: "English (UK)", flag: "\ud83c\uddec\ud83c\udde7" },
   { code: "en-US", label: "English (US)", flag: "\ud83c\uddfa\ud83c\uddf8" },
@@ -22,12 +24,15 @@ export const LANGUAGES = [
   { code: "ar-AE", label: "\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062a", flag: "\ud83c\udde6\ud83c\uddea", rtl: true },
 ];
 
-// Resolve language codes: sq-XK → sq, en-US → en, ar-AE → ar
+// Preserve existing regional options while adding all Games language preferences.
+export const LANGUAGES = [
+  ...LEGACY_LANGUAGES,
+  ...gamesLanguages.filter(({ code }) => !LEGACY_LANGUAGES.some((language) => language.code === code)),
+];
+const SUPPORTED_CODES = LANGUAGES.map(({ code }) => code);
+
 function resolveCode(code) {
-  if (code === "sq-XK") return "sq";
-  if (code === "en-US") return "en";
-  if (code === "ar-AE") return "ar";
-  return code;
+  return resolveLocale(code, Object.keys(translations), "en");
 }
 
 const I18nContext = createContext(null);
@@ -35,18 +40,16 @@ const I18nContext = createContext(null);
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      // Validate stored language is a supported code
-      if (stored && LANGUAGES.some(l => l.code === stored)) return stored;
-      return DEFAULT_LANG;
+      return readStoredLocale(localStorage, STORAGE_KEY, SUPPORTED_CODES, DEFAULT_LANG);
     } catch { return DEFAULT_LANG; }
   });
 
   const setLang = useCallback((code) => {
-    setLangState(code);
-    try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { void error; }
-    // Set RTL on body
-    const info = LANGUAGES.find(l => l.code === code);
+    const resolved = resolveLocale(code, SUPPORTED_CODES, DEFAULT_LANG);
+    setLangState(resolved);
+    try { persistLocale(localStorage, STORAGE_KEY, resolved); } catch (error) { void error; }
+    // Direction follows the selected registered language, independently of text fallback.
+    const info = LANGUAGES.find(l => l.code === resolved);
     document.documentElement.dir = info?.rtl ? "rtl" : "ltr";
   }, []);
 
@@ -4301,3 +4304,4 @@ for (const [key, values] of Object.entries(sharedFallbackKeys)) {
 }
 
 export default translations;
+

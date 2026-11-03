@@ -1,0 +1,124 @@
+name: BidBlitz Games Launch Readiness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launch-readiness:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Create isolated Games test environment
+        run: |
+          cat > backend/.env <<'EOF'
+          MONGO_URL=mongodb://localhost:27017
+          DB_NAME=bidblitz_games_launch_readiness
+          JWT_SECRET=bidblitz-games-launch-readiness-secret-1234567890
+          APP_ENV=development
+          COOKIE_SECURE=false
+          COOKIE_SAMESITE=lax
+          ADMIN_EMAIL=admin@bidblitz.com
+          ADMIN_PASSWORD=BidBlitz2026!
+          EOF
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("backend/requirements.txt")
+          target = Path("/tmp/games-launch-requirements.txt")
+          target.write_text("\n".join(
+              line for line in source.read_text().splitlines()
+              if not line.strip().startswith("emergentintegrations==")
+          ) + "\n")
+          PY
+          pip install -r /tmp/games-launch-requirements.txt
+
+      - name: Run Games backend regression
+        env:
+          PYTHONPATH: backend
+          DEMO_SEED: "false"
+          GAME_STUDIO_TEST_MONGO_URL: "mongodb://localhost:27017"
+        run: >-
+          pytest
+          backend/tests/test_game_studio.py
+          backend/tests/test_game_studio_mongo.py
+          backend/tests/test_game_studio_uploads.py
+          backend/tests/test_admin_game_studio.py
+          backend/tests/test_games_profile.py
+          backend/tests/test_games_profile_mongo.py
+          backend/tests/test_games_progress.py
+          backend/tests/test_games_progress_mongo.py
+          backend/tests/test_games_recent.py
+          backend/tests/test_games_reviews.py
+          backend/tests/test_games_preview.py
+          backend/tests/test_games_catalog.py
+          backend/tests/test_games_catalog_mongo.py
+          backend/tests/test_games_developer.py
+          backend/tests/test_games_developer_mongo.py
+          backend/tests/test_games_publication_history.py
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Verify Games language registry
+        run: |
+          node frontend/scripts/sync-games-languages.cjs --check
+          node --test frontend/scripts/test-games-core-translations.mjs frontend/scripts/test-games-translation-readiness.mjs
+
+      - name: Require human-reviewed translations
+        run: node frontend/scripts/report-games-translation-readiness.mjs --require-human-reviewed
+
+      - name: Lint Games frontend
+        run: >-
+          npm --workspace frontend exec -- eslint
+          src/pages/GamesPage.jsx
+          src/pages/GameDetailPage.jsx
+          src/pages/GameStudioPage.jsx
+          src/pages/AdminGamesReviewPage.jsx
+          src/components/GameVersionPanel.jsx
+          src/components/GameReviewsPanel.jsx
+          src/components/AdminGameReviewsPanel.jsx
+          src/components/GamePublicationHistory.jsx
+          src/components/GamesDeveloperPlanCard.jsx
+          src/components/GamesDeveloperAnalyticsCard.jsx
+          src/components/AdminGameDeveloperPlanCard.jsx
+          src/components/GamesLanguageSelect.jsx
+          src/components/GamesTranslationReadinessCard.jsx
+          src/config/languagePolicy.mjs
+          src/config/studioCreatePolicy.mjs
+          src/config/gamesFavoritesPolicy.mjs
+          src/config/gamesRecentPolicy.mjs
+          src/config/gamesCoreTranslations.mjs
+          src/config/gamesTranslationReadiness.mjs
+
+      - name: Build frontend
+        env:
+          CI: "false"
+        run: npm run build
+
+      - name: Confirm non-monetary release posture
+        run: |
+          test ! -f frontend/.env.production.local
+          echo "Launch-readiness workflow performs no deployment and enables no Games billing."
