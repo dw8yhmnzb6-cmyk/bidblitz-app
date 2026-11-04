@@ -11,8 +11,12 @@ export function getNativePlatform() {
   return safeWindow.Capacitor.getPlatform();
 }
 
+export function supportsHealthFeatures() {
+  return getNativePlatform() !== "android";
+}
+
 export async function loadNativeHealthBridge() {
-  if (!isNativeApp()) {
+  if (!isNativeApp() || !supportsHealthFeatures()) {
     return null;
   }
   try {

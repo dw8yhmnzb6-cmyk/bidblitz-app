@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
+import { supportsHealthFeatures } from "../services/capacitorBridge";
 import { DEMO_USER } from "../models/demoData";
 import GuestCTABar from "../components/GuestCTABar";
 import ReferralPage from "./ReferralPage";
@@ -909,6 +910,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "merchant-onboarding", icon: TrendingUp, label: t("onboarding.title") || "Händler werden", desc: t("onboarding.menu_desc") || "Kostenlose Testphase", color: "#00C2FF", action: () => onNavigate("/merchant-landing"), roles: ["merchant", "admin"] },
     { id: "merchant-pricing", icon: CreditCard, label: t("pricing.title") || "Händler-Tarife & Preise", desc: t("pricing.menu_desc") || "Tarife, Gebühren & Terminals", color: "#FFD166", action: () => onNavigate("/merchant-pricing"), roles: ["merchant", "admin"] },
   ]).filter(item => {
+    if (item.id === "move-earn" && !supportsHealthFeatures()) return false;
     if (!item.roles) return true;
     if (item.roles.includes("all")) return true;
     const userRole = user.role || "user";
