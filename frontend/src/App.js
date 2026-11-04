@@ -33,6 +33,7 @@ import DemoBanner from "./components/DemoBanner";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
+import { supportsHealthFeatures } from "./services/capacitorBridge";
 import { isKycApprovedOrAdmin } from "./utils/adminAccess";
 import { TEST_MODE, KYC_DISABLED, SHOW_KYC_GATE, TEST_MODE_FULL_ACCESS } from "./config/testMode";
 import { useEffectiveKycAccess } from "./hooks/useEffectiveKycAccess";
@@ -1009,7 +1010,7 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/move":
       case "/move-earn":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
+        return (!supportsHealthFeatures() || (isGuest && !isDemoMode)) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
       case "/reward-plinko":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />;
       case "/rewards-hub":

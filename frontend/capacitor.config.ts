@@ -38,6 +38,17 @@ const config: CapacitorConfig = {
     backgroundColor: '#060810',
   },
   android: {
+    // Health Connect is not part of the Android app. Keep it excluded on every sync.
+    includePlugins: [
+      "@capacitor-community/bluetooth-le",
+      "@capacitor/app",
+      "@capacitor/splash-screen",
+      "@capacitor/status-bar",
+      "@capawesome/capacitor-app-update",
+      "@capgo/camera-preview",
+      "@capgo/capacitor-wifi",
+      "capacitor-native-settings"
+    ],
     allowMixedContent: false,
     backgroundColor: '#060810',
   },

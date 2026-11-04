@@ -11,8 +11,8 @@ def readEnvOrProp(String key, String fallback = null) {
     return fallback
 }
 
-def releaseVersionCode = Integer.parseInt(readEnvOrProp('ANDROID_VERSION_CODE', '3'))
-def releaseVersionName = readEnvOrProp('ANDROID_VERSION_NAME', '1.0.0')
+def releaseVersionCode = Integer.parseInt(readEnvOrProp('ANDROID_VERSION_CODE', '4'))
+def releaseVersionName = readEnvOrProp('ANDROID_VERSION_NAME', '1.0.1')
 
 android {
     namespace "com.bidblitz.app"
