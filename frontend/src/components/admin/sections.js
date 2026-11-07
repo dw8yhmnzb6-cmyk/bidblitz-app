@@ -38,6 +38,7 @@ export const ADMIN_SECTIONS = [
       { key: "visual-qa", icon: Eye, label: "Visual QA", highlight: true, nav: "/admin/visual-qa" },
       { key: "master-roadmap", icon: Activity, label: "Master Roadmap", highlight: true, nav: "/admin/master-roadmap" },
       { key: "applications", icon: FileText, label: "Alte Bewerbungen" },
+      { key: "box-partner-applications", icon: Package, label: "BOX-Standortbewerbungen", highlight: true },
       { key: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", highlight: true, nav: "/admin/qr-management" },
     ],
   },

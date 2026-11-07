@@ -109,6 +109,8 @@ export async function loadAdminDetail(item, onNavigate) {
   }
 
   switch (item.key) {
+    case "box-partner-applications":
+      return { type: "box_partner_applications" };
     case "users": {
       const d = await api("/api/admin/stats");
       const users = await api("/api/admin/users?limit=30").catch(() => ({ users: [] }));
