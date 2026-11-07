@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """User-operated IONOS BOX Admin entry release; no service or database changes."""
 from pathlib import Path
-import fcntl, hashlib, os, shutil, subprocess, tempfile, time, urllib.request
+import fcntl, hashlib, os, re, shutil, subprocess, tempfile, time, urllib.request
 
 FRONT = Path("/var/www/bidblitz/frontend")
-REL = "src/components/admin/AdminPartnerApplications.js"
-EXPECTED = "ce9b2f24e34070c0288e1547f6cb3dc9de9243594d4438310577ebc830468c73"
+REL = "src/pages/AppAdminPanel.jsx"
+EXPECTED = "4de8939c4191318aace1daff102c43b63291acb110261ace9594e62d32a7e60d"
 MARKER = "BOX_PARTNER_INBOX_V1"
-ANCHOR = '    <div className="space-y-4 sm:space-y-6">\n'
+ANCHOR = '        {/* Tabs */}\n'
 CARD = "      {/* BOX_PARTNER_INBOX_V1 */}\n      <section className=\"rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3\" aria-label=\"BOX-Standortbewerbungen\" data-testid=\"admin-box-partner-entry\">\n        <h3 className=\"text-base font-bold text-emerald-900\">BOX-Standortbewerbungen</h3>\n        <p className=\"text-sm text-gray-700\">Bewerbungen von Geschäften für einen BOX-Standort findest du im geschützten BOX-Posteingang.</p>\n        <a href=\"https://box.bidblitz.ae/admin/partner-applications\" target=\"_blank\" rel=\"noopener noreferrer\" className=\"inline-flex min-h-[44px] items-center justify-center rounded-lg bg-emerald-800 px-4 py-3 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800\">BOX-Posteingang öffnen ↗</a>\n        <p className=\"text-sm text-gray-700\">Öffnet in einem neuen Tab. Du brauchst eine aktive BOX-Anmeldung und eine Adminberechtigung für BOX.</p>\n        <a href=\"https://box.bidblitz.ae/auth/login\" target=\"_blank\" rel=\"noopener noreferrer\" className=\"inline-flex min-h-[44px] items-center text-sm font-semibold text-emerald-900 underline\">Bei BOX anmelden ↗</a>\n      </section>\n"
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -18,7 +18,12 @@ def patch(data):
     text = data.decode("utf-8")
     if text.count(ANCHOR) != 1:
         raise RuntimeError("Seitenaufbau unerwartet; nichts veröffentlicht.")
-    return text.replace(ANCHOR, ANCHOR + CARD, 1).encode("utf-8")
+    return text.replace(ANCHOR, CARD + ANCHOR, 1).encode("utf-8")
+
+def validate_route(app):
+    pattern = r'<Route path="/admin" element=\{\s*<ProtectedRoute requireAdmin>\s*<AppAdminPanel\s*/>\s*</ProtectedRoute>\s*\}\s*/>'
+    if not re.search(pattern, app):
+        raise RuntimeError("Aktive Admin-Route unerwartet; nichts geändert.")
 
 def public_index():
     request = urllib.request.Request(
@@ -38,6 +43,7 @@ def main(state_root=Path("/root")):
 
 def release(state_root):
     source, live = FRONT / REL, FRONT / "build"
+    validate_route((FRONT / "src/App.js").read_text())
     before = source.read_bytes()
     candidate = patch(before)
     if not (live / "index.html").is_file() or live.is_symlink():
@@ -47,7 +53,7 @@ def release(state_root):
     if shutil.disk_usage(FRONT).free < 2 * 1024**3:
         raise RuntimeError("Weniger als 2 GB frei; nichts geändert.")
     backup = Path(tempfile.mkdtemp(prefix="box-admin-entry-", dir=state_root))
-    (backup / "AdminPartnerApplications.before.js").write_bytes(before)
+    (backup / "AppAdminPanel.before.jsx").write_bytes(before)
     built, old = backup / "new-build", backup / "old-build"
     if backup.stat().st_dev != FRONT.stat().st_dev:
         raise RuntimeError("Build und Sicherung liegen auf verschiedenen Laufwerken.")
@@ -64,7 +70,7 @@ def release(state_root):
                            stdout=log, stderr=subprocess.STDOUT, check=True, timeout=1200)
         bundles = list((built / "static/js").glob("*.js"))
         if not (built / "index.html").is_file() or not any(
-                b"BOX-Standortbewerbungen" in p.read_bytes() for p in bundles):
+                (b"BOX-Standortbewerbungen" in p.read_bytes() and b"https://box.bidblitz.ae/admin/partner-applications" in p.read_bytes()) for p in bundles):
             raise RuntimeError("BOX-Zugang fehlt im neuen Build.")
         if source.read_bytes() != candidate:
             raise RuntimeError("Quelldatei wurde während des Builds verändert.")
@@ -88,7 +94,7 @@ def release(state_root):
         print("ABGEBROCHEN. Sicherung und Build-Protokoll:", backup)
         raise
     print("BOX-EINSTIEG VERÖFFENTLICHT; öffentlicher Build geprüft.")
-    print("Admin → Partner Portal → BOX-Standortbewerbungen")
+    print("https://bidblitz.ae/admin → BOX-Standortbewerbungen")
     print("Sicherung:", backup)
 
 if __name__ == "__main__":
