@@ -7,7 +7,6 @@ import {
   AlertCircle, Bot, Check, Key, Loader2, Star, X, Zap,
 } from "lucide-react";
 import { api } from "./dataLoaders";
-import BoxPartnerApplicationsEntry from "./BoxPartnerApplicationsEntry";
 
 const MODULE_KEY_MAP = {
   Handwerker: "handwerker",
@@ -45,7 +44,6 @@ export default function AdminDetailRouter({ data, setData, loading, error, onNav
   if (!data) return null;
 
   switch (data.type) {
-    case "box_partner_applications": return <BoxPartnerApplicationsEntry />;
     case "users": return <UsersDetail data={data} />;
     case "kyc": return <KycDetail data={data} setData={setData} />;
     case "roles": return <RolesDetail data={data} />;
