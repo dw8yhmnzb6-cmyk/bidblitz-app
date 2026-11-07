@@ -58,6 +58,7 @@ def release(state_root):
         source.write_bytes(candidate)
         changed = True
         env = dict(os.environ, BUILD_PATH=str(built))
+        print("Build läuft. Protokoll:", backup / "build.log", flush=True)
         with (backup / "build.log").open("w") as log:
             subprocess.run(["npm", "run", "build"], cwd=FRONT, env=env,
                            stdout=log, stderr=subprocess.STDOUT, check=True, timeout=1200)
