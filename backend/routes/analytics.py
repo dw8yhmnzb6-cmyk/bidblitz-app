@@ -6,7 +6,8 @@ and lightweight event-based conversion tracking.
 
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Query
-from pydantic import BaseModel
+import re
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional
 from core.database import db
 from core.security import get_current_user
@@ -184,10 +185,54 @@ VALID_EVENTS = {
 }
 
 
+LEGACY_EVENT_META = {
+    "guest_register_click": {"source"},
+    "register_complete": {"role"},
+    "first_payment": {"type"},
+    "feature_click": {"feature"},
+    "cta_click": {"cta", "page"},
+    "page_view": {"page"},
+}
+SAFE_TRACKING_TOKEN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
 class TrackEvent(BaseModel):
-    event: str
-    session_id: Optional[str] = None
-    meta: Optional[dict] = None
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    event: str = Field(min_length=1, max_length=40)
+    # Accept the legacy field for old callers, but discard it before validation
+    # and never persist it. Session identifiers are not needed for aggregate KPIs.
+    session_id: Optional[str] = Field(default=None, exclude=True, repr=False)
+
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def discard_session_id(cls, value):
+        if value is not None and (not isinstance(value, str) or len(value) > 128):
+            raise ValueError("session_id is invalid")
+        return None
+    meta: Optional[dict] = Field(default=None, max_length=6)
+
+    @field_validator("meta")
+    @classmethod
+    def allowlist_meta_values(cls, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("meta must be an object")
+        allowed_keys = set().union(*LEGACY_EVENT_META.values())
+        return {
+            key: item for key, item in value.items()
+            if key in allowed_keys and isinstance(item, str)
+            and len(item) <= 64 and SAFE_TRACKING_TOKEN.fullmatch(item)
+        }
+
+    @model_validator(mode="after")
+    def restrict_meta_to_event(self):
+        allowed = LEGACY_EVENT_META.get(self.event, set())
+        self.meta = {
+            key: value for key, value in (self.meta or {}).items()
+            if key in allowed
+        }
+        return self
 
 
 @router.post("/track")
@@ -199,21 +244,15 @@ async def track_event(body: TrackEvent, request: Request):
     now = datetime.now(timezone.utc)
     day_key = now.strftime("%Y-%m-%d")
 
+    # Legacy browser events remain anonymous: no IP, account ID or session ID is stored.
     doc = {
         "event": body.event,
-        "session_id": body.session_id or "",
         "meta": body.meta or {},
         "day": day_key,
         "ts": now.isoformat(),
-        "ip": request.client.host if request.client else "",
     }
 
-    # Try to attach user_id if authenticated
-    try:
-        user = await get_current_user(request)
-        doc["user_id"] = str(user["_id"])
-    except Exception:
-        doc["user_id"] = ""
+    # Legacy browser events remain anonymous; no user lookup is performed.
 
     await db.conversion_events.insert_one(doc)
 

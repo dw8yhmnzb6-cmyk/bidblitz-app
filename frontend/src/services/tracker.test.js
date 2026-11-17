@@ -42,4 +42,53 @@ describe('legacy conversion tracker consent and minimization', () => {
     tracker.guestVisit();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+
+  test('withdrawal aborts pending requests and clears dedupe markers before re-consent', () => {
+    const signals = [];
+    fetch.mockImplementation((_url, options) => new Promise((resolve, reject) => {
+      signals.push(options.signal);
+      options.signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      }, { once: true });
+    }));
+
+    getCookieConsent.mockReturnValue({ analytics: true });
+    tracker.guestVisit();
+    expect(sessionStorage.getItem('bb_ev_guest_visit')).toBe('1');
+
+    getCookieConsent.mockReturnValue({ analytics: false });
+    window.dispatchEvent(new CustomEvent('cookie-consent-changed', { detail: { analytics: false } }));
+    expect(signals[0].aborted).toBe(true);
+    expect(sessionStorage.getItem('bb_ev_guest_visit')).toBeNull();
+
+    tracker.pageView('home');
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    getCookieConsent.mockReturnValue({ analytics: true });
+    tracker.guestVisit();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(signals[1].aborted).toBe(false);
+
+    getCookieConsent.mockReturnValue({ analytics: false });
+    window.dispatchEvent(new CustomEvent('cookie-consent-changed', { detail: { analytics: false } }));
+    expect(signals[1].aborted).toBe(true);
+  });
+
+  test('cleans up a request controller when fetch throws synchronously', () => {
+    let failedSignal;
+    getCookieConsent.mockReturnValue({ analytics: true });
+    fetch.mockImplementationOnce((_url, options) => {
+      failedSignal = options.signal;
+      throw new Error('network unavailable');
+    });
+
+    expect(tracker.pageView('home')).toBe(false);
+    expect(failedSignal.aborted).toBe(false);
+
+    getCookieConsent.mockReturnValue({ analytics: false });
+    window.dispatchEvent(new CustomEvent('cookie-consent-changed', { detail: { analytics: false } }));
+    expect(failedSignal.aborted).toBe(false);
+  });
 });

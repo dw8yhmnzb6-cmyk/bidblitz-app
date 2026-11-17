@@ -25,19 +25,53 @@ function sanitized(event, meta = {}) {
   }
   return output;
 }
+const DEDUPE_PREFIX = 'bb_ev_';
+const REQUESTS_KEY = Symbol.for('bidblitz.analytics.pending-requests');
+const pendingRequests = typeof window !== 'undefined'
+  ? (window[REQUESTS_KEY] || (window[REQUESTS_KEY] = new Set()))
+  : new Set();
+
+function clearDedupeKeys(storage) {
+  try {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index);
+      if (typeof key === 'string' && key.startsWith(DEDUPE_PREFIX)) storage.removeItem(key);
+    }
+  } catch { /* Storage may be unavailable; tracking remains consent-gated. */ }
+}
+function handleConsentChange(event) {
+  if (event?.detail?.analytics === true) return;
+  for (const controller of pendingRequests) controller.abort();
+  pendingRequests.clear();
+  if (typeof sessionStorage !== 'undefined') clearDedupeKeys(sessionStorage);
+  if (typeof localStorage !== 'undefined') clearDedupeKeys(localStorage);
+}
+
+// Keep the listener tied to the current module instance during development HMR.
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  const listenerKey = Symbol.for('bidblitz.analytics.consent-listener');
+  const previousListener = window[listenerKey];
+  if (previousListener) window.removeEventListener('cookie-consent-changed', previousListener);
+  window.addEventListener('cookie-consent-changed', handleConsentChange);
+  window[listenerKey] = handleConsentChange;
+}
+
 function fire(event, meta) {
   if (!consented() || !EVENTS.has(event)) return false;
+  let controller;
   try {
     const API_URL = getApiUrl();
     if (!API_URL || !/^https?:\/\//.test(API_URL)) return false;
     const body = JSON.stringify({ event, meta: sanitized(event, meta) });
     // Fetch instead of beacon so network failures don't throw into UI flows.
+    controller = new AbortController();
+    pendingRequests.add(controller);
     fetch(`${API_URL.replace(/\/$/, '')}/api/analytics/track`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body, credentials: 'include', keepalive: true,
-    }).catch(() => {});
+      body, credentials: 'include', keepalive: true, signal: controller.signal,
+    }).catch(() => {}).finally(() => pendingRequests.delete(controller));
     return true;
-  } catch { return false; }
+  } catch { if (controller) pendingRequests.delete(controller); return false; }
 }
 function once(event, meta, scope) {
   if (!consented()) return false; // No analytics storage before consent.
