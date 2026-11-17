@@ -34,3 +34,17 @@ Deployment remains a separate approval step. Product domains may differ; do not 
 
 ## Reporting standard
 Only code confirmed by commit may be marked implemented; only executed passing tests may be marked tested; only live smoke-checked deployments may be called live. Do not claim a project-percentage without a measurable denominator.
+
+## Verified incremental work (2026-11-17)
+
+- Customer-site read API hardening (ANA-005): the existing owner/tenant/site
+  authorization query remains unchanged; the grouped result is now validated
+  for exact shape, allowed event names, canonical UTC dates, positive safe
+  integer counts, duplicate dimensions, bounded row count and overflow.
+- Malformed aggregate data fails closed with a generic 503. No raw database
+  fields or exception details are returned. Empty results are explicitly
+  treated as missing recorded events, not proof of zero customer activity.
+- This is a scoped integrity improvement, **not completion of ANA-005**:
+  site provisioning/grant lifecycle, owner review, retention/deletion, and
+  staging end-to-end verification remain open.
+- Evidence and focused test command: `docs/analytics-customer-aggregate-validation.md`.

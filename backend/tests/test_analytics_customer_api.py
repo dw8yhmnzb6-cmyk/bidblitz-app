@@ -1,6 +1,7 @@
 """Customer isolation contracts using the actual router and fake DB/auth."""
 import importlib.util
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -14,6 +15,8 @@ SITE_A = '11111111-1111-4111-8111-111111111111'
 SITE_B = '22222222-2222-4222-8222-222222222222'
 TENANT_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 TENANT_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+TODAY_UTC = datetime.now(timezone.utc).date().isoformat()
+YESTERDAY_UTC = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
 
 def grant(site=SITE_A, owner='owner-a', tenant=TENANT_A, **changes):
     return dict(site_id=site, owner_user_id=owner, tenant_id=tenant,
@@ -126,7 +129,8 @@ def test_invalid_site_identifier_never_reads_metadata(api,site):
 
 def test_customer_query_is_bound_to_both_tenant_and_site(api):
     client,state=api
-    state.rows=[{'_id':{'day':'2026-10-27','event':'page_view'},'count':7,'ip':'secret'}]
+    today = datetime.now(timezone.utc).date().isoformat()
+    state.rows=[{'_id':{'day':today,'event':'page_view'},'count':7}]
     body=client.get(f'/api/analytics/v1/my/sites/{SITE_A}/overview?days=7').json()
     assert body['totals']=={'page_view':7}
     assert body['has_recorded_events'] is True
@@ -165,3 +169,68 @@ def test_no_assignment_is_an_empty_account_not_access_to_internal_catalog(api):
     assert client.get('/api/analytics/v1/my/sites').json()=={'sites':[],'has_more':False}
     assert client.get('/api/analytics/v1/portfolio').status_code==403
     assert state.event_pipelines==[]
+
+
+
+def test_customer_site_aggregate_rejects_malformed_rows_without_echoing_private_fields(api):
+    client, state = api
+    state.rows = [{
+        '_id': {'day': TODAY_UTC, 'event': 'page_view'},
+        'count': True,
+        'email': 'PRIVATE_AGGREGATE_SENTINEL',
+    }]
+    response = client.get(f'/api/analytics/v1/my/sites/{SITE_A}/overview')
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'Analytics data unavailable'}
+    assert 'PRIVATE_AGGREGATE_SENTINEL' not in response.text
+    assert 'totals' not in response.json()
+
+
+@pytest.mark.parametrize('rows', [
+    [{'_id': {'day': TODAY_UTC, 'event': 'page_view'}, 'count': 1.5}],
+    [{'_id': {'day': TODAY_UTC, 'event': 'unknown'}, 'count': 1}],
+    [{'_id': {'day': '2026-02-30', 'event': 'page_view'}, 'count': 1}],
+    [{'_id': {'day': TODAY_UTC, 'event': 'page_view'}, 'count': 1,
+      'owner_user_id': 'private-owner'}],
+    [
+        {'_id': {'day': TODAY_UTC, 'event': 'page_view'}, 'count': 2},
+        {'_id': {'day': TODAY_UTC, 'event': 'page_view'}, 'count': 3},
+    ],
+    [
+        {'_id': {'day': YESTERDAY_UTC, 'event': 'page_view'}, 'count': 2**53 - 1},
+        {'_id': {'day': TODAY_UTC, 'event': 'page_view'}, 'count': 1},
+    ],
+])
+def test_customer_site_aggregate_integrity_failures_return_generic_503(api, rows):
+    client, state = api
+    state.rows = rows
+    response = client.get(f'/api/analytics/v1/my/sites/{SITE_A}/overview?days=7')
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'Analytics data unavailable'}
+    assert state.event_pipelines
+    match = state.event_pipelines[0][0]['$match']
+    assert match['tenant_id'] == TENANT_A and match['site_id'] == SITE_A
+
+
+
+def test_customer_aggregate_reads_one_extra_row_to_detect_truncated_overflow(api):
+    client, state = api
+    events = ['page_view', 'cta_click', 'signup_started', 'signup_completed',
+              'checkout_started', 'flow_abandoned']
+    valid_rows = [
+        {'_id': {'day': day, 'event': event}, 'count': 1}
+        for day in (YESTERDAY_UTC, TODAY_UTC)
+        for event in events
+    ]
+    state.rows = valid_rows
+    valid = client.get(f'/api/analytics/v1/my/sites/{SITE_A}/overview?days=1')
+    assert valid.status_code == 200
+    assert valid.json()['has_recorded_events'] is True
+    assert valid.json()['totals'] == {event: 2 for event in events}
+
+    state.rows = valid_rows + [
+        {'_id': {'day': '2000-01-01', 'event': 'page_view'}, 'count': 1},
+    ]
+    overflow = client.get(f'/api/analytics/v1/my/sites/{SITE_A}/overview?days=1')
+    assert overflow.status_code == 503
+    assert overflow.json() == {'detail': 'Analytics data unavailable'}

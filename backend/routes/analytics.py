@@ -488,17 +488,17 @@ async def customer_site_analytics_overview(
         }},
         {"$sort": {"_id.day": 1, "_id.event": 1}},
     ]
-    records = await db.conversion_events.aggregate(pipeline).to_list(length=(days + 1) * 6)
-    totals, daily = {}, {}
-    for record in records:
-        event, day = record["_id"]["event"], record["_id"]["day"]
-        count = int(record["count"])
-        totals[event] = totals.get(event, 0) + count
-        daily.setdefault(day, {})[event] = count
+    records = await db.conversion_events.aggregate(pipeline).to_list(length=(days + 1) * 6 + 1)
+    from core.analytics_customer_aggregate import build_customer_site_event_report
+    try:
+        report = build_customer_site_event_report(records, days=days, as_of=now)
+    except ValueError:
+        # Never expose malformed aggregate rows or their underlying fields.
+        raise HTTPException(status_code=503, detail="Analytics data unavailable") from None
     return {
         **scope.public_summary(), "period_days": days,
         "as_of": now.isoformat(), "timezone": "UTC",
-        "totals": totals, "daily": daily, "has_recorded_events": bool(records),
+        **report,
         "verified_revenue_included": False,
         "data_scope": "tenant_site_v1_events_only",
     }
